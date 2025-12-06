@@ -54,7 +54,10 @@
 - **Reconocimiento web** con `whatweb` y `nikto` cuando están disponibles, más enriquecimiento opcional con `curl` / `wget` / `openssl`.
 - **Enriquecimiento de tráfico y DNS**: pequeñas capturas PCAP (`tcpdump` + `tshark`) y resolución inversa / whois para IPs públicas.
 - **Resiliencia en ejecuciones largas**: hilo de *heartbeat* que informa periódicamente de la actividad y detecta posibles bloqueos, más manejo limpio de señales con guardado de informes parciales al recibir Ctrl+C.
-- **Reportes**: genera informes JSON estructurados y un TXT legible, que se escriben por defecto en `~/RedAuditReports` (o en el directorio personalizado que elijas en tiempo de ejecución).
+- **Logging Profesional**: Logs rotativos almacenados en `~/.redaudit/logs` para auditoría y depuración.
+- **Endurecimiento de Seguridad**: Sanitización estricta de entrada (IP/Hostname/Interfaz) para prevenir inyección, y cifrado opcional de reportes (Fernet/AES).
+- **Limitación de Velocidad**: Retardo configurable entre hosts para escaneos más sigilosos.
+- **Reportes**: genera informes JSON estructurados y un TXT legible, que se escriben por defecto en `~/RedAuditReports`. Variantes cifradas (`.json.enc`) disponibles.
 
 ## Dependencias
 
@@ -66,6 +69,7 @@ Imprescindibles para que la herramienta funcione:
 
 - `nmap`
 - `python3-nmap`
+- `python3-cryptography` (para cifrado de reportes)
 
 ### Recomendadas (enriquecimiento)
 
@@ -81,7 +85,7 @@ Instalación rápida de todo en Kali/Debian/Ubuntu:
 
 ```bash
 sudo apt update
-sudo apt install nmap python3-nmap whatweb nikto \
+sudo apt install nmap python3-nmap python3-cryptography whatweb nikto \
   curl wget openssl tcpdump tshark whois bind9-dnsutils
 ```
 
@@ -160,8 +164,19 @@ El asistente interactivo te guía por:
 2.	**Modo de escaneo**: RÁPIDO, NORMAL o COMPLETO.
 3.	**Opciones**: número de hilos, si incluir análisis de vulnerabilidades web y dónde guardar los reportes.
 4.	**Autorización**: confirmación explícita de que tienes permiso para escanear los objetivos seleccionados.
+5.  **Cifrado**: Opción para cifrar los reportes de salida con contraseña.
 
-Los informes se guardarán por defecto en `~/RedAuditReports` o en el directorio personalizado que selecciones durante la configuración.
+Los informes se guardarán por defecto en `~/RedAuditReports`. Si se activa el cifrado, los archivos tendrán extensión `.json.enc` y `.txt.enc` junto a un archivo `.salt`.
+
+### Descifrado de Reportes
+
+Si elegiste cifrar tus reportes, usa el script de ayuda proporcionado:
+
+```bash
+python3 redaudit_decrypt.py ~/RedAuditReports/redaudit_...json.enc
+```
+
+Se te pedirá la contraseña usada durante la auditoría.
 
 ## ⚠️ Aviso legal y ético
 

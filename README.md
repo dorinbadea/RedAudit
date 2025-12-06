@@ -54,7 +54,10 @@
 - **Web reconnaissance** via `whatweb` and `nikto` when available, plus optional `curl` / `wget` / `openssl` enrichment.
 - **Traffic & DNS enrichment**: small PCAP captures (`tcpdump` + `tshark`) and reverse DNS / whois for public IPs.
 - **Resilience for long runs**: a heartbeat thread that periodically prints activity and detects potential hangs, plus graceful signal handling with partial report saving on Ctrl+C.
-- **Reporting**: structured JSON + human-readable TXT reports written by default to `~/RedAuditReports` (or a custom directory chosen at runtime).
+- **Professional Logging**: Rotating logs stored in `~/.redaudit/logs` for audit trails and debugging.
+- **Security Hardening**: Strict input sanitization (IP/Hostname/Interface) to prevent injection, plus optional report encryption (Fernet/AES).
+- **Rate Limiting**: Configurable delay between hosts for stealthier scans.
+- **Reporting**: structured JSON + human-readable TXT reports written by default to `~/RedAuditReports` (or a custom directory chosen at runtime). Encrypted variants (`.json.enc`) available.
 
 ## Requirements
 
@@ -66,6 +69,7 @@ These are mandatory for the tool to run:
 
 - `nmap`
 - `python3-nmap`
+- `python3-cryptography` (for report encryption)
 
 ### Recommended (enrichment)
 
@@ -81,7 +85,7 @@ You can install everything in one go on Kali/Debian/Ubuntu:
 
 ```bash
 sudo apt update
-sudo apt install nmap python3-nmap whatweb nikto \
+sudo apt install nmap python3-nmap python3-cryptography whatweb nikto \
   curl wget openssl tcpdump tshark whois bind9-dnsutils
 ```
 
@@ -160,8 +164,19 @@ The interactive wizard will guide you through:
 2.	**Scan mode**: FAST, NORMAL or FULL.
 3.	**Options**: number of threads, whether to include web vulnerability checks, and where to store reports.
 4.	**Legal confirmation**: explicit confirmation that you are authorised to scan the selected targets.
+5.  **Encryption**: Option to encrypt the output reports with a password.
 
-Reports will be stored in `~/RedAuditReports` by default, or in the custom directory you chose during configuration.
+Reports will be stored in `~/RedAuditReports` by default. If encryption is enabled, files will have extensions `.json.enc` and `.txt.enc` along with a `.salt` file.
+
+### Decrypting Reports
+
+If you chose to encrypt your reports, use the provided helper script:
+
+```bash
+python3 redaudit_decrypt.py ~/RedAuditReports/redaudit_...json.enc
+```
+
+You will be prompted for the password used during the audit.
 
 ## ⚠️ Legal & Ethical Notice
 

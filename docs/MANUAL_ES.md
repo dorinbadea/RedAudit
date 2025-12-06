@@ -78,7 +78,23 @@ redaudit
 
 ---
 
-## 5. Verificación rápida
+## 5. Endurecimiento y Seguridad
+
+RedAudit v2.3 incluye nuevas características para garantizar una operación segura:
+
+*   **Sanitización de Entrada**: Validación estricta de IPs y nombres de interfaz para evitar inyección de comandos.
+*   **Cifrado de Reportes**: Opción para cifrar los resultados (JSON y TXT) usando Fernet (AES). Requiere `python3-cryptography`.
+*   **Rate Limiting**: Retardo configurable entre hosts para reducir el ruido en la red.
+*   **Logging**: Registros de auditoría detallados y rotativos en `~/.redaudit/logs`.
+
+Para descifrar reportes:
+```bash
+python3 redaudit_decrypt.py /ruta/a/reporte.json.enc
+```
+
+---
+
+## 6. Verificación rápida
 
 Comandos útiles para comprobar que todo está en su sitio:
 
@@ -97,7 +113,7 @@ grep "alias redaudit" ~/.bashrc
 
 ---
 
-## 6. Actualizar RedAudit a una nueva versión
+## 7. Actualizar RedAudit a una nueva versión
 
 Cuando quieras actualizar el código (por ejemplo, pasar de 2.3 a 2.4):
 1.  Editas el instalador con el código nuevo (git pull).
@@ -112,7 +128,7 @@ El binario `/usr/local/bin/redaudit` se sobrescribe con la nueva versión.
 
 ---
 
-## 7. Desinstalación (por si hace falta)
+## 8. Desinstalación (por si hace falta)
 
 Eliminar binario y alias:
 

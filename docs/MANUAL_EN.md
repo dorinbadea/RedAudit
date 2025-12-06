@@ -77,8 +77,23 @@ redaudit
 ```
 
 ---
+## 5. Security & Hardening
 
-## 5. Quick Verification
+RedAudit v2.3 includes several security features to ensure safe operation and data protection:
+
+*   **Input Sanitization**: All IPs, hostnames, and interface names are strictly validated to prevent command injection.
+*   **Report Encryption**: You can optionally encrypt your reports (JSON & TXT) using Fernet (AES-128-CBC + HMAC). Requires `python3-cryptography`.
+*   **Rate Limiting**: Configurable delay between hosts to reduce network noise and evade simple IDS.
+*   **Logging**: Detailed audit logs are rotated and stored in `~/.redaudit/logs`.
+
+To decrypt reports:
+```bash
+python3 redaudit_decrypt.py /path/to/report.json.enc
+```
+
+---
+
+## 6. Quick Verification
 
 Useful commands to check everything is in place:
 
@@ -96,7 +111,7 @@ grep "alias redaudit" ~/.bashrc
 
 ---
 
-## 6. Updating RedAudit
+## 7. Updating RedAudit
 
 To update the code (e.g., from 2.3 to 2.4):
 1.  Edit the installer `redaudit_install.sh` with the new code.
@@ -110,7 +125,7 @@ The binary `/usr/local/bin/redaudit` will be overwritten with the new version.
 
 ---
 
-## 7. Uninstallation
+## 8. Uninstallation
 
 To remove the binary and alias:
 

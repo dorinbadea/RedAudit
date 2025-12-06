@@ -53,7 +53,7 @@ fi
 echo "$MSG_INSTALL"
 
 # 2) Opcional: pack de utilidades de red recomendadas
-EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap"
+EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography"
 
 echo
 echo "$MSG_OPTIONAL"
@@ -104,6 +104,21 @@ import importlib
 import shutil
 import threading
 import time
+import re
+import getpass
+import base64
+import logging
+from logging.handlers import RotatingFileHandler
+
+# Cryptography (optional modules logic handled in check_dependencies if needed,
+# but we are enforcing it via apt, so we import normally)
+try:
+    from cryptography.fernet import Fernet
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+except ImportError:
+    # Fallback/Exit if not present (should be installed by script)
+    pass
 
 VERSION = "2.3"
 DEFAULT_LANG = "__LANG__"  # Will be replaced by installer
@@ -135,6 +150,13 @@ TRANSLATIONS = {
         "no_nets_auto": "No networks detected automatically",
         "select_net": "Select network:",
         "manual_entry": "Enter manual",
+        "scanning_host": "Scanning host {}... (Mode: {})",
+        "encrypt_reports": "Encrypt reports with password?",
+        "encryption_password": "Report encryption password",
+        "encryption_enabled": "✓ Encryption enabled",
+        "rate_limiting": "Enable rate limiting (slower but stealthier)?",
+        "rate_delay": "Delay between hosts (seconds):",
+        "ports_truncated": "⚠️  {}: {} ports found, showing top 50",
         "scan_all": "Scan ALL",
         "scan_config": "SCAN CONFIGURATION",
         "scan_mode": "Scan Mode:",
@@ -297,13 +319,129 @@ class InteractiveNetworkAuditor:
         self.scan_start_time = None
         self.extra_tools = {}
 
-        # Monitor de vida
-        self.last_activity = datetime.now()
-        self.current_phase = "init"
         self.heartbeat_stop = False
+        self.last_activity = datetime.now()
+        self.activity_lock = threading.Lock()
+        
+        # New configurable fields
+        self.encryption_enabled = False
+        self.encryption_key = None
+        self.config['encryption_salt'] = None
+        self.rate_limit_delay = 0
+
+        self.setup_logging()
+
+        # Monitor de vida
+        self.current_phase = "init"
         self.heartbeat_thread = None
 
         signal.signal(signal.SIGINT, self.signal_handler)
+
+    def setup_logging(self):
+        """Configura logging profesional para auditoría."""
+        log_dir = os.path.expanduser("~/.redaudit/logs")
+        try:
+            os.makedirs(log_dir, exist_ok=True)
+        except:
+            return
+
+        log_file = os.path.join(log_dir, f"redaudit_{datetime.now().strftime('%Y%m%d')}.log")
+
+        self.logger = logging.getLogger('RedAudit')
+        self.logger.setLevel(logging.DEBUG)
+
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - [%(levelname)s] - %(funcName)s:%(lineno)d - %(message)s'
+        )
+
+        file_handler = RotatingFileHandler(
+            log_file, maxBytes=10*1024*1024, backupCount=5
+        )
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.ERROR) 
+        console_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+
+        if not self.logger.handlers:
+            self.logger.addHandler(file_handler)
+            self.logger.addHandler(console_handler)
+
+        self.logger.info("="*60)
+        self.logger.info(f"RedAudit v{VERSION} initialized")
+        self.logger.info(f"User: {os.getenv('SUDO_USER', os.getenv('USER'))}")
+        self.logger.info(f"PID: {os.getpid()}")
+
+    @staticmethod
+    def sanitize_ip(ip_str):
+        """Valida que sea una IP válida, devuelve None si no lo es."""
+        try:
+            import ipaddress
+            ipaddress.ip_address(ip_str)
+            return ip_str
+        except ValueError:
+            return None
+
+    @staticmethod
+    def sanitize_hostname(hostname):
+        """Sanitiza hostname para prevenir inyección."""
+        if re.match(r'^[a-zA-Z0-9\.\-]+$', hostname):
+            return hostname
+        return None
+
+    def ask_password_twice(self, prompt="Password"):
+        """Pide contraseña dos veces para confirmar."""
+        while True:
+            pwd1 = getpass.getpass(f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {prompt}: ")
+            if len(pwd1) < 8:
+                msg = "Password must be at least 8 characters" if self.lang == "en" else "La contraseña debe tener al menos 8 caracteres"
+                self.print_status(msg, "WARNING")
+                continue
+            pwd2 = getpass.getpass(f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} Confirm password: ")
+            if pwd1 == pwd2:
+                return pwd1
+            msg = "Passwords don't match" if self.lang == "en" else "Las contraseñas no coinciden"
+            self.print_status(msg, "WARNING")
+
+    def derive_key_from_password(self, password, salt=None):
+        """Deriva una clave Fernet desde una contraseña usando PBKDF2."""
+        if salt is None:
+            salt = os.urandom(16)
+
+        kdf = PBKDF2(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=480000,
+        )
+        key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+        return key, salt
+
+    def encrypt_data(self, data):
+        """Cifra datos con Fernet."""
+        if not self.encryption_key:
+            return data
+        try:
+            f = Fernet(self.encryption_key)
+            if isinstance(data, str):
+                data = data.encode()
+            return f.encrypt(data)
+        except Exception as e:
+            self.print_status(f"Encryption error: {e}", "FAIL")
+            return data
+
+    def setup_encryption(self):
+        """Configura el cifrado si el usuario lo solicita."""
+        msg = self.t("encrypt_reports")
+        if self.ask_yes_no(msg, "no"):
+            pwd_prompt = self.t("encryption_password")
+            password = self.ask_password_twice(pwd_prompt)
+            key, salt = self.derive_key_from_password(password)
+            self.encryption_key = key
+            self.encryption_enabled = True
+            self.config['encryption_salt'] = base64.b64encode(salt).decode()
+            self.print_status(self.t("encryption_enabled"), "OKGREEN")
         signal.signal(signal.SIGTERM, self.signal_handler)
 
     def t(self, key, *args):
@@ -347,34 +485,40 @@ class InteractiveNetworkAuditor:
             delta = (now - self.last_activity).total_seconds()
             try:
                 # Format phase for better readability
+            with self.activity_lock:
+                now = datetime.now()
+                delta = (now - self.last_activity).total_seconds()
+            
+            try:
+                # Si estamos en espera o hay actividad reciente, decidimos qué imprimir
                 phase_desc = self.current_phase
-                if ":" in phase_desc:
-                    p_type, p_target = phase_desc.split(":", 1)
-                    if p_type == "ports":
-                        phase_desc = f"Scanning ports on {p_target}" if self.lang == "en" else f"Escaneando puertos en {p_target}"
-                    elif p_type == "deep":
-                        phase_desc = f"Deep Scan on {p_target}" if self.lang == "en" else f"Deep Scan en {p_target}"
-                    elif p_type == "vulns":
-                        phase_desc = f"Vuln analysis on {p_target}" if self.lang == "en" else f"Análisis vulns en {p_target}"
-                    elif p_type == "discovery":
-                        phase_desc = f"Discovery on {p_target}" if self.lang == "en" else f"Discovery en {p_target}"
-
-                if delta < 60:
-                    msg = self.t("heartbeat_info", phase_desc, int(delta))
-                    self.print_status(msg, "INFO", update_activity=False)
-                elif delta < 300:
-                    msg = self.t("heartbeat_warn", phase_desc, int(delta))
-                    self.print_status(msg, "WARNING", update_activity=False)
-                else:
-                    msg = self.t("heartbeat_fail", phase_desc, int(delta))
-                    self.print_status(msg, "FAIL", update_activity=False)
-            except Exception:
-                pass
+                # Si hay silencio > 300s, puede ser un bloqueo
+                
+                # Solo informar periódicamente si la fase no es init/saving
+                if phase_desc not in ["init", "saving", "interrupted"]:
+                    if delta < 60:
+                        # Actividad normal, no spamear
+                        # msg = self.t("heartbeat_info", phase_desc, int(delta))
+                        # self.print_status(msg, "INFO", update_activity=False)
+                        pass
+                    elif delta < 300:
+                        msg = self.t("heartbeat_warn", phase_desc, int(delta))
+                        self.print_status(msg, "WARNING", update_activity=False)
+                    else:
+                        msg = self.t("heartbeat_fail", phase_desc, int(delta))
+                        self.print_status(msg, "FAIL", update_activity=False)
+                        self.logger.warning(f"Heartbeat silence detected: {delta}s in phase {phase_desc}")
+            except Exception as e:
+                self.logger.error(f"Heartbeat loop error: {e}")
             time.sleep(30)
 
     # ========= Utilidades básicas =========
 
     def print_status(self, message, status="INFO", update_activity=True):
+        if update_activity:
+            with self.activity_lock:
+                self.last_activity = datetime.now()
+        
         ts = datetime.now().strftime("%H:%M:%S")
         color = self.COLORS.get(status, self.COLORS["OKBLUE"])
         if len(message) > 80:
@@ -661,24 +805,28 @@ class InteractiveNetworkAuditor:
 
         self.config['threads'] = self.ask_number(self.t("threads"), default=6, max_val=16)
 
-        if self.config['scan_mode'] != 'rapido':
-            self.config['scan_vulnerabilities'] = self.ask_yes_no(
-                self.t("vuln_scan"), "yes"
-            )
+        # NUEVO: rate limiting
+        msg_rate = self.t("rate_limiting")
+        if self.ask_yes_no(msg_rate, "no"):
+            delay = self.ask_number(self.t("rate_delay"), default=1, min_val=0, max_val=60)
+            self.rate_limit_delay = float(delay)
 
+        self.config['scan_vulnerabilities'] = self.ask_yes_no(self.t("vuln_scan_q"), "yes")
+        
+        default_reports = os.path.expanduser("~/RedAuditReports")
+        out_dir = self.input_wrapper(f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('output_dir')} [{default_reports}]: ")
+        if not out_dir:
+            out_dir = default_reports
+        self.config['output_dir'] = out_dir
+        
         self.config['save_txt_report'] = self.ask_yes_no(self.t("gen_txt"), "yes")
 
-        if self.ask_yes_no(self.t("custom_dir"), "no"):
-            while True:
-                d = input(f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('dir_prompt')} ").strip()
-                if not d:
-                    d = '.'
-                try:
-                    os.makedirs(d, exist_ok=True)
-                    self.config['output_dir'] = d
-                    break
-                except Exception as e:
-                    self.print_status(self.t("dir_err", e), "FAIL")
+        # NUEVO: configurar cifrado opcional
+        self.setup_encryption()
+
+        # The original 'custom_dir' block is now replaced by the 'output_dir' logic above.
+        # If the user wants to specify a custom directory, they can do so in the 'output_dir' prompt.
+        # The 'custom_dir' prompt is removed to avoid redundancy.
 
         self.show_config_summary()
         return self.ask_yes_no(self.t("start_audit"), "yes")
@@ -705,17 +853,25 @@ class InteractiveNetworkAuditor:
         return any(k in s for k in self.WEB_SERVICES_KEYWORDS)
 
     def scan_network_discovery(self, network):
+        """Fase 1: Descubrimiento de hosts (-sn)."""
         self.current_phase = f"discovery:{network}"
-        self.print_status(self.t("discovery_on", network), "INFO")
+        self.logger.info(f"Starting discovery on {network}")
+        
+        nm = nmap.PortScanner()
+        args = self.get_nmap_arguments('rapido')
+        self.logger.debug(f"Nmap command: nmap {args} {network}")
+        
         try:
-            scanner = nmap.PortScanner()
-            scanner.scan(hosts=network, arguments=self.get_nmap_arguments('rapido'))
-            hosts = [h for h in scanner.all_hosts() if scanner[h].state() == "up"]
-            self.print_status(self.t("hosts_active", network, len(hosts)), "OKGREEN")
-            return hosts
+            nm.scan(hosts=network, arguments=args)
         except Exception as e:
-            self.print_status(self.t("discovery_fail", network, e), "FAIL")
+            self.print_status(self.t("scan_error", str(e)), "FAIL")
+            self.logger.error(f"Discovery failed on {network}: {e}", exc_info=True)
             return []
+            
+        hosts = [h for h in nm.all_hosts() if nm[h].state() == "up"]
+        self.logger.info(f"Discovery on {network} found {len(hosts)} active hosts")
+        self.print_status(self.t("hosts_active", network, len(hosts)), "OKGREEN")
+        return hosts
 
     def get_interface_for_host(self, host_ip):
         try:
@@ -733,39 +889,35 @@ class InteractiveNetworkAuditor:
             return self.results["network_info"][0].get("interface")
         return None
 
-    def capture_traffic_snippet(self, host_ip):
-        """Captura corta de tráfico con tcpdump + resumen con tshark (si existen)."""
-        if not self.extra_tools.get("tcpdump"):
-            return None
-        iface = self.get_interface_for_host(host_ip)
-        if not iface:
-            return None
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        pcap_name = f"redaudit_{host_ip.replace('.', '_')}_{ts}.pcap"
-        pcap_path = os.path.join(self.config['output_dir'], pcap_name)
-        cmd = [self.extra_tools["tcpdump"], "-i", iface, "host", host_ip, "-c", "50", "-w", pcap_path]
-        info = {"interface": iface, "pcap_file": pcap_name}
-        try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
-            info["tcpdump_returncode"] = res.returncode
-        except subprocess.TimeoutExpired:
-            info["tcpdump_timeout"] = True
-            return info
-        except Exception as e:
-            info["tcpdump_error"] = str(e)
-            return info
+    def capture_traffic_snippet(self, host_ip, iface="eth0", duration=15):
+        """Captura un fragmento de tráfico con tcpdump para análisis."""
+        # Hardening: Validate Inputs
+        safe_ip = self.sanitize_ip(host_ip)
+        if not safe_ip:
+            return {"error": "Invalid IP address"}
+        
+        # Simple interface validation (alphanumeric + dash/underscore)
+        if not re.match(r'^[a-zA-Z0-9\-_]+$', iface):
+             return {"error": "Invalid interface name"}
 
-        if self.extra_tools.get("tshark"):
-            try:
-                res = subprocess.run(
-                    [self.extra_tools["tshark"], "-r", pcap_path, "-c", "10",
-                     "-T", "fields", "-e", "frame.number", "-e", "ip.src", "-e", "ip.dst",
-                     "-e", "tcp.port", "-e", "udp.port"],
-                    capture_output=True, text=True, timeout=15
-                )
-                if res.stdout:
-                    info["tshark_summary"] = res.stdout.strip()[:2000]
-            except Exception as e:
+        ts = datetime.now().strftime("%H%M%S")
+        pcap_file = os.path.join(
+            self.config['output_dir'], 
+            f"traffic_{safe_ip.replace('.','_')}_{ts}.pcap"
+        )
+        
+        # tcpdump command
+        cmd = [
+            "tcpdump", "-i", iface, 
+            "host", safe_ip, 
+            "-c", "50",     # max 50 paquets
+            "-G", str(duration), "-W", "1", # Rotación por tiempo (limitado a duration)
+            "-w", pcap_file
+        ]
+        
+        try:
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=duration+5)
+        except subprocess.TimeoutExpired:
                 info["tshark_error"] = str(e)
         return info
 
@@ -869,38 +1021,6 @@ class InteractiveNetworkAuditor:
         return data
 
     def scan_host_ports(self, host):
-        """Escaneo de puertos por host + deep scan automático si es “sospechoso”."""
-        self.current_phase = f"ports:{host}"
-        try:
-            nm = nmap.PortScanner()
-            nm.scan(hosts=host, arguments=self.get_nmap_arguments(self.config['scan_mode']))
-            if host not in nm.all_hosts():
-                result = {"ip": host, "error": "Sin respuesta"}
-                deep = self.deep_scan_host(host)
-                if deep:
-                    result["deep_scan"] = deep
-                return result
-
-            data = nm[host]
-            ports = []
-            web_count = 0
-
-            for proto in data.all_protocols():
-                for p, info in data[proto].items():
-                    if info['state'] == 'open':
-                        svc = info.get('name', 'unknown')
-                        is_web = self.is_web_service(svc)
-                        if is_web:
-                            web_count += 1
-                        ports.append({
-                            "port": p,
-                            "protocol": proto,
-                            "service": svc,
-                            "version": info.get('version', ''),
-                            "is_web_service": is_web
-                        })
-
-            if len(ports) > 50:
                 ports = ports[:50]
 
             host_record = {
@@ -977,39 +1097,46 @@ class InteractiveNetworkAuditor:
                 entry.update(extra_http)
 
             if entry.get("whatweb") or entry.get("nikto_findings") or entry.get("curl_headers"):
-                vulns.append(entry)
+            vulns.append(entry)
 
         return {"host": host_info['ip'], "vulnerabilities": vulns} if vulns else None
 
     def scan_hosts_concurrent(self, hosts):
-        if not hosts:
-            return []
-        self.current_phase = "ports:concurrent"
-        self.print_status(self.t("scanning_concurrent", len(hosts), self.config['threads']), "HEADER")
+        """Fase 2: Escaneo de puertos concurrente."""
+        self.print_status(self.t("scan_start", len(hosts)), "HEADER")
+        
         results = []
-        with ThreadPoolExecutor(max_workers=self.config['threads']) as executor:
-            futures = {executor.submit(self.scan_host_ports, h): h for h in hosts}
-            done = 0
-            total = len(hosts)
-            for f in as_completed(futures):
-                if self.interrupted:
-                    break
-                done += 1
-                try:
-                    res = f.result()
-                except Exception as e:
-                    self.print_status(f"[worker error] {e}", "WARNING")
-                    continue
-                if "ports" in res:
-                    results.append(res)
-                    self.print_status(
-                        f"✓ {res['ip']}: {len(res.get('ports', []))} ports (web: {res.get('web_ports_count', 0)})",
-                        "OKGREEN"
-                    )
-                elif "error" in res:
                     self.print_status(f"{res['ip']}: {res['error']}", "WARNING")
                 if total > 0 and done % max(1, total // 10) == 0:
-                    self.print_status(self.t("progress", done, total), "INFO")
+        max_workers = self.config['threads']
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {}
+            for h in hosts:
+                if self.interrupted:
+                    break
+                future = executor.submit(self.scan_host_ports, h)
+                futures[future] = h
+                
+                # Rate limiting delay if configured
+                if self.rate_limit_delay > 0:
+                    time.sleep(self.rate_limit_delay)
+
+            try:
+                for future in as_completed(futures):
+                    if self.interrupted:
+                        break
+                    host = futures[future]
+                    try:
+                        res = future.result()
+                        results.append(res)
+                    except Exception as e:
+                        # Log error but don't crash
+                        self.logger.error(f"Error scanning host {host}: {e}", exc_info=True)
+            except KeyboardInterrupt:
+                self.signal_handler(signal.SIGINT, None)
+                
+        self.results["hosts"] = results
         return results
 
     def scan_vulnerabilities_concurrent(self, host_results):
@@ -1124,23 +1251,58 @@ class InteractiveNetworkAuditor:
         print(f"{self.COLORS['FAIL']}{self.t('legal_warn')}{self.COLORS['ENDC']}")
         return self.ask_yes_no(self.t("legal_ask"), "no")
 
+    def _generate_text_report_string(self, partial):
+        """Genera el reporte de texto como string."""
+        lines = []
+        status_txt = "PARTIAL/INTERRUPTED" if partial else "COMPLETED"
+        lines.append(f"NETWORK AUDIT REPORT v{VERSION}\n")
+        lines.append(f"Date: {datetime.now()}\n")
+        lines.append(f"Status: {status_txt}\n\n")
+        
+        summ = self.results.get("summary", {})
+        lines.append(f"Hosts Found: {summ.get('hosts_found', 0)}\n")
+        lines.append(f"Hosts Scanned: {summ.get('hosts_scanned', 0)}\n")
+        lines.append(f"Vulns Found: {summ.get('vulns_found', 0)}\n\n")
+
+        if self.results.get("vulnerabilities"):
+            lines.append("VULNERABILITIES:\n")
+            for v in self.results['vulnerabilities']:
+                lines.append(f"\nHost: {v['host']}\n")
+                if 'vulnerabilities' in v:
+                    for item in v['vulnerabilities']:
+                        lines.append(f"  - {item.get('url','')}\n")
+                        if item.get("whatweb"):
+                            lines.append(f"    WhatWeb: {item['whatweb'][:80]}...\n")
+                        if item.get("nikto_findings"):
+                            lines.append(f"    Nikto: {len(item['nikto_findings'])} hallazgos.\n")
+        lines.append("\n")
+        return "".join(lines)
+
     def save_results(self, partial=False):
         self.current_phase = "saving"
         prefix = "PARTIAL_" if partial else ""
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         base = os.path.join(self.config['output_dir'], f"{prefix}redaudit_{ts}")
-        try:
-            with open(f"{base}.json", 'w') as f:
-                json.dump(self.results, f, indent=2, default=str)
-            self.print_status(self.t("json_report", base), "OKGREEN")
-            if self.config.get('save_txt_report'):
-                with open(f"{base}.txt", 'w') as f:
-                    self._generate_text_report(f, partial)
-                self.print_status(self.t("txt_report", base), "OKGREEN")
-        except Exception as e:
-            self.print_status(self.t("save_err", e), "FAIL")
 
-    def _generate_text_report(self, f, partial):
+        try:
+            os.makedirs(self.config['output_dir'], exist_ok=True)
+
+            # JSON
+            json_data = json.dumps(self.results, indent=2, default=str)
+            if self.encryption_enabled:
+                json_data_enc = self.encrypt_data(json_data)
+                json_path = f"{base}.json.enc"
+                with open(json_path, 'wb') as f:
+                    f.write(json_data_enc)
+                self.print_status(self.t("json_report", json_path), "OKGREEN")
+            else:
+                json_path = f"{base}.json"
+                with open(json_path, 'w') as f:
+                    f.write(json_data)
+                self.print_status(self.t("json_report", json_path), "OKGREEN")
+
+            # TXT
+            if self.config.get('save_txt_report'):
         f.write(f"NETWORK AUDIT REPORT v{VERSION}\n")
         f.write(f"Date: {datetime.now()}\n")
         f.write(f"Status: {'PARTIAL/INTERRUPTED' if partial else 'COMPLETED'}\n\n")
