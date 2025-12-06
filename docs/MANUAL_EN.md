@@ -64,8 +64,7 @@ The installer will:
 1.  Offer to install the recommended network utilities pack.
 2.  Create or replace `/usr/local/bin/redaudit` with the Python v2.3 version.
 3.  Adjust permissions (755, root owner).
-4.  Add the alias to your `~/.bashrc` (if it doesn't exist):
-    *   `alias redaudit='sudo /usr/local/bin/redaudit'`
+4.  Add the alias to your `~/.bashrc` or `~/.zshrc` (depending on your shell).
 
 ---
 
@@ -110,7 +109,7 @@ To update the code (e.g., from 2.3 to 2.4):
 2.  Run it again:
     ```bash
     sudo ./redaudit_install.sh
-    source ~/.bashrc
+    source ~/.bashrc  # Or ~/.zshrc
     ```
 
 The binary `/usr/local/bin/redaudit` will be overwritten with the new version.
@@ -123,6 +122,6 @@ To remove the binary and alias:
 
 ```bash
 sudo rm -f /usr/local/bin/redaudit
-sed -i '/alias redaudit=/d' ~/.bashrc
-source ~/.bashrc
+sed -i '/alias redaudit=/d' ~/.bashrc  # Or ~/.zshrc
+source ~/.bashrc  # Or ~/.zshrc
 ```

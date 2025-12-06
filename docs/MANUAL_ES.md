@@ -58,7 +58,7 @@ El instalador:
 	2.	Crea o reemplaza /usr/local/bin/redaudit con la versión Python 2.3.
 	3.	Ajusta permisos:
 	•	755 (root propietario, ejecutable por todos).
-	4.	Añade (si no existe) el alias en tu ~/.bashrc:
+	4.	Añade (si no existe) el alias en tu ~/.bashrc o ~/.zshrc:
 	•	alias redaudit='sudo /usr/local/bin/redaudit'
 
 ⸻
@@ -67,7 +67,7 @@ El instalador:
 
 Tras la instalación:
 
-source ~/.bashrc
+source ~/.bashrc  # O ~/.zshrc si usas ZSH
 
 A partir de aquí, en cualquier terminal de tu usuario normal:
 
@@ -88,7 +88,7 @@ which redaudit
 ls -l /usr/local/bin/redaudit
 
 # Confirmar alias
-grep "alias redaudit" ~/.bashrc
+grep "alias redaudit" ~/.bashrc (o ~/.zshrc)
 
 
 ⸻
@@ -107,7 +107,7 @@ chmod +x redaudit_install.sh
 	2.	Lo ejecutas de nuevo:
 
 sudo ./redaudit_install.sh
-source ~/.bashrc
+source ~/.bashrc  # O ~/.zshrc si usas ZSH
 
 
 
@@ -120,8 +120,8 @@ El binario /usr/local/bin/redaudit se sobrescribe con la nueva versión.
 Eliminar binario y alias:
 
 sudo rm -f /usr/local/bin/redaudit
-sed -i '/alias redaudit=/d' ~/.bashrc
-source ~/.bashrc
+sed -i '/alias redaudit=/d' ~/.bashrc  # O ~/.zshrc
+source ~/.bashrc  # O ~/.zshrc si usas ZSH
 
 
 ⸻
@@ -130,31 +130,76 @@ SCRIPT COMPLETO PARA COPIAR Y PEGAR
 
 Guárdalo como redaudit_install.sh
 
+
+```bash
 #!/bin/bash
 # RedAudit installer / updater v2.3 (Full Toolchain + Heartbeat)
 
-echo "🔧 Instalando / actualizando RedAudit v2.3..."
+# Language selection / Selección de idioma
+echo "----------------------------------------------------------------"
+echo " Select Language / Selecciona Idioma"
+echo "----------------------------------------------------------------"
+echo " 1. English"
+echo " 2. Español"
+echo "----------------------------------------------------------------"
+read -r -p "Choice/Opción [1/2]: " LANG_OPT
+
+if [[ "$LANG_OPT" == "2" || "$LANG_OPT" == "es" ]]; then
+    SELECTED_LANG="es"
+    MSG_INSTALL="🔧 Instalando / actualizando RedAudit v2.3..."
+    MSG_OPTIONAL="📦 Opcional: instalar pack de utilidades de red recomendadas:"
+    MSG_ASK_INSTALL="¿Quieres instalarlas ahora? [S/n]: "
+    MSG_SKIP="↩ Saltando instalación de utilidades extra."
+    MSG_EXEC="➡ Ejecutando:"
+    MSG_DONE="✅ Instalación / actualización completada."
+    MSG_USAGE="👉 En tu usuario normal, ejecuta:"
+    MSG_ALIAS_ADDED="ℹ️ Alias 'redaudit' añadido a"
+    MSG_ALIAS_EXISTS="ℹ️ Alias 'redaudit' ya existe en"
+else
+    SELECTED_LANG="en"
+    MSG_INSTALL="🔧 Installing / updating RedAudit v2.3..."
+    MSG_OPTIONAL="📦 Optional: install recommended network utilities pack:"
+    MSG_ASK_INSTALL="Do you want to install them now? [Y/n]: "
+    MSG_SKIP="↩ Skipping extra utilities installation."
+    MSG_EXEC="➡ Executing:"
+    MSG_DONE="✅ Installation / update completed."
+    MSG_USAGE="👉 In your normal user, run:"
+    MSG_ALIAS_ADDED="ℹ️ Alias 'redaudit' added to"
+    MSG_ALIAS_EXISTS="ℹ️ Alias 'redaudit' already exists in"
+fi
+
+echo "$MSG_INSTALL"
 
 # 1) Opcional: pack de utilidades de red recomendadas
 EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap"
 
 echo
-echo "📦 Opcional: instalar pack de utilidades de red recomendadas:"
+echo "$MSG_OPTIONAL"
 echo "   $EXTRA_PKGS"
-read -r -p "¿Quieres instalarlas ahora? [S/n]: " RESP
+read -r -p "$MSG_ASK_INSTALL" RESP
 RESP=${RESP,,}
-if [[ -z "$RESP" || "$RESP" == "s" || "$RESP" == "si" || "$RESP" == "sí" || "$RESP" == "y" ]]; then
-    echo "➡ Ejecutando: apt update && apt install -y $EXTRA_PKGS"
+
+INSTALL_YES=false
+if [[ "$SELECTED_LANG" == "es" ]]; then
+    if [[ -z "$RESP" || "$RESP" == "s" || "$RESP" == "si" || "$RESP" == "sí" || "$RESP" == "y" ]]; then INSTALL_YES=true; fi
+else
+    if [[ -z "$RESP" || "$RESP" == "y" || "$RESP" == "yes" ]]; then INSTALL_YES=true; fi
+fi
+
+if $INSTALL_YES; then
+    echo "$MSG_EXEC apt update && apt install -y $EXTRA_PKGS"
     sudo apt update && sudo apt install -y $EXTRA_PKGS
 else
-    echo "↩ Saltando instalación de utilidades extra."
+    echo "$MSG_SKIP"
 fi
 
 # 2) Crear /usr/local/bin/redaudit con el código Python v2.3
-sudo tee /usr/local/bin/redaudit > /dev/null << 'EOF'
+# We use sed to inject the selected language into the python script
+TEMP_SCRIPT=$(mktemp)
+cat << 'EOF' > "$TEMP_SCRIPT"
 #!/usr/bin/env python3
-"""RedAudit - Auditoría de red interactiva
-Versión 2.3 (Full Toolchain + Heartbeat)
+"""RedAudit - Interactive Network Audit
+Version 2.3 (Full Toolchain + Heartbeat)
 """
 
 import subprocess
@@ -172,8 +217,149 @@ import threading
 import time
 
 VERSION = "2.3"
+DEFAULT_LANG = "__LANG__"  # Will be replaced by installer
 nmap = None
 
+TRANSLATIONS = {
+    "en": {
+        "interrupted": "\n⚠️  Interruption received. Saving current state...",
+        "heartbeat_info": "⏱ Heartbeat: phase={} · last activity {}s ago",
+        "heartbeat_warn": "⏱ Heartbeat: phase={} · no apparent activity for {}s (nmap might still be working)",
+        "heartbeat_fail": "⏱ Heartbeat: phase={} · possible freeze (> {}s without real activity). Consider checking or interrupting with Ctrl+C.",
+        "verifying_env": "Verifying environment integrity...",
+        "detected": "✓ {} detected",
+        "nmap_avail": "✓ python-nmap available",
+        "nmap_missing": "python-nmap library not found. Attempting to install via apt...",
+        "nmap_installed": "✓ python-nmap installed successfully",
+        "missing_crit": "Error: missing critical dependencies: {}",
+        "missing_opt": "Warning: missing optional tools: {} (reduced web scan)",
+        "avail_at": "✓ {} available at {}",
+        "not_found": "{} not found (automatic usage skipped)",
+        "ask_yes_no_opts": " (Y/n)",
+        "ask_yes_no_opts_neg": " (y/N)",
+        "ask_num_limit": "Host limit for deep scan (or 'all'):",
+        "val_out_of_range": "Value out of range ({}-{})",
+        "select_opt": "Select an option",
+        "invalid_cidr": "Invalid CIDR",
+        "analyzing_nets": "Analyzing local interfaces and networks...",
+        "netifaces_missing": "netifaces not available, using fallback method",
+        "no_nets_auto": "No networks detected automatically",
+        "select_net": "Select network:",
+        "manual_entry": "Enter manual",
+        "scan_all": "Scan ALL",
+        "scan_config": "SCAN CONFIGURATION",
+        "scan_mode": "Scan Mode:",
+        "mode_fast": "FAST (Discovery only)",
+        "mode_normal": "NORMAL (Discovery + Top Ports)",
+        "mode_full": "FULL (Full Ports + Scripts + Vulns)",
+        "threads": "Concurrent threads:",
+        "vuln_scan": "Run web vulnerability analysis?",
+        "gen_txt": "Generate additional TXT report?",
+        "custom_dir": "Use custom output directory?",
+        "dir_prompt": "Directory:",
+        "dir_err": "Error creating directory: {}",
+        "start_audit": "Start audit?",
+        "discovery_on": "Discovery on {}...",
+        "hosts_active": "Active hosts in {}: {}",
+        "discovery_fail": "Discovery failed {}: {}",
+        "deep_scan_launch": "Launching deep scan on {}...",
+        "scanning_concurrent": "Scanning {} hosts with {} threads...",
+        "progress": "Progress: {}/{} hosts",
+        "vuln_analysis": "Analyzing vulnerabilities on {} web hosts...",
+        "vulns_found": "⚠️  Vulnerabilities found on {}",
+        "no_hosts": "No hosts found.",
+        "exec_params": "EXECUTION PARAMETERS",
+        "targets": "Targets",
+        "mode": "Mode",
+        "output": "Output",
+        "final_summary": "FINAL SUMMARY",
+        "nets": "  Networks:    {}",
+        "hosts_up": "  Hosts up:    {}",
+        "hosts_full": "  Hosts full:  {}",
+        "vulns_web": "  Vulns web:   {}",
+        "duration": "  Duration:    {}",
+        "reports_gen": "\n✓ Reports generated in {}",
+        "legal_warn": "\nLEGAL WARNING: Only for use on authorized networks.",
+        "legal_ask": "Do you confirm you have authorization to scan these networks?",
+        "json_report": "JSON Report: {}.json",
+        "txt_report": "TXT Report: {}.txt",
+        "save_err": "Error saving report: {}",
+        "root_req": "Error: root privileges (sudo) required.",
+        "config_cancel": "Configuration cancelled.",
+        "banner_subtitle": "   INTERACTIVE NETWORK AUDIT     ::  KALI LINUX",
+        "selection_target": "TARGET SELECTION",
+        "interface_detected": "✓ Interfaces detected:",
+    },
+    "es": {
+        "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
+        "heartbeat_info": "⏱ Heartbeat: fase={} · última actividad hace {}s",
+        "heartbeat_warn": "⏱ Heartbeat: fase={} · sin actividad aparente desde hace {}s (nmap puede seguir trabajando)",
+        "heartbeat_fail": "⏱ Heartbeat: fase={} · posible bloqueo (> {}s sin actividad real). Considera revisar o interrumpir con Ctrl+C.",
+        "verifying_env": "Verificando integridad del entorno...",
+        "detected": "✓ {} detectado",
+        "nmap_avail": "✓ python-nmap disponible",
+        "nmap_missing": "Librería python-nmap no encontrada. Intentando instalar vía apt...",
+        "nmap_installed": "✓ python-nmap instalado correctamente",
+        "missing_crit": "Error: faltan dependencias críticas: {}",
+        "missing_opt": "Aviso: faltan herramientas opcionales: {} (escaneo web reducido)",
+        "avail_at": "✓ {} disponible en {}",
+        "not_found": "{} no encontrado (se omitirá su uso automático)",
+        "ask_yes_no_opts": " (S/n)",
+        "ask_yes_no_opts_neg": " (s/N)",
+        "ask_num_limit": "Límite de hosts a escanear en profundidad (o 'todos'):",
+        "val_out_of_range": "Valor fuera de rango ({}-{})",
+        "select_opt": "Selecciona una opción",
+        "invalid_cidr": "CIDR inválido",
+        "analyzing_nets": "Analizando interfaces y redes locales...",
+        "netifaces_missing": "netifaces no disponible, usando método alternativo",
+        "no_nets_auto": "No se detectaron redes automáticamente",
+        "select_net": "Selecciona red:",
+        "manual_entry": "Introducir manual",
+        "scan_all": "Escanear TODAS",
+        "scan_config": "CONFIGURACIÓN DE ESCANEO",
+        "scan_mode": "Modo de escaneo:",
+        "mode_fast": "RÁPIDO (solo discovery)",
+        "mode_normal": "NORMAL (Discovery + Top Ports)",
+        "mode_full": "COMPLETO (Full Ports + Scripts + Vulns)",
+        "threads": "Hilos concurrentes:",
+        "vuln_scan": "¿Ejecutar análisis de vulnerabilidades web?",
+        "gen_txt": "¿Generar reporte TXT adicional?",
+        "custom_dir": "¿Usar directorio de salida personalizado?",
+        "dir_prompt": "Directorio:",
+        "dir_err": "Error creando directorio: {}",
+        "start_audit": "¿Iniciar auditoría?",
+        "discovery_on": "Discovery en {}...",
+        "hosts_active": "Hosts activos en {}: {}",
+        "discovery_fail": "Fallo en discovery {}: {}",
+        "deep_scan_launch": "Lanzando deep scan sobre {}...",
+        "scanning_concurrent": "Escaneando {} hosts con {} hilos...",
+        "progress": "Progreso: {}/{} hosts",
+        "vuln_analysis": "Analizando vulnerabilidades en {} hosts web...",
+        "vulns_found": "⚠️  Vulnerabilidades registradas en {}",
+        "no_hosts": "No se encontraron hosts.",
+        "exec_params": "PARÁMETROS DE EJECUCIÓN",
+        "targets": "Objetivos",
+        "mode": "Modo",
+        "output": "Salida",
+        "final_summary": "RESUMEN FINAL",
+        "nets": "  Redes:       {}",
+        "hosts_up": "  Hosts vivos: {}",
+        "hosts_full": "  Hosts full:  {}",
+        "vulns_web": "  Vulns web:   {}",
+        "duration": "  Duración:    {}",
+        "reports_gen": "\n✓ Reportes generados en {}",
+        "legal_warn": "\nADVERTENCIA LEGAL: Solo para uso en redes autorizadas.",
+        "legal_ask": "¿Confirmas que tienes autorización para escanear estas redes?",
+        "json_report": "Reporte JSON: {}.json",
+        "txt_report": "Reporte TXT: {}.txt",
+        "save_err": "Error guardando reporte: {}",
+        "root_req": "Error: se requieren privilegios de root (sudo).",
+        "config_cancel": "Configuración cancelada.",
+        "banner_subtitle": "   AUDITORÍA DE RED INTERACTIVA  ::  KALI LINUX",
+        "selection_target": "SELECCIÓN DE OBJETIVO",
+        "interface_detected": "✓ Interfaces detectadas:",
+    }
+}
 
 class InteractiveNetworkAuditor:
     # Heurística de servicios web
@@ -184,6 +370,7 @@ class InteractiveNetworkAuditor:
     ]
 
     def __init__(self):
+        self.lang = DEFAULT_LANG
         self.results = {
             "timestamp": datetime.now().isoformat(),
             "version": VERSION,
@@ -213,7 +400,7 @@ class InteractiveNetworkAuditor:
 
         self.interrupted = False
         self.scan_start_time = None
-        self.extra_tools = {}  # curl, wget, openssl, tcpdump, tshark, whois, dig
+        self.extra_tools = {}
 
         # Monitor de vida
         self.last_activity = datetime.now()
@@ -224,12 +411,19 @@ class InteractiveNetworkAuditor:
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
 
+    def t(self, key, *args):
+        """Translate helper"""
+        text = TRANSLATIONS.get(self.lang, TRANSLATIONS["en"]).get(key, key)
+        if args:
+            return text.format(*args)
+        return text
+
     # ========= Señales =========
 
     def signal_handler(self, sig, frame):
         if not self.interrupted:
             self.interrupted = True
-            self.print_status("\n⚠️  Interrupción recibida. Guardando estado actual...", "FAIL")
+            self.print_status(self.t("interrupted"), "FAIL")
             self.stop_heartbeat()
             self.save_results(partial=True)
             sys.exit(1)
@@ -258,22 +452,15 @@ class InteractiveNetworkAuditor:
             delta = (now - self.last_activity).total_seconds()
             try:
                 if delta < 60:
-                    msg = f"⏱ Heartbeat: fase={self.current_phase} · última actividad hace {int(delta)}s"
+                    msg = self.t("heartbeat_info", self.current_phase, int(delta))
                     self.print_status(msg, "INFO", update_activity=False)
                 elif delta < 300:
-                    msg = (
-                        f"⏱ Heartbeat: fase={self.current_phase} · "
-                        f"sin actividad aparente desde hace {int(delta)}s (nmap puede seguir trabajando)"
-                    )
+                    msg = self.t("heartbeat_warn", self.current_phase, int(delta))
                     self.print_status(msg, "WARNING", update_activity=False)
                 else:
-                    msg = (
-                        f"⏱ Heartbeat: fase={self.current_phase} · posible bloqueo "
-                        f"(> {int(delta)}s sin actividad real). Considera revisar o interrumpir con Ctrl+C."
-                    )
+                    msg = self.t("heartbeat_fail", self.current_phase, int(delta))
                     self.print_status(msg, "FAIL", update_activity=False)
             except Exception:
-                # No queremos que un fallo en el heartbeat tumbe el escaneo
                 pass
             time.sleep(30)
 
@@ -297,7 +484,7 @@ class InteractiveNetworkAuditor:
         os.system('clear' if os.name == 'posix' else 'cls')
 
     def print_banner(self):
-        # Banner ASCII "RedAudit" estilizado
+        subtitle = self.t("banner_subtitle")
         banner = f"""
 {self.COLORS['FAIL']}
     ____          _    {self.COLORS['BOLD']}{self.COLORS['HEADER']}_   _           _ _ _{self.COLORS['ENDC']}{self.COLORS['FAIL']}
@@ -307,7 +494,7 @@ class InteractiveNetworkAuditor:
 /_/ |_|\___|\___|_|{self.COLORS['BOLD']}{self.COLORS['HEADER']}/_/   \_\__,_|\__,_|_|\__|{self.COLORS['ENDC']}
                                       {self.COLORS['CYAN']}v{VERSION}{self.COLORS['ENDC']}
 {self.COLORS['OKBLUE']}══════════════════════════════════════════════════════{self.COLORS['ENDC']}
-{self.COLORS['BOLD']}   AUDITORÍA DE RED INTERACTIVA  ::  KALI LINUX{self.COLORS['ENDC']}
+{self.COLORS['BOLD']}{subtitle}{self.COLORS['ENDC']}
 {self.COLORS['OKBLUE']}══════════════════════════════════════════════════════{self.COLORS['ENDC']}
 """
         print(banner)
@@ -315,7 +502,7 @@ class InteractiveNetworkAuditor:
     # ========= Dependencias =========
 
     def check_dependencies(self):
-        self.print_status("Verificando integridad del entorno...", "HEADER")
+        self.print_status(self.t("verifying_env"), "HEADER")
 
         required_tools = [
             ("nmap", ["nmap", "--version"]),
@@ -333,7 +520,7 @@ class InteractiveNetworkAuditor:
             try:
                 if subprocess.run(cmd, capture_output=True).returncode != 0:
                     raise FileNotFoundError
-                self.print_status(f"✓ {name} detectado", "OKGREEN")
+                self.print_status(self.t("detected", name), "OKGREEN")
             except (FileNotFoundError, subprocess.SubprocessError):
                 missing_required.append(name)
 
@@ -342,7 +529,7 @@ class InteractiveNetworkAuditor:
             try:
                 if subprocess.run(cmd, capture_output=True).returncode != 0:
                     raise FileNotFoundError
-                self.print_status(f"✓ {name} detectado", "OKGREEN")
+                self.print_status(self.t("detected", name), "OKGREEN")
             except (FileNotFoundError, subprocess.SubprocessError):
                 missing_recommended.append(name)
 
@@ -350,37 +537,37 @@ class InteractiveNetworkAuditor:
         global nmap
         try:
             nmap = importlib.import_module("nmap")
-            self.print_status("✓ python-nmap disponible", "OKGREEN")
+            self.print_status(self.t("nmap_avail"), "OKGREEN")
         except ImportError:
-            self.print_status("Librería python-nmap no encontrada. Intentando instalar vía apt...", "WARNING")
+            self.print_status(self.t("nmap_missing"), "WARNING")
             try:
                 subprocess.check_call(
                     ["apt", "install", "-y", "python3-nmap"],
                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                 )
                 nmap = importlib.import_module("nmap")
-                self.print_status("✓ python-nmap instalado correctamente", "OKGREEN")
+                self.print_status(self.t("nmap_installed"), "OKGREEN")
             except Exception:
                 missing_required.append("python-nmap (apt install python3-nmap)")
 
-        # Extra tools: se usan si están, no son críticas
+        # Extra tools
         extra = ["curl", "wget", "openssl", "tcpdump", "tshark", "whois", "dig"]
         for tool in extra:
             path = shutil.which(tool)
             if path:
                 self.extra_tools[tool] = path
-                self.print_status(f"✓ {tool} disponible en {path}", "OKGREEN")
+                self.print_status(self.t("avail_at", tool, path), "OKGREEN")
             else:
                 self.extra_tools[tool] = None
-                self.print_status(f"{tool} no encontrado (se omitirá su uso automático)", "INFO")
+                self.print_status(self.t("not_found", tool), "INFO")
 
         if missing_required:
-            self.print_status(f"Error: faltan dependencias críticas: {', '.join(missing_required)}", "FAIL")
+            self.print_status(self.t("missing_crit", ', '.join(missing_required)), "FAIL")
             return False
 
         if missing_recommended:
             self.print_status(
-                f"Aviso: faltan herramientas opcionales: {', '.join(missing_recommended)} (escaneo web reducido)",
+                self.t("missing_opt", ', '.join(missing_recommended)),
                 "WARNING"
             )
 
@@ -388,8 +575,8 @@ class InteractiveNetworkAuditor:
 
     # ========= Entrada interactiva =========
 
-    def ask_yes_no(self, question, default="sí"):
-        opts = " (S/n)" if default.lower() in ("sí", "si", "s", "y", "yes") else " (s/N)"
+    def ask_yes_no(self, question, default="yes"):
+        opts = self.t("ask_yes_no_opts") if default.lower() in ("sí", "si", "s", "y", "yes") else self.t("ask_yes_no_opts_neg")
         while True:
             ans = input(f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {question}{opts}: ").strip().lower()
             if ans == "":
@@ -404,13 +591,13 @@ class InteractiveNetworkAuditor:
             ans = input(f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {question} [{default}]: ").strip()
             if ans == "":
                 return default
-            if ans.lower() == "todos":
+            if ans.lower() == "todos" or ans.lower() == "all":
                 return "todos"
             try:
                 num = int(ans)
                 if min_val <= num <= max_val:
                     return num
-                self.print_status(f"Valor fuera de rango ({min_val}-{max_val})", "WARNING")
+                self.print_status(self.t("val_out_of_range", min_val, max_val), "WARNING")
             except ValueError:
                 pass
 
@@ -421,7 +608,7 @@ class InteractiveNetworkAuditor:
             print(f"  {marker} {i+1}. {opt}")
         while True:
             try:
-                ans = input(f"\nSelecciona una opción [1-{len(options)}] ({default+1}): ").strip()
+                ans = input(f"\n{self.t('select_opt')} [1-{len(options)}] ({default+1}): ").strip()
                 if ans == "":
                     return default
                 n = int(ans) - 1
@@ -439,7 +626,7 @@ class InteractiveNetworkAuditor:
                 ipaddress.ip_network(net, strict=False)
                 return net
             except ValueError:
-                self.print_status("CIDR inválido", "WARNING")
+                self.print_status(self.t("invalid_cidr"), "WARNING")
 
     def detect_interface_type(self, iface):
         if iface.startswith('e'):
@@ -448,7 +635,7 @@ class InteractiveNetworkAuditor:
             return "Wi-Fi"
         if iface.startswith(('tun', 'tap')):
             return "VPN"
-        return "Otro"
+        return "Other"
 
     def detect_networks_fallback(self):
         nets = []
@@ -482,7 +669,7 @@ class InteractiveNetworkAuditor:
         return nets
 
     def detect_all_networks(self):
-        self.print_status("Analizando interfaces y redes locales...", "INFO")
+        self.print_status(self.t("analyzing_nets"), "INFO")
         nets = []
         try:
             import netifaces
@@ -507,7 +694,7 @@ class InteractiveNetworkAuditor:
                 except Exception:
                     continue
         except ImportError:
-            self.print_status("netifaces no disponible, usando método alternativo", "WARNING")
+            self.print_status(self.t("netifaces_missing"), "WARNING")
 
         if not nets:
             nets = self.detect_networks_fallback()
@@ -518,33 +705,33 @@ class InteractiveNetworkAuditor:
         return nets_list
 
     def ask_network_range(self):
-        print(f"\n{self.COLORS['HEADER']}📡 SELECCIÓN DE OBJETIVO{self.COLORS['ENDC']}")
+        print(f"\n{self.COLORS['HEADER']}📡 {self.t('selection_target')}{self.COLORS['ENDC']}")
         print("-" * 50)
         nets = self.detect_all_networks()
         if nets:
-            print(f"{self.COLORS['OKGREEN']}✓{self.COLORS['ENDC']} Interfaces detectadas:")
+            print(f"{self.COLORS['OKGREEN']}{self.t('interface_detected')}{self.COLORS['ENDC']}")
             opts = []
             for n in nets:
                 info = f" ({n['interface']})" if n['interface'] else ""
                 opts.append(f"{n['network']}{info} - ~{n['hosts_estimated']} hosts")
-            opts.append("Introducir manual")
-            opts.append("Escanear TODAS")
-            choice = self.ask_choice("Selecciona red:", opts)
+            opts.append(self.t("manual_entry"))
+            opts.append(self.t("scan_all"))
+            choice = self.ask_choice(self.t("select_net"), opts)
             if choice == len(opts) - 2:
                 return [self.ask_manual_network()]
             if choice == len(opts) - 1:
                 return [n['network'] for n in nets]
             return [nets[choice]['network']]
         else:
-            self.print_status("No se detectaron redes automáticamente", "WARNING")
+            self.print_status(self.t("no_nets_auto"), "WARNING")
             return [self.ask_manual_network()]
 
     def ask_host_limit(self):
         resp = self.ask_number(
-            "Límite de hosts a escanear en profundidad (o 'todos'):",
+            self.t("ask_num_limit"),
             default=25
         )
-        self.config['max_hosts_value'] = resp if resp == "todos" else int(resp)
+        self.config['max_hosts_value'] = resp if (resp == "todos" or resp == "all") else int(resp)
         return resp
 
     def interactive_setup(self):
@@ -554,36 +741,36 @@ class InteractiveNetworkAuditor:
         if not self.check_dependencies() or not self.show_legal_warning():
             return False
 
-        print(f"\n{self.COLORS['HEADER']}{self.COLORS['BOLD']}CONFIGURACIÓN DE ESCANEO{self.COLORS['ENDC']}")
+        print(f"\n{self.COLORS['HEADER']}{self.COLORS['BOLD']}{self.t('scan_config')}{self.COLORS['ENDC']}")
         print("=" * 60)
 
         self.config['target_networks'] = self.ask_network_range()
 
         scan_modes = [
-            "RÁPIDO (solo discovery)",
-            "NORMAL (Discovery + Top Ports)",
-            "COMPLETO (Full Ports + Scripts + Vulns)"
+            self.t("mode_fast"),
+            self.t("mode_normal"),
+            self.t("mode_full")
         ]
         modes_map = {0: 'rapido', 1: 'normal', 2: 'completo'}
-        self.config['scan_mode'] = modes_map[self.ask_choice("Modo de escaneo:", scan_modes, 1)]
+        self.config['scan_mode'] = modes_map[self.ask_choice(self.t("scan_mode"), scan_modes, 1)]
 
         if self.config['scan_mode'] != 'rapido':
             self.config['max_hosts'] = self.ask_host_limit()
         else:
             self.config['max_hosts_value'] = "todos"
 
-        self.config['threads'] = self.ask_number("Hilos concurrentes:", default=6, max_val=16)
+        self.config['threads'] = self.ask_number(self.t("threads"), default=6, max_val=16)
 
         if self.config['scan_mode'] != 'rapido':
             self.config['scan_vulnerabilities'] = self.ask_yes_no(
-                "¿Ejecutar análisis de vulnerabilidades web?", "sí"
+                self.t("vuln_scan"), "yes"
             )
 
-        self.config['save_txt_report'] = self.ask_yes_no("¿Generar reporte TXT adicional?", "sí")
+        self.config['save_txt_report'] = self.ask_yes_no(self.t("gen_txt"), "yes")
 
-        if self.ask_yes_no("¿Usar directorio de salida personalizado?", "no"):
+        if self.ask_yes_no(self.t("custom_dir"), "no"):
             while True:
-                d = input(f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} Directorio: ").strip()
+                d = input(f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('dir_prompt')} ").strip()
                 if not d:
                     d = '.'
                 try:
@@ -591,10 +778,10 @@ class InteractiveNetworkAuditor:
                     self.config['output_dir'] = d
                     break
                 except Exception as e:
-                    self.print_status(f"Error creando directorio: {e}", "FAIL")
+                    self.print_status(self.t("dir_err", e), "FAIL")
 
         self.show_config_summary()
-        return self.ask_yes_no("¿Iniciar auditoría?", "sí")
+        return self.ask_yes_no(self.t("start_audit"), "yes")
 
     # ========= Motor de escaneo =========
 
@@ -619,15 +806,15 @@ class InteractiveNetworkAuditor:
 
     def scan_network_discovery(self, network):
         self.current_phase = f"discovery:{network}"
-        self.print_status(f"Discovery en {network}...", "INFO")
+        self.print_status(self.t("discovery_on", network), "INFO")
         try:
             scanner = nmap.PortScanner()
             scanner.scan(hosts=network, arguments=self.get_nmap_arguments('rapido'))
             hosts = [h for h in scanner.all_hosts() if scanner[h].state() == "up"]
-            self.print_status(f"Hosts activos en {network}: {len(hosts)}", "OKGREEN")
+            self.print_status(self.t("hosts_active", network, len(hosts)), "OKGREEN")
             return hosts
         except Exception as e:
-            self.print_status(f"Fallo en discovery {network}: {e}", "FAIL")
+            self.print_status(self.t("discovery_fail", network, e), "FAIL")
             return []
 
     def get_interface_for_host(self, host_ip):
@@ -685,7 +872,7 @@ class InteractiveNetworkAuditor:
     def deep_scan_host(self, host_ip):
         """Deep scan automatizado para hosts “raros” (pocos puertos o errores)."""
         self.current_phase = f"deep:{host_ip}"
-        self.print_status(f"Lanzando deep scan sobre {host_ip}...", "WARNING")
+        self.print_status(self.t("deep_scan_launch", host_ip), "WARNING")
         cmds = [
             ["nmap", "-A", "-sV", "-Pn", "-p-", "--open", host_ip],
             ["nmap", "-O", "-sSU", "-Pn", host_ip],
@@ -898,7 +1085,7 @@ class InteractiveNetworkAuditor:
         if not hosts:
             return []
         self.current_phase = "ports:concurrent"
-        self.print_status(f"Escaneando {len(hosts)} hosts con {self.config['threads']} hilos...", "HEADER")
+        self.print_status(self.t("scanning_concurrent", len(hosts), self.config['threads']), "HEADER")
         results = []
         with ThreadPoolExecutor(max_workers=self.config['threads']) as executor:
             futures = {executor.submit(self.scan_host_ports, h): h for h in hosts}
@@ -912,13 +1099,13 @@ class InteractiveNetworkAuditor:
                 if "ports" in res:
                     results.append(res)
                     self.print_status(
-                        f"✓ {res['ip']}: {len(res.get('ports', []))} puertos (web: {res.get('web_ports_count', 0)})",
+                        f"✓ {res['ip']}: {len(res.get('ports', []))} ports (web: {res.get('web_ports_count', 0)})",
                         "OKGREEN"
                     )
                 elif "error" in res:
                     self.print_status(f"{res['ip']}: {res['error']}", "WARNING")
                 if total > 0 and done % max(1, total // 10) == 0:
-                    self.print_status(f"Progreso: {done}/{total} hosts", "INFO")
+                    self.print_status(self.t("progress", done, total), "INFO")
         return results
 
     def scan_vulnerabilities_concurrent(self, host_results):
@@ -926,7 +1113,7 @@ class InteractiveNetworkAuditor:
         if not web_hosts:
             return
         self.current_phase = "vulns:concurrent"
-        self.print_status(f"Analizando vulnerabilidades en {len(web_hosts)} hosts web...", "HEADER")
+        self.print_status(self.t("vuln_analysis", len(web_hosts)), "HEADER")
         with ThreadPoolExecutor(max_workers=min(3, self.config['threads'])) as executor:
             futures = {executor.submit(self.scan_vulnerabilities_web, h): h['ip'] for h in web_hosts}
             for f in as_completed(futures):
@@ -936,7 +1123,7 @@ class InteractiveNetworkAuditor:
                 if res:
                     self.results["vulnerabilities"].append(res)
                     self.print_status(
-                        f"⚠️  Vulnerabilidades registradas en {res['host']}",
+                        self.t("vulns_found", res['host']),
                         "WARNING"
                     )
 
@@ -958,7 +1145,7 @@ class InteractiveNetworkAuditor:
         all_hosts = list(sorted(set(all_hosts)))
 
         if not all_hosts:
-            self.print_status("No se encontraron hosts.", "WARNING")
+            self.print_status(self.t("no_hosts"), "WARNING")
             self.generate_summary(all_hosts, [])
             self.save_results()
             self.stop_heartbeat()
@@ -1003,30 +1190,30 @@ class InteractiveNetworkAuditor:
         }
 
     def show_config_summary(self):
-        print(f"\n{self.COLORS['HEADER']}PARÁMETROS DE EJECUCIÓN{self.COLORS['ENDC']}")
+        print(f"\n{self.COLORS['HEADER']}{self.t('exec_params')}{self.COLORS['ENDC']}")
         conf = {
-            "Objetivos": self.config['target_networks'],
-            "Modo": self.config['scan_mode'],
-            "Hilos": self.config['threads'],
+            self.t("targets"): self.config['target_networks'],
+            self.t("mode"): self.config['scan_mode'],
+            self.t("threads"): self.config['threads'],
             "Vulns": self.config.get('scan_vulnerabilities'),
-            "Salida": self.config['output_dir']
+            self.t("output"): self.config['output_dir']
         }
         for k, v in conf.items():
             print(f"  {k}: {v}")
 
     def show_results(self):
         s = self.results.get("summary", {})
-        print(f"\n{self.COLORS['HEADER']}RESUMEN FINAL{self.COLORS['ENDC']}")
-        print(f"  Redes:       {s.get('networks')}")
-        print(f"  Hosts vivos: {s.get('hosts_found')}")
-        print(f"  Hosts full:  {s.get('hosts_scanned')}")
-        print(f"  Vulns web:   {s.get('vulns_found')}")
-        print(f"  Duración:    {s.get('duration')}")
-        print(f"\n{self.COLORS['OKGREEN']}✓ Reportes generados en {self.config['output_dir']}{self.COLORS['ENDC']}")
+        print(f"\n{self.COLORS['HEADER']}{self.t('final_summary')}{self.COLORS['ENDC']}")
+        print(self.t("nets", s.get('networks')))
+        print(self.t("hosts_up", s.get('hosts_found')))
+        print(self.t("hosts_full", s.get('hosts_scanned')))
+        print(self.t("vulns_web", s.get('vulns_found')))
+        print(self.t("duration", s.get('duration')))
+        print(f"{self.COLORS['OKGREEN']}{self.t('reports_gen', self.config['output_dir'])}{self.COLORS['ENDC']}")
 
     def show_legal_warning(self):
-        print(f"\n{self.COLORS['FAIL']}ADVERTENCIA LEGAL: Solo para uso en redes autorizadas.{self.COLORS['ENDC']}")
-        return self.ask_yes_no("¿Confirmas que tienes autorización para escanear estas redes?", "no")
+        print(f"{self.COLORS['FAIL']}{self.t('legal_warn')}{self.COLORS['ENDC']}")
+        return self.ask_yes_no(self.t("legal_ask"), "no")
 
     def save_results(self, partial=False):
         self.current_phase = "saving"
@@ -1036,13 +1223,13 @@ class InteractiveNetworkAuditor:
         try:
             with open(f"{base}.json", 'w') as f:
                 json.dump(self.results, f, indent=2, default=str)
-            self.print_status(f"Reporte JSON: {base}.json", "OKGREEN")
+            self.print_status(self.t("json_report", base), "OKGREEN")
             if self.config.get('save_txt_report'):
                 with open(f"{base}.txt", 'w') as f:
                     self._generate_text_report(f, partial)
-                self.print_status(f"Reporte TXT: {base}.txt", "OKGREEN")
+                self.print_status(self.t("txt_report", base), "OKGREEN")
         except Exception as e:
-            self.print_status(f"Error guardando reporte: {e}", "FAIL")
+            self.print_status(self.t("save_err", e), "FAIL")
 
     def _generate_text_report(self, f, partial):
         f.write(f"NETWORK AUDIT REPORT v{VERSION}\n")
@@ -1067,14 +1254,14 @@ class InteractiveNetworkAuditor:
 
 def main():
     if os.geteuid() != 0:
-        print("Error: se requieren privilegios de root (sudo).")
+        print("Error: root privileges (sudo) required.")
         sys.exit(1)
     auditor = InteractiveNetworkAuditor()
     if auditor.interactive_setup():
         ok = auditor.run_complete_scan()
         sys.exit(0 if ok else 1)
     else:
-        print("Configuración cancelada.")
+        print(auditor.t("config_cancel"))
         sys.exit(0)
 
 
@@ -1082,24 +1269,37 @@ if __name__ == "__main__":
     main()
 EOF
 
-# 3) Permisos del binario
+# Inject selected language
+sed -i "s/__LANG__/$SELECTED_LANG/g" "$TEMP_SCRIPT"
+
+# Move to final location
+sudo mv "$TEMP_SCRIPT" /usr/local/bin/redaudit
+sudo chown root:root /usr/local/bin/redaudit
 sudo chmod 755 /usr/local/bin/redaudit
 
-# 4) Alias persistente en ~/.bashrc (del usuario real)
+# 4) Alias persistente en ~/.bashrc o ~/.zshrc (del usuario real)
 REAL_USER=${SUDO_USER:-$USER}
 REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+USER_SHELL=$(getent passwd "$REAL_USER" | cut -d: -f7)
+RC_FILE="$REAL_HOME/.bashrc" # Default
 
-if ! grep -q "alias redaudit=" "$REAL_HOME/.bashrc" 2>/dev/null; then
-  echo "alias redaudit='sudo /usr/local/bin/redaudit'" >> "$REAL_HOME/.bashrc"
-  chown "$REAL_USER" "$REAL_HOME/.bashrc"
-  echo "ℹ️ Alias 'redaudit' añadido a $REAL_HOME/.bashrc"
+if [[ "$USER_SHELL" == *"zsh"* ]]; then
+    RC_FILE="$REAL_HOME/.zshrc"
+elif [[ "$USER_SHELL" == *"bash"* ]]; then
+    RC_FILE="$REAL_HOME/.bashrc"
+fi
+
+if ! grep -q "alias redaudit=" "$RC_FILE" 2>/dev/null; then
+  echo "alias redaudit='sudo /usr/local/bin/redaudit'" >> "$RC_FILE"
+  chown "$REAL_USER" "$RC_FILE"
+  echo "$MSG_ALIAS_ADDED $RC_FILE"
 else
-  echo "ℹ️ Alias 'redaudit' ya existe en $REAL_HOME/.bashrc (no se duplica)."
+  echo "$MSG_ALIAS_EXISTS $RC_FILE"
 fi
 
 echo
-echo "✅ Instalación / actualización completada."
-echo "👉 En tu usuario normal, ejecuta:"
-echo "     source ~/.bashrc"
-echo "   y luego:"
-echo "     redaudit"
+echo "$MSG_DONE"
+echo "$MSG_USAGE"
+echo "     source $RC_FILE" # Dynamic instruction
+echo "   redaudit"
+```

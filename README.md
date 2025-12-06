@@ -77,7 +77,7 @@
 
 3.  Reload your shell:
     ```bash
-    source ~/.bashrc
+    source ~/.bashrc  # Or ~/.zshrc if using ZSH
     ```
 
 ## 💻 Usage
