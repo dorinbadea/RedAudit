@@ -1,15 +1,21 @@
 #!/bin/bash
 # RedAudit installer / updater v2.3 (Full Toolchain + Heartbeat)
 
+# 0) Comprobaciones de entorno: apt + root
 if ! command -v apt >/dev/null 2>&1; then
     echo "Este instalador está pensado para sistemas con apt (Debian/Kali)."
+    exit 1
+fi
+
+if [[ "$EUID" -ne 0 ]]; then
+    echo "Este instalador debe ejecutarse como root (por ejemplo: sudo bash redaudit_install.sh)."
     exit 1
 fi
 
 AUTO_YES=false
 if [[ "$1" == "-y" ]]; then AUTO_YES=true; fi
 
-# Language selection / Selección de idioma
+# 1) Language selection / Selección de idioma
 echo "----------------------------------------------------------------"
 echo " Select Language / Selecciona Idioma"
 echo "----------------------------------------------------------------"
@@ -29,6 +35,7 @@ if [[ "$LANG_OPT" == "2" || "$LANG_OPT" == "es" ]]; then
     MSG_USAGE="👉 En tu usuario normal, ejecuta:"
     MSG_ALIAS_ADDED="ℹ️ Alias 'redaudit' añadido a"
     MSG_ALIAS_EXISTS="ℹ️ Alias 'redaudit' ya existe en"
+    MSG_APT_ERROR="❌ Error instalando dependencias con apt. Revisa la configuración de red o vuelve a intentarlo más tarde."
 else
     SELECTED_LANG="en"
     MSG_INSTALL="🔧 Installing / updating RedAudit v2.3..."
@@ -40,11 +47,12 @@ else
     MSG_USAGE="👉 In your normal user, run:"
     MSG_ALIAS_ADDED="ℹ️ Alias 'redaudit' added to"
     MSG_ALIAS_EXISTS="ℹ️ Alias 'redaudit' already exists in"
+    MSG_APT_ERROR="❌ Error installing dependencies with apt. Check your network or try again later."
 fi
 
 echo "$MSG_INSTALL"
 
-# 1) Opcional: pack de utilidades de red recomendadas
+# 2) Opcional: pack de utilidades de red recomendadas
 EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap"
 
 echo
@@ -66,12 +74,15 @@ fi
 
 if $INSTALL_YES; then
     echo "$MSG_EXEC apt update && apt install -y $EXTRA_PKGS"
-    apt update && apt install -y $EXTRA_PKGS
+    if ! apt update || ! apt install -y $EXTRA_PKGS; then
+        echo "$MSG_APT_ERROR"
+        exit 1
+    fi
 else
     echo "$MSG_SKIP"
 fi
 
-# 2) Crear /usr/local/bin/redaudit con el código Python v2.3
+# 3) Crear /usr/local/bin/redaudit con el código Python v2.3
 # We use sed to inject the selected language into the python script
 TEMP_SCRIPT=$(mktemp)
 cat << 'EOF' > "$TEMP_SCRIPT"
@@ -107,7 +118,7 @@ TRANSLATIONS = {
         "verifying_env": "Verifying environment integrity...",
         "detected": "✓ {} detected",
         "nmap_avail": "✓ python-nmap available",
-        "nmap_missing": "python-nmap library not found. Attempting to install via apt...",
+        "nmap_missing": "python-nmap library not found. Please install the system package 'python3-nmap' via apt.",
         "nmap_installed": "✓ python-nmap installed successfully",
         "missing_crit": "Error: missing critical dependencies: {}",
         "missing_opt": "Warning: missing optional tools: {} (reduced web scan)",
@@ -176,7 +187,7 @@ TRANSLATIONS = {
         "verifying_env": "Verificando integridad del entorno...",
         "detected": "✓ {} detectado",
         "nmap_avail": "✓ python-nmap disponible",
-        "nmap_missing": "Librería python-nmap no encontrada. Intentando instalar vía apt...",
+        "nmap_missing": "Librería python-nmap no encontrada. Instala el paquete de sistema 'python3-nmap' vía apt.",
         "nmap_installed": "✓ python-nmap instalado correctamente",
         "missing_crit": "Error: faltan dependencias críticas: {}",
         "missing_opt": "Aviso: faltan herramientas opcionales: {} (escaneo web reducido)",
@@ -268,6 +279,12 @@ class InteractiveNetworkAuditor:
             'scan_vulnerabilities': True,
             'save_txt_report': True
         }
+
+        # Crear directorio de salida por defecto si es posible
+        try:
+            os.makedirs(self.config['output_dir'], exist_ok=True)
+        except Exception:
+            pass
 
         self.COLORS = {
             "HEADER": "\033[95m", "OKBLUE": "\033[94m", "OKGREEN": "\033[92m",
@@ -430,16 +447,8 @@ class InteractiveNetworkAuditor:
             nmap = importlib.import_module("nmap")
             self.print_status(self.t("nmap_avail"), "OKGREEN")
         except ImportError:
-            self.print_status(self.t("nmap_missing"), "WARNING")
-            try:
-                subprocess.check_call(
-                    ["apt", "install", "-y", "python3-nmap"],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                )
-                nmap = importlib.import_module("nmap")
-                self.print_status(self.t("nmap_installed"), "OKGREEN")
-            except Exception:
-                missing_required.append("python-nmap (apt install python3-nmap)")
+            self.print_status(self.t("nmap_missing"), "FAIL")
+            missing_required.append("python-nmap (apt install python3-nmap)")
 
         # Extra tools
         extra = ["curl", "wget", "openssl", "tcpdump", "tshark", "whois", "dig"]
@@ -1173,7 +1182,6 @@ EOF
 sed -i "s/__LANG__/$SELECTED_LANG/g" "$TEMP_SCRIPT"
 
 # Move to final location
-# Move to final location
 mv "$TEMP_SCRIPT" /usr/local/bin/redaudit
 chown root:root /usr/local/bin/redaudit
 chmod 755 /usr/local/bin/redaudit
@@ -1201,5 +1209,5 @@ fi
 echo
 echo "$MSG_DONE"
 echo "$MSG_USAGE"
-echo "     source $RC_FILE" # Dynamic instruction
+echo "     source $RC_FILE"
 echo "   redaudit"

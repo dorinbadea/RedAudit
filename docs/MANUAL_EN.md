@@ -9,17 +9,19 @@
 *   User with `sudo` privileges
 *   Internet connection for package installation
 
-**Packages used** (installed automatically by the script, but listed here for reference):
+**Packages used:**
+The installer can automatically install these for you if requested (interactive mode or `-y` flag).
 
+*   **Core (Required):** `nmap`, `python3-nmap`
+*   **Recommended (Optional):** `whatweb`, `nikto`, `curl`, `wget`, `openssl`, `tcpdump`, `tshark`, `whois`, `bind9-dnsutils`
+
+To install manually:
 ```bash
 sudo apt update
-sudo apt install -y \
-  python3 python3-pip python3-nmap \
-  curl wget openssl nmap tcpdump tshark whois bind9-dnsutils \
-  whatweb nikto
+sudo apt install -y nmap python3-nmap whatweb nikto curl wget openssl tcpdump tshark whois bind9-dnsutils
 ```
 
-> **Note:** `whatweb`, `nikto`, and `nmap` are the core requirements for RedAudit. The others are utilities that the script prepares for future modules (tcpdump/tshark/WHOIS/DNS/etc).
+> **Note:** `nmap` and `python3-nmap` are critical. The others are recommended for full functionality (Web scans, traffic capture, DNS enrichment).
 
 *   **Automatic Deep Scan:** The tool automatically detects "quiet" or suspicious hosts and launches a deep scan (`-A -p- -sV`) including packet capture to identify firewalls or hidden services.
 

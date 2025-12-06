@@ -14,9 +14,9 @@
 
 <br>
 
-**RedAudit** es una herramienta de auditoría de red interactiva y automatizada diseñada para Kali Linux. Agiliza el proceso de reconocimiento combinando descubrimiento de red, escaneo de puertos y evaluación de vulnerabilidades en un flujo de trabajo CLI único y fácil de usar.
+**RedAudit** es una herramienta de auditoría de red interactiva y automatizada diseñada para Kali Linux y sistemas Debian. Agiliza el proceso de reconocimiento combinando descubrimiento de red, escaneo de puertos y evaluación de vulnerabilidades en un flujo de trabajo CLI único y fácil de usar.
 
-## 🖥️ Preview
+## 🖥️ Vista Previa
 
 ```text
     ____          _    _   _           _ _ _
@@ -47,29 +47,54 @@
 *   **CLI Interactiva:** Menús amigables para configuración y ejecución.
 *   **Descubrimiento Inteligente:** Detecta automáticamente redes e interfaces locales.
 *   **Escaneo Multimodo:**
-    *   **Rápido:** Descubrimiento veloz (ping sweep).
-    *   **Normal:** Puertos principales + Versionado de servicios.
-    *   **Completo:** Todos los puertos + Scripts + Chequeo de vulnerabilidades.
-*   **Deep Scans Automatizados:** Lanza automáticamente escaneos agresivos y captura de tráfico (`tcpdump`) para hosts sospechosos o que no responden.
-*   **Análisis Web:** Integra `whatweb`, `nikto` y `openssl` para reconocimiento de servicios web.
-*   **Resiliencia:** Incluye monitor de "latido" (heartbeat) y manejo de señales para escaneos largos.
-*   **Reportes:** Genera reportes detallados en JSON y TXT.
+    *   **RÁPIDO (Fast):** Solo descubrimiento (`-sn`), sin escaneo de puertos, bajo ruido.
+    *   **NORMAL:** Puertos principales + Versionado de servicios (`-F -sV`). Equilibrio velocidad/cobertura.
+    *   **COMPLETO (Full):** Todos los puertos (`-p-`) + Scripts + Análisis de Vulns + Web.
+*   **Deep Scans Automatizados:** Lanza automáticamente escaneos agresivos (`-A -sV -Pn` + UDP) y captura de tráfico (`tcpdump`) para hosts sospechosos o que no responden.
+*   **Análisis Web:** Integra `whatweb`, `nikto` (recomendados) para reconocimiento de servicios web.
+*   **Resiliencia:** Incluye monitor de actividad (heartbeat) y manejo de señales para escaneos largos.
+*   **Reportes:** Genera reportes detallados en JSON y TXT en `~/RedAuditReports` (o carpeta personalizada).
 
-## 📋 Requisitos
+## 📦 Dependencias
 
-*   **SO:** Kali Linux (o distros basadas en Debian).
-*   **Privilegios:** Se requiere acceso Root/Sudo.
-*   **Dependencias:** `nmap`, `python3-nmap`, `curl`, `wget`, `tcpdump`, `tshark`, `whois`, `bind9-dnsutils`, `whatweb`, `nikto`.
+RedAudit está diseñado para **sistemas basados en apt** (Kali, Debian, Ubuntu).
 
-### 🔍 Deep Scan Automático
-RedAudit es inteligente. Si un host parece "tímido" (muy pocos puertos abiertos) o devuelve errores sospechosos, la herramienta lanza automáticamente un **Deep Scan** sobre ese objetivo específico. Esto incluye:
-- **Flags agresivas de Nmap:** `-A -sV -Pn -p- --open` para forzar una respuesta.
-- **Escaneo UDP:** Busca servicios UDP ocultos.
-- **Captura de Paquetes:** Captura brevemente tráfico (`tcpdump`) para analizar si los paquetes están siendo descartados por un firewall.
+### Requeridas (Core)
+Críticas para el funcionamiento básico:
+*   `nmap` (Motor de escaneo principal)
+*   `python3-nmap` (Librería Python para Nmap)
 
-Esto asegura que no pases por alto hosts "sigilosos" que un escaneo normal podría ignorar.
+### Recomendadas (Enriquecimiento)
+Opcionales pero muy recomendadas para funcionalidad completa (Web, Tráfico, DNS):
+*   `whatweb`
+*   `nikto`
+*   `curl`, `wget`, `openssl`
+*   `tcpdump`, `tshark`
+*   `whois`, `bind9-dnsutils` (para `dig`)
+
+Para instalar todo manualmente:
+```bash
+sudo apt update
+sudo apt install nmap python3-nmap whatweb nikto curl wget openssl tcpdump tshark whois bind9-dnsutils
+```
+
+## 🏗️ Arquitectura y Flujo
+
+1.  **Inicialización:** El script detecta interfaces de red y solicita objetivos al usuario.
+2.  **Descubrimiento:** Ejecuta un discovery rápido de Nmap (`-sn`) en los rangos seleccionados.
+3.  **Escaneo de Hosts:**
+    *   Itera sobre los hosts activos usando hilos concurrentes.
+    *   Ejecuta el modo seleccionado (RÁPIDO/NORMAL/COMPLETO).
+    *   **Lógica Deep Scan:** Si un host arroja pocos resultados o errores, se lanza un Deep Scan especializado automáticamente.
+4.  **Enriquecimiento:**
+    *   **Web:** Si detecta HTTP/HTTPS, lanza WhatWeb y Nikto (si está activado).
+    *   **Tráfico:** Si `tcpdump` está disponible, captura una pequeña muestra de tráfico para análisis.
+    *   **DNS/Whois:** Resuelve IPs públicas.
+5.  **Reportes:** Todos los datos se agregan en reportes JSON y TXT en el directorio de salida.
 
 ## 🛠️ Instalación
+
+RedAudit v2.3 usa un instalador Bash que envuelve el núcleo en Python.
 
 1.  Clona el repositorio:
     ```bash
@@ -77,31 +102,48 @@ Esto asegura que no pases por alto hosts "sigilosos" que un escaneo normal podr�
     cd RedAudit
     ```
 
-2.  Ejecuta el instalador:
+2.  Ejecuta el instalador (como **root**):
     ```bash
     chmod +x redaudit_install.sh
-    sudo ./redaudit_install.sh
+    
+    # Instalación interactiva (pregunta por herramientas recomendadas)
+    sudo bash redaudit_install.sh
+    
+    # Modo no interactivo (instala herramientas recomendadas automáticamente)
+    sudo bash redaudit_install.sh -y
     ```
 
-3.  Recarga tu shell:
+3.  Recarga tu shell para usar el alias `redaudit`:
     ```bash
-    source ~/.bashrc  # O ~/.zshrc si usas ZSH
+    source ~/.bashrc  # O ~/.zshrc
     ```
 
 ## 💻 Uso
 
-Simplemente ejecuta el comando desde cualquier terminal:
+Una vez instalado, simplemente ejecuta:
 
 ```bash
 redaudit
 ```
 
-Sigue las instrucciones interactivas para seleccionar tu red objetivo, intensidad de escaneo y otras opciones.
+Sigue el asistente interactivo:
+1.  **Seleccionar Red**: Elige una red local detectada o introduce un CIDR manual.
+2.  **Modo de Escaneo**:
+    *   **RÁPIDO**: Solo descubrimiento.
+    *   **NORMAL**: Reconocimiento estándar.
+    *   **COMPLETO**: Auditoría exhaustiva.
+3.  **Opciones**: Define hilos, activa escaneo web, elige directorio de salida.
+4.  **Autorización**: Confirma que tienes permiso para escanear el objetivo.
 
-## ⚠️ Aviso Legal
+## ⚠️ Aviso Legal y Ético
 
-**RedAudit es solo para fines educativos y pruebas autorizadas.**
-El uso de esta herramienta para atacar objetivos sin consentimiento mutuo previo es ilegal. El desarrollador no asume ninguna responsabilidad y no es responsable de ningún mal uso o daño causado por este programa.
+**RedAudit es una herramienta de seguridad para uso exclusivamente autorizado.**
+
+Escanear redes o sistemas sin permiso explícito es ilegal y punishable por ley.
+*   **No uses** esta herramienta en redes que no seas dueño o tengas consentimiento escrito para auditar.
+*   **No uses** esta herramienta para fines maliciosos.
+
+Los desarrolladores no asumen ninguna responsabilidad por el mal uso de este software. El usuario es el único responsable de cumplir con las leyes locales, estatales y federales aplicables.
 
 ## 📄 Licencia
 

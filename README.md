@@ -14,7 +14,7 @@
 
 <br>
 
-**RedAudit** is an interactive, automated network auditing tool designed for Kali Linux. It streamlines the reconnaissance process by combining network discovery, port scanning, and vulnerability assessment into a single, easy-to-use CLI workflow.
+**RedAudit** is an interactive, automated network auditing tool designed for Kali Linux and Debian-based systems. It streamlines the reconnaissance process by combining network discovery, port scanning, and vulnerability assessment into a single, easy-to-use CLI workflow.
 
 ## 🖥️ Preview
 
@@ -47,47 +47,54 @@
 *   **Interactive CLI:** User-friendly menus for configuration and execution.
 *   **Smart Discovery:** Automatically detects local networks and interfaces.
 *   **Multi-Mode Scanning:**
-    *   **Fast:** Quick discovery (ping sweep).
-    *   **Normal:** Top ports + Service Versioning.
-    *   **Full:** All ports + Scripts + Vulnerability checks.
-*   **Automated Deep Scans:** Automatically triggers aggressive scans and traffic capture (`tcpdump`) for suspicious or unresponsive hosts.
-*   **Web Analysis:** Integrates `whatweb`, `nikto`, and `openssl` for web service reconnaissance.
+    *   **FAST:** Quick discovery (`-sn`), no port scanning, low noise.
+    *   **NORMAL:** Top ports + Service Versioning (`-F -sV`). Balanced speed/coverage.
+    *   **FULL:** All ports (`-p-`) + Scripts + Vulnerability checks + Web Analysis.
+*   **Automated Deep Scans:** Automatically triggers aggressive scans (`-A -sV -Pn` + UDP) and traffic capture (`tcpdump`) for suspicious or unresponsive hosts.
+*   **Web Analysis:** Integrates `whatweb`, `nikto` (recommended) for web service reconnaissance.
 *   **Resilience:** Includes a heartbeat monitor and signal handling for long-running scans.
-*   **Reporting:** Generates detailed JSON and TXT reports.
+*   **Reporting:** Generates detailed JSON and TXT reports in `~/RedAuditReports` (or custom folder).
 
-## 📋 Requirements
+## 📦 Dependencies
 
-*   **OS:** Kali Linux (or Debian-based distros).
-*   **Privileges:** Root/Sudo access required.
-*   **Dependencies:** `nmap`, `python3-nmap`, `curl`, `wget`, `tcpdump`, `tshark`, `whois`, `bind9-dnsutils`, `whatweb`, `nikto`.
+RedAudit is designed for **apt-based systems** (Kali, Debian, Ubuntu).
 
-### 🔍 Automatic Deep Scan
-RedAudit is smart. If a host seems "quiet" (very few open ports) or returns suspicious errors, the tool automatically triggers a **Deep Scan** on that specific target. This involves:
-- **Aggressive Nmap flags:** `-A -sV -Pn -p- --open` to force a response.
-- **UDP Scan:** Checks for hidden UDP services.
-- **Packet Capture:** Briefly captures traffic (`tcpdump`) to analyze if packets are being dropped or rejected by a firewall.
+### Required (Core)
+These are critical for the tool to function:
+*   `nmap` (The core scanning engine)
+*   `python3-nmap` (Python binding for Nmap)
 
-This ensures you don't miss "stealthy" hosts that a normal scan might overlook.
+### Recommended (Enrichment)
+These tools are optional but highly recommended for full functionality (Web Analysis, Traffic Capture, DNS):
+*   `whatweb`
+*   `nikto`
+*   `curl`, `wget`, `openssl`
+*   `tcpdump`, `tshark`
+*   `whois`, `bind9-dnsutils` (for `dig`)
 
-## 🏗️ Architecture & Design
+To install everything manually:
+```bash
+sudo apt update
+sudo apt install nmap python3-nmap whatweb nikto curl wget openssl tcpdump tshark whois bind9-dnsutils
+```
 
-RedAudit follows a modular design packed into a single portable installer:
-*   **Hybrid Core:** A wrapper Bash script handles environment validation and dependency management (APT), while the embedded Python core triggers the auditing logic.
-*   **Concurrent Engine:** Uses `ThreadPoolExecutor` for parallel host scanning and vulnerability analysis, ensuring speed without blocking the main workflow.
-*   **Resiliency:** A dedicated `Heartbeat Monitor` thread tracks Nmap's partial progress to distinguish between "hanging" processes and valid long scans.
+## 🏗️ Architecture & Flow
 
-## 📊 Scan Profiles & Noise Levels
-
-Choose your profile carefully based on the environment:
-
-| Profile | Noise Level | Description |
-| :--- | :--- | :--- |
-| **FAST** | 🟢 Low | ICMP/ARP Discovery only (`-sn`). Minimal footprint. |
-| **NORMAL** | 🟡 Medium | Top 100 Ports + Service Versioning (`-F -sV`). Balanced speed/accuracy. |
-| **FULL** | 🔴 High | All 65k Ports + OS Detect + NSE Scripts (`-p- -A`). **Likely to trigger IDS/IPS.** |
-| **DEEP** | 🟣 Critical | Targeted aggressive analysis (+UDP, Packet Capture) automatically triggered for "stubborn" hosts. |
+1.  **Initialization:** The script detects network interfaces and prompts the user for targets.
+2.  **Discovery:** Runs a quick Nmap discovery (`-sn`) on selected ranges.
+3.  **Host Scanning:**
+    *   Iterates through active hosts using concurrent threads.
+    *   Performs the selected scan (FAST/NORMAL/FULL).
+    *   **Deep Scan Logic:** If a host yields few results or errors, a specialized Deep Scan is triggered automatically.
+4.  **Enrichment:**
+    *   **Web:** If HTTP/HTTPS is found, runs WhatWeb and Nikto (if enabled).
+    *   **Traffic:** If `tcpdump` is available, captures a small snippet of traffic for analysis.
+    *   **DNS/Whois:** Resolves public IPs.
+5.  **Reporting:** All data is aggregated into JSON and TXT reports in the output directory.
 
 ## 🛠️ Installation
+
+RedAudit v2.3 uses a Bash installer that wraps the Python core.
 
 1.  Clone the repository:
     ```bash
@@ -95,35 +102,48 @@ Choose your profile carefully based on the environment:
     cd RedAudit
     ```
 
-2.  Run the installer:
+2.  Run the installer (must be **root**):
     ```bash
     chmod +x redaudit_install.sh
-    # Interactive mode
-    sudo ./redaudit_install.sh
     
-    # Non-interactive mode (auto-install dependencies)
-    sudo ./redaudit_install.sh -y
+    # Interactive installation (asks to install recommended tools)
+    sudo bash redaudit_install.sh
+    
+    # Non-interactive mode (installs recommended tools automatically)
+    sudo bash redaudit_install.sh -y
     ```
 
-3.  Reload your shell:
+3.  Reload your shell to use the `redaudit` alias:
     ```bash
-    source ~/.bashrc  # Or ~/.zshrc if using ZSH
+    source ~/.bashrc  # Or ~/.zshrc
     ```
 
 ## 💻 Usage
 
-Simply run the command from any terminal:
+Once installed, simply run:
 
 ```bash
 redaudit
 ```
 
-Follow the interactive prompts to select your target network, scan intensity, and other options.
+Follow the interactive wizard:
+1.  **Select Network**: Choose a detected local network or enter a CIDR manually.
+2.  **Scan Mode**:
+    *   **FAST**: Discovery only.
+    *   **NORMAL**: Standard reconnaissance.
+    *   **FULL**: Comprehensive audit.
+3.  **Options**: Set thread count, enable web vuln scan, choose output directory.
+4.  **Authorization**: Confirm you have permission to scan the target.
 
-## ⚠️ Disclaimer
+## ⚠️ Legal & Ethical Warning
 
-**RedAudit is for educational and authorized testing purposes only.**
-Usage of this tool for attacking targets without prior mutual consent is illegal. The developer assumes no liability and is not responsible for any misuse or damage caused by this program.
+**RedAudit is a security auditing tool for authorized use only.**
+
+scanning networks or systems without explicit permission is illegal and punishable by law.
+*   **Do not** use this tool on networks you do not own or have written consent to audit.
+*   **Do not** use this tool for malicious purposes.
+
+The developers assume no liability for misuse of this software. The user is solely responsible for complying with all applicable local, state, and federal laws.
 
 ## 📄 License
 
