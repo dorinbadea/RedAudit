@@ -60,6 +60,8 @@
 - **Resiliencia**: Monitor de actividad (heartbeat) y salida elegante con Ctrl+C.
 - **Núcleo Embebido**: Instalador único (`redaudit_install.sh`) gestiona dependencias y el código Python.
 
+Consulta la [Guía de Uso](docs/USAGE_ES.md) y [Solución de Problemas](docs/TROUBLESHOOTING.md) (en inglés) para más detalles.
+
 ## Dependencias
 
 RedAudit está pensado para **sistemas basados en Debian con `apt`** (Kali, Debian, Ubuntu…).

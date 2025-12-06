@@ -50,3 +50,13 @@ This will generate `.decrypted` files (or restore original extension) after pass
 
 ### 4. Logging
 Debug logs are stored in `~/.redaudit/logs/`. Check these files if the scan fails or behaves unexpectedly.
+
+## Performance & Stealth
+### Rate Limiting
+RedAudit allows you to set a delay (in seconds) between scanning hosts.
+- **0s (Default)**: Maximum speed. Best for internal audits where noise is not a concern.
+- **1-5s**: Moderate stealth. Reduces the chance of triggering simple rate-limit firewalls.
+- **>10s**: High stealth. Significantly slows down the audit but minimizes network congestion and detection risk.
+
+**Note on Heartbeat**: If you set a very high delay (e.g., 60s) with many threads, the scan might seem "frozen". Check the "Active hosts" log or the heartbeat status.
+

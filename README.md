@@ -59,6 +59,8 @@
 - **Logging**: Rotating logs in `~/.redaudit/logs/` for auditing and debugging.
 - **Heartbeat & Safety**: Background activity monitor and graceful exit (Ctrl+C).
 - **Embedded Core**: Single script installer (`redaudit_install.sh`) manages dependencies and Python core.
+
+See [Usage Guide](docs/USAGE.md) and [Troubleshooting](docs/TROUBLESHOOTING.md) for more details.
 - **Reporting**: structured JSON + human-readable TXT reports written by default to `~/RedAuditReports` (or a custom directory chosen at runtime). Encrypted variants (`.json.enc`) available.
 
 ## Requirements
