@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.pcap
+*.json
+*.txt
+redaudit_install.sh.bak
