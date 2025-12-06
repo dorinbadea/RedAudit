@@ -1,5 +1,5 @@
 #!/bin/bash
-# RedAudit installer / updater v2.3 (Full core + hardening)
+# RedAudit installer / updater v2.3 (Full core + hardened)
 
 # 0) Environment checks
 if ! command -v apt >/dev/null 2>&1; then
@@ -56,7 +56,7 @@ fi
 
 echo "$MSG_INSTALL"
 
-# 2) Dependencies (sistema, no pip)
+# 2) Dependencies (system packages, no pip)
 EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography"
 
 echo
@@ -87,15 +87,14 @@ else
     echo "$MSG_SKIP"
 fi
 
-# 3) Generate Python Script (core completo con hardening)
+# 3) Generate Python Script (core completo, endurecido)
 TEMP_SCRIPT=$(mktemp)
 cat << 'EOF' > "$TEMP_SCRIPT"
 #!/usr/bin/env python3
 """RedAudit - Interactive Network Audit
-Version 2.3 (Full Toolchain + Heartbeat)
+Version 2.3 (Full Toolchain + Heartbeat + Hardened)
 """
 
-import subprocess
 import sys
 import os
 import signal
@@ -110,22 +109,23 @@ import re
 import getpass
 import base64
 import logging
+import subprocess
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging.handlers import RotatingFileHandler
 
-# Optional cryptography; the installer ensures it's present.
+# Optional cryptography; installer ensures it's installed, pero el core no peta si falta.
 try:
     from cryptography.fernet import Fernet
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-except ImportError:  # pragma: no cover - handled by installer
+except ImportError:  # pragma: no cover
     Fernet = None
     PBKDF2HMAC = None
     hashes = None
 
 VERSION = "2.3"
-DEFAULT_LANG = "__LANG__"  # Replaced by installer via sed
+DEFAULT_LANG = "__LANG__"  # Sustituido por el instalador vía sed
 
 TRANSLATIONS = {
     "en": {
@@ -347,9 +347,8 @@ class InteractiveNetworkAuditor:
         ts = datetime.now().strftime("%H:%M:%S")
         color = self.COLORS.get(status, self.COLORS["OKBLUE"])
 
-        # Wrap long messages a bit to avoid ugly lines
         if len(message) > 100:
-            lines = [message[i : i + 100] for i in range(0, len(message), 100)]
+            lines = [message[i:i+100] for i in range(0, len(message), 100)]
         else:
             lines = [message]
 
@@ -363,7 +362,7 @@ class InteractiveNetworkAuditor:
         try:
             ipaddress.ip_address(ip_str)
             return ip_str
-        except ValueError:
+        except Exception:
             return None
 
     @staticmethod
@@ -501,12 +500,10 @@ class InteractiveNetworkAuditor:
     def check_dependencies(self):
         self.print_status(self.t("verifying_env"), "HEADER")
 
-        # nmap binary
         if shutil.which("nmap") is None:
             self.print_status("Error: nmap binary not found.", "FAIL")
             return False
 
-        # python-nmap
         global nmap
         try:
             nmap = importlib.import_module("nmap")
@@ -700,7 +697,6 @@ class InteractiveNetworkAuditor:
         if not nets:
             nets = self._detect_networks_fallback()
 
-        # dedupe by (network, interface)
         unique = {(n["network"], n["interface"]): n for n in nets}
         nets_list = list(unique.values())
         self.results["network_info"] = nets_list
@@ -784,7 +780,7 @@ class InteractiveNetworkAuditor:
                     cmd,
                     capture_output=True,
                     text=True,
-                    timeout=600,
+                    timeout=300,  # 5 minutos máximo por comando
                 )
                 deep["commands"].append(
                     {
@@ -823,7 +819,13 @@ class InteractiveNetworkAuditor:
         if not safe_ip:
             return None
 
-        # pick interface heuristically: first interface whose network contains the host
+        # Validar duración (defensa frente a parámetros abusivos)
+        if not isinstance(duration, (int, float)) or duration <= 0 or duration > 120:
+            if self.logger:
+                self.logger.warning("Invalid capture duration %s, using default 15s", duration)
+            duration = 15
+
+        # pick interface heurísticamente: primera red que contenga la IP
         iface = None
         try:
             ip_obj = ipaddress.ip_address(safe_ip)
@@ -839,7 +841,9 @@ class InteractiveNetworkAuditor:
             return None
 
         if not iface:
-            iface = "eth0"
+            if self.logger:
+                self.logger.info("No interface found for host %s, skipping traffic capture", safe_ip)
+            return None
 
         if not re.match(r"^[a-zA-Z0-9\-_]+$", iface):
             return None
@@ -860,7 +864,7 @@ class InteractiveNetworkAuditor:
             "-c",
             "50",
             "-G",
-            str(duration),
+            str(int(duration)),
             "-W",
             "1",
             "-w",
@@ -879,7 +883,6 @@ class InteractiveNetworkAuditor:
         except Exception as exc:
             info["tcpdump_error"] = str(exc)
 
-        # tshark summary if available
         if self.extra_tools.get("tshark"):
             try:
                 res = subprocess.run(
@@ -1016,7 +1019,6 @@ class InteractiveNetworkAuditor:
         try:
             nm.scan(safe_ip, arguments=args)
             if safe_ip not in nm.all_hosts():
-                # fallback to deep scan only
                 deep = self.deep_scan_host(safe_ip)
                 return {"ip": safe_ip, "status": "down", "deep_scan": deep} if deep else {"ip": safe_ip, "status": "down"}
             data = nm[safe_ip]
@@ -1066,7 +1068,6 @@ class InteractiveNetworkAuditor:
                 "total_ports_found": total_ports,
             }
 
-            # Deep scan for "quiet" hosts
             if total_ports <= 3:
                 deep = self.deep_scan_host(safe_ip)
                 if deep:
@@ -1142,7 +1143,6 @@ class InteractiveNetworkAuditor:
                 "findings": [],
             }
 
-            # whatweb
             if self.extra_tools.get("whatweb"):
                 try:
                     res = subprocess.run(
@@ -1156,7 +1156,6 @@ class InteractiveNetworkAuditor:
                 except Exception:
                     pass
 
-            # nikto only on full mode
             if (
                 self.config.get("scan_mode") == "completo"
                 and self.extra_tools.get("nikto")
@@ -1333,7 +1332,6 @@ class InteractiveNetworkAuditor:
         try:
             os.makedirs(os.path.dirname(base), exist_ok=True)
 
-            # JSON
             json_data = json.dumps(self.results, indent=2, default=str)
             if self.encryption_enabled:
                 json_enc = self.encrypt_data(json_data)
@@ -1346,7 +1344,6 @@ class InteractiveNetworkAuditor:
                     f.write(json_data)
             self.print_status(self.t("json_report", json_path), "OKGREEN")
 
-            # TXT
             if self.config.get("save_txt_report"):
                 txt_data = self._generate_text_report_string(partial=partial)
                 if self.encryption_enabled:
@@ -1360,7 +1357,6 @@ class InteractiveNetworkAuditor:
                         f.write(txt_data)
                 self.print_status(self.t("txt_report", txt_path), "OKGREEN")
 
-            # Salt
             if self.encryption_enabled and self.config.get("encryption_salt"):
                 salt_bytes = base64.b64decode(self.config["encryption_salt"])
                 with open(f"{base}.salt", "wb") as f:
@@ -1404,10 +1400,8 @@ class InteractiveNetworkAuditor:
         print(f"\n{self.COLORS['HEADER']}{self.t('scan_config')}{self.COLORS['ENDC']}")
         print("=" * 60)
 
-        # targets
         self.config["target_networks"] = self.ask_network_range()
 
-        # mode
         scan_modes = [
             self.t("mode_fast"),
             self.t("mode_normal"),
@@ -1416,25 +1410,20 @@ class InteractiveNetworkAuditor:
         modes_map = {0: "rapido", 1: "normal", 2: "completo"}
         self.config["scan_mode"] = modes_map[self.ask_choice(self.t("scan_mode"), scan_modes, 1)]
 
-        # host limit
         if self.config["scan_mode"] != "rapido":
             limit = self.ask_number(self.t("ask_num_limit"), default=25)
             self.config["max_hosts_value"] = limit
         else:
             self.config["max_hosts_value"] = "all"
 
-        # threads
         self.config["threads"] = self.ask_number(self.t("threads"), default=6, min_val=1, max_val=16)
 
-        # rate limiting
         if self.ask_yes_no(self.t("rate_limiting"), default="no"):
             delay = self.ask_number(self.t("rate_delay"), default=1, min_val=0, max_val=60)
             self.rate_limit_delay = float(delay)
 
-        # vuln scan
         self.config["scan_vulnerabilities"] = self.ask_yes_no(self.t("vuln_scan_q"), default="yes")
 
-        # output dir
         default_reports = os.path.expanduser("~/RedAuditReports")
         out_dir = input(
             f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('output_dir')} [{default_reports}]: "
@@ -1443,10 +1432,8 @@ class InteractiveNetworkAuditor:
             out_dir = default_reports
         self.config["output_dir"] = out_dir
 
-        # txt report
         self.config["save_txt_report"] = self.ask_yes_no(self.t("gen_txt"), default="yes")
 
-        # encryption
         self.setup_encryption()
 
         self.show_config_summary()

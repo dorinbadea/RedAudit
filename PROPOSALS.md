@@ -19,3 +19,27 @@ Este documento recoge sugerencias arquitectónicas para futuras versiones, sin a
 ## 3. Validación de Versión Python
 **Estado Actual**: Se asume `python3` (normalmente 3.10+ en Kali).
 **Propuesta**: Añadir check explícito de versión (>= 3.8) en el instalador para evitar errores de sintaxis en distros antiguas.
+
+## 4. CI/CD Integration
+**Propuesta**: Incluir un archivo `.github/workflows/verify.yml` para validar PRs automáticamente sin ejecutar escaneos reales.
+
+```yaml
+name: Verify RedAudit
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y nmap python3-nmap python3-cryptography
+      - name: Run Verification Script
+        run: bash redaudit_verify.sh
+        continue-on-error: true # Expect failure on binary path but check syntax
+      - name: Syntax Check
+        run: |
+          bash -n redaudit_install.sh
+          python3 -m py_compile redaudit_decrypt.py
+      - name: Run Sanitization Tests
+        run: python3 tests/test_sanitization.py
+```

@@ -128,13 +128,33 @@ At a high level, a run looks like this:
 	-	Write the files to `~/RedAuditReports` by default, or to the directory selected during setup.
 	-	On interruption (Ctrl+C), a partial report is still written so previous work is not lost.
 
-## Installation
+## Security Features
+RedAudit is designed for hostile environments and strictly enforces security:
+- **Input Sanitization**: All IPs and hostnames are validated against strict regex (`^[a-zA-Z0-9\.\-]+$`) and `ipaddress` library before execution.
+- **Report Encryption**: Uses **AES-128 (Fernet)** with keys derived via **PBKDF2HMAC-SHA256** (480,000 iterations).
+- **Activity Monitor**: A background "heartbeat" thread detects Nmap freezes (>300s) and ensures the tool doesn't hang silently.
+
+## Verification
+To verify the integrity of your installation and dependencies, run the included verification script:
+```bash
+bash redaudit_verify.sh
+```
+This checks for the binary, correct alias, Python libraries (`cryptography`), and optional tools (`tcpdump`, `whatweb`, etc).
+
+## Decrypting Reports
+If you enabled encryption, you will have `.json.enc` and `.salt` files. To decrypt:
+
+```bash
+python3 redaudit_decrypt.py /path/to/report_TIMESTAMP.json.enc
+```
+**Note**: The `.salt` file must be in the same directory. You will be prompted for the password used during the scan.
+
+## Uninstallation
 
 1.	Clone the repository:
 
     ```bash
     git clone https://github.com/dorinbad/RedAudit.git
-    cd RedAudit
     ```
 
 2.	Make the installer executable and run it as root (or via sudo):

@@ -12,6 +12,7 @@ import sys
 import os
 import base64
 import getpass
+from pathlib import Path
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -30,25 +31,29 @@ def derive_key_from_password(password: str, salt: bytes) -> bytes:
 
 def find_salt_file(enc_path: str) -> str | None:
     """Try to infer the name of the salt file from the encrypted file path."""
-    candidates: list[str] = []
+    enc_path_obj = Path(enc_path)
+    candidates: list[Path] = []
 
     if enc_path.endswith(".json.enc"):
-        candidates.append(enc_path.replace(".json.enc", ".salt"))
-    if enc_path.endswith(".txt.enc"):
-        candidates.append(enc_path.replace(".txt.enc", ".salt"))
+        candidates.append(enc_path_obj.with_suffix("").with_suffix(".salt"))
+    elif enc_path.endswith(".txt.enc"):
+        candidates.append(enc_path_obj.with_suffix("").with_suffix(".salt"))
+    elif enc_path.endswith(".enc"):
+        candidates.append(Path(enc_path[:-4] + ".salt"))
 
-    # generic fallback: foo.enc -> foo.salt
-    if enc_path.endswith(".enc"):
-        candidates.append(enc_path[:-4] + ".salt")
+    parent_dir = enc_path_obj.parent
+    base_name = enc_path_obj.stem.replace(".json", "").replace(".txt", "")
+    candidates.append(parent_dir / f"{base_name}.salt")
 
     for cand in candidates:
-        if os.path.exists(cand):
-            return cand
+        if cand.exists():
+            return str(cand)
 
     return None
 
 
-def decrypt_file(enc_path: str) -> bool:
+def decrypt_file(enc_path: str, max_attempts: int = 3) -> bool:
+    """Decrypt an encrypted RedAudit report."""
     if not os.path.exists(enc_path):
         print(f"❌ File not found: {enc_path}")
         return False
@@ -56,12 +61,18 @@ def decrypt_file(enc_path: str) -> bool:
     salt_path = find_salt_file(enc_path)
     if not salt_path or not os.path.exists(salt_path):
         print("❌ Salt file not found.")
-        print("   Expected a .salt file generated alongside the encrypted report.")
+        print(f"   Expected alongside: {enc_path}")
+        print("   Possible locations:")
+        base = Path(enc_path).stem.replace(".json", "").replace(".txt", "")
+        print(f"     - {base}.salt")
+        print(f"     - {Path(enc_path).parent / (base + '.salt')}")
         return False
 
     try:
         with open(salt_path, "rb") as f:
             salt = f.read()
+        if len(salt) != 16:
+            print(f"⚠️  Warning: unexpected salt size ({len(salt)} bytes, expected 16)")
     except Exception as exc:
         print(f"❌ Failed to read salt file: {exc}")
         return False
@@ -73,19 +84,38 @@ def decrypt_file(enc_path: str) -> bool:
         print(f"❌ Failed to read encrypted file: {exc}")
         return False
 
-    password = getpass.getpass("Decryption password: ")
-    try:
-        key = derive_key_from_password(password, salt)
-        fernet = Fernet(key)
-        dec_data = fernet.decrypt(enc_data)
-    except Exception as exc:
-        print(f"❌ Decryption failed: {exc}")
+    dec_data: bytes | None = None
+
+    for attempt in range(1, max_attempts + 1):
+        if attempt > 1:
+            print(f"\n⚠️  Incorrect password. Attempt {attempt}/{max_attempts}")
+
+        password = getpass.getpass("Decryption password: ")
+        try:
+            key = derive_key_from_password(password, salt)
+            fernet = Fernet(key)
+            dec_data = fernet.decrypt(enc_data)
+            break
+        except Exception as exc:
+            if attempt == max_attempts:
+                print(f"❌ Decryption failed after {max_attempts} attempts: {exc}")
+                return False
+
+    if dec_data is None:
         return False
 
     out_path = enc_path[:-4] if enc_path.endswith(".enc") else enc_path + ".decrypted"
 
     if os.path.exists(out_path):
-        print(f"⚠️  Output file already exists and will be overwritten: {out_path}")
+        response = input(f"⚠️  Output file exists: {out_path}\n   Overwrite? (y/N): ")
+        if response.lower() not in ("y", "yes", "s", "si", "sí"):
+            counter = 1
+            alt_path = f"{out_path}.{counter}"
+            while os.path.exists(alt_path):
+                counter += 1
+                alt_path = f"{out_path}.{counter}"
+            out_path = alt_path
+            print(f"   Using alternative name: {out_path}")
 
     try:
         with open(out_path, "wb") as f:
@@ -95,14 +125,35 @@ def decrypt_file(enc_path: str) -> bool:
         return False
 
     print(f"✓ Decrypted successfully: {out_path}")
+
+    if out_path.endswith(".json"):
+        try:
+            import json
+
+            with open(out_path, "r", encoding="utf-8") as f:
+                json.load(f)
+            print("  ✓ JSON structure validated")
+        except Exception:
+            print("  ⚠️  Warning: decrypted file is not valid JSON")
+
     return True
 
 
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("Usage: redaudit_decrypt.py <encrypted_file.(json|txt).enc>")
+        print("\nExample:")
+        print("  redaudit_decrypt.py redaudit_20250101_120000.json.enc")
         return 1
+
     enc_path = argv[1]
+
+    if not enc_path.endswith(".enc"):
+        print("⚠️  Warning: file doesn't have .enc extension")
+        response = input("   Continue anyway? (y/N): ")
+        if response.lower() not in ("y", "yes", "s", "si", "sí"):
+            return 1
+
     ok = decrypt_file(enc_path)
     return 0 if ok else 1
 
