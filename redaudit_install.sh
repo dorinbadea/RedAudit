@@ -89,9 +89,9 @@ nmap = None
 TRANSLATIONS = {
     "en": {
         "interrupted": "\n⚠️  Interruption received. Saving current state...",
-        "heartbeat_info": "⏱ Heartbeat: phase={} · last activity {}s ago",
-        "heartbeat_warn": "⏱ Heartbeat: phase={} · no apparent activity for {}s (nmap might still be working)",
-        "heartbeat_fail": "⏱ Heartbeat: phase={} · possible freeze (> {}s without real activity). Consider checking or interrupting with Ctrl+C.",
+        "heartbeat_info": "⏱  Activity Monitor: {} ({}s elapsed)",
+        "heartbeat_warn": "⏱  Activity Monitor: {} - No output for {}s (nmap might be busy)",
+        "heartbeat_fail": "⏱  Activity Monitor: {} - Possible freeze (> {}s silent). Check or Ctrl+C.",
         "verifying_env": "Verifying environment integrity...",
         "detected": "✓ {} detected",
         "nmap_avail": "✓ python-nmap available",
@@ -158,9 +158,9 @@ TRANSLATIONS = {
     },
     "es": {
         "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
-        "heartbeat_info": "⏱ Heartbeat: fase={} · última actividad hace {}s",
-        "heartbeat_warn": "⏱ Heartbeat: fase={} · sin actividad aparente desde hace {}s (nmap puede seguir trabajando)",
-        "heartbeat_fail": "⏱ Heartbeat: fase={} · posible bloqueo (> {}s sin actividad real). Considera revisar o interrumpir con Ctrl+C.",
+        "heartbeat_info": "⏱  Monitor de Actividad: {} ({}s transcurridos)",
+        "heartbeat_warn": "⏱  Monitor de Actividad: {} - Sin salida hace {}s (nmap puede estar ocupado)",
+        "heartbeat_fail": "⏱  Monitor de Actividad: {} - Posible bloqueo (> {}s silencio). Revisa o Ctrl+C.",
         "verifying_env": "Verificando integridad del entorno...",
         "detected": "✓ {} detectado",
         "nmap_avail": "✓ python-nmap disponible",
@@ -317,14 +317,28 @@ class InteractiveNetworkAuditor:
             now = datetime.now()
             delta = (now - self.last_activity).total_seconds()
             try:
+            try:
+                # Format phase for better readability
+                phase_desc = self.current_phase
+                if ":" in phase_desc:
+                    p_type, p_target = phase_desc.split(":", 1)
+                    if p_type == "ports":
+                        phase_desc = f"Scanning ports on {p_target}" if self.lang == "en" else f"Escaneando puertos en {p_target}"
+                    elif p_type == "deep":
+                        phase_desc = f"Deep Scan on {p_target}" if self.lang == "en" else f"Deep Scan en {p_target}"
+                    elif p_type == "vulns":
+                        phase_desc = f"Vuln analysis on {p_target}" if self.lang == "en" else f"Análisis vulns en {p_target}"
+                    elif p_type == "discovery":
+                        phase_desc = f"Discovery on {p_target}" if self.lang == "en" else f"Discovery en {p_target}"
+
                 if delta < 60:
-                    msg = self.t("heartbeat_info", self.current_phase, int(delta))
+                    msg = self.t("heartbeat_info", phase_desc, int(delta))
                     self.print_status(msg, "INFO", update_activity=False)
                 elif delta < 300:
-                    msg = self.t("heartbeat_warn", self.current_phase, int(delta))
+                    msg = self.t("heartbeat_warn", phase_desc, int(delta))
                     self.print_status(msg, "WARNING", update_activity=False)
                 else:
-                    msg = self.t("heartbeat_fail", self.current_phase, int(delta))
+                    msg = self.t("heartbeat_fail", phase_desc, int(delta))
                     self.print_status(msg, "FAIL", update_activity=False)
             except Exception:
                 pass

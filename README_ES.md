@@ -61,6 +61,14 @@
 *   **Privilegios:** Se requiere acceso Root/Sudo.
 *   **Dependencias:** `nmap`, `python3-nmap`, `curl`, `wget`, `tcpdump`, `tshark`, `whois`, `bind9-dnsutils`, `whatweb`, `nikto`.
 
+### 🔍 Deep Scan Automático
+RedAudit es inteligente. Si un host parece "tímido" (muy pocos puertos abiertos) o devuelve errores sospechosos, la herramienta lanza automáticamente un **Deep Scan** sobre ese objetivo específico. Esto incluye:
+- **Flags agresivas de Nmap:** `-A -sV -Pn -p- --open` para forzar una respuesta.
+- **Escaneo UDP:** Busca servicios UDP ocultos.
+- **Captura de Paquetes:** Captura brevemente tráfico (`tcpdump`) para analizar si los paquetes están siendo descartados por un firewall.
+
+Esto asegura que no pases por alto hosts "sigilosos" que un escaneo normal podría ignorar.
+
 ## 🛠️ Instalación
 
 1.  Clona el repositorio:

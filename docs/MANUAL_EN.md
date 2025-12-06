@@ -21,6 +21,8 @@ sudo apt install -y \
 
 > **Note:** `whatweb`, `nikto`, and `nmap` are the core requirements for RedAudit. The others are utilities that the script prepares for future modules (tcpdump/tshark/WHOIS/DNS/etc).
 
+*   **Automatic Deep Scan:** The tool automatically detects "quiet" or suspicious hosts and launches a deep scan (`-A -p- -sV`) including packet capture to identify firewalls or hidden services.
+
 ---
 
 ## 2. Prepare Working Directory
