@@ -62,7 +62,7 @@ The installer will:
 
 ---
 
-## 5. Activate the Alias
+## 4. Activate the Alias
 
 After installation:
 
@@ -78,7 +78,7 @@ redaudit
 
 ---
 
-## 6. Quick Verification
+## 5. Quick Verification
 
 Useful commands to check everything is in place:
 
@@ -96,7 +96,7 @@ grep "alias redaudit" ~/.bashrc
 
 ---
 
-## 7. Updating RedAudit
+## 6. Updating RedAudit
 
 To update the code (e.g., from 2.3 to 2.4):
 1.  Edit the installer `redaudit_install.sh` with the new code.
@@ -110,7 +110,7 @@ The binary `/usr/local/bin/redaudit` will be overwritten with the new version.
 
 ---
 
-## 8. Uninstallation
+## 7. Uninstallation
 
 To remove the binary and alias:
 

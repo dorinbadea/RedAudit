@@ -1,19 +1,19 @@
 Manual de instalación de RedAudit v2.3
 
-Rol: pentester / programador senior
+**Rol:** Pentester / Programador Senior
 
-1. Requisitos previos
+## 1. Requisitos previos
 
-Sistema objetivo:
-	•	Kali Linux (o distro similar basada en Debian)
-	•	Usuario con sudo configurado
-	•	Conexión a Internet para instalar paquetes
+**Sistema objetivo:**
+*   Kali Linux (o distro similar basada en Debian)
+*   Usuario con `sudo` configurado
+*   Conexión a Internet para instalar paquetes
 
-Paquetes usados:
+**Paquetes usados:**
 El instalador puede instalar automáticamente el pack recomendado si se solicita (modo interactivo o flag `-y`).
 
-	•	Core (Requerido): `nmap`, `python3-nmap`
-	•	Recomendado (Opcional): `whatweb`, `nikto`, `curl`, `wget`, `openssl`, `tcpdump`, `tshark`, `whois`, `bind9-dnsutils`
+*   **Core (Requerido):** `nmap`, `python3-nmap`
+*   **Recomendado (Opcional):** `whatweb`, `nikto`, `curl`, `wget`, `openssl`, `tcpdump`, `tshark`, `whois`, `bind9-dnsutils`
 
 Para instalar manualmente:
 ```bash
@@ -23,12 +23,11 @@ sudo apt install -y nmap python3-nmap whatweb nikto curl wget openssl tcpdump ts
 
 > **Nota:** `nmap` y `python3-nmap` son críticos. El resto se recomiendan para aprovechar todas las funciones (escáner web, captura de tráfico, enriquecimiento DNS).
 
-**Deep Scan Automático:**
-RedAudit detecta automáticamente hosts "tímidos" o sospechosos y lanza un escaneo profundo (`-A -p- -sV`) que incluye captura de paquetes para identificar firewalls o servicios ocultos.
+*   **Deep Scan Automático:** RedAudit detecta automáticamente hosts "tímidos" o sospechosos y lanza un escaneo profundo (`-A -p- -sV`) que incluye captura de paquetes para identificar firewalls o servicios ocultos.
 
-⸻
+---
 
-2. Preparar carpeta de trabajo
+## 2. Preparar carpeta de trabajo
 
 Usamos una carpeta estándar para herramientas:
 
@@ -37,9 +36,9 @@ mkdir -p ~/herramientas_seguridad
 cd ~/herramientas_seguridad
 ```
 
-⸻
+---
 
-3. Instalación
+## 3. Instalación
 
 1.  Clonar el repositorio:
     ```bash
@@ -61,9 +60,9 @@ El instalador se encargará de:
 2.  Instalar RedAudit en `/usr/local/bin/redaudit`.
 3.  Configurar el alias necesario en tu shell.
 
-⸻
+---
 
-5. Activar el alias en tu shell
+## 4. Activar el alias en tu shell
 
 Tras la instalación:
 
@@ -77,9 +76,9 @@ A partir de aquí, en cualquier terminal de tu usuario normal:
 redaudit
 ```
 
-⸻
+---
 
-6. Verificación rápida
+## 5. Verificación rápida
 
 Comandos útiles para comprobar que todo está en su sitio:
 
@@ -96,24 +95,24 @@ grep "alias redaudit" ~/.bashrc
 # (o ~/.zshrc)
 ```
 
-⸻
+---
 
-7. Actualizar RedAudit a una nueva versión
+## 6. Actualizar RedAudit a una nueva versión
 
 Cuando quieras actualizar el código (por ejemplo, pasar de 2.3 a 2.4):
-	1.	Editas el instalador con el código nuevo (git pull).
-	2.	Lo ejecutas de nuevo:
+1.  Editas el instalador con el código nuevo (git pull).
+2.  Lo ejecutas de nuevo:
 
-```bash
-sudo ./redaudit_install.sh
-source ~/.bashrc
-```
+    ```bash
+    sudo ./redaudit_install.sh
+    source ~/.bashrc
+    ```
 
 El binario `/usr/local/bin/redaudit` se sobrescribe con la nueva versión.
 
-⸻
+---
 
-8. Desinstalación (por si hace falta)
+## 7. Desinstalación (por si hace falta)
 
 Eliminar binario y alias:
 
@@ -122,9 +121,3 @@ sudo rm -f /usr/local/bin/redaudit
 sed -i '/alias redaudit=/d' ~/.bashrc  # O ~/.zshrc
 source ~/.bashrc
 ```
-
-⸻
-
-SCRIPT COMPLETO
-
-El código fuente completo del instalador (`redaudit_install.sh`) se puede encontrar en el repositorio oficial. Se ha eliminado de este manual para evitar discrepancias de versión.
