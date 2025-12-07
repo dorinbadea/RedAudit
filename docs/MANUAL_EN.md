@@ -79,8 +79,12 @@ sudo redaudit \
   --threads 8 \
   --rate-limit 2 \
   --encrypt \
+  --encrypt-password "MySecurePassword123" \
   --output /tmp/reports \
   --max-hosts 50
+
+# With encryption (random password generated)
+sudo redaudit --target 192.168.1.0/24 --mode normal --encrypt --yes
 
 # Multiple targets
 sudo redaudit --target "192.168.1.0/24,10.0.0.0/24" --mode normal
@@ -95,6 +99,7 @@ sudo redaudit --target 192.168.1.0/24 --mode fast --yes
 - `--threads, -j`: 1-16 (default: 6)
 - `--rate-limit`: Delay in seconds (default: 0)
 - `--encrypt, -e`: Enable encryption
+- `--encrypt-password PASSWORD`: Password for encryption (non-interactive). If omitted, a random password will be generated and displayed.
 - `--output, -o`: Output directory
 - `--max-hosts`: Limit number of hosts
 - `--yes, -y`: Skip legal warning

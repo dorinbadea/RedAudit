@@ -108,8 +108,14 @@ sudo redaudit --target 10.0.0.0/24 --mode full --threads 8 --encrypt --output /t
 # Multiple targets
 sudo redaudit --target "192.168.1.0/24,10.0.0.0/24" --mode normal --threads 6
 
-# Skip legal warning (for automation)
-sudo redaudit --target 192.168.1.0/24 --mode fast --yes
+    # Skip legal warning (for automation)
+    sudo redaudit --target 192.168.1.0/24 --mode fast --yes
+
+    # With encryption (random password generated)
+    sudo redaudit --target 192.168.1.0/24 --mode normal --encrypt --yes
+
+    # With encryption (custom password)
+    sudo redaudit --target 192.168.1.0/24 --mode normal --encrypt --encrypt-password "MySecurePassword123" --yes
 ```
 
 **Available CLI Options:**

@@ -1,6 +1,6 @@
 # Improvement Proposals (Non-Binding)
 
-This document collects architectural suggestions for future versions, without altering the current core (v2.4).
+This document collects architectural suggestions for future versions, without altering the current core (v2.5).
 *Note: Any proposals implemented must comply with the GPLv3 license.*
 
 ## 1. Decoupling Python Code

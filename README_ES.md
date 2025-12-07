@@ -108,8 +108,14 @@ sudo redaudit --target 10.0.0.0/24 --mode full --threads 8 --encrypt --output /t
 # Múltiples objetivos
 sudo redaudit --target "192.168.1.0/24,10.0.0.0/24" --mode normal --threads 6
 
-# Saltar advertencia legal (para automatización)
-sudo redaudit --target 192.168.1.0/24 --mode fast --yes
+    # Saltar advertencia legal (para automatización)
+    sudo redaudit --target 192.168.1.0/24 --mode fast --yes
+
+    # Con cifrado (contraseña aleatoria generada)
+    sudo redaudit --target 192.168.1.0/24 --mode normal --encrypt --yes
+
+    # Con cifrado (contraseña personalizada)
+    sudo redaudit --target 192.168.1.0/24 --mode normal --encrypt --encrypt-password "MiContraseñaSegura123" --yes
 ```
 
 **Opciones CLI Disponibles:**

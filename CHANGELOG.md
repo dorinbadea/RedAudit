@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Non-Interactive Mode**: Full CLI argument support for automation and scripting
   - `--target`, `--mode`, `--threads`, `--rate-limit`, `--encrypt`, `--output`, etc.
+  - `--encrypt-password` flag for non-interactive encryption (random password generated if omitted)
   - `--yes` flag to skip legal warning for automated runs
   - `--lang` flag for language selection
 - **Input Length Validation**: Protection against DoS via overly long inputs
@@ -27,7 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enforce maximum length limits
 - **Cryptography Handling**: Improved graceful degradation
   - `check_dependencies()` now verifies cryptography availability
+  - `setup_encryption()` supports non-interactive mode with `--encrypt-password` flag
   - `setup_encryption()` doesn't prompt for password if cryptography unavailable
+  - Random password generation for non-interactive mode when password not provided
   - Clear warning messages in both English and Spanish
 - **Version**: Updated to 2.5.0
 

@@ -461,21 +461,59 @@ class InteractiveNetworkAuditor:
                 self.logger.error("Encryption error: %s", exc)
             return data
 
-    def setup_encryption(self):
-        """Setup encryption if requested and available. Degrades gracefully if cryptography is missing."""
+    def setup_encryption(self, non_interactive=False, password=None):
+        """
+        Setup encryption if requested and available. Degrades gracefully if cryptography is missing.
+        
+        Args:
+            non_interactive: If True, skip interactive prompts
+            password: Password to use (required if non_interactive=True and --encrypt is used)
+        """
         if not self.cryptography_available:
             # Don't even ask if cryptography is not available
+            if non_interactive:
+                self.print_status(self.t("cryptography_required"), "FAIL")
             return
         
-        if self.ask_yes_no(self.t("encrypt_reports"), default="no"):
-            # Double-check availability before asking for password
+        # Interactive mode: ask user
+        if not non_interactive:
+            if self.ask_yes_no(self.t("encrypt_reports"), default="no"):
+                # Double-check availability before asking for password
+                if not self.cryptography_available:
+                    self.print_status(self.t("cryptography_required"), "FAIL")
+                    return
+                
+                try:
+                    pwd = self.ask_password_twice(self.t("encryption_password"))
+                    key, salt = self.derive_key_from_password(pwd)
+                    self.encryption_key = key
+                    self.config["encryption_salt"] = base64.b64encode(salt).decode()
+                    self.encryption_enabled = True
+                    self.print_status(self.t("encryption_enabled"), "OKGREEN")
+                except RuntimeError as exc:
+                    if "cryptography not available" in str(exc):
+                        self.print_status(self.t("cryptography_required"), "FAIL")
+                    else:
+                        raise
+        else:
+            # Non-interactive mode: use provided password or generate one
             if not self.cryptography_available:
                 self.print_status(self.t("cryptography_required"), "FAIL")
                 return
             
+            if password is None:
+                # Generate a random password
+                import secrets
+                import string
+                alphabet = string.ascii_letters + string.digits + string.punctuation
+                password = ''.join(secrets.choice(alphabet) for _ in range(32))
+                self.print_status(
+                    f"⚠️  Generated random encryption password (save this!): {password}",
+                    "WARNING"
+                )
+            
             try:
-                pwd = self.ask_password_twice(self.t("encryption_password"))
-                key, salt = self.derive_key_from_password(pwd)
+                key, salt = self.derive_key_from_password(password)
                 self.encryption_key = key
                 self.config["encryption_salt"] = base64.b64encode(salt).decode()
                 self.encryption_enabled = True
@@ -1665,6 +1703,12 @@ Examples:
         help="Encrypt reports with password"
     )
     parser.add_argument(
+        "--encrypt-password",
+        type=str,
+        metavar="PASSWORD",
+        help="Password for encryption (non-interactive mode). If --encrypt is used without this flag, a random password will be generated and displayed."
+    )
+    parser.add_argument(
         "--no-vuln-scan",
         action="store_true",
         help="Disable web vulnerability scanning"
@@ -1775,7 +1819,7 @@ def configure_from_args(app, args):
     
     # Setup encryption if requested
     if args.encrypt:
-        app.setup_encryption()
+        app.setup_encryption(non_interactive=True, password=args.encrypt_password)
     
     return True
 

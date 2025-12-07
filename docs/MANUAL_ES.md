@@ -95,8 +95,7 @@ RedAudit trata los datos de los reportes como material sensible.
     - **Salt**: 16 bytes aleatorios, guardados en archivo `.salt`.
 - **Degradación Graceful** (v2.5): Si `python3-cryptography` no está disponible, el cifrado se desactiva automáticamente con avisos claros. No se muestran prompts de contraseña.
 - **Permisos de Archivo** (v2.5): Todos los reportes (cifrados y planos) usan permisos seguros (0o600 - solo lectura/escritura del propietario).
-- **Degradación Graceful** (v2.5): Si `python3-cryptography` no está disponible, el cifrado se desactiva automáticamente con avisos claros. No se muestran prompts de contraseña.
-- **Permisos de Archivo** (v2.5): Todos los reportes (cifrados y planos) usan permisos seguros (0o600 - solo lectura/escritura del propietario).
+- **Modo No Interactivo** (v2.5): El flag `--encrypt-password` permite especificar la contraseña en modo no interactivo. Si se omite, se genera una contraseña aleatoria que se muestra en la salida.
 
 ## 6. Lógica de Escaneo
 1.  **Descubrimiento**: Barrido ICMP Echo (`-PE`) + ARP (`-PR`) para mapear hosts vivos.
