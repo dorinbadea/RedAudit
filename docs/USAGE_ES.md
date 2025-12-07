@@ -64,12 +64,12 @@ RedAudit permite configurar un retardo (en segundos) entre el escaneo de cada ho
 
 **Nota sobre el Heartbeat**: Si usas un retardo alto (ej. 60s) con muchos hilos, el escaneo puede parecer "congelado". Revisa el log o el estado del heartbeat.
 
-### Deep Scan Automático y Captura de Tráfico
-RedAudit intenta automáticamente un "Deep Scan" en hosts que:
+### Deep Scan Adaptativo y Captura de Tráfico
+RedAudit intenta automáticamente un "Deep Scan Adaptativo" en hosts que:
 1.  Parecen "silenciosos" (arriba pero con pocos puertos).
 2.  **Coinciden con patrones de infraestructura** (servicios VPN/monitor/proxy), si se habilita la opción.
-
-- **Deep Scan**: Lanza flags agresivos de Nmap (`-A -sV -Pn --open`) y escaneo UDP (`-sSU`) para descubrir servicios ocultos.
+ 
+- **Estrategia Adaptativa**: Ejecuta un escaneo de 2 fases (primero TCP agresivo, luego UDP/SO si hace falta) para identificar hosts complejos.
 - **Captura de Tráfico**: Como parte del Deep Scan, si `tcpdump` está disponible, captura un **snippet de 50 paquetes** (máx 15s) del tráfico del host.
     - Guarda archivos `.pcap` en tu directorio de reportes.
     - Si `tshark` está instalado, incluye un resumen de protocolos en el reporte JSON.

@@ -69,12 +69,12 @@ RedAudit v2.4 strictly informs you about the commands being executed:
 - **`[nmap] 192.168.x.x → nmap ...`**: Standard port scan.
 - **`[deep] 192.168.x.x → combined ...`**: Deep Identity Scan execution (expect 90-140s duration).
 
-### Automatic Deep Scan & Traffic Capture
-RedAudit automatically attempts a "Deep Scan" on hosts that:
+### Adaptive Deep Scan & Traffic Capture
+RedAudit automatically attempts an "Adaptive Deep Scan" on hosts that:
 1.  **Have >8 open ports** or **suspicious services**.
 2.  **Have very few ports (<=3)** or no version info.
-
-- **Deep Scan**: Runs combined Nmap flags (`-A -sV -O -Pn -p- -sSU`) to fingerprint OS and services.
+ 
+- **Adaptive Strategy**: Runs a 2-phase scan (TCP aggressive first, then UDP/OS fallback if needed) to fingerprint complex hosts.
 - **Traffic Capture**: As part of Deep Scan, if `tcpdump` is available, the tool captures a **50-packet snippet** (max 15s) from the host's traffic.
     - Saves `.pcap` files in your report directory.
     - If `tshark` is installed, a text summary of protocols is included in the JSON report.
