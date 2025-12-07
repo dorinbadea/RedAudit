@@ -78,14 +78,17 @@ redaudit
 
 ---
 
-## 5. Endurecimiento y Seguridad
+## 5. 🔒 Características de Seguridad (NUEVO en v2.3)
 
-RedAudit v2.3 incluye nuevas características para garantizar una operación segura:
+RedAudit v2.3 introduce un endurecimiento de seguridad de grado empresarial:
 
-*   **Sanitización de Entrada**: Validación estricta de IPs y nombres de interfaz para evitar inyección de comandos.
-*   **Cifrado de Reportes**: Opción para cifrar los resultados (JSON y TXT) usando Fernet (AES). Requiere `python3-cryptography`.
-*   **Rate Limiting**: Retardo configurable entre hosts para reducir el ruido en la red.
-*   **Logging**: Registros de auditoría detallados y rotativos en `~/.redaudit/logs`.
+- **Sanitización de Entrada**: Todas las entradas de usuario y salidas de comandos son validadas.
+- **Reportes Cifrados**: Cifrado opcional **AES-128 (Fernet)** con PBKDF2-HMAC-SHA256 (480k iteraciones).
+- **Seguridad de Hilos**: Todas las operaciones concurrentes usan mecanismos de bloqueo adecuados.
+- **Rate Limiting**: Retardos configurables para evitar detección y saturación de red.
+- **Audit Logging**: Registro exhaustivo con rotación automática (10MB, 5 backups).
+
+[→ Documentación de Seguridad Completa](SECURITY.md)
 
 Para descifrar reportes:
 ```bash

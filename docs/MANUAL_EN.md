@@ -77,14 +77,17 @@ redaudit
 ```
 
 ---
-## 5. Security & Hardening
+## 5. 🔒 Security Features (NEW in v2.3)
 
-RedAudit v2.3 includes several security features to ensure safe operation and data protection:
+RedAudit v2.3 introduces enterprise-grade security hardening:
 
-*   **Input Sanitization**: All IPs, hostnames, and interface names are strictly validated to prevent command injection.
-*   **Report Encryption**: You can optionally encrypt your reports (JSON & TXT) using Fernet (AES-128-CBC + HMAC). Requires `python3-cryptography`.
-*   **Rate Limiting**: Configurable delay between hosts to reduce network noise and evade simple IDS.
-*   **Logging**: Detailed audit logs are rotated and stored in `~/.redaudit/logs`.
+- **Input Sanitization**: All user inputs and command outputs are validated.
+- **Encrypted Reports**: Optional **AES-128 (Fernet)** encryption with PBKDF2-HMAC-SHA256 (480k iterations).
+- **Thread Safety**: All concurrent operations use proper locking mechanisms.
+- **Rate Limiting**: Configurable delays to avoid detection and network saturation.
+- **Audit Logging**: Comprehensive logging with automatic rotation (10MB, 5 backups).
+
+[→ Full Security Documentation](SECURITY.md)
 
 To decrypt reports:
 ```bash

@@ -128,11 +128,17 @@ At a high level, a run looks like this:
 	-	Write the files to `~/RedAuditReports` by default, or to the directory selected during setup.
 	-	On interruption (Ctrl+C), a partial report is still written so previous work is not lost.
 
-## Security Features
-RedAudit is designed for hostile environments and strictly enforces security:
-- **Input Sanitization**: All IPs and hostnames are validated against strict regex (`^[a-zA-Z0-9\.\-]+$`) and `ipaddress` library before execution.
-- **Report Encryption**: Uses **AES-128 (Fernet)** with keys derived via **PBKDF2HMAC-SHA256** (480,000 iterations).
-- **Activity Monitor**: A background "heartbeat" thread detects Nmap freezes (>300s) and ensures the tool doesn't hang silently.
+## 🔒 Security Features (NEW in v2.3)
+
+RedAudit v2.3 introduces enterprise-grade security hardening:
+
+- **Input Sanitization**: All user inputs and command outputs are validated.
+- **Encrypted Reports**: Optional **AES-128 (Fernet)** encryption with PBKDF2-HMAC-SHA256 (480k iterations).
+- **Thread Safety**: All concurrent operations use proper locking mechanisms.
+- **Rate Limiting**: Configurable delays to avoid detection and network saturation.
+- **Audit Logging**: Comprehensive logging with automatic rotation (10MB, 5 backups).
+
+[→ Full Security Documentation](docs/SECURITY.md)
 
 ## Verification
 To verify the integrity of your installation and dependencies, run the included verification script:

@@ -127,11 +127,17 @@ A alto nivel, una ejecución sigue este flujo:
 	-	Escribe los ficheros en `~/RedAuditReports` por defecto, o en el directorio elegido durante la configuración.
 	-	Si se interrumpe la ejecución (Ctrl+C), se guarda igualmente un informe parcial para no perder el trabajo previo.
 
-## Características de Seguridad
-RedAudit está diseñado para entornos hostiles y aplica seguridad estricta:
-- **Sanitización de Entrada**: Todas las IPs y hostnames se validan contra regex estricta (`^[a-zA-Z0-9\.\-]+$`) y la librería `ipaddress`.
-- **Cifrado de Reportes**: Usa **AES-128 (Fernet)** con claves derivadas vía **PBKDF2HMAC-SHA256** (480,000 iteraciones).
-- **Monitor de Actividad**: Un hilo "heartbeat" detecta bloqueos de Nmap (>300s) y asegura que la herramienta no se cuelgue en silencio.
+## 🔒 Características de Seguridad (NUEVO en v2.3)
+
+RedAudit v2.3 introduce un endurecimiento de seguridad de grado empresarial:
+
+- **Sanitización de Entrada**: Todas las entradas de usuario y salidas de comandos son validadas.
+- **Reportes Cifrados**: Cifrado opcional **AES-128 (Fernet)** con PBKDF2-HMAC-SHA256 (480k iteraciones).
+- **Seguridad de Hilos**: Todas las operaciones concurrentes usan mecanismos de bloqueo adecuados.
+- **Rate Limiting**: Retardos configurables para evitar detección y saturación de red.
+- **Audit Logging**: Registro exhaustivo con rotación automática (10MB, 5 backups).
+
+[→ Documentación de Seguridad Completa](docs/SECURITY.md)
 
 ## Verificación
 Para verificar la integridad de tu instalación y dependencias, ejecuta el script incluido:
