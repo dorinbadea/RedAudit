@@ -20,6 +20,7 @@ RedAudit uses the industrial-strength **Fernet** specification for report encryp
 - **Rate Limiting**: Configurable delays (0-60s) between tests to evade simple heuristic detection.
 - **Traffic Capture Cap**: `tcpdump` captures are strictly capped at 50 packets or 15 seconds to prevent disk fills or process hangs.
 - **Activity Monitor**: Background heartbeat thread ensures the process doesn't "zombie" silently.
+- **Deep Scan Privacy**: Automated traffic captures (Deep Scan) are stored locally. These **PCAP files may contain sensitive payload data** (e.g., cleartext HTTP/Telnet). RedAudit never transmits these files; they are strictly for the operator's analysis.
 
 ## 4. Audit Trails
 - **Logging**: Rotating logs stored in `~/.redaudit/logs/` (max 10MB, 5 backups).

@@ -5,7 +5,19 @@ RedAudit is licensed under GPLv3. See LICENSE for details.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.3.1] - 2024-05-20 (Security Hardening)
+## [2.4.0] - 2025-05-21 (Deep Identity Engine)
+
+### Added
+- **Deep Identity Scan**: New logic to automatically fingerprint complex hosts using combined `nmap -O -sV -p- -sSU` scans.
+- **Micro-Traffic Capture**: Heuristic-based `tcpdump` captures (50 packets) for active identification of silent services.
+- **Reporting**: Extended JSON report schema with specific `deep_scan` command logs, durations, and pcap paths.
+- **CLI UX**: Added clear markers `[nmap]` and `[deep]` to show exact scan phases in real-time.
+
+### Changed
+- **Heartbeat**: Improved warnings to clarify that long silences during deep scans are normal ("Nmap is still running").
+- **Triggers**: Expanded automatic deep scan triggers to include specific service names (vpn, proxy, nagios) and high port counts (>8).
+
+
 
 ### Added
 - **Security Hardening**: Implemented strict sanitization for all user inputs (IP addresses, hostnames, interfaces) to prevent command injection.

@@ -1,6 +1,6 @@
 # RedAudit User Manual
 
-**Version**: 2.3
+**Version**: 2.4
 **Date**: 2025-05-20
 **Target Level**: Professional Pentester / SysAdmin
 
@@ -60,7 +60,7 @@ Run `redaudit` to start the interactive wizard.
 ? Select scan mode: NORMAL
 ? Enter number of threads [1-16]: 6
 ? Enable Web Vulnerability scans? [y/N]: y
-? Deep-scan unusual infrastructure hosts when suspicious ports/services are found? [Y/n]: y
+? Enable Web Vulnerability scans? [y/N]: y
 ? Encrypt reports with password? [y/N]: y
 ```
 
@@ -97,12 +97,15 @@ RedAudit treats report data as sensitive sensitive material.
 ## 6. Scan Logic & Phases
 1.  **Discovery**: ICMP Echo (`-PE`) + ARP (`-PR`) sweep to map live hosts.
 2.  **Enumeration**: Parallel Nmap scans based on mode.
-3.  **Automatic Deep Scan**:
-    - **Triggers**:
-        1.  **Limited Data**: The host is alive but returns minimal or confusing data.
-        2.  **Infrastructure Heuristic**: The host has few open ports and runs services typical of infrastructure (e.g., VPN, proxy, Nagios, SNMP), *if enabled* in setup.
-    - **Action**: Launches aggressive flags (`-A -p-`) and UDP (`-sU`) to penetrate local firewalls or find non-standard services.
-    - **Result**: Data is stored in `host.deep_scan`, including command output.
+3.  **Deep Identity Scan (Automatic)**:
+    - **Triggers**: RedAudit automatically triggers this scan if:
+        - Host has **>8 open ports**.
+        - Host has **suspicous services** (e.g., `vpn`, `proxy`, `nagios`, `socks`).
+        - Host has **very few ports (<=3)** or no version info (potentially obfuscated).
+    - **Action**:
+        - Runs a combined fingerprinting strategy: `nmap -A -sV -O -Pn -p- -sSU`.
+        - If that fails to identify the OS, it falls back to separate aggressive scans.
+    - **Result**: Data is stored in `host.deep_scan`, including exact command logs, duration, and output.
 
 4.  **Traffic Capture**:
     - As part of the **Deep Scan** process, if `tcpdump` is present, RedAudit captures a small snippet (50 packets/15s) from the host's traffic.
@@ -128,7 +131,8 @@ Long scans (e.g., full port ranges on slow networks) can look like "hangs".
 - **States**:
     - **Active**: Activity < 60s ago. No output.
     - **Busy**: Activity < 300s ago. Warning log.
-    - **Frozen**: Activity > 300s ago. Warning on console ("Zombie scan?").
+    - **Silent**: Activity > 300s ago. Warning on console.
+        - *Note*: A "Fail" heartbeat does NOT mean the scan crashed. It often means Nmap is grinding through a slow or filtered host. RedAudit will continue running.
 - **Logs**: Check `~/.redaudit/logs/` for fine-grained debugging info.
 
 ## 9. Verification Script

@@ -14,7 +14,7 @@
 
 <br>
 
-# RedAudit v2.3
+# RedAudit v2.4
 
 ## 1. 📋 Descripción General
 **RedAudit** es una herramienta de auditoría de red interactiva y automatizada diseñada para **Kali Linux** y sistemas basados en Debian. Optimiza el proceso de reconocimiento combinando el descubrimiento de red, escaneo de puertos y evaluación de vulnerabilidades en un flujo de trabajo CLI único y cohesivo.
@@ -34,8 +34,8 @@ A diferencia de simples scripts "wrapper", RedAudit gestiona la concurrencia, ag
 - **Reconocimiento Web**: Integra `whatweb`, `nikto`, `curl` y `openssl` para servicios web.
 - **Resiliencia**: Monitor de actividad (heartbeat) en segundo plano para evitar bloqueos silenciosos.
 
-## 3. 🔒 Características de Seguridad (NUEVO en v2.3)
-RedAudit v2.3 introduce un endurecimiento de seguridad de grado empresarial:
+## 3. 🔒 Características de Seguridad (NUEVO en v2.4)
+RedAudit v2.4 introduce un endurecimiento de seguridad de grado empresarial:
 - **Sanitización de Entrada**: Todas las entradas (IPs, rangos) se validan con la librería `ipaddress` y regex estricta (`^[a-zA-Z0-9\.\-\/]+$`) antes de pasar a listas seguras de `subprocess.run` (sin inyección de shell).
 - **Reportes Cifrados**: Cifrado opcional **AES-128 (Fernet)** con PBKDF2-HMAC-SHA256 (480,000 iteraciones).
 - **Seguridad de Hilos**: Uso de `ThreadPoolExecutor` con mecanismos de bloqueo adecuados para E/S concurrente.
@@ -105,10 +105,10 @@ Controlado por el parámetro `rate_limit_delay`.
     - **>5s**: Paranoico/Conservador. Úsalo en entornos de producción sensibles.
 
 ### Escaneo profundo de infraestructura
-RedAudit puede aplicar opcionalmente un "Deep Identity Scan" a hosts que cumplan ciertas heurísticas (pocos puertos + palabras clave de infraestructura como `nagios`, `vpn`, `proxy`).
-- **Activación**: Se habilita mediante el asistente interactivo.
-- **Acción**: Escaneo Nmap agresivo + captura de tráfico corta con `tcpdump`.
-- **Salida**: Resultados guardados en `host.deep_scan`, incluyendo posibles archivos `.pcap`.
+RedAudit aplica un "Deep Identity Scan" a hosts que cumplan ciertas heurísticas (ej: >8 puertos abiertos, servicios sospechosos como `vpn`/`proxy`, o muy pocos puertos).
+- **Activación**: Automática basada en análisis de hallazgos.
+- **Acción**: Fingerprinting combinado Nmap (`-A -sV -O -p- -sSU`) + captura de tráfico.
+- **Salida**: Resultados guardados en `host.deep_scan`, incluyendo logs de comandos y archivos `.pcap`.
 
 ## 8. 🔐 Reportes, Cifrado y Descifrado
 Los reportes se guardan en `~/RedAuditReports` (por defecto) con fecha y hora.

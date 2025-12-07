@@ -14,7 +14,7 @@
 
 <br>
 
-# RedAudit v2.3
+# RedAudit v2.4
 
 ## 1. 📋 Overview
 **RedAudit** is an interactive, automated network auditing tool designed for **Kali Linux** and Debian-based systems. It streamlines the reconnaissance process by combining network discovery, port scanning, and vulnerability assessment into a single, cohesive CLI workflow.
@@ -34,8 +34,8 @@ Unlike simple wrapper scripts, RedAudit manages concurrency, data aggregation, a
 - **Web Recon**: Integrates `whatweb`, `nikto`, `curl`, and `openssl` for web-facing services.
 - **Resilience**: Background heartbeat monitor prevents silent freezes during long scans.
 
-## 3. 🔒 Security Features (NEW in v2.3)
-RedAudit v2.3 introduces enterprise-grade security hardening:
+## 3. 🔒 Security Features (NEW in v2.4)
+RedAudit v2.4 introduces enterprise-grade security hardening:
 - **Input Sanitization**: All user inputs (IPs, ranges) are validated via `ipaddress` library and strict regex (`^[a-zA-Z0-9\.\-\/]+$`) to strict `subprocess.run` lists (no shell injection).
 - **Encrypted Reports**: Optional **AES-128 (Fernet)** encryption with PBKDF2-HMAC-SHA256 (480,000 iterations).
 - **Thread Safety**: `ThreadPoolExecutor` with proper locking mechanisms for concurrent I/O.
@@ -105,10 +105,10 @@ Controlled by the `rate_limit_delay` parameter.
     - **>5s**: Paranoid/Conservative. Use for sensitive production environments.
 
 ### Infrastructure hosts deep scan
-RedAudit can optionally apply a "Deep Identity Scan" to hosts that match specific heuristics (few ports + infrastructure keywords like `nagios`, `vpn`, `proxy`).
-- **Trigger**: Enabled via the interactive wizard.
-- **Action**: Aggressive Nmap scan + short `tcpdump` traffic capture.
-- **Output**: Results stored in `host.deep_scan`, including potential `.pcap` files.
+RedAudit applies a "Deep Identity Scan" to hosts that match specific heuristics (e.g., >8 open ports, suspicious services like `vpn`/`proxy`, or very few ports).
+- **Trigger**: Automatic based on finding analysis.
+- **Action**: Combined Nmap fingerprinting (`-A -sV -O -p- -sSU`) + traffic capture.
+- **Output**: Results stored in `host.deep_scan`, including command logs and `.pcap` files.
 
 ## 8. 🔐 Reports, Encryption & Decryption
 Reports are saved to `~/RedAuditReports` (default) with timestamps.

@@ -64,12 +64,17 @@ RedAudit allows you to set a delay (in seconds) between scanning hosts.
 
 **Note on Heartbeat**: If you set a very high delay (e.g., 60s) with many threads, the scan might seem "frozen". Check the "Active hosts" log or the heartbeat status.
 
+### CLI Execution Markers
+RedAudit v2.4 strictly informs you about the commands being executed:
+- **`[nmap] 192.168.x.x → nmap ...`**: Standard port scan.
+- **`[deep] 192.168.x.x → combined ...`**: Deep Identity Scan execution (expect 90-140s duration).
+
 ### Automatic Deep Scan & Traffic Capture
 RedAudit automatically attempts a "Deep Scan" on hosts that:
-1.  Appear "quiet" (up but few ports).
-2.  **Match infrastructure patterns** (run specific services like VPN/monitor/proxy), if enabled.
+1.  **Have >8 open ports** or **suspicious services**.
+2.  **Have very few ports (<=3)** or no version info.
 
-- **Deep Scan**: Runs aggressive Nmap flags (`-A -sV -Pn --open`) and UDP scans (`-sSU`) to uncover hidden services.
+- **Deep Scan**: Runs combined Nmap flags (`-A -sV -O -Pn -p- -sSU`) to fingerprint OS and services.
 - **Traffic Capture**: As part of Deep Scan, if `tcpdump` is available, the tool captures a **50-packet snippet** (max 15s) from the host's traffic.
     - Saves `.pcap` files in your report directory.
     - If `tshark` is installed, a text summary of protocols is included in the JSON report.

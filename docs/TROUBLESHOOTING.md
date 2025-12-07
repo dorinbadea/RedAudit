@@ -25,8 +25,14 @@ sudo apt update && sudo apt install -y nmap
 **Symptom**: You see yellow warnings about "Activity Monitor" during a scan.
 **Explanation**: This is normal during heavy Nmap scans (especially `-p-` or `-sV` on slow hosts).
 **Action**: Wait. If it exceeds 300s (5 mins) with no output, verify the target host is not blocking you completely (firewall drop).
+**Note**: The heartbeat message "Fail" now clarifies that Nmap is still running. Do not abort immediately; deep scans on filtered hosts can take time.
 
-### 5. "Missing critical dependencies"
+### 5. "Scans seem to hang" / Slow progress
+**Symptom**: The tool pauses for 1-2 minutes on a single host.
+**Explanation**: RedAudit v2.4 performs **Deep Identity Scans** on complex hosts (combined TCP/UDP/OS fingerprinting).
+- **Duration**: These scans can legitimately take **90–150 seconds** per host.
+- **Why**: Essential for identifying IoT boxes, firewalls, or filtered servers that hide their OS.
+- **Check**: Look for the `[deep]` marker in the CLI output.
 **Symptom**: The script refuses to start.
 **Solution**: Run the installer again to fix missing python libraries:
 ```bash

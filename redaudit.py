@@ -1,111 +1,3 @@
-#!/bin/bash
-# RedAudit - Interactive Network Auditor
-# Copyright (C) 2025  Dorin Badea
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-# RedAudit installer / updater v2.4 (Full core + hardened + deep identity scan)
-
-# 0) Environment checks
-if ! command -v apt >/dev/null 2>&1; then
-    echo "Error: This installer is designed for Debian/Kali systems with 'apt'."
-    exit 1
-fi
-
-if [[ "$EUID" -ne 0 ]]; then
-    echo "Error: This script must be run as root (sudo)."
-    exit 1
-fi
-
-AUTO_YES=false
-if [[ "$1" == "-y" ]]; then AUTO_YES=true; fi
-
-# 1) Language selection
-echo "----------------------------------------------------------------"
-echo " Select Language / Selecciona Idioma"
-echo "----------------------------------------------------------------"
-echo " 1. English"
-echo " 2. Español"
-echo "----------------------------------------------------------------"
-if [[ -n "$2" ]]; then
-    LANG_OPT="$2"
-else
-    read -r -p "Choice/Opción [1/2]: " LANG_OPT
-fi
-
-if [[ "$LANG_OPT" == "2" || "$LANG_OPT" == "es" ]]; then
-    SELECTED_LANG="es"
-    MSG_INSTALL="🔧 Instalando / actualizando RedAudit v2.4..."
-    MSG_OPTIONAL="📦 Opcional: instalar pack de utilidades de red recomendadas:"
-    MSG_ASK_INSTALL="¿Quieres instalarlas ahora? [S/n]: "
-    MSG_SKIP="↩ Saltando instalación de utilidades extra."
-    MSG_EXEC="➡ Ejecutando:"
-    MSG_DONE="✅ Instalación completada."
-    MSG_USAGE="👉 Ejecuta 'redaudit' para iniciar."
-    MSG_APT_ERROR="❌ Error con apt. Revisa tu conexión."
-    MSG_ALIAS_ADDED="ℹ️ Alias 'redaudit' añadido a"
-    MSG_ALIAS_EXISTS="ℹ️ Alias 'redaudit' ya existe en"
-else
-    SELECTED_LANG="en"
-    MSG_INSTALL="🔧 Installing / updating RedAudit v2.4..."
-    MSG_OPTIONAL="📦 Optional: install recommended network utilities pack:"
-    MSG_ASK_INSTALL="Do you want to install them now? [Y/n]: "
-    MSG_SKIP="↩ Skipping extra utilities installation."
-    MSG_EXEC="➡ Executing:"
-    MSG_DONE="✅ Installation completed."
-    MSG_USAGE="👉 Run 'redaudit' to start."
-    MSG_APT_ERROR="❌ Error with apt. Check your connection."
-    MSG_ALIAS_ADDED="ℹ️ Alias 'redaudit' added to"
-    MSG_ALIAS_EXISTS="ℹ️ Alias 'redaudit' already exists in"
-fi
-
-echo "$MSG_INSTALL"
-
-# 2) Dependencies (system packages, no pip)
-EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography"
-
-echo
-echo "$MSG_OPTIONAL"
-echo "   $EXTRA_PKGS"
-
-if $AUTO_YES; then
-    RESP="y"
-else
-    read -r -p "$MSG_ASK_INSTALL" RESP
-fi
-RESP=${RESP,,}
-
-INSTALL_YES=false
-if [[ "$SELECTED_LANG" == "es" ]]; then
-    if [[ -z "$RESP" || "$RESP" =~ ^(s|si|sí|y|yes)$ ]]; then INSTALL_YES=true; fi
-else
-    if [[ -z "$RESP" || "$RESP" =~ ^(y|yes)$ ]]; then INSTALL_YES=true; fi
-fi
-
-if $INSTALL_YES; then
-    echo "$MSG_EXEC apt update && apt install -y $EXTRA_PKGS"
-    if ! apt update || ! apt install -y $EXTRA_PKGS; then
-        echo "$MSG_APT_ERROR"
-        exit 1
-    fi
-else
-    echo "$MSG_SKIP"
-fi
-
-# 3) Generate Python Script (core completo, endurecido)
-TEMP_SCRIPT=$(mktemp)
-cat << 'EOF' > "$TEMP_SCRIPT"
 #!/usr/bin/env python3
 """
 RedAudit - Interactive Network Auditor
@@ -124,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Version 2.4 (Full Toolchain + Heartbeat + Deep Identity Scan + Hardened)
+Version 2.4 (Full Toolchain + Heartbeat + Hardened + Deep Identity Scan)
 """
 
 import sys
@@ -146,7 +38,6 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging.handlers import RotatingFileHandler
 
-# Optional cryptography; installer ensures it's installed, pero el core no peta si falta.
 try:
     from cryptography.fernet import Fernet
     from cryptography.hazmat.primitives import hashes
@@ -157,14 +48,18 @@ except ImportError:  # pragma: no cover
     hashes = None
 
 VERSION = "2.4"
-DEFAULT_LANG = "__LANG__"  # Sustituido por el instalador vía sed
+DEFAULT_LANG = "en"  # Installer may override this placeholder
+
 
 TRANSLATIONS = {
     "en": {
         "interrupted": "\n⚠️  Interruption received. Saving current state...",
         "heartbeat_info": "⏱  Activity Monitor: {} ({}s elapsed)",
         "heartbeat_warn": "⏱  Activity Monitor: {} - No output for {}s (nmap might be busy)",
-        "heartbeat_fail": "⏱  Activity Monitor: {} - No output for {}s. Nmap is still running; this is common on filtered or slow hosts.",
+        "heartbeat_fail": (
+            "⏱  Activity Monitor: {} - Long silence (> {}s). "
+            "Nmap is still running; this is common on filtered or slow hosts."
+        ),
         "verifying_env": "Verifying environment integrity...",
         "detected": "✓ {} detected",
         "nmap_avail": "✓ python-nmap available",
@@ -189,7 +84,7 @@ TRANSLATIONS = {
         "scan_mode": "Scan Mode:",
         "mode_fast": "FAST (Discovery only)",
         "mode_normal": "NORMAL (Discovery + Top Ports)",
-        "mode_full": "FULL (Full Ports + Scripts + Vulns)",
+        "mode_full": "FULL (Full Ports + Scripts + Vulns + Deep Identity Scan)",
         "threads": "Concurrent threads:",
         "vuln_scan_q": "Run web vulnerability analysis?",
         "gen_txt": "Generate additional TXT report?",
@@ -230,12 +125,19 @@ TRANSLATIONS = {
         "rate_limiting": "Enable rate limiting (slower but stealthier)?",
         "rate_delay": "Delay between hosts (seconds):",
         "ports_truncated": "⚠️  {}: {} ports found, showing top 50",
+        "deep_identity_start": "Deep identity scan for {} (strategy: {})",
+        "deep_identity_cmd": "[deep] {} → {} (~{}s estimated)",
+        "deep_identity_done": "Deep identity scan finished for {} in {:.1f}s",
+        "nmap_cmd": "[nmap] {} → {}",
     },
     "es": {
         "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
         "heartbeat_info": "⏱  Monitor de Actividad: {} ({}s transcurridos)",
         "heartbeat_warn": "⏱  Monitor de Actividad: {} - Sin salida hace {}s (nmap puede estar ocupado)",
-        "heartbeat_fail": "⏱  Monitor de Actividad: {} - Sin salida hace {}s. Nmap sigue ejecutándose; esto es habitual en hosts filtrados o lentos.",
+        "heartbeat_fail": (
+            "⏱  Monitor de Actividad: {} - Silencio prolongado (> {}s). "
+            "Nmap sigue ejecutándose; esto es habitual en hosts lentos o filtrados."
+        ),
         "verifying_env": "Verificando integridad del entorno...",
         "detected": "✓ {} detectado",
         "nmap_avail": "✓ python-nmap disponible",
@@ -259,8 +161,8 @@ TRANSLATIONS = {
         "scan_config": "CONFIGURACIÓN DE ESCANEO",
         "scan_mode": "Modo de escaneo:",
         "mode_fast": "RÁPIDO (solo discovery)",
-        "mode_normal": "NORMAL (Discovery + Top Ports)",
-        "mode_full": "COMPLETO (Full Ports + Vulns)",
+        "mode_normal": "NORMAL (Discovery + Puertos principales)",
+        "mode_full": "COMPLETO (Puertos + Scripts + Vulns + Deep Identity Scan)",
         "threads": "Hilos concurrentes:",
         "vuln_scan_q": "¿Ejecutar análisis de vulnerabilidades web?",
         "gen_txt": "¿Generar reporte TXT adicional?",
@@ -301,6 +203,10 @@ TRANSLATIONS = {
         "rate_limiting": "¿Activar limitación de velocidad (más lento pero más sigiloso)?",
         "rate_delay": "Retardo entre hosts (segundos):",
         "ports_truncated": "⚠️  {}: {} puertos encontrados, mostrando los 50 principales",
+        "deep_identity_start": "Deep identity scan para {} (estrategia: {})",
+        "deep_identity_cmd": "[deep] {} → {} (~{}s estimados)",
+        "deep_identity_done": "Deep identity scan finalizado para {} en {:.1f}s",
+        "nmap_cmd": "[nmap] {} → {}",
     },
 }
 
@@ -313,15 +219,9 @@ class InteractiveNetworkAuditor:
         "http", "https", "www", "http-proxy", "ssl/http",
         "ssl/https", "http-alt", "http-admin", "http-connect"
     ]
-    SUSPICIOUS_SERVICES = [
-        "socks",
-        "socks5",
-        "nagios",
-        "nsca",
-        "proxy",
-        "vpn",
-        "tor",
-        "tcpwrapped",
+
+    SUSPICIOUS_SERVICE_KEYWORDS = [
+        "socks", "socks5", "nagios", "nsca", "proxy", "vpn", "tor", "tcpwrapped"
     ]
 
     def __init__(self):
@@ -785,6 +685,7 @@ class InteractiveNetworkAuditor:
         self.logger.info("Discovery on %s", network)
         nm = nmap.PortScanner()
         args = self.get_nmap_arguments("rapido")
+        self.print_status(self.t("nmap_cmd", network, f"nmap {args} {network}"), "INFO")
         try:
             nm.scan(hosts=network, arguments=args)
         except Exception as exc:
@@ -803,94 +704,95 @@ class InteractiveNetworkAuditor:
             return True
         return any(k in n for k in self.WEB_SERVICES_KEYWORDS)
 
+    def _run_nmap_command(self, cmd, timeout, host_ip, strategy_name, estimate_label, deep_obj):
+        """Run a single nmap command, collect output, duration and errors."""
+        self.print_status(self.t("deep_identity_cmd", host_ip, " ".join(cmd), estimate_label), "WARNING")
+        start = time.time()
+        record = {
+            "command": " ".join(cmd),
+        }
+        try:
+            res = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            duration = time.time() - start
+            record["returncode"] = res.returncode
+            record["stdout"] = (res.stdout or "")[:8000]
+            record["stderr"] = (res.stderr or "")[:2000]
+            record["duration_seconds"] = round(duration, 2)
+        except subprocess.TimeoutExpired as exc:
+            duration = time.time() - start
+            record["error"] = f"Timeout after {exc.timeout}s"
+            record["duration_seconds"] = round(duration, 2)
+        except Exception as exc:
+            duration = time.time() - start
+            record["error"] = str(exc)
+            record["duration_seconds"] = round(duration, 2)
+
+        deep_obj.setdefault("commands", []).append(record)
+        return record
+
+    def _combined_output_has_identity(self, records):
+        """Heuristic: has MAC, OS details or device type in stdout/stderr."""
+        needles = ["MAC Address", "OS details", "Device type", "Running:", "OS CPE"]
+        for rec in records:
+            text = (rec.get("stdout") or "") + "\n" + (rec.get("stderr") or "")
+            for n in needles:
+                if n in text:
+                    return True
+        return False
+
     def deep_scan_host(self, host_ip):
-        """Aggressive follow-up scan plus optional traffic capture,
-        tuned for identity / OS fingerprint / vendor."""
+        """Aggressive follow-up scan plus optional traffic capture."""
         safe_ip = self.sanitize_ip(host_ip)
         if not safe_ip:
             return None
 
         self.current_phase = f"deep:{safe_ip}"
-        self.print_status(f"Deep scanning {safe_ip} (identity & OS fingerprint)...", "WARNING")
-
-        def run_cmd(cmd, est_label):
-            info = {"command": " ".join(cmd)}
-            start = time.time()
-            self.print_status(f"[deep] Running: {' '.join(cmd)}", "INFO")
-            self.print_status(f"[deep] Estimated duration: {est_label}", "INFO", update_activity=False)
-            try:
-                res = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=400,  # 400s por comando de deep scan
-                )
-                duration = time.time() - start
-                info.update(
-                    {
-                        "returncode": res.returncode,
-                        "stdout": (res.stdout or "")[:8000],
-                        "stderr": (res.stderr or "")[:2000],
-                        "duration_seconds": round(duration, 1),
-                    }
-                )
-                self.print_status(f"[deep] Completed in {int(duration)}s", "INFO")
-            except subprocess.TimeoutExpired as exc:
-                duration = time.time() - start
-                info.update(
-                    {
-                        "error": f"Timeout after {exc.timeout}s",
-                        "duration_seconds": round(duration, 1),
-                    }
-                )
-                self.print_status(f"[deep] Timeout after {int(duration)}s", "WARNING")
-            except Exception as exc:
-                duration = time.time() - start
-                info.update(
-                    {
-                        "error": str(exc),
-                        "duration_seconds": round(duration, 1),
-                    }
-                )
-                self.print_status(f"[deep] Error after {int(duration)}s: {exc}", "WARNING")
-            return info
-
         deep = {"strategy": "combined", "commands": []}
+        self.print_status(self.t("deep_identity_start", safe_ip, deep["strategy"]), "WARNING")
 
-        combined_cmd = [
-            "nmap",
-            "-A",
-            "-sV",
-            "-O",
-            "-Pn",
-            "-p-",
-            "-sSU",
-            "--version-intensity",
-            "9",
-            safe_ip,
+        # Combined TCP+UDP+OS+version fingerprinting
+        cmd_combined = [
+            "nmap", "-A", "-sV", "-O", "-Pn", "-p-", "-sSU",
+            "--version-intensity", "9", safe_ip
         ]
-        combined_info = run_cmd(combined_cmd, "~90–140s")
-        deep["commands"].append(combined_info)
+        rec = self._run_nmap_command(
+            cmd_combined,
+            timeout=400,
+            host_ip=safe_ip,
+            strategy_name="combined",
+            estimate_label="90–140",
+            deep_obj=deep,
+        )
 
-        stdout_combined = combined_info.get("stdout", "") or ""
-        sufficient = False
-        if (
-            "MAC Address" in stdout_combined
-            or "OS details:" in stdout_combined
-            or "Device type:" in stdout_combined
-        ):
-            sufficient = True
-
-        if not sufficient:
-            deep["strategy"] = "combined+fallback"
-            cmd1 = ["nmap", "-A", "-sV", "-Pn", "-p-", safe_ip]
-            cmd2 = ["nmap", "-O", "-sSU", "-Pn", safe_ip]
-            deep["commands"].append(run_cmd(cmd1, "~60–120s"))
-            deep["commands"].append(run_cmd(cmd2, "~60–120s"))
+        records_for_identity = [rec]
+        if not self._combined_output_has_identity(records_for_identity):
+            # Fallback to separate commands for stubborn hosts
+            deep["strategy"] = "fallback"
+            cmds = [
+                (["nmap", "-A", "-sV", "-Pn", "-p-", safe_ip], "60–120"),
+                (["nmap", "-O", "-sSU", "-Pn", safe_ip], "60–120"),
+            ]
+            for cmd, label in cmds:
+                self._run_nmap_command(
+                    cmd,
+                    timeout=300,
+                    host_ip=safe_ip,
+                    strategy_name="fallback",
+                    estimate_label=label,
+                    deep_obj=deep,
+                )
 
         pcap_info = self.capture_traffic_snippet(safe_ip)
         if pcap_info:
             deep["pcap_capture"] = pcap_info
+
+        last_dur = deep["commands"][-1].get("duration_seconds", 0.0)
+        self.print_status(self.t("deep_identity_done", safe_ip, last_dur), "OKGREEN")
         return deep
 
     def capture_traffic_snippet(self, host_ip, duration=15):
@@ -902,13 +804,11 @@ class InteractiveNetworkAuditor:
         if not safe_ip:
             return None
 
-        # Validar duración (defensa frente a parámetros abusivos)
         if not isinstance(duration, (int, float)) or duration <= 0 or duration > 120:
             if self.logger:
                 self.logger.warning("Invalid capture duration %s, using default 15s", duration)
             duration = 15
 
-        # pick interface heurísticamente: primera red que contenga la IP
         iface = None
         try:
             ip_obj = ipaddress.ip_address(safe_ip)
@@ -1099,7 +999,7 @@ class InteractiveNetworkAuditor:
         nm = nmap.PortScanner()
         args = self.get_nmap_arguments(self.config["scan_mode"])
         self.logger.debug("Nmap scan %s %s", safe_ip, args)
-        self.print_status(f"[nmap] {safe_ip} → nmap {args} {safe_ip}", "INFO")
+        self.print_status(self.t("nmap_cmd", safe_ip, f"nmap {args} {safe_ip}"), "INFO")
         try:
             nm.scan(safe_ip, arguments=args)
             if safe_ip not in nm.all_hosts():
@@ -1116,23 +1016,25 @@ class InteractiveNetworkAuditor:
 
             ports = []
             web_count = 0
-            suspicious_flag = False
-            no_version_info = True
+            suspicious = False
+            any_version = False
 
             for proto in data.all_protocols():
                 for p in data[proto]:
                     svc = data[proto][p]
-                    name = svc.get("name", "")
-                    product = svc.get("product", "")
-                    version = svc.get("version", "")
-                    if product or version:
-                        no_version_info = False
-                    lower_name = (name or "").lower()
-                    if any(s in lower_name for s in self.SUSPICIOUS_SERVICES):
-                        suspicious_flag = True
+                    name = svc.get("name", "") or ""
+                    product = svc.get("product", "") or ""
+                    version = svc.get("version", "") or ""
                     is_web = self.is_web_service(name)
                     if is_web:
                         web_count += 1
+
+                    lname = name.lower()
+                    if any(k in lname for k in self.SUSPICIOUS_SERVICE_KEYWORDS):
+                        suspicious = True
+                    if product or version:
+                        any_version = True
+
                     ports.append(
                         {
                             "port": p,
@@ -1160,22 +1062,18 @@ class InteractiveNetworkAuditor:
                 "total_ports_found": total_ports,
             }
 
-            # Criterios para activar Deep Scan:
-            # - Más de 8 puertos abiertos
-            # - Servicios sospechosos (socks5, nagios, proxy, tcpwrapped, etc.)
-            # - Pocos puertos (≤3)
-            # - Ningún puerto con product/version
-            need_deep = False
+            # Heuristics for deep identity scan
+            trigger_deep = False
             if total_ports > 8:
-                need_deep = True
-            elif suspicious_flag:
-                need_deep = True
-            elif total_ports <= 3:
-                need_deep = True
-            elif no_version_info and total_ports > 0:
-                need_deep = True
+                trigger_deep = True
+            if suspicious:
+                trigger_deep = True
+            if total_ports <= 3:
+                trigger_deep = True
+            if total_ports > 0 and not any_version:
+                trigger_deep = True
 
-            if need_deep:
+            if trigger_deep:
                 deep = self.deep_scan_host(safe_ip)
                 if deep:
                     host_record["deep_scan"] = deep
@@ -1383,12 +1281,6 @@ class InteractiveNetworkAuditor:
                 lines.append("    " + h["dns"]["whois_summary"].replace("\n", "\n    ") + "\n")
             if h.get("deep_scan"):
                 lines.append("  Deep scan data present.\n")
-                for cmd_info in h["deep_scan"].get("commands", []):
-                    lines.append(f"    Command: {cmd_info.get('command','')}\n")
-                    if "duration_seconds" in cmd_info:
-                        lines.append(f"    Duration: {cmd_info['duration_seconds']}s\n")
-                    if cmd_info.get("error"):
-                        lines.append(f"    Error: {cmd_info['error']}\n")
             lines.append("\n")
 
         if self.results.get("vulnerabilities"):
@@ -1493,7 +1385,7 @@ class InteractiveNetworkAuditor:
    / __ \\___  ___| |  {self.COLORS['BOLD']}{self.COLORS['HEADER']}/ \\  _   _  __| (_) |_{self.COLORS['ENDC']}{self.COLORS['FAIL']}
   / /_/ / _ \\/ __| | {self.COLORS['BOLD']}{self.COLORS['HEADER']}/ _ \\| | | |/ _` | | __|{self.COLORS['ENDC']}{self.COLORS['FAIL']}
  / _, _/  __/ (__| |{self.COLORS['BOLD']}{self.COLORS['HEADER']}/ ___ \\ |_| | (_| | | |_{self.COLORS['ENDC']}{self.COLORS['FAIL']}
-/_/ |_|\\___|\\___|_|{self.COLORS['BOLD']}{self.COLORS['HEADER']}/_/   \\_\\__,_|\\__,_|_|\\__|{self.COLORS['ENDC']}
+ /_/ |_|\\___|\\___|_|{self.COLORS['BOLD']}{self.COLORS['HEADER']}/_/   \\_\\__,_|\\__,_|_|\\__|{self.COLORS['ENDC']}
                                       {self.COLORS['CYAN']}v{VERSION}{self.COLORS['ENDC']}
 {self.COLORS['OKBLUE']}══════════════════════════════════════════════════════{self.COLORS['ENDC']}
 {self.COLORS['BOLD']}{subtitle}{self.COLORS['ENDC']}
@@ -1624,33 +1516,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-EOF
-
-# Inject selected language
-sed -i "s/__LANG__/$SELECTED_LANG/g" "$TEMP_SCRIPT"
-
-# Install to /usr/local/bin
-mv "$TEMP_SCRIPT" /usr/local/bin/redaudit
-chown root:root /usr/local/bin/redaudit
-chmod 755 /usr/local/bin/redaudit
-
-# 4) Alias setup
-REAL_USER=${SUDO_USER:-$USER}
-if [ -n "$REAL_USER" ]; then
-    REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
-    USER_SHELL=$(getent passwd "$REAL_USER" | cut -d: -f7)
-    RC_FILE="$REAL_HOME/.bashrc"
-    [[ "$USER_SHELL" == *"zsh"* ]] && RC_FILE="$REAL_HOME/.zshrc"
-
-    if ! grep -q "alias redaudit=" "$RC_FILE" 2>/dev/null; then
-        echo "alias redaudit='sudo /usr/local/bin/redaudit'" >> "$RC_FILE"
-        chown "$REAL_USER" "$RC_FILE"
-        echo "$MSG_ALIAS_ADDED $RC_FILE"
-    else
-        echo "$MSG_ALIAS_EXISTS $RC_FILE"
-    fi
-fi
-
-echo
-echo "$MSG_DONE"
-echo "$MSG_USAGE"

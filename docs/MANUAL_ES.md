@@ -1,6 +1,6 @@
 # Manual de Usuario de RedAudit
 
-**Versión**: 2.3
+**Versión**: 2.4
 **Fecha**: 2025-05-20
 **Nivel Objetivo**: Pentester Profesional / SysAdmin
 
@@ -60,7 +60,7 @@ Ejecuta `redaudit` para iniciar el asistente interactivo.
 ? Select scan mode: NORMAL
 ? Enter number of threads [1-16]: 6
 ? Enable Web Vulnerability scans? [y/N]: y
-? ¿Escanear en profundidad los hosts de infraestructura o 'raros'...? [S/n]: s
+? Enable Web Vulnerability scans? [y/N]: y
 ? Encrypt reports with password? [y/N]: y
 ```
 
@@ -97,12 +97,15 @@ RedAudit trata los datos de los reportes como material sensible.
 ## 6. Lógica de Escaneo
 1.  **Descubrimiento**: Barrido ICMP Echo (`-PE`) + ARP (`-PR`) para mapear hosts vivos.
 2.  **Enumeración**: Escaneos Nmap paralelos basados en el modo.
-3.  **Deep Scan Automático**:
-    - **Disparadores**:
-        1.  **Datos Limitados**: El host responde pero devuelve información mínima o confusa.
-        2.  **Heurística de Infraestructura**: El host tiene pocos puertos y ejecuta servicios típicos de infraestructura (VPN, proxy, Nagios, SNMP), *si se activó* esta opción.
-    - **Acción**: Lanza flags agresivos (`-A -p-`) y UDP (`-sU`) para penetrar firewalls o hallar servicios ocultos.
-    - **Resultado**: Se guarda en `host.deep_scan`, incluyendo la salida de comandos.
+3.  **Deep Identity Scan (Automático)**:
+    - **Disparadores**: Se activa automáticamente si:
+        - El host tiene **>8 puertos abiertos**.
+        - Detecta **servicios sospechosos** (ej: `vpn`, `proxy`, `nagios`, `socks`).
+        - El host tiene **muy pocos puertos (<=3)** o sin info de versión (posible ofuscación).
+    - **Acción**:
+        - Ejecuta una estrategia combinada: `nmap -A -sV -O -Pn -p- -sSU`.
+        - Si no logra identificar el SO, recurre a escaneos agresivos por separado.
+    - **Resultado**: Datos guardados en `host.deep_scan`, incluyendo logs exactos, duración y salida.
 
 4.  **Captura de Tráfico**:
     - Como parte del proceso de **Deep Scan**, si `tcpdump` está presente, captura un fragmento (50 paquetes/15s) del tráfico del host.
@@ -128,7 +131,8 @@ Los escaneos largos (ej: rangos de puertos completos en redes lentas) pueden par
 - **Estados**:
     - **Activo**: Actividad < hace 60s. Sin salida.
     - **Ocupado**: Actividad < hace 300s. Log de advertencia.
-    - **Congelado**: Actividad > hace 300s. Advertencia en consola ("Zombie scan?").
+    - **Silencioso**: Actividad > hace 300s. Advertencia en consola.
+        - *Nota*: Un fallo de heartbeat NO significa que el escaneo murió. A menudo indica que Nmap está trabajando duro en un host lento o filtrado.
 - **Logs**: Revisa `~/.redaudit/logs/` para depuración detallada.
 
 ## 9. Script de Verificación

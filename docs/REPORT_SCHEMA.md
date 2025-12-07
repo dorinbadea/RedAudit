@@ -51,17 +51,21 @@ Represents a single discovered device.
     "nikto": "summary of vulnerabilities..."
   },
   "deep_scan": {
+    "strategy": "combined",
     "commands": [
       {
-        "command": "nmap -A -sV -Pn -p- --open 192.168.1.10",
+        "command": "nmap -A -sV -O -Pn -p- -sSU ...",
         "returncode": 0,
-        "stdout": "..."
+        "stdout": "...",
+        "stderr": "",
+        "duration_seconds": 105.2
       }
     ],
     "pcap_capture": {
       "pcap_file": "/abspath/to/traffic_192_168_1_10_TIMESTAMP.pcap",
       "iface": "eth0",
-      "tshark_summary": "Active protocols: TCP(90%), UDP(10%)..."
+      "tshark_summary": "Active protocols: TCP(90%), UDP(10%)...",
+      "tshark_error": null
     }
   }
 }
@@ -72,7 +76,10 @@ This field appears only if automatic deep scan was triggered.
 
 | Field | Type | Description |
 |---|---|---|
-| `commands` | array | List of executed Nmap commands and their outputs |
+| `strategy` | string | Strategy used ("combined" or "fallback") |
+| `commands` | array | List of executed Nmap commands, logs, and durations |
+| `commands[].command` | string | Full command line executed |
+| `commands[].duration_seconds` | float | Execution time in seconds |
 | `pcap_capture` | object | Details about the micro-traffic capture |
 | `pcap_capture.pcap_file` | string | Absolute path to the generated .pcap file |
 | `pcap_capture.tshark_summary` | string | (Optional) High-level protocol stats if tshark is installed |
