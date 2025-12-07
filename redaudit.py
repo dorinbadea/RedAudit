@@ -73,6 +73,7 @@ TRANSLATIONS = {
         "nmap_missing": "python-nmap library not found. Please install the system package 'python3-nmap' via apt.",
         "missing_crit": "Error: missing critical dependencies: {}",
         "missing_opt": "Warning: missing optional tools: {} (reduced web/traffic features)",
+        "crypto_missing": "cryptography library not available. Report encryption disabled.",
         "avail_at": "✓ {} available at {}",
         "not_found": "{} not found (automatic usage skipped)",
         "ask_yes_no_opts": " (Y/n)",
@@ -154,6 +155,7 @@ TRANSLATIONS = {
         "nmap_missing": "Librería python-nmap no encontrada. Instala el paquete de sistema 'python3-nmap' vía apt.",
         "missing_crit": "Error: faltan dependencias críticas: {}",
         "missing_opt": "Aviso: faltan herramientas opcionales: {} (menos funciones web/tráfico)",
+        "crypto_missing": "Librería cryptography no disponible. El cifrado de reportes queda deshabilitado.",
         "avail_at": "✓ {} disponible en {}",
         "not_found": "{} no encontrado (se omitirá su uso automático)",
         "ask_yes_no_opts": " (S/n)",
@@ -260,6 +262,7 @@ class InteractiveNetworkAuditor:
 
         self.encryption_enabled = False
         self.encryption_key = None
+        self.cryptography_available = Fernet is not None and PBKDF2HMAC is not None
         self.rate_limit_delay = 0.0
         self.extra_tools = {}
         self.cryptography_available = Fernet is not None and PBKDF2HMAC is not None
@@ -350,31 +353,34 @@ class InteractiveNetworkAuditor:
 
     def _setup_logging(self):
         log_dir = os.path.expanduser("~/.redaudit/logs")
-        try:
-            os.makedirs(log_dir, exist_ok=True)
-        except OSError:
-            return
-
-        log_file = os.path.join(log_dir, f"redaudit_{datetime.now().strftime('%Y%m%d')}.log")
         logger = logging.getLogger("RedAudit")
         logger.setLevel(logging.DEBUG)
 
-        fmt = logging.Formatter(
-            "%(asctime)s - [%(levelname)s] - %(funcName)s:%(lineno)d - %(message)s"
-        )
-        fh = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)
-        fh.setFormatter(fmt)
-        fh.setLevel(logging.DEBUG)
+        file_handler = None
+        try:
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, f"redaudit_{datetime.now().strftime('%Y%m%d')}.log")
+            fmt = logging.Formatter(
+                "%(asctime)s - [%(levelname)s] - %(funcName)s:%(lineno)d - %(message)s"
+            )
+            file_handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)
+            file_handler.setFormatter(fmt)
+            file_handler.setLevel(logging.DEBUG)
+        except Exception:
+            file_handler = None
 
         ch = logging.StreamHandler()
         ch.setLevel(logging.ERROR)
         ch.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
 
         if not logger.handlers:
-            logger.addHandler(fh)
+            if file_handler:
+                logger.addHandler(file_handler)
             logger.addHandler(ch)
 
         self.logger = logger
+        if file_handler is None:
+            logger.warning("File logging disabled (permission or path issue)")
         logger.info("=" * 60)
         logger.info("RedAudit session start")
         logger.info("User: %s", os.getenv("SUDO_USER", os.getenv("USER", "unknown")))
@@ -471,6 +477,7 @@ class InteractiveNetworkAuditor:
         """
         if not self.cryptography_available:
             # Don't even ask if cryptography is not available
+            self.print_status(self.t("crypto_missing"), "WARNING")
             if non_interactive:
                 self.print_status(self.t("cryptography_required"), "FAIL")
             return
@@ -479,10 +486,6 @@ class InteractiveNetworkAuditor:
         if not non_interactive:
             if self.ask_yes_no(self.t("encrypt_reports"), default="no"):
                 # Double-check availability before asking for password
-                if not self.cryptography_available:
-                    self.print_status(self.t("cryptography_required"), "FAIL")
-                    return
-                
                 try:
                     pwd = self.ask_password_twice(self.t("encryption_password"))
                     key, salt = self.derive_key_from_password(pwd)
@@ -541,12 +544,10 @@ class InteractiveNetworkAuditor:
             self.print_status(self.t("nmap_missing"), "FAIL")
             return False
 
-        # Check cryptography (required for encryption)
-        if Fernet is None or PBKDF2HMAC is None:
-            self.print_status(self.t("cryptography_missing"), "WARNING")
-            self.cryptography_available = False
-        else:
-            self.cryptography_available = True
+        # cryptography is optional (only needed for encrypted reports)
+        self.cryptography_available = Fernet is not None and PBKDF2HMAC is not None
+        if not self.cryptography_available:
+            self.print_status(self.t("crypto_missing"), "WARNING")
 
         tools = [
             "whatweb",

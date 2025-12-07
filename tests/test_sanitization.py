@@ -22,6 +22,8 @@ Enhanced tests for RedAudit input sanitization.
 import re
 import ipaddress
 
+MAX_INPUT_LENGTH = 1024
+
 
 class InteractiveNetworkAuditor:
     """Mock class mimicking sanitizer behaviour."""
@@ -34,6 +36,8 @@ class InteractiveNetworkAuditor:
             return None
         ip_str = ip_str.strip()
         if not ip_str:
+            return None
+        if len(ip_str) > MAX_INPUT_LENGTH:
             return None
         try:
             ipaddress.ip_address(ip_str)
@@ -49,6 +53,8 @@ class InteractiveNetworkAuditor:
             return None
         hostname = hostname.strip()
         if not hostname:
+            return None
+        if len(hostname) > MAX_INPUT_LENGTH:
             return None
         if re.match(r"^[a-zA-Z0-9\.\-]+$", hostname):
             return hostname
@@ -123,7 +129,7 @@ def test_edge_cases():
 
     long_string = "a" * 10000
     assert InteractiveNetworkAuditor.sanitize_ip(long_string) is None
-    assert InteractiveNetworkAuditor.sanitize_hostname(long_string) == long_string
+    assert InteractiveNetworkAuditor.sanitize_hostname(long_string) is None
 
     print("✅ All edge case tests passed")
 
