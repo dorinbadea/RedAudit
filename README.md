@@ -29,6 +29,7 @@ Unlike simple wrapper scripts, RedAudit manages concurrency, data aggregation, a
     - **NORMAL**: Top ports + Service Versioning (`-sV`).
     - **FULL**: All ports, OS detection (`-O`), Scripts (`-sC`), and Web Vuln scans.
 - **Auto Deep Scan**: Automatically triggers aggressive scans (`-A -p- -sV`) and UDP probing on "quiet" hosts.
+- **Deep Identity Scan**: Heuristic-based enhanced scanning for infrastructure/unusual hosts (VPNs, proxies, monitoring systems).
 - **Traffic Analysis**: Optional micro-captures (`tcpdump`) for active analysis of target behavior.
 - **Web Recon**: Integrates `whatweb`, `nikto`, `curl`, and `openssl` for web-facing services.
 - **Resilience**: Background heartbeat monitor prevents silent freezes during long scans.
@@ -102,6 +103,12 @@ Controlled by the `rate_limit_delay` parameter.
     - **0s**: Max speed. Best for CTFs or labs.
     - **1-5s**: Balanced. Recommended for internal audits to avoid simple rate-limiter triggers.
     - **>5s**: Paranoid/Conservative. Use for sensitive production environments.
+
+### Infrastructure hosts deep scan
+RedAudit can optionally apply a "Deep Identity Scan" to hosts that match specific heuristics (few ports + infrastructure keywords like `nagios`, `vpn`, `proxy`).
+- **Trigger**: Enabled via the interactive wizard.
+- **Action**: Aggressive Nmap scan + short `tcpdump` traffic capture.
+- **Output**: Results stored in `host.deep_scan`, including potential `.pcap` files.
 
 ## 8. 🔐 Reports, Encryption & Decryption
 Reports are saved to `~/RedAuditReports` (default) with timestamps.

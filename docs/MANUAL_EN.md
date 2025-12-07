@@ -60,6 +60,7 @@ Run `redaudit` to start the interactive wizard.
 ? Select scan mode: NORMAL
 ? Enter number of threads [1-16]: 6
 ? Enable Web Vulnerability scans? [y/N]: y
+? Deep-scan unusual infrastructure hosts when suspicious ports/services are found? [Y/n]: y
 ? Encrypt reports with password? [y/N]: y
 ```
 
@@ -97,10 +98,17 @@ RedAudit treats report data as sensitive sensitive material.
 1.  **Discovery**: ICMP Echo (`-PE`) + ARP (`-PR`) sweep to map live hosts.
 2.  **Enumeration**: Parallel Nmap scans based on mode.
 3.  **Automatic Deep Scan**:
-    - Triggered if a host is alive but returns minimal/confusing data.
-    - Launches aggressive flags (`-A -p-`) and UDP (`-sU`) to penetrate local firewalls or find non-standard services.
+    - **Triggers**:
+        1.  **Limited Data**: The host is alive but returns minimal or confusing data.
+        2.  **Infrastructure Heuristic**: The host has few open ports and runs services typical of infrastructure (e.g., VPN, proxy, Nagios, SNMP), *if enabled* in setup.
+    - **Action**: Launches aggressive flags (`-A -p-`) and UDP (`-sU`) to penetrate local firewalls or find non-standard services.
+    - **Result**: Data is stored in `host.deep_scan`, including command output.
+
 4.  **Traffic Capture**:
-    - If `tcpdump` is present, captures a small snippet (50 packets/15s) to analyze traffic patterns (useful for detecting beacons).
+    - As part of the **Deep Scan** process, if `tcpdump` is present, RedAudit captures a small snippet (50 packets/15s) from the host's traffic.
+    - **Output**:
+        - Saves `.pcap` files in your report directory (e.g., `traffic_192.168.1.1.pcap`).
+        - If `tshark` is installed, a text summary is embedded in `host.deep_scan.pcap_capture`.
 
 ## 7. Decryption Guide
 Encrypted reports (`.json.enc`, `.txt.enc`) are unreadable without the password and the `.salt` file.

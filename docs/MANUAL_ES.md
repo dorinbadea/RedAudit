@@ -60,6 +60,7 @@ Ejecuta `redaudit` para iniciar el asistente interactivo.
 ? Select scan mode: NORMAL
 ? Enter number of threads [1-16]: 6
 ? Enable Web Vulnerability scans? [y/N]: y
+? ¿Escanear en profundidad los hosts de infraestructura o 'raros'...? [S/n]: s
 ? Encrypt reports with password? [y/N]: y
 ```
 
@@ -97,10 +98,17 @@ RedAudit trata los datos de los reportes como material sensible.
 1.  **Descubrimiento**: Barrido ICMP Echo (`-PE`) + ARP (`-PR`) para mapear hosts vivos.
 2.  **Enumeración**: Escaneos Nmap paralelos basados en el modo.
 3.  **Deep Scan Automático**:
-    - Se dispara si un host está vivo pero devuelve datos mínimos/confusos.
-    - Lanza flags agresivos (`-A -p-`) y UDP (`-sU`) para penetrar firewalls locales o encontrar servicios no estándar.
+    - **Disparadores**:
+        1.  **Datos Limitados**: El host responde pero devuelve información mínima o confusa.
+        2.  **Heurística de Infraestructura**: El host tiene pocos puertos y ejecuta servicios típicos de infraestructura (VPN, proxy, Nagios, SNMP), *si se activó* esta opción.
+    - **Acción**: Lanza flags agresivos (`-A -p-`) y UDP (`-sU`) para penetrar firewalls o hallar servicios ocultos.
+    - **Resultado**: Se guarda en `host.deep_scan`, incluyendo la salida de comandos.
+
 4.  **Captura de Tráfico**:
-    - Si `tcpdump` está presente, captura un pequeño fragmento (50 paquetes/15s) para analizar patrones de tráfico (útil para detectar beacons).
+    - Como parte del proceso de **Deep Scan**, si `tcpdump` está presente, captura un fragmento (50 paquetes/15s) del tráfico del host.
+    - **Salida**:
+        - Guarda archivos `.pcap` en el directorio de reportes.
+        - Si `tshark` está instalado, incrusta un resumen de texto en `host.deep_scan.pcap_capture`.
 
 ## 7. Guía de Descifrado
 Los reportes cifrados (`.json.enc`, `.txt.enc`) son ilegibles sin la contraseña y el archivo `.salt`.

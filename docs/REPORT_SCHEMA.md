@@ -50,12 +50,32 @@ Represents a single discovered device.
     "whatweb": "summary of technologies...",
     "nikto": "summary of vulnerabilities..."
   },
-  "traffic_sample": {
-    "pcap_file": "redaudit_192_168_1_10_TIMESTAMP.pcap",
-    "packet_count": 50
+  "deep_scan": {
+    "commands": [
+      {
+        "command": "nmap -A -sV -Pn -p- --open 192.168.1.10",
+        "returncode": 0,
+        "stdout": "..."
+      }
+    ],
+    "pcap_capture": {
+      "pcap_file": "/abspath/to/traffic_192_168_1_10_TIMESTAMP.pcap",
+      "iface": "eth0",
+      "tshark_summary": "Active protocols: TCP(90%), UDP(10%)..."
+    }
   }
 }
 ```
+
+### Deep Scan Object (Optional)
+This field appears only if automatic deep scan was triggered.
+
+| Field | Type | Description |
+|---|---|---|
+| `commands` | array | List of executed Nmap commands and their outputs |
+| `pcap_capture` | object | Details about the micro-traffic capture |
+| `pcap_capture.pcap_file` | string | Absolute path to the generated .pcap file |
+| `pcap_capture.tshark_summary` | string | (Optional) High-level protocol stats if tshark is installed |
 
 ## Scan Summary Object
 

@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# RedAudit installer / updater v2.3 (Full core + hardened)
+# RedAudit installer / updater v2.3 (Full core + hardened + infra deep-ID)
 
 # 0) Environment checks
 if ! command -v apt >/dev/null 2>&1; then
@@ -124,7 +124,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Version 2.3 (Full Toolchain + Heartbeat + Hardened)
+Version 2.3 (Full Toolchain + Heartbeat + Hardened + Infra Deep-ID)
 """
 
 import sys
@@ -230,6 +230,8 @@ TRANSLATIONS = {
         "rate_limiting": "Enable rate limiting (slower but stealthier)?",
         "rate_delay": "Delay between hosts (seconds):",
         "ports_truncated": "⚠️  {}: {} ports found, showing top 50",
+        "deep_id_scan": "Deep-scan unusual infrastructure hosts when suspicious ports/services are found?",
+        "deep_id_scan_trigger": "Host {} identified as infrastructure/unusual. Running extended fingerprinting.",
     },
     "es": {
         "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
@@ -301,6 +303,8 @@ TRANSLATIONS = {
         "rate_limiting": "¿Activar limitación de velocidad (más lento pero más sigiloso)?",
         "rate_delay": "Retardo entre hosts (segundos):",
         "ports_truncated": "⚠️  {}: {} puertos encontrados, mostrando los 50 principales",
+        "deep_id_scan": "¿Escanear en profundidad los hosts de infraestructura o 'raros' cuando se detecten puertos/servicios sospechosos?",
+        "deep_id_scan_trigger": "Host {} identificado como infraestructura/inhabitual. Ejecutando fingerprinting extendido.",
     },
 }
 
@@ -334,6 +338,7 @@ class InteractiveNetworkAuditor:
             "scan_vulnerabilities": True,
             "save_txt_report": True,
             "encryption_salt": None,
+            "deep_id_scan": True,
         }
 
         self.encryption_enabled = False
@@ -842,6 +847,44 @@ class InteractiveNetworkAuditor:
             deep["pcap_capture"] = pcap_info
         return deep
 
+    def should_escalate_to_deep_scan(self, host_record):
+        """
+        Decide whether to run an extended deep scan for an 'odd' infrastructure host.
+
+        Objetivo: detectar cajas de monitorización, appliances, VPN, proxies
+        o dispositivos similares que responden muy poco pero están vivos.
+        """
+        if not self.config.get("deep_id_scan", True):
+            return False
+
+        if host_record.get("status") != "up":
+            return False
+
+        total_ports = host_record.get("total_ports_found", 0) or 0
+        if total_ports == 0:
+            return False
+
+        web_count = host_record.get("web_ports_count", 0) or 0
+        ports = host_record.get("ports", []) or []
+
+        infra_keywords = (
+            "nagios",
+            "zabbix",
+            "vpn",
+            "proxy",
+            "monitor",
+            "snmp",
+            "printer",
+        )
+
+        if 0 < total_ports <= 8 and web_count == 0:
+            for p in ports:
+                svc = (p.get("service") or "").lower()
+                if any(k in svc for k in infra_keywords):
+                    return True
+
+        return False
+
     def capture_traffic_snippet(self, host_ip, duration=15):
         """Small PCAP capture with tcpdump + optional tshark summary."""
         if not self.extra_tools.get("tcpdump"):
@@ -851,13 +894,11 @@ class InteractiveNetworkAuditor:
         if not safe_ip:
             return None
 
-        # Validar duración (defensa frente a parámetros abusivos)
         if not isinstance(duration, (int, float)) or duration <= 0 or duration > 120:
             if self.logger:
                 self.logger.warning("Invalid capture duration %s, using default 15s", duration)
             duration = 15
 
-        # pick interface heurísticamente: primera red que contenga la IP
         iface = None
         try:
             ip_obj = ipaddress.ip_address(safe_ip)
@@ -1100,7 +1141,14 @@ class InteractiveNetworkAuditor:
                 "total_ports_found": total_ports,
             }
 
+            trigger_deep = False
             if total_ports <= 3:
+                trigger_deep = True
+            elif self.should_escalate_to_deep_scan(host_record):
+                trigger_deep = True
+                self.print_status(self.t("deep_id_scan_trigger", safe_ip), "WARNING")
+
+            if trigger_deep:
                 deep = self.deep_scan_host(safe_ip)
                 if deep:
                     host_record["deep_scan"] = deep
@@ -1455,6 +1503,7 @@ class InteractiveNetworkAuditor:
             self.rate_limit_delay = float(delay)
 
         self.config["scan_vulnerabilities"] = self.ask_yes_no(self.t("vuln_scan_q"), default="yes")
+        self.config["deep_id_scan"] = self.ask_yes_no(self.t("deep_id_scan"), default="yes")
 
         default_reports = os.path.expanduser("~/RedAuditReports")
         out_dir = input(
