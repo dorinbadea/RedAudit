@@ -7,14 +7,14 @@
 
   <br>
 
-  ![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square)
+  [![Version](https://img.shields.io/badge/version-2.5-blue.svg)](https://github.com/dorinbadea/RedAudit)
   ![Python](https://img.shields.io/badge/python-3.8%2B-blue?style=flat-square)
   ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 </div>
 
 <br>
 
-# RedAudit v2.5
+# 🦅 RedAudit v2.5
 
 ## 1. 📋 Overview
 **RedAudit** is an interactive, automated network auditing tool designed for **Kali Linux** and Debian-based systems. It streamlines the reconnaissance process by combining network discovery, port scanning, and vulnerability assessment into a single, cohesive CLI workflow.

@@ -1,6 +1,6 @@
-# Propuestas de Mejora (Non-Binding)
+# Roadmap Futuro (Post v2.5)
 
-Este documento recoge sugerencias arquitectónicas para futuras versiones, sin alterar el núcleo actual (v2.5).
+Este documento recoge sugerencias arquitectónicas# Roadmap Futuro (Post v2.5)ersiones, sin alterar el núcleo actual (v2.5).
 *Nota: Cualquier propuesta implementada debe cumplir con la licencia GPLv3.*
 
 ## 1. Desacoplar el código Python

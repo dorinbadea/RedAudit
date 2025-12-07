@@ -39,10 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **File Permissions**: All generated reports use secure permissions (0o600)
 - **Error Handling**: Better exception handling prevents information leakage
 
-## [2.4.0] - 2025-05-21 (Adaptive Deep Scan)
+## [2.5.0] - 2025-05-21 (Adaptive Deep Scan)
 
 ### Added
-- **Adaptive Deep Scan**: Intelligent 2-phase engine (`TCP Aggressive` -> `UDP/OS Fallback`) to maximize speed and data.
+- **Adaptive Deep Scan (v2.5)**: Implemented a smart 2-phase strategy (Aggressive TCP first -> UDP+OS fallback).`) to maximize speed and data.
 - **Vendor/MAC Detection**: Native regex parsing to extract hardware vendor from Nmap output.
 - **Installer**: Refactored `redaudit_install.sh` to specific clean copy operations without embedded Python code.
 

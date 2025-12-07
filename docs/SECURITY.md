@@ -1,6 +1,5 @@
 # Security Architecture & Hardening
-
-RedAudit v2.5 is built with a "Secure by Design" philosophy, assuming execution in hostile or untrusted environments.
+The security of **RedAudit v2.5** is a priority. This document describes the security policies, architecture, and philosophy, assuming execution in hostile or untrusted environments.
 
 ## 1. Input Sanitization & Safety (Enhanced in v2.5)
 All external inputs—target ranges, hostnames, interface names—are treated as untrusted.

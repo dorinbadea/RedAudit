@@ -33,7 +33,7 @@ Represents a single discovered device.
       "protocol": "tcp",
       "service": "http",
       "product": "Apache",
-      "version": "2.5.0",
+      "version": "2.5",
       "is_web_service": true
     }
   ],

@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Version 2.5 (Full Toolchain + Heartbeat + Hardened + Deep Identity Scan + Non-Interactive Mode)
+Version 2.5 (Full Toolchain + Heartbeat + Hardened + Adaptive Deep Scan)
 """
 
 import sys
