@@ -40,7 +40,7 @@ RedAudit es un framework de reconocimiento automatizado diseñado para agilizar 
 RedAudit usa un script instalador consolidado que gestiona dependencias (apt) y configuración.
 
 ```bash
-git clone https://github.com/dorinbad/RedAudit.git
+git clone https://github.com/dorinbadea/RedAudit.git
 cd RedAudit
 sudo bash redaudit_install.sh
 source ~/.bashrc  # Activa el alias

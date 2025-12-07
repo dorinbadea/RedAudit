@@ -63,7 +63,7 @@ The installer handles dependencies and setup automatically.
 
 ```bash
 # 1. Clone Repository
-git clone https://github.com/dorinbad/RedAudit.git
+git clone https://github.com/dorinbadea/RedAudit.git
 cd RedAudit
 
 # 2. Run Installer (Interactive)

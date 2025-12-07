@@ -63,7 +63,7 @@ El instalador gestiona las dependencias y la configuración automáticamente.
 
 ```bash
 # 1. Clonar Repositorio
-git clone https://github.com/dorinbad/RedAudit.git
+git clone https://github.com/dorinbadea/RedAudit.git
 cd RedAudit
 
 # 2. Ejecutar Instalador (Interactivo)
