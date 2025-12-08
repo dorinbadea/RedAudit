@@ -231,12 +231,7 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for detailed fixes.
 - **"Cryptography missing"**: Run `sudo apt install python3-cryptography`.
 - **"Scan frozen"**: Check `~/.redaudit/logs/` or reduce `rate_limit_delay`.
 
-## 13. Legal Notice
-
-**RedAudit** is a security tool for **authorized auditing only**.
-Scanning networks without permission is illegal. By using this tool, you accept full responsibility for your actions and agree to use it only on systems you own or have explicit authorization to test.
-
-## 14. Changelog (v2.6 Summary)
+## 13. Changelog (v2.6 Summary)
 
 - **Modular Architecture**: Refactored monolithic script into organized package structure (8 modules)
 - **CI/CD Pipeline**: GitHub Actions workflow for automated testing (Python 3.9-3.12)
@@ -253,12 +248,12 @@ Scanning networks without permission is illegal. By using this tool, you accept 
 
 For detailed changelog, see [CHANGELOG.md](CHANGELOG.md)
 
-## 15. License
+## 14. License
 
 RedAudit is released under the **GNU General Public License v3.0 (GPLv3)**.  
 See the [LICENSE](LICENSE) file for the full text and terms.
 
-## 16. Internals & Glossary (Why RedAudit behaves this way)
+## 15. Internals & Glossary (Why RedAudit behaves this way)
 
 ### Thread pool (`threads`)
 
@@ -277,12 +272,17 @@ This trades raw speed for stability and stealth during long operations.
 ### Heartbeat & watchdog
 
 During long scans, RedAudit prints heartbeat messages if no output appears for a while.  
-This helps distinguish a “silent but healthy” scan from a real freeze.
+This helps distinguish a "silent but healthy" scan from a real freeze.
 
 ### Encrypted reports
 
 Reports can be encrypted with a user password.  
 Keys are derived with PBKDF2-HMAC-SHA256 (480k iterations) and a separate `.salt` file, so decryption is possible later with `redaudit_decrypt.py`.
+
+## 16. Legal Notice
+
+**RedAudit** is a security tool for **authorized auditing only**.
+Scanning networks without permission is illegal. By using this tool, you accept full responsibility for your actions and agree to use it only on systems you own or have explicit authorization to test.
 
 ---
 [Full Documentation](docs/) | [Report Schema](docs/REPORT_SCHEMA.md) | [Security Specs](docs/SECURITY.md)

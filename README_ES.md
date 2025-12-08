@@ -248,12 +248,7 @@ Consulta [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) para soluciones deta
 - **"Cryptography missing"**: Ejecuta `sudo apt install python3-cryptography`.
 - **"Scan frozen"**: Revisa `~/.redaudit/logs/` o reduce `rate_limit_delay`.
 
-## 13. Aviso Legal
-
-**RedAudit** es una herramienta de seguridad únicamente para **auditorías autorizadas**.
-Escanear redes sin permiso es ilegal. Al usar esta herramienta, aceptas total responsabilidad por tus acciones y acuerdas usarla solo en sistemas de tu propiedad o para los que tengas autorización explícita.
-
-## 14. Historial de Cambios (Resumen v2.6)
+## 13. Historial de Cambios (Resumen v2.6)
 
 - **Arquitectura Modular**: Script monolítico refactorizado en estructura de paquete organizada (8 módulos)
 - **Pipeline CI/CD**: Workflow de GitHub Actions para testing automatizado (Python 3.9-3.12)
@@ -270,12 +265,12 @@ Escanear redes sin permiso es ilegal. Al usar esta herramienta, aceptas total re
 
 Para el changelog detallado, consulta [CHANGELOG.md](CHANGELOG.md)
 
-## 15. Licencia
+## 14. Licencia
 
 RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**.  
 Consulta el archivo [LICENSE](LICENSE) para ver el texto completo y las condiciones.
 
-## 16. Internos & Glosario (Por qué RedAudit se comporta así)
+## 15. Internos & Glosario (Por qué RedAudit se comporta así)
 
 ### Pool de hilos (`threads`)
 
@@ -294,12 +289,17 @@ Esto sacrifica velocidad a cambio de estabilidad y menor huella en entornos sens
 ### Heartbeat y watchdog
 
 En escaneos largos, RedAudit muestra mensajes de *heartbeat* cuando lleva un tiempo sin imprimir nada.  
-Sirve para distinguir un escaneo “silencioso pero sano” de un bloqueo real.
+Sirve para distinguir un escaneo "silencioso pero sano" de un bloqueo real.
 
 ### Reportes cifrados
 
 Los reportes pueden cifrarse con contraseña.  
 La clave se deriva con PBKDF2-HMAC-SHA256 (480k iteraciones) y se acompaña de un archivo `.salt` para poder descifrarlos posteriormente con `redaudit_decrypt.py`.
+
+## 16. Aviso Legal
+
+**RedAudit** es una herramienta de seguridad únicamente para **auditorías autorizadas**.
+Escanear redes sin permiso es ilegal. Al usar esta herramienta, aceptas total responsabilidad por tus acciones y acuerdas usarla solo en sistemas de tu propiedad o para los que tengas autorización explícita.
 
 ---
 [Documentación Completa](docs/) | [Esquema de Reporte](docs/REPORT_SCHEMA.md) | [Especificaciones de Seguridad](docs/SECURITY.md)
