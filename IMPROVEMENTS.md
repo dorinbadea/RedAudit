@@ -90,7 +90,7 @@ redaudit --compare scan_ayer.json scan_hoy.json
 - [ ] **Multi-language**: Facilitate adding more languages (refactor strings).
 - [ ] **Comparison**: Implement basic `diff` functionality between JSON reports.
 
-**Estimate**: Q1 2025
+**Estimate**: Q1 2026
 
 ### v3.0 (Mid Term: Expansion)
 *Focus on integration and visualization.*
@@ -100,7 +100,7 @@ redaudit --compare scan_ayer.json scan_hoy.json
 - [ ] **Docker**: Official tool containerization.
 - [ ] **API REST**: Exponer el motor de escaneo vía API para integraciones de terceros.
 
-🗓️ **Estimado**: Q2-Q3 2025
+🗓️ **Estimado**: Q2-Q3 2026
 
 ### v4.0 (Largo Plazo: Inteligencia)
 *Enfoque en análisis avanzado y gran escala.*
