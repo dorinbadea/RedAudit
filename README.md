@@ -10,12 +10,12 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 ![Tests](https://img.shields.io/badge/tests-34%20passing-brightgreen?style=flat-square)
 
 ```text
-    ____          __  ___           ___ __ 
-   / __ \___  ___/ / /   | __  ____/ (_) /_
-  / /_/ / _ \/ __  / / /| |/ / / / __  / __/
- / _, _/  __/ /_/ / / ___ / /_/ / /_/ / /_  
-/_/ |_|\___/\__,_(_)_/  |_\__,_/\__,_/\__/  
-                                      v2.6
+ ____          _    _             _ _ _   
+|  _ \ ___  __| |  / \  _   _  __| (_) |_ 
+| |_) / _ \/ _` | / _ \| | | |/ _` | | __|
+|  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
+|_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
+                                     v2.6
 ```
 
 ## Overview
