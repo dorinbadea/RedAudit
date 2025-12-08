@@ -17,10 +17,10 @@ from redaudit.utils.i18n import get_text
 def detect_interface_type(iface: str) -> str:
     """
     Classify network interface by type based on naming convention.
-    
+
     Args:
         iface: Interface name (e.g., 'eth0', 'wlan0', 'tun0')
-    
+
     Returns:
         Interface type string: 'Ethernet', 'Wi-Fi', 'VPN', or 'Other'
     """
@@ -36,11 +36,11 @@ def detect_interface_type(iface: str) -> str:
 def detect_networks_netifaces(lang: str = "en", print_fn=None) -> List[Dict]:
     """
     Detect local networks using netifaces library.
-    
+
     Args:
         lang: Language for messages
         print_fn: Optional print function for status messages
-    
+
     Returns:
         List of network dictionaries with interface, ip, network, etc.
     """
@@ -73,17 +73,17 @@ def detect_networks_netifaces(lang: str = "en", print_fn=None) -> List[Dict]:
     except ImportError:
         if print_fn:
             print_fn(get_text("netifaces_missing", lang), "WARNING")
-    
+
     return nets
 
 
 def detect_networks_fallback(lang: str = "en") -> List[Dict]:
     """
     Detect local networks using 'ip addr show' command as fallback.
-    
+
     Args:
         lang: Language for messages
-    
+
     Returns:
         List of network dictionaries
     """
@@ -115,20 +115,20 @@ def detect_networks_fallback(lang: str = "en") -> List[Dict]:
                 continue
     except Exception:
         pass
-    
+
     return nets
 
 
 def detect_all_networks(lang: str = "en", print_fn=None) -> List[Dict]:
     """
     Detect all local networks using available methods.
-    
+
     Tries netifaces first, falls back to ip command.
-    
+
     Args:
         lang: Language for messages
         print_fn: Optional print function for status messages
-    
+
     Returns:
         List of unique network dictionaries
     """
@@ -144,11 +144,11 @@ def detect_all_networks(lang: str = "en", print_fn=None) -> List[Dict]:
 def find_interface_for_ip(ip_str: str, networks: List[Dict]) -> Optional[str]:
     """
     Find the interface that contains a given IP address.
-    
+
     Args:
         ip_str: IP address string
         networks: List of network dictionaries from detect_all_networks()
-    
+
     Returns:
         Interface name or None if not found
     """

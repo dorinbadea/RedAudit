@@ -176,12 +176,12 @@ TRANSLATIONS = {
 def get_text(key: str, lang: str = "en", *args) -> str:
     """
     Get translated text for a given key.
-    
+
     Args:
         key: Translation key
         lang: Language code ('en' or 'es')
         *args: Format arguments
-    
+
     Returns:
         Translated and formatted string
     """

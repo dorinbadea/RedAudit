@@ -25,7 +25,7 @@ from redaudit.utils.i18n import TRANSLATIONS
 def parse_arguments():
     """
     Parse command-line arguments.
-    
+
     Returns:
         Parsed arguments namespace
     """
@@ -44,7 +44,7 @@ Examples:
   sudo redaudit --target 192.168.1.0/24 --encrypt --encrypt-password "MyPass" --yes
 """
     )
-    
+
     parser.add_argument(
         "--target", "-t",
         type=str,
@@ -123,18 +123,18 @@ Examples:
         action="version",
         version=f"RedAudit v{VERSION}"
     )
-    
+
     return parser.parse_args()
 
 
 def configure_from_args(app, args) -> bool:
     """
     Configure application from command-line arguments.
-    
+
     Args:
         app: InteractiveNetworkAuditor instance
         args: Parsed arguments
-    
+
     Returns:
         True if configuration succeeded
     """
@@ -142,18 +142,18 @@ def configure_from_args(app, args) -> bool:
     if args.lang:
         if args.lang in TRANSLATIONS:
             app.lang = args.lang
-    
+
     # Check dependencies
     if not app.check_dependencies():
         return False
-    
+
     # Legal warning (unless --yes)
     if not args.yes:
         if not app.show_legal_warning():
             return False
     else:
         app.print_status("⚠️  Legal warning skipped (--yes flag)", "WARNING")
-    
+
     # Parse targets
     if args.target:
         targets = [t.strip() for t in args.target.split(",")]
@@ -174,40 +174,40 @@ def configure_from_args(app, args) -> bool:
     else:
         app.print_status("Error: --target is required in non-interactive mode", "FAIL")
         return False
-    
+
     # Set scan mode
     mode_map = {"fast": "rapido", "normal": "normal", "full": "completo"}
     app.config["scan_mode"] = mode_map[args.mode]
-    
+
     # Set threads
     app.config["threads"] = args.threads
-    
+
     # Set rate limit
     app.rate_limit_delay = max(0.0, args.rate_limit)
-    
+
     # Set output directory
     if args.output:
         app.config["output_dir"] = os.path.expanduser(args.output)
-    
+
     # Set max hosts
     if args.max_hosts:
         app.config["max_hosts_value"] = args.max_hosts
     else:
         app.config["max_hosts_value"] = "all"
-    
+
     # Set vulnerability scanning
     app.config["scan_vulnerabilities"] = not args.no_vuln_scan
-    
+
     # Set TXT report
     app.config["save_txt_report"] = not args.no_txt_report
-    
+
     # Set deep scan
     app.config["deep_id_scan"] = not args.no_deep_scan
-    
+
     # Setup encryption if requested
     if args.encrypt:
         app.setup_encryption(non_interactive=True, password=args.encrypt_password)
-    
+
     return True
 
 
@@ -216,14 +216,14 @@ def main():
     if os.geteuid() != 0:
         print("Error: root privileges (sudo) required.")
         sys.exit(1)
-    
+
     args = parse_arguments()
-    
+
     # Import here to avoid circular imports
     from redaudit.core.auditor import InteractiveNetworkAuditor
-    
+
     app = InteractiveNetworkAuditor()
-    
+
     # Non-interactive mode if --target is provided
     if args.target:
         if configure_from_args(app, args):

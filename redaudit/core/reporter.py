@@ -11,7 +11,7 @@ import os
 import json
 import base64
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 
 from redaudit.utils.constants import VERSION, SECURE_FILE_MODE
 from redaudit.core.crypto import encrypt_data
@@ -26,14 +26,14 @@ def generate_summary(
 ) -> Dict:
     """
     Generate scan summary statistics.
-    
+
     Args:
         results: Results dictionary
         config: Configuration dictionary
         all_hosts: All discovered hosts
         scanned_results: Scanned host results
         scan_start_time: Scan start timestamp
-    
+
     Returns:
         Summary dictionary
     """
@@ -46,7 +46,7 @@ def generate_summary(
         len(v.get("vulnerabilities", []))
         for v in results.get("vulnerabilities", [])
     )
-    
+
     summary = {
         "networks": len(config.get("target_networks", [])),
         "hosts_found": len(all_hosts),
@@ -54,7 +54,7 @@ def generate_summary(
         "vulns_found": total_vulns,
         "duration": str(duration).split(".")[0] if duration else None,
     }
-    
+
     results["summary"] = summary
     return summary
 
@@ -62,17 +62,17 @@ def generate_summary(
 def generate_text_report(results: Dict, partial: bool = False) -> str:
     """
     Generate human-readable text report.
-    
+
     Args:
         results: Results dictionary
         partial: Whether this is a partial/interrupted report
-    
+
     Returns:
         Text report string
     """
     lines = []
     status_txt = "PARTIAL/INTERRUPTED" if partial else "COMPLETED"
-    
+
     lines.append(f"NETWORK AUDIT REPORT v{VERSION}\n")
     lines.append(f"Date: {datetime.now()}\n")
     lines.append(f"Status: {status_txt}\n\n")
@@ -87,28 +87,28 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
         lines.append(f"Host: {h.get('ip')} ({h.get('hostname')})\n")
         lines.append(f"  Status: {h.get('status')}\n")
         lines.append(f"  Total Ports: {h.get('total_ports_found')}\n")
-        
+
         for p in h.get("ports", []):
             lines.append(
                 f"    - {p['port']}/{p['protocol']}  {p['service']}  {p['version']}\n"
             )
-        
+
         if h.get("dns", {}).get("reverse"):
             lines.append("  Reverse DNS:\n")
             for r in h["dns"]["reverse"]:
                 lines.append(f"    {r}\n")
-        
+
         if h.get("dns", {}).get("whois_summary"):
             lines.append("  Whois summary:\n")
             lines.append("    " + h["dns"]["whois_summary"].replace("\n", "\n    ") + "\n")
-        
+
         if h.get("deep_scan"):
             lines.append("  Deep scan data present.\n")
             if h["deep_scan"].get("mac_address"):
                 lines.append(f"    MAC: {h['deep_scan']['mac_address']}\n")
             if h["deep_scan"].get("vendor"):
                 lines.append(f"    Vendor: {h['deep_scan']['vendor']}\n")
-        
+
         lines.append("\n")
 
     if results.get("vulnerabilities"):
@@ -121,7 +121,7 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                     lines.append(f"    WhatWeb: {item['whatweb'][:80]}...\n")
                 if item.get("nikto_findings"):
                     lines.append(f"    Nikto: {len(item['nikto_findings'])} findings.\n")
-    
+
     return "".join(lines)
 
 
@@ -137,7 +137,7 @@ def save_results(
 ) -> bool:
     """
     Save results to JSON and optionally TXT files.
-    
+
     Args:
         results: Results dictionary
         config: Configuration dictionary
@@ -147,7 +147,7 @@ def save_results(
         print_fn: Optional print function
         t_fn: Optional translation function
         logger: Optional logger
-    
+
     Returns:
         True if save succeeded
     """
@@ -170,9 +170,9 @@ def save_results(
             json_path = f"{base}.json"
             with open(json_path, "w", encoding="utf-8") as f:
                 f.write(json_data)
-        
+
         os.chmod(json_path, SECURE_FILE_MODE)
-        
+
         if print_fn and t_fn:
             print_fn(t_fn("json_report", json_path), "OKGREEN")
 
@@ -188,9 +188,9 @@ def save_results(
                 txt_path = f"{base}.txt"
                 with open(txt_path, "w", encoding="utf-8") as f:
                     f.write(txt_data)
-            
+
             os.chmod(txt_path, SECURE_FILE_MODE)
-            
+
             if print_fn and t_fn:
                 print_fn(t_fn("txt_report", txt_path), "OKGREEN")
 
@@ -215,7 +215,7 @@ def save_results(
 def show_config_summary(config: Dict, t_fn, colors: Dict) -> None:
     """
     Print configuration summary to console.
-    
+
     Args:
         config: Configuration dictionary
         t_fn: Translation function
@@ -236,7 +236,7 @@ def show_config_summary(config: Dict, t_fn, colors: Dict) -> None:
 def show_results_summary(results: Dict, t_fn, colors: Dict, output_dir: str) -> None:
     """
     Print final results summary to console.
-    
+
     Args:
         results: Results dictionary
         t_fn: Translation function

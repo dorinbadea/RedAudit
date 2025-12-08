@@ -24,7 +24,6 @@ from logging.handlers import RotatingFileHandler
 from redaudit.utils.constants import (
     VERSION,
     DEFAULT_LANG,
-    MAX_INPUT_LENGTH,
     MAX_CIDR_LENGTH,
     COLORS,
     DEFAULT_OUTPUT_DIR,
@@ -34,9 +33,6 @@ from redaudit.utils.constants import (
     HEARTBEAT_INTERVAL,
     HEARTBEAT_WARN_THRESHOLD,
     HEARTBEAT_FAIL_THRESHOLD,
-    WEB_SERVICES_KEYWORDS,
-    WEB_SERVICES_EXACT,
-    SUSPICIOUS_SERVICE_KEYWORDS,
     MAX_PORTS_DISPLAY,
     DEEP_SCAN_TIMEOUT,
 )
@@ -44,14 +40,10 @@ from redaudit.utils.i18n import TRANSLATIONS, get_text
 from redaudit.core.crypto import (
     is_crypto_available,
     derive_key_from_password,
-    encrypt_data,
     ask_password_twice,
     generate_random_password,
 )
-from redaudit.core.network import (
-    detect_all_networks,
-    detect_interface_type,
-)
+from redaudit.core.network import detect_all_networks
 from redaudit.core.scanner import (
     sanitize_ip,
     sanitize_hostname,
@@ -69,7 +61,6 @@ from redaudit.core.scanner import (
 )
 from redaudit.core.reporter import (
     generate_summary,
-    generate_text_report,
     save_results,
     show_config_summary,
     show_results_summary,
@@ -140,7 +131,7 @@ class InteractiveNetworkAuditor:
         color = self.COLORS.get(status, self.COLORS["OKBLUE"])
 
         if len(message) > 100:
-            lines = [message[i:i+100] for i in range(0, len(message), 100)]
+            lines = [message[i:i + 100] for i in range(0, len(message), 100)]
         else:
             lines = [message]
 
@@ -240,7 +231,7 @@ class InteractiveNetworkAuditor:
     def setup_encryption(self, non_interactive=False, password=None):
         """
         Setup encryption if requested and available.
-        
+
         Args:
             non_interactive: If True, skip interactive prompts
             password: Password to use (required if non_interactive=True and --encrypt is used)
@@ -250,7 +241,7 @@ class InteractiveNetworkAuditor:
             if non_interactive:
                 self.print_status(self.t("cryptography_required"), "FAIL")
             return
-        
+
         if not non_interactive:
             if self.ask_yes_no(self.t("encrypt_reports"), default="no"):
                 try:
@@ -269,14 +260,14 @@ class InteractiveNetworkAuditor:
             if not self.cryptography_available:
                 self.print_status(self.t("cryptography_required"), "FAIL")
                 return
-            
+
             if password is None:
                 password = generate_random_password()
                 self.print_status(
                     f"⚠️  Generated random encryption password (save this!): {password}",
                     "WARNING"
                 )
-            
+
             try:
                 key, salt = derive_key_from_password(password)
                 self.encryption_key = key
@@ -375,10 +366,10 @@ class InteractiveNetworkAuditor:
         print(f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {question}")
         for i, opt in enumerate(options):
             marker = f"{self.COLORS['BOLD']}▶{self.COLORS['ENDC']}" if i == default else " "
-            print(f"  {marker} {i+1}. {opt}")
+            print(f"  {marker} {i + 1}. {opt}")
         while True:
             ans = input(
-                f"\n{self.t('select_opt')} [1-{len(options)}] ({default+1}): "
+                f"\n{self.t('select_opt')} [1-{len(options)}] ({default + 1}): "
             ).strip()
             if ans == "":
                 return default
@@ -454,7 +445,7 @@ class InteractiveNetworkAuditor:
 
         self.current_phase = f"deep:{safe_ip}"
         deep_obj = {"strategy": "adaptive_v2.5", "commands": []}
-        
+
         self.print_status(self.t("deep_identity_start", safe_ip, "Adaptive (2-Phase)"), "WARNING")
 
         # Phase 1: Aggressive TCP
@@ -465,7 +456,7 @@ class InteractiveNetworkAuditor:
         # Check for Identity
         has_identity = output_has_identity([rec1])
         mac, vendor = extract_vendor_mac(rec1.get("stdout", ""))
-        
+
         if mac:
             deep_obj["mac_address"] = mac
         if vendor:
@@ -530,13 +521,13 @@ class InteractiveNetworkAuditor:
         args = get_nmap_arguments(self.config["scan_mode"])
         self.logger.debug("Nmap scan %s %s", safe_ip, args)
         self.print_status(self.t("nmap_cmd", safe_ip, f"nmap {args} {safe_ip}"), "INFO")
-        
+
         try:
             nm.scan(safe_ip, arguments=args)
             if safe_ip not in nm.all_hosts():
                 deep = self.deep_scan_host(safe_ip)
                 return {"ip": safe_ip, "status": "down", "deep_scan": deep} if deep else {"ip": safe_ip, "status": "down"}
-            
+
             data = nm[safe_ip]
             hostname = ""
             try:
@@ -703,7 +694,7 @@ class InteractiveNetworkAuditor:
                     )
                     output = res.stdout or res.stderr
                     if output:
-                        findings_list = [l for l in output.splitlines() if "+ " in l][:20]
+                        findings_list = [line for line in output.splitlines() if "+ " in line][:20]
                         if findings_list:
                             finding["nikto_findings"] = findings_list
                 except Exception:
@@ -722,7 +713,7 @@ class InteractiveNetworkAuditor:
         self.current_phase = "vulns"
         self.print_status(self.t("vuln_analysis", len(web_hosts)), "HEADER")
         workers = min(3, self.config["threads"])
-        
+
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {
                 executor.submit(self.scan_vulnerabilities_web, h): h["ip"]

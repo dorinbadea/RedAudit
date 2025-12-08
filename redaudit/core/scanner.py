@@ -13,29 +13,26 @@ import time
 import subprocess
 import ipaddress
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 
 from redaudit.utils.constants import (
     MAX_INPUT_LENGTH,
-    DEEP_SCAN_TIMEOUT,
     TRAFFIC_CAPTURE_DEFAULT_DURATION,
     TRAFFIC_CAPTURE_MAX_DURATION,
     TRAFFIC_CAPTURE_PACKETS,
     WEB_SERVICES_KEYWORDS,
     WEB_SERVICES_EXACT,
     SUSPICIOUS_SERVICE_KEYWORDS,
-    MAX_PORTS_DISPLAY,
 )
 
 
 def sanitize_ip(ip_str) -> Optional[str]:
     """
     Sanitize and validate IP address.
-    
+
     Args:
         ip_str: Input IP address string
-    
+
     Returns:
         Validated IP string or None if invalid
     """
@@ -58,10 +55,10 @@ def sanitize_ip(ip_str) -> Optional[str]:
 def sanitize_hostname(hostname) -> Optional[str]:
     """
     Sanitize and validate hostname.
-    
+
     Args:
         hostname: Input hostname string
-    
+
     Returns:
         Validated hostname or None if invalid
     """
@@ -82,10 +79,10 @@ def sanitize_hostname(hostname) -> Optional[str]:
 def is_web_service(name: str) -> bool:
     """
     Check if a service name indicates a web service.
-    
+
     Args:
         name: Service name from nmap
-    
+
     Returns:
         True if service appears to be web-related
     """
@@ -100,10 +97,10 @@ def is_web_service(name: str) -> bool:
 def is_suspicious_service(name: str) -> bool:
     """
     Check if a service name indicates a suspicious/interesting service.
-    
+
     Args:
         name: Service name from nmap
-    
+
     Returns:
         True if service seems suspicious (VPN, proxy, etc.)
     """
@@ -116,10 +113,10 @@ def is_suspicious_service(name: str) -> bool:
 def get_nmap_arguments(mode: str) -> str:
     """
     Get nmap arguments for the specified scan mode.
-    
+
     Args:
         mode: Scan mode ('rapido', 'normal', 'completo')
-    
+
     Returns:
         Nmap argument string
     """
@@ -134,10 +131,10 @@ def get_nmap_arguments(mode: str) -> str:
 def extract_vendor_mac(text: str) -> tuple:
     """
     Extract MAC address and vendor from Nmap output.
-    
+
     Args:
         text: Nmap output text
-    
+
     Returns:
         Tuple of (mac_address, vendor) or (None, None)
     """
@@ -153,12 +150,12 @@ def extract_vendor_mac(text: str) -> tuple:
 def output_has_identity(records: List[Dict]) -> bool:
     """
     Check if scan records contain sufficient identity information (MAC/OS).
-    
+
     Used to determine if Phase 2 of deep scan can be skipped.
-    
+
     Args:
         records: List of scan command records
-    
+
     Returns:
         True if MAC address, vendor, or OS detection info is found
     """
@@ -166,15 +163,15 @@ def output_has_identity(records: List[Dict]) -> bool:
         stdout = rec.get("stdout", "") or ""
         stderr = rec.get("stderr", "") or ""
         combined = stdout + "\n" + stderr
-        
+
         if not combined.strip():
             continue
-        
+
         # Check for MAC address and vendor
         mac, vendor = extract_vendor_mac(combined)
         if mac or vendor:
             return True
-        
+
         # Check for OS detection patterns
         os_patterns = [
             r"OS details?:",
@@ -184,11 +181,11 @@ def output_has_identity(records: List[Dict]) -> bool:
             r"OS details:.*\(.*%\)",
             r"Device type:",
         ]
-        
+
         for pattern in os_patterns:
             if re.search(pattern, combined, re.IGNORECASE | re.MULTILINE):
                 return True
-    
+
     return False
 
 
@@ -202,7 +199,7 @@ def run_nmap_command(
 ) -> Dict:
     """
     Run a single nmap command and collect output.
-    
+
     Args:
         cmd: Command list
         timeout: Subprocess timeout
@@ -210,13 +207,13 @@ def run_nmap_command(
         deep_obj: Deep scan object to append command records
         print_fn: Optional print function
         t_fn: Optional translation function
-    
+
     Returns:
         Command record dictionary
     """
     start = time.time()
     record = {"command": " ".join(cmd)}
-    
+
     try:
         res = subprocess.run(
             cmd,
@@ -252,7 +249,7 @@ def capture_traffic_snippet(
 ) -> Optional[Dict]:
     """
     Capture small PCAP snippet with tcpdump + optional tshark summary.
-    
+
     Args:
         host_ip: Target IP
         output_dir: Directory for pcap files
@@ -260,7 +257,7 @@ def capture_traffic_snippet(
         extra_tools: Dict of available tool paths
         duration: Capture duration in seconds
         logger: Optional logger
-    
+
     Returns:
         Capture info dictionary or None
     """
@@ -312,9 +309,9 @@ def capture_traffic_snippet(
         "-W", "1",
         "-w", pcap_file,
     ]
-    
+
     info = {"pcap_file": pcap_file, "iface": iface}
-    
+
     try:
         subprocess.run(
             cmd,
@@ -346,14 +343,14 @@ def capture_traffic_snippet(
 def enrich_host_with_dns(host_record: Dict, extra_tools: Dict) -> None:
     """
     Enrich host record with DNS reverse lookup.
-    
+
     Args:
         host_record: Host record dictionary
         extra_tools: Dict of available tool paths
     """
     ip_str = host_record["ip"]
     host_record.setdefault("dns", {})
-    
+
     if extra_tools.get("dig"):
         try:
             res = subprocess.run(
@@ -371,14 +368,14 @@ def enrich_host_with_dns(host_record: Dict, extra_tools: Dict) -> None:
 def enrich_host_with_whois(host_record: Dict, extra_tools: Dict) -> None:
     """
     Enrich host record with WHOIS data for public IPs.
-    
+
     Args:
         host_record: Host record dictionary
         extra_tools: Dict of available tool paths
     """
     ip_str = host_record["ip"]
     host_record.setdefault("dns", {})
-    
+
     try:
         ip_obj = ipaddress.ip_address(ip_str)
         if not ip_obj.is_private and extra_tools.get("whois"):
@@ -390,7 +387,7 @@ def enrich_host_with_whois(host_record: Dict, extra_tools: Dict) -> None:
             )
             text = res.stdout or res.stderr
             if text:
-                lines = [l for l in text.splitlines() if l.strip()][:25]
+                lines = [line for line in text.splitlines() if line.strip()][:25]
                 host_record["dns"]["whois_summary"] = "\n".join(lines)
     except Exception:
         pass
@@ -399,16 +396,16 @@ def enrich_host_with_whois(host_record: Dict, extra_tools: Dict) -> None:
 def http_enrichment(url: str, extra_tools: Dict) -> Dict:
     """
     Enrich with HTTP headers using curl/wget.
-    
+
     Args:
         url: Target URL
         extra_tools: Dict of available tool paths
-    
+
     Returns:
         Dictionary with curl/wget headers
     """
     data = {}
-    
+
     if extra_tools.get("curl"):
         try:
             res = subprocess.run(
@@ -421,7 +418,7 @@ def http_enrichment(url: str, extra_tools: Dict) -> Dict:
                 data["curl_headers"] = res.stdout.strip()[:2000]
         except Exception:
             pass
-    
+
     if extra_tools.get("wget"):
         try:
             res = subprocess.run(
@@ -434,24 +431,24 @@ def http_enrichment(url: str, extra_tools: Dict) -> Dict:
                 data["wget_headers"] = res.stderr.strip()[:2000]
         except Exception:
             pass
-    
+
     return data
 
 
 def tls_enrichment(host_ip: str, port: int, extra_tools: Dict) -> Dict:
     """
     Enrich with TLS certificate information.
-    
+
     Args:
         host_ip: Target IP
         port: Target port
         extra_tools: Dict of available tool paths
-    
+
     Returns:
         Dictionary with TLS info
     """
     data = {}
-    
+
     if extra_tools.get("openssl"):
         try:
             res = subprocess.run(
@@ -470,5 +467,5 @@ def tls_enrichment(host_ip: str, port: int, extra_tools: Dict) -> Dict:
                 data["tls_info"] = res.stdout.strip()[:2000]
         except Exception:
             pass
-    
+
     return data
