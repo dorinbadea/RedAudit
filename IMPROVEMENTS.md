@@ -1,6 +1,13 @@
 # Mejoras y Roadmap de RedAudit
 
-Este documento detalla el estado actual, las fortalezas del proyecto y la hoja de ruta estratégica para futuras versiones.
+> **📌 Nota Importante**: Este roadmap es una guía de desarrollo, no un 
+> compromiso contractual. Las prioridades pueden cambiar según feedback 
+> de la comunidad, hallazgos de seguridad o recursos disponibles.
+> 
+> **Última actualización**: Diciembre 2025  
+> **Estado**: Mantenimiento Activo
+
+---
 
 ## 🎯 Estado Actual y Puntos Fuertes (v2.5)
 
@@ -77,6 +84,8 @@ Enfoque en calidad de código, testing y usabilidad de datos.
 - [ ] **Multilenguaje**: Facilitar la adición de más idiomas (refactorizar strings).
 - [ ] **Comparación**: Implementar funcionalidad básica de `diff` entre reportes JSON.
 
+**Fecha estimada**: Q1 2025
+
 ### v3.0 (Medio Plazo: Expansión)
 Enfoque en integración y visualización.
 - [ ] **Dashboard Web**: Servidor ligero (Flask/FastAPI) para visualizar reportes históricos.
@@ -84,8 +93,48 @@ Enfoque en integración y visualización.
 - [ ] **Docker**: Containerización oficial de la herramienta.
 - [ ] **API REST**: Exponer el motor de escaneo vía API para integraciones de terceros.
 
+**Fecha estimada**: Q2-Q3 2025
+
 ### v4.0 (Largo Plazo: Inteligencia)
 Enfoque en análisis avanzado y gran escala.
 - [ ] **Machine Learning**: Detección de anomalías en patrones de tráfico.
 - [ ] **Modo Distribuido**: Orquestación de múltiples nodos de scanning.
 - [ ] **Integración SIEM**: Conectores nativos para Splunk, ELK, Wazuh.
+
+**Fecha estimada**: 2026+
+
+---
+
+## 🗑️ Ideas Descartadas
+
+Propuestas que evaluamos pero no implementaremos:
+
+- ❌ **Soporte Windows nativo**: Mejor usar WSL2/Docker
+  - *Razón*: Complejidad de mantener dos codebases
+- ❌ **GUI gráfica (GTK/Qt)**: Fuera del scope del proyecto
+  - *Razón*: RedAudit se enfoca en automatización CLI/API
+
+---
+
+## 🤝 ¿Quieres Participar?
+
+Si deseas contribuir a alguna de estas features:
+
+1. 🔍 Revisa si ya existe un [Issue relacionado](https://github.com/dorinbadea/RedAudit/issues)
+2. 💬 Comenta tu interés antes de empezar (evita duplicar trabajo)
+3. 📖 Lee [CONTRIBUTING.md](https://github.com/dorinbadea/RedAudit/blob/main/CONTRIBUTING.md) para guidelines
+4. 🐛 Para bugs o propuestas nuevas, abre un [Discussion](https://github.com/dorinbadea/RedAudit/discussions)
+
+**Especialmente buscamos ayuda en:**
+- Tests unitarios (ideal para empezar a contribuir)
+- Traducción a otros idiomas
+- Documentación y ejemplos de uso
+
+---
+
+## ⏸️ Estado del Proyecto
+
+**Mantenimiento Activo** (última actualización: Diciembre 2025)
+
+Si este documento no se actualiza en >6 meses, el proyecto puede estar pausado. 
+En ese caso, considera hacer un fork o contactar al maintainer.
