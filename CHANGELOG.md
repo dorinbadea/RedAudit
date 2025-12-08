@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automated testing on Python 3.9, 3.10, 3.11, 3.12
   - Codecov integration for coverage reporting
   - Flake8 linting
+
 - **New Test Suites**:
   - `tests/test_network.py` - Network detection tests with mocking
   - `tests/test_reporter.py` - Report generation and file permission tests
@@ -31,6 +32,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Named Constants**: All magic numbers replaced with descriptive constants
 - **Test Coverage**: Expanded from ~25 to 34 automated tests
 - **Version**: Updated to 2.6.0
+
+### Fixed
+
+- **Python 3.9 Compatibility**: Fixed `str | None` union syntax in `test_sanitization.py` to use `Optional[str]`
+- **Test Imports**: Updated `test_encryption.py` to use module-level functions (`derive_key_from_password`, `encrypt_data`) instead of non-existent instance methods
+- **Flake8 Compliance**: All lint errors resolved:
+  - Removed trailing whitespace from blank lines (W293)
+  - Removed 12 unused imports across `auditor.py`, `scanner.py`, `reporter.py` (F401)
+  - Added whitespace around arithmetic operators (E226)
+  - Renamed ambiguous variable `l` to `line` (E741)
 
 ### Backward Compatibility
 
