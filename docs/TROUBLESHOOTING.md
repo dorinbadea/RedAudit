@@ -1,40 +1,48 @@
-<div align="center">
-
-# 🔧 RedAudit Troubleshooting Guide
-
-[![Type](https://img.shields.io/badge/Type-Support-orange?style=for-the-badge)](MANUAL_EN.md)
-[![Issues](https://img.shields.io/badge/Report-Bug-red?style=for-the-badge&logo=github)](https://github.com/dorinbadea/RedAudit/issues)
-
-</div>
+# RedAudit Troubleshooting Guide
 
 ---
 
-## Common Issues
+## Error Codes and Resolution
 
-### 1. `Permission denied` or "Root privileges required"
-**Symptom**: The script exits immediately with an error about root.
-**Solution**: RedAudit requires low-level network access (nmap, tcpdump).
-- Always run with: `sudo redaudit` or `sudo bash redaudit_install.sh`.
+### 1. `Permission denied` / "Root privileges required"
+**Symptom**: The script exits immediately with a privilege error.
+**Cause**: The application requires raw socket access for `nmap` (SYN scans/OS detection) and `tcpdump`.
+**Resolution**:
+- Always execute with `sudo`.
+- Verify user matches sudoers policy.
 
 ### 2. `nmap: command not found`
-**Symptom**: The scan fails saying nmap binary is missing.
-**Solution**: The installer should have handled this, but you can fix it manually:
+**Symptom**: Scanning engine fails to initialize.
+**Cause**: The `nmap` binary is not in the system `$PATH`.
+**Resolution**:
 ```bash
-sudo apt update && sudo apt install -y nmap
+sudo apt update && sudo apt install nmap
 ```
 
-### 3. Decryption Failed
-**Symptom**: `redaudit_decrypt.py` says "Mac check failed" or "Invalid token" or "Decryption failed".
-**Causes**:
-- **Wrong Password**: Ensure you use the exact password set during the scan.
-- **Missing Salt**: The `.salt` file MUST be in the same folder as the `.enc` file.
-- **File Corruption**: If you transferred the files, ensure binary mode was used.
+### 3. `ModuleNotFoundError: No module named 'cryptography'`
+**Symptom**: Script fails during imports.
+**Cause**: Python dependencies are missing or installed in a different environment.
+**Resolution**:
+```bash
+pip3 install -r requirements.txt
+# Or run the verified installer
+sudo bash redaudit_install.sh
+```
 
-### 4. Heartbeat Warning ("No output for X seconds")
-**Symptom**: You see yellow warnings about "Activity Monitor" during a scan.
-**Explanation**: This is normal during heavy Nmap scans (especially `-p-` or `-sV` on slow hosts).
-**Action**: Wait. If it exceeds 300s (5 mins) with no output, verify the target host is not blocking you completely (firewall drop).
-**Note**: The heartbeat message "Fail" now clarifies that Nmap is still running. Do not abort immediately; deep scans on filtered hosts can take time.
+### 4. `Heartbeat file stuck`
+**Symptom**: The timestamp in `~/.redaudit/logs/heartbeat` is older than 30 seconds.
+**Cause**: The main thread may be blocked by a subprocess hanging (e.g., a stalled `nikto` scan).
+**Resolution**:
+- Check system load: `top`
+- Inspect logs: `tail -f ~/.redaudit/logs/redaudit.log`
+- Terminate process if unresponsive > 5 minutes.
+
+### 5. `Decryption failed: Invalid Token`
+**Symptom**: `redaudit_decrypt.py` rejects the password.
+**Cause**: Incorrect password derived key does not match the file signature.
+**Resolution**:
+- Ensure correct case sensitivity.
+- Verify file integrity (check file size > 0). Do not abort immediately; deep scans on filtered hosts can take time.
 
 ### 5. "Scans seem to hang" / Slow progress
 **Symptom**: The tool pauses for 1-2 minutes on a single host.

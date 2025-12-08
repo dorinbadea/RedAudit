@@ -1,47 +1,39 @@
-<div align="center">
+# Roadmap & Architecture Proposals
 
-# 🚀 Mejoras y Roadmap de RedAudit
+This document outlines the technical roadmap, planned architectural improvements, and discarded approaches for RedAudit.
 
-[![Status](https://img.shields.io/badge/Status-Active_Maintenance-success?style=for-the-badge&logo=git)](https://github.com/dorinbadea/RedAudit)
-[![Version](https://img.shields.io/badge/Roadmap-v2.6_to_v4.0-blue?style=for-the-badge)](https://github.com/dorinbadea/RedAudit/milestones)
-[![Last Update](https://img.shields.io/badge/Last_Update-Dec_2025-lightgrey?style=for-the-badge)](https://github.com/dorinbadea/RedAudit/commits)
+## Immediate Roadmap (v2.6+)
 
-</div>
+| Priority | Feature | Description |
+| :--- | :--- | :--- |
+| **High** | **CVE Integration** | Integrate local CVE database lookup (via NVD/Vulners) to correlate NSE findings with CVE IDs. |
+| **High** | **IPv6 Support** | Implement full `nmap -6` support and IPv6 regex validation in the InputSanitizer module. |
+| **Medium** | **Differential Analysis** | Create a `diff` module to compare two JSON reports and highlight delta (new ports/vulns). |
+| **Medium** | **Proxy Chains** | Native support for SOCKS5 proxies to facilitate pivoting. |
+| **Low** | **Containerization** | Official Dockerfile and Docker Compose setup for ephemeral audit containers. |
 
-<div align="center">
+## Architectural Proposals
 
-**📌 Nota Importante**  
-*Este roadmap es una guía de desarrollo, no un compromiso contractual. Las prioridades pueden cambiar según feedback de la comunidad, hallazgos de seguridad o recursos disponibles.*
+### 1. Modular Plugin Engine
+**Status**: Under Consideration
+**Concept**: Decouple the core scanner from tools. Allow Python-based "Plugins" to define new tool wrappers (e.g., specific IoT scanners) without modifying core logic.
+**Benefit**: easier community contribution and extensibility.
 
-</div>
+### 2. Distributed Scanning (Master/Slave)
+**Status**: Long-term
+**Concept**: Separate the Orchestrator from verify workers.
+- Central API (Master) distributes targets.
+- Remote Agents (Slaves) execute scans and return JSON.
 
----
+## Discarded Concepts
 
-## 📋 Índice
+### 1. Web GUI (Flask/Django)
+**Reason**: Increases attack surface and dependency weight. RedAudit targets headless servers and CLI workflows.
+Alternative: Use JSON output to feed external Dashboards (e.g., ELK Stack).
 
-1. [Estado Actual (v2.5)](#-estado-actual-y-puntos-fuertes-v25)
-2. [Sugerencias de Mejora](#-sugerencias-de-mejora-detalladas)
-3. [Roadmap Estratégico](#-roadmap-estratégico)
-4. [Ideas Descartadas](#-ideas-descartadas)
-5. [Contribuir](#-quieres-participar)
-
----
-
-## 🎯 Estado Actual y Puntos Fuertes (v2.5)
-
-| Categoría | Características Destacadas |
-| :--- | :--- |
-| **🏗️ Arquitectura** | Diseño modular con `ThreadPoolExecutor`, sistema de heartbeat y reportes duales (JSON/TXT). |
-| **🛡️ Seguridad** | Encriptación **AES-128 (Fernet)** + PBKDF2 (480k its), sanitización estricta y permisos `0o600`. |
-| **💻 UX** | Modos Interactivo/No-Interactivo (CLI), instalador automatizado y soporte **EN/ES**. |
-| **⚠️ Evasión** | Rate limiting configurable y scans adaptativos en 2 fases. |
-
----
-
-## 💡 Sugerencias de Mejora Detalladas
-
-### 1. Testing & CI/CD
-Establecer una suite de pruebas robusta y pipelines de integración continua.
+### 2. Active Exploitation
+**Reason**: Out of scope. RedAudit is an *auditing* and *discovery* tool, not an exploitation framework (like Metasploit).
+**Policy**: The tool will remain strictly read-only/non-destructive.
 
 ```bash
 tests/

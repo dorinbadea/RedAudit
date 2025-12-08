@@ -1,49 +1,37 @@
-<div align="center">
+# Contributing Guidelines
 
-# 🤝 Contributing to RedAudit
+## Overview
+This project adheres to strict coding and commit standards to maintain auditability and reliability. Contributions that do not follow these guidelines will be rejected.
 
-[![Status](https://img.shields.io/badge/Status-Open_for_PRs-success?style=for-the-badge&logo=git)](https://github.com/dorinbadea/RedAudit/pulls)
-[![Guidelines](https://img.shields.io/badge/Guidelines-Standard-blue?style=for-the-badge)](CONTRIBUTING.md)
+## Code Standards
 
-</div>
+### Python
+- **Format**: Code must be compliant with PEP 8.
+- **Type Hinting**: All function signatures must include type hints.
+- **Security**: No usage of `shell=True` in subprocess calls. All user input must be sanitized before execution.
+- **Concurrency**: Operations involving network I/O must be thread-safe.
 
-Thank you for your interest in improving RedAudit! We welcome contributions from everyone.
+### Testing
+- **Local Validation**: Run the `redaudit_verify.sh` script before submitting PRs.
+- **Unit Tests**: New modules must be accompanied by relevant test cases (where applicable).
 
----
+## Pull Request Process
 
-## Target Environment
+1.  **Branching**: Create feature branches from `main`. Naming convention: `feature/short-description` or `fix/issue-id`.
+2.  **Commits**: Use semantic commit messages (e.g., `feat: add ssl inspection`, `fix: logic error in thread pool`).
+3.  **Documentation**: Update `README.md` and relevant `docs/` files if architectural changes are made.
 
-RedAudit is designed specifically for:
-*   **Operating Systems:** Kali Linux, Debian, Ubuntu, or other apt-based distributions.
-*   **Privileges:** The tool must be run with `root` or `sudo` privileges to perform Nmap scans and other network operations.
+## Reporting Issues
+- **Bug Reports**: Provide steps to reproduce, OS version, and sanitized logs.
+- **Security**: Report critical vulnerabilities via private channel or issue tracker with the label `security`.
 
-Please ensure any code changes are compatible with this environment.
-
-## How to Contribute
-
-1.  **Fork the repository**.
-2.  **Create a new branch** for your feature or bug fix (`git checkout -b feature/amazing-feature`).
-3.  **Commit your changes** (`git commit -m 'Add some amazing feature'`).
-4.  **Push to the branch** (`git push origin feature/amazing-feature`).
-5.  **Open a Pull Request**.
-
-## Reporting Bugs
-
-If you find a bug, please open an issue describing:
-*   Steps to reproduce.
-*   Expected behavior.
-*   Actual behavior.
-*   Your environment (OS, Python version, etc.).
-
-## Dependencies
-
-Before submitting code, please ensure it works with the core dependencies. See [README.md](README.md#security-features) for the full list of required and recommended tools.
+## License
+By contributing to RedAudit, you agree that your contributions will be licensed under the **GNU General Public License v3.0**.
+works with the core dependencies. See [README.md](README.md#security-features) for the full list of required and recommended tools.
 
 You can verify your environment and installation integrity by running:
 ```bash
 bash redaudit_verify.sh
-```
-
 ## Code Style
 
 *   Keep the code clean and commented.

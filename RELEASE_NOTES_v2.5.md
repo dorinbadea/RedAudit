@@ -1,29 +1,24 @@
-# RedAudit v2.5.0 Release Notes
+# RedAudit Release Notes - v2.5.0
 
-**Release Date**: December 7, 2025  
-**Tag**: `v2.5.0`
+**Release Date**: 2025-12-07
+**Version**: 2.5.0
 
-## 🎉 What's New
+## Summary
+This release focuses on security hardening of the runtime environment and full support for non-interactive automation workflows.
 
-### 🔒 Security Hardening
-- **Hardened Input Sanitization**: All inputs now validated for type, length, and format
-  - Type validation (only `str` accepted)
-  - Length limits (1024 chars for IPs/hostnames, 50 for CIDR)
-  - Automatic whitespace stripping
-- **Secure File Permissions**: All reports use 0o600 permissions (owner read/write only)
-- **Improved Cryptography Handling**: Graceful degradation if `python3-cryptography` unavailable
+### Security Enhancements
+- **Input Sanitization**: Implemented strict type and regex validation for all user inputs.
+- **File Permissions**: Output artifacts now default to `0o600` (user-only read/write).
+- **Cryptography**: Added graceful degradation logic when cryptographic libraries are missing.
 
-### 🤖 Non-Interactive Mode (NEW!)
-Full CLI support for automation and scripting:
+### Automation
+- **Non-Interactive Mode**: Fully scriptable execution via CLI arguments (`--target`, `--mode`, `--encrypt`).
+- **Bypass**: Added `--yes` flag to bypass legal disclaimers in automated pipelines.
+
+### Usage
 ```bash
-sudo redaudit --target 192.168.1.0/24 --mode full --threads 8 --encrypt
-```
-
-**Key Features:**
-- Complete argument parsing with `argparse`
-- Support for multiple targets (comma-separated)
-- `--yes` flag for automated runs (skips legal warning)
-- Language selection via `--lang`
+sudo redaudit --target 192.168.1.0/24 --mode full --encrypt
+````--lang`
 - All interactive options available via CLI
 
 ### 🧪 Testing

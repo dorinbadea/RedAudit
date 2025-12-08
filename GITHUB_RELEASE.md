@@ -1,43 +1,22 @@
-# RedAudit v2.5.0 - Security Hardening & Automation
+# RedAudit v2.5.0
 
-## 🚀 Major Release: Security Hardening & Non-Interactive Mode
+## Hardening & Automation Release
 
-RedAudit v2.5.0 introduces **enterprise-grade security improvements** and **full automation support** for professional security workflows.
+### Features
+- **Security**: Reinforced input sanitization pipeline with strict allowlisting.
+- **Permissions**: Enforced `0o600` permissions on all report artifacts.
+- **Automation**: Complete CLI argument support for headless execution.
 
-### 🔒 Security Enhancements
-
-- **Hardened Input Sanitization**
-  - Type validation (only `str` accepted)
-  - Length limits to prevent DoS (1024 chars for IPs, 50 for CIDR)
-  - Automatic whitespace stripping
-  - Comprehensive validation before any command execution
-
-- **Secure File Permissions**
-  - All reports now use `0o600` permissions (owner read/write only)
-  - Applies to JSON, TXT, encrypted files, and salt files
-
-- **Improved Cryptography Handling**
-  - Graceful degradation if `python3-cryptography` unavailable
-  - Clear warnings in English and Spanish
-  - No password prompts if encryption unavailable
-
-### 🤖 Non-Interactive Mode (NEW!)
-
-Full CLI support for automation, scripting, and CI/CD integration:
-
+### Installation
 ```bash
-# Basic scan
-sudo redaudit --target 192.168.1.0/24 --mode normal
-
-# Full scan with encryption
-sudo redaudit --target 10.0.0.0/24 --mode full --threads 8 --encrypt --output /tmp/reports
-
-# Multiple targets
-sudo redaudit --target "192.168.1.0/24,10.0.0.0/24" --mode normal
-
-# Automation (skip legal warning)
-sudo redaudit --target 192.168.1.0/24 --mode fast --yes
+git clone https://github.com/dorinbadea/RedAudit.git
+cd RedAudit
+sudo bash redaudit_install.sh
 ```
+
+**SHA256 Checksums:**
+- `redaudit.py`: [Pending Build]
+- `redaudit_install.sh`: [Pending Build]
 
 **Available Options:**
 - `--target, -t`: Target network(s) in CIDR notation

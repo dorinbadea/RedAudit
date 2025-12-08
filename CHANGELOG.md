@@ -1,31 +1,9 @@
-<div align="center">
-
-# 📜 RedAudit Changelog
-
-[![Version](https://img.shields.io/badge/Latest-v2.5.0-blue?style=for-the-badge)](RELEASE_NOTES_v2.5.md)
-[![History](https://img.shields.io/badge/History-Full-lightgrey?style=for-the-badge)](https://github.com/dorinbadea/RedAudit/commits)
-
-</div>
-
+# Changelog
 All notable changes to this project will be documented in this file.
-
----
-RedAudit is licensed under GPLv3. See LICENSE for details.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.5.0] - 2025-12-07 (Security Hardening & Non-Interactive Mode)
-
-### Added
-- **Non-Interactive Mode**: Full CLI argument support for automation and scripting
-  - `--target`, `--mode`, `--threads`, `--rate-limit`, `--encrypt`, `--output`, etc.
-  - `--encrypt-password` flag for non-interactive encryption (random password generated if omitted)
-  - `--yes` flag to skip legal warning for automated runs
-  - `--lang` flag for language selection
-- **Input Length Validation**: Protection against DoS via overly long inputs
-  - `MAX_INPUT_LENGTH` (1024) for IPs/hostnames
-  - `MAX_CIDR_LENGTH` (50) for CIDR ranges
 - **File Permission Security**: Reports now use secure permissions (0o600 - owner read/write only)
 - **Integration Tests**: Comprehensive test suite (`test_integration.py`)
 - **Encryption Tests**: Full test coverage for encryption functionality (`test_encryption.py`)

@@ -1,102 +1,67 @@
-
-<div align="center">
-
-# 📘 Manual de Usuario RedAudit v2.5
-
-[![Idioma](https://img.shields.io/badge/Idioma-Español-yellow?style=for-the-badge)](MANUAL_ES.md)
-[![Versión](https://img.shields.io/badge/Versión-v2.5-green?style=for-the-badge)](../RELEASE_NOTES_v2.5.md)
-[![Tipo](https://img.shields.io/badge/Tipo-Doc_Oficial-orange?style=for-the-badge)](../README_ES.md)
-
-</div>
-
----
+# Manual de Usuario RedAudit v2.5
 
 **Versión**: 2.5
-**Fecha**: 2025-12-07
-**Nivel Objetivo**: Pentester Profesional / SysAdmin
-
----
-
-## 📑 Índice (TOC)
-1. [Introducción](#1-introducción)
-2. [Entorno Soportado](#2-entorno-soportado)
-3. [Instalación](#3-instalación)
-4. [Inicio Rápido](#4-inicio-rápido)
-5. [Configuración Profunda](#5-configuración-profunda)
-    - [Concurrencia e Hilos](#concurrencia-e-hilos)
-    - [Rate Limiting (Sigilo)](#rate-limiting-sigilo)
-    - [Cifrado](#cifrado)
-6. [Lógica de Escaneo](#6-lógica-de-escaneo)
-7. [Guía de Descifrado](#7-guía-de-descifrado)
-8. [Monitorización y Heartbeat](#8-monitorización-y-heartbeat)
-9. [Script de Verificación](#9-script-de-verificación)
-10. [FAQ (Preguntas Frecuentes)](#10-faq-preguntas-frecuentes)
-11. [Glosario](#11-glosario)
-12. [Aviso Legal](#12-aviso-legal)
-
----
+**Audiencia**: Analistas de Seguridad, Administradores de Sistemas
+**Licencia**: GPLv3
 
 ## 1. Introducción
-RedAudit es un framework de reconocimiento automatizado diseñado para agilizar el flujo de `Descubrimiento` → `Enumeración` → `Evaluación de Vulnerabilidades`. Envuelve herramientas estándar de la industria (`nmap`, `whatweb`, `tcpdump`) en un modelo de concurrencia robusto basado en Python, añadiendo capas de resiliencia (heartbeats, reintentos) y seguridad (cifrado, sanitización).
+Este manual proporciona documentación exhaustiva para la operación y configuración de RedAudit. Cubre aspectos técnicos profundos del motor de escaneo, mecanismos de cifrado y gestión de reportes.
 
-## 2. Entorno Soportado
-- **SO**: Kali Linux (Preferido), Debian 10+, Ubuntu 20.04+.
-- **Privilegios**: Acceso **Root** (`sudo`) obligatorio para:
-    - Escaneo SYN (`nmap -sS`).
-    - Detección de SO (`nmap -O`).
-    - Captura de paquetes crudos (`tcpdump`).
-- **Python**: 3.8 o superior.
+## 2. Instalación y Configuración
+Asegúrese de que el sistema host cumple los siguientes requisitos:
+- **SO**: Kali Linux, Debian, Ubuntu, Parrot OS.
+- **Python**: v3.8+.
+- **Privilegios**: Root/Sudo (obligatorio para acceso a sockets raw).
 
-## 3. Instalación
-RedAudit usa un script instalador consolidado que gestiona dependencias (apt) y configuración.
+### Instalación
+Ejecute el script instalador para resolver automáticamente las dependencias (nmap, python-nmap, cryptography) y configurar el alias del sistema.
 
 ```bash
 git clone https://github.com/dorinbadea/RedAudit.git
 cd RedAudit
 sudo bash redaudit_install.sh
-source ~/.bashrc  # (Bash)
-# O
-source ~/.zshrc   # (Zsh/Kali)
 ```
 
-**Dependencias instaladas:**
-- `nmap`, `python3-nmap` (Escaneo núcleo)
-- `python3-cryptography` (Cifrado de reportes)
-- `whatweb`, `nikto`, `tcpdump`, `tshark` (Enriquecimiento opcional)
+## 3. Configuración
+RedAudit prioriza la configuración en tiempo de ejecución vía argumentos CLI sobre archivos de configuración estáticos para facilitar la automatización y ejecución stateless en entornos contenerizados.
 
-## 4. Inicio Rápido
-Ejecuta `redaudit` para iniciar el asistente interactivo.
+### Control de Concurrencia
+La herramienta utiliza `concurrent.futures.ThreadPoolExecutor` para paralelizar operaciones de host. El conteo de hilos por defecto se calcula como `cpu_count * 5`.
+- **Alta Concurrencia**: Use `--threads 20` para redes rápidas.
+- **Baja Concurrencia**: Use `--threads 2` para conexiones inestables o medidas.
 
-**Ejemplo de Sesión:**
-```text
-? Select network: 192.168.1.0/24
-? Select scan mode: NORMAL
-? Enter number of threads [1-16]: 6
-? Enable Web Vulnerability scans? [y/N]: y
-? Encrypt reports with password? [y/N]: y
-```
+### Rate Limiting
+Para mitigar la congestión de red o alertas IDS, se puede inyectar un retardo entre operaciones.
+- **Flag**: `-r <segundos>` o `--rate-limit <segundos>`.
+- **Implementación**: Inyecta llamadas `time.sleep()` dentro de los bucles de escaneo.
 
-## 5. Configuración Profunda
+## 4. Subsistema de Cifrado
+Cuando se habilita el cifrado (`--encrypt`), RedAudit asegura los artefactos de salida usando cifrado simétrico.
 
-### Concurrencia e Hilos
-RedAudit utiliza un **Pool de Hilos** (`concurrent.futures.ThreadPoolExecutor`) para escanear hosts en paralelo.
-- **Naturaleza**: Son **Hilos Python**, no procesos. Comparten memoria y estado global, pero dado que Nmap es un subproceso intensivo en E/S, el threading es altamente eficiente.
-- **Ajuste**:
-    - **1-4 Hilos**: Modo sigilo. Úsalo en redes estrictamente monitorizadas o switches antiguos susceptibles a congestión.
-    - **6-10 Hilos (Defecto)**: Equilibrado para LANs estándar.
-    - **12-16 Hilos**: Agresivo. Adecuado para CTFs o redes modernas robustas. Superar 16 hilos suele tener retornos decrecientes debido al propio paralelismo interno de Nmap.
+- **Algoritmo**: AES-128 en modo Fernet.
+- **Derivación de Clave**: PBKDF2HMAC-SHA256.
+- **Salt**: Salt aleatorio de 16 bytes generado por sesión.
+- **Iteraciones**: 480,000 rondas.
 
-### Rate Limiting (Sigilo)
-Para evadir heurísticas de IDS basadas en frecuencia de conexión, RedAudit implementa **Rate Limiting a nivel de Aplicación**.
-- **Parámetro**: `rate_limit_delay` (segundos).
-- **Implementación**: Un `time.sleep(DELAY)` forzado se ejecuta antes de que un hilo trabajador inicie una nueva tarea de host.
-- **Impacto**:
-    - **0s**: Velocidad máxima (Fire-and-forget).
-    - **2s**: Añade un enfriamiento de 2 segundos entre inicios de host. En una subred de 100 hosts con 10 hilos, esto dispersa significativamente las ráfagas de paquetes SYN.
-    - **>10s**: "Low and Slow". Aumenta drásticamente el tiempo de escaneo pero elimina virtualmente la detección por ráfagas simples.
+El descifrado requiere la contraseña correspondiente y la utilidad `redaudit_decrypt.py`.
 
-### Cifrado
-RedAudit trata los datos de los reportes como material sensible.
+## 5. Fases de Escaneo
+El flujo de ejecución consiste en tres fases secuenciales:
+
+1.  **Descubrimiento**: Escaneo ICMP y SYN para identificar hosts vivos.
+2.  **Enumeración**: Detección de versiones de servicio (`-sV`) en puertos descubiertos.
+3.  **Análisis Profundo**:
+    - **Web**: Cabeceras, tecnologías y vulnerabilidades (si se detecta HTTP/S).
+    - **Scripting**: Scripts NSE dirigidos basados en el tipo de servicio.
+
+## 6. Monitorización (Heartbeat)
+Un hilo demonio especializado monitoriza el estado del proceso principal. Actualiza un archivo `heartbeat` en el directorio de logs cada 5 segundos. Si el proceso principal se cuelga, la marca de tiempo en este archivo dejará de actualizarse, proporcionando un indicador externo de fallo.
+
+## 7. Solución de Problemas
+Consulte `docs/TROUBLESHOOTING.md` para códigos de error específicos y pasos de resolución. Los problemas comunes implican dependencias faltantes o privilegios insuficientes.
+
+## 8. Legal y Cumplimiento
+El uso de esta herramienta implica la aceptación de los términos de la licencia GPLv3. El operador asume total responsabilidad por cualquier acción realizada contra las redes objetivo.
 - **Estándar**: **Fernet** (Cumple especificación).
     - **Cifrado**: AES-128 en modo CBC.
     - **Firma**: HMAC-SHA256.

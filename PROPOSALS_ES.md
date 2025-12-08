@@ -1,28 +1,26 @@
-# Roadmap Futuro (Post v2.5)
+# Propuestas Arquitectónicas
 
-Este documento recoge sugerencias arquitectónicas para futuras versiones, sin alterar el núcleo actual (v2.5).
-*Nota: Cualquier propuesta implementada debe cumplir con la licencia GPLv3.*
+Este documento recopila sugerencias arquitectónicas para versiones futuras, enfocándose en modularidad y testing.
 
-## 1. Desacoplar el código Python
-**Estado Actual**: `redaudit_install.sh` contiene todo el código Python en un bloque `cat << 'EOF'`.
-**Propuesta**: Separar en dos archivos:
-- `install.sh`: Solo lógica de instalación (apt, alias, copy).
-- `src/redaudit.py`: El código fuente limpio.
-**Beneficio**: Facilita el linting, testeo y revisión de código sin regenerar el instalador.
+## 1. Estrategia de Desacoplamiento de Código
+**Estado Actual**: `redaudit_install.sh` actúa como un archivo auto-extraíble.
+**Propuesta**: Separar la distribución en:
+- `bin/redaudit`: Script de punto de entrada.
+- `lib/redaudit/`: Estructura de paquete Python estándar.
+**Beneficio**: Permite el uso de herramientas estándar (pip, pylint) sin pasos de extracción.
 
-## 2. Tests para el Descifrador
-**Estado Actual**: `redaudit_decrypt.py` se prueba manualmente.
-**Propuesta**: Añadir `tests/test_decrypt.py` que:
-1. Genere una clave y salt dummy.
-2. Cifre un string.
-3. Invoque `redaudit_decrypt.py` (o sus funciones importadas) para verificar el round-trip.
+## 2. Suite de Verificación de Descifrado
+**Estado Actual**: La lógica de descifrado se verifica manualmente.
+**Propuesta**: Implementar tests de regresión automáticos `tests/test_crypto_roundtrip.py`:
+1. Generar clave/salt efímera.
+2. Cifrar payload.
+3. Descifrar y asegurar igualdad.
 
-## 3. Validación de Versión Python
-**Estado Actual**: Se asume `python3` (normalmente 3.10+ en Kali).
-**Propuesta**: Añadir check explícito de versión (>= 3.8) en el instalador para evitar errores de sintaxis en distros antiguas.
-
-## 4. CI/CD Integration
-**Propuesta**: Incluir un archivo `.github/workflows/verify.yml` para validar PRs automáticamente sin ejecutar escaneos reales.
+## 3. Validación de Entorno de Ejecución
+**Propuesta**: Añadir rutina `pre_flight_check()` que verifique:
+- Versión Python >= 3.8.
+- Presencia y versión de Nmap >= 7.0.
+- Permisos de escritura en directorio de salida.
 
 ```yaml
 name: Verify RedAudit

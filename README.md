@@ -1,110 +1,46 @@
-<div align="center">
-  <img src="assets/header.png" alt="RedAudit Banner" width="100%">
+# RedAudit
+RedAudit is a CLI tool for structured network auditing and hardening on Kali/Debian systems.
 
-  <br>
+![Version](https://img.shields.io/badge/version-2.5-blue?style=flat-square)
+![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 
-  [ 🇬🇧 English ](README.md) | [ 🇪🇸 Español ](README_ES.md)
+## Overview
+RedAudit automates the discovery, enumeration, and reporting phases of network security assessments. It is designed for use in controlled lab environments, defensive hardening workflows, and authorized offensive security exercises. By orchestrating standard industry tools into a coherent concurrent pipeline, it reduces manual overhead and ensures consistent output generation.
 
-  <br>
+The tool bridges the gap between ad-hoc scanning and formal auditing, providing structured artifacts (JSON/TXT) that are ready for ingestion into reporting frameworks or SIEM analysis.
 
-  [![Version](https://img.shields.io/badge/Version-v2.5-blue?style=for-the-badge&logo=python)](https://github.com/dorinbadea/RedAudit/releases)
-  [![Platform](https://img.shields.io/badge/Platform-Kali%20Linux-black?style=for-the-badge&logo=linux)](https://www.kali.org)
-  [![License](https://img.shields.io/badge/License-GPLv3-red?style=for-the-badge&logo=gnu)](LICENSE)
-</div>
+## Architecture
+RedAudit operates as an orchestration layer, managing concurrent execution threads for network interaction and data processing. It implements a two-phase architecture: generic discovery followed by targeted deep scans.
 
-<br>
+| Component | Native tool / library | Role in RedAudit |
+| :--- | :--- | :--- |
+| **Discovery Engine** | `nmap` | Performs rapid host discovery and service enumeration. |
+| **Vulnerability Scanner** | `nmap` scripting engine | Executes targeted NSE scripts based on open ports. |
+| **Web Recon** | `whatweb`, `curl`, `wget`, `nikto` | Analyzes HTTP headers, technologies, and vulnerabilities. |
+| **SSL/TLS Analysis** | `openssl` | detailed certificate chain inspection and protocol support. |
+| **Traffic Capture** | `tcpdump`, `tshark` | Captures sample traffic for forensic validation (PCAP). |
+| **Orchestrator** | `concurrent.futures` (Python) | Manages thread pools for parallel host scanning. |
+| **Encryption** | `cryptography` (AES-128) | Secures output artifacts at rest using symmetric encryption. |
 
-# 🦅 RedAudit v2.5
+Deep scans are triggered selectively: web auditing modules launch only upon detection of HTTP/HTTPS services, and SSL inspection is reserved for encrypted ports.
 
-## 1. 📋 Overview
-**RedAudit** is an interactive, automated network auditing tool designed for **Kali Linux** and Debian-based systems. It streamlines the reconnaissance process by combining network discovery, port scanning, and vulnerability assessment into a single, cohesive CLI workflow.
+## Quick demo
+A short terminal recording will be linked here once published.
 
-Unlike simple wrapper scripts, RedAudit manages concurrency, data aggregation, and reporting (JSON/TXT) with Python-based logic, offering professional-grade reliability and audit trails.
+[Watch the terminal demo](https://asciinema.org/a/PLACEHOLDER)
 
-## 2. ✨ Features
-- **Interactive & Non-Interactive CLI**: Guided menu or full command-line arguments for automation
-- **Smart Discovery**: Auto-detects local interfaces and subnets using `ip` commands
-- **Multi-Mode Scanning**:
-    - **FAST**: ICMP ping sweep (`-sn`) for quick live host detection
-    - **NORMAL**: Top ports + Service Versioning (`-sV`)
-    - **FULL**: All ports, OS detection (`-O`), Scripts (`-sC`), and Web Vuln scans
-- **Adaptive Deep Scan**: Intelligent 2-phase engine (TCP Aggressive → UDP/OS Fallback) that maximizes speed and data
-- **Vendor/MAC Detection**: Automatically extracts hardware info even from partial scans
-- **Traffic Analysis**: Optional micro-captures (`tcpdump`) for active analysis of target behavior
-- **Web Recon**: Integrates `whatweb`, `nikto`, `curl`, and `openssl` for web-facing services
-- **Resilience**: Background heartbeat monitor prevents silent freezes during long scans
-- **Automation Ready**: Full CLI support for scripting and CI/CD integration
-
-## 3. 🔒 Security Features (Enhanced in v2.5)
-RedAudit v2.5 introduces enterprise-grade security hardening:
-- **Hardened Input Sanitization**: All user inputs validated for type, length, and format
-  - Type validation (only `str` accepted)
-  - Length limits (1024 chars for IPs/hostnames, 50 for CIDR)
-  - Automatic whitespace stripping
-  - Strict regex validation (`^[a-zA-Z0-9\.\-\/]+$`)
-  - No shell injection (uses `subprocess.run` with lists)
-- **Encrypted Reports**: Optional **AES-128 (Fernet)** encryption with PBKDF2-HMAC-SHA256 (480,000 iterations)
-- **Secure File Permissions**: All reports use 0o600 permissions (owner read/write only)
-- **Graceful Cryptography Handling**: Clear warnings if encryption unavailable, no password prompts
-- **Thread Safety**: `ThreadPoolExecutor` with proper locking mechanisms for concurrent I/O
-- **Rate Limiting**: Configurable `time.sleep()` delays to mitigate network flooding and IDS detection
-- **Audit Logging**: Comprehensive, rotating logs (max 10MB, 5 backups) stored in `~/.redaudit/logs/`
-
-[→ Full Security Documentation](docs/SECURITY.md)
-
-## 4. 📦 Requirements & Dependencies
-Designed for **Kali Linux**, **Debian**, or **Ubuntu**.
-Requires `root` or `sudo` privileges for Nmap OS detection and raw packet capture.
-
-**Core (Required):**
-- `nmap` (Network Mapper)
-- `python3-nmap` (Python bindings)
-- `python3-cryptography` (For encryption)
-
-**Recommended (Enrichment):**
-- `whatweb`, `nikto` (Web scanning)
-- `tcpdump`, `tshark` (Traffic capture)
-- `curl`, `wget`, `openssl` (HTTP/TLS analysis)
-- `bind9-dnsutils` (for `dig`)
-
-## 5. 🏗️ Installation
-The installer handles dependencies and setup automatically.
+## Installation
+RedAudit requires a Debian-based environment (Kali Linux recommended) and `sudo` privileges for raw socket access.
 
 ```bash
-# 1. Clone Repository
+# 1. Clone the repository
 git clone https://github.com/dorinbadea/RedAudit.git
 cd RedAudit
 
-# 2. Run Installer (Interactive)
+# 2. Run the installer (handles dependencies and aliases)
 sudo bash redaudit_install.sh
 
-# 3. Reload Shell (to activate alias)
-source ~/.bashrc  # for Bash users
-source ~/.zshrc   # for Zsh users (Kali default)
-```
-*Note: Use `sudo bash redaudit_install.sh -y` for non-interactive installation.*
-
-## 6. 🚀 Quick Start
-
-### Interactive Mode
-Launch the tool from any terminal:
-```bash
-redaudit
-```
-You will be guided through:
-1.  **Target Selection**: Pick a local subnet or enter a custom CIDR (e.g., `10.0.0.0/24`)
-2.  **Scan Mode**: Select FAST, NORMAL, or FULL
-3.  **Options**: Configure threads, rate limits, and encryption
-4.  **Authorization**: Confirm permission to scan
-
-### Non-Interactive Mode (NEW in v2.5)
-For automation and scripting:
-```bash
-# Basic scan
-sudo redaudit --target 192.168.1.0/24 --mode normal
-
-# Full scan with encryption
-sudo redaudit --target 10.0.0.0/24 --mode full --threads 8 --encrypt --output /tmp/reports
 
 # Multiple targets
 sudo redaudit --target "192.168.1.0/24,10.0.0.0/24" --mode normal --threads 6

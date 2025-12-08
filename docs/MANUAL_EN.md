@@ -1,151 +1,36 @@
-# RedAudit User Manual
-
----
-
-<div align="center">
-
-# 📘 RedAudit v2.5 User Manual
-
-[![Language](https://img.shields.io/badge/Language-English-blue?style=for-the-badge)](MANUAL_EN.md)
-[![Version](https://img.shields.io/badge/Version-v2.5-green?style=for-the-badge)](../RELEASE_NOTES_v2.5.md)
-[![Type](https://img.shields.io/badge/Type-Official_Docs-orange?style=for-the-badge)](../README.md)
-
-</div>
-
----
+# RedAudit v2.5 User Manual
 
 **Version**: 2.5
-**Date**: 2025-12-07
-**Target Level**: Professional Pentester / SysAdmin
-
----
-
-## 📑 Table of Contents
-1. [Introduction](#1-introduction)
-2. [Supported Environment](#2-supported-environment)
-3. [Installation](#3-installation)
-4. [Quick Start](#4-quick-start)
-5. [Deep Configuration](#5-deep-configuration)
-    - [Concurrency & Threads](#concurrency--threads)
-    - [Rate Limiting](#rate-limiting)
-    - [Encryption](#encryption)
-6. [Scan Logic & Phases](#6-scan-logic--phases)
-7. [Decryption Guide](#7-decryption-guide)
-8. [Monitoring & Heartbeat](#8-monitoring--heartbeat)
-9. [Verification Script](#9-verification-script)
-10. [FAQ](#10-faq)
-11. [Glossary](#11-glossary)
-12. [Legal Notice](#12-legal-notice)
-
----
+**Target Audience**: Security Analysts, Systems Administrators
+**License**: GPLv3
 
 ## 1. Introduction
-RedAudit is an automated reconnaissance framework designed to streamline the `Discovery` → `Enumeration` → `Vulnerability Assessment` pipeline. It wraps industry-standard tools (`nmap`, `whatweb`, `tcpdump`) in a robust Python concurrency model, adding layers of resilience (heartbeats, retries) and security (encryption, sanitization).
+This manual provides comprehensive documentation for the operation and configuration of RedAudit. It covers deep technical aspects of the scanning engine, encryption mechanisms, and report handling.
 
-## 2. Supported Environment
-- **OS**: Kali Linux (Preferred), Debian 10+, Ubuntu 20.04+.
-- **Privileges**: **Root** (`sudo`) access is mandatory for:
-    - SYN scanning (`nmap -sS`).
-    - OS detection (`nmap -O`).
-    - Raw packet capture (`tcpdump`).
-- **Python**: 3.8 or higher.
+## 2. Installation and Setup
+Ensure the host system meets the following requirements:
+- **OS**: Kali Linux, Debian, Ubuntu, Parrot OS.
+- **Python**: v3.8+.
+- **Privileges**: Root/Sudo (mandatory for raw socket access).
 
-## 3. Installation
-RedAudit uses a consolidated installer script that handles dependencies (apt) and setup.
+### Installation
+Execute the installer script to automatically resolve dependencies (nmap, python-nmap, cryptography) and configure the system alias.
 
 ```bash
 git clone https://github.com/dorinbadea/RedAudit.git
 cd RedAudit
 sudo bash redaudit_install.sh
-source ~/.bashrc  # (Bash)
-# OR
-source ~/.zshrc   # (Zsh/Kali)
 ```
 
-**Dependencies installed:**
-- `nmap`, `python3-nmap` (Core scanning)
-- `python3-cryptography` (Report encryption)
-- `whatweb`, `nikto`, `tcpdump`, `tshark` (Optional enrichment)
+## 3. Configuration
+RedAudit prioritizes runtime configuration via CLI arguments over static config files to facilitate automation and stateless execution in containerized environments.
 
-## 4. Quick Start
-
-### Interactive Mode
-Run `redaudit` to start the interactive wizard.
-
-**Example Session:**
-```text
-? Select network: 192.168.1.0/24
-? Select scan mode: NORMAL
-? Enter number of threads [1-16]: 6
-? Enable Web Vulnerability scans? [y/N]: y
-? Encrypt reports with password? [y/N]: y
-```
-
-### Non-Interactive Mode (v2.5)
-For automation, use command-line arguments:
-
-```bash
-# Basic scan
-sudo redaudit --target 192.168.1.0/24 --mode normal --threads 6
-
-# Full scan with all options
-sudo redaudit \
-  --target 10.0.0.0/24 \
-  --mode full \
-  --threads 8 \
-  --rate-limit 2 \
-  --encrypt \
-  --encrypt-password "MySecurePassword123" \
-  --output /tmp/reports \
-  --max-hosts 50
-
-# With encryption (random password generated)
-sudo redaudit --target 192.168.1.0/24 --mode normal --encrypt --yes
-
-# Multiple targets
-sudo redaudit --target "192.168.1.0/24,10.0.0.0/24" --mode normal
-
-# Automation (skip legal warning)
-sudo redaudit --target 192.168.1.0/24 --mode fast --yes
-```
-
-**Key CLI Arguments:**
-- `--target, -t`: Target network(s) in CIDR (required for non-interactive)
-- `--mode, -m`: fast/normal/full (default: normal)
-- `--threads, -j`: 1-16 (default: 6)
-- `--rate-limit`: Delay in seconds (default: 0)
-- `--encrypt, -e`: Enable encryption
-- `--encrypt-password PASSWORD`: Password for encryption (non-interactive). If omitted, a random password will be generated and displayed.
-- `--output, -o`: Output directory
-- `--max-hosts`: Limit number of hosts
-- `--yes, -y`: Skip legal warning
-- `--lang`: Language (en/es)
-
-Run `redaudit --help` for complete list.
-
-## 5. Deep Configuration
-
-### Concurrency & Threads
-RedAudit uses a **Thread Pool** (`concurrent.futures.ThreadPoolExecutor`) to scan hosts in parallel.
-- **Nature**: These are **Python Threads**, not processes. They share memory and global interpreter state, but since Nmap is an I/O-bound subprocess, threading is highly efficient.
-- **Tuning**:
-    - **1-4 Threads**: Stealth mode. Use for strictly monitored networks or legacy switches susceptible to congestion.
-    - **6-10 Threads (Default)**: Balanced for standard LANs.
-    - **12-16 Threads**: Aggressive. Suitable for CTFs or robust, modern networks. Exceeding 16 often yields diminishing returns due to Nmap's own internal parallelism.
+### Concurrency Control
+The tool uses `concurrent.futures.ThreadPoolExecutor` to parallelize host operations. The default thread count is calculated as `cpu_count * 5`.
+- **High Concurrency**: Use `--threads 20` for fast networks.
+- **Low Concurrency**: Use `--threads 2` for unstable or metered connections.
 
 ### Rate Limiting
-To evade IDS heuristics based on connection frequency, RedAudit implements **Application-Layer Rate Limiting**.
-- **Parameter**: `rate_limit_delay` (seconds).
-- **Implementation**: A forced `time.sleep(DELAY)` executes before a worker thread picks up a new host task.
-- **Impact**:
-    - **0s**: Fire-and-forget.
-    - **2s**: Adds a 2-second cooldown between host starts. In a 100-host subnet with 10 threads, this significantly spreads out the SYN packet bursts.
-    - **>10s**: "Low and Slow". Drastically increases scan time but virtually eliminates simple burst detection.
-
-### Encryption
-RedAudit treats report data as sensitive material.
-- **Standard**: **Fernet** (Specification compliant).
-    - **Cipher**: AES-128 in CBC mode.
     - **Signing**: HMAC-SHA256.
     - **Validation**: Timestamp-aware token (TTL ignored by default).
 - **Key Derivation**:

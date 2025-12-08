@@ -1,69 +1,53 @@
-<div align="center">
+# Guía de Uso RedAudit
 
-# 🛠️ Guía de Uso RedAudit
+## Referencia CLI
+RedAudit está diseñado para ejecución sin estado (stateless) vía argumentos de línea de comandos.
 
-[![Idioma](https://img.shields.io/badge/Idioma-Español-yellow?style=for-the-badge)](USAGE_ES.md)
-[![Tipo](https://img.shields.io/badge/Tipo-Guía-orange?style=for-the-badge)](MANUAL_ES.md)
-
-</div>
-
----
-
-> **Consejo**: Para una explicación técnica detallada (Hilos, Cifrado, etc.), consulta el [Manual de Usuario Profesional](MANUAL_ES.md).
-
-
-
-## Instalación
-RedAudit está diseñado para sistemas Kali Linux o Debian.
-
-1. **Instalación y Actualización**:
-   ```bash
-   sudo bash redaudit_install.sh
-   # Para modo no interactivo:
-   sudo bash redaudit_install.sh -y
-   ```
-   Esto instala las dependencias necesarias (`nmap`, `python3-cryptography`, etc.) y crea el alias.
-
-2. **Recargar Shell**:
-   ```bash
-   source ~/.bashrc  # Para Bash
-   # O
-   source ~/.zshrc   # Para Zsh
-   ```
-
-3. **Ejecutar**:
-   ```bash
-   # Modo interactivo
-   redaudit
-   
-   # Modo no interactivo (v2.5)
-   sudo redaudit --target 192.168.1.0/24 --mode normal
-   ```
-
-## Flujo de Trabajo
-
-### 1. Configuración
-
-#### Modo Interactivo
-La herramienta te pedirá:
-- **Red Objetivo**: Interfaces detectadas o CIDR manual.
-- **Modo de Escaneo**: Normal (Discovery+Top Ports), Rápido o Completo.
-- **Hilos**: Número de trabajadores concurrentes.
-- **Rate Limit**: Retardo opcional (segundos) entre hosts para sigilo.
-- **Cifrado**: Protección opcional con contraseña para los reportes.
-- **Directorio de Salida**: Por defecto `~/RedAuditReports`.
-
-#### Modo No Interactivo (v2.5)
-Toda la configuración mediante argumentos de línea de comandos:
+### Sintaxis
 ```bash
-sudo redaudit \
-  --target 192.168.1.0/24 \
-  --mode full \
-  --threads 8 \
-  --rate-limit 1 \
-  --encrypt \
-  --output /ruta/personalizada \
-  --max-hosts 100
+sudo redaudit [TARGET] [OPTIONS]
+```
+
+### Argumentos Principales
+| Flag | Descripción |
+| :--- | :--- |
+| `-t`, `--target` | IP objetivo, subred (CIDR), o lista separada por comas. |
+| `-m`, `--mode` | Intensidad: `fast` (ICMP), `normal` (Puertos top), `full` (Todos + scripts). |
+| `--deep` | Habilita escaneo de vulnerabilidades agresivo (Web/NSE). Equivale a `-m full`. |
+| `-o`, `--output` | Especificar directorio de salida. Por defecto: `~/RedAuditReports`. |
+| `-l`, `--lang` | Idioma de interfaz: `en` (defecto), `es`. |
+
+### Rendimiento y Evasión
+| Flag | Descripción |
+| :--- | :--- |
+| `--threads <N>` | Tamaño del pool de hilos para escaneo concurrente. |
+| `-r`, `--rate-limit` | Segundos de espera entre operaciones de hilo (float). |
+| `--pcap` | Habilita captura de paquetes raw (`tcpdump`) durante el escaneo. |
+
+### Seguridad
+| Flag | Descripción |
+| :--- | :--- |
+| `--encrypt` | Cifra artefactos de salida con AES-128. Pide contraseña si no se provee. |
+| `--version` | Muestra información de versión y sale. |
+
+## Ejemplos
+
+**1. Auditoría de Subred Estándar**
+Enumera servicios en una subred Clase C con concurrencia por defecto.
+```bash
+sudo redaudit -t 192.168.1.0/24
+```
+
+**2. Escaneo Dirigido de Alto Sigilo**
+Escanea un único host con rate limiting habilitado para reducir ruido.
+```bash
+sudo redaudit -t 10.0.0.50 --rate-limit 1.5 --mode normal
+```
+
+**3. Modo Forense**
+Escaneo profundo con captura de tráfico completa y reporte cifrado para cadena de custodia.
+```bash
+sudo redaudit -t 192.168.1.100 --deep --pcap --encrypt
 ```
 
 ### 2. Fases de Ejecución

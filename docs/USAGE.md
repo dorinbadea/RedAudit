@@ -1,75 +1,54 @@
-<div align="center">
+# RedAudit Usage Guide
 
-# 🛠️ RedAudit Usage Guide
+## CLI Reference
+RedAudit is designed for stateless execution via command-line arguments.
 
-[![Language](https://img.shields.io/badge/Language-English-blue?style=for-the-badge)](USAGE.md)
-[![Type](https://img.shields.io/badge/Type-Guide-orange?style=for-the-badge)](MANUAL_EN.md)
-
-</div>
-
----
-
-> **Tip**: For a deep technical dive (Threads, Encryption internals, etc.), check the [Professional User Manual](MANUAL_EN.md).
-
-
-
-## Installation
-RedAudit is designed for Kali Linux or Debian-based systems.
-
-1. **Install & Update**:
-   ```bash
-   sudo bash redaudit_install.sh
-   # Or for non-interactive mode:
-   sudo bash redaudit_install.sh -y
-   ```
-   This installs dependencies (`nmap`, `python3-cryptography`, etc.) and creates the alias.
-
-2. **Reload Shell**:
-   ```bash
-   source ~/.bashrc  # for Bash
-   # OR
-   source ~/.zshrc   # for Zsh
-   ```
-
-3. **Run**:
-   ```bash
-   # Interactive mode
-   redaudit
-   
-   # Non-interactive mode (v2.5)
-   sudo redaudit --target 192.168.1.0/24 --mode normal
-   ```
-
-## Workflow
-
-### 1. Configuration
-
-#### Interactive Mode
-The tool will prompt you for:
-- **Target Network**: Auto-detected interfaces or manual CIDR.
-- **Scan Mode**: Normal (Discovery+Top Ports), Fast, or Full.
-- **Threads**: Number of concurrent workers.
-- **Rate Limit**: Optional delay (seconds) between hosts for stealth.
-- **Encryption**: Optional password protection for reports.
-- **Output Directory**: Defaults to `~/RedAuditReports`.
-
-#### Non-Interactive Mode (v2.5)
-All configuration via command-line arguments:
+### Syntax
 ```bash
-sudo redaudit \
-  --target 192.168.1.0/24 \
-  --mode full \
-  --threads 8 \
-  --rate-limit 1 \
-  --encrypt \
-  --output /custom/path \
-  --max-hosts 100
+sudo redaudit [TARGET] [OPTIONS]
 ```
 
-### 2. Execution Phases
-- **Discovery**: fast ping scan to find live hosts.
-- **Port Scan**: specific nmap scan per host.
-- **Vulnerability Scan**: checks web services (http/https) against `whatweb` / `nikto` (if full mode).
+### Core Arguments
+| Flag | Description |
+| :--- | :--- |
+| `-t`, `--target` | Target IP, subnet (CIDR), or comma-separated list. |
+| `-m`, `--mode` | Scan intensity: `fast` (ICMP), `normal` (Top ports), `full` (All ports + scripts). |
+| `--deep` | Enable aggressive vulnerability scanning (Web/NSE). Equivalent to `-m full`. |
+| `-o`, `--output` | Specify output directory. Default: `~/RedAuditReports`. |
+| `-l`, `--lang` | Interface language: `en` (default), `es`. |
+
+### Performance & Evasion
+| Flag | Description |
+| :--- | :--- |
+| `--threads <N>` | Set size of thread pool for concurrent host scanning. |
+| `-r`, `--rate-limit` | Seconds to sleep between thread operations (float). |
+| `--pcap` | Enable raw packet capture (`tcpdump`) during scan. |
+
+### Security
+| Flag | Description |
+| :--- | :--- |
+| `--encrypt` | Encrypt output artifacts with AES-128. Prompts for password if not provided. |
+| `--version` | Display version information and exit. |
+
+## Examples
+
+**1. Standard Subnet Audit**
+Enumerates services on a Class C subnet with default concurrency.
+```bash
+sudo redaudit -t 192.168.1.0/24
+```
+
+**2. High-Stealth Targeted Scan**
+Scans a single host with rate limiting enabled to reduce noise.
+```bash
+sudo redaudit -t 10.0.0.50 --rate-limit 1.5 --mode normal
+```
+
+**3. Forensics Mode**
+Deep scan with full traffic capture and encrypted reporting for chain-of-custody.
+```bash
+sudo redaudit -t 192.168.1.100 --deep --pcap --encrypt
+```
 
 ### 3. Reports & Encryption
 Reports are saved with a timestamp `redaudit_YYYYMMDD_HHMMSS`.
