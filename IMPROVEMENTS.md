@@ -107,10 +107,10 @@ Enfoque en análisis avanzado y gran escala.
 
 ## 🗑️ Ideas Descartadas
 
-Propuestas que evaluamos pero no implementaremos:
+Propuestas que evalué pero no implementaré:
 
 - ❌ **Soporte Windows nativo**: Mejor usar WSL2/Docker
-  - *Razón*: Complejidad de mantener dos codebases
+  - *Razón*: Complejidad de mantener dos codebases yo solo
 - ❌ **GUI gráfica (GTK/Qt)**: Fuera del scope del proyecto
   - *Razón*: RedAudit se enfoca en automatización CLI/API
 
@@ -125,7 +125,7 @@ Si deseas contribuir a alguna de estas features:
 3. 📖 Lee [CONTRIBUTING.md](https://github.com/dorinbadea/RedAudit/blob/main/CONTRIBUTING.md) para guidelines
 4. 🐛 Para bugs o propuestas nuevas, abre un [Discussion](https://github.com/dorinbadea/RedAudit/discussions)
 
-**Especialmente buscamos ayuda en:**
+**Especialmente busco ayuda en:**
 - Tests unitarios (ideal para empezar a contribuir)
 - Traducción a otros idiomas
 - Documentación y ejemplos de uso
@@ -137,4 +137,4 @@ Si deseas contribuir a alguna de estas features:
 **Mantenimiento Activo** (última actualización: Diciembre 2025)
 
 Si este documento no se actualiza en >6 meses, el proyecto puede estar pausado. 
-En ese caso, considera hacer un fork o contactar al maintainer.
+En ese caso, considera hacer un fork o contactarme.
