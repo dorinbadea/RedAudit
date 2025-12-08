@@ -82,7 +82,7 @@ jobs:
       - name: Count tests
         id: count
         run: |
-          TEST_COUNT=$(pytest tests/ --collect-only -q 2>/dev/null | tail -1 | grep -oE '^[0-9]+' || echo "0")
+          TEST_COUNT=$(grep -r "def test_" tests/ --include="*.py" | wc -l | tr -d ' ')
           echo "test_count=$TEST_COUNT" >> $GITHUB_OUTPUT
           echo "Found $TEST_COUNT tests"
 
