@@ -113,25 +113,25 @@ redaudit --compare scan_ayer.json scan_hoy.json
 
 ---
 
-## 🗑️ Ideas Descartadas
+## Discarded Concepts
 
 Propuestas que evalué pero no implementaré:
 
 | Propuesta | Razón del Descarte |
 | :--- | :--- |
-| ❌ **Soporte Windows nativo** | Complejidad de mantener dos codebases yo solo. Mejor usar WSL2/Docker. |
-| ❌ **GUI gráfica (GTK/Qt)** | RedAudit es una herramienta de automatización CLI/API. Fuera del scope. |
+| **Native Windows Support** | Too complex to maintain solo. Use WSL2/Docker. |
+| **GUI (GTK/Qt)** | RedAudit is a CLI automation tool. Out of scope. |
 
 ---
 
-## 🤝 ¿Quieres Participar?
+## Contributing
 
 Si deseas contribuir a alguna de estas features:
 
-1.  🔍 Revisa si ya existe un [Issue relacionado](https://github.com/dorinbadea/RedAudit/issues).
-2.  💬 Comenta tu interés antes de empezar (para evitar trabajo duplicado).
-3.  📖 Lee [CONTRIBUTING.md](https://github.com/dorinbadea/RedAudit/blob/main/CONTRIBUTING.md).
-4.  🐛 Abre un [Discussion](https://github.com/dorinbadea/RedAudit/discussions) para nuevas ideas.
+1.  Check existing [Issues](https://github.com/dorinbadea/RedAudit/issues).
+2.  Comment before starting to avoid duplication.
+3.  Read [CONTRIBUTING.md](https://github.com/dorinbadea/RedAudit/blob/main/CONTRIBUTING.md).
+4.  Open a [Discussion](https://github.com/dorinbadea/RedAudit/discussions) for new ideas.
 
 **Especialmente busco ayuda en:**
 *   Tests unitarios (ideal para empezar).

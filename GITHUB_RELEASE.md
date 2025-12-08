@@ -33,9 +33,9 @@ sudo bash redaudit_install.sh
 
 - **Integration Tests**: Comprehensive test suite
 - **Encryption Tests**: Full coverage for encryption functionality
-- All tests passing ✅
+- All tests passing
 
-### 📚 Documentation
+### Documentation
 
 Complete documentation updates in English and Spanish:
 - README.md / README_ES.md
@@ -45,13 +45,13 @@ Complete documentation updates in English and Spanish:
 - Troubleshooting Guide (TROUBLESHOOTING.md)
 - Report Schema (REPORT_SCHEMA.md)
 
-### 🐛 Bug Fixes
+### Bug Fixes
 
 - Fixed missing `_combined_output_has_identity()` function
 - Fixed cryptography availability check flow
 - Fixed sanitizer type validation issues
 
-### 📦 Installation
+### Installation
 
 ```bash
 git clone https://github.com/dorinbadea/RedAudit.git
@@ -60,7 +60,7 @@ sudo bash redaudit_install.sh
 source ~/.bashrc  # or ~/.zshrc
 ```
 
-### 🔗 Links
+### Links
 
 - **Full Changelog**: [CHANGELOG.md](CHANGELOG.md)
 - **Documentation**: [docs/](docs/)

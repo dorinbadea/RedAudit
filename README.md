@@ -106,7 +106,7 @@ RedAudit applies a smart 2-phase scan to "silent" or complex hosts:
 - **Benefit**: Saves time by skipping Phase 2 if the host is already identified.
 - **Output**: Full logs and MAC/Vendor data in `host.deep_scan`.
 
-## 8. 🔐 Reports, Encryption & Decryption
+## 8. Reports, Encryption & Decryption
 Reports are saved to `~/RedAuditReports` (default) with timestamps.
 
 ### Encryption (`.enc`)
@@ -125,7 +125,7 @@ python3 redaudit_decrypt.py /path/to/report_NAME.json.enc
 ```
 *The script automatically locates the corresponding `.salt` file.*
 
-## 9. 💓 Logging & Heartbeat
+## 9. Logging & Heartbeat
 
 ### Application Logs
 Debug and audit logs are stored in `~/.redaudit/logs/`.
@@ -139,14 +139,14 @@ A background `threading.Thread` monitors the scan state every 30 seconds.
 - **>300s silence**: Logs a **WARNING** with message "Nmap is still running; this is normal on slow or filtered hosts."
 - **Purpose**: Assures the operator that the tool is alive during long Nmap operations (e.g., `-p-` scans).
 
-## 10. ✅ Verification Script
+## 10. Verification Script
 Verify your environment integrity (checksums, dependencies, alias) at any time:
 ```bash
 bash redaudit_verify.sh
 ```
 *Useful after OS updates or git pulls.*
 
-## 11. 📚 Glossary
+## 11. Glossary
 - **Fernet**: Symmetric encryption standard using AES-128 and HMAC-SHA256.
 - **Heartbeat**: Background task ensuring the main process is responsive.
 - **Deep Scan**: Automated fallback scan (`-A`) triggered when a host returns limited data.
@@ -154,17 +154,17 @@ bash redaudit_verify.sh
 - **Salt**: Random data added to password hashing to prevent rainbow table attacks. stored in `.salt` files.
 - **Thread Pool**: Collection of worker threads that execute tasks (host scans) concurrently.
 
-## 12. 🛠️ Troubleshooting
+## 12. Troubleshooting
 See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for detailed fixes.
 - **"Permission denied"**: Ensure you run with `sudo`.
 - **"Cryptography missing"**: Run `sudo apt install python3-cryptography`.
 - **"Scan frozen"**: Check `~/.redaudit/logs/` or reduce `rate_limit_delay`.
 
-## 13. ⚖️ Legal Notice
+## 13. Legal Notice
 **RedAudit** is a security tool for **authorized auditing only**.
 Scanning networks without permission is illegal. By using this tool, you accept full responsibility for your actions and agree to use it only on systems you own or have explicit authorization to test.
 
-## 14. 📝 Changelog (v2.5 Summary)
+## 14. Changelog (v2.5 Summary)
 - **Security**: Hardened input sanitization with type/length validation, secure file permissions (0o600)
 - **Automation**: Full non-interactive CLI mode for scripting and CI/CD integration
 - **Testing**: Comprehensive integration and encryption test suites
@@ -173,12 +173,12 @@ Scanning networks without permission is illegal. By using this tool, you accept 
 
 For detailed changelog, see [CHANGELOG.md](CHANGELOG.md)
 
-## 15. ⚖️ License
+## 15. License
 
 RedAudit is released under the **GNU General Public License v3.0 (GPLv3)**.  
 See the [LICENSE](LICENSE) file for the full text and terms.
 
-## 16. 🧠 Internals & Glossary (Why RedAudit behaves this way)
+## 16. Internals & Glossary (Why RedAudit behaves this way)
 
 ### Thread pool (`threads`)
 RedAudit uses a thread pool to scan multiple hosts in parallel.  
