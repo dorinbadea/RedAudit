@@ -629,10 +629,17 @@ class InteractiveNetworkAuditor:
             return result
 
     def scan_hosts_concurrent(self, hosts):
-        """Scan multiple hosts concurrently."""
+        """Scan multiple hosts concurrently with progress bar."""
         self.print_status(self.t("scan_start", len(hosts)), "HEADER")
         unique_hosts = sorted(set(hosts))
         results = []
+
+        # Try to use rich for better progress visualization
+        try:
+            from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+            use_rich = True
+        except ImportError:
+            use_rich = False
 
         with ThreadPoolExecutor(max_workers=self.config["threads"]) as executor:
             futures = {}
@@ -646,20 +653,47 @@ class InteractiveNetworkAuditor:
 
             total = len(futures)
             done = 0
-            for fut in as_completed(futures):
-                if self.interrupted:
-                    break
-                host_ip = futures[fut]
-                try:
-                    res = fut.result()
-                    results.append(res)
-                except Exception as exc:
-                    self.logger.error("Worker error for %s: %s", host_ip, exc)
-                done += 1
-                if total and done % max(1, total // 10) == 0:
-                    self.print_status(
-                        self.t("progress", done, total), "INFO", update_activity=False
+
+            if use_rich and total > 0:
+                # Rich progress bar
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                    TextColumn("({task.completed}/{task.total})"),
+                    TimeElapsedColumn(),
+                ) as progress:
+                    task = progress.add_task(
+                        f"[cyan]{self.t('scanning_hosts')}", total=total
                     )
+                    for fut in as_completed(futures):
+                        if self.interrupted:
+                            break
+                        host_ip = futures[fut]
+                        try:
+                            res = fut.result()
+                            results.append(res)
+                        except Exception as exc:
+                            self.logger.error("Worker error for %s: %s", host_ip, exc)
+                        done += 1
+                        progress.update(task, advance=1, description=f"[cyan]Scanned {host_ip}")
+            else:
+                # Fallback to basic progress
+                for fut in as_completed(futures):
+                    if self.interrupted:
+                        break
+                    host_ip = futures[fut]
+                    try:
+                        res = fut.result()
+                        results.append(res)
+                    except Exception as exc:
+                        self.logger.error("Worker error for %s: %s", host_ip, exc)
+                    done += 1
+                    if total and done % max(1, total // 10) == 0:
+                        self.print_status(
+                            self.t("progress", done, total), "INFO", update_activity=False
+                        )
 
         self.results["hosts"] = results
         return results

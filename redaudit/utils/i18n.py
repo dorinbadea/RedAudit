@@ -90,6 +90,7 @@ TRANSLATIONS = {
         "nmap_cmd": "[nmap] {} → {}",
         "exploits_found": "⚠️  Found {} known exploits for {}",
         "testssl_analysis": "Running deep SSL/TLS analysis on {}:{} (may take 60s)...",
+        "scanning_hosts": "Scanning hosts...",
     },
     "es": {
         "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
@@ -173,6 +174,7 @@ TRANSLATIONS = {
         "nmap_cmd": "[nmap] {} → {}",
         "exploits_found": "⚠️  Encontrados {} exploits conocidos para {}",
         "testssl_analysis": "Ejecutando análisis SSL/TLS profundo en {}:{} (puede tomar 60s)...",
+        "scanning_hosts": "Escaneando hosts...",
     },
 }
 
