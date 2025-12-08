@@ -100,7 +100,7 @@ redaudit --compare scan_ayer.json scan_hoy.json
 - [ ] **Docker**: Official tool containerization.
 - [ ] **API REST**: Exponer el motor de escaneo vía API para integraciones de terceros.
 
-🗓️ **Estimado**: Q2-Q3 2026
+**Estimado**: Q2-Q3 2026
 
 ### v4.0 (Largo Plazo: Inteligencia)
 *Enfoque en análisis avanzado y gran escala.*
@@ -109,7 +109,7 @@ redaudit --compare scan_ayer.json scan_hoy.json
 - [ ] **Modo Distribuido**: Orquestación de múltiples nodos de scanning.
 - [ ] **Integración SIEM**: Conectores nativos para Splunk, ELK, Wazuh.
 
-🗓️ **Estimado**: 2026+
+**Estimado**: 2026+
 
 ---
 
@@ -143,7 +143,7 @@ Si deseas contribuir a alguna de estas features:
 <div align="center">
 
 **Mantenimiento Activo**  
-*Última actualización: Diciembre 2025*
+*Última actualización: Diciembre 2026*
 
 <sub>Si este documento no se actualiza en >6 meses, el proyecto puede estar pausado. En ese caso, considera hacer un fork o contactarme.</sub>
 

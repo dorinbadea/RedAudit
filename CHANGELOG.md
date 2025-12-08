@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **File Permissions**: All generated reports use secure permissions (0o600)
 - **Error Handling**: Better exception handling prevents information leakage
 
-## [2.5.0] - 2025-05-21 (Adaptive Deep Scan)
+## [2.5.0] - 2025-12-07 (Adaptive Deep Scan)
 
 ### Added
 - **Adaptive Deep Scan (v2.5)**: Implemented a smart 2-phase strategy (Aggressive TCP first -> UDP+OS fallback). to maximize speed and data.

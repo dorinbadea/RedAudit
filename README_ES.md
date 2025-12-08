@@ -96,7 +96,7 @@ sudo redaudit --target "192.168.1.0/24,10.0.0.0/24" --mode normal --threads 6
 
 Ver `redaudit --help` para detalles completos.
 
-## 7. ⚙️ Configuración y Parámetros Internos
+## 7. Configuración y Parámetros Internos
 
 ### Concurrencia (Hilos)
 RedAudit usa `ThreadPoolExecutor` de Python para escanear múltiples hosts simultáneamente.
@@ -122,7 +122,7 @@ RedAudit aplica un escaneo inteligente de 2 fases a hosts "silenciosos" o comple
 - **Beneficio**: Ahorra tiempo saltando la Fase 2 si el host ya está identificado.
 - **Salida**: Logs completos y datos MAC/Vendor en `host.deep_scan`.
 
-## 8. 🔐 Reportes, Cifrado y Descifrado
+## 8. Reportes, Cifrado y Descifrado
 Los reportes se guardan en `~/RedAuditReports` (por defecto) con fecha y hora.
 
 ### Cifrado (`.enc`)
@@ -141,7 +141,7 @@ python3 redaudit_decrypt.py /ruta/a/report_NOMBRE.json.enc
 ```
 *El script localiza automáticamente el archivo `.salt` correspondiente.*
 
-## 9. 💓 Logging y Monitor de Actividad (Heartbeat)
+## 9. Logging y Monitor de Actividad (Heartbeat)
 
 ### Logs de Aplicación
 Logs de depuración y auditoría se guardan en `~/.redaudit/logs/`.
@@ -155,14 +155,14 @@ Un hilo en segundo plano (`threading.Thread`) monitoriza el estado del escaneo c
 - **>300s silencio**: Registra un **WARNING** con el mensaje "Nmap sigue ejecutándose; esto es normal en hosts lentos o filtrados."
 - **Propósito**: Asegurar al operador que la herramienta sigue viva durante operaciones largas de Nmap (ej: escaneos `-p-`).
 
-## 10. ✅ Script de Verificación
+## 10. Script de Verificación
 Verifica la integridad de tu entorno (checksums, dependencias, alias) en cualquier momento:
 ```bash
 bash redaudit_verify.sh
 ```
 *Útil tras actualizaciones del sistema o `git pull`.*
 
-## 11. 📚 Glosario
+## 11. Glosario
 - **Fernet**: Estándar de cifrado simétrico usando AES-128 y HMAC-SHA256.
 - **Heartbeat**: Tarea en segundo plano que asegura que el proceso principal responde.
 - **Deep Scan**: Escaneo de respaldo automático (`-A`) disparado cuando un host devuelve datos limitados.
@@ -170,17 +170,17 @@ bash redaudit_verify.sh
 - **Salt**: Dato aleatorio añadido al hash de contraseña para evitar ataques de rainbow table, guardado en archivos `.salt`.
 - **Thread Pool**: Colección de hilos trabajadores que ejecutan tareas (escaneos de host) concurrentemente.
 
-## 12. 🛠️ Solución de Problemas
+## 12. Solución de Problemas
 Consulta [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) para soluciones detalladas.
 - **"Permission denied"**: Asegúrate de usar `sudo`.
 - **"Cryptography missing"**: Ejecuta `sudo apt install python3-cryptography`.
 - **"Scan frozen"**: Revisa `~/.redaudit/logs/` o reduce `rate_limit_delay`.
 
-## 13. ⚖️ Aviso Legal
+## 13. Aviso Legal
 **RedAudit** es una herramienta de seguridad únicamente para **auditorías autorizadas**.
 Escanear redes sin permiso es ilegal. Al usar esta herramienta, aceptas total responsabilidad por tus acciones y acuerdas usarla solo en sistemas de tu propiedad o para los que tengas autorización explícita.
 
-## 14. 📝 Historial de Cambios (Resumen v2.5)
+## 14. Historial de Cambios (Resumen v2.5)
 - **Seguridad**: Sanitización de entrada endurecida con validación de tipo/longitud, permisos de archivo seguros (0o600)
 - **Automatización**: Modo CLI completo no interactivo para scripting e integración CI/CD
 - **Testing**: Suites de tests completas de integración y cifrado
@@ -189,12 +189,12 @@ Escanear redes sin permiso es ilegal. Al usar esta herramienta, aceptas total re
 
 Para el changelog detallado, consulta [CHANGELOG.md](CHANGELOG.md)
 
-## 15. ⚖️ Licencia
+## 15. Licencia
 
 RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**.  
 Consulta el archivo [LICENSE](LICENSE) para ver el texto completo y las condiciones.
 
-## 16. 🧠 Internos & Glosario (Por qué RedAudit se comporta así)
+## 16. Internos & Glosario (Por qué RedAudit se comporta así)
 
 ### Pool de hilos (`threads`)
 RedAudit utiliza un *pool* de hilos para escanear varios hosts en paralelo.  

@@ -1,6 +1,6 @@
 #!/bin/bash
 # RedAudit Installer v2.5 (Clean install + Language injection + Alias setup)
-# GPLv3 - 2025 © Dorin Badea
+# GPLv3 - 2026 © Dorin Badea
 
 # -------------------------------------------
 # 0) Pre-checks
