@@ -1,5 +1,7 @@
 # Manual de Usuario RedAudit v2.6
 
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](MANUAL_EN.md)
+
 **Versión**: 2.6
 **Audiencia**: Analistas de Seguridad, Administradores de Sistemas
 **Licencia**: GPLv3

@@ -1,5 +1,7 @@
 # Security Architecture & Hardening
 
+[![Ver en español](https://img.shields.io/badge/Ver%20en%20español-red?style=flat-square)](SECURITY_ES.md)
+
 ## Overview
 
 RedAudit implements a "secure by design" philosophy, assuming execution in hostile or untrusted environments. This document outlines the security controls regarding input handling, cryptography, and operational safety.

@@ -1,5 +1,7 @@
 # Contributing Guidelines
 
+[![Ver en español](https://img.shields.io/badge/Ver%20en%20español-red?style=flat-square)](CONTRIBUTING_ES.md)
+
 ## Overview
 
 RedAudit adheres to strict coding and commit standards to maintain auditability and reliability.

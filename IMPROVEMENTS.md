@@ -1,5 +1,7 @@
 # Roadmap & Architecture Proposals
 
+[![Ver en español](https://img.shields.io/badge/Ver%20en%20español-red?style=flat-square)](IMPROVEMENTS_ES.md)
+
 This document outlines the technical roadmap, planned architectural improvements, and discarded approaches for RedAudit.
 
 ## Immediate Roadmap (v2.7+)
@@ -65,7 +67,8 @@ default:
 
 ### 3. Nuevos Formatos de Exportación
 
-* 📄 **PDF**: Reportes ejecutivos con gráficos de topología.
+- 📄 **PDF**: Reportes ejecutivos con gráficos de topología.
+
 - 📊 **CSV**: Para importación en Excel/Pandas.
 - 🌐 **HTML**: Reportes interactivos con tablas y búsqueda.
 
@@ -148,6 +151,7 @@ Si deseas contribuir a alguna de estas features:
 4. Open a [Discussion](https://github.com/dorinbadea/RedAudit/discussions) for new ideas.
 
 **Especialmente busco ayuda en:**
+
 - Tests unitarios (ideal para empezar).
 - Traducción a otros idiomas.
 - Documentación y ejemplos de uso.

@@ -1,5 +1,7 @@
 # RedAudit Report Schema
 
+[![Ver en español](https://img.shields.io/badge/Ver%20en%20español-red?style=flat-square)](REPORT_SCHEMA_ES.md)
+
 ## Overview
 
 RedAudit generates machine-readable reports in JSON format. This document describes the schema structure for `redaudit_report_<timestamp>.json` artifacts.

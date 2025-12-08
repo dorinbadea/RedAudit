@@ -1,5 +1,7 @@
 # RedAudit Usage Guide
 
+[![Ver en español](https://img.shields.io/badge/Ver%20en%20español-red?style=flat-square)](USAGE_ES.md)
+
 ## CLI Reference
 
 RedAudit is designed for stateless execution via command-line arguments.

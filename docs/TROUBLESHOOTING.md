@@ -1,5 +1,7 @@
 # RedAudit Troubleshooting Guide
 
+[![Ver en español](https://img.shields.io/badge/Ver%20en%20español-red?style=flat-square)](TROUBLESHOOTING_ES.md)
+
 ---
 
 ## Error Codes and Resolution

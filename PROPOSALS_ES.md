@@ -1,5 +1,7 @@
 # Propuestas Arquitectónicas
 
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](PROPOSALS.md)
+
 Este documento recopila sugerencias arquitectónicas para versiones futuras, enfocándose en modularidad y testing.
 
 ## 1. Estrategia de Desacoplamiento de Código

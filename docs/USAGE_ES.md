@@ -1,5 +1,7 @@
 # Guía de Uso RedAudit
 
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](USAGE.md)
+
 ## Referencia CLI
 
 RedAudit está diseñado para ejecución sin estado (stateless) vía argumentos de línea de comandos.
