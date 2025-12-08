@@ -1,5 +1,7 @@
 # RedAudit
 
+[![English](https://img.shields.io/badge/lang-English-blue?style=flat-square)](README.md) [![Español](https://img.shields.io/badge/lang-Español-orange?style=flat-square)](README_ES.md)
+
 RedAudit is a CLI tool for structured network auditing and hardening on Kali/Debian systems.
 
 ![Version](https://img.shields.io/badge/version-2.6-blue?style=flat-square)

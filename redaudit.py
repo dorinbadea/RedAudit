@@ -15,8 +15,16 @@ For new usage, run:
 import sys
 import os
 
-# Add the directory containing this file to path for package import
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add possible package locations to path
+# 1. System installation (by redaudit_install.sh)
+# 2. Local directory (development/testing)
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+_system_lib = "/usr/local/lib"
+
+if os.path.isdir(os.path.join(_system_lib, "redaudit")):
+    sys.path.insert(0, _system_lib)
+elif os.path.isdir(os.path.join(_script_dir, "redaudit")):
+    sys.path.insert(0, _script_dir)
 
 # Re-export everything from the package for backward compatibility
 from redaudit import InteractiveNetworkAuditor, VERSION

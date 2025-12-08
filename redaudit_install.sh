@@ -85,29 +85,51 @@ if $INSTALL; then
 fi
 
 # -------------------------------------------
-# 3) Install redaudit.py --> /usr/local/bin
+# 3) Install redaudit package --> /usr/local/lib/redaudit
 # -------------------------------------------
 
-SCRIPT_SRC="$(dirname "$0")/redaudit.py"
+SCRIPT_DIR="$(dirname "$0")"
+SCRIPT_SRC="$SCRIPT_DIR/redaudit.py"
+PACKAGE_SRC="$SCRIPT_DIR/redaudit"
 
 if [[ ! -f "$SCRIPT_SRC" ]]; then
-    echo "❌ Error: redaudit.py not found next to installer!"
+    echo "Error: redaudit.py not found next to installer!"
     echo "Place redaudit_install.sh and redaudit.py in the same directory."
     exit 1
 fi
 
+# Install the package if it exists (v2.6+ modular structure)
+if [[ -d "$PACKAGE_SRC" ]]; then
+    # Remove old package installation
+    rm -rf /usr/local/lib/redaudit
+    
+    # Copy the package
+    cp -r "$PACKAGE_SRC" /usr/local/lib/redaudit
+    chmod -R 755 /usr/local/lib/redaudit
+    
+    # Inject selected language into constants.py
+    CONSTANTS_FILE="/usr/local/lib/redaudit/utils/constants.py"
+    if [[ -f "$CONSTANTS_FILE" ]]; then
+        sed -i "s/^DEFAULT_LANG = .*/DEFAULT_LANG = \"$LANG_CODE\"/" "$CONSTANTS_FILE"
+        echo "Language set to: $LANG_CODE"
+    fi
+    
+    echo "Package installed at /usr/local/lib/redaudit"
+fi
+
+# Install the wrapper script
 TEMP_SCRIPT=$(mktemp)
 cp "$SCRIPT_SRC" "$TEMP_SCRIPT"
 
-# Inject selected language
-sed -i "s/^DEFAULT_LANG = .*/DEFAULT_LANG = \"$LANG_CODE\"/" "$TEMP_SCRIPT"
+# Inject selected language (for backward compatibility with monolithic script)
+sed -i "s/^DEFAULT_LANG = .*/DEFAULT_LANG = \"$LANG_CODE\"/" "$TEMP_SCRIPT" 2>/dev/null || true
 
 # Move into the system
 mv "$TEMP_SCRIPT" /usr/local/bin/redaudit
 chmod 755 /usr/local/bin/redaudit
 chown root:root /usr/local/bin/redaudit
 
-echo "✓ redaudit installed at /usr/local/bin/redaudit"
+echo "Wrapper installed at /usr/local/bin/redaudit"
 
 # -------------------------------------------
 # 4) Alias setup

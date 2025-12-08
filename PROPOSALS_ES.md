@@ -3,42 +3,37 @@
 Este documento recopila sugerencias arquitectónicas para versiones futuras, enfocándose en modularidad y testing.
 
 ## 1. Estrategia de Desacoplamiento de Código
-**Estado Actual**: `redaudit_install.sh` actúa como un archivo auto-extraíble.
-**Propuesta**: Separar la distribución en:
-- `bin/redaudit`: Script de punto de entrada.
-- `lib/redaudit/`: Estructura de paquete Python estándar.
-**Beneficio**: Permite el uso de herramientas estándar (pip, pylint) sin pasos de extracción.
+
+**Estado**: COMPLETADO en v2.6
+**Implementación**: RedAudit ahora es un paquete Python:
+
+- `redaudit/core/`: Módulos principales (auditor, scanner, crypto, reporter, network)
+- `redaudit/utils/`: Utilidades (constants, i18n)
+- `redaudit.py` original preservado como wrapper de compatibilidad
+**Beneficio**: Las herramientas estándar de Python (pip, pylint, pytest) ahora funcionan correctamente.
 
 ## 2. Suite de Verificación de Descifrado
+
 **Estado Actual**: La lógica de descifrado se verifica manualmente.
 **Propuesta**: Implementar tests de regresión automáticos `tests/test_crypto_roundtrip.py`:
+
 1. Generar clave/salt efímera.
 2. Cifrar payload.
 3. Descifrar y asegurar igualdad.
 
 ## 3. Validación de Entorno de Ejecución
+
 **Propuesta**: Añadir rutina `pre_flight_check()` que verifique:
+
 - Versión Python >= 3.8.
 - Presencia y versión de Nmap >= 7.0.
 - Permisos de escritura en directorio de salida.
 
-```yaml
-name: Verify RedAudit
-on: [push, pull_request]
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y nmap python3-nmap python3-cryptography
-      - name: Run Verification Script
-        run: bash redaudit_verify.sh
-        continue-on-error: true # Expect failure on binary path but check syntax
-      - name: Syntax Check
-        run: |
-          bash -n redaudit_install.sh
-          python3 -m py_compile redaudit_decrypt.py
-      - name: Run Sanitization Tests
-        run: python3 tests/test_sanitization.py
-```
+## 4. Integración CI/CD
+
+**Estado**: COMPLETADO en v2.6
+**Implementación**: `.github/workflows/tests.yml` proporciona:
+
+- Testing automatizado en Python 3.9, 3.10, 3.11, 3.12
+- Integración con Codecov para reportes de cobertura
+- Linting con Flake8
