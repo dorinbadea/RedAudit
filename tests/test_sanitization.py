@@ -21,6 +21,7 @@ Enhanced tests for RedAudit input sanitization.
 
 import re
 import ipaddress
+from typing import Optional
 
 MAX_INPUT_LENGTH = 1024
 
@@ -29,7 +30,7 @@ class InteractiveNetworkAuditor:
     """Mock class mimicking sanitizer behaviour."""
 
     @staticmethod
-    def sanitize_ip(ip_str: str | None) -> str | None:
+    def sanitize_ip(ip_str: Optional[str]) -> Optional[str]:
         if ip_str is None:
             return None
         if not isinstance(ip_str, str):
@@ -46,7 +47,7 @@ class InteractiveNetworkAuditor:
             return None
 
     @staticmethod
-    def sanitize_hostname(hostname: str | None) -> str | None:
+    def sanitize_hostname(hostname: Optional[str]) -> Optional[str]:
         if hostname is None:
             return None
         if not isinstance(hostname, str):

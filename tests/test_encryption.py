@@ -7,8 +7,6 @@ Tests for encryption/decryption functionality.
 import sys
 import os
 import base64
-import tempfile
-import shutil
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,7 +22,6 @@ except ImportError:
     PBKDF2HMAC = None
     hashes = None
 
-from redaudit import InteractiveNetworkAuditor
 from redaudit.core.crypto import (
     is_crypto_available,
     derive_key_from_password,
@@ -39,12 +36,11 @@ def test_key_derivation():
         print("⚠️  Skipping: cryptography not available")
         return
     
-    app = InteractiveNetworkAuditor()
     password = "test_password_123"
     salt = os.urandom(16)
     
-    key1, salt1 = app.derive_key_from_password(password, salt)
-    key2, salt2 = app.derive_key_from_password(password, salt)
+    key1, salt1 = derive_key_from_password(password, salt)
+    key2, salt2 = derive_key_from_password(password, salt)
     
     assert key1 == key2, "Same password and salt should produce same key"
     assert salt1 == salt, "Salt should be preserved"
@@ -52,7 +48,7 @@ def test_key_derivation():
     
     # Different salt should produce different key
     salt3 = os.urandom(16)
-    key3, _ = app.derive_key_from_password(password, salt3)
+    key3, _ = derive_key_from_password(password, salt3)
     assert key1 != key3, "Different salt should produce different key"
     
     print("✅ Key derivation tests passed")
@@ -64,19 +60,16 @@ def test_encryption_decryption():
         print("⚠️  Skipping: cryptography not available")
         return
     
-    app = InteractiveNetworkAuditor()
     password = "test_password_123"
     
     # Derive key
-    key, salt = app.derive_key_from_password(password)
-    app.encryption_key = key
-    app.encryption_enabled = True
+    key, salt = derive_key_from_password(password)
     
     # Test data
     test_data = "This is a test report with sensitive data"
     
     # Encrypt
-    encrypted = app.encrypt_data(test_data)
+    encrypted = encrypt_data(test_data, key)
     assert encrypted != test_data, "Encrypted data should be different"
     assert isinstance(encrypted, bytes), "Encrypted data should be bytes"
     
@@ -111,11 +104,12 @@ def test_password_validation():
         print("⚠️  Skipping: cryptography not available")
         return
     
-    # This test would require mocking input/getpass
-    # For now, just verify the method exists
-    app = InteractiveNetworkAuditor()
-    assert hasattr(app, 'ask_password_twice'), "ask_password_twice method should exist"
-    assert hasattr(app, 'derive_key_from_password'), "derive_key_from_password method should exist"
+    # Verify the crypto module functions exist
+    from redaudit.core import crypto as crypto_module
+    assert hasattr(crypto_module, 'ask_password_twice'), "ask_password_twice function should exist in crypto module"
+    assert hasattr(crypto_module, 'derive_key_from_password'), "derive_key_from_password function should exist in crypto module"
+    assert callable(crypto_module.ask_password_twice), "ask_password_twice should be callable"
+    assert callable(crypto_module.derive_key_from_password), "derive_key_from_password should be callable"
     
     print("✅ Password validation structure test passed")
 
