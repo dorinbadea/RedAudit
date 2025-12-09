@@ -61,7 +61,7 @@ echo "$MSG_INSTALL"
 # 2) Dependencies
 # -------------------------------------------
 
-EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography exploitdb testssl.sh"
+EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography exploitdb git"
 
 echo ""
 echo "$MSG_PKGS"
@@ -82,6 +82,25 @@ fi
 
 if $INSTALL; then
     apt update && apt install -y $EXTRA_PKGS || { echo "$MSG_APT_ERR"; exit 1; }
+fi
+
+# -------------------------------------------
+# 2b) Install testssl.sh from GitHub (not in apt)
+# -------------------------------------------
+
+if [[ ! -f "/usr/local/bin/testssl.sh" ]]; then
+    echo "[INFO] Installing testssl.sh from GitHub..."
+    if command -v git &> /dev/null; then
+        rm -rf /opt/testssl.sh 2>/dev/null
+        git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh
+        ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl.sh
+        chmod +x /opt/testssl.sh/testssl.sh
+        echo "[OK] testssl.sh installed at /usr/local/bin/testssl.sh"
+    else
+        echo "[WARN] git not found, skipping testssl.sh installation"
+    fi
+else
+    echo "[OK] testssl.sh already installed"
 fi
 
 # -------------------------------------------
