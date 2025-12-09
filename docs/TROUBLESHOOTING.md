@@ -56,7 +56,7 @@ sudo bash redaudit_install.sh
 - Ensure correct case sensitivity.
 - Verify file integrity (check file size > 0). Do not abort immediately; deep scans on filtered hosts can take time.
 
-### 5. "Scans seem to hang" / Slow progress
+### 6. "Scans seem to hang" / Slow progress
 
 **Symptom**: The tool pauses for 1-2 minutes on a single host.
 **Explanation**: RedAudit v2.6.1 performs **Deep Identity Scans** on complex hosts (combined TCP/UDP/OS fingerprinting).
@@ -65,7 +65,7 @@ sudo bash redaudit_install.sh
 - **Why**: Essential for identifying IoT boxes, firewalls, or filtered servers that hide their OS.
 - **Check**: Look for the `[deep]` marker in the CLI output.
 
-### 6. "Cryptography not available" warning
+### 7. "Cryptography not available" warning
 
 **Symptom**: You see a warning about `python3-cryptography` not being available.
 **Explanation**: Encryption feature requires `python3-cryptography`. The tool gracefully degrades if it's missing.
@@ -77,7 +77,7 @@ sudo apt install python3-cryptography
 
 **Note**: If cryptography is unavailable, encryption options are automatically disabled. No password prompts will appear.
 
-### 7. Non-interactive mode errors
+### 8. Non-interactive mode errors
 
 **Symptom**: `--target` argument not working or "Error: --target is required".
 **Solution**:

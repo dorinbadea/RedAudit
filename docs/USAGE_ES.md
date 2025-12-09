@@ -62,12 +62,6 @@ Escaneo profundo con captura de tráfico completa y reporte cifrado para cadena 
 sudo redaudit -t 192.168.1.100 --deep --pcap --encrypt
 ```
 
-### 2. Fases de Ejecución
-
-- **Discovery**: Ping rápido para encontrar hosts vivos.
-- **Port Scan**: Escaneo nmap específico por host.
-- **Vulnerability Scan**: Revisa servicios web (http/https) contra `whatweb` / `nikto` (si es modo completo).
-
 ### 3. Reportes y Cifrado
 
 Los reportes se guardan con fecha `redaudit_YYYYMMDD_HHMMSS`.
@@ -98,6 +92,13 @@ RedAudit permite configurar un retardo (en segundos) entre el escaneo de cada ho
 - **>10s**: Sigilo alto. Ralentiza significativamente la auditoría pero minimiza el riesgo de detección y congestión.
 
 **Nota sobre el Heartbeat**: Si usas un retardo alto (ej. 60s) con muchos hilos, el escaneo puede parecer "congelado". Revisa el log o el estado del heartbeat.
+
+### Marcadores de Ejecución CLI
+
+RedAudit v2.6.1 te informa estrictamente sobre los comandos que se están ejecutando:
+
+- **`[nmap] 192.168.x.x → nmap ...`**: Escaneo de puertos estándar.
+- **`[deep] 192.168.x.x → combined ...`**: Ejecución de Escaneo de Identidad Profundo (espera una duración de 90-140s).
 
 ### Deep Scan Adaptativo y Captura de Tráfico
 

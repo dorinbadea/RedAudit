@@ -1,19 +1,22 @@
-# RedAudit v2.6.0
+# RedAudit v2.6.1
 
-## Modular Architecture & CI/CD Release
+## Security Hardening, Exploit Intelligence & UX Polish
 
 ### Highlights
 
-- **Modular Architecture**: Refactored monolithic script into organized Python package (8 modules)
-- **CI/CD Pipeline**: GitHub Actions for automated testing on Python 3.9-3.12
-- **Test Coverage**: Expanded to 34 automated tests
+- **Exploit Intelligence**: Integrated `searchsploit` for automatic exploit lookup based on service versions.
+- **SSL/TLS Auditing**: Integrated `testssl.sh` for deep cryptographic analysis of HTTPS services.
+- **Security Hardening**: Enforced strong passwords (12+ chars, mixed case, numbers) for encryption.
+- **Enhanced UX**: Added `rich` progress bars with graceful fallback.
+- **CI/CD Security**: Added Dependabot and CodeQL for automated security scanning.
 
 ### New Features
 
-- **Package Structure**: `redaudit/core/` and `redaudit/utils/` modules
-- **Alternative Invocation**: `python -m redaudit` support
-- **Named Constants**: All magic numbers replaced with descriptive constants
-- **New Test Suites**: `test_network.py`, `test_reporter.py`
+- **Progress Bars**: New visual feedback for concurrent scanning.
+- **Tool Activation Matrix**: Clear documentation on when external tools are triggered.
+- **SearchSploit**: Automatically queries ExploitDB for detected services.
+- **TestSSL**: Deep SSL/TLS analysis in `full` mode.
+- **Architecture Diagrams**: Added Mermaid diagrams to READMEs.
 
 ### Installation
 
@@ -29,10 +32,8 @@ sudo bash redaudit_install.sh
 - `--mode, -m`: fast/normal/full (default: normal)
 - `--threads, -j`: 1-16 (default: 6)
 - `--rate-limit`: Delay between hosts in seconds
-- `--encrypt, -e`: Encrypt reports
+- `--encrypt, -e`: Encrypt reports (Strong password required)
 - `--output, -o`: Output directory
-- `--max-hosts`: Limit number of hosts
-- `--yes, -y`: Skip legal warning
 - `--lang`: Language (en/es)
 
 ### Package Structure
@@ -44,24 +45,24 @@ redaudit/
 │   ├── crypto.py   # Encryption (PBKDF2, Fernet)
 │   ├── network.py  # Network detection
 │   ├── reporter.py # Report generation
-│   └── scanner.py  # Scanning logic
+│   └── scanner.py  # Scanning logic (SearchSploit, TestSSL)
 └── utils/          # Utilities
     ├── constants.py
     └── i18n.py
 ```
 
-### Testing
+### Testing & Quality
 
-- 34 automated tests passing
-- CI/CD via GitHub Actions
-- Codecov integration
+- **Tests**: 34 automated tests passing
+- **Coverage**: ~60% threshold enforced in CI
+- **Security**: CodeQL & Dependabot active
 
 ### Documentation
 
 Complete bilingual documentation (English/Spanish):
 
 - README.md / README_ES.md
-- MANUAL_EN.md / MANUAL_ES.md
+- MANUAL_EN.md / MANUAL_ES.md (Restructured & Professionalized)
 - USAGE.md / USAGE_ES.md
 - SECURITY.md, TROUBLESHOOTING.md, REPORT_SCHEMA.md
 

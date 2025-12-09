@@ -56,7 +56,7 @@ sudo bash redaudit_install.sh
 - Asegurar sensibilidad correcta de mayúsculas/minúsculas.
 - Verificar integridad del archivo (tamaño >0). No abortar inmediatamente; los escaneos profundos en hosts filtrados pueden tomar tiempo.
 
-### 5. "Los escaneos parecen colgarse" / Progreso lento
+### 6. "Los escaneos parecen colgarse" / Progreso lento
 
 **Síntoma**: La herramienta se pausa 1-2 minutos en un solo host.
 **Explicación**: RedAudit v2.6.1 realiza **Escaneos de Identidad Profundos** en hosts complejos (fingerprinting combinado TCP/UDP/SO).
@@ -65,7 +65,7 @@ sudo bash redaudit_install.sh
 - **Por qué**: Esencial para identificar cajas IoT, firewalls o servidores filtrados que ocultan su SO.
 - **Verificar**: Buscar el marcador `[deep]` en la salida CLI.
 
-### 6. Advertencia "Cryptography not available"
+### 7. Advertencia "Cryptography not available"
 
 **Síntoma**: Ves una advertencia sobre `python3-cryptography` no disponible.
 **Explicación**: La función de cifrado requiere `python3-cryptography`. La herramienta degrada graciosamente si falta.
@@ -77,7 +77,7 @@ sudo apt install python3-cryptography
 
 **Nota**: Si cryptography no está disponible, las opciones de cifrado se desactivan automáticamente. No aparecerán prompts de contraseña.
 
-### 7. Errores en modo no interactivo
+### 8. Errores en modo no interactivo
 
 **Síntoma**: El argumento `--target` no funciona o "Error: --target is required".
 **Solución**:
