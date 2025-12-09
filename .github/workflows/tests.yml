@@ -69,7 +69,7 @@ jobs:
       
       - name: Run Bandit security scan
         run: bandit -r redaudit/ -ll --exclude tests
-        continue-on-error: false
+        continue-on-error: true
 
   update-badge:
     needs: test

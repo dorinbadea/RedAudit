@@ -15,7 +15,8 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                     v2.6
+                                     v2.7
+        Interactive Network Audit Tool
 ```
 
 ## Overview
@@ -202,18 +203,19 @@ RedAudit applies a smart 2-phase scan to "silent" or complex hosts:
 - **Benefit**: Saves time by skipping Phase 2 if the host is already identified.
 - **Output**: Full logs and MAC/Vendor data in `host.deep_scan`.
 
-## Modular Architecture (v2.6)
+## Modular Architecture (v2.7)
 
-Starting with v2.6, RedAudit is organized as a Python package for better maintainability:
+RedAudit is organized as a modular Python package:
 
 ```text
 redaudit/
 ├── core/           # Core functionality
 │   ├── auditor.py  # Main orchestrator class
-│   ├── crypto.py   # Encryption/decryption
-│   ├── network.py  # Network detection
-│   ├── reporter.py # Report generation
-│   └── scanner.py  # Scanning logic
+│   ├── prescan.py  # Asyncio fast port discovery (v2.7)
+│   ├── scanner.py  # Nmap scanning logic
+│   ├── crypto.py   # AES-128 encryption/decryption
+│   ├── network.py  # Interface detection
+│   └── reporter.py # JSON/TXT + SIEM output
 └── utils/          # Utilities
     ├── constants.py # Configuration constants
     └── i18n.py      # Internationalization

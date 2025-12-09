@@ -15,7 +15,7 @@ RedAudit adheres to strict coding and commit standards to maintain auditability 
 - **Security**: No `shell=True` in subprocess calls. All user input must be sanitized
 - **Concurrency**: Network I/O operations must be thread-safe
 
-### Package Structure (v2.6)
+### Package Structure (v2.7)
 
 The codebase is organized as a Python package:
 

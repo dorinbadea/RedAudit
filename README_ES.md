@@ -16,6 +16,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
                                      v2.7
+     Herramienta Interactiva de Auditoría de Red
 ```
 
 ## Visión General
@@ -219,19 +220,19 @@ RedAudit aplica un escaneo inteligente de 2 fases a hosts "silenciosos" o comple
 - **Beneficio**: Ahorra tiempo saltando la Fase 2 si el host ya está identificado.
 - **Salida**: Logs completos y datos MAC/Vendor en `host.deep_scan`.
 
-## Arquitectura Modular (v2.6)
+## Arquitectura Modular (v2.7)
 
-A partir de v2.6, RedAudit está organizado como un paquete Python para mejor mantenibilidad:
+RedAudit está organizado como un paquete Python modular:
 
 ```text
 redaudit/
 ├── core/           # Funcionalidad principal
 │   ├── auditor.py  # Clase orquestadora principal
-│   ├── crypto.py   # Cifrado/descifrado
-│   ├── network.py  # Detección de red
-│   ├── prescan.py  # Pre-scan asyncio (v2.7)
-│   ├── reporter.py # Generación de reportes + SIEM
-│   └── scanner.py  # Lógica de escaneo
+│   ├── prescan.py  # Descubrimiento rápido asyncio (v2.7)
+│   ├── scanner.py  # Lógica de escaneo Nmap
+│   ├── crypto.py   # Cifrado/descifrado AES-128
+│   ├── network.py  # Detección de interfaces
+│   └── reporter.py # Salida JSON/TXT + SIEM
 └── utils/          # Utilidades
     ├── constants.py # Constantes de configuración
     └── i18n.py      # Internacionalización
