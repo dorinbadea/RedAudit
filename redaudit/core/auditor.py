@@ -320,9 +320,23 @@ class InteractiveNetworkAuditor:
             "tcpdump", "tshark", "whois", "dig",
             "searchsploit", "testssl.sh",
         ]
+        # Fallback paths for tools not in standard PATH
+        fallback_paths = {
+            "testssl.sh": [
+                "/usr/local/bin/testssl.sh",
+                "/opt/testssl.sh/testssl.sh",
+                "/usr/bin/testssl.sh",
+            ],
+        }
         missing = []
         for tname in tools:
             path = shutil.which(tname)
+            # Check fallback paths if not found
+            if not path and tname in fallback_paths:
+                for fpath in fallback_paths[tname]:
+                    if os.path.isfile(fpath) and os.access(fpath, os.X_OK):
+                        path = fpath
+                        break
             if path:
                 self.extra_tools[tname] = path
                 self.print_status(self.t("avail_at", tname, path), "OKGREEN")
