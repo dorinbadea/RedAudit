@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Pre-scan Asyncio Engine (A1)**: Fast port discovery using asyncio TCP connect (RustScan-style)
+- **Pre-scan Asyncio Engine (A1)**: Fast port discovery using asyncio TCP connect
   - New module: `redaudit/core/prescan.py`
   - CLI flags: `--prescan`, `--prescan-ports`, `--prescan-timeout`
   - Up to 500 concurrent port checks with configurable batching
