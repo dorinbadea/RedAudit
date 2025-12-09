@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.2] - 2025-12-09 (Signal Handling Hotfix)
+
+### Fixed
+
+- **Signal Handler Subprocess Cleanup (C1)**: SIGINT (Ctrl+C) now properly terminates all active subprocesses (nmap, tcpdump, etc.) instead of leaving orphan processes
+  - Added `register_subprocess()`, `unregister_subprocess()`, `kill_all_subprocesses()` methods
+  - Child processes receive SIGTERM first, then SIGKILL if still alive after 2 seconds
+  - Thread-safe implementation with lock protection
+
+- **Futures Cancellation (C2)**: Pending ThreadPoolExecutor futures are now cancelled when interrupted
+  - Prevents unnecessary work when user aborts scan
+  - Applied to both rich progress bar and fallback progress modes
+
+### Changed
+
+- **Version**: Updated to 2.6.2
+
+---
+
 ## [2.6.1] - 2025-12-08 (Exploit Intelligence & SSL/TLS Deep Analysis)
 
 ### Added

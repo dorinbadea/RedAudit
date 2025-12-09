@@ -11,6 +11,7 @@ import os
 import sys
 import signal
 import shutil
+import subprocess
 import threading
 import time
 import importlib
@@ -110,6 +111,10 @@ class InteractiveNetworkAuditor:
         self.current_phase = "init"
         self.interrupted = False
         self.scan_start_time = None
+
+        # Subprocess tracking for cleanup on interruption (C1 fix)
+        self._active_subprocesses = []
+        self._subprocess_lock = threading.Lock()
 
         self.COLORS = COLORS
 
@@ -669,6 +674,9 @@ class InteractiveNetworkAuditor:
                     )
                     for fut in as_completed(futures):
                         if self.interrupted:
+                            # C2 fix: Cancel pending futures
+                            for pending_fut in futures:
+                                pending_fut.cancel()
                             break
                         host_ip = futures[fut]
                         try:
@@ -682,6 +690,9 @@ class InteractiveNetworkAuditor:
                 # Fallback to basic progress
                 for fut in as_completed(futures):
                     if self.interrupted:
+                        # C2 fix: Cancel pending futures
+                        for pending_fut in futures:
+                            pending_fut.cancel()
                         break
                     host_ip = futures[fut]
                     try:
@@ -945,8 +956,46 @@ class InteractiveNetworkAuditor:
 
         return not self.interrupted
 
+    # ---------- Subprocess management (C1 fix) ----------
+
+    def register_subprocess(self, proc: subprocess.Popen) -> None:
+        """Register a subprocess for tracking and cleanup on interruption."""
+        with self._subprocess_lock:
+            self._active_subprocesses.append(proc)
+
+    def unregister_subprocess(self, proc: subprocess.Popen) -> None:
+        """Unregister a completed subprocess from tracking."""
+        with self._subprocess_lock:
+            if proc in self._active_subprocesses:
+                self._active_subprocesses.remove(proc)
+
+    def kill_all_subprocesses(self) -> None:
+        """Terminate all tracked subprocesses (nmap, tcpdump, etc.)."""
+        with self._subprocess_lock:
+            for proc in self._active_subprocesses:
+                try:
+                    if proc.poll() is None:  # Still running
+                        proc.terminate()
+                        try:
+                            proc.wait(timeout=2)
+                        except subprocess.TimeoutExpired:
+                            proc.kill()
+                            proc.wait()
+                except Exception as exc:
+                    if self.logger:
+                        self.logger.debug("Error killing subprocess: %s", exc)
+            self._active_subprocesses.clear()
+
     def signal_handler(self, sig, frame):
-        """Handle SIGINT (Ctrl+C)."""
+        """Handle SIGINT (Ctrl+C) with proper cleanup."""
         self.print_status(self.t("interrupted"), "WARNING")
         self.current_phase = "interrupted"
         self.interrupted = True
+
+        # Kill all active subprocesses (nmap, tcpdump, etc.)
+        if self._active_subprocesses:
+            self.print_status("Terminating active scans...", "WARNING")
+            self.kill_all_subprocesses()
+
+        # Stop heartbeat monitoring
+        self.stop_heartbeat()
