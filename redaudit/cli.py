@@ -124,6 +124,27 @@ Examples:
         version=f"RedAudit v{VERSION}"
     )
 
+    # Pre-scan options (v2.7)
+    parser.add_argument(
+        "--prescan",
+        action="store_true",
+        help="Enable fast asyncio pre-scan before nmap (v2.7)"
+    )
+    parser.add_argument(
+        "--prescan-ports",
+        type=str,
+        default="1-1024",
+        metavar="RANGE",
+        help="Port range for pre-scan (default: 1-1024)"
+    )
+    parser.add_argument(
+        "--prescan-timeout",
+        type=float,
+        default=0.5,
+        metavar="SECONDS",
+        help="Pre-scan connection timeout (default: 0.5)"
+    )
+
     return parser.parse_args()
 
 
@@ -203,6 +224,11 @@ def configure_from_args(app, args) -> bool:
 
     # Set deep scan
     app.config["deep_id_scan"] = not args.no_deep_scan
+
+    # Set pre-scan configuration (v2.7)
+    app.config["prescan_enabled"] = args.prescan
+    app.config["prescan_ports"] = args.prescan_ports
+    app.config["prescan_timeout"] = args.prescan_timeout
 
     # Setup encryption if requested
     if args.encrypt:

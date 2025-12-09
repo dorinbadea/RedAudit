@@ -1,8 +1,8 @@
-# RedAudit v2.6.1 User Manual
+# RedAudit v2.7.0 User Manual
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](MANUAL_ES.md)
 
-**Version**: 2.6.1  
+**Version**: 2.7.0  
 **Target Audience**: Security Analysts, Penetration Testers, Systems Administrators  
 **License**: GPLv3
 
@@ -32,9 +32,11 @@ RedAudit is an automated network auditing tool designed for Kali Linux and Debia
 **Key Features:**
 
 - Automatic service detection and targeted deep scanning
+- **Pre-scan asyncio engine** for fast port discovery (v2.7)
 - Exploit intelligence via ExploitDB integration
 - SSL/TLS vulnerability analysis
 - Encrypted report generation (AES-128 + PBKDF2)
+- **SIEM-compatible JSON output** (v2.7)
 - Progress monitoring with heartbeat system
 - Bilingual support (English/Spanish)
 
@@ -75,9 +77,10 @@ RedAudit v2.6 is organized as a modular Python package:
 |:-------|:--------|
 | `redaudit/core/auditor.py` | Main orchestrator, thread management |
 | `redaudit/core/scanner.py` | Nmap integration, deep scans, enrichment |
+| `redaudit/core/prescan.py` | Asyncio fast port discovery (v2.7) |
 | `redaudit/core/crypto.py` | Encryption (PBKDF2 key derivation, Fernet) |
 | `redaudit/core/network.py` | Network interface detection |
-| `redaudit/core/reporter.py` | JSON/TXT report generation |
+| `redaudit/core/reporter.py` | JSON/TXT + SIEM-compatible report generation |
 | `redaudit/utils/constants.py` | Configuration constants |
 | `redaudit/utils/i18n.py` | Internationalization strings |
 
@@ -154,8 +157,11 @@ Enrichment: dig (reverse DNS), whois (public IPs)
 # Non-interactive with specific mode
 sudo python3 -m redaudit --target 192.168.1.0/24 --mode completo
 
-# Adjust concurrency
+# Adjust concurrency with jitter rate-limiting (v2.7)
 sudo python3 -m redaudit --threads 4 --rate-limit 2
+
+# Enable pre-scan for faster discovery (v2.7)
+sudo python3 -m redaudit --target 192.168.1.0/24 --prescan
 ```
 
 ---
@@ -278,9 +284,12 @@ bash redaudit_verify.sh
 | **Deep Scan** | Automated aggressive scan for hosts with incomplete data |
 | **Fernet** | Symmetric encryption (AES-128-CBC + HMAC-SHA256) |
 | **Heartbeat** | Background thread monitoring process health |
+| **Jitter** | Random variance (±30%) added to rate-limiting for IDS evasion (v2.7) |
 | **PBKDF2** | Password-Based Key Derivation Function 2 |
+| **Pre-scan** | Asyncio-based fast port discovery before nmap (v2.7) |
 | **Rate Limit** | Artificial delay between scan operations |
 | **Salt** | Random bytes combined with password for unique key |
+| **SIEM** | Security Information and Event Management |
 
 ---
 

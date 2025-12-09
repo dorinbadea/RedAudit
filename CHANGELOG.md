@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2025-12-09 (Speed & Integration)
+
+### Added
+
+- **Pre-scan Asyncio Engine (A1)**: Fast port discovery using asyncio TCP connect (RustScan-style)
+  - New module: `redaudit/core/prescan.py`
+  - CLI flags: `--prescan`, `--prescan-ports`, `--prescan-timeout`
+  - Up to 500 concurrent port checks with configurable batching
+  - Port range parsing: `1-1024`, `22,80,443`, or combined `1-100,443,8080-8090`
+
+- **SIEM-Compatible Output (A5)**: Enhanced JSON reports for Splunk/Elastic integration
+  - New fields: `schema_version`, `event_type`, `session_id`, `timestamp_end`
+  - Scanner metadata: name, version, mode
+  - Targets array for multi-network scans
+
+- **Bandit Security Linting (A4)**: Static security analysis in CI pipeline
+  - Added Bandit to GitHub Actions workflow
+  - Scans for common security issues (B-series checks)
+
+### Changed
+
+- **Jitter Rate-Limiting (A3)**: Added ±30% random variance to delay for IDS evasion
+- **Version**: Updated to 2.7.0
+
+---
+
 ## [2.6.2] - 2025-12-09 (Signal Handling Hotfix)
 
 ### Fixed

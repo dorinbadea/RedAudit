@@ -4,7 +4,7 @@
 
 RedAudit is a CLI tool for structured network auditing and hardening on Kali/Debian systems.
 
-![Version](https://img.shields.io/badge/version-2.6.1-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.7.0-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 ![Tests](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dorinbadea/81671a8fffccee81ca270f14d094e5a1/raw/redaudit-tests.json&style=flat-square)
@@ -50,8 +50,9 @@ flowchart TB
     subgraph Core["redaudit/core/"]
         B[auditor.py<br/>Orchestrator]
         C[scanner.py<br/>Nmap + Deep Scan]
+        C2[prescan.py<br/>Asyncio Fast Discovery]
         D[network.py<br/>Interface Detection]
-        E[reporter.py<br/>JSON/TXT Output]
+        E[reporter.py<br/>JSON/TXT + SIEM]
         F[crypto.py<br/>AES-128 + PBKDF2]
     end
     
@@ -86,8 +87,9 @@ flowchart TB
     end
     
     A --> B
-    B --> C & D & E & F
+    B --> C & C2 & D & E & F
     B --> G & H
+    C2 --> C
     C --> I
     C --> J & K & L
     C --> M & N
@@ -159,6 +161,9 @@ sudo redaudit --target 192.168.1.0/24 --mode normal --encrypt --encrypt-password
 - `--no-vuln-scan`: Disable web vulnerability scanning
 - `--no-txt-report`: Disable TXT report generation
 - `--no-deep-scan`: Disable adaptive deep scan
+- `--prescan`: Enable fast asyncio pre-scan before nmap (v2.7)
+- `--prescan-ports`: Port range for pre-scan (default: 1-1024)
+- `--prescan-timeout`: Pre-scan timeout in seconds (default: 0.5)
 - `--yes, -y`: Skip legal warning (use with caution)
 - `--lang`: Language (en/es)
 
@@ -290,20 +295,18 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for detailed fixes.
 - **"Cryptography missing"**: Run `sudo apt install python3-cryptography`.
 - **"Scan frozen"**: Check `~/.redaudit/logs/` or reduce `rate_limit_delay`.
 
-## 13. Changelog (v2.6.1 Summary)
+## 13. Changelog (v2.7.0 Summary)
 
-- **Modular Architecture**: Refactored monolithic script into organized package structure (8 modules)
-- **CI/CD Pipeline**: GitHub Actions workflow for automated testing (Python 3.9-3.12)
-- **Test Coverage**: Expanded from 25 to 34 tests with new network and reporter test suites
-- **Named Constants**: All magic numbers replaced with descriptive constants
-- **Backward Compatibility**: Original `redaudit.py` preserved as compatibility wrapper
+- **Pre-scan Asyncio Engine**: Fast port discovery using asyncio TCP connect (RustScan-style)
+- **SIEM-Compatible Output**: Enhanced JSON reports with `schema_version`, `event_type`, `session_id`
+- **Jitter Rate-Limiting**: ±30% random variance for IDS evasion
+- **Bandit Security Linting**: Static security analysis in CI pipeline
 
-### Previous (v2.5)
+### Previous (v2.6.x)
 
-- **Security**: Hardened input sanitization with type/length validation, secure file permissions (0o600)
-- **Automation**: Full non-interactive CLI mode for scripting and CI/CD integration
-- **Testing**: Comprehensive integration and encryption test suites
-- **Robustness**: Improved cryptography handling with graceful degradation
+- **Signal Handling Hotfix**: Proper subprocess cleanup on Ctrl+C
+- **Modular Architecture**: Refactored into organized package structure (8 modules)
+- **CI/CD Pipeline**: GitHub Actions workflow for automated testing
 
 For detailed changelog, see [CHANGELOG.md](CHANGELOG.md)
 

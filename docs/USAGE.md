@@ -29,8 +29,11 @@ sudo python -m redaudit [TARGET] [OPTIONS]
 | Flag | Description |
 | :--- | :--- |
 | `--threads <N>` | Set size of thread pool for concurrent host scanning. |
-| `-r`, `--rate-limit` | Seconds to sleep between thread operations (float). |
+| `-r`, `--rate-limit` | Seconds to sleep between thread operations (float). Includes ±30% jitter (v2.7). |
 | `--pcap` | Enable raw packet capture (`tcpdump`) during scan. |
+| `--prescan` | Enable fast asyncio pre-scan before nmap (v2.7). |
+| `--prescan-ports` | Port range for pre-scan (default: 1-1024). |
+| `--prescan-timeout` | Pre-scan connection timeout in seconds (default: 0.5). |
 
 ### Security
 
@@ -85,17 +88,25 @@ Debug logs are stored in `~/.redaudit/logs/`. Check these files if the scan fail
 
 ### Rate Limiting
 
-RedAudit allows you to set a delay (in seconds) between scanning hosts.
+RedAudit allows you to set a delay (in seconds) between scanning hosts. **v2.7 adds ±30% random jitter** to this delay for IDS evasion.
 
 - **0s (Default)**: Maximum speed. Best for internal audits where noise is not a concern.
 - **1-5s**: Moderate stealth. Reduces the chance of triggering simple rate-limit firewalls.
 - **>10s**: High stealth. Significantly slows down the audit but minimizes network congestion and detection risk.
 
+### Pre-scan (v2.7)
+
+Enable `--prescan` to use asyncio TCP connect for fast port discovery before invoking nmap:
+
+```bash
+sudo redaudit -t 192.168.1.0/24 --prescan --prescan-ports 1-1024
+```
+
 **Note on Heartbeat**: If you set a very high delay (e.g., 60s) with many threads, the scan might seem "frozen". Check the "Active hosts" log or the heartbeat status.
 
 ### CLI Execution Markers
 
-RedAudit v2.6.1 strictly informs you about the commands being executed:
+RedAudit v2.7.0 strictly informs you about the commands being executed:
 
 - **`[nmap] 192.168.x.x → nmap ...`**: Standard port scan.
 - **`[deep] 192.168.x.x → combined ...`**: Deep Identity Scan execution (expect 90-140s duration).

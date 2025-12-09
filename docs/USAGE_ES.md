@@ -29,8 +29,11 @@ sudo python -m redaudit [TARGET] [OPTIONS]
 | Flag | Descripción |
 | :--- | :--- |
 | `--threads <N>` | Tamaño del pool de hilos para escaneo concurrente. |
-| `-r`, `--rate-limit` | Segundos de espera entre operaciones de hilo (float). |
+| `-r`, `--rate-limit` | Segundos de espera entre operaciones de hilo (float). Incluye jitter ±30% (v2.7). |
 | `--pcap` | Habilita captura de paquetes raw (`tcpdump`) durante el escaneo. |
+| `--prescan` | Habilita pre-scan asyncio rápido antes de nmap (v2.7). |
+| `--prescan-ports` | Rango de puertos para pre-scan (defecto: 1-1024). |
+| `--prescan-timeout` | Timeout de conexión del pre-scan en segundos (defecto: 0.5). |
 
 ### Seguridad
 
@@ -85,17 +88,25 @@ Los logs de depuración se guardan en `~/.redaudit/logs/`. Revisa estos archivos
 
 ### Limitación de Velocidad (Rate Limiting)
 
-RedAudit permite configurar un retardo (en segundos) entre el escaneo de cada host.
+RedAudit permite configurar un retardo (en segundos) entre el escaneo de cada host. **v2.7 añade jitter aleatorio ±30%** a este retardo para evasión de IDS.
 
 - **0s (Por defecto)**: Velocidad máxima. Ideal para auditorías internas donde el ruido no importa.
 - **1-5s**: Sigilo moderado. Reduce la probabilidad de activar firewalls de rate-limit simples.
 - **>10s**: Sigilo alto. Ralentiza significativamente la auditoría pero minimiza el riesgo de detección y congestión.
 
+### Pre-scan (v2.7)
+
+Habilita `--prescan` para usar TCP connect asyncio para descubrimiento rápido de puertos antes de invocar nmap:
+
+```bash
+sudo redaudit -t 192.168.1.0/24 --prescan --prescan-ports 1-1024
+```
+
 **Nota sobre el Heartbeat**: Si usas un retardo alto (ej. 60s) con muchos hilos, el escaneo puede parecer "congelado". Revisa el log o el estado del heartbeat.
 
 ### Marcadores de Ejecución CLI
 
-RedAudit v2.6.1 te informa estrictamente sobre los comandos que se están ejecutando:
+RedAudit v2.7.0 te informa estrictamente sobre los comandos que se están ejecutando:
 
 - **`[nmap] 192.168.x.x → nmap ...`**: Escaneo de puertos estándar.
 - **`[deep] 192.168.x.x → combined ...`**: Ejecución de Escaneo de Identidad Profundo (espera una duración de 90-140s).

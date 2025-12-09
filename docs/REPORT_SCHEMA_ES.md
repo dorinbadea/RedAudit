@@ -8,7 +8,7 @@ RedAudit genera reportes legibles por máquina en formato JSON. Este documento d
 
 **Tipos de Datos**: Tipos JSON estándar (`string`, `number`, `boolean`, `array`, `object`).
 **Nullable**: Los campos son nullable a menos que se especifique lo contrario.
-**Módulo Fuente**: `redaudit/core/reporter.py` (v2.6+)
+**Módulo Fuente**: `redaudit/core/reporter.py` (v2.7+)
 
 ## Definición del Esquema
 
@@ -18,10 +18,18 @@ El contenedor de nivel superior para la sesión de escaneo.
 
 | Campo | Tipo | Descripción |
 | :--- | :--- | :--- |
-| `metadata` | `object` | Configuración del escaneo y detalles del entorno. |
-| `scan_results` | `array` | Lista de objetos `Host` (ver abajo). |
-| `network_topology` | `array` | Lista de objetos de interfaz de red. |
-| `scan_summary` | `object` | Estadísticas agregadas. |
+| `schema_version` | `string` | Versión del esquema (v2.7+: "2.0") |
+| `event_type` | `string` | Tipo de evento para ingesta SIEM ("redaudit.scan.complete") |
+| `session_id` | `string` | UUID único para esta sesión de escaneo |
+| `timestamp` | `string` | Marca de tiempo de inicio (ISO 8601) |
+| `timestamp_end` | `string` | Marca de tiempo de fin (ISO 8601) |
+| `version` | `string` | Versión de RedAudit |
+| `scanner` | `object` | Metadatos del escáner: `name`, `version`, `mode` |
+| `targets` | `array` | Lista de redes objetivo escaneadas |
+| `network_info` | `array` | Lista de objetos de interfaz de red |
+| `hosts` | `array` | Lista de objetos `Host` (ver abajo) |
+| `vulnerabilities` | `array` | Lista de hallazgos de vulnerabilidades |
+| `summary` | `object` | Estadísticas agregadas |
 
 ### Objeto Host
 

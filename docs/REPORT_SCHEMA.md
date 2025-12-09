@@ -8,7 +8,7 @@ RedAudit generates machine-readable reports in JSON format. This document descri
 
 **Data Types**: Standard JSON types (`string`, `number`, `boolean`, `array`, `object`).
 **Nullable**: Fields are nullable unless specified otherwise.
-**Source Module**: `redaudit/core/reporter.py` (v2.6+)
+**Source Module**: `redaudit/core/reporter.py` (v2.7+)
 
 ## Schema Definition
 
@@ -18,10 +18,18 @@ The top-level container for the scan session.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `metadata` | `object` | Scan configuration and environment details. |
-| `scan_results` | `array` | List of `Host` objects (see below). |
-| `network_topology` | `array` | List of network interface objects. |
-| `scan_summary` | `object` | Aggregated statistics. |
+| `schema_version` | `string` | Schema version (v2.7+: "2.0") |
+| `event_type` | `string` | Event type for SIEM ingestion ("redaudit.scan.complete") |
+| `session_id` | `string` | Unique UUID for this scan session |
+| `timestamp` | `string` | Scan start timestamp (ISO 8601) |
+| `timestamp_end` | `string` | Scan end timestamp (ISO 8601) |
+| `version` | `string` | RedAudit version |
+| `scanner` | `object` | Scanner metadata: `name`, `version`, `mode` |
+| `targets` | `array` | List of target networks scanned |
+| `network_info` | `array` | List of network interface objects |
+| `hosts` | `array` | List of `Host` objects (see below) |
+| `vulnerabilities` | `array` | List of vulnerability findings |
+| `summary` | `object` | Aggregated statistics |
 
 ### Host Object
 

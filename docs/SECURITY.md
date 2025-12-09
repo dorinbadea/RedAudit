@@ -28,9 +28,10 @@ Report encryption is handled via the `cryptography` library to ensure confidenti
 ## 3. Operational Security (OpSec)
 
 - **Artifact Permissions**: RedAudit enforces `0o600` (read/write by owner only) on all generated reports to prevent information leakage to other users on the system.
-- **Evasion**: Configurable rate limiting suppresses network noise to evade threshold-based intrusion detection systems (IDS).
+- **Jitter Rate-Limiting (v2.7)**: Configurable rate limiting with ±30% random variance to evade threshold-based IDS and behavioral analysis.
+- **Pre-scan Discretion (v2.7)**: Asyncio-based port discovery minimizes nmap invocations, reducing overall network footprint.
 - **Heartbeat**: Background monitoring ensures process integrity without requiring interactive shell access.
-- **Module Location**: `redaudit/core/reporter.py` (file permissions), `redaudit/core/auditor.py` (heartbeat)
+- **Module Location**: `redaudit/core/reporter.py` (file permissions), `redaudit/core/auditor.py` (heartbeat, jitter), `redaudit/core/prescan.py` (fast discovery)
 
 ## 4. Audit Trail
 
@@ -40,6 +41,7 @@ All operations are logged to `~/.redaudit/logs/` with rotation policies (max 10M
 
 Automated security controls are integrated into the development pipeline:
 
+- **Bandit (v2.7)**: Static security linting for Python code on every push/PR
 - **Dependabot**: Weekly scans for vulnerable dependencies (pip, GitHub Actions)
 - **CodeQL**: Static analysis for security vulnerabilities on every push/PR
 - **Multi-version Testing**: Compatibility verified across Python 3.9-3.12

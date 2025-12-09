@@ -27,21 +27,23 @@ El cifrado de reportes se gestiona mediante la librería `cryptography` para ase
 ## 3. Seguridad Operacional (OpSec)
 
 - **Permisos de Artefactos**: RedAudit aplica `0o600` (lectura/escritura solo para el propietario) en todos los reportes generados para prevenir filtración de información a otros usuarios del sistema.
-- **Evasión**: Limitación de velocidad configurable suprime el ruido de red para evadir sistemas de detección de intrusiones (IDS) basados en umbrales.
+- **Rate-Limiting con Jitter (v2.7)**: Limitación de velocidad configurable con varianza aleatoria ±30% para evadir IDS basados en umbrales y análisis de comportamiento.
+- **Discreción Pre-scan (v2.7)**: Descubrimiento de puertos basado en asyncio minimiza las invocaciones de nmap, reduciendo la huella de red.
 - **Heartbeat**: Monitoreo en segundo plano asegura la integridad del proceso sin requerir acceso interactivo a la shell.
-- **Ubicación del Módulo**: `redaudit/core/reporter.py` (permisos de archivo), `redaudit/core/auditor.py` (heartbeat)
+- **Ubicación del Módulo**: `redaudit/core/reporter.py` (permisos), `redaudit/core/auditor.py` (heartbeat, jitter), `redaudit/core/prescan.py` (descubrimiento rápido)
 
 ## 4. Pista de Auditoría
 
 Todas las operaciones se registran en `~/.redaudit/logs/` con políticas de rotación (máx 10MB, 5 backups). Los logs contienen marcas de tiempo de ejecución, identificadores de hilos e invocaciones de comandos raw para rendición de cuentas.
 
-## 5. Arquitectura Modular (v2.6)
+## 5. Seguridad CI/CD (v2.7)
 
-El código está organizado en módulos enfocados para mejorar la mantenibilidad y auditabilidad:
+Controles de seguridad automatizados integrados en el pipeline de desarrollo:
 
-- **Módulos core** (`redaudit/core/`): Funcionalidad crítica de seguridad
-- **Utilidades** (`redaudit/utils/`): Constantes e internacionalización
-- **Cobertura de tests**: 34 tests automatizados con pipeline CI/CD
+- **Bandit (v2.7)**: Linting de seguridad estático para código Python en cada push/PR
+- **Dependabot**: Escaneos semanales de dependencias vulnerables (pip, GitHub Actions)
+- **CodeQL**: Análisis estático de vulnerabilidades de seguridad en cada push/PR
+- **Testing Multi-versión**: Compatibilidad verificada en Python 3.9-3.12
 
 ## 6. Licencia
 

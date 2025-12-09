@@ -1,8 +1,8 @@
-# Manual de Usuario de RedAudit v2.6.1
+# Manual de Usuario de RedAudit v2.7.0
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](MANUAL_EN.md)
 
-**Versión**: 2.6.1  
+**Versión**: 2.7.0  
 **Audiencia Objetivo**: Analistas de Seguridad, Pentesters, Administradores de Sistemas  
 **Licencia**: GPLv3
 
@@ -32,9 +32,11 @@ RedAudit es una herramienta automatizada de auditoría de red diseñada para sis
 **Características Clave:**
 
 - Detección automática de servicios y escaneo profundo dirigido
+- **Motor pre-scan asyncio** para descubrimiento rápido de puertos (v2.7)
 - Inteligencia de exploits vía integración con ExploitDB
 - Análisis de vulnerabilidades SSL/TLS
 - Generación de reportes cifrados (AES-128 + PBKDF2)
+- **Salida JSON compatible con SIEM** (v2.7)
 - Monitorización de progreso con sistema heartbeat
 - Soporte bilingüe (Inglés/Español)
 
@@ -75,9 +77,10 @@ RedAudit v2.6 está organizado como un paquete Python modular:
 |:-------|:----------|
 | `redaudit/core/auditor.py` | Orquestador principal, gestión de hilos |
 | `redaudit/core/scanner.py` | Integración Nmap, deep scans, enriquecimiento |
+| `redaudit/core/prescan.py` | Descubrimiento rápido de puertos asyncio (v2.7) |
 | `redaudit/core/crypto.py` | Cifrado (derivación de claves PBKDF2, Fernet) |
 | `redaudit/core/network.py` | Detección de interfaces de red |
-| `redaudit/core/reporter.py` | Generación de reportes JSON/TXT |
+| `redaudit/core/reporter.py` | Generación de reportes JSON/TXT + compatibilidad SIEM |
 | `redaudit/utils/constants.py` | Constantes de configuración |
 | `redaudit/utils/i18n.py` | Cadenas de internacionalización |
 
@@ -154,8 +157,11 @@ Enriquecimiento: dig (DNS reverso), whois (IPs públicas)
 # No interactivo con modo específico
 sudo python3 -m redaudit --target 192.168.1.0/24 --mode completo
 
-# Ajustar concurrencia
+# Ajustar concurrencia con rate-limiting jitter (v2.7)
 sudo python3 -m redaudit --threads 4 --rate-limit 2
+
+# Habilitar pre-scan para descubrimiento rápido (v2.7)
+sudo python3 -m redaudit --target 192.168.1.0/24 --prescan
 ```
 
 ---
@@ -278,9 +284,12 @@ bash redaudit_verify.sh
 | **Deep Scan** | Escaneo agresivo automático para hosts con datos incompletos |
 | **Fernet** | Cifrado simétrico (AES-128-CBC + HMAC-SHA256) |
 | **Heartbeat** | Hilo de fondo monitorizando salud del proceso |
+| **Jitter** | Varianza aleatoria (±30%) añadida al rate-limiting para evasión de IDS (v2.7) |
 | **PBKDF2** | Función de Derivación de Clave Basada en Contraseña 2 |
+| **Pre-scan** | Descubrimiento rápido de puertos basado en asyncio antes de nmap (v2.7) |
 | **Rate Limit** | Retardo artificial entre operaciones de escaneo |
 | **Salt** | Bytes aleatorios combinados con contraseña para clave única |
+| **SIEM** | Sistema de Gestión de Información y Eventos de Seguridad |
 
 ---
 

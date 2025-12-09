@@ -10,6 +10,7 @@ Report generation and saving functionality.
 import os
 import json
 import base64
+import uuid
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -56,6 +57,19 @@ def generate_summary(
     }
 
     results["summary"] = summary
+
+    # A5: SIEM-compatible fields (v2.7)
+    results["schema_version"] = "2.0"
+    results["event_type"] = "redaudit.scan.complete" if not duration else "redaudit.scan.complete"
+    results["session_id"] = str(uuid.uuid4())
+    results["timestamp_end"] = datetime.now().isoformat()
+    results["scanner"] = {
+        "name": "RedAudit",
+        "version": VERSION,
+        "mode": config.get("scan_mode", "normal")
+    }
+    results["targets"] = config.get("target_networks", [])
+
     return summary
 
 

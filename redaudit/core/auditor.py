@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import threading
 import time
+import random
 import importlib
 import ipaddress
 import logging
@@ -68,6 +69,7 @@ from redaudit.core.reporter import (
     show_config_summary,
     show_results_summary,
 )
+from redaudit.core.prescan import run_prescan, parse_port_range
 
 # Try to import nmap
 nmap = None
@@ -96,6 +98,10 @@ class InteractiveNetworkAuditor:
             "scan_vulnerabilities": True,
             "save_txt_report": True,
             "encryption_salt": None,
+            # Pre-scan config (v2.7)
+            "prescan_enabled": False,
+            "prescan_ports": "1-1024",
+            "prescan_timeout": 0.5,
         }
 
         self.encryption_enabled = False
@@ -654,7 +660,10 @@ class InteractiveNetworkAuditor:
                 fut = executor.submit(self.scan_host_ports, h)
                 futures[fut] = h
                 if self.rate_limit_delay > 0:
-                    time.sleep(self.rate_limit_delay)
+                    # A3: Jitter ±30% for IDS evasion
+                    jitter = random.uniform(-0.3, 0.3) * self.rate_limit_delay
+                    actual_delay = max(0.1, self.rate_limit_delay + jitter)
+                    time.sleep(actual_delay)
 
             total = len(futures)
             done = 0

@@ -4,7 +4,7 @@
 
 RedAudit es una herramienta CLI para auditoría de red estructurada y hardening en sistemas Kali/Debian.
 
-![Version](https://img.shields.io/badge/version-2.6.1-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.7.0-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 ![Tests](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dorinbadea/81671a8fffccee81ca270f14d094e5a1/raw/redaudit-tests.json&style=flat-square)
@@ -15,7 +15,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                     v2.6
+                                     v2.7
 ```
 
 ## Visión General
@@ -50,8 +50,9 @@ flowchart TB
     subgraph Core["redaudit/core/"]
         B[auditor.py<br/>Orquestador]
         C[scanner.py<br/>Nmap + Deep Scan]
+        C2[prescan.py<br/>Descubrimiento Rápido Asyncio]
         D[network.py<br/>Detección de Interfaces]
-        E[reporter.py<br/>Salida JSON/TXT]
+        E[reporter.py<br/>Salida JSON/TXT + SIEM]
         F[crypto.py<br/>AES-128 + PBKDF2]
     end
     
@@ -86,8 +87,9 @@ flowchart TB
     end
     
     A --> B
-    B --> C & D & E & F
+    B --> C & C2 & D & E & F
     B --> G & H
+    C2 --> C
     C --> I
     C --> J & K & L
     C --> M & N
@@ -176,6 +178,9 @@ sudo redaudit --target "192.168.1.0/24,10.0.0.0/24" --mode normal --threads 6
 - `--no-vuln-scan`: Desactivar escaneo de vulnerabilidades web
 - `--no-txt-report`: Desactivar generación de reporte TXT
 - `--no-deep-scan`: Desactivar deep scan adaptativo
+- `--prescan`: Activar pre-escaneo rápido asyncio antes de nmap (v2.7)
+- `--prescan-ports`: Rango de puertos para pre-scan (defecto: 1-1024)
+- `--prescan-timeout`: Timeout de pre-scan en segundos (defecto: 0.5)
 - `--yes, -y`: Saltar advertencia legal (usar con precaución)
 - `--lang`: Idioma (en/es)
 
@@ -224,7 +229,8 @@ redaudit/
 │   ├── auditor.py  # Clase orquestadora principal
 │   ├── crypto.py   # Cifrado/descifrado
 │   ├── network.py  # Detección de red
-│   ├── reporter.py # Generación de reportes
+│   ├── prescan.py  # Pre-scan asyncio (v2.7)
+│   ├── reporter.py # Generación de reportes + SIEM
 │   └── scanner.py  # Lógica de escaneo
 └── utils/          # Utilidades
     ├── constants.py # Constantes de configuración
@@ -307,20 +313,18 @@ Consulta [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) para soluciones deta
 - **"Cryptography missing"**: Ejecuta `sudo apt install python3-cryptography`.
 - **"Scan frozen"**: Revisa `~/.redaudit/logs/` o reduce `rate_limit_delay`.
 
-## 13. Historial de Cambios (Resumen v2.6.1)
+## 13. Historial de Cambios (Resumen v2.7.0)
 
-- **Arquitectura Modular**: Script monolítico refactorizado en estructura de paquete organizada (8 módulos)
-- **Pipeline CI/CD**: Workflow de GitHub Actions para testing automatizado (Python 3.9-3.12)
-- **Cobertura de Tests**: Expandido de 25 a 34 tests con nuevas suites de network y reporter
-- **Constantes Nombradas**: Todos los números mágicos reemplazados con constantes descriptivas
-- **Retrocompatibilidad**: `redaudit.py` original preservado como wrapper de compatibilidad
+- **Motor Pre-scan Asyncio**: Descubrimiento rápido de puertos usando TCP connect asyncio (estilo RustScan)
+- **Salida Compatible SIEM**: Reportes JSON mejorados con `schema_version`, `event_type`, `session_id`
+- **Rate-Limiting con Jitter**: Varianza aleatoria ±30% para evasión de IDS
+- **Linting de Seguridad Bandit**: Análisis de seguridad estático en pipeline CI
 
-### Anterior (v2.5)
+### Anterior (v2.6.x)
 
-- **Seguridad**: Sanitización de entrada endurecida con validación de tipo/longitud, permisos de archivo seguros (0o600)
-- **Automatización**: Modo CLI completo no interactivo para scripting e integración CI/CD
-- **Testing**: Suites de tests completas de integración y cifrado
-- **Robustez**: Manejo mejorado de cryptography con degradación graceful
+- **Hotfix de Señales**: Limpieza correcta de subprocesos en Ctrl+C
+- **Arquitectura Modular**: Refactorizado en estructura de paquete organizada (8 módulos)
+- **Pipeline CI/CD**: Workflow de GitHub Actions para testing automatizado
 
 Para el changelog detallado, consulta [CHANGELOG.md](CHANGELOG.md)
 
