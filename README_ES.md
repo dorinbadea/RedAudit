@@ -42,62 +42,86 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 
 ### Vista General del Sistema
 
+> **Nota**: Si el diagrama no se renderiza (ej: en móvil), ver la [imagen estática](assets/system_overview.png).
+
 ```mermaid
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#1a365d', 'primaryTextColor': '#fff', 'primaryBorderColor': '#4299e1', 'lineColor': '#a0aec0', 'secondaryColor': '#2d3748', 'tertiaryColor': '#1a202c', 'background': '#0d1117', 'mainBkg': '#0d1117', 'nodeBorder': '#4299e1', 'clusterBkg': '#1a202c', 'clusterBorder': '#4a5568', 'titleColor': '#fff'}}}%%
 flowchart TB
-    subgraph Input["Entrada de Usuario"]
-        A[CLI / Modo Interactivo]
+    subgraph Input["🖥️ Entrada de Usuario"]
+        A["CLI / Modo Interactivo"]
     end
     
-    subgraph Core["redaudit/core/"]
-        B[auditor.py<br/>Orquestador]
-        C[scanner.py<br/>Nmap + Deep Scan]
-        C2[prescan.py<br/>Descubrimiento Rápido Asyncio]
-        D[network.py<br/>Detección de Interfaces]
-        E[reporter.py<br/>Salida JSON/TXT + SIEM]
-        F[crypto.py<br/>AES-128 + PBKDF2]
+    subgraph Core["📦 redaudit/core/"]
+        B["auditor.py<br/>Orquestador"]
+        C["scanner.py<br/>Nmap + Deep Scan"]
+        C2["prescan.py<br/>Descubrimiento Asyncio"]
+        D["network.py<br/>Detección de Interfaces"]
+        E["reporter.py<br/>JSON/TXT + SIEM"]
+        F["crypto.py<br/>AES-128 + PBKDF2"]
     end
     
-    subgraph Utils["redaudit/utils/"]
-        G[constants.py]
-        H[i18n.py]
+    subgraph Utils["⚙️ redaudit/utils/"]
+        G["constants.py"]
+        H["i18n.py"]
     end
     
-    subgraph Scanning["Descubrimiento de Puertos"]
-        I[nmap]
+    subgraph Scanning["🔍 Descubrimiento"]
+        I["nmap"]
     end
     
-    subgraph WebAudit["Reconocimiento Web"]
-        J[whatweb]
-        K[nikto]
-        L[curl / wget]
+    subgraph WebAudit["🌐 Recon Web"]
+        J["whatweb"]
+        K["nikto"]
+        L["curl / wget"]
     end
     
-    subgraph SSL["Análisis SSL/TLS"]
-        M[testssl.sh]
-        N[openssl]
+    subgraph SSL["🔒 SSL/TLS"]
+        M["testssl.sh"]
+        N["openssl"]
     end
     
-    subgraph Traffic["Captura de Tráfico"]
-        O[tcpdump]
-        P[tshark]
+    subgraph Traffic["📡 Tráfico"]
+        O["tcpdump"]
+        P["tshark"]
     end
     
-    subgraph Intel["Inteligencia de Amenazas"]
-        Q[searchsploit]
-        R[dig / whois]
+    subgraph Intel["🎯 Threat Intel"]
+        Q["searchsploit"]
+        R["dig / whois"]
     end
     
     A --> B
     B --> C & C2 & D & E & F
-    B --> G & H
+    B -.-> G & H
     C2 --> C
     C --> I
     C --> J & K & L
     C --> M & N
     C --> O & P
     C --> Q & R
-    E --> Output[(Reportes Cifrados)]
+    E --> Output[("💾 Reportes Cifrados")]
     F --> Output
+
+    style A fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style B fill:#48bb78,stroke:#2f855a,color:#fff
+    style C fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style C2 fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style D fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style E fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style F fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style G fill:#68d391,stroke:#38a169,color:#1a202c
+    style H fill:#68d391,stroke:#38a169,color:#1a202c
+    style I fill:#ed8936,stroke:#c05621,color:#fff
+    style J fill:#ed8936,stroke:#c05621,color:#fff
+    style K fill:#ed8936,stroke:#c05621,color:#fff
+    style L fill:#ed8936,stroke:#c05621,color:#fff
+    style M fill:#ed8936,stroke:#c05621,color:#fff
+    style N fill:#ed8936,stroke:#c05621,color:#fff
+    style O fill:#ed8936,stroke:#c05621,color:#fff
+    style P fill:#ed8936,stroke:#c05621,color:#fff
+    style Q fill:#ed8936,stroke:#c05621,color:#fff
+    style R fill:#ed8936,stroke:#c05621,color:#fff
+    style Output fill:#9f7aea,stroke:#805ad5,color:#fff
 ```
 
 Los escaneos profundos se activan selectivamente: los módulos de auditoría web solo se lanzan tras la detección de servicios HTTP/HTTPS, y la inspección SSL se reserva para puertos cifrados.

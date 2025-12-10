@@ -42,62 +42,86 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 
 ### System Overview
 
+> **Note**: If the diagram below doesn't render (e.g., on mobile), view the [static image](assets/system_overview.png).
+
 ```mermaid
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#1a365d', 'primaryTextColor': '#fff', 'primaryBorderColor': '#4299e1', 'lineColor': '#a0aec0', 'secondaryColor': '#2d3748', 'tertiaryColor': '#1a202c', 'background': '#0d1117', 'mainBkg': '#0d1117', 'nodeBorder': '#4299e1', 'clusterBkg': '#1a202c', 'clusterBorder': '#4a5568', 'titleColor': '#fff'}}}%%
 flowchart TB
-    subgraph Input["User Input"]
-        A[CLI / Interactive Mode]
+    subgraph Input["🖥️ User Input"]
+        A["CLI / Interactive Mode"]
     end
     
-    subgraph Core["redaudit/core/"]
-        B[auditor.py<br/>Orchestrator]
-        C[scanner.py<br/>Nmap + Deep Scan]
-        C2[prescan.py<br/>Asyncio Fast Discovery]
-        D[network.py<br/>Interface Detection]
-        E[reporter.py<br/>JSON/TXT + SIEM]
-        F[crypto.py<br/>AES-128 + PBKDF2]
+    subgraph Core["📦 redaudit/core/"]
+        B["auditor.py<br/>Orchestrator"]
+        C["scanner.py<br/>Nmap + Deep Scan"]
+        C2["prescan.py<br/>Asyncio Discovery"]
+        D["network.py<br/>Interface Detection"]
+        E["reporter.py<br/>JSON/TXT + SIEM"]
+        F["crypto.py<br/>AES-128 + PBKDF2"]
     end
     
-    subgraph Utils["redaudit/utils/"]
-        G[constants.py]
-        H[i18n.py]
+    subgraph Utils["⚙️ redaudit/utils/"]
+        G["constants.py"]
+        H["i18n.py"]
     end
     
-    subgraph Scanning["Port & Service Discovery"]
-        I[nmap]
+    subgraph Scanning["🔍 Port Discovery"]
+        I["nmap"]
     end
     
-    subgraph WebAudit["Web Reconnaissance"]
-        J[whatweb]
-        K[nikto]
-        L[curl / wget]
+    subgraph WebAudit["🌐 Web Recon"]
+        J["whatweb"]
+        K["nikto"]
+        L["curl / wget"]
     end
     
-    subgraph SSL["SSL/TLS Analysis"]
-        M[testssl.sh]
-        N[openssl]
+    subgraph SSL["🔒 SSL/TLS"]
+        M["testssl.sh"]
+        N["openssl"]
     end
     
-    subgraph Traffic["Traffic Capture"]
-        O[tcpdump]
-        P[tshark]
+    subgraph Traffic["📡 Traffic"]
+        O["tcpdump"]
+        P["tshark"]
     end
     
-    subgraph Intel["Threat Intelligence"]
-        Q[searchsploit]
-        R[dig / whois]
+    subgraph Intel["🎯 Threat Intel"]
+        Q["searchsploit"]
+        R["dig / whois"]
     end
     
     A --> B
     B --> C & C2 & D & E & F
-    B --> G & H
+    B -.-> G & H
     C2 --> C
     C --> I
     C --> J & K & L
     C --> M & N
     C --> O & P
     C --> Q & R
-    E --> Output[(Encrypted Reports)]
+    E --> Output[("💾 Encrypted Reports")]
     F --> Output
+
+    style A fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style B fill:#48bb78,stroke:#2f855a,color:#fff
+    style C fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style C2 fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style D fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style E fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style F fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style G fill:#68d391,stroke:#38a169,color:#1a202c
+    style H fill:#68d391,stroke:#38a169,color:#1a202c
+    style I fill:#ed8936,stroke:#c05621,color:#fff
+    style J fill:#ed8936,stroke:#c05621,color:#fff
+    style K fill:#ed8936,stroke:#c05621,color:#fff
+    style L fill:#ed8936,stroke:#c05621,color:#fff
+    style M fill:#ed8936,stroke:#c05621,color:#fff
+    style N fill:#ed8936,stroke:#c05621,color:#fff
+    style O fill:#ed8936,stroke:#c05621,color:#fff
+    style P fill:#ed8936,stroke:#c05621,color:#fff
+    style Q fill:#ed8936,stroke:#c05621,color:#fff
+    style R fill:#ed8936,stroke:#c05621,color:#fff
+    style Output fill:#9f7aea,stroke:#805ad5,color:#fff
 ```
 
 Deep scans are triggered selectively: web auditing modules launch only upon detection of HTTP/HTTPS services, and SSL inspection is reserved for encrypted ports.
