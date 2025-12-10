@@ -1,6 +1,15 @@
+# macOS system files
+.DS_Store
+**/.DS_Store
+
+# Python cache
 __pycache__/
 *.pyc
+
+# RedAudit output files (only ignore in root to allow docs/*.md)
 *.pcap
 *.json
 *.txt
+
+# Backup files
 redaudit_install.sh.bak

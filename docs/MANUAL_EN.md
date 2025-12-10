@@ -1,305 +1,583 @@
-# RedAudit v2.7.0 User Manual
+# RedAudit v2.7.0 – User Manual (EN)
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](MANUAL_ES.md)
 
-**Version**: 2.7.0  
-**Target Audience**: Security Analysts, Penetration Testers, Systems Administrators  
-**License**: GPLv3
+**Version:** 2.7.0  
+**Target audience:** Security analysts, penetration testers, systems / network administrators  
+**License:** GPLv3
 
 ---
 
-## Table of Contents
+## Table of contents
 
 1. [Introduction](#1-introduction)
-2. [Installation](#2-installation)
-3. [Architecture](#3-architecture)
-4. [External Tools](#4-external-tools)
-5. [Scan Modes](#5-scan-modes)
-6. [Scan Workflow](#6-scan-workflow)
-7. [Encryption](#7-encryption)
-8. [Monitoring](#8-monitoring)
-9. [Report Decryption](#9-report-decryption)
-10. [Troubleshooting](#10-troubleshooting)
-11. [Glossary](#11-glossary)
-12. [Legal Notice](#12-legal-notice)
+2. [System requirements](#2-system-requirements)
+3. [Installation](#3-installation)
+   - 3.1 [Quick install](#31-quick-install)
+   - 3.2 [What the installer does](#32-what-the-installer-does)
+   - 3.3 [Manual installation / uninstall](#33-manual-installation--uninstall)
+4. [Concepts & architecture](#4-concepts--architecture)
+   - 4.1 [Goals](#41-goals)
+   - 4.2 [High-level workflow](#42-high-level-workflow)
+   - 4.3 [Scan modes](#43-scan-modes)
+5. [CLI usage](#5-cli-usage)
+   - 5.1 [Basic syntax](#51-basic-syntax)
+   - 5.2 [Core options](#52-core-options)
+   - 5.3 [Typical scenarios](#53-typical-scenarios)
+6. [Reports & output](#6-reports--output)
+   - 6.1 [Directory layout](#61-directory-layout)
+   - 6.2 [JSON report structure](#62-json-report-structure)
+   - 6.3 [Text / Markdown summaries](#63-text--markdown-summaries)
+7. [Encryption & decryption](#7-encryption--decryption)
+8. [Security model](#8-security-model)
+   - 8.1 [Input & command safety](#81-input--command-safety)
+   - 8.2 [Privilege model](#82-privilege-model)
+   - 8.3 [Operational security](#83-operational-security)
+   - 8.4 [Ethical and legal use](#84-ethical-and-legal-use)
+9. [External tools](#9-external-tools)
+10. [Monitoring & troubleshooting](#10-monitoring--troubleshooting)
+11. [Contributing & tests](#11-contributing--tests)
+12. [License & legal notice](#12-license--legal-notice)
 
 ---
 
 ## 1. Introduction
 
-RedAudit is an automated network auditing tool designed for Kali Linux and Debian-based systems. It orchestrates multiple security tools (nmap, whatweb, nikto, testssl.sh, searchsploit, and more) through an intelligent workflow that adapts to discovered services.
+RedAudit is an automated network auditing and hardening assistant for Kali / Debian-based systems. It guides the operator through a structured workflow:
 
-**Key Features:**
+- Discovery of live hosts.
+- Service and port enumeration.
+- Web and TLS fingerprinting when applicable.
+- Optional deep analysis on "interesting" hosts.
+- Generation of SIEM-friendly JSON reports and human-readable summaries, optionally encrypted.
 
-- Automatic service detection and targeted deep scanning
-- **Pre-scan asyncio engine** for fast port discovery (v2.7)
-- Exploit intelligence via ExploitDB integration
-- SSL/TLS vulnerability analysis
-- Encrypted report generation (AES-128 + PBKDF2)
-- **SIEM-compatible JSON output** (v2.7)
-- Progress monitoring with heartbeat system
-- Bilingual support (English/Spanish)
+RedAudit is not an exploit framework and does not perform automatic exploitation. Instead, it focuses on visibility, structure and safe reporting so that a human analyst can take informed decisions.
+
+### Key features
+
+- Single-command CLI for whole-network reconnaissance and audit.
+- Three scan modes (fast, normal, full) with adaptive workflow.
+- Automatic activation of external tools (nmap, whatweb, nikto, testssl.sh, etc.) when relevant.
+- JSON report schema designed for ingestion into SIEM / reporting pipelines.
+- Optional AES-based encryption of reports with proper key derivation.
+- Rate-limiting and jitter to control scan noise (v2.7).
+- Bilingual messages (English / Spanish).
 
 ---
 
-## 2. Installation
+## 2. System requirements
 
-### System Requirements
+| Requirement   | Minimum / supported                                  |
+|---------------|------------------------------------------------------|
+| OS            | Kali Linux, Debian 11+, Ubuntu 20.04+, Parrot OS     |
+| Python        | 3.9+ (system Python)                                 |
+| Privileges    | sudo / root (raw sockets, nmap, tcpdump)             |
+| Disk space    | ~50 MB for code and dependencies + space for reports |
+| Network       | Local or routed reachability to targets              |
 
-| Requirement | Minimum |
-|:------------|:--------|
-| **OS** | Kali Linux, Debian 11+, Ubuntu 20.04+, Parrot OS |
-| **Python** | 3.9+ |
-| **Privileges** | Root/Sudo (required for raw socket access) |
+RedAudit is designed for Linux only. It is not intended to run natively on Windows or macOS.
 
-### Quick Install
+---
+
+## 3. Installation
+
+### 3.1 Quick install
 
 ```bash
+# 1) Clone the repository
 git clone https://github.com/dorinbadea/RedAudit.git
 cd RedAudit
+
+# 2) Run the installer with sudo
 sudo bash redaudit_install.sh
 ```
 
-### Shell Activation
+During installation you will be asked to select language (English/Spanish) and whether to install additional tools.
 
-| Distribution | Shell | Command |
-|:-------------|:------|:--------|
-| Kali Linux (2020.3+) | Zsh | `source ~/.zshrc` |
-| Debian / Ubuntu / Parrot | Bash | `source ~/.bashrc` |
+After installation, reload your shell configuration:
+
+```bash
+# Zsh (default on recent Kali versions)
+source ~/.zshrc
+
+# Bash
+source ~/.bashrc
+```
+
+From this point, the `redaudit` command should be available in your terminal.
 
 ---
 
-## 3. Architecture
+### 3.2 What the installer does
 
-RedAudit v2.6 is organized as a modular Python package:
+The script `redaudit_install.sh` performs the following steps:
 
-| Module | Purpose |
-|:-------|:--------|
-| `redaudit/core/auditor.py` | Main orchestrator, thread management |
-| `redaudit/core/scanner.py` | Nmap integration, deep scans, enrichment |
-| `redaudit/core/prescan.py` | Asyncio fast port discovery (v2.7) |
-| `redaudit/core/crypto.py` | Encryption (PBKDF2 key derivation, Fernet) |
-| `redaudit/core/network.py` | Network interface detection |
-| `redaudit/core/reporter.py` | JSON/TXT + SIEM-compatible report generation |
-| `redaudit/utils/constants.py` | Configuration constants |
-| `redaudit/utils/i18n.py` | Internationalization strings |
+1. **Environment checks**
+   - Verifies that `apt` is available (Debian-family systems).
+   - Verifies that you are running with sudo or as root.
 
-**Invocation:**
+2. **Core dependencies**
+   Installs or validates packages such as (names may vary slightly by distribution):
+   - `curl`, `wget`, `openssl`, `git`
+   - `nmap`
+   - `tcpdump`, `tshark`
+   - `whois`, `bind9-dnsutils`
+   - `python3-nmap`, `python3-cryptography`, `python3-netifaces`
+   - `exploitdb` (for searchsploit)
+
+3. **Code deployment**
+   - Copies the Python package directory `redaudit/` into `/usr/local/lib/redaudit`.
+   - Ensures executable permissions for scripts and modules.
+   - Injects the chosen default language into `utils/constants.py`.
+
+4. **CLI wrapper**
+   - Installs the `redaudit` launcher script into a directory on your PATH (typically `/usr/local/bin`).
+   - Configures a shell alias so that typing `redaudit` invokes the application.
+
+5. **Optional extras**
+   - Offers to install a recommended bundle of utilities in a single `apt install` command.
+
+No system services or daemons are installed; RedAudit is a stateless CLI tool.
+
+---
+
+### 3.3 Manual installation / uninstall
+
+If you prefer not to use the installer:
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/dorinbadea/RedAudit.git
+   cd RedAudit
+   ```
+
+2. Install dependencies manually (example):
+
+   ```bash
+   sudo apt update
+   sudo apt install curl wget openssl nmap tcpdump tshark \
+                    whois bind9-dnsutils python3-nmap \
+                    python3-cryptography python3-netifaces exploitdb
+   ```
+
+3. Run via Python module:
+
+   ```bash
+   sudo python3 -m redaudit
+   ```
+
+**To uninstall:**
+
+- Remove `/usr/local/lib/redaudit` (or the directory where you installed it).
+- Remove the `redaudit` script and any alias you added to `.bashrc` / `.zshrc`.
+- Optionally remove the dependency packages if you installed them exclusively for RedAudit.
+
+---
+
+## 4. Concepts & architecture
+
+### 4.1 Goals
+
+RedAudit's design philosophy is:
+
+- **Secure by default:** conservative timeouts, strict input validation, and encrypted reports when requested.
+- **Deterministic and inspectable:** JSON output with clear schema; easy to transform or ingest.
+- **Operator-driven:** assists the human analyst instead of replacing their judgment.
+
+### 4.2 High-level workflow
+
+At a high level, a run of RedAudit follows this sequence:
+
+1. **Discovery**
+   - Uses `nmap -sn` (host discovery) to find live hosts in the target range.
+
+2. **Port & service scan**
+   - Uses `nmap -sV` (service/version detection) on discovered hosts.
+   - For `full` mode, scans a wider port range and additional scripts.
+
+3. **Conditional web & TLS analysis**
+   - If HTTP/HTTPS ports are found:
+     - `whatweb` fingerprints technologies.
+     - `curl` / `wget` fetch headers.
+     - In `full` mode, `nikto` and `testssl.sh` are invoked for deeper checks.
+
+4. **Deep identity scan (triggered selectively)**
+   - If a host is ambiguous or "interesting" (few ports, strange services, incomplete fingerprint), a deeper scan is run:
+     - Additional `nmap` probes, optional packet capture with `tcpdump`, optional summarisation with `tshark`.
+
+5. **Post-processing & reporting**
+   - Consolidates all collected data into a structured JSON report.
+   - Generates a text/Markdown summary.
+   - Optionally encrypts the report files using `cryptography` (Fernet).
+
+The control logic for this pipeline lives mainly in the package `redaudit/core`.
+
+---
+
+### 4.3 Scan modes
+
+RedAudit exposes three scan modes. The CLI mode names are in English and must be passed as such (`fast`, `normal`, `full`), regardless of interface language.
+
+| Mode   | CLI value | Description                                             | Typical use case                        |
+|--------|-----------|--------------------------------------------------------|----------------------------------------|
+| Fast   | `fast`    | Host discovery only (`nmap -sn`).                       | Quick inventory; verify reachability.  |
+| Normal | `normal`  | Top ports + service versions.                           | Standard security audit of a network.  |
+| Full   | `full`    | Extended ports + scripts + web/TLS deep analysis.       | Comprehensive audit / pre-pentest review. |
+
+Changing the mode affects how aggressively external tools are invoked and how many ports/probes are used.
+
+---
+
+## 5. CLI usage
+
+### 5.1 Basic syntax
+
+You can run RedAudit either interactively (no arguments) or non-interactively.
 
 ```bash
-# Using alias (after installation)
+# Interactive mode (guided prompts)
 sudo redaudit
 
-# Using Python module
-sudo python3 -m redaudit --help
+# Non-interactive mode
+sudo redaudit --target 192.168.1.0/24 --mode normal --yes
 ```
 
----
-
-## 4. External Tools
-
-RedAudit integrates 11 external security tools. Each activates under specific conditions:
-
-### Tool Activation Matrix
-
-| Tool | Trigger Condition | Scan Mode | Output Location |
-|:-----|:------------------|:----------|:----------------|
-| **nmap** | Always | All | `host.ports[]` |
-| **searchsploit** | Service has version detected | All | `ports[].known_exploits` |
-| **whatweb** | HTTP/HTTPS port detected | All | `vulnerabilities[].whatweb` |
-| **nikto** | HTTP/HTTPS port detected | Completo only | `vulnerabilities[].nikto_findings` |
-| **curl** | HTTP/HTTPS port detected | All | `vulnerabilities[].curl_headers` |
-| **wget** | HTTP/HTTPS port detected | All | `vulnerabilities[].wget_headers` |
-| **openssl** | HTTPS port detected | All | `vulnerabilities[].tls_info` |
-| **testssl.sh** | HTTPS port detected | Completo only | `vulnerabilities[].testssl_analysis` |
-| **tcpdump** | During Deep Scan | All (if triggered) | `deep_scan.pcap_capture` |
-| **tshark** | After tcpdump capture | All (if triggered) | `deep_scan.pcap_capture.tshark_summary` |
-| **dig** | After port scan | All | `host.dns.reverse` |
-| **whois** | Public IPs only | All | `host.dns.whois_summary` |
-
-### Activation Flow
-
-```text
-Discovery (nmap -sn)
-    │
-    ▼
-Port Scan (nmap -sV)
-    │
-    ├── Service has version? ──▶ searchsploit
-    │
-    ├── HTTP/HTTPS detected? ──▶ whatweb, curl, wget
-    │   └── Completo mode? ──▶ nikto
-    │
-    ├── HTTPS detected? ──▶ openssl
-    │   └── Completo mode? ──▶ testssl.sh
-    │
-    └── Deep Scan triggered?
-        ├── tcpdump (traffic capture)
-        └── tshark (protocol summary)
-    │
-    ▼
-Enrichment: dig (reverse DNS), whois (public IPs)
-```
-
----
-
-## 5. Scan Modes
-
-| Mode | Description | Use Case |
-|:-----|:------------|:---------|
-| **Rápido** | Discovery only (`nmap -sn`) | Quick host enumeration |
-| **Normal** | Top ports + service versions | Standard security audit |
-| **Completo** | Full ports + scripts + nikto + testssl | Comprehensive penetration test |
-
-### CLI Options
+The module can also be invoked directly:
 
 ```bash
-# Non-interactive with specific mode
-sudo python3 -m redaudit --target 192.168.1.0/24 --mode completo
-
-# Adjust concurrency with jitter rate-limiting (v2.7)
-sudo python3 -m redaudit --threads 4 --rate-limit 2
-
-# Enable pre-scan for faster discovery (v2.7)
-sudo python3 -m redaudit --target 192.168.1.0/24 --prescan
+sudo python3 -m redaudit [OPTIONS]
 ```
 
 ---
 
-## 6. Scan Workflow
+### 5.2 Core options
 
-### Phase 1: Discovery
-
-ICMP Echo + ARP sweep to identify live hosts.
-
-### Phase 2: Port Enumeration
-
-Parallel nmap scans based on selected mode.
-
-### Phase 3: Adaptive Deep Scan
-
-Automatically triggered when a host:
-
-- Has more than 8 open ports
-- Has suspicious services (socks, proxy, vpn, tor, nagios)
-- Has 3 or fewer open ports
-- Has open ports but no version information
-
-**2-Phase Strategy:**
-
-1. **Phase 1**: `nmap -A -sV -Pn -p- --version-intensity 9`
-   - If MAC/OS found → Skip Phase 2
-2. **Phase 2**: `nmap -O -sSU -Pn -p- --max-retries 2`
-   - UDP + OS fallback
-
-### Phase 4: Traffic Capture
-
-If `tcpdump` is available, captures 50 packets (15s) during Deep Scan.
-If `tshark` is available, generates protocol summary.
-
-### Phase 5: Enrichment
-
-- **dig**: Reverse DNS lookup for all hosts
-- **whois**: Ownership info for public IPs only
-
----
-
-## 7. Encryption
-
-### Specification
-
-| Parameter | Value |
-|:----------|:------|
-| **Algorithm** | AES-128-CBC (Fernet) |
-| **Key Derivation** | PBKDF2HMAC-SHA256 |
-| **Iterations** | 480,000 (exceeds OWASP 310,000) |
-| **Salt** | 16 random bytes per session |
-| **Password Minimum** | 12 characters + complexity |
-| **File Permissions** | 0o600 (owner read/write only) |
-
-### Usage
+The full list is available via:
 
 ```bash
-# Interactive - prompts for password
-sudo python3 -m redaudit --encrypt
-
-# Non-interactive - specify password
-sudo python3 -m redaudit --encrypt --encrypt-password "MySecurePass123"
+redaudit --help
 ```
 
+The most important options:
+
+| Option                      | Description                                                                                                              |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `-t`, `--target CIDR`       | Target network(s) in CIDR notation. Comma-separated for multiple ranges.                                                 |
+| `-m`, `--mode {fast,normal,full}` | Select scan mode (see above). Default: `normal`.                                                                   |
+| `-j`, `--threads N`         | Concurrent scanning threads. Range constrained by built-in safe defaults.                                               |
+| `--rate-limit SECONDS`      | Delay between host scans to reduce noise on the wire. Default: 0.                                                        |
+| `-e`, `--encrypt`           | Enable encryption of generated reports.                                                                                  |
+| `--encrypt-password PASS`   | Password for encryption in non-interactive runs. If omitted with `--encrypt`, you'll be prompted or a random password may be generated and printed. |
+| `--no-vuln-scan`            | Disable web vulnerability scanning (skip nikto / certain HTTP checks).                                                   |
+| `--no-txt-report`           | Skip generation of the human-readable TXT/Markdown report.                                                              |
+| `-o`, `--output DIR`        | Custom output directory for all reports. Default is a directory under the current path.                                  |
+| `--yes`                     | Non-interactive mode: assume "yes" to prompts. Essential for automation.                                                 |
+| `--prescan`                 | Enable asynchronous pre-scan (v2.7) to reduce nmap calls on very large ranges.                                           |
+| `--prescan-ports RANGE`     | Port range used by the pre-scan. Default: `1-1024`.                                                                      |
+| `-V`, `--version`           | Print RedAudit version and exit.                                                                                         |
+
+For more usage examples, see [USAGE.md](USAGE.md).
+
 ---
 
-## 8. Monitoring
+### 5.3 Typical scenarios
 
-### Heartbeat System
-
-A background thread monitors scan progress every 60 seconds:
-
-| State | Condition | Action |
-|:------|:----------|:-------|
-| Active | Activity < 60s | Normal operation |
-| Busy | 60s < Activity < 300s | Warning log |
-| Silent | Activity > 300s | Alert (do NOT abort) |
-
-**Logs**: `~/.redaudit/logs/redaudit_YYYYMMDD.log`
-
----
-
-## 9. Report Decryption
-
-Encrypted reports (`.json.enc`, `.txt.enc`) require the password and `.salt` file.
+**1. Quick LAN inventory (fast discovery)**
 
 ```bash
-python3 redaudit_decrypt.py /path/to/report.json.enc
+sudo redaudit --target 192.168.1.0/24 --mode fast --yes
 ```
 
-1. Locates `report.salt` in same directory
-2. Prompts for password
-3. Derives key and decrypts
-4. Outputs `report.decrypted.json`
-
----
-
-## 10. Troubleshooting
-
-| Issue | Cause | Solution |
-|:------|:------|:---------|
-| "Encryption missing" | Missing dependency | `sudo apt install python3-cryptography` |
-| Few ports found | Host filtering packets | Automatic Deep Scan will attempt bypass |
-| Scan appears stuck | Slow/filtered network | Check heartbeat logs; wait 8-10 min |
-| VPN not detected | Interface naming | RedAudit auto-detects tun0/tap0 |
-
-**Verification script:**
+**2. Standard audit with encryption**
 
 ```bash
-bash redaudit_verify.sh
+sudo redaudit \
+  --target 10.0.0.0/24 \
+  --mode normal \
+  --encrypt \
+  --encrypt-password "StrongPassw0rd!" \
+  --yes
+```
+
+**3. Comprehensive audit for a small subnet**
+
+```bash
+sudo redaudit \
+  --target 172.16.10.0/28 \
+  --mode full \
+  --threads 4 \
+  --rate-limit 2 \
+  --prescan \
+  --yes
 ```
 
 ---
 
-## 11. Glossary
+## 6. Reports & output
 
-| Term | Definition |
-|:-----|:-----------|
-| **Deep Scan** | Automated aggressive scan for hosts with incomplete data |
-| **Fernet** | Symmetric encryption (AES-128-CBC + HMAC-SHA256) |
-| **Heartbeat** | Background thread monitoring process health |
-| **Jitter** | Random variance (±30%) added to rate-limiting for IDS evasion (v2.7) |
-| **PBKDF2** | Password-Based Key Derivation Function 2 |
-| **Pre-scan** | Asyncio-based fast port discovery before nmap (v2.7) |
-| **Rate Limit** | Artificial delay between scan operations |
-| **Salt** | Random bytes combined with password for unique key |
-| **SIEM** | Security Information and Event Management |
+### 6.1 Directory layout
+
+After a run, RedAudit creates a timestamped output directory (by default inside the working directory) such as:
+
+```
+redaudit_reports_2026-01-15_213045/
+├── redaudit_report_2026-01-15_213045.json
+├── redaudit_summary_2026-01-15_213045.txt
+├── *.pcap                      # optional packet captures
+├── *.tshark.txt               # optional pcap summaries
+└── *.log                      # auxiliary logs, if enabled
+```
+
+If encryption is enabled, the JSON and TXT files will instead use `.enc` suffixes and have associated `.salt` files.
 
 ---
 
-## 12. Legal Notice
+### 6.2 JSON report structure
 
-This tool is for **authorized security auditing only**.
+The JSON schema is described in detail in [REPORT_SCHEMA.md](REPORT_SCHEMA.md). At a high level:
 
-Usage without written consent of the network owner is illegal. The authors accept no liability for unauthorized use or resulting damages.
+- **Root object**
+  - Metadata: tool version, start/end times, operator options, exit status.
+  - Target information: ranges, resolved hostnames if available.
 
-### License
+- **hosts[]**
+  - One object per discovered host:
+    - `ip`, `hostname`, `os_guess`, `mac_address`
+    - `ports[]` with:
+      - `port`, `protocol`, `state`, `service`, `product`, `version`
+      - `known_exploits[]` (results from searchsploit)
+    - `dns` (reverse lookups, additional records)
+    - `whois_summary` (for public IPs).
 
-RedAudit is licensed under the **GNU General Public License v3.0 (GPLv3)**.  
-See [LICENSE](../LICENSE) for full terms.
+- **vulnerabilities[]**
+  - Per-host / per-service findings:
+    - `whatweb` fingerprints.
+    - `nikto_findings` (if run).
+    - `curl_headers`, `wget_headers`.
+    - `tls_info` and `testssl_analysis` for HTTPS ports.
+
+- **deep_scan (optional)**
+  - Appears only when the deep scan subsystem was triggered:
+    - Additional fingerprints.
+    - `pcap_capture` metadata, and optional `tshark_summary`.
+
+The schema is stable and versioned to ease integration with SIEM, dashboards, or custom scripts.
+
+---
+
+### 6.3 Text / Markdown summaries
+
+The summary file (TXT/Markdown) is a human-oriented overview:
+
+- High-level description of the run (targets, mode, duration).
+- Inventory of hosts with a compact list of open ports.
+- Highlights of potential issues (e.g. outdated services, HTTP findings).
+
+Use the JSON for automation and the summary for manual review or to include in reports.
+
+---
+
+## 7. Encryption & decryption
+
+When `--encrypt` is used, RedAudit leverages the Python `cryptography` library (Fernet) to protect report contents.
+
+### Encryption model
+
+- Symmetric encryption using AES-128-CBC + HMAC-SHA256, as per Fernet specification.
+- Keys derived from the password via PBKDF2-HMAC-SHA256 with a high iteration count and a per-session random salt.
+- Ciphertext includes a signature to detect tampering.
+
+**Password policy (enforced by the tool):**
+
+- Minimum length 12 characters.
+- Mixed character classes (upper/lower/digit recommended for strength).
+
+### Decrypting reports
+
+Use `redaudit_decrypt.py`:
+
+```bash
+# Decrypt an encrypted JSON report
+python3 redaudit_decrypt.py \
+   --file redaudit_report_2026-01-15_213045.json.enc \
+   --password "StrongPassw0rd!" \
+   --output report.decrypted.json
+```
+
+The helper script:
+
+1. Locates the corresponding `.salt` file (based on naming conventions).
+2. Derives the encryption key.
+3. Verifies integrity and decrypts the content.
+4. Writes the decrypted file to the chosen path.
+
+If you lose the password, the reports cannot be recovered. There is no backdoor or password reset mechanism.
+
+For more details on the security model, see [SECURITY.md](SECURITY.md).
+
+---
+
+## 8. Security model
+
+For comprehensive security documentation, refer to [SECURITY.md](SECURITY.md).
+
+### 8.1 Input & command safety
+
+All external inputs are treated as untrusted:
+
+- Target ranges, hostnames, and similar fields are strictly validated (type checks and allowlisting regex).
+- The tool assembles commands using `subprocess.run` with argument lists, never `shell=True`.
+- User-supplied strings are never interpolated directly into shell commands.
+
+This mitigates:
+
+- Shell injection.
+- Accidental execution of arbitrary code via malicious input.
+
+---
+
+### 8.2 Privilege model
+
+- RedAudit requires `sudo` primarily for raw socket operations performed by `nmap` and optional packet capture (`tcpdump`).
+- It does not install privileged daemons or keep background services running.
+- Temporary files and report artifacts are created with restrictive permissions (e.g. `0o600`) to prevent disclosure to other local users.
+
+**Best practice:** only trusted administrators should run RedAudit on production systems.
+
+---
+
+### 8.3 Operational security
+
+To reduce scan noise and side effects:
+
+- **Rate limiting & jitter (v2.7):** you can slow down the host scanning loop and introduce variability in request timing to avoid IDS thresholds.
+- **Bounded captures:** packet capture durations are tightly restricted to prevent long-running sniffs.
+- **Timeouts & retries:** subprocesses and network operations include reasonable timeouts and retry caps to avoid hanging processes.
+
+RedAudit is designed to fail clearly rather than silently.
+
+---
+
+### 8.4 Ethical and legal use
+
+RedAudit is a powerful scanning tool. Use it responsibly:
+
+- Only run it against networks and hosts for which you have explicit permission.
+- Respect organisational policies, maintenance windows, and legal constraints.
+- Do not rely solely on automated output; human review is required before taking action.
+
+The author and contributors assume no responsibility for misuse.
+
+---
+
+## 9. External tools
+
+RedAudit orchestrates multiple third-party tools. The following list is not exhaustive but covers the main ones:
+
+| Tool         | Trigger condition                        | Mode(s)              | Where it appears in reports              |
+|--------------|------------------------------------------|----------------------|------------------------------------------|
+| `nmap`       | Always                                   | All                  | `host.ports[]`                           |
+| `searchsploit` | Service with version detected          | All                  | `ports[].known_exploits[]`               |
+| `whatweb`    | HTTP/HTTPS port detected                 | All                  | `vulnerabilities[].whatweb`              |
+| `nikto`      | HTTP/HTTPS port detected                 | `full`               | `vulnerabilities[].nikto_findings`       |
+| `curl`       | HTTP/HTTPS port detected                 | All                  | `vulnerabilities[].curl_headers`         |
+| `wget`       | HTTP/HTTPS port detected                 | All                  | `vulnerabilities[].wget_headers`         |
+| `openssl`    | HTTPS port detected                      | All                  | `vulnerabilities[].tls_info`             |
+| `testssl.sh` | HTTPS port detected                      | `full`               | `vulnerabilities[].testssl_analysis`     |
+| `tcpdump`    | Deep scan enabled and tcpdump available  | All (if triggered)   | `deep_scan.pcap_capture`                 |
+| `tshark`     | After tcpdump capture                    | All (if triggered)   | `deep_scan.pcap_capture.tshark_summary`  |
+| `dig` / `host` | After port scan                        | All                  | `host.dns`                               |
+| `whois`      | Public IPs only                          | All                  | `host.dns.whois_summary`                 |
+
+RedAudit does not modify the configuration of these tools; it calls them with explicit arguments and parses their output.
+
+---
+
+## 10. Monitoring & troubleshooting
+
+### Monitoring
+
+During execution, RedAudit provides:
+
+- A heartbeat that periodically prints progress (e.g. "scanning host X of Y").
+- Clear status messages for each phase: discovery, port scan, web/TLS analysis, deep scan, report generation.
+
+For long runs, you can leave the terminal attached and simply monitor the heartbeat to ensure the process is advancing.
+
+### Common issues (summary)
+
+1. **"Permission denied" / root required**
+   - **Cause:** command run without `sudo`.
+   - **Fix:** prepend `sudo` and ensure your user is in sudoers.
+
+2. **"Command not found" for nmap, whatweb, etc.**
+   - **Cause:** missing dependencies (installer skipped or failed).
+   - **Fix:** re-run `redaudit_install.sh` or install the missing package with `apt`.
+
+3. **"Decryption failed: Invalid token"**
+   - **Cause:** wrong password for encrypted report.
+   - **Fix:** verify the password; check that `.salt` file is present and not corrupted.
+
+4. **Scans appear to "hang"**
+   - **Cause:** deep scan on complex host; nmap plus fingerprinting can legitimately take minutes.
+   - **Fix:** monitor heartbeat; if needed, reduce scope, lower concurrency, or use `fast`/`normal` mode.
+
+5. **Alias not found after installation**
+   - **Cause:** shell configuration not reloaded or installer was not run under the intended user.
+   - **Fix:** run `source ~/.bashrc` or `source ~/.zshrc`. Ensure you executed the installer with `sudo` from the target user account.
+
+For a more detailed list and specific exit codes, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+---
+
+## 11. Contributing & tests
+
+RedAudit includes a pytest suite and a verification script.
+
+- **Run unit tests:**
+
+  ```bash
+  cd /path/to/RedAudit
+  pytest
+  ```
+
+- **Run the verification helper (sanity checks):**
+
+  ```bash
+  bash redaudit_verify.sh
+  ```
+
+Contributions should:
+
+- Preserve the security model (no `shell=True`, no arbitrary code evaluation).
+- Keep the report schema backward compatible whenever possible.
+- Include tests for new features and changes.
+
+Refer to [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed guidelines.
+
+---
+
+## 12. License & legal notice
+
+RedAudit is released under the **GNU General Public License v3.0**:
+
+- You may run, study, modify, and redistribute the software under the conditions of GPLv3.
+- Any derivative work that you distribute must also be licensed under GPLv3 and make its source code available.
+
+The software is provided "as is", without any warranty of any kind, express or implied, including but not limited to fitness for a particular purpose or non-infringement.
+
+Using RedAudit against systems without authorisation may be illegal in your jurisdiction. The author declines all responsibility for misuse.
+
+---
+
+**Related documentation:**
+
+- [README (English)](../README.md)
+- [README (Spanish)](../README_ES.md)
+- [USAGE.md](USAGE.md) - Detailed usage examples
+- [SECURITY.md](SECURITY.md) - Security model details
+- [REPORT_SCHEMA.md](REPORT_SCHEMA.md) - JSON report schema
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Problem resolution
+- [CONTRIBUTING.md](../CONTRIBUTING.md) - Contribution guidelines
+- [CHANGELOG.md](../CHANGELOG.md) - Version history
