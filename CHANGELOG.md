@@ -38,6 +38,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Version**: Updated to 2.8.1
 
+### Fixed
+
+- **Ctrl+C During Setup**: Fixed hang when pressing Ctrl+C before scan starts
+  - Now exits immediately if interrupted during configuration phase
+  - Only attempts graceful shutdown when scan is actually running
+
 ---
 
 ## [2.8.0] - 2025-12-11 (Completeness & Reliability)

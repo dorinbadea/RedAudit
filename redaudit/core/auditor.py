@@ -1184,3 +1184,7 @@ class InteractiveNetworkAuditor:
 
         # Stop heartbeat monitoring
         self.stop_heartbeat()
+
+        # v2.8.1: If scan hasn't started yet, exit immediately
+        if self.scan_start_time is None:
+            sys.exit(0)
