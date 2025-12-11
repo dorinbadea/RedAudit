@@ -38,6 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Version**: Updated to 2.8.1
 
+### Improved
+
+- **Auto-Update System**: Enhanced from detection-only to full installation
+  - Now performs `git reset --hard` to prevent conflicts
+  - Automatically copies updated files to `/usr/local/lib/redaudit/`
+  - Eliminates the need for manual `git pull` and reinstall
+
 ### Fixed
 
 - **Ctrl+C During Setup**: Fixed hang when pressing Ctrl+C before scan starts

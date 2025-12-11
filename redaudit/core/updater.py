@@ -203,7 +203,7 @@ def compute_file_hash(filepath: str, algorithm: str = "sha256") -> str:
 
 def perform_git_update(repo_path: str, logger=None) -> Tuple[bool, str]:
     """
-    Perform update using git pull (safest method).
+    Perform update using git pull and install to system location.
     
     Args:
         repo_path: Path to the git repository
@@ -216,19 +216,16 @@ def perform_git_update(repo_path: str, logger=None) -> Tuple[bool, str]:
         return (False, "Not a git repository. Manual update required.")
     
     try:
-        # First, check for local changes
+        # v2.8.1: Reset any local changes to avoid conflicts
         result = subprocess.run(
-            ["git", "status", "--porcelain"],
+            ["git", "reset", "--hard", "HEAD"],
             cwd=repo_path,
             capture_output=True,
             text=True,
             timeout=10,
         )
         
-        if result.stdout.strip():
-            return (False, "Local changes detected. Commit or stash changes before updating.")
-        
-        # Fetch latest
+        # Fetch and pull latest
         result = subprocess.run(
             ["git", "fetch", "origin", "main"],
             cwd=repo_path,
@@ -242,7 +239,7 @@ def perform_git_update(repo_path: str, logger=None) -> Tuple[bool, str]:
         
         # Pull changes
         result = subprocess.run(
-            ["git", "pull", "origin", "main"],
+            ["git", "pull", "origin", "main", "--force"],
             cwd=repo_path,
             capture_output=True,
             text=True,
@@ -252,7 +249,30 @@ def perform_git_update(repo_path: str, logger=None) -> Tuple[bool, str]:
         if result.returncode != 0:
             return (False, f"Git pull failed: {result.stderr}")
         
-        return (True, "Update successful! Restart RedAudit to use the new version.")
+        # v2.8.1: Install updated code to /usr/local/lib/redaudit
+        install_path = "/usr/local/lib/redaudit"
+        source_path = os.path.join(repo_path, "redaudit")
+        
+        if os.path.isdir(source_path) and os.geteuid() == 0:
+            import shutil
+            
+            # Remove old installation
+            if os.path.exists(install_path):
+                shutil.rmtree(install_path)
+            
+            # Copy new files
+            shutil.copytree(source_path, install_path)
+            
+            # Set permissions
+            for root, dirs, files in os.walk(install_path):
+                for d in dirs:
+                    os.chmod(os.path.join(root, d), 0o755)
+                for f in files:
+                    os.chmod(os.path.join(root, f), 0o644)
+            
+            return (True, "Update installed successfully! Restart RedAudit to use the new version.")
+        else:
+            return (True, "Update downloaded. Run 'sudo bash redaudit_install.sh' to complete installation.")
         
     except subprocess.TimeoutExpired:
         return (False, "Update timed out. Check network connection.")
