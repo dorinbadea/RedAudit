@@ -42,10 +42,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 
 ### Vista General del Sistema
 
-![Visión General del Sistema](docs/images/system_overview_es.png)
-
-<details>
-<summary>Ver Código del Diagrama (Mermaid)</summary>
+> **Nota**: Si el diagrama mostrado a continuación no se renderiza correctamente (ej: en dispositivos móviles), puede consultar la [vista general del sistema estática](docs/images/system_overview_es.png).
 
 ```mermaid
 graph TD
@@ -108,8 +105,6 @@ graph TD
     class Artifacts output;
     class Updater,Prescan,Discovery,Strategies,Nmap,UDP,Web,Vuln,Capture,Aggregator,Crypto module;
 ```
-
-</details>
 
 Los escaneos profundos se activan selectivamente: los módulos de auditoría web solo se lanzan tras la detección de servicios HTTP/HTTPS, y la inspección SSL se reserva para puertos cifrados.
 

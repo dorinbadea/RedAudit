@@ -42,10 +42,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 
 ### System Overview
 
-![System Overview](docs/images/system_overview.png)
-
-<details>
-<summary>View Diagram Source (Mermaid)</summary>
+> **Note**: If the diagram below does not render correctly (e.g., on mobile context), you can view the [static system overview](docs/images/system_overview.png).
 
 ```mermaid
 graph TD
@@ -108,8 +105,6 @@ graph TD
     class Artifacts output;
     class Updater,Prescan,Discovery,Strategies,Nmap,UDP,Web,Vuln,Capture,Aggregator,Crypto module;
 ```
-
-</details>
 
 Deep scans are triggered selectively: web auditing modules launch only upon detection of HTTP/HTTPS services, and SSL inspection is reserved for encrypted ports.
 
