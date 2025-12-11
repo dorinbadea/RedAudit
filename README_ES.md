@@ -42,69 +42,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 
 ### Vista General del Sistema
 
-> **Nota**: Si el diagrama mostrado a continuación no se renderiza correctamente (ej: en dispositivos móviles), puede consultar la [vista general del sistema estática](docs/images/system_overview_es.png).
-
-```mermaid
-graph TD
-    %% Nodes
-    User["Usuario / CLI"]
-    Updater["Módulo Updater"]
-    Orchestrator["Orquestador"]
-    
-    subgraph Scanning ["Escaneo y Enumeración"]
-        Prescan["Pre-escaneo Asíncrono"]
-        Discovery["Descubrimiento de Hosts"]
-        Strategies["Estrategia de Escaneo"]
-        Nmap["Motor Nmap"]
-        UDP["Escaneo UDP Inteligente"]
-        Web["Auditoría Web"]
-    end
-
-    subgraph Analysis ["Análisis Profundo"]
-        Vuln["Escaneo de Vulns"]
-        Capture["Captura PCAP"]
-    end
-
-    subgraph Reporting ["Informes y Salida"]
-        Aggregator["Agregador de Resultados"]
-        Crypto["Cifrado (AES)"]
-        Artifacts[("Reportes Cifrados")]
-    end
-
-    %% Flow
-    User <--> Updater
-    Updater <-->|Verificar/Actualizar| Orchestrator
-    User <-->|Directo| Orchestrator
-    
-    Orchestrator <--> Prescan
-    Prescan --> Discovery
-    Discovery --> Strategies
-    Strategies --> Nmap
-    
-    Nmap -->|Servicios| Web
-    Nmap -->|Puertos Abiertos| UDP
-    
-    Web --> Vuln
-    UDP --> Capture
-    
-    Vuln --> Aggregator
-    Capture --> Aggregator
-    Nmap --> Aggregator
-    
-    Aggregator --> Crypto
-    Crypto --> Artifacts
-
-    %% Styles
-    classDef user fill:#4299e1,stroke:#2b6cb0,color:#fff,stroke-width:2px;
-    classDef orch fill:#48bb78,stroke:#2f855a,color:#fff,stroke-width:2px;
-    classDef output fill:#9f7aea,stroke:#805ad5,color:#fff,stroke-width:2px;
-    classDef module fill:#2d3748,stroke:#4a5568,color:#fff,stroke-width:1px;
-    
-    class User user;
-    class Orchestrator orch;
-    class Artifacts output;
-    class Updater,Prescan,Discovery,Strategies,Nmap,UDP,Web,Vuln,Capture,Aggregator,Crypto module;
-```
+![Vista General del Sistema](docs/images/system_overview_es.png)
 
 Los escaneos profundos se activan selectivamente: los módulos de auditoría web solo se lanzan tras la detección de servicios HTTP/HTTPS, y la inspección SSL se reserva para puertos cifrados.
 

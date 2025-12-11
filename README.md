@@ -42,69 +42,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 
 ### System Overview
 
-> **Note**: If the diagram below does not render correctly (e.g., on mobile context), you can view the [static system overview](docs/images/system_overview.png).
-
-```mermaid
-graph TD
-    %% Nodes
-    User["User / CLI"]
-    Updater["Updater Module"]
-    Orchestrator["Orchestrator"]
-    
-    subgraph Scanning ["Scanning & Enumeration"]
-        Prescan["Async Pre-scan"]
-        Discovery["Host Discovery"]
-        Strategies["Scan Strategy"]
-        Nmap["Nmap Engine"]
-        UDP["Smart UDP Scan"]
-        Web["Web Audit"]
-    end
-
-    subgraph Analysis ["Deep Analysis"]
-        Vuln["Vuln Scanner"]
-        Capture["PCAP Capture"]
-    end
-
-    subgraph Reporting ["Reporting & Output"]
-        Aggregator["Result Aggregator"]
-        Crypto["Encryption (AES)"]
-        Artifacts[("Encrypted Reports")]
-    end
-
-    %% Flow
-    User <--> Updater
-    Updater <-->|Check/Update| Orchestrator
-    User <-->|Direct| Orchestrator
-    
-    Orchestrator <--> Prescan
-    Prescan --> Discovery
-    Discovery --> Strategies
-    Strategies --> Nmap
-    
-    Nmap -->|Services| Web
-    Nmap -->|Open Ports| UDP
-    
-    Web --> Vuln
-    UDP --> Capture
-    
-    Vuln --> Aggregator
-    Capture --> Aggregator
-    Nmap --> Aggregator
-    
-    Aggregator --> Crypto
-    Crypto --> Artifacts
-
-    %% Styles
-    classDef user fill:#4299e1,stroke:#2b6cb0,color:#fff,stroke-width:2px;
-    classDef orch fill:#48bb78,stroke:#2f855a,color:#fff,stroke-width:2px;
-    classDef output fill:#9f7aea,stroke:#805ad5,color:#fff,stroke-width:2px;
-    classDef module fill:#2d3748,stroke:#4a5568,color:#fff,stroke-width:1px;
-    
-    class User user;
-    class Orchestrator orch;
-    class Artifacts output;
-    class Updater,Prescan,Discovery,Strategies,Nmap,UDP,Web,Vuln,Capture,Aggregator,Crypto module;
-```
+![System Overview](docs/images/system_overview.png)
 
 Deep scans are triggered selectively: web auditing modules launch only upon detection of HTTP/HTTPS services, and SSL inspection is reserved for encrypted ports.
 
