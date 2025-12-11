@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] - 2025-12-11 (UX Improvements)
+
+### Added
+
+- **Vulnerability Scan Progress Bar**: Rich progress bar for vulnerability scanning phase
+  - Shows spinner, percentage, completed/total hosts, and elapsed time
+  - Displays current host being scanned
+  - Graceful fallback if rich library unavailable
+
+- **Module Indicators**: Visual feedback showing active tool during vulnerability scans
+  - `[testssl]` prefix for SSL/TLS deep analysis
+  - `[whatweb]` prefix for web technology detection
+  - `[nikto]` prefix for web vulnerability scanning
+  - Updates `current_phase` for activity monitoring
+
+### Changed
+
+- **PCAP File Organization**: PCAP files now saved inside timestamped result folder
+  - Folder created BEFORE scanning starts (`_actual_output_dir`)
+  - All output files (reports + PCAPs) consolidated in single directory
+  - Fixes issue where PCAPs were saved to parent directory
+
+- **PCAP Size Optimization**: Reduced capture from unlimited to 200 packets
+  - PCAP files now ~50-150KB instead of several MB
+  - Sufficient for protocol analysis without excessive storage
+  - tcpdump auto-stops after 200 packets captured
+
+- **Default Output Directory**: Changed from `~/RedAuditReports` to `~/Documents/RedAuditReports`
+  - Reports now saved in user's Documents folder by default
+  - More intuitive location for users
+
+- **Version**: Updated to 2.8.1
+
+---
+
 ## [2.8.0] - 2025-12-11 (Completeness & Reliability)
 
 ### Added

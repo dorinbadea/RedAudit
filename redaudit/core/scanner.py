@@ -708,9 +708,11 @@ def start_background_capture(
     os.makedirs(output_dir, exist_ok=True)
     pcap_file = os.path.join(output_dir, f"traffic_{safe_ip.replace('.', '_')}_{ts}.pcap")
 
+    # v2.8.1: Limit capture to 200 packets for smaller PCAP files (~50-150KB)
     cmd = [
         extra_tools["tcpdump"],
         "-i", iface,
+        "-c", "200",  # Capture max 200 packets
         "host", safe_ip,
         "-w", pcap_file,
     ]

@@ -1,5 +1,5 @@
 #!/bin/bash
-# RedAudit Installer v2.8.0 (Clean install + Language injection + Alias setup)
+# RedAudit Installer v2.8.1 (Clean install + Language injection + Alias setup)
 # GPLv3 - 2026 © Dorin Badea
 
 # -------------------------------------------
@@ -35,7 +35,7 @@ read -r -p "Choice [1/2]: " LANG_OPT
 
 if [[ "$LANG_OPT" == "2" ]]; then
     LANG_CODE="es"
-    MSG_INSTALL="[INFO] Instalando/actualizando RedAudit v2.8.0..."
+    MSG_INSTALL="[INFO] Instalando/actualizando RedAudit v2.8.1..."
     MSG_DONE="[OK] Instalación completada."
     MSG_USAGE="-> Ejecuta 'redaudit' para iniciar."
     MSG_ALIAS_ADDED="[INFO] Alias 'redaudit' añadido en"
@@ -45,7 +45,7 @@ if [[ "$LANG_OPT" == "2" ]]; then
     MSG_APT_ERR="[ERROR] Error con apt."
 else
     LANG_CODE="en"
-    MSG_INSTALL="[INFO] Installing/updating RedAudit v2.8.0..."
+    MSG_INSTALL="[INFO] Installing/updating RedAudit v2.8.1..."
     MSG_DONE="[OK] Installation completed."
     MSG_USAGE="-> Run 'redaudit' to start."
     MSG_ALIAS_ADDED="ℹ️ Alias 'redaudit' added to"

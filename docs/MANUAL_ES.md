@@ -1,8 +1,8 @@
-# Manual de Usuario de RedAudit v2.8.0 (ES)
+# Manual de Usuario de RedAudit v2.8.1 (ES)
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](MANUAL_EN.md)
 
-**Versión:** 2.8.0  
+**Versión:** 2.8.1  
 **Audiencia objetivo:** Analistas de seguridad, pentesters, administradores de sistemas y redes  
 **Licencia:** GPLv3
 
@@ -327,7 +327,7 @@ sudo redaudit \
 Tras cada ejecución, RedAudit crea un directorio con sello temporal (v2.8+):
 
 ```text
-~/RedAuditReports/
+~/Documents/RedAuditReports/
 └── RedAudit_2026-01-15_21-30-45/
     ├── redaudit_20260115_213045.json
     ├── redaudit_20260115_213045.txt

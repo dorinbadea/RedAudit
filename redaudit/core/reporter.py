@@ -183,11 +183,15 @@ def save_results(
     """
     prefix = "PARTIAL_" if partial else ""
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    ts_folder = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     
-    # v2.8.0: Create timestamped subfolder
-    output_base = config.get("output_dir", os.path.expanduser("~/RedAuditReports"))
-    output_dir = os.path.join(output_base, f"RedAudit_{ts_folder}")
+    # v2.8.1: Use pre-created folder if available (ensures PCAP files and reports are together)
+    output_dir = config.get("_actual_output_dir")
+    if not output_dir:
+        # Fallback: create new timestamped folder
+        ts_folder = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        output_base = config.get("output_dir", os.path.expanduser("~/Documents/RedAuditReports"))
+        output_dir = os.path.join(output_base, f"RedAudit_{ts_folder}")
+    
     base = os.path.join(output_dir, f"{prefix}redaudit_{ts}")
 
     try:

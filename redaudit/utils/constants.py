@@ -6,7 +6,7 @@ GPLv3 License
 """
 
 # Version
-VERSION = "2.8.0"
+VERSION = "2.8.1"
 
 # Default language (installer may override)
 DEFAULT_LANG = "en"
@@ -47,7 +47,7 @@ SALT_SIZE = 16
 MIN_PASSWORD_LENGTH = 12
 
 # Report defaults
-DEFAULT_OUTPUT_DIR = "~/RedAuditReports"
+DEFAULT_OUTPUT_DIR = "~/Documents/RedAuditReports"
 DEFAULT_THREADS = 6
 MAX_THREADS = 16
 MIN_THREADS = 1

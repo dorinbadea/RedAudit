@@ -499,9 +499,10 @@ class InteractiveNetworkAuditor:
         self.print_status(self.t("deep_identity_start", safe_ip, "Adaptive (3-Phase v2.8)"), "WARNING")
 
         # Start background traffic capture BEFORE scanning
+        # v2.8.1: Use actual output dir (timestamped folder) for PCAP files
         capture_info = start_background_capture(
             safe_ip,
-            self.config["output_dir"],
+            self.config.get("_actual_output_dir", self.config["output_dir"]),
             self.results.get("network_info", []),
             self.extra_tools,
             logger=self.logger
@@ -857,8 +858,9 @@ class InteractiveNetworkAuditor:
                 
                 # TestSSL deep analysis (only in completo mode)
                 if self.config["scan_mode"] == "completo" and self.extra_tools.get("testssl.sh"):
+                    self.current_phase = f"vulns:testssl:{ip}:{port}"
                     self.print_status(
-                        self.t("testssl_analysis", ip, port),
+                        f"[testssl] {ip}:{port} → {self.t('testssl_analysis', ip, port)}",
                         "INFO"
                     )
                     ssl_analysis = ssl_deep_analysis(ip, port, self.extra_tools, self.logger)
@@ -874,6 +876,7 @@ class InteractiveNetworkAuditor:
             # WhatWeb
             if self.extra_tools.get("whatweb"):
                 try:
+                    self.current_phase = f"vulns:whatweb:{ip}:{port}"
                     import subprocess
                     res = subprocess.run(
                         [self.extra_tools["whatweb"], "-q", "-a", "3", url],
@@ -887,6 +890,7 @@ class InteractiveNetworkAuditor:
             # Nikto (only in full mode)
             if self.config["scan_mode"] == "completo" and self.extra_tools.get("nikto"):
                 try:
+                    self.current_phase = f"vulns:nikto:{ip}:{port}"
                     import subprocess
                     res = subprocess.run(
                         [self.extra_tools["nikto"], "-h", url, "-maxtime", "120s", "-Tuning", "x"],
@@ -906,29 +910,81 @@ class InteractiveNetworkAuditor:
         return {"host": ip, "vulnerabilities": vulns} if vulns else None
 
     def scan_vulnerabilities_concurrent(self, host_results):
-        """Scan vulnerabilities on multiple hosts concurrently."""
+        """Scan vulnerabilities on multiple hosts concurrently with progress bar."""
         web_hosts = [h for h in host_results if h.get("web_ports_count", 0) > 0]
         if not web_hosts:
             return
+        
+        # Count total web ports for info
+        total_ports = sum(h.get("web_ports_count", 0) for h in web_hosts)
+        
         self.current_phase = "vulns"
         self.print_status(self.t("vuln_analysis", len(web_hosts)), "HEADER")
         workers = min(3, self.config["threads"])
+
+        # Try to use rich for progress visualization
+        try:
+            from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+            use_rich = True
+        except ImportError:
+            use_rich = False
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {
                 executor.submit(self.scan_vulnerabilities_web, h): h["ip"]
                 for h in web_hosts
             }
-            for fut in as_completed(futures):
-                if self.interrupted:
-                    break
-                try:
-                    res = fut.result()
-                    if res:
-                        self.results["vulnerabilities"].append(res)
-                        self.print_status(self.t("vulns_found", res["host"]), "WARNING")
-                except Exception as exc:
-                    self.print_status(f"[worker error] {exc}", "WARNING")
+            
+            total = len(futures)
+            done = 0
+
+            if use_rich and total > 0:
+                # Rich progress bar for vulnerability scanning
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                    TextColumn("({task.completed}/{task.total})"),
+                    TimeElapsedColumn(),
+                ) as progress:
+                    task = progress.add_task(
+                        f"[cyan]Vuln scan ({total_ports} ports)", total=total
+                    )
+                    for fut in as_completed(futures):
+                        if self.interrupted:
+                            for pending_fut in futures:
+                                pending_fut.cancel()
+                            break
+                        host_ip = futures[fut]
+                        try:
+                            res = fut.result()
+                            if res:
+                                self.results["vulnerabilities"].append(res)
+                                vuln_count = len(res.get("vulnerabilities", []))
+                                if vuln_count > 0:
+                                    self.print_status(self.t("vulns_found", res["host"]), "WARNING")
+                        except Exception as exc:
+                            self.logger.error("Vuln worker error for %s: %s", host_ip, exc)
+                        done += 1
+                        progress.update(task, advance=1, description=f"[cyan]Scanned {host_ip}")
+            else:
+                # Fallback without rich
+                for fut in as_completed(futures):
+                    if self.interrupted:
+                        for pending_fut in futures:
+                            pending_fut.cancel()
+                        break
+                    host_ip = futures[fut]
+                    try:
+                        res = fut.result()
+                        if res:
+                            self.results["vulnerabilities"].append(res)
+                            self.print_status(self.t("vulns_found", res["host"]), "WARNING")
+                    except Exception as exc:
+                        self.print_status(f"[worker error] {exc}", "WARNING")
+                    done += 1
+
 
     # ---------- Reporting ----------
 
@@ -1042,6 +1098,13 @@ class InteractiveNetworkAuditor:
         self.start_heartbeat()
 
         try:
+            # v2.8.1: Create timestamped output folder BEFORE scanning
+            # This ensures PCAP files are saved inside the result folder
+            ts_folder = self.scan_start_time.strftime("%Y-%m-%d_%H-%M-%S")
+            output_base = self.config.get("output_dir", os.path.expanduser("~/Documents/RedAuditReports"))
+            self.config["_actual_output_dir"] = os.path.join(output_base, f"RedAudit_{ts_folder}")
+            os.makedirs(self.config["_actual_output_dir"], exist_ok=True)
+
             all_hosts = []
             for network in self.config["target_networks"]:
                 if self.interrupted:

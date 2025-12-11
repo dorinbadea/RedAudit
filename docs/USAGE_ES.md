@@ -20,7 +20,7 @@ sudo python -m redaudit [OPTIONS]
 | :--- | :--- |
 | `-t`, `--target` | IP objetivo, subred (CIDR), o lista separada por comas. |
 | `-m`, `--mode` | Intensidad: `fast` (descubrimiento), `normal` (puertos top), `full` (todos + scripts). |
-| `-o`, `--output` | Especificar directorio de salida. Por defecto: `~/RedAuditReports`. |
+| `-o`, `--output` | Especificar directorio de salida. Por defecto: `~/Documents/RedAuditReports`. |
 | `--lang` | Idioma de interfaz: `en` (defecto), `es`. |
 | `-y`, `--yes` | Saltar confirmación de advertencia legal (usar con precaución). |
 

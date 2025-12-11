@@ -1,8 +1,8 @@
-# RedAudit v2.8.0 – User Manual (EN)
+# RedAudit v2.8.1 – User Manual (EN)
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](MANUAL_ES.md)
 
-**Version:** 2.8.0  
+**Version:** 2.8.1  
 **Target audience:** Security analysts, penetration testers, systems / network administrators  
 **License:** GPLv3
 
@@ -323,7 +323,7 @@ sudo redaudit \
 After a run, RedAudit creates a timestamped output directory (v2.8+) such as:
 
 ```text
-~/RedAuditReports/
+~/Documents/RedAuditReports/
 └── RedAudit_2026-01-15_21-30-45/
     ├── redaudit_20260115_213045.json
     ├── redaudit_20260115_213045.txt

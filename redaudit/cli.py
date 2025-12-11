@@ -96,7 +96,7 @@ Examples:
     parser.add_argument(
         "--output", "-o",
         type=str,
-        help="Output directory for reports (default: ~/RedAuditReports)"
+        help="Output directory for reports (default: ~/Documents/RedAuditReports)"
     )
     parser.add_argument(
         "--max-hosts",

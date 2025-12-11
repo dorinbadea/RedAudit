@@ -4,7 +4,7 @@
 
 RedAudit is a CLI tool for structured network auditing and hardening on Kali/Debian systems.
 
-![Version](https://img.shields.io/badge/version-2.8.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.8.1-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 ![CI/CD](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dorinbadea/81671a8fffccee81ca270f14d094e5a1/raw/redaudit-tests.json&style=flat-square&label=CI%2FCD)
@@ -163,7 +163,7 @@ sudo redaudit --target 192.168.1.0/24 --mode normal --encrypt --encrypt-password
 - `--threads, -j`: Concurrent threads (1-16, default: 6)
 - `--rate-limit`: Delay between hosts in seconds (default: 0)
 - `--encrypt, -e`: Encrypt reports with password
-- `--output, -o`: Output directory (default: ~/RedAuditReports)
+- `--output, -o`: Output directory (default: ~/Documents/RedAuditReports)
 - `--max-hosts`: Maximum hosts to scan (default: all)
 - `--no-vuln-scan`: Disable web vulnerability scanning
 - `--no-txt-report`: Disable TXT report generation
@@ -238,7 +238,7 @@ python -m redaudit --help
 
 ## 8. Reports, Encryption & Decryption
 
-Reports are saved to `~/RedAuditReports` (default) with timestamps.
+Reports are saved to `~/Documents/RedAuditReports` (default) with timestamps.
 
 ### Encryption (`.enc`)
 
@@ -306,14 +306,21 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for detailed fixes.
 - **"Cryptography missing"**: Run `sudo apt install python3-cryptography`.
 - **"Scan frozen"**: Check `~/.redaudit/logs/` or reduce `rate_limit_delay`.
 
-## 13. Changelog (v2.8.0 Summary)
+## 13. Changelog (v2.8.1 Summary)
 
-- **Host Status Accuracy**: New status types (`up`, `down`, `filtered`, `no-response`) with intelligent finalization
-- **Intelligent UDP Scanning**: 3-phase strategy with priority ports for faster scans
-- **Concurrent PCAP Capture**: Traffic captured during scans, not after
-- **Banner Grab Fallback**: Enhanced service identification for `tcpwrapped` ports
-- **Secure Auto-Update**: GitHub-integrated update checking at startup
-- **Timestamped Report Folders**: Reports saved in `RedAudit_YYYY-MM-DD_HH-MM-SS/` subfolders
+- **Vulnerability Scan Progress Bar**: Rich progress bar for vulnerability scanning phase
+- **Module Indicators**: Visual feedback showing active tool (`[testssl]`, `[nikto]`, `[whatweb]`)
+- **PCAP File Organization**: PCAP files now saved inside timestamped result folder
+- **Default Output Directory**: Changed to `~/Documents/RedAuditReports`
+
+### Previous (v2.8.0)
+
+- **Host Status Accuracy**: New status types (`up`, `down`, `filtered`, `no-response`)
+- **Intelligent UDP Scanning**: 3-phase strategy with priority ports
+- **Concurrent PCAP Capture**: Traffic captured during scans
+- **Banner Grab Fallback**: Enhanced service identification
+- **Secure Auto-Update**: GitHub-integrated update checking
+- **Timestamped Report Folders**: Reports saved in `RedAudit_YYYY-MM-DD_HH-MM-SS/`
 
 ### Previous (v2.7.x)
 

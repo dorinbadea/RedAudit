@@ -20,7 +20,7 @@ sudo python -m redaudit [OPTIONS]
 | :--- | :--- |
 | `-t`, `--target` | Target IP, subnet (CIDR), or comma-separated list. |
 | `-m`, `--mode` | Scan intensity: `fast` (discovery), `normal` (top ports), `full` (all ports + scripts). |
-| `-o`, `--output` | Specify output directory. Default: `~/RedAuditReports`. |
+| `-o`, `--output` | Specify output directory. Default: `~/Documents/RedAuditReports`. |
 | `--lang` | Interface language: `en` (default), `es`. |
 | `-y`, `--yes` | Skip legal warning confirmation (use with caution). |
 
