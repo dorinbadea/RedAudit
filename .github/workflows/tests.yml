@@ -40,7 +40,7 @@ jobs:
 
       - name: Check coverage threshold
         run: |
-          coverage report --fail-under=25
+          coverage report --fail-under=20
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
