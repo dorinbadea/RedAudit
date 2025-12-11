@@ -15,7 +15,7 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                     v2.8
+                                     v2.8.1
         Interactive Network Audit Tool
 ```
 
@@ -200,16 +200,23 @@ Controlled by the `rate_limit_delay` parameter.
   - **1-5s**: Balanced. Recommended for internal audits to avoid simple rate-limiter triggers.
   - **>5s**: Paranoid/Conservative. Use for sensitive production environments.
 
-### Adaptive Deep Scan (v2.5+)
+### Adaptive Deep Scan (v2.8)
 
-RedAudit applies a smart 2-phase scan to "silent" or complex hosts:
+RedAudit applies a smart 3-phase adaptive scan to maximize information gathering:
 
-1. **Phase 1**: Aggressive TCP (`-A -p- -sV -Pn`).
-2. **Phase 2**: If Phase 1 yields no MAC/OS info, it launches OS+UDP detection (`-O -sSU`).
+1. **Phase 1 - Aggressive TCP**: Full port scan with version detection (`-A -p- -sV -Pn`)
+2. **Phase 2a - Priority UDP**: Quick scan of 17 common UDP ports (DNS, DHCP, SNMP, NetBIOS)
+3. **Phase 2b - Full UDP**: Only in `full` mode if no identity found yet (`-O -sSU -p-`)
 
-- **Trigger**: Automatic.
-- **Benefit**: Saves time by skipping Phase 2 if the host is already identified.
-- **Output**: Full logs and MAC/Vendor data in `host.deep_scan`.
+**Additional v2.8 features:**
+
+- **Concurrent PCAP Capture**: Traffic is captured during the scan (not after)
+- **Banner Grab Fallback**: Uses `--script banner,ssl-cert` for unidentified ports
+- **Host Status Accuracy**: New status types (`up`, `filtered`, `no-response`, `down`)
+- **Intelligent Skip**: Phases 2a/2b are skipped if MAC/OS is already detected
+
+- **Trigger**: Automatic based on heuristics (few ports, suspicious services, etc.)
+- **Output**: Full logs, MAC/Vendor data, and PCAP in `host.deep_scan`
 
 ## Modular Architecture (v2.8)
 
@@ -229,6 +236,15 @@ redaudit/
     ├── constants.py # Configuration constants
     └── i18n.py      # Internationalization
 ```
+
+### Secure Auto-Update (v2.8)
+
+RedAudit can check for and install updates automatically:
+
+- **Startup Check**: Prompts to check for updates when launching in interactive mode
+- **Auto-Install**: Downloads and installs updates via `git pull`
+- **Auto-Restart**: Automatically restarts with new code using `os.execv()`
+- **Skip Flag**: Use `--skip-update-check` to disable update checking
 
 **Alternative invocation:**
 

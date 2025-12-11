@@ -225,7 +225,7 @@ def perform_git_update(repo_path: str, logger=None) -> Tuple[bool, str]:
             timeout=10,
         )
         
-        # Fetch and pull latest
+        # Fetch latest from remote
         result = subprocess.run(
             ["git", "fetch", "origin", "main"],
             cwd=repo_path,
@@ -236,6 +236,22 @@ def perform_git_update(repo_path: str, logger=None) -> Tuple[bool, str]:
         
         if result.returncode != 0:
             return (False, f"Git fetch failed: {result.stderr}")
+        
+        # Check if we're behind remote
+        result = subprocess.run(
+            ["git", "rev-list", "--count", "HEAD..origin/main"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        
+        commits_behind = int(result.stdout.strip() or "0")
+        
+        if commits_behind == 0:
+            # Already up to date at git level - but we still requested update
+            # This could happen if version detection differs from actual git state
+            return (True, "UPDATE_SUCCESS_RESTART")
         
         # Pull changes
         result = subprocess.run(
@@ -249,7 +265,7 @@ def perform_git_update(repo_path: str, logger=None) -> Tuple[bool, str]:
         if result.returncode != 0:
             return (False, f"Git pull failed: {result.stderr}")
         
-        # v2.8.1: Install updated code to /usr/local/lib/redaudit
+        # v2.8.1: Install updated code to /usr/local/lib/redaudit if running as root
         install_path = "/usr/local/lib/redaudit"
         source_path = os.path.join(repo_path, "redaudit")
         
@@ -269,10 +285,9 @@ def perform_git_update(repo_path: str, logger=None) -> Tuple[bool, str]:
                     os.chmod(os.path.join(root, d), 0o755)
                 for f in files:
                     os.chmod(os.path.join(root, f), 0o644)
-            
-            return (True, "UPDATE_SUCCESS_RESTART")
-        else:
-            return (True, "Update downloaded. Run 'sudo bash redaudit_install.sh' to complete installation.")
+        
+        # Always return success with restart signal
+        return (True, "UPDATE_SUCCESS_RESTART")
         
     except subprocess.TimeoutExpired:
         return (False, "Update timed out. Check network connection.")

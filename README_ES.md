@@ -15,7 +15,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                     v2.8
+                                     v2.8.1
      Herramienta Interactiva de Auditoría de Red
 ```
 
@@ -217,16 +217,23 @@ Controlado por el parámetro `rate_limit_delay`.
   - **1-5s**: Equilibrado. Recomendado para auditorías internas para evitar disparar limitadores simples.
   - **>5s**: Paranoico/Conservador. Úsalo en entornos de producción sensibles.
 
-### Deep Scan Adaptativo (v2.5+)
+### Deep Scan Adaptativo (v2.8)
 
-RedAudit aplica un escaneo inteligente de 2 fases a hosts "silenciosos" o complejos:
+RedAudit aplica un escaneo adaptativo inteligente de 3 fases para maximizar la recopilación de información:
 
-1. **Fase 1**: TCP Agresivo (`-A -p- -sV -Pn`).
-2. **Fase 2**: Si la Fase 1 no revela MAC/SO, lanza detección de SO+UDP (`-O -sSU`).
+1. **Fase 1 - TCP Agresivo**: Escaneo completo de puertos con detección de versión (`-A -p- -sV -Pn`)
+2. **Fase 2a - UDP Prioritario**: Escaneo rápido de 17 puertos UDP comunes (DNS, DHCP, SNMP, NetBIOS)
+3. **Fase 2b - UDP Completo**: Solo en modo `full` si no se encontró identidad (`-O -sSU -p-`)
 
-- **Activación**: Automática.
-- **Beneficio**: Ahorra tiempo saltando la Fase 2 si el host ya está identificado.
-- **Salida**: Logs completos y datos MAC/Vendor en `host.deep_scan`.
+**Características adicionales v2.8:**
+
+- **Captura PCAP Concurrente**: El tráfico se captura durante el escaneo (no después)
+- **Banner Grab Fallback**: Usa `--script banner,ssl-cert` para puertos no identificados
+- **Precisión de Estado de Host**: Nuevos tipos (`up`, `filtered`, `no-response`, `down`)
+- **Salto Inteligente**: Las Fases 2a/2b se omiten si ya se detectó MAC/SO
+
+- **Activación**: Automática según heurísticas (pocos puertos, servicios sospechosos, etc.)
+- **Salida**: Logs completos, datos MAC/Vendor, y PCAP en `host.deep_scan`
 
 ## Arquitectura Modular (v2.8)
 
@@ -246,6 +253,15 @@ redaudit/
     ├── constants.py # Constantes de configuración
     └── i18n.py      # Internacionalización
 ```
+
+### Auto-Actualización Segura (v2.8)
+
+RedAudit puede verificar e instalar actualizaciones automáticamente:
+
+- **Verificación al Inicio**: Pregunta si deseas buscar actualizaciones en modo interactivo
+- **Auto-Instalación**: Descarga e instala actualizaciones vía `git pull`
+- **Auto-Reinicio**: Se reinicia automáticamente con el nuevo código usando `os.execv()`
+- **Flag de Omisión**: Usa `--skip-update-check` para desactivar la verificación
 
 **Invocación alternativa:**
 
