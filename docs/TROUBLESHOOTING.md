@@ -94,4 +94,41 @@ sudo apt install python3-cryptography
 sudo bash redaudit_install.sh -y
 ```
 
+### 9. IPv6 scanning not working (v3.0)
+
+**Symptom**: IPv6 targets return no results or errors.
+**Cause**: IPv6 not enabled on system or Nmap built without IPv6 support.
+**Resolution**:
+
+- Verify IPv6 is enabled: `ip -6 addr show`
+- Check Nmap supports IPv6: `nmap -6 ::1`
+- Use `--ipv6` flag for IPv6-only mode
+
+### 10. NVD API rate limit errors (v3.0)
+
+**Symptom**: "Rate limit exceeded" or slow CVE lookups.
+**Cause**: Using NVD API without a key (limited to 5 requests/30 seconds).
+**Resolution**:
+
+- Get a free NVD API key from: <https://nvd.nist.gov/developers/request-an-api-key>
+- Use `--nvd-key YOUR_KEY` for faster rate limits (50 requests/30 seconds)
+- RedAudit caches results for 7 days to minimize API calls
+
+### 11. Proxy connection failed (v3.0)
+
+**Symptom**: "Proxy connection failed" when using `--proxy`.
+**Cause**: Proxy not reachable or `proxychains` not installed.
+**Resolution**:
+
+```bash
+# Install proxychains
+sudo apt install proxychains4
+
+# Test proxy manually
+curl --socks5 pivot-host:1080 http://example.com
+
+# Verify proxy format
+# Correct: --proxy socks5://host:port
+```
+
 RedAudit and this troubleshooting guide are part of a GPLv3-licensed project. See [LICENSE](../LICENSE).

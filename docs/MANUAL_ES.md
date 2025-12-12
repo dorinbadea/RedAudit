@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](MANUAL_EN.md)
 
-**Versión:** 2.9.0  
+**Versión:** 3.0.0  
 **Audiencia objetivo:** Analistas de seguridad, pentesters, administradores de sistemas y redes  
 **Licencia:** GPLv3
 
@@ -282,6 +282,11 @@ Las opciones más importantes:
 | `--prescan-timeout`          | Timeout por puerto en segundos. Defecto: `0.5`.                                                                         |
 | `--udp-mode {quick,full}`    | Modo de escaneo UDP: `quick` (puertos prioritarios) o `full` (todos). Por defecto: `quick`.                       |
 | `--skip-update-check`        | Omitir la verificación de actualizaciones al iniciar.                                                             |
+| `--ipv6`                     | Activa modo solo IPv6. **(v3.0)**                                                                                 |
+| `--proxy URL`                | Proxy SOCKS5 para pivoting (ej: `socks5://host:1080`). **(v3.0)**                                                 |
+| `--diff OLD NEW`             | Compara dos reportes JSON y genera análisis diferencial. **(v3.0)**                                               |
+| `--cve-lookup`               | Activa correlación CVE vía API NVD. **(v3.0)**                                                                    |
+| `--nvd-key KEY`              | Clave API NVD para límites de velocidad más rápidos (opcional). **(v3.0)**                                        |
 | `-V`, `--version`            | Muestra la versión de RedAudit y termina.                                                                               |
 
 Para más ejemplos de uso, consulta [USAGE_ES.md](USAGE_ES.md).

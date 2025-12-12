@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](MANUAL_ES.md)
 
-**Version:** 2.9.0  
+**Version:** 3.0.0  
 **Target audience:** Security analysts, penetration testers, systems / network administrators  
 **License:** GPLv3
 
@@ -278,6 +278,11 @@ The most important options:
 | `--prescan-timeout`         | Timeout per port in seconds for pre-scan. Default: `0.5`.                                                                |
 | `--udp-mode {quick,full}`   | UDP scan mode: `quick` (priority ports) or `full` (all ports). Default: `quick`.                                  |
 | `--skip-update-check`       | Skip the update check prompt at startup.                                                                          |
+| `--ipv6`                    | Enable IPv6-only scanning mode. **(v3.0)**                                                                        |
+| `--proxy URL`               | SOCKS5 proxy for pivoting (e.g., `socks5://host:1080`). **(v3.0)**                                                |
+| `--diff OLD NEW`            | Compare two JSON reports and generate delta analysis. **(v3.0)**                                                  |
+| `--cve-lookup`              | Enable CVE correlation via NVD API. **(v3.0)**                                                                    |
+| `--nvd-key KEY`             | NVD API key for faster rate limits (optional). **(v3.0)**                                                         |
 | `-V`, `--version`           | Print RedAudit version and exit.                                                                                         |
 
 For more usage examples, see [USAGE.md](USAGE.md).

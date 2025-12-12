@@ -40,6 +40,16 @@ sudo python -m redaudit [OPTIONS]
 | `--no-txt-report` | Desactiva la generación de reporte TXT. |
 | `--max-hosts` | Número máximo de hosts a escanear (defecto: todos). |
 
+### Características v3.0
+
+| Flag | Descripción |
+| :--- | :--- |
+| `--ipv6` | Activa modo solo IPv6. |
+| `--proxy URL` | Proxy SOCKS5 para pivoting (ej: `socks5://pivot:1080`). |
+| `--diff OLD NEW` | Compara dos reportes JSON y genera análisis diferencial. |
+| `--cve-lookup` | Activa correlación CVE vía API NVD. |
+| `--nvd-key KEY` | Clave API NVD para límites de velocidad más rápidos (opcional). |
+
 ### Seguridad
 
 | Flag | Descripción |
@@ -76,6 +86,34 @@ Usa pre-scan asyncio para descubrimiento rápido de puertos antes de nmap.
 
 ```bash
 sudo redaudit -t 192.168.1.0/24 --prescan --prescan-ports 1-1024 --yes
+```
+
+**5. Escaneo de Red IPv6 (v3.0)**
+Escanea un segmento de red IPv6.
+
+```bash
+sudo redaudit -t "2001:db8::/64" --ipv6 --mode normal --yes
+```
+
+**6. Comparar Dos Reportes (v3.0)**
+Genera un análisis diferencial mostrando cambios de red.
+
+```bash
+sudo redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
+```
+
+**7. Escaneo a Través de Proxy (v3.0)**
+Pivota a través de un proxy SOCKS5 para acceso a red interna.
+
+```bash
+sudo redaudit -t 10.0.0.0/24 --proxy socks5://pivot-host:1080 --yes
+```
+
+**8. Escaneo con Correlación CVE (v3.0)**
+Enriquece resultados con datos de vulnerabilidad de NIST NVD.
+
+```bash
+sudo redaudit -t 192.168.1.0/24 --cve-lookup --nvd-key TU_CLAVE --yes
 ```
 
 ### Reportes y Cifrado

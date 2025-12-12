@@ -40,6 +40,16 @@ sudo python -m redaudit [OPTIONS]
 | `--no-txt-report` | Disable TXT report generation. |
 | `--max-hosts` | Maximum number of hosts to scan (default: all). |
 
+### v3.0 Features
+
+| Flag | Description |
+| :--- | :--- |
+| `--ipv6` | Enable IPv6-only scanning mode. |
+| `--proxy URL` | SOCKS5 proxy for pivoting (e.g., `socks5://pivot:1080`). |
+| `--diff OLD NEW` | Compare two JSON reports and generate delta analysis. |
+| `--cve-lookup` | Enable CVE correlation via NVD API. |
+| `--nvd-key KEY` | NVD API key for faster rate limits (optional). |
+
 ### Security
 
 | Flag | Description |
@@ -76,6 +86,34 @@ Use asyncio pre-scan for fast port discovery before nmap.
 
 ```bash
 sudo redaudit -t 192.168.1.0/24 --prescan --prescan-ports 1-1024 --yes
+```
+
+**5. IPv6 Network Scan (v3.0)**
+Scan an IPv6 network segment.
+
+```bash
+sudo redaudit -t "2001:db8::/64" --ipv6 --mode normal --yes
+```
+
+**6. Compare Two Scan Reports (v3.0)**
+Generate a differential analysis showing network changes.
+
+```bash
+sudo redaudit --diff ~/reports/monday.json ~/reports/friday.json
+```
+
+**7. Scan Through Proxy (v3.0)**
+Pivot through a SOCKS5 proxy for internal network access.
+
+```bash
+sudo redaudit -t 10.0.0.0/24 --proxy socks5://pivot-host:1080 --yes
+```
+
+**8. CVE Correlation Scan (v3.0)**
+Enrich results with NIST NVD vulnerability data.
+
+```bash
+sudo redaudit -t 192.168.1.0/24 --cve-lookup --nvd-key YOUR_KEY --yes
 ```
 
 ### Reports & Encryption
