@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - SIEM Enhancement Module
-Copyright (C) 2026  Dorin Badea
+Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
 v2.9: SIEM-compatible output enhancements for Splunk, Elastic, QRadar, ArcSight.

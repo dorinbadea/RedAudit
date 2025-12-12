@@ -101,6 +101,7 @@ sudo redaudit --target 192.168.1.0/24 --mode normal --encrypt --encrypt-password
 - `--threads, -j`: Concurrent threads (1-16, default: 6)
 - `--rate-limit`: Delay between hosts in seconds (default: 0)
 - `--encrypt, -e`: Encrypt reports with password
+- `--encrypt-password`: Custom password for encryption (optional, default: random generated)
 - `--output, -o`: Output directory (default: ~/Documents/RedAuditReports)
 - `--max-hosts`: Maximum hosts to scan (default: all)
 - `--no-vuln-scan`: Disable web vulnerability scanning

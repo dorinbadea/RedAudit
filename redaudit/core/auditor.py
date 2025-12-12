@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Main Auditor Module
-Copyright (C) 2026  Dorin Badea
+Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
 Main orchestrator class for network auditing operations.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Scanner Module
-Copyright (C) 2026  Dorin Badea
+Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
 Network scanning, port enumeration, deep scan, and traffic capture functionality.

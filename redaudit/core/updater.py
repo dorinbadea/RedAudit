@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Secure Update Module
-Copyright (C) 2026  Dorin Badea
+Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
 Secure update checking and installation from GitHub repository.

@@ -37,7 +37,7 @@ This document outlines the technical roadmap, planned architectural improvements
 
 ## Completed Milestones
 
-### v2.9.0 (Completed - December 2026) -> **CURRENT**
+### v2.9.0 (Completed - December 2025) -> **CURRENT**
 
 *Focus on intelligence, efficiency, and professional documentation.*
 
@@ -58,7 +58,7 @@ This document outlines the technical roadmap, planned architectural improvements
 - [x] **UX Improvements**: Added `rich` progress bars with graceful fallback.
 - [x] **Documentation**: Added architecture diagrams (Mermaid), activation matrices, and professionalized all manuals.
 
-### v2.6 (Completed - December 2026)
+### v2.6 (Completed - December 2025)
 
 *Focus on code quality, testing, and modularization.*
 
@@ -91,7 +91,7 @@ If you wish to contribute to any of these features:
 <div align="center">
 
 **Active Maintenance**
-*Last Update: December 2026*
+*Last Update: December 2025*
 
 <sub>If this document is not updated in >6 months, the project may be paused. In that case, consider forking or contacting me.</sub>
 

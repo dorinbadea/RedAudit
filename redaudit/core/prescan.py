@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Pre-scan Module
-Copyright (C) 2026  Dorin Badea
+Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
 Fast port discovery using asyncio TCP connect (RustScan-style).

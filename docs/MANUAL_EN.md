@@ -325,9 +325,9 @@ After a run, RedAudit creates a timestamped output directory (v2.8+) such as:
 
 ```text
 ~/Documents/RedAuditReports/
-└── RedAudit_2026-01-15_21-30-45/
-    ├── redaudit_20260115_213045.json
-    ├── redaudit_20260115_213045.txt
+└── RedAudit_2025-01-15_21-30-45/
+    ├── redaudit_20250115_213045.json
+    ├── redaudit_20250115_213045.txt
     ├── traffic_192_168_1_*.pcap     # optional packet captures
     └── *.log                        # auxiliary logs, if enabled
 ```
@@ -405,7 +405,7 @@ Use `redaudit_decrypt.py`:
 ```bash
 # Decrypt an encrypted JSON report
 python3 redaudit_decrypt.py \
-   --file redaudit_report_2026-01-15_213045.json.enc \
+   --file redaudit_report_2025-01-15_213045.json.enc \
    --password "StrongPassw0rd!" \
    --output report.decrypted.json
 ```

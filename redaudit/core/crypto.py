@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Cryptography Module
-Copyright (C) 2026  Dorin Badea
+Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
 Handles encryption, decryption, and key derivation for report security.

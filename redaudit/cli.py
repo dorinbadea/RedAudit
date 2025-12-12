@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - CLI Module
-Copyright (C) 2026  Dorin Badea
+Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
 Command-line interface and argument parsing.
@@ -128,7 +128,7 @@ Examples:
     parser.add_argument(
         "--prescan",
         action="store_true",
-        help="Enable fast asyncio pre-scan before nmap (v2.7)"
+        help="Enable fast asyncio pre-scan before nmap"
     )
     parser.add_argument(
         "--prescan-ports",

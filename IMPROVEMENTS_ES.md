@@ -37,7 +37,7 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 
 ## Hitos Completados
 
-### v2.9.0 (Completado - Diciembre 2026) -> **ACTUAL**
+### v2.9.0 (Completado - Diciembre 2025) -> **ACTUAL**
 
 *Enfoque en inteligencia, eficiencia y documentación profesional.*
 
@@ -58,7 +58,7 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 - [x] **Mejoras UX**: Añadidas barras de progreso `rich` con fallback elegante.
 - [x] **Documentación**: Añadidos diagramas de arquitectura (Mermaid), matrices de activación y profesionalización de todos los manuales.
 
-### v2.6 (Completado - Diciembre 2026)
+### v2.6 (Completado - Diciembre 2025)
 
 *Enfoque en calidad de código, testing y modularización.*
 
@@ -91,7 +91,7 @@ Si deseas contribuir a alguna de estas features:
 <div align="center">
 
 **Mantenimiento Activo**
-*Última actualización: Diciembre 2026*
+*Última actualización: Diciembre 2025*
 
 <sub>Si este documento no se actualiza en >6 meses, el proyecto puede estar pausado. En ese caso, considera hacer un fork o contactarme.</sub>
 

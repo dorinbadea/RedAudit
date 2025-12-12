@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Vulnerability Verification Module
-Copyright (C) 2026  Dorin Badea
+Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
 v2.9: Smart-Check module for filtering false positives from Nikto and other scanners.

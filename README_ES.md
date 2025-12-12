@@ -118,6 +118,7 @@ sudo redaudit --target "192.168.1.0/24,10.0.0.0/24" --mode normal --threads 6
 - `--threads, -j`: Hilos concurrentes (1-16, por defecto: 6)
 - `--rate-limit`: Retardo entre hosts en segundos (por defecto: 0)
 - `--encrypt, -e`: Cifrar reportes con contraseña
+- `--encrypt-password`: Contraseña personalizada para cifrado (opcional, defecto: generada aleatoriamente)
 - `--output, -o`: Directorio de salida (por defecto: ~/Documents/RedAuditReports)
 - `--max-hosts`: Máximo de hosts a escanear (por defecto: todos)
 - `--no-vuln-scan`: Desactivar escaneo de vulnerabilidades web

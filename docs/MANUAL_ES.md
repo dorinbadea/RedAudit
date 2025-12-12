@@ -329,9 +329,9 @@ Tras cada ejecución, RedAudit crea un directorio con sello temporal (v2.8+):
 
 ```text
 ~/Documents/RedAuditReports/
-└── RedAudit_2026-01-15_21-30-45/
-    ├── redaudit_20260115_213045.json
-    ├── redaudit_20260115_213045.txt
+└── RedAudit_2025-01-15_21-30-45/
+    ├── redaudit_20250115_213045.json
+    ├── redaudit_20250115_213045.txt
     ├── traffic_192_168_1_*.pcap     # capturas opcionales
     └── *.log                        # logs auxiliares
 ```
@@ -408,7 +408,7 @@ Utiliza `redaudit_decrypt.py`:
 
 ```bash
 python3 redaudit_decrypt.py \
-   --file redaudit_report_2026-01-15_213045.json.enc \
+   --file redaudit_report_2025-01-15_213045.json.enc \
    --password "ContraseñaFuerte123!" \
    --output informe.descifrado.json
 ```
