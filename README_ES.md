@@ -4,7 +4,7 @@
 
 RedAudit es una herramienta CLI para auditoría de red estructurada y hardening en sistemas Kali/Debian.
 
-![Version](https://img.shields.io/badge/version-2.8.1-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.9.0-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 ![CI/CD](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dorinbadea/81671a8fffccee81ca270f14d094e5a1/raw/redaudit-tests.json&style=flat-square&label=CI%2FCD)
@@ -15,7 +15,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                     v2.8.1
+                                     v2.9.0
      Herramienta Interactiva de Auditoría de Red
 ```
 
@@ -186,7 +186,10 @@ redaudit/
 │   ├── crypto.py   # Cifrado/descifrado AES-128
 │   ├── network.py  # Detección de interfaces
 │   ├── reporter.py # Salida JSON/TXT + SIEM
-│   └── updater.py  # Auto-actualización segura (v2.8)
+│   ├── updater.py  # Auto-actualización segura (v2.8)
+│   ├── verify_vuln.py  # Filtrado de falsos positivos Nikto (v3.0)
+│   ├── entity_resolver.py  # Agrupación hosts multi-interfaz (v3.0)
+│   └── siem.py     # Integración SIEM profesional (v3.0)
 └── utils/          # Utilidades
     ├── constants.py # Constantes de configuración
     └── i18n.py      # Internacionalización
@@ -277,27 +280,23 @@ Consulta [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) para soluciones deta
 - **"Cryptography missing"**: Ejecuta `sudo apt install python3-cryptography`.
 - **"Scan frozen"**: Revisa `~/.redaudit/logs/` o reduce `rate_limit_delay`.
 
-## 13. Historial de Cambios (Resumen v2.8.1)
+## 13. Historial de Cambios (v2.9.0)
 
-- **Barra de Progreso para Vulnerabilidades**: Barra de progreso rich para la fase de escaneo de vulnerabilidades
-- **Indicadores de Módulo**: Retroalimentación visual mostrando herramienta activa (`[testssl]`, `[nikto]`, `[whatweb]`)
-- **Organización de Archivos PCAP**: Archivos PCAP ahora guardados dentro de la carpeta de resultados con timestamp
-- **Directorio de Salida por Defecto**: Cambiado a `~/Documents/RedAuditReports`
+### Nuevo en v2.9.0 (Mejoras Inteligentes)
 
-### Anterior (v2.8.0)
+- **Smart-Check**: Filtrado automático de falsos positivos de Nikto via Content-Type
+- **UDP Taming**: Escaneo 50-80% más rápido con `--top-ports 100` y timeouts estrictos
+- **Entity Resolution**: Consolidación de hosts multi-interfaz (`unified_assets`)
+- **SIEM Profesional**: Cumplimiento ECS v8.11, severidad, risk scores, auto-tags
 
-- **Precisión de Estado de Host**: Nuevos tipos de estado (`up`, `down`, `filtered`, `no-response`)
-- **Escaneo UDP Inteligente**: Estrategia de 3 fases con puertos prioritarios
+### Características Clave de v2.x
+
+- **Deep Scan Adaptativo**: Estrategia de 3 fases (TCP agresivo → UDP prioritario → UDP completo)
 - **Captura PCAP Concurrente**: Tráfico capturado durante escaneos
-- **Banner Grab Fallback**: Identificación mejorada de servicios
-- **Auto-Actualización Segura**: Verificación de actualizaciones integrada con GitHub
-- **Carpetas de Reporte con Fecha**: Reportes guardados en `RedAudit_YYYY-MM-DD_HH-MM-SS/`
-
-### Anterior (v2.7.x)
-
-- **Motor Pre-scan Asyncio**: Descubrimiento rápido de puertos usando TCP connect asyncio
-- **Salida Compatible SIEM**: Reportes JSON mejorados con `schema_version`, `event_type`, `session_id`
-- **Rate-Limiting con Jitter**: Varianza aleatoria ±30% para evasión de IDS
+- **Auto-Actualización Segura**: Integración GitHub con reinicio automático
+- **Motor Pre-scan**: Descubrimiento rápido asyncio antes de nmap
+- **Inteligencia de Exploits**: Integración SearchSploit para versiones detectadas
+- **Análisis SSL/TLS**: Escaneo profundo TestSSL.sh
 
 Para el changelog detallado, consulta [CHANGELOG.md](CHANGELOG.md)
 

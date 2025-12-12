@@ -6,7 +6,7 @@ GPLv3 License
 """
 
 # Version
-VERSION = "3.0.0"
+VERSION = "2.9.0"
 
 # Default language (installer may override)
 DEFAULT_LANG = "en"
@@ -30,7 +30,7 @@ TRAFFIC_CAPTURE_DEFAULT_DURATION = 15
 TRAFFIC_CAPTURE_MAX_DURATION = 120
 TRAFFIC_CAPTURE_PACKETS = 50
 
-# UDP scanning configuration (v3.0.0)
+# UDP scanning configuration (v2.9)
 UDP_PRIORITY_PORTS = "53,67,68,69,123,137,138,139,161,162,445,500,514,520,1900,4500,5353"
 UDP_SCAN_MODE_QUICK = "quick"
 UDP_SCAN_MODE_FULL = "full"

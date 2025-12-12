@@ -5,78 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.0] - 2025-12-12 (Smart Improvements)
+## [2.9.0] - 2025-12-12 (Smart Improvements)
 
 ### Added
 
-- **Smart-Check Module (Module A)**: Nikto false positive filtering
+- **Smart-Check Module**: Nikto false positive filtering
   - New module: `redaudit/core/verify_vuln.py`
-  - Content-Type verification to detect Soft 404s (APIs returning JSON/HTML for all paths)
-  - Size validation to filter suspiciously small "backup" files
-  - Path extraction from Nikto findings with multiple format support
-  - Automatic filtering of unreliable findings with count tracking
-  - Console output shows filtered false positive count per scan
+  - Content-Type verification to detect Soft 404s
+  - Size validation for suspiciously small files
+  - Automatic filtering with count tracking
 
-- **Entity Resolution Module (Module C)**: Multi-interface host consolidation
+- **Entity Resolution Module**: Multi-interface host consolidation
   - New module: `redaudit/core/entity_resolver.py`
   - Groups hosts by identity fingerprint (hostname/NetBIOS/mDNS)
-  - Creates unified asset records for devices with multiple interfaces
-  - New JSON field: `unified_assets` array in reports
-  - New summary fields: `unified_asset_count`, `multi_interface_devices`
+  - New JSON field: `unified_assets` array
   - Asset type guessing (router, workstation, mobile, iot, etc.)
 
-- **SIEM Professional Enhancement (Module D)**: Enterprise SIEM integration
+- **SIEM Professional Enhancement**: Enterprise SIEM integration
   - New module: `redaudit/core/siem.py`
-  - **ECS Compliance**: Elastic Common Schema v8.11 fields (`ecs`, `event`, `host`)
-  - **Severity Scoring**: Automatic severity (critical/high/medium/low/info) with numeric scores
-  - **Risk Scores**: Per-host risk score (0-100) based on ports, exploits, insecure services
-  - **Tags Array**: Auto-generated tags for categorization (web, database, iot, admin, etc.)
-  - **Observable Hash**: SHA256 hash per host for SIEM deduplication
-  - **CEF Format**: Common Event Format generator for ArcSight/McAfee
-  - New summary fields: `max_risk_score`, `avg_risk_score`, `high_risk_hosts`
+  - ECS v8.11 compliance for Elastic integration
+  - Severity scoring (critical/high/medium/low/info)
+  - Risk scores (0-100) per host
+  - Auto-generated tags for categorization
+  - Observable hash (SHA256) for deduplication
+  - CEF format for ArcSight/McAfee
 
 - **New Tests**: 46 unit tests for new modules
-  - `tests/test_verify_vuln.py` - 14 tests for Smart-Check
-  - `tests/test_entity_resolver.py` - 14 tests for Entity Resolution
-  - `tests/test_siem.py` - 18 tests for SIEM Enhancement
 
 ### Changed
 
-- **UDP Taming (Module B)**: Optimized UDP scanning for 50-80% faster scans
-  - "completo" mode now uses `--max-retries 1` instead of 2
-  - Phase 2b UDP scan uses `--top-ports 100` instead of full `-p-` scan
-  - Strict `--host-timeout 300s` (5 min) per host
-  - Estimated scan time reduced from 300-600s to 120-180s per host
+- **UDP Taming**: Optimized UDP scanning for 50-80% faster scans
+  - Uses `--top-ports 100` instead of full port scan
+  - Strict `--host-timeout 300s` per host
+  - `--max-retries 1` for LAN efficiency
 
-- **Constants**: New UDP optimization constants
-  - `UDP_TOP_PORTS = 100`
-  - `UDP_HOST_TIMEOUT_STRICT = "300s"`
-  - `UDP_MAX_RETRIES_LAN = 1`
-
-- **Version**: Updated to 3.0.0
-
-### Technical
-
-- New functions in `verify_vuln.py`:
-  - `filter_nikto_false_positives()` - Main entry point
-  - `verify_nikto_finding()` - Single finding verification
-  - `verify_content_type()` - HTTP HEAD request verification
-  - `is_false_positive_by_content_type()` / `is_false_positive_by_size()`
-
-- New functions in `entity_resolver.py`:
-  - `reconcile_assets()` - Main entry point
-  - `extract_identity_fingerprint()` - Identity extraction
-  - `create_unified_asset()` - Asset unification
-  - `normalize_hostname()` - Hostname normalization
-
-- Updated `auditor.py`:
-  - Import new UDP constants
-  - Integrate Smart-Check in Nikto processing
-  - Optimized Phase 2b UDP command
-
-- Updated `reporter.py`:
-  - Import and integrate entity resolver
-  - Add unified assets to summary generation
+- **Version**: Updated to 2.9.0
 
 ---
 

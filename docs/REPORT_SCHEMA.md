@@ -8,7 +8,7 @@ RedAudit generates machine-readable reports in JSON format. This document descri
 
 **Data Types**: Standard JSON types (`string`, `number`, `boolean`, `array`, `object`).
 **Nullable**: Fields are nullable unless specified otherwise.
-**Source Module**: `redaudit/core/reporter.py` (v2.8+)
+**Source Module**: `redaudit/core/reporter.py` (v2.9+)
 
 ## Schema Definition
 
@@ -121,9 +121,12 @@ List of web vulnerability findings. Each entry contains:
 | `vulnerabilities[].whatweb` | string | (Optional) WhatWeb output |
 | `vulnerabilities[].nikto_findings` | array | (Optional) Nikto findings (if FULL mode) |
 | `vulnerabilities[].testssl_analysis` | object | (Optional) TestSSL.sh results (if FULL mode and HTTPS). Contains `weak_ciphers`, `vulnerabilities`, `protocols`. |
+| `vulnerabilities[].severity` | string | (v2.9+) Severity level: critical/high/medium/low/info |
+| `vulnerabilities[].severity_score` | integer | (v2.9+) Numeric severity (0-100) |
 | `vulnerabilities[].curl_headers` | string | (Optional) HTTP headers from curl |
 | `vulnerabilities[].wget_spider` | string | (Optional) Wget spider output |
 | `vulnerabilities[].tls_info` | string | (Optional) OpenSSL TLS certificate info |
+| `vulnerabilities[].nikto_filtered_count` | integer | (v2.9+) Number of Nikto false positives filtered by Smart-Check |
 
 ## Scan Summary Object
 
@@ -144,6 +147,11 @@ List of web vulnerability findings. Each entry contains:
 | `hosts_scanned` | integer | Hosts that underwent full port scanning |
 | `vulns_found` | integer | Total web vulnerabilities found |
 | `duration` | string | Total scan duration (HH:MM:SS format) |
+| `unified_asset_count` | integer | (v2.9+) Number of unified assets after entity resolution |
+| `multi_interface_devices` | integer | (v2.9+) Devices detected with multiple network interfaces |
+| `max_risk_score` | integer | (v2.9+) Highest risk score across all hosts (0-100) |
+| `avg_risk_score` | float | (v2.9+) Average risk score (0-100) |
+| `high_risk_hosts` | integer | (v2.9+) Hosts with risk score >= 70 |
 
 ## Network Info Array
 
@@ -159,4 +167,48 @@ List of detected network interfaces.
     "type": "Ethernet"
   }
 ]
+```
+
+## v2.9 New Features
+
+### SIEM Enhancement (ECS Compliance)
+
+```json
+{
+  "ecs": {"version": "8.11"},
+  "event": {
+    "kind": "enrichment",
+    "category": ["network", "host"],
+    "module": "redaudit"
+  }
+}
+```
+
+### Host Enrichment (v2.9+)
+
+| Field | Type | Description |
+|---|---|---|
+| `risk_score` | integer | Risk score (0-100) based on ports, services, exploits |
+| `tags` | array | Auto-generated tags (web, database, iot, admin, etc.) |
+| `observable_hash` | string | SHA256 hash for SIEM deduplication |
+| `ecs_host` | object | ECS-compliant host object with `ip`, `mac`, `name` |
+
+### Unified Assets Array (Entity Resolution)
+
+```json
+{
+  "unified_assets": [
+    {
+      "asset_name": "msi-laptop",
+      "asset_type": "workstation",
+      "interfaces": [
+        {"ip": "192.168.1.10", "mac": "D8:43:AE:...", "type": "WiFi"},
+        {"ip": "192.168.1.15", "mac": "10:91:D1:...", "type": "Ethernet"}
+      ],
+      "interface_count": 2,
+      "consolidated_ports": [...],
+      "source_ips": ["192.168.1.10", "192.168.1.15"]
+    }
+  ]
+}
 ```

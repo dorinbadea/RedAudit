@@ -1,8 +1,8 @@
-# RedAudit v2.8.1 – User Manual (EN)
+# RedAudit v2.9.0 – User Manual (EN)
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](MANUAL_ES.md)
 
-**Version:** 2.8.1  
+**Version:** 2.9.0  
 **Target audience:** Security analysts, penetration testers, systems / network administrators  
 **License:** GPLv3
 

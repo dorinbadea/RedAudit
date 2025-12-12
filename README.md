@@ -4,7 +4,7 @@
 
 RedAudit is a CLI tool for structured network auditing and hardening on Kali/Debian systems.
 
-![Version](https://img.shields.io/badge/version-2.8.1-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.9.0-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 ![CI/CD](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dorinbadea/81671a8fffccee81ca270f14d094e5a1/raw/redaudit-tests.json&style=flat-square&label=CI%2FCD)
@@ -15,7 +15,7 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                     v2.8.1
+                                     v2.9.0
         Interactive Network Audit Tool
 ```
 
@@ -156,6 +156,15 @@ RedAudit applies a smart 3-phase adaptive scan to maximize information gathering
 - **Trigger**: Automatic based on heuristics (few ports, suspicious services, etc.)
 - **Output**: Full logs, MAC/Vendor data, and PCAP in `host.deep_scan`
 
+### UDP Taming (v2.9)
+
+Faster UDP scanning without sacrificing detection quality:
+
+- Uses `--top-ports 100` instead of full 65535 ports
+- Strict `--host-timeout 300s` per host
+- Reduced retries (`--max-retries 1`) for LAN efficiency
+- **Result**: 50-80% faster UDP scans
+
 ## Modular Architecture (v2.8)
 
 RedAudit is organized as a modular Python package:
@@ -169,7 +178,10 @@ redaudit/
 │   ├── crypto.py   # AES-128 encryption/decryption
 │   ├── network.py  # Interface detection
 │   ├── reporter.py # JSON/TXT + SIEM output
-│   └── updater.py  # Secure auto-update (v2.8)
+│   ├── updater.py  # Secure auto-update (v2.8)
+│   ├── verify_vuln.py  # Nikto false positive filtering (v3.0)
+│   ├── entity_resolver.py  # Multi-interface host grouping (v3.0)
+│   └── siem.py     # Professional SIEM integration (v3.0)
 └── utils/          # Utilities
     ├── constants.py # Configuration constants
     └── i18n.py      # Internationalization
@@ -260,27 +272,23 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for detailed fixes.
 - **"Cryptography missing"**: Run `sudo apt install python3-cryptography`.
 - **"Scan frozen"**: Check `~/.redaudit/logs/` or reduce `rate_limit_delay`.
 
-## 13. Changelog (v2.8.1 Summary)
+## 13. Changelog (v2.9.0)
 
-- **Vulnerability Scan Progress Bar**: Rich progress bar for vulnerability scanning phase
-- **Module Indicators**: Visual feedback showing active tool (`[testssl]`, `[nikto]`, `[whatweb]`)
-- **PCAP File Organization**: PCAP files now saved inside timestamped result folder
-- **Default Output Directory**: Changed to `~/Documents/RedAuditReports`
+### New in v2.9.0 (Smart Improvements)
 
-### Previous (v2.8.0)
+- **Smart-Check**: Automatic Nikto false positive filtering via Content-Type validation
+- **UDP Taming**: 50-80% faster scans with `--top-ports 100` and strict timeouts
+- **Entity Resolution**: Multi-interface host consolidation (`unified_assets` array)
+- **SIEM Professional**: ECS v8.11 compliance, severity scoring, risk scores, auto-tags
 
-- **Host Status Accuracy**: New status types (`up`, `down`, `filtered`, `no-response`)
-- **Intelligent UDP Scanning**: 3-phase strategy with priority ports
-- **Concurrent PCAP Capture**: Traffic captured during scans
-- **Banner Grab Fallback**: Enhanced service identification
-- **Secure Auto-Update**: GitHub-integrated update checking
-- **Timestamped Report Folders**: Reports saved in `RedAudit_YYYY-MM-DD_HH-MM-SS/`
+### Key Features from v2.x
 
-### Previous (v2.7.x)
-
-- **Pre-scan Asyncio Engine**: Fast port discovery using asyncio TCP connect
-- **SIEM-Compatible Output**: Enhanced JSON reports with `schema_version`, `event_type`, `session_id`
-- **Jitter Rate-Limiting**: ±30% random variance for IDS evasion
+- **Adaptive Deep Scan**: 3-phase strategy (TCP aggressive → Priority UDP → Full UDP)
+- **Concurrent PCAP**: Traffic captured during scans, not after
+- **Secure Auto-Update**: GitHub-integrated with automatic restart
+- **Pre-scan Engine**: Fast asyncio port discovery before nmap
+- **Exploit Intelligence**: SearchSploit integration for version-based lookups
+- **SSL/TLS Analysis**: TestSSL.sh deep vulnerability scanning
 
 For detailed changelog, see [CHANGELOG.md](CHANGELOG.md)
 
