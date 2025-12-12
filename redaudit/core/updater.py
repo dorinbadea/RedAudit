@@ -201,83 +201,92 @@ def compute_file_hash(filepath: str, algorithm: str = "sha256") -> str:
     return hasher.hexdigest()
 
 
-def perform_git_update(repo_path: str, logger=None) -> Tuple[bool, str]:
+def perform_git_update(repo_path: str, lang: str = "en", logger=None) -> Tuple[bool, str]:
     """
-    Perform update using git pull and install to system location.
+    v3.0: Perform update using git clone approach for reliability.
+    
+    This method addresses issues with git pull failures by:
+    1. Cloning fresh to a temp folder
+    2. Running the install script with user's language
+    3. Copying to user's home folder with all documentation
+    4. Verifying installation
     
     Args:
-        repo_path: Path to the git repository
+        repo_path: Original repo path (used for reference, not modified)
+        lang: User's language preference ('en' or 'es')
         logger: Optional logger
     
     Returns:
         Tuple of (success, message)
     """
-    if not os.path.isdir(os.path.join(repo_path, ".git")):
-        return (False, "Not a git repository. Manual update required.")
+    import shutil
+    
+    GITHUB_CLONE_URL = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}.git"
+    home_dir = os.path.expanduser("~")
+    home_redaudit_path = os.path.join(home_dir, "RedAudit")
+    install_path = "/usr/local/lib/redaudit"
     
     try:
-        # v2.8.1: Reset any local changes to avoid conflicts
-        result = subprocess.run(
-            ["git", "reset", "--hard", "HEAD"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
+        # Step 1: Clone to temporary directory
+        temp_dir = tempfile.mkdtemp(prefix="redaudit_update_")
+        clone_path = os.path.join(temp_dir, "RedAudit")
         
-        # Fetch latest from remote
+        if logger:
+            logger.info("Cloning RedAudit to temp folder: %s", temp_dir)
+        
         result = subprocess.run(
-            ["git", "fetch", "origin", "main"],
-            cwd=repo_path,
+            ["git", "clone", "--depth", "1", GITHUB_CLONE_URL, clone_path],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=120,
         )
         
         if result.returncode != 0:
-            return (False, f"Git fetch failed: {result.stderr}")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return (False, f"Git clone failed: {result.stderr}")
         
-        # Check if we're behind remote
-        result = subprocess.run(
-            ["git", "rev-list", "--count", "HEAD..origin/main"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
+        # Step 2: Run install script with user's language
+        install_script = os.path.join(clone_path, "redaudit_install.sh")
         
-        commits_behind = int(result.stdout.strip() or "0")
+        if os.path.isfile(install_script) and os.geteuid() == 0:
+            if logger:
+                logger.info("Running install script with language: %s", lang)
+            
+            # Make script executable
+            os.chmod(install_script, 0o755)
+            
+            # Run install script
+            env = os.environ.copy()
+            env["REDAUDIT_LANG"] = lang
+            env["REDAUDIT_AUTO_UPDATE"] = "1"  # Flag to skip prompts
+            
+            result = subprocess.run(
+                ["bash", install_script],
+                cwd=clone_path,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minutes max
+            )
+            
+            if result.returncode != 0:
+                if logger:
+                    logger.warning("Install script returned non-zero: %s", result.stderr)
+                # Continue anyway, we'll do manual installation
         
-        if commits_behind == 0:
-            # Already up to date at git level - but we still requested update
-            # This could happen if version detection differs from actual git state
-            return (True, "UPDATE_SUCCESS_RESTART")
+        # Step 3: Manual installation to /usr/local/lib/redaudit
+        source_module = os.path.join(clone_path, "redaudit")
         
-        # Pull changes
-        result = subprocess.run(
-            ["git", "pull", "origin", "main", "--force"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        
-        if result.returncode != 0:
-            return (False, f"Git pull failed: {result.stderr}")
-        
-        # v2.8.1: Install updated code to /usr/local/lib/redaudit if running as root
-        install_path = "/usr/local/lib/redaudit"
-        source_path = os.path.join(repo_path, "redaudit")
-        
-        if os.path.isdir(source_path) and os.geteuid() == 0:
-            import shutil
+        if os.path.isdir(source_module) and os.geteuid() == 0:
+            if logger:
+                logger.info("Installing to %s", install_path)
             
             # Remove old installation
             if os.path.exists(install_path):
                 shutil.rmtree(install_path)
             
             # Copy new files
-            shutil.copytree(source_path, install_path)
+            shutil.copytree(source_module, install_path)
             
             # Set permissions
             for root, dirs, files in os.walk(install_path):
@@ -286,7 +295,65 @@ def perform_git_update(repo_path: str, logger=None) -> Tuple[bool, str]:
                 for f in files:
                     os.chmod(os.path.join(root, f), 0o644)
         
-        # Always return success with restart signal
+        # Step 4: Copy to user's home folder with documentation
+        if logger:
+            logger.info("Copying to home folder: %s", home_redaudit_path)
+        
+        # Backup existing if present
+        if os.path.exists(home_redaudit_path):
+            backup_path = f"{home_redaudit_path}_backup_{int(__import__('time').time())}"
+            shutil.move(home_redaudit_path, backup_path)
+            if logger:
+                logger.info("Backed up existing to: %s", backup_path)
+        
+        # Copy entire clone (including docs) to home
+        shutil.copytree(clone_path, home_redaudit_path)
+        
+        # Fix ownership if running as root
+        if os.geteuid() == 0:
+            import pwd
+            sudo_user = os.environ.get("SUDO_USER")
+            if sudo_user:
+                try:
+                    user_info = pwd.getpwnam(sudo_user)
+                    for root, dirs, files in os.walk(home_redaudit_path):
+                        os.chown(root, user_info.pw_uid, user_info.pw_gid)
+                        for d in dirs:
+                            os.chown(os.path.join(root, d), user_info.pw_uid, user_info.pw_gid)
+                        for f in files:
+                            os.chown(os.path.join(root, f), user_info.pw_uid, user_info.pw_gid)
+                except Exception as e:
+                    if logger:
+                        logger.warning("Could not fix ownership: %s", e)
+        
+        # Step 5: Verify installation
+        verification_passed = True
+        verification_errors = []
+        
+        # Check that main module exists
+        if not os.path.isdir(install_path):
+            verification_passed = False
+            verification_errors.append("Module not installed to /usr/local/lib")
+        
+        # Check that key files exist
+        key_files = ["__init__.py", "cli.py", "core/auditor.py"]
+        for key_file in key_files:
+            if not os.path.isfile(os.path.join(install_path, key_file)):
+                verification_passed = False
+                verification_errors.append(f"Missing file: {key_file}")
+        
+        # Check home copy
+        if not os.path.isdir(home_redaudit_path):
+            verification_passed = False
+            verification_errors.append("Home copy not created")
+        
+        # Cleanup temp directory
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        
+        if not verification_passed:
+            return (False, f"Installation verification failed: {'; '.join(verification_errors)}")
+        
+        # Success!
         return (True, "UPDATE_SUCCESS_RESTART")
         
     except subprocess.TimeoutExpired:
@@ -313,15 +380,18 @@ def get_repo_path() -> str:
     return repo_root
 
 
-def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None) -> bool:
+def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None, lang: str = "en") -> bool:
     """
     Interactive update check workflow for CLI.
+    
+    v3.0: Now accepts lang parameter for install script.
     
     Args:
         print_fn: Function to print messages (print_status)
         ask_fn: Function to ask yes/no questions (ask_yes_no)
         t_fn: Translation function
         logger: Optional logger
+        lang: User's language preference ('en' or 'es')
     
     Returns:
         True if update was performed, False otherwise
@@ -369,7 +439,8 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None)
         print_fn(t_fn("update_starting"), "INFO")
         
         repo_path = get_repo_path()
-        success, message = perform_git_update(repo_path, logger)
+        # v3.0: Pass language to perform_git_update
+        success, message = perform_git_update(repo_path, lang=lang, logger=logger)
         
         if success:
             # v2.8.1: Auto-restart if update was installed to system
@@ -390,4 +461,5 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None)
     else:
         print_fn(t_fn("update_skipped"), "INFO")
         return False
+
 

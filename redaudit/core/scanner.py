@@ -33,7 +33,7 @@ from redaudit.utils.constants import (
 
 def sanitize_ip(ip_str) -> Optional[str]:
     """
-    Sanitize and validate IP address.
+    Sanitize and validate IP address (supports both IPv4 and IPv6).
 
     Args:
         ip_str: Input IP address string
@@ -55,6 +55,38 @@ def sanitize_ip(ip_str) -> Optional[str]:
         return ip_str
     except (ValueError, TypeError):
         return None
+
+
+def is_ipv6(ip_str: str) -> bool:
+    """
+    Check if an IP address string is IPv6.
+    
+    Args:
+        ip_str: IP address string
+        
+    Returns:
+        True if IPv6, False if IPv4 or invalid
+    """
+    try:
+        return ipaddress.ip_address(ip_str).version == 6
+    except (ValueError, TypeError):
+        return False
+
+
+def is_ipv6_network(network_str: str) -> bool:
+    """
+    Check if a network CIDR string is IPv6.
+    
+    Args:
+        network_str: Network CIDR string (e.g., '2001:db8::/32')
+        
+    Returns:
+        True if IPv6 network, False otherwise
+    """
+    try:
+        return ipaddress.ip_network(network_str, strict=False).version == 6
+    except (ValueError, TypeError):
+        return False
 
 
 def sanitize_hostname(hostname) -> Optional[str]:
@@ -132,6 +164,29 @@ def get_nmap_arguments(mode: str) -> str:
         "completo": "-T4 -p- -sV -sC -A --version-intensity 9 --host-timeout 300s --max-retries 1 --open",
     }
     return args.get(mode, args["normal"])
+
+
+def get_nmap_arguments_for_target(mode: str, target: str) -> str:
+    """
+    Get nmap arguments for a specific target, adding -6 flag for IPv6.
+    
+    v3.0: Automatically detects if target is IPv6 and adds appropriate flags.
+
+    Args:
+        mode: Scan mode ('rapido', 'normal', 'completo')
+        target: Target IP address or CIDR
+
+    Returns:
+        Nmap argument string with -6 flag if IPv6
+    """
+    base_args = get_nmap_arguments(mode)
+    
+    # Check if target is IPv6
+    target_ip = target.split("/")[0] if "/" in target else target
+    if is_ipv6(target_ip):
+        return f"-6 {base_args}"
+    
+    return base_args
 
 
 def extract_vendor_mac(text: str) -> tuple:

@@ -185,9 +185,78 @@ def is_false_positive_by_size(expected_ext: str, content_length: Optional[int]) 
     return False
 
 
+def verify_magic_bytes(url: str, expected_ext: str, extra_tools: Optional[Dict] = None, timeout: int = 10) -> Tuple[bool, str]:
+    """
+    v3.0: Download first 512 bytes and verify magic signature.
+    
+    This is the most reliable false positive detection method as it
+    actually inspects the file content, not just headers.
+    
+    Args:
+        url: Full URL to check
+        expected_ext: Expected file extension (e.g., '.tar')
+        extra_tools: Dict of available tool paths
+        timeout: Request timeout in seconds
+        
+    Returns:
+        Tuple of (is_valid, reason)
+        - is_valid: True if magic bytes match expected type
+        - reason: Explanation for decision
+    """
+    curl_path = extra_tools.get("curl") if extra_tools else "curl"
+    if not curl_path:
+        curl_path = "curl"
+    
+    # Map extensions to expected magic bytes
+    ext_to_magic = {
+        '.tar': ('tar', 257),      # ustar at offset 257
+        '.gz': ('gzip', 0),        # 1f 8b at offset 0
+        '.zip': ('zip', 0),        # PK\x03\x04 at offset 0
+        '.pem': ('pem', 0),        # -----BEGIN at offset 0
+        '.key': ('pem', 0),        # Also PEM format
+    }
+    
+    if expected_ext not in ext_to_magic:
+        return True, "kept:no_magic_check_for_ext"
+    
+    magic_key, offset = ext_to_magic[expected_ext]
+    expected_magic = MAGIC_BYTES.get(magic_key)
+    
+    if not expected_magic:
+        return True, "kept:magic_not_defined"
+    
+    try:
+        # Download first 512 bytes (enough for all signatures including tar at offset 257)
+        res = subprocess.run(
+            [curl_path, "-s", "-r", "0-511", "--max-time", str(timeout), "-k", url],
+            capture_output=True,
+            timeout=timeout + 5,
+        )
+        
+        data = res.stdout
+        if not data or len(data) < offset + len(expected_magic):
+            return True, "kept:insufficient_data"
+        
+        # Check magic bytes at expected offset
+        actual_bytes = data[offset:offset + len(expected_magic)]
+        
+        if actual_bytes == expected_magic:
+            return True, "kept:magic_bytes_match"
+        else:
+            # Check if it looks like HTML/JSON (common false positive)
+            if data.startswith(b'<!') or data.startswith(b'<html') or data.startswith(b'{'):
+                return False, f"filtered:magic_mismatch:got_html_or_json"
+            return False, f"filtered:magic_mismatch:expected_{magic_key}"
+    
+    except Exception as e:
+        return True, f"kept:magic_check_error:{str(e)[:30]}"
+
+
 def verify_nikto_finding(finding: str, base_url: str, extra_tools: Optional[Dict] = None) -> Tuple[bool, str]:
     """
     Verify a single Nikto finding to determine if it's a false positive.
+    
+    v3.0: Now includes magic byte verification for enhanced accuracy.
     
     Args:
         finding: Raw Nikto finding line
@@ -218,13 +287,18 @@ def verify_nikto_finding(finding: str, base_url: str, extra_tools: Optional[Dict
     full_url = base_url.rstrip("/") + path
     content_type, content_length = verify_content_type(full_url, extra_tools)
     
-    # Check Content-Type
+    # Check 1: Content-Type mismatch
     if is_false_positive_by_content_type(ext, content_type):
         return False, f"filtered:content_type_mismatch:{content_type}"
     
-    # Check size
+    # Check 2: Suspiciously small size
     if is_false_positive_by_size(ext, content_length):
         return False, f"filtered:too_small:{content_length}bytes"
+    
+    # Check 3 (v3.0): Magic byte verification
+    is_valid, reason = verify_magic_bytes(full_url, ext, extra_tools)
+    if not is_valid:
+        return False, reason
     
     return True, "kept:verified"
 

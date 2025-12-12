@@ -158,6 +158,20 @@ Examples:
         help="Skip update check at startup"
     )
 
+    # v3.0 options
+    parser.add_argument(
+        "--diff",
+        nargs=2,
+        metavar=("OLD", "NEW"),
+        help="Compare two JSON reports and show changes (no scan performed)"
+    )
+    parser.add_argument(
+        "--proxy",
+        type=str,
+        metavar="URL",
+        help="SOCKS5 proxy for pivoting (socks5://host:port or socks5://user:pass@host:port)"
+    )
+
     return parser.parse_args()
 
 
@@ -261,11 +275,49 @@ def main():
 
     args = parse_arguments()
 
+    # v3.0: Handle --diff mode (no scan, just comparison)
+    if args.diff:
+        from redaudit.core.diff import generate_diff_report, format_diff_text, format_diff_markdown
+        old_path, new_path = args.diff
+        
+        print(f"Comparing reports: {old_path} vs {new_path}")
+        diff = generate_diff_report(old_path, new_path)
+        
+        if not diff:
+            print("Error: Could not load or compare reports. Check file paths.")
+            sys.exit(1)
+        
+        # Output both text and markdown
+        print(format_diff_text(diff))
+        
+        # Save markdown version
+        md_path = f"diff_report_{diff['generated_at'][:10]}.md"
+        with open(md_path, 'w') as f:
+            f.write(format_diff_markdown(diff))
+        print(f"\nMarkdown report saved: {md_path}")
+        
+        sys.exit(0)
+
     # Import here to avoid circular imports
     from redaudit.core.auditor import InteractiveNetworkAuditor
     from redaudit.core.updater import interactive_update_check
 
     app = InteractiveNetworkAuditor()
+
+    # v3.0: Configure proxy if specified
+    if args.proxy:
+        from redaudit.core.proxy import ProxyManager
+        proxy_manager = ProxyManager(args.proxy)
+        if not proxy_manager.is_valid():
+            app.print_status(f"Invalid proxy URL: {args.proxy}", "FAIL")
+            sys.exit(1)
+        success, msg = proxy_manager.test_connection()
+        if success:
+            app.print_status(f"Proxy configured: {msg}", "OKGREEN")
+            app.proxy_manager = proxy_manager
+        else:
+            app.print_status(f"Proxy test failed: {msg}", "FAIL")
+            sys.exit(1)
 
     # Update check at startup (v2.8.0)
     if not args.skip_update_check:
