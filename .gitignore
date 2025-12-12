@@ -14,6 +14,6 @@ __pycache__/
 # Backup files
 redaudit_install.sh.bak
 
-# Test report folders (v2.8.0)
+# Test report folders
 11.12/
 RedAudit_*/

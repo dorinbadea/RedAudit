@@ -46,12 +46,6 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 
 Deep scans are triggered selectively: web auditing modules launch only upon detection of HTTP/HTTPS services, and SSL inspection is reserved for encrypted ports.
 
-## Quick demo
-
-A short terminal recording will be linked here once published.
-
-[Watch the terminal demo](https://asciinema.org/a/PLACEHOLDER)
-
 ## Installation
 
 RedAudit requires a Debian-based environment (Kali Linux recommended) and `sudo` privileges for raw socket access.

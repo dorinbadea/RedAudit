@@ -46,12 +46,6 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 
 Los escaneos profundos se activan selectivamente: los módulos de auditoría web solo se lanzan tras la detección de servicios HTTP/HTTPS, y la inspección SSL se reserva para puertos cifrados.
 
-## Demo rápida
-
-Aquí se enlazará una grabación breve de terminal una vez publicada.
-
-[Ver demo de terminal](https://asciinema.org/a/PLACEHOLDER)
-
 ## Instalación
 
 RedAudit requiere un entorno basado en Debian (se recomienda Kali Linux) y privilegios `sudo` para acceso a sockets raw.
