@@ -42,7 +42,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 
 ### Vista General del Sistema
 
-![Vista General del Sistema](docs/images/system_overview_es.png)
+![Vista General del Sistema](docs/images/system_overview_es_v2.png)
 
 Los escaneos profundos se activan selectivamente: los módulos de auditoría web solo se lanzan tras la detección de servicios HTTP/HTTPS, y la inspección SSL se reserva para puertos cifrados.
 
