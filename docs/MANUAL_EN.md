@@ -60,7 +60,7 @@ RedAudit is not an exploit framework and does not perform automatic exploitation
 - Automatic activation of external tools (nmap, whatweb, nikto, testssl.sh, etc.) when relevant.
 - JSON report schema designed for ingestion into SIEM / reporting pipelines.
 - Optional AES-based encryption of reports with proper key derivation.
-- Rate-limiting and jitter to control scan noise (v2.7).
+- Rate-limiting and jitter to control scan noise.
 - Bilingual messages (English / Spanish).
 
 ---
@@ -273,10 +273,11 @@ The most important options:
 | `--no-txt-report`           | Skip generation of the human-readable TXT/Markdown report.                                                              |
 | `-o`, `--output DIR`        | Custom output directory for all reports. Default is a directory under the current path.                                  |
 | `--yes`                     | Non-interactive mode: assume "yes" to prompts. Essential for automation.                                                 |
-| `--prescan`                 | Enable asynchronous pre-scan (v2.7) to reduce nmap calls on very large ranges.                                           |
-| `--prescan-ports RANGE`     | Port range used by the pre-scan. Default: `1-1024`.                                                                      |
-| `--udp-mode {quick,full}`   | UDP scan mode: `quick` (priority ports) or `full` (all ports). Default: `quick`. (v2.8)                                  |
-| `--skip-update-check`       | Skip the update check prompt at startup. (v2.8)                                                                          |
+| `--prescan`                 | Enable asynchronous pre-scan to reduce nmap calls on very large ranges.                                           |
+| `--prescan-ports`           | Port range for pre-scan (e.g., `1-1000` or `top-1000`). Default: `1-1024`.                                               |
+| `--prescan-timeout`         | Timeout per port in seconds for pre-scan. Default: `0.5`.                                                                |
+| `--udp-mode {quick,full}`   | UDP scan mode: `quick` (priority ports) or `full` (all ports). Default: `quick`.                                  |
+| `--skip-update-check`       | Skip the update check prompt at startup.                                                                          |
 | `-V`, `--version`           | Print RedAudit version and exit.                                                                                         |
 
 For more usage examples, see [USAGE.md](USAGE.md).
@@ -455,7 +456,7 @@ This mitigates:
 
 To reduce scan noise and side effects:
 
-- **Rate limiting & jitter (v2.7):** you can slow down the host scanning loop and introduce variability in request timing to avoid IDS thresholds.
+- **Rate limiting & jitter:** you can slow down the host scanning loop and introduce variability in request timing to avoid IDS thresholds.
 - **Bounded captures:** packet capture durations are tightly restricted to prevent long-running sniffs.
 - **Timeouts & retries:** subprocesses and network operations include reasonable timeouts and retry caps to avoid hanging processes.
 

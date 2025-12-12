@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Tests for verify_vuln module
-v3.0 Smart-Check false positive filtering
+v2.9 Smart-Check false positive filtering
 """
 
 import sys

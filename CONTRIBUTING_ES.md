@@ -15,7 +15,7 @@ RedAudit se adhiere a estándares estrictos de codificación y commits para mant
 - **Seguridad**: No usar `shell=True` en llamadas subprocess. Toda entrada de usuario debe ser sanitizada
 - **Concurrencia**: Las operaciones de I/O de red deben ser thread-safe
 
-### Estructura del Paquete (v2.7)
+### Estructura del Paquete
 
 El código está organizado como un paquete Python:
 

@@ -72,7 +72,7 @@ def generate_summary(
     }
     results["targets"] = config.get("target_networks", [])
 
-    # v3.0: Entity Resolution - consolidate multi-interface hosts
+    # v2.9: Entity Resolution - consolidate multi-interface hosts
     hosts = results.get("hosts", [])
     if hosts:
         unified = reconcile_assets(hosts)
@@ -83,7 +83,7 @@ def generate_summary(
             summary["unified_asset_count"] = len(unified)
             summary["multi_interface_devices"] = multi_interface
 
-    # v3.0: SIEM Enhancement - ECS compliance, severity scoring, tags, risk scores
+    # v2.9: SIEM Enhancement - ECS compliance, severity scoring, tags, risk scores
     enriched = enrich_report_for_siem(results, config)
     results.update(enriched)
 

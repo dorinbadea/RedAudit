@@ -8,7 +8,7 @@ RedAudit genera reportes legibles por máquina en formato JSON. Este documento d
 
 **Tipos de Datos**: Tipos JSON estándar (`string`, `number`, `boolean`, `array`, `object`).
 **Nullable**: Los campos son nullable a menos que se especifique lo contrario.
-**Módulo Fuente**: `redaudit/core/reporter.py` (v2.8+)
+**Módulo Fuente**: `redaudit/core/reporter.py`
 
 ## Definición del Esquema
 
@@ -18,7 +18,7 @@ El contenedor de nivel superior para la sesión de escaneo.
 
 | Campo | Tipo | Descripción |
 | :--- | :--- | :--- |
-| `schema_version` | `string` | Versión del esquema (v2.7+: "2.0") |
+| `schema_version` | `string` | Versión del esquema ("2.0") |
 | `event_type` | `string` | Tipo de evento para ingesta SIEM ("redaudit.scan.complete") |
 | `session_id` | `string` | UUID único para esta sesión de escaneo |
 | `timestamp` | `string` | Marca de tiempo de inicio (ISO 8601) |
@@ -64,7 +64,7 @@ Representa una única dirección IP objetivo.
 }
 ```
 
-**Tipos de Estado de Host (v2.8+)**:
+**Tipos de Estado de Host**:
 
 - `up`: El host respondió y tiene puertos abiertos
 - `down`: Sin respuesta en absoluto
@@ -77,12 +77,12 @@ Este campo aparece solo si se activó el escaneo profundo automático.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `strategy` | string | Identificador de estrategia (`adaptive_v2.8` para v2.8+, `adaptive_v2.5` para anteriores) |
+| `strategy` | string | Identificador de estrategia (`adaptive`) |
 | `mac_address` | string | (Opcional) Dirección MAC si se detectó |
 | `vendor` | string | (Opcional) Fabricante de hardware si se detectó |
 | `phase2_skipped` | boolean | True si la Fase 2 (UDP/SO) se omitió porque la Fase 1 encontró identidad |
-| `phase2b_skipped` | boolean | (v2.8+) True si el escaneo UDP completo se omitió (modo quick) |
-| `udp_mode` | string | (v2.8+) Modo de escaneo UDP usado: `quick` o `full` |
+| `phase2b_skipped` | boolean | True si el escaneo UDP completo se omitió (modo quick) |
+| `udp_mode` | string | Modo de escaneo UDP usado: `quick` o `full` |
 | `commands` | array | Lista de comandos Nmap ejecutados, logs y duraciones |
 | `commands[].command` | string | Línea de comando completa ejecutada |
 | `commands[].returncode` | integer | Código de salida del comando |

@@ -4,6 +4,9 @@ Tests for RedAudit pre-scan module.
 """
 
 import unittest
+import sys
+import os
+import inspect # Added for iscoroutinefunction check
 from unittest.mock import patch, AsyncMock
 
 from redaudit.core.prescan import (
@@ -87,17 +90,15 @@ class TestPrescanModule(unittest.TestCase):
         from redaudit.core.prescan import run_prescan
         self.assertTrue(callable(run_prescan))
 
-    def test_prescan_host_import(self):
-        """Test prescan_host can be imported."""
-        from redaudit.core.prescan import prescan_host
-        import asyncio
-        self.assertTrue(asyncio.iscoroutinefunction(prescan_host))
 
-    def test_check_port_import(self):
-        """Test check_port can be imported."""
-        from redaudit.core.prescan import check_port
-        import asyncio
-        self.assertTrue(asyncio.iscoroutinefunction(check_port))
+class TestAsyncPrescan(unittest.TestCase):
+
+    def test_async_functions_exist(self):
+        """Verify that async functions are defined as coroutines"""
+        from redaudit.core.prescan import prescan_host, check_port
+        # Check that functions are coroutines
+        self.assertTrue(inspect.iscoroutinefunction(prescan_host))
+        self.assertTrue(inspect.iscoroutinefunction(check_port))
 
 
 if __name__ == "__main__":

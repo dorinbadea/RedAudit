@@ -36,7 +36,7 @@ UDP_SCAN_MODE_QUICK = "quick"
 UDP_SCAN_MODE_FULL = "full"
 DEFAULT_UDP_MODE = UDP_SCAN_MODE_QUICK
 
-# v3.0: Optimized UDP scanning for LAN
+# v2.9: Optimized UDP scanning for LAN
 UDP_TOP_PORTS = 100  # Default UDP port count for full scans (vs 65535)
 UDP_HOST_TIMEOUT_STRICT = "300s"  # 5 minutes max per host
 UDP_MAX_RETRIES_LAN = 1  # Single retry for LAN environments

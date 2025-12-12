@@ -33,8 +33,8 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 |:---|:---|:---|
 | **Escáner Core** | `nmap`, `python3-nmap` | Escaneo de puertos TCP/UDP, detección de servicios/versión, fingerprinting de SO. |
 | **Reconocimiento Web** | `whatweb`, `curl`, `wget`, `nikto` | Analiza cabeceras HTTP, tecnologías y vulnerabilidades. |
-| **Inteligencia de Exploits** | `searchsploit` (v2.6.1+) | Búsqueda automática en ExploitDB para servicios con versiones detectadas. |
-| **Análisis SSL/TLS** | `testssl.sh` (v2.6.1+) | Escaneo profundo de vulnerabilidades SSL/TLS (Heartbleed, POODLE, cifrados débiles). |
+| **Inteligencia de Exploits** | `searchsploit` | Búsqueda automática en ExploitDB para servicios con versiones detectadas. |
+| **Análisis SSL/TLS** | `testssl.sh` | Escaneo profundo de vulnerabilidades SSL/TLS (Heartbleed, POODLE, cifrados débiles). |
 | **Captura de Tráfico** | `tcpdump`, `tshark` | Captura de paquetes de red para análisis detallado de protocolos. |
 | **DNS/Whois** | `dig`, `whois` | Búsquedas DNS inversas e información de propiedad para IPs públicas. |
 | **Orquestador** | `concurrent.futures` (Python) | Gestiona pools de hilos para escaneo paralelo de hosts. |
@@ -123,11 +123,11 @@ sudo redaudit --target "192.168.1.0/24,10.0.0.0/24" --mode normal --threads 6
 - `--no-vuln-scan`: Desactivar escaneo de vulnerabilidades web
 - `--no-txt-report`: Desactivar generación de reporte TXT
 - `--no-deep-scan`: Desactivar deep scan adaptativo
-- `--prescan`: Activar pre-escaneo rápido asyncio antes de nmap (v2.7)
+- `--prescan`: Activar pre-escaneo rápido asyncio antes de nmap
 - `--prescan-ports`: Rango de puertos para pre-scan (defecto: 1-1024)
 - `--prescan-timeout`: Timeout de pre-scan en segundos (defecto: 0.5)
-- `--udp-mode`: Modo de escaneo UDP: quick (defecto) o full (v2.8)
-- `--skip-update-check`: Omitir verificación de actualizaciones al iniciar (v2.8)
+- `--udp-mode`: Modo de escaneo UDP: quick (defecto) o full
+- `--skip-update-check`: Omitir verificación de actualizaciones al iniciar
 - `--yes, -y`: Saltar advertencia legal (usar con precaución)
 - `--lang`: Idioma (en/es)
 
@@ -155,7 +155,7 @@ Controlado por el parámetro `rate_limit_delay`.
   - **1-5s**: Equilibrado. Recomendado para auditorías internas para evitar disparar limitadores simples.
   - **>5s**: Paranoico/Conservador. Úsalo en entornos de producción sensibles.
 
-### Deep Scan Adaptativo (v2.8)
+### Deep Scan Adaptativo
 
 RedAudit aplica un escaneo adaptativo inteligente de 3 fases para maximizar la recopilación de información:
 
@@ -163,7 +163,7 @@ RedAudit aplica un escaneo adaptativo inteligente de 3 fases para maximizar la r
 2. **Fase 2a - UDP Prioritario**: Escaneo rápido de 17 puertos UDP comunes (DNS, DHCP, SNMP, NetBIOS)
 3. **Fase 2b - UDP Completo**: Solo en modo `full` si no se encontró identidad (`-O -sSU -p-`)
 
-**Características adicionales v2.8:**
+**Características de Deep Scan:**
 
 - **Captura PCAP Concurrente**: El tráfico se captura durante el escaneo (no después)
 - **Banner Grab Fallback**: Usa `--script banner,ssl-cert` para puertos no identificados
@@ -173,7 +173,7 @@ RedAudit aplica un escaneo adaptativo inteligente de 3 fases para maximizar la r
 - **Activación**: Automática según heurísticas (pocos puertos, servicios sospechosos, etc.)
 - **Salida**: Logs completos, datos MAC/Vendor, y PCAP en `host.deep_scan`
 
-## Arquitectura Modular (v2.8)
+## Arquitectura Modular
 
 RedAudit está organizado como un paquete Python modular:
 
@@ -181,21 +181,21 @@ RedAudit está organizado como un paquete Python modular:
 redaudit/
 ├── core/           # Funcionalidad principal
 │   ├── auditor.py  # Clase orquestadora principal
-│   ├── prescan.py  # Descubrimiento rápido asyncio (v2.7)
+│   ├── prescan.py  # Descubrimiento rápido asyncio
 │   ├── scanner.py  # Lógica de escaneo Nmap
 │   ├── crypto.py   # Cifrado/descifrado AES-128
 │   ├── network.py  # Detección de interfaces
 │   ├── reporter.py # Salida JSON/TXT + SIEM
-│   ├── updater.py  # Auto-actualización segura (v2.8)
-│   ├── verify_vuln.py  # Filtrado de falsos positivos Nikto (v3.0)
-│   ├── entity_resolver.py  # Agrupación hosts multi-interfaz (v3.0)
-│   └── siem.py     # Integración SIEM profesional (v3.0)
+│   ├── updater.py  # Auto-actualización segura
+│   ├── verify_vuln.py  # Filtrado de falsos positivos Nikto
+│   ├── entity_resolver.py  # Agrupación hosts multi-interfaz
+│   └── siem.py     # Integración SIEM profesional
 └── utils/          # Utilidades
     ├── constants.py # Constantes de configuración
     └── i18n.py      # Internacionalización
 ```
 
-### Auto-Actualización Segura (v2.8)
+### Auto-Actualización Segura
 
 RedAudit puede verificar e instalar actualizaciones automáticamente:
 
@@ -282,14 +282,14 @@ Consulta [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) para soluciones deta
 
 ## 13. Historial de Cambios (v2.9.0)
 
-### Nuevo en v2.9.0 (Mejoras Inteligentes)
+### Mejoras Recientes
 
 - **Smart-Check**: Filtrado automático de falsos positivos de Nikto via Content-Type
 - **UDP Taming**: Escaneo 50-80% más rápido con `--top-ports 100` y timeouts estrictos
 - **Entity Resolution**: Consolidación de hosts multi-interfaz (`unified_assets`)
 - **SIEM Profesional**: Cumplimiento ECS v8.11, severidad, risk scores, auto-tags
 
-### Características Clave de v2.x
+### Características Principales
 
 - **Deep Scan Adaptativo**: Estrategia de 3 fases (TCP agresivo → UDP prioritario → UDP completo)
 - **Captura PCAP Concurrente**: Tráfico capturado durante escaneos

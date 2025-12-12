@@ -29,12 +29,12 @@ sudo python -m redaudit [OPTIONS]
 | Flag | Descripción |
 | :--- | :--- |
 | `-j`, `--threads <N>` | Tamaño del pool de hilos para escaneo concurrente (1-16, defecto: 6). |
-| `--rate-limit` | Segundos de espera entre escaneos de host (float). Incluye jitter ±30% (v2.7). |
-| `--prescan` | Habilita pre-scan asyncio rápido antes de nmap (v2.7). |
-| `--prescan-ports` | Rango de puertos para pre-scan (defecto: 1-1024). |
-| `--prescan-timeout` | Timeout de conexión del pre-scan en segundos (defecto: 0.5). |
-| `--udp-mode` | Modo de escaneo UDP: `quick` (defecto) o `full` (v2.8). |
-| `--skip-update-check` | Omitir verificación de actualizaciones al iniciar (v2.8). |
+| `--rate-limit` | Segundos de espera entre escaneos de host (float). Incluye jitter ±30%. |
+| `--prescan` | Habilita pre-scan asyncio rápido antes de nmap. |
+| `--prescan-ports` | Rango de puertos pre-scan (defecto: 1-1024). |
+| `--prescan-timeout` | Timeout pre-scan segundos (defecto: 0.5). |
+| `--udp-mode` | Modo de escaneo UDP: `quick` (defecto) o `full`. |
+| `--skip-update-check` | Omitir verificación de actualizaciones al iniciar. |
 | `--no-deep-scan` | Desactiva el deep scan adaptativo. |
 | `--no-vuln-scan` | Desactiva el escaneo de vulnerabilidades web. |
 | `--no-txt-report` | Desactiva la generación de reporte TXT. |
@@ -71,7 +71,7 @@ Escaneo profundo con reporte cifrado para cadena de custodia.
 sudo redaudit -t 192.168.1.100 --mode full --encrypt --yes
 ```
 
-**4. Pre-scan Rápido en Rango Grande (v2.7)**
+**4. Pre-scan Rápido en Rango Grande**
 Usa pre-scan asyncio para descubrimiento rápido de puertos antes de nmap.
 
 ```bash
@@ -110,7 +110,7 @@ RedAudit permite configurar un retardo (en segundos) entre el escaneo de cada ho
 - **1-5s**: Sigilo moderado. Reduce la probabilidad de activar firewalls de rate-limit simples.
 - **>10s**: Sigilo alto. Ralentiza significativamente la auditoría pero minimiza el riesgo de detección y congestión.
 
-### Pre-scan (v2.7)
+### Pre-scan
 
 Habilita `--prescan` para usar TCP connect asyncio para descubrimiento rápido de puertos antes de invocar nmap:
 

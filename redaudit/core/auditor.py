@@ -575,7 +575,7 @@ class InteractiveNetworkAuditor:
                         deep_obj["vendor"] = v2a
 
                 # Phase 2b: Full UDP scan (only if mode is 'full' and still no identity)
-                # v3.0: Optimized to use top-ports instead of full 65535 port scan
+                # v2.9: Optimized to use top-ports instead of full 65535 port scan
                 has_identity_now = output_has_identity(deep_obj.get("commands", []))
                 if udp_mode == UDP_SCAN_MODE_FULL and not has_identity_now and not mac:
                     cmd_p2b = [
@@ -920,7 +920,7 @@ class InteractiveNetworkAuditor:
                     pass
 
             # Nikto (only in full mode)
-            # v3.0: Smart-Check integration for false positive filtering
+            # v2.9: Smart-Check integration for false positive filtering
             if self.config["scan_mode"] == "completo" and self.extra_tools.get("nikto"):
                 try:
                     self.current_phase = f"vulns:nikto:{ip}:{port}"
@@ -935,7 +935,7 @@ class InteractiveNetworkAuditor:
                     if output:
                         findings_list = [line for line in output.splitlines() if "+ " in line][:20]
                         if findings_list:
-                            # v3.0: Filter false positives using Smart-Check
+                            # v2.9: Filter false positives using Smart-Check
                             original_count = len(findings_list)
                             verified = filter_nikto_false_positives(
                                 findings_list, url, self.extra_tools, self.logger

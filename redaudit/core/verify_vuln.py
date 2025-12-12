@@ -4,7 +4,7 @@ RedAudit - Vulnerability Verification Module
 Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
-v3.0: Smart-Check module for filtering false positives from Nikto and other scanners.
+v2.9: Smart-Check module for filtering false positives from Nikto and other scanners.
 Uses Content-Type verification and Magic Bytes to detect Soft 404s.
 """
 
@@ -238,7 +238,7 @@ def filter_nikto_false_positives(
     """
     Filter a list of Nikto findings to remove false positives.
     
-    This is the main entry point for v3.0 Smart-Check functionality.
+    This is the main entry point for v2.9 Smart-Check functionality.
     
     Args:
         findings: List of raw Nikto finding lines

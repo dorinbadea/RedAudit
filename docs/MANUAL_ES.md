@@ -60,7 +60,7 @@ RedAudit no explota vulnerabilidades por sí mismo. Su función es ofrecer visib
 - Activación automática de herramientas externas (nmap, whatweb, nikto, testssl.sh, etc.) según lo que se descubra.
 - Esquema JSON estable y documentado, diseñado para ingestión automática.
 - Cifrado opcional de informes con `cryptography` (Fernet).
-- Limitación de velocidad y jitter configurables (v2.7).
+- Limitación de velocidad y jitter configurables.
 - Mensajes bilingües (inglés / español).
 
 ---
@@ -277,10 +277,11 @@ Las opciones más importantes:
 | `--no-txt-report`            | Evita generar el informe TXT/Markdown.                                                                                  |
 | `-o`, `--output DIR`         | Directorio destino para los informes. Por defecto se usa un directorio con marca de tiempo.                             |
 | `--yes`                      | Modo no interactivo: asume "sí" a las preguntas. Imprescindible para automatización.                                    |
-| `--prescan`                  | Activa el pre-escaneo asíncrono (v2.7) antes de lanzar nmap sobre grandes rangos.                                        |
-| `--prescan-ports RANGO`      | Rango de puertos del pre-escaneo. Por defecto: `1-1024`.                                                                 |
-| `--udp-mode {quick,full}`    | Modo de escaneo UDP: `quick` (puertos prioritarios) o `full` (todos). Por defecto: `quick`. (v2.8)                       |
-| `--skip-update-check`        | Omitir la verificación de actualizaciones al iniciar. (v2.8)                                                             |
+| `--prescan`                  | Activa el pre-escaneo asíncrono antes de lanzar nmap sobre grandes rangos.                                        |
+| `--prescan-ports`            | Rango de puertos para pre-scan (ej: `1-1000` o `top-1000`). Defecto: `1-1024`.                                          |
+| `--prescan-timeout`          | Timeout por puerto en segundos. Defecto: `0.5`.                                                                         |
+| `--udp-mode {quick,full}`    | Modo de escaneo UDP: `quick` (puertos prioritarios) o `full` (todos). Por defecto: `quick`.                       |
+| `--skip-update-check`        | Omitir la verificación de actualizaciones al iniciar.                                                             |
 | `-V`, `--version`            | Muestra la versión de RedAudit y termina.                                                                               |
 
 Para más ejemplos de uso, consulta [USAGE_ES.md](USAGE_ES.md).
@@ -458,7 +459,7 @@ Esto reduce el riesgo de:
 
 Para reducir ruido e impacto:
 
-- **Rate-limit y jitter configurables (v2.7)** para espaciar y variar las peticiones.
+- **Rate-limit y jitter configurables** para espaciar y variar las peticiones.
 - **Capturas acotadas:** las capturas de `tcpdump` tienen duración limitada para evitar "sniffs" indefinidos.
 - **Timeouts y reintentos** en procesos y conexiones para evitar bloqueos silenciosos.
 

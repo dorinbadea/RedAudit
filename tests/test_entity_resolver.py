@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Tests for entity_resolver module
-v3.0 Entity Resolution for multi-interface hosts
+v2.9 Entity Resolution for multi-interface hosts
 """
 
 import sys

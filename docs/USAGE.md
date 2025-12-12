@@ -29,12 +29,12 @@ sudo python -m redaudit [OPTIONS]
 | Flag | Description |
 | :--- | :--- |
 | `-j`, `--threads <N>` | Set thread pool size for concurrent host scanning (1-16, default: 6). |
-| `--rate-limit` | Seconds to sleep between host scans (float). Includes ±30% jitter (v2.7). |
-| `--prescan` | Enable fast asyncio pre-scan before nmap (v2.7). |
+| `--rate-limit` | Seconds to sleep between host scans (float). Includes ±30% jitter. |
+| `--prescan` | Enable fast asyncio pre-scan before nmap. |
 | `--prescan-ports` | Port range for pre-scan (default: 1-1024). |
 | `--prescan-timeout` | Pre-scan connection timeout in seconds (default: 0.5). |
-| `--udp-mode` | UDP scan mode: `quick` (default) or `full` (v2.8). |
-| `--skip-update-check` | Skip update check at startup (v2.8). |
+| `--udp-mode` | UDP scan mode: `quick` (default) or `full`. |
+| `--skip-update-check` | Skip update check at startup. |
 | `--no-deep-scan` | Disable adaptive deep scan. |
 | `--no-vuln-scan` | Disable web vulnerability scanning. |
 | `--no-txt-report` | Disable TXT report generation. |
@@ -71,7 +71,7 @@ Deep scan with encrypted reporting for chain-of-custody.
 sudo redaudit -t 192.168.1.100 --mode full --encrypt --yes
 ```
 
-**4. Fast Pre-scan on Large Range (v2.7)**
+**4. Fast Pre-scan on Large Range**
 Use asyncio pre-scan for fast port discovery before nmap.
 
 ```bash
@@ -110,7 +110,7 @@ RedAudit allows you to set a delay (in seconds) between scanning hosts. **v2.7 a
 - **1-5s**: Moderate stealth. Reduces the chance of triggering simple rate-limit firewalls.
 - **>10s**: High stealth. Significantly slows down the audit but minimizes network congestion and detection risk.
 
-### Pre-scan (v2.7)
+### Pre-scan
 
 Enable `--prescan` to use asyncio TCP connect for fast port discovery before invoking nmap:
 

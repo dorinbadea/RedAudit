@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Tests for SIEM enhancement module
-v3.0 Professional SIEM integration tests
+v2.9 Professional SIEM integration tests
 """
 
 import sys

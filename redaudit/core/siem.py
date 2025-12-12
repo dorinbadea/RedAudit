@@ -4,7 +4,7 @@ RedAudit - SIEM Enhancement Module
 Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
-v3.0: SIEM-compatible output enhancements for Splunk, Elastic, QRadar, ArcSight.
+v2.9: SIEM-compatible output enhancements for Splunk, Elastic, QRadar, ArcSight.
 Implements ECS (Elastic Common Schema), severity scoring, and CEF format.
 """
 

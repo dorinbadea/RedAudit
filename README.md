@@ -33,8 +33,8 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 |:---|:---|:---|
 | **Core Scanner** | `nmap`, `python3-nmap` | TCP/UDP port scanning, service/version detection, OS fingerprinting. |
 | **Web Recon** | `whatweb`, `curl`, `wget`, `nikto` | Analyzes HTTP headers, technologies, and vulnerabilities. |
-| **Exploit Intel** | `searchsploit` (v2.6.1+) | Automatic ExploitDB lookup for services with detected versions. |
-| **SSL/TLS Analysis** | `testssl.sh` (v2.6.1+) | Deep SSL/TLS vulnerability scanning (Heartbleed, POODLE, weak ciphers). |
+| **Exploit Intel** | `searchsploit` | Automatic ExploitDB lookup for services with detected versions. |
+| **SSL/TLS Analysis** | `testssl.sh` | Deep SSL/TLS vulnerability scanning (Heartbleed, POODLE, weak ciphers). |
 | **Traffic Capture** | `tcpdump`, `tshark` | Captures network packets for detailed protocol analysis. |
 | **DNS/Whois** | `dig`, `whois` | Reverse DNS lookups and ownership information for public IPs. |
 | **Orchestrator** | `concurrent.futures` (Python) | Manages thread pools for parallel host scanning. |
@@ -106,11 +106,11 @@ sudo redaudit --target 192.168.1.0/24 --mode normal --encrypt --encrypt-password
 - `--no-vuln-scan`: Disable web vulnerability scanning
 - `--no-txt-report`: Disable TXT report generation
 - `--no-deep-scan`: Disable adaptive deep scan
-- `--prescan`: Enable fast asyncio pre-scan before nmap (v2.7)
+- `--prescan`: Enable fast asyncio pre-scan before nmap
 - `--prescan-ports`: Port range for pre-scan (default: 1-1024)
 - `--prescan-timeout`: Pre-scan timeout in seconds (default: 0.5)
-- `--udp-mode`: UDP scan mode: quick (default) or full (v2.8)
-- `--skip-update-check`: Skip update check at startup (v2.8)
+- `--udp-mode`: UDP scan mode: quick (default) or full
+- `--skip-update-check`: Skip update check at startup
 - `--yes, -y`: Skip legal warning (use with caution)
 - `--lang`: Language (en/es)
 
@@ -138,7 +138,7 @@ Controlled by the `rate_limit_delay` parameter.
   - **1-5s**: Balanced. Recommended for internal audits to avoid simple rate-limiter triggers.
   - **>5s**: Paranoid/Conservative. Use for sensitive production environments.
 
-### Adaptive Deep Scan (v2.8)
+### Adaptive Deep Scan
 
 RedAudit applies a smart 3-phase adaptive scan to maximize information gathering:
 
@@ -146,7 +146,7 @@ RedAudit applies a smart 3-phase adaptive scan to maximize information gathering
 2. **Phase 2a - Priority UDP**: Quick scan of 17 common UDP ports (DNS, DHCP, SNMP, NetBIOS)
 3. **Phase 2b - Full UDP**: Only in `full` mode if no identity found yet (`-O -sSU -p-`)
 
-**Additional v2.8 features:**
+**Deep Scan features:**
 
 - **Concurrent PCAP Capture**: Traffic is captured during the scan (not after)
 - **Banner Grab Fallback**: Uses `--script banner,ssl-cert` for unidentified ports
@@ -156,7 +156,7 @@ RedAudit applies a smart 3-phase adaptive scan to maximize information gathering
 - **Trigger**: Automatic based on heuristics (few ports, suspicious services, etc.)
 - **Output**: Full logs, MAC/Vendor data, and PCAP in `host.deep_scan`
 
-### UDP Taming (v2.9)
+### UDP Taming
 
 Faster UDP scanning without sacrificing detection quality:
 
@@ -165,7 +165,7 @@ Faster UDP scanning without sacrificing detection quality:
 - Reduced retries (`--max-retries 1`) for LAN efficiency
 - **Result**: 50-80% faster UDP scans
 
-## Modular Architecture (v2.8)
+## Modular Architecture
 
 RedAudit is organized as a modular Python package:
 
@@ -173,21 +173,21 @@ RedAudit is organized as a modular Python package:
 redaudit/
 ├── core/           # Core functionality
 │   ├── auditor.py  # Main orchestrator class
-│   ├── prescan.py  # Asyncio fast port discovery (v2.7)
+│   ├── prescan.py  # Asyncio fast port discovery
 │   ├── scanner.py  # Nmap scanning logic
 │   ├── crypto.py   # AES-128 encryption/decryption
 │   ├── network.py  # Interface detection
 │   ├── reporter.py # JSON/TXT + SIEM output
-│   ├── updater.py  # Secure auto-update (v2.8)
-│   ├── verify_vuln.py  # Nikto false positive filtering (v3.0)
-│   ├── entity_resolver.py  # Multi-interface host grouping (v3.0)
-│   └── siem.py     # Professional SIEM integration (v3.0)
+│   ├── updater.py  # Secure auto-update
+│   ├── verify_vuln.py  # Nikto false positive filtering
+│   ├── entity_resolver.py  # Multi-interface host grouping
+│   └── siem.py     # Professional SIEM integration
 └── utils/          # Utilities
     ├── constants.py # Configuration constants
     └── i18n.py      # Internationalization
 ```
 
-### Secure Auto-Update (v2.8)
+### Secure Auto-Update
 
 RedAudit can check for and install updates automatically:
 
@@ -274,14 +274,14 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for detailed fixes.
 
 ## 13. Changelog (v2.9.0)
 
-### New in v2.9.0 (Smart Improvements)
+### Latest Improvements
 
 - **Smart-Check**: Automatic Nikto false positive filtering via Content-Type validation
 - **UDP Taming**: 50-80% faster scans with `--top-ports 100` and strict timeouts
 - **Entity Resolution**: Multi-interface host consolidation (`unified_assets` array)
 - **SIEM Professional**: ECS v8.11 compliance, severity scoring, risk scores, auto-tags
 
-### Key Features from v2.x
+### Core Features
 
 - **Adaptive Deep Scan**: 3-phase strategy (TCP aggressive → Priority UDP → Full UDP)
 - **Concurrent PCAP**: Traffic captured during scans, not after

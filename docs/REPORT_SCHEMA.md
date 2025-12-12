@@ -8,7 +8,7 @@ RedAudit generates machine-readable reports in JSON format. This document descri
 
 **Data Types**: Standard JSON types (`string`, `number`, `boolean`, `array`, `object`).
 **Nullable**: Fields are nullable unless specified otherwise.
-**Source Module**: `redaudit/core/reporter.py` (v2.9+)
+**Source Module**: `redaudit/core/reporter.py`
 
 ## Schema Definition
 
@@ -18,7 +18,7 @@ The top-level container for the scan session.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `schema_version` | `string` | Schema version (v2.7+: "2.0") |
+| `schema_version` | `string` | Schema version ("2.0") |
 | `event_type` | `string` | Event type for SIEM ingestion ("redaudit.scan.complete") |
 | `session_id` | `string` | Unique UUID for this scan session |
 | `timestamp` | `string` | Scan start timestamp (ISO 8601) |
@@ -64,7 +64,7 @@ Represents a single targeted IP address.
 }
 ```
 
-**Host Status Types (v2.8+)**:
+**Host Status Types**:
 
 - `up`: Host responded and has open ports
 - `down`: No response at all
@@ -77,12 +77,12 @@ This field appears only if automatic deep scan was triggered.
 
 | Field | Type | Description |
 |---|---|---|
-| `strategy` | string | Strategy identifier (`adaptive_v2.8` for v2.8+, `adaptive_v2.5` for earlier) |
+| `strategy` | string | Strategy identifier (`adaptive`) |
 | `mac_address` | string | (Optional) MAC address if detected |
 | `vendor` | string | (Optional) Hardware vendor if detected |
 | `phase2_skipped` | boolean | True if Phase 2 (UDP/OS) was skipped because Phase 1 found identity |
-| `phase2b_skipped` | boolean | (v2.8+) True if full UDP scan was skipped (quick mode) |
-| `udp_mode` | string | (v2.8+) UDP scan mode used: `quick` or `full` |
+| `phase2b_skipped` | boolean | True if full UDP scan was skipped (quick mode) |
+| `udp_mode` | string | UDP scan mode used: `quick` or `full` |
 | `commands` | array | List of executed Nmap commands, logs, and durations |
 | `commands[].command` | string | Full command line executed |
 | `commands[].returncode` | integer | Exit code of the command |
@@ -121,12 +121,12 @@ List of web vulnerability findings. Each entry contains:
 | `vulnerabilities[].whatweb` | string | (Optional) WhatWeb output |
 | `vulnerabilities[].nikto_findings` | array | (Optional) Nikto findings (if FULL mode) |
 | `vulnerabilities[].testssl_analysis` | object | (Optional) TestSSL.sh results (if FULL mode and HTTPS). Contains `weak_ciphers`, `vulnerabilities`, `protocols`. |
-| `vulnerabilities[].severity` | string | (v2.9+) Severity level: critical/high/medium/low/info |
-| `vulnerabilities[].severity_score` | integer | (v2.9+) Numeric severity (0-100) |
+| `vulnerabilities[].severity` | string | Severity level: critical/high/medium/low/info |
+| `vulnerabilities[].severity_score` | integer | Numeric severity (0-100) |
 | `vulnerabilities[].curl_headers` | string | (Optional) HTTP headers from curl |
 | `vulnerabilities[].wget_spider` | string | (Optional) Wget spider output |
 | `vulnerabilities[].tls_info` | string | (Optional) OpenSSL TLS certificate info |
-| `vulnerabilities[].nikto_filtered_count` | integer | (v2.9+) Number of Nikto false positives filtered by Smart-Check |
+| `vulnerabilities[].nikto_filtered_count` | integer | Number of Nikto false positives filtered by Smart-Check |
 
 ## Scan Summary Object
 
@@ -147,11 +147,11 @@ List of web vulnerability findings. Each entry contains:
 | `hosts_scanned` | integer | Hosts that underwent full port scanning |
 | `vulns_found` | integer | Total web vulnerabilities found |
 | `duration` | string | Total scan duration (HH:MM:SS format) |
-| `unified_asset_count` | integer | (v2.9+) Number of unified assets after entity resolution |
-| `multi_interface_devices` | integer | (v2.9+) Devices detected with multiple network interfaces |
-| `max_risk_score` | integer | (v2.9+) Highest risk score across all hosts (0-100) |
-| `avg_risk_score` | float | (v2.9+) Average risk score (0-100) |
-| `high_risk_hosts` | integer | (v2.9+) Hosts with risk score >= 70 |
+| `unified_asset_count` | integer | Number of unified assets after entity resolution |
+| `multi_interface_devices` | integer | Devices detected with multiple network interfaces |
+| `max_risk_score` | integer | Highest risk score across all hosts (0-100) |
+| `avg_risk_score` | float | Average risk score (0-100) |
+| `high_risk_hosts` | integer | Hosts with risk score >= 70 |
 
 ## Network Info Array
 
@@ -169,7 +169,7 @@ List of detected network interfaces.
 ]
 ```
 
-## v2.9 New Features
+## New Features (v2.9.0)
 
 ### SIEM Enhancement (ECS Compliance)
 
@@ -184,7 +184,7 @@ List of detected network interfaces.
 }
 ```
 
-### Host Enrichment (v2.9+)
+### Host Enrichment
 
 | Field | Type | Description |
 |---|---|---|

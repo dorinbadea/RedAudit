@@ -128,7 +128,7 @@ def get_nmap_arguments(mode: str) -> str:
     args = {
         "rapido": "-sn -T4 --max-retries 1 --host-timeout 10s",
         "normal": "-T4 -F -sV --version-intensity 5 --host-timeout 60s --open",
-        # v3.0: Reduced max-retries from 2 to 1 for LAN efficiency
+        # v2.9: Reduced max-retries from 2 to 1 for LAN efficiency
         "completo": "-T4 -p- -sV -sC -A --version-intensity 9 --host-timeout 300s --max-retries 1 --open",
     }
     return args.get(mode, args["normal"])

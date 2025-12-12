@@ -4,7 +4,7 @@ RedAudit - Entity Resolution Module
 Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
-v3.0: Asset reconciliation module for identifying and merging duplicate host entries
+v2.9: Asset reconciliation module for identifying and merging duplicate host entries
 that represent the same physical device with multiple network interfaces.
 """
 
