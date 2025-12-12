@@ -48,11 +48,18 @@ class TestNetworkDetection(unittest.TestCase):
     @patch('redaudit.core.network.subprocess.run')
     def test_detect_networks_fallback(self, mock_run):
         """Test fallback network detection via ip command."""
-        mock_run.return_value = Mock(
-            stdout="2: eth0    inet 192.168.1.100/24 brd 192.168.1.255 scope global eth0\n"
-                   "3: wlan0   inet 10.0.0.50/16 brd 10.0.255.255 scope global wlan0\n",
-            returncode=0
-        )
+        # v3.0: Function now calls both IPv4 and IPv6 commands
+        mock_run.side_effect = [
+            Mock(  # IPv4 call
+                stdout="2: eth0    inet 192.168.1.100/24 brd 192.168.1.255 scope global eth0\n"
+                       "3: wlan0   inet 10.0.0.50/16 brd 10.0.255.255 scope global wlan0\n",
+                returncode=0
+            ),
+            Mock(  # IPv6 call
+                stdout="",
+                returncode=0
+            ),
+        ]
         
         nets = detect_networks_fallback()
         
@@ -66,11 +73,17 @@ class TestNetworkDetection(unittest.TestCase):
     @patch('redaudit.core.network.subprocess.run')
     def test_detect_networks_fallback_excludes_docker(self, mock_run):
         """Test that Docker interfaces are excluded."""
-        mock_run.return_value = Mock(
-            stdout="2: eth0    inet 192.168.1.100/24 brd 192.168.1.255 scope global eth0\n"
-                   "3: docker0 inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0\n",
-            returncode=0
-        )
+        mock_run.side_effect = [
+            Mock(  # IPv4 call
+                stdout="2: eth0    inet 192.168.1.100/24 brd 192.168.1.255 scope global eth0\n"
+                       "3: docker0 inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0\n",
+                returncode=0
+            ),
+            Mock(  # IPv6 call
+                stdout="",
+                returncode=0
+            ),
+        ]
         
         nets = detect_networks_fallback()
         

@@ -1,4 +1,4 @@
-# RedAudit v2.9.0
+# RedAudit v3.0.0
 
 ## Smart Improvements, UDP Taming & Entity Resolution
 
@@ -69,5 +69,5 @@ Complete bilingual documentation (English/Spanish), now fully standardized:
 ### Links
 
 - **Full Changelog**: [CHANGELOG.md](CHANGELOG.md)
-- **Release Notes**: [RELEASE_NOTES_v2.9.0.md](RELEASE_NOTES_v2.9.0.md)
+- **Release Notes**: [RELEASE_NOTES_v3.0.0.md](RELEASE_NOTES_v3.0.0.md)
 - **Security Specs**: [docs/SECURITY.md](docs/SECURITY.md)

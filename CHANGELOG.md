@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2025-12-12 (Major Feature Release)
+
+### Added
+
+- **IPv6 Support**: Full scanning capabilities for IPv6 networks
+  - `is_ipv6()`, `is_ipv6_network()` helper functions in `scanner.py`
+  - `get_nmap_arguments_for_target()` automatically adds `-6` flag for IPv6 targets
+  - IPv6 network detection in `network.py` (netifaces + fallback)
+  - CLI flag: `--ipv6` for IPv6-only scanning mode
+
+- **Magic Byte Validation**: Enhanced false positive detection
+  - `verify_magic_bytes()` in `verify_vuln.py`
+  - Downloads first 512 bytes and verifies file signatures
+  - Supports: tar, gzip, zip, pem file formats
+  - Integrated as third verification layer in Smart-Check
+
+- **CVE Correlation (NVD)**: Deep vulnerability intelligence
+  - New module: `redaudit/core/nvd.py`
+  - NIST NVD API 2.0 integration
+  - CPE 2.3 matching for accurate CVE lookup
+  - 7-day cache for offline use and rate limit compliance
+  - CLI flags: `--nvd-key`, `--cve-lookup`
+
+- **Differential Analysis**: Compare scan reports
+  - New module: `redaudit/core/diff.py`
+  - Identifies new hosts, removed hosts, port changes
+  - Generates both JSON and Markdown output
+  - CLI flag: `--diff OLD NEW`
+
+- **Proxy Chains (SOCKS5)**: Network pivoting support
+  - New module: `redaudit/core/proxy.py`
+  - `ProxyManager` class for session management
+  - Proxychains wrapper integration
+  - CLI flag: `--proxy URL`
+
+- **Enhanced Auto-Update**: Reliable update system
+  - Git clone approach (replaces git pull)
+  - Runs install script with user's language preference
+  - Copies to `~/RedAudit` with all documentation
+  - Installation verification and ownership fix
+
+### Changed
+
+- **Version**: Major version bump to 3.0.0
+- **Auditor**: Added `proxy_manager` and v3.0 config options
+
+---
+
 ## [2.9.0] - 2025-12-12 (Smart Improvements)
 
 ### Added

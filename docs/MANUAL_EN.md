@@ -1,4 +1,4 @@
-# RedAudit v2.9.0 – User Manual (EN)
+# RedAudit v3.0.0 – User Manual (EN)
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](MANUAL_ES.md)
 
