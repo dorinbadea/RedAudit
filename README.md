@@ -42,7 +42,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 
 ### System Overview
 
-![System Overview](docs/images/system_overview_v2.png)
+![System Overview](docs/images/system_overview_v3.png)
 
 Deep scans are triggered selectively: web auditing modules launch only upon detection of HTTP/HTTPS services, and SSL inspection is reserved for encrypted ports.
 
