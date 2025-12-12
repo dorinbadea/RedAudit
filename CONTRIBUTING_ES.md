@@ -19,8 +19,8 @@ RedAudit se adhiere a estándares estrictos de codificación y commits para mant
 
 El código está organizado como un paquete Python:
 
-- `redaudit/core/`: Funcionalidad principal (auditor, scanner, crypto, reporter, network)
-- `redaudit/utils/`: Utilidades (constants, i18n)
+- `redaudit/core/`: Funcionalidad principal (auditor, scanner, crypto, reporter, network, nvd, diff, proxy)
+- `redaudit/utils/`: Utilidades (constants, i18n, config)
 - `tests/`: Suites de tests
 
 ### Testing
