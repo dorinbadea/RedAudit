@@ -11,7 +11,7 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 | **Alta** | **Puertos UDP Configurables** | Añadir flag CLI `--udp-ports N` (rango: 50-500, defecto: 100) para cobertura UDP ajustable. |
 | **Media** | **Descubrimiento NetBIOS/mDNS** | Consultas activas de hostname (puerto 137/5353) para mejorar resolución de entidades. |
 | **Media** | **Contenedorización** | Dockerfile oficial y configuración Docker Compose para contenedores de auditoría efímeros. |
-| **Baja** | **Configuración Persistente** | Configuración de usuario en `~/.redaudit/config.yaml` para anular valores por defecto. |
+| **Baja** | **Ampliar Configuración Persistente** | Extender `~/.redaudit/config.json` más allá de la clave NVD (p.ej. hilos por defecto, directorio de salida, rate limits) y añadir importación/exportación YAML opcional. |
 
 ## Propuestas Arquitectónicas
 
@@ -32,11 +32,21 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 ### 3. Configuración Persistente
 
 **Estado**: Planificado
-**Concepto**: Permitir configuración de usuario en `~/.redaudit/config.yaml` para anular valores por defecto (eliminando la necesidad de flags CLI repetitivos).
+**Concepto**: Ampliar la configuración de usuario en `~/.redaudit/config.json` para anular valores por defecto (eliminando la necesidad de flags CLI repetitivos). Opcionalmente añadir importación/exportación YAML por comodidad.
 
 ## Hitos Completados
 
-### v3.0.0 (Completado - Diciembre 2025) -> **ACTUAL**
+### v3.0.1 (Completado - Diciembre 2025) -> **ACTUAL**
+
+*Patch centrado en configuración, endurecimiento de update e higiene documental.*
+
+- [x] **API Key NVD Persistente**: Guardar/leer la clave NVD vía archivo de config + variable de entorno.
+- [x] **Verificación del Updater**: El auto-update resuelve el tag publicado y verifica el hash del commit antes de instalar.
+- [x] **Instalación testssl.sh fijada**: El instalador fija `testssl.sh` a un tag/commit conocido y lo verifica antes de enlazar.
+- [x] **Resiliencia NVD**: Reintentos con backoff en errores transitorios (429/5xx/red).
+- [x] **Modo limitado sin root**: `--allow-non-root` permite ejecutar sin sudo (capacidad limitada).
+
+### v3.0.0 (Completado - Diciembre 2025)
 
 *Lanzamiento mayor con capacidades avanzadas.*
 

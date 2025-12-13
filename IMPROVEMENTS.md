@@ -11,7 +11,7 @@ This document outlines the technical roadmap, planned architectural improvements
 | **High** | **Configurable UDP Ports** | Add `--udp-ports N` CLI flag (range: 50-500, default: 100) for user-tunable UDP scan coverage. |
 | **Medium** | **NetBIOS/mDNS Discovery** | Active hostname queries (port 137/5353) for improved entity resolution on networks without DNS PTR records. |
 | **Medium** | **Containerization** | Official Dockerfile and Docker Compose setup for ephemeral audit containers. |
-| **Low** | **Persistent Configuration** | User config in `~/.redaudit/config.yaml` to override CLI defaults. |
+| **Low** | **Expand Persistent Configuration** | Extend `~/.redaudit/config.json` beyond NVD key (e.g., default threads, output dir, rate limits) and optionally support YAML import/export. |
 
 ## Architectural Proposals
 
@@ -32,11 +32,21 @@ This document outlines the technical roadmap, planned architectural improvements
 ### 3. Persistent Configuration
 
 **Status**: Planned
-**Concept**: Allow user configuration in `~/.redaudit/config.yaml` to override defaults (removing need for repetitive CLI flags).
+**Concept**: Expand user configuration in `~/.redaudit/config.json` to override defaults (removing need for repetitive CLI flags). Optionally add YAML import/export for convenience.
 
 ## Completed Milestones
 
-### v3.0.0 (Completed - December 2025) -> **CURRENT**
+### v3.0.1 (Completed - December 2025) -> **CURRENT**
+
+*Patch release focused on configuration, update hardening, and documentation alignment.*
+
+- [x] **Persistent NVD API Key Storage**: Store/read NVD API key via config file + environment variable.
+- [x] **Updater Verification**: Auto-update resolves the published Git tag and verifies commit hash before installing.
+- [x] **Pinned testssl.sh Install**: Installer pins `testssl.sh` to a known tag/commit and verifies it before linking.
+- [x] **NVD Resilience**: Retry with backoff on transient NVD API errors (429/5xx/network).
+- [x] **Limited Non-Root Mode**: `--allow-non-root` allows running without sudo (limited capabilities).
+
+### v3.0.0 (Completed - December 2025)
 
 *Major feature release with advanced capabilities.*
 
