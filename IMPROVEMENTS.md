@@ -21,13 +21,13 @@ This document outlines the technical roadmap, planned architectural improvements
 **Concept**: Decouple the core scanner from tools. Allow Python-based "Plugins" to define new tool wrappers (e.g., specific IoT scanners) without modifying core logic.
 **Benefit**: easier community contribution and extensibility.
 
-### 2. Distributed Scanning (Master/Slave)
+### 2. Distributed Scanning (Coordinator/Workers)
 
 **Status**: Long-term
 **Concept**: Separate the Orchestrator from verify workers.
 
-- Central API (Master) distributes targets.
-- Remote Agents (Slaves) execute scans and return JSON.
+- Central API (Coordinator) distributes targets.
+- Remote Workers (Nodes) execute scans and return JSON.
 
 ### 3. Persistent Configuration
 
@@ -87,7 +87,7 @@ This document outlines the technical roadmap, planned architectural improvements
 
 - [x] **Modular Architecture**: Refactored into Python package structure
 - [x] **CI/CD Pipeline**: GitHub Actions for automated testing (Python 3.9-3.12)
-- [x] **Test Suite**: Expanded to 34 automated tests (89% coverage)
+- [x] **Test Suite**: Expanded automated tests and introduced CI coverage reporting (tracked by CI, not hard-coded here)
 - [x] **Named Constants**: All magic numbers replaced
 - [x] **Backward Compatibility**: Original `redaudit.py` preserved as wrapper
 

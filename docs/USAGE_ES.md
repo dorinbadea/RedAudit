@@ -102,7 +102,7 @@ sudo redaudit -t "2001:db8::/64" --ipv6 --mode normal --yes
 Genera un análisis diferencial mostrando cambios de red.
 
 ```bash
-sudo redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
+redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 ```
 
 **7. Escaneo a Través de Proxy (v3.0)**

@@ -229,4 +229,4 @@ See [LICENSE](LICENSE) for details.
 - **Issues**: Use [GitHub Issues](https://github.com/dorinbadea/RedAudit/issues) for bugs/features
 - **Contact**: See README.md for contact information
 
-Thank you for contributing to RedAudit! 🔴🛡️
+Thank you for contributing to RedAudit! 

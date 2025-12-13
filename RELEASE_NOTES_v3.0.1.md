@@ -118,11 +118,11 @@ All 25+ documentation files synchronized to v3.0.1:
 
 **Version References Updated**:
 
-- ✅ `README.md` / `README_ES.md`: Version badge `3.0.1`
-- ✅ `MANUAL_EN.md` / `MANUAL_ES.md`: Header `v3.0.1`
-- ✅ `DIDACTIC_GUIDE.md` / `GUIA_DIDACTICA.md`: Version `v3.0.1` + TL;DR sections
-- ✅ `GITHUB_RELEASE.md`: New v3.0.1 section
-- ✅ `CHANGELOG.md`: Dedicated `[3.0.1]` entry
+- `README.md` / `README_ES.md`: Version badge `3.0.1`
+- `MANUAL_EN.md` / `MANUAL_ES.md`: Header `v3.0.1`
+- `DIDACTIC_GUIDE.md` / `GUIA_DIDACTICA.md`: Version `v3.0.1` + TL;DR sections
+- `GITHUB_RELEASE.md`: New v3.0.1 section
+- `CHANGELOG.md`: Dedicated `[3.0.1]` entry
 
 **New Documentation Sections**:
 
@@ -254,9 +254,9 @@ See [IMPROVEMENTS.md](IMPROVEMENTS.md) for our roadmap and planned features for 
 
 **Stay Updated**:
 
-- ⭐ Star the repository
-- 👁️ Watch for releases
-- 🐛 Report issues on GitHub
+- Star the repository
+- Watch for releases
+- Report issues on GitHub
 
 ---
 

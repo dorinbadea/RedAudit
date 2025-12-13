@@ -21,13 +21,13 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 **Concepto**: Desacoplar el escáner principal de las herramientas. Permitir "Plugins" basados en Python para definir nuevos wrappers de herramientas sin modificar la lógica central.
 **Beneficio**: Facilita contribución de la comunidad y extensibilidad.
 
-### 2. Escaneo Distribuido (Master/Slave)
+### 2. Escaneo Distribuido (Coordinador/Workers)
 
 **Estado**: Largo plazo
 **Concepto**: Separar el Orquestador de los workers de verificación.
 
-- API Central (Master) distribuye objetivos.
-- Agentes Remotos (Slaves) ejecutan escaneos y devuelven JSON.
+- API Central (Coordinador) distribuye objetivos.
+- Workers remotos (Nodos) ejecutan escaneos y devuelven JSON.
 
 ### 3. Configuración Persistente
 
@@ -87,7 +87,7 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 
 - [x] **Arquitectura Modular**: Refactorizado en estructura de paquete Python
 - [x] **Pipeline CI/CD**: GitHub Actions para testing automatizado (Python 3.9-3.12)
-- [x] **Suite de Tests**: Expandido a 34 tests automatizados (89% de cobertura)
+- [x] **Suite de Tests**: Ampliación de tests automatizados e introducción de reporting de cobertura en CI (reportado por CI, sin fijar números aquí)
 - [x] **Constantes Nombradas**: Todos los números mágicos reemplazados
 - [x] **Compatibilidad hacia atrás**: `redaudit.py` original preservado como wrapper
 

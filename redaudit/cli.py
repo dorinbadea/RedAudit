@@ -301,13 +301,7 @@ def main():
     """Main entry point for RedAudit CLI."""
     args = parse_arguments()
 
-    if os.geteuid() != 0 and not getattr(args, "allow_non_root", False):
-        print("Error: root privileges (sudo) required. Use --allow-non-root to proceed in limited mode.")
-        sys.exit(1)
-    elif os.geteuid() != 0:
-        print("⚠️  Running without root: some scans (OS detection, UDP, tcpdump) may fail.")
-
-    # v3.0: Handle --diff mode (no scan, just comparison)
+    # v3.0: Handle --diff mode (no scan, just comparison) - does not require root
     if args.diff:
         from redaudit.core.diff import generate_diff_report, format_diff_text, format_diff_markdown
         old_path, new_path = args.diff
@@ -329,6 +323,12 @@ def main():
         print(f"\nMarkdown report saved: {md_path}")
         
         sys.exit(0)
+
+    if os.geteuid() != 0 and not getattr(args, "allow_non_root", False):
+        print("Error: root privileges (sudo) required. Use --allow-non-root to proceed in limited mode.")
+        sys.exit(1)
+    elif os.geteuid() != 0:
+        print("⚠️  Running without root: some scans (OS detection, UDP, tcpdump) may fail.")
 
     # Import here to avoid circular imports
     from redaudit.core.auditor import InteractiveNetworkAuditor
