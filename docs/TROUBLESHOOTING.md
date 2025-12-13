@@ -32,19 +32,21 @@ sudo apt update && sudo apt install nmap
 **Resolution**:
 
 ```bash
-pip3 install -r requirements.txt
-# Or run the verified installer
+# Run the installer to install all dependencies
 sudo bash redaudit_install.sh
+
+# Or install Python packages manually
+sudo apt install python3-nmap python3-cryptography python3-netifaces
 ```
 
-### 4. `Heartbeat file stuck`
+### 4. `Heartbeat warnings in logs`
 
-**Symptom**: The timestamp in `~/.redaudit/logs/heartbeat` is older than 30 seconds.
-**Cause**: The main thread may be blocked by a subprocess hanging (e.g., a stalled `nikto` scan).
+**Symptom**: You see "Activity Monitor" warnings in the console output.
+**Cause**: The main thread may be blocked by a subprocess hanging (e.g., a stalled `nikto` scan). RedAudit monitors scan activity and prints warnings when no output is detected for extended periods.
 **Resolution**:
 
 - Check system load: `top`
-- Inspect logs: `tail -f ~/.redaudit/logs/redaudit.log`
+- Inspect logs: `tail -f ~/.redaudit/logs/redaudit_*.log`
 - Terminate process if unresponsive > 5 minutes.
 
 ### 5. `Decryption failed: Invalid Token`

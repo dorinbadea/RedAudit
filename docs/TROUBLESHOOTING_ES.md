@@ -32,19 +32,21 @@ sudo apt update && sudo apt install nmap
 **Resolución**:
 
 ```bash
-pip3 install -r requirements.txt
-# O ejecutar el instalador verificado
+# Ejecutar el instalador para instalar todas las dependencias
 sudo bash redaudit_install.sh
+
+# O instalar paquetes Python manualmente
+sudo apt install python3-nmap python3-cryptography python3-netifaces
 ```
 
-### 4. `Heartbeat file stuck`
+### 4. `Advertencias de Heartbeat en logs`
 
-**Síntoma**: La marca de tiempo en `~/.redaudit/logs/heartbeat` es más antigua de 30 segundos.
-**Causa**: El hilo principal puede estar bloqueado por un subproceso colgado (ej: un escaneo `nikto` estancado).
+**Síntoma**: Ves advertencias de "Monitor de Actividad" en la salida de consola.
+**Causa**: El hilo principal puede estar bloqueado por un subproceso colgado (ej: un escaneo `nikto` estancado). RedAudit monitorea la actividad del escaneo e imprime advertencias cuando no detecta salida por periodos extendidos.
 **Resolución**:
 
 - Revisar carga del sistema: `top`
-- Inspeccionar logs: `tail -f ~/.redaudit/logs/redaudit.log`
+- Inspeccionar logs: `tail -f ~/.redaudit/logs/redaudit_*.log`
 - Terminar proceso si no responde >5 minutos.
 
 ### 5. `Decryption failed: Invalid Token`

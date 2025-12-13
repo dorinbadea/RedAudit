@@ -77,6 +77,56 @@ def extract_ports_set(host: Dict) -> Set[Tuple[int, str]]:
     return ports
 
 
+def extract_web_vulns_index(report: Dict) -> Dict[str, Dict]:
+    """
+    Extract web vulnerabilities by host from the vulnerabilities[] array.
+    
+    Args:
+        report: Full scan report
+        
+    Returns:
+        Dict mapping host IP to vulnerability counts by tool
+    """
+    vuln_index = {}
+    for entry in report.get('vulnerabilities', []):
+        host = entry.get('host', '')
+        if not host:
+            continue
+        
+        counts = {
+            'nikto_count': 0,
+            'whatweb_count': 0,
+            'testssl_count': 0,
+            'total_findings': 0,
+        }
+        
+        for finding in entry.get('vulnerabilities', []):
+            # Count Nikto findings
+            nikto = finding.get('nikto_findings', [])
+            counts['nikto_count'] += len(nikto) if isinstance(nikto, list) else 0
+            
+            # Count WhatWeb results
+            whatweb = finding.get('whatweb_results', {})
+            if whatweb and isinstance(whatweb, dict):
+                counts['whatweb_count'] += 1
+            
+            # Count TestSSL vulnerabilities
+            testssl = finding.get('testssl', {})
+            if testssl:
+                tssl_vulns = testssl.get('vulnerabilities', [])
+                counts['testssl_count'] += len(tssl_vulns) if isinstance(tssl_vulns, list) else 0
+        
+        counts['total_findings'] = (
+            counts['nikto_count'] + 
+            counts['whatweb_count'] + 
+            counts['testssl_count']
+        )
+        
+        vuln_index[host] = counts
+    
+    return vuln_index
+
+
 def compare_hosts(old_report: Dict, new_report: Dict) -> Dict:
     """
     Compare two reports and identify host-level changes.
@@ -170,13 +220,36 @@ def generate_diff_report(old_path: str, new_path: str) -> Optional[Dict]:
             changes['hostname'] = new_index[ip].get('hostname', '')
             changed_hosts.append(changes)
     
+    # Compare web vulnerabilities (v3.0.1)
+    old_web_vulns = extract_web_vulns_index(old_report)
+    new_web_vulns = extract_web_vulns_index(new_report)
+    
+    web_vuln_changes = []
+    all_hosts = set(old_web_vulns.keys()) | set(new_web_vulns.keys())
+    for host in all_hosts:
+        old_counts = old_web_vulns.get(host, {'total_findings': 0, 'nikto_count': 0, 'whatweb_count': 0, 'testssl_count': 0})
+        new_counts = new_web_vulns.get(host, {'total_findings': 0, 'nikto_count': 0, 'whatweb_count': 0, 'testssl_count': 0})
+        
+        delta = new_counts['total_findings'] - old_counts['total_findings']
+        if delta != 0:
+            web_vuln_changes.append({
+                'host': host,
+                'delta': delta,
+                'old_count': old_counts['total_findings'],
+                'new_count': new_counts['total_findings'],
+                'nikto_delta': new_counts['nikto_count'] - old_counts['nikto_count'],
+                'testssl_delta': new_counts['testssl_count'] - old_counts['testssl_count'],
+            })
+    
+    total_web_vuln_delta = sum(c['delta'] for c in web_vuln_changes)
+    
     # Calculate summary statistics
     total_new_ports = sum(len(h['new_ports']) for h in changed_hosts)
     total_closed_ports = sum(len(h['closed_ports']) for h in changed_hosts)
     total_new_vulns = sum(len(h['new_vulnerabilities']) for h in changed_hosts)
     
     return {
-        'diff_version': '3.0',
+        'diff_version': '3.0.1',
         'generated_at': datetime.now().isoformat(),
         'old_report': {
             'path': os.path.basename(old_path),
@@ -192,6 +265,7 @@ def generate_diff_report(old_path: str, new_path: str) -> Optional[Dict]:
             'new_hosts': host_comparison['new_hosts'],
             'removed_hosts': host_comparison['removed_hosts'],
             'changed_hosts': changed_hosts,
+            'web_vuln_changes': web_vuln_changes,  # v3.0.1: web findings diff
         },
         'summary': {
             'new_hosts_count': len(host_comparison['new_hosts']),
@@ -200,10 +274,12 @@ def generate_diff_report(old_path: str, new_path: str) -> Optional[Dict]:
             'total_new_ports': total_new_ports,
             'total_closed_ports': total_closed_ports,
             'total_new_vulnerabilities': total_new_vulns,
+            'web_vuln_delta': total_web_vuln_delta,  # v3.0.1: net change in web findings
             'has_changes': bool(
                 host_comparison['new_hosts'] or 
                 host_comparison['removed_hosts'] or 
-                changed_hosts
+                changed_hosts or
+                web_vuln_changes
             ),
         },
     }
@@ -238,6 +314,10 @@ def format_diff_text(diff: Dict) -> str:
     lines.append(f"  New ports opened: {summary['total_new_ports']}")
     lines.append(f"  Ports closed: {summary['total_closed_ports']}")
     lines.append(f"  New vulnerabilities: {summary['total_new_vulnerabilities']}")
+    web_delta = summary.get('web_vuln_delta', 0)
+    if web_delta != 0:
+        delta_str = f"+{web_delta}" if web_delta > 0 else str(web_delta)
+        lines.append(f"  Web findings delta: {delta_str}")
     lines.append("")
     
     changes = diff['changes']
@@ -274,6 +354,22 @@ def format_diff_text(diff: Dict) -> str:
                 lines.append(f"    [!] New vuln: {vuln[:60]}...")
             
             lines.append("")
+    
+    # v3.0.1: Web vulnerability changes
+    web_changes = changes.get('web_vuln_changes', [])
+    if web_changes:
+        lines.append("WEB VULNERABILITY CHANGES")
+        lines.append("-" * 40)
+        for wc in web_changes:
+            delta_str = f"+{wc['delta']}" if wc['delta'] > 0 else str(wc['delta'])
+            lines.append(f"  {wc['host']}: {delta_str} findings ({wc['old_count']} → {wc['new_count']})")
+            if wc['nikto_delta'] != 0:
+                nd = f"+{wc['nikto_delta']}" if wc['nikto_delta'] > 0 else str(wc['nikto_delta'])
+                lines.append(f"    Nikto: {nd}")
+            if wc['testssl_delta'] != 0:
+                td = f"+{wc['testssl_delta']}" if wc['testssl_delta'] > 0 else str(wc['testssl_delta'])
+                lines.append(f"    TestSSL: {td}")
+        lines.append("")
     
     if not summary['has_changes']:
         lines.append("No changes detected between reports.")
@@ -317,6 +413,10 @@ def format_diff_markdown(diff: Dict) -> str:
     lines.append(f"| New ports | {summary['total_new_ports']} |")
     lines.append(f"| Closed ports | {summary['total_closed_ports']} |")
     lines.append(f"| New vulnerabilities | {summary['total_new_vulnerabilities']} |")
+    web_delta = summary.get('web_vuln_delta', 0)
+    if web_delta != 0:
+        delta_str = f"+{web_delta}" if web_delta > 0 else str(web_delta)
+        lines.append(f"| Web findings delta | {delta_str} |")
     lines.append("")
     
     changes = diff['changes']
@@ -361,6 +461,26 @@ def format_diff_markdown(diff: Dict) -> str:
                 for vuln in host['new_vulnerabilities']:
                     lines.append(f"- {vuln}")
                 lines.append("")
+    
+    # v3.0.1: Web vulnerability changes section
+    web_changes = changes.get('web_vuln_changes', [])
+    if web_changes:
+        lines.append("## Web Vulnerability Changes")
+        lines.append("")
+        lines.append("| Host | Delta | Old | New | Details |")
+        lines.append("|:---|:---:|:---:|:---:|:---|")
+        for wc in web_changes:
+            delta_str = f"+{wc['delta']}" if wc['delta'] > 0 else str(wc['delta'])
+            details = []
+            if wc['nikto_delta'] != 0:
+                nd = f"+{wc['nikto_delta']}" if wc['nikto_delta'] > 0 else str(wc['nikto_delta'])
+                details.append(f"Nikto {nd}")
+            if wc['testssl_delta'] != 0:
+                td = f"+{wc['testssl_delta']}" if wc['testssl_delta'] > 0 else str(wc['testssl_delta'])
+                details.append(f"TestSSL {td}")
+            details_str = ", ".join(details) if details else "-"
+            lines.append(f"| `{wc['host']}` | {delta_str} | {wc['old_count']} | {wc['new_count']} | {details_str} |")
+        lines.append("")
     
     if not summary['has_changes']:
         lines.append("> No changes detected between the two reports.")

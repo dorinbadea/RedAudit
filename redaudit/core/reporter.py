@@ -62,13 +62,14 @@ def generate_summary(
 
     # A5: SIEM-compatible fields (v2.7)
     results["schema_version"] = "2.0"
-    results["event_type"] = "redaudit.scan.complete" if not duration else "redaudit.scan.complete"
+    results["event_type"] = "redaudit.scan.complete"
     results["session_id"] = str(uuid.uuid4())
     results["timestamp_end"] = datetime.now().isoformat()
     results["scanner"] = {
         "name": "RedAudit",
         "version": VERSION,
-        "mode": config.get("scan_mode", "normal")
+        "mode": config.get("scan_mode", "normal"),
+        "mode_cli": config.get("scan_mode_cli", config.get("scan_mode", "normal")),
     }
     results["targets"] = config.get("target_networks", [])
 

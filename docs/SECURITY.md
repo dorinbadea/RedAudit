@@ -41,7 +41,9 @@ RedAudit implements a "secure by design" philosophy, assuming execution in hosti
 All external inputs—target ranges, hostnames, interface names—are treated as untrusted and subjected to strict validation.
 
 - **Strict Typing**: Only `str` types accepted for critical parameters.
-- **Regex Allowlisting**: IPs and hostnames must match strict patterns (`^[a-zA-Z0-9\\.\\-\\/]+$`).
+- **IP Address Validation**: Uses Python's `ipaddress` module to validate both IPv4 and IPv6 addresses. Invalid IPs return `None`.
+- **Hostname Validation**: Regex allowlisting (`^[a-zA-Z0-9\.\-]+$`) ensures only alphanumeric characters, dots, and hyphens.
+- **Length Limits**: All inputs are truncated to `MAX_INPUT_LENGTH` (1024 chars) to prevent buffer-based attacks.
 - **Command Injection Prevention**: `subprocess.run` is used exclusively with argument lists; shell expansion (`shell=True`) is disabled.
 - **Module Location**: `redaudit/core/scanner.py` (`sanitize_ip`, `sanitize_hostname`)
 

@@ -58,7 +58,11 @@ def parse_proxy_url(url: str) -> Optional[Dict]:
 
 def test_proxy_connection(proxy: Dict, timeout: int = 10) -> Tuple[bool, str]:
     """
-    Test if a proxy is reachable and working.
+    Test if a proxy is reachable via TCP.
+    
+    Note: This only verifies TCP connectivity to the proxy port, not full
+    SOCKS5 protocol compatibility. Actual proxy functionality is validated
+    when proxychains executes the scan commands.
     
     Args:
         proxy: Parsed proxy dict from parse_proxy_url

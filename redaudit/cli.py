@@ -242,6 +242,7 @@ def configure_from_args(app, args) -> bool:
     # Set scan mode
     mode_map = {"fast": "rapido", "normal": "normal", "full": "completo"}
     app.config["scan_mode"] = mode_map[args.mode]
+    app.config["scan_mode_cli"] = args.mode  # Preserve CLI value for reports
 
     # Set threads
     app.config["threads"] = args.threads

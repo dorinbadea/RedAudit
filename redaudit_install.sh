@@ -1,6 +1,6 @@
 #!/bin/bash
-# RedAudit Installer v3.0.0 (Clean install + Language injection + Alias setup)
-# GPLv3 - 2026 © Dorin Badea
+# RedAudit Installer v3.0.1 (Clean install + Language injection + Alias setup)
+# GPLv3 - 2025 © Dorin Badea
 
 # -------------------------------------------
 # 0) Pre-checks
@@ -19,23 +19,46 @@ fi
 AUTO_YES=false
 [[ "$1" == "-y" ]] && AUTO_YES=true
 
+# Support non-interactive mode via environment variables (for auto-update)
+# REDAUDIT_AUTO_UPDATE=1 enables fully non-interactive install
+# REDAUDIT_LANG=en|es sets language without prompting
+if [[ -n "$REDAUDIT_AUTO_UPDATE" ]]; then
+    AUTO_YES=true
+fi
+
+# Determine real user early (before any operations that need it)
+REAL_USER=${SUDO_USER:-$USER}
+REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+USER_SHELL=$(getent passwd "$REAL_USER" | cut -d: -f7)
+
 # -------------------------------------------
 # 1) Language selector
 # -------------------------------------------
 
-echo "----------------------------------------------"
-echo " Select Language / Selecciona Idioma"
-echo "----------------------------------------------"
-echo " 1. English"
-echo " 2. Español"
-echo "----------------------------------------------"
-
-read -r -p "Choice [1/2]: " LANG_OPT
-[[ -z "$LANG_OPT" ]] && LANG_OPT="1"
+# Use REDAUDIT_LANG env var if set, otherwise prompt
+if [[ -n "$REDAUDIT_LANG" ]]; then
+    if [[ "$REDAUDIT_LANG" == "es" ]]; then
+        LANG_OPT="2"
+    else
+        LANG_OPT="1"
+    fi
+elif $AUTO_YES; then
+    # Default to English in auto mode
+    LANG_OPT="1"
+else
+    echo "----------------------------------------------"
+    echo " Select Language / Selecciona Idioma"
+    echo "----------------------------------------------"
+    echo " 1. English"
+    echo " 2. Español"
+    echo "----------------------------------------------"
+    read -r -p "Choice [1/2]: " LANG_OPT
+    [[ -z "$LANG_OPT" ]] && LANG_OPT="1"
+fi
 
 if [[ "$LANG_OPT" == "2" ]]; then
     LANG_CODE="es"
-    MSG_INSTALL="[INFO] Instalando/actualizando RedAudit v3.0.0..."
+    MSG_INSTALL="[INFO] Instalando/actualizando RedAudit v3.0.1..."
     MSG_DONE="[OK] Instalación completada."
     MSG_USAGE="-> Ejecuta 'redaudit' para iniciar."
     MSG_ALIAS_ADDED="[INFO] Alias 'redaudit' añadido en"
@@ -45,7 +68,7 @@ if [[ "$LANG_OPT" == "2" ]]; then
     MSG_APT_ERR="[ERROR] Error con apt."
 else
     LANG_CODE="en"
-    MSG_INSTALL="[INFO] Installing/updating RedAudit v3.0.0..."
+    MSG_INSTALL="[INFO] Installing/updating RedAudit v3.0.1..."
     MSG_DONE="[OK] Installation completed."
     MSG_USAGE="-> Run 'redaudit' to start."
     MSG_ALIAS_ADDED="ℹ️ Alias 'redaudit' added to"
@@ -210,9 +233,7 @@ fi
 # 4) Alias setup
 # -------------------------------------------
 
-REAL_USER=${SUDO_USER:-$USER}
-REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
-USER_SHELL=$(getent passwd "$REAL_USER" | cut -d: -f7)
+# (REAL_USER, REAL_HOME, USER_SHELL already defined at top of script)
 
 RC_FILE="$REAL_HOME/.bashrc"
 [[ "$USER_SHELL" == *"zsh"* ]] && RC_FILE="$REAL_HOME/.zshrc"
