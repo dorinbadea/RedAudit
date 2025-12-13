@@ -75,7 +75,7 @@ redaudit/
 
 ## Installation
 
-RedAudit requires a Debian-based environment (Kali Linux recommended) and `sudo` privileges for raw socket access.
+RedAudit requires a Debian-based environment (Kali Linux recommended). `sudo` privileges are recommended for full functionality (raw sockets, OS detection, tcpdump). A limited non-root mode is available via `--allow-non-root`.
 
 ```bash
 # 1. Clone the repository

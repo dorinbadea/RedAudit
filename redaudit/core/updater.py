@@ -201,7 +201,12 @@ def compute_file_hash(filepath: str, algorithm: str = "sha256") -> str:
     return hasher.hexdigest()
 
 
-def perform_git_update(repo_path: str, lang: str = "en", logger=None) -> Tuple[bool, str]:
+def perform_git_update(
+    repo_path: str,
+    lang: str = "en",
+    target_version: Optional[str] = None,
+    logger=None,
+) -> Tuple[bool, str]:
     """
     v3.0: Perform update using git clone approach for reliability.
     
@@ -222,7 +227,8 @@ def perform_git_update(repo_path: str, lang: str = "en", logger=None) -> Tuple[b
     import shutil
 
     GITHUB_CLONE_URL = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}.git"
-    target_ref = f"v{VERSION}"
+    target_version = target_version or VERSION
+    target_ref = f"v{target_version}"
     home_dir = os.path.expanduser("~")
     home_redaudit_path = os.path.join(home_dir, "RedAudit")
     install_path = "/usr/local/lib/redaudit"
@@ -513,8 +519,13 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None,
         print_fn(t_fn("update_starting"), "INFO")
         
         repo_path = get_repo_path()
-        # v3.0: Pass language to perform_git_update
-        success, message = perform_git_update(repo_path, lang=lang, logger=logger)
+        # v3.0: Pass language and target version to perform_git_update
+        success, message = perform_git_update(
+            repo_path,
+            lang=lang,
+            target_version=latest_version,
+            logger=logger,
+        )
         
         if success:
             # v2.8.1: Auto-restart if update was installed to system
@@ -535,4 +546,3 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None,
     else:
         print_fn(t_fn("update_skipped"), "INFO")
         return False
-
