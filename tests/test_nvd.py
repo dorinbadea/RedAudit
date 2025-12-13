@@ -9,9 +9,13 @@ Tests for redaudit/core/nvd.py
 
 import os
 import stat
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+
+# Add parent directory to path for CI compatibility
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the module under test
 from redaudit.core.nvd import (
