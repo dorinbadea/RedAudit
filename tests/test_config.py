@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+"""
+RedAudit - Configuration Module Tests
+Copyright (C) 2025  Dorin Badea
+GPLv3 License
+
+Tests for redaudit/utils/config.py
+"""
+
+import os
+import json
+import stat
+import tempfile
+import unittest
+from unittest.mock import patch, MagicMock
+
+# Import the module under test
+from redaudit.utils.config import (
+    validate_nvd_api_key,
+    load_config,
+    save_config,
+    get_nvd_api_key,
+    DEFAULT_CONFIG,
+    CONFIG_VERSION,
+    ensure_config_dir,
+)
+
+
+class TestValidateNvdApiKey(unittest.TestCase):
+    """Tests for validate_nvd_api_key function."""
+
+    def test_valid_uuid_lowercase(self):
+        """Valid UUID with lowercase hex."""
+        key = "12345678-1234-1234-1234-123456789abc"
+        self.assertTrue(validate_nvd_api_key(key))
+
+    def test_valid_uuid_uppercase(self):
+        """Valid UUID with uppercase hex."""
+        key = "12345678-1234-1234-1234-123456789ABC"
+        self.assertTrue(validate_nvd_api_key(key))
+
+    def test_valid_uuid_mixed_case(self):
+        """Valid UUID with mixed case."""
+        key = "12345678-ABcd-1234-efEF-123456789abc"
+        self.assertTrue(validate_nvd_api_key(key))
+
+    def test_invalid_empty(self):
+        """Empty string is invalid."""
+        self.assertFalse(validate_nvd_api_key(""))
+
+    def test_invalid_none(self):
+        """None is invalid."""
+        self.assertFalse(validate_nvd_api_key(None))
+
+    def test_invalid_wrong_format(self):
+        """Wrong format (not UUID)."""
+        self.assertFalse(validate_nvd_api_key("not-a-uuid"))
+        self.assertFalse(validate_nvd_api_key("12345678"))
+        self.assertFalse(validate_nvd_api_key("12345678-1234-1234-1234"))
+
+    def test_invalid_wrong_lengths(self):
+        """UUID with wrong segment lengths."""
+        # Missing characters
+        self.assertFalse(validate_nvd_api_key("1234567-1234-1234-1234-123456789abc"))
+        # Extra characters
+        self.assertFalse(validate_nvd_api_key("123456789-1234-1234-1234-123456789abc"))
+
+    def test_invalid_non_hex(self):
+        """UUID with non-hex characters."""
+        self.assertFalse(validate_nvd_api_key("1234567g-1234-1234-1234-123456789abc"))
+
+
+class TestDefaultConfig(unittest.TestCase):
+    """Tests for default configuration structure."""
+
+    def test_default_config_has_version(self):
+        """DEFAULT_CONFIG should have version key."""
+        self.assertIn("version", DEFAULT_CONFIG)
+        self.assertEqual(DEFAULT_CONFIG["version"], CONFIG_VERSION)
+
+    def test_default_config_has_nvd_key(self):
+        """DEFAULT_CONFIG should have nvd_api_key key."""
+        self.assertIn("nvd_api_key", DEFAULT_CONFIG)
+        self.assertIsNone(DEFAULT_CONFIG["nvd_api_key"])
+
+    def test_default_config_has_storage_method(self):
+        """DEFAULT_CONFIG should have nvd_api_key_storage key."""
+        self.assertIn("nvd_api_key_storage", DEFAULT_CONFIG)
+
+
+class TestEnvPriority(unittest.TestCase):
+    """Tests for environment variable priority over config file."""
+
+    @patch.dict(os.environ, {"NVD_API_KEY": "env-12345678-1234-1234-1234-123456789abc"})
+    @patch("redaudit.utils.config.load_config")
+    def test_env_takes_priority_over_config(self, mock_load):
+        """Environment variable should take priority over config file."""
+        mock_load.return_value = {
+            "nvd_api_key": "config-key-should-not-be-used"
+        }
+        result = get_nvd_api_key()
+        self.assertEqual(result, "env-12345678-1234-1234-1234-123456789abc")
+
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("redaudit.utils.config.load_config")
+    def test_config_used_when_no_env(self, mock_load):
+        """Config file should be used when no env var."""
+        # Clear NVD_API_KEY if it exists
+        if "NVD_API_KEY" in os.environ:
+            del os.environ["NVD_API_KEY"]
+        mock_load.return_value = {
+            "nvd_api_key": "config-key-value"
+        }
+        result = get_nvd_api_key()
+        self.assertEqual(result, "config-key-value")
+
+
+class TestConfigFilePermissions(unittest.TestCase):
+    """Tests for config file security permissions."""
+
+    def test_save_config_sets_permissions(self):
+        """save_config should set 0o600 permissions on config file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = os.path.join(tmpdir, "config.json")
+            
+            with patch("redaudit.utils.config.CONFIG_FILE", config_file):
+                with patch("redaudit.utils.config.CONFIG_DIR", tmpdir):
+                    with patch("redaudit.utils.config.ensure_config_dir", return_value=tmpdir):
+                        result = save_config({"test": "value"})
+                        
+                        self.assertTrue(result)
+                        self.assertTrue(os.path.exists(config_file))
+                        
+                        # Check permissions
+                        file_stat = os.stat(config_file)
+                        mode = stat.S_IMODE(file_stat.st_mode)
+                        self.assertEqual(mode, 0o600)
+
+
+if __name__ == "__main__":
+    unittest.main()

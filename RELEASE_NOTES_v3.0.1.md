@@ -37,9 +37,11 @@ RedAudit now stores configuration persistently in `~/.redaudit/config.json`, eli
 
 **Configuration Priority** (highest to lowest):
 
-1. Environment variable: `NVD_API_KEY`
-2. Configuration file: `~/.redaudit/config.json`
-3. CLI argument: `--nvd-key KEY`
+1. CLI argument: `--nvd-key KEY` (session only, not persisted)
+2. Environment variable: `NVD_API_KEY`
+3. Configuration file: `~/.redaudit/config.json`
+
+> **Note**: The `--nvd-key` flag is for one-time use and is not saved. To persist your key, use the environment variable or config file methods.
 
 **Security Notes**:
 

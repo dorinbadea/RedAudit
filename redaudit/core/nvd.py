@@ -63,8 +63,8 @@ def get_api_key_from_config() -> Optional[str]:
 
 
 def ensure_cache_dir() -> str:
-    """Create cache directory if it doesn't exist."""
-    os.makedirs(NVD_CACHE_DIR, exist_ok=True)
+    """Create cache directory if it doesn't exist with secure permissions."""
+    os.makedirs(NVD_CACHE_DIR, mode=0o700, exist_ok=True)
     return NVD_CACHE_DIR
 
 
