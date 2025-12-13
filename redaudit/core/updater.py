@@ -234,11 +234,18 @@ def perform_git_update(repo_path: str, lang: str = "en", logger=None) -> Tuple[b
         if logger:
             logger.info("Cloning RedAudit to temp folder: %s", temp_dir)
         
+        # Ensure git doesn't prompt for credentials or any interaction
+        git_env = os.environ.copy()
+        git_env["GIT_TERMINAL_PROMPT"] = "0"
+        git_env["GIT_ASKPASS"] = "echo"
+        
         result = subprocess.run(
             ["git", "clone", "--depth", "1", GITHUB_CLONE_URL, clone_path],
             capture_output=True,
             text=True,
             timeout=120,
+            env=git_env,
+            stdin=subprocess.DEVNULL,  # Prevent any interactive prompts
         )
         
         if result.returncode != 0:
