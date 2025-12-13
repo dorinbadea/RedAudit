@@ -56,32 +56,21 @@ RedAudit now stores configuration persistently in `~/.redaudit/config.json`, eli
 
 **Installation-Time Setup** (`redaudit_install.sh`):
 
-The installer now includes an optional interactive prompt for NVD API key configuration:
+The installer includes an optional prompt for NVD API key configuration:
 
 ```bash
-[EN] Do you want to configure your NVD API key now? (y/n):
-[ES] ¿Deseas configurar tu clave API de NVD ahora? (y/n):
+Enter your API key (or ENTER to skip):
 ```
 
-Users can choose:
-
-- **Config File**: Store permanently in `~/.redaudit/config.json`
-- **Environment Variable**: Add to shell profile (`~/.bashrc` or `~/.zshrc`)
-- **Skip**: Configure later via CLI or interactive mode
+If provided, the key is saved to `~/.redaudit/config.json` with secure permissions.
 
 **First-Run Setup** (`redaudit/core/auditor.py`):
 
-When CVE correlation is enabled (`--cve-lookup`) and no API key is configured, RedAudit now prompts interactively:
+When CVE correlation is enabled (`--cve-lookup`) and no API key is configured, RedAudit prompts interactively with more options:
 
-```bash
-[EN] CVE correlation is enabled but no NVD API key is configured.
-     Would you like to set up your API key now? (y/n):
-     
-[ES] La correlación de CVE está habilitada pero no hay clave API de NVD configurada.
-     ¿Deseas configurar tu clave API ahora? (y/n):
-```
-
-This ensures users are never blocked by missing configuration.
+- **Config File**: Store permanently in `~/.redaudit/config.json`
+- **Environment Variable**: Instructions to add to shell profile
+- **Skip**: Continue without API key (slower rate limits)
 
 ---
 
