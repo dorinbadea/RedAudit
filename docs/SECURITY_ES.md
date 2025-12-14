@@ -67,7 +67,7 @@ RedAudit incluye un mecanismo de actualización seguro que verifica GitHub para 
 - **Protección de cambios locales**: Rechaza actualizar si hay cambios sin commitear
 - **Ubicación del módulo**: `redaudit/core/updater.py`
 
-## 8. Almacenamiento de API Key NVD (v3.0.1)
+## 8. Almacenamiento de API Key NVD (v3.0.1+)
 
 RedAudit soporta almacenar claves API de NVD para correlación CVE:
 

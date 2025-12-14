@@ -11,6 +11,9 @@ __pycache__/
 *.json
 *.txt
 
+# Local scan artifacts (never commit)
+scan_results_private/
+
 # Backup files
 redaudit_install.sh.bak
 

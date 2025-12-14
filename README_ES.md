@@ -4,7 +4,7 @@
 
 RedAudit es una herramienta CLI para auditoría de red estructurada y hardening en sistemas Kali/Debian.
 
-![Version](https://img.shields.io/badge/version-3.0.1-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.0.2-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 ![CI/CD](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg?style=flat-square)
@@ -15,8 +15,8 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                     v3.0.1
-     Herramienta Interactiva de Auditoría de Red
+                                     v3.0.2
+	     Herramienta Interactiva de Auditoría de Red
 ```
 
 ## Visión General
@@ -70,7 +70,7 @@ redaudit/
 └── utils/              # Utilidades
     ├── constants.py    # Constantes de configuración
     ├── i18n.py         # Internacionalización
-    └── config.py       # Configuración persistente (v3.0.1)
+    └── config.py       # Configuración persistente (v3.0.1+)
 ```
 
 ## Instalación
@@ -192,13 +192,13 @@ RedAudit aplica un escaneo adaptativo inteligente de 3 fases para maximizar la r
 
 **Características de Deep Scan:**
 
-- **Captura PCAP Concurrente**: El tráfico se captura durante el escaneo (no después)
+- **Captura PCAP Concurrente**: El tráfico se captura durante escaneos profundos (no después)
 - **Banner Grab Fallback**: Usa `--script banner,ssl-cert` para puertos no identificados
 - **Precisión de Estado de Host**: Nuevos tipos (`up`, `filtered`, `no-response`, `down`)
 - **Salto Inteligente**: Las Fases 2a/2b se omiten si ya se detectó MAC/SO
 
 - **Activación**: Automática según heurísticas (pocos puertos, servicios sospechosos, etc.)
-- **Salida**: Logs completos, datos MAC/Vendor, y PCAP en `host.deep_scan`
+- **Salida**: Logs completos, datos MAC/Vendor, y (si se captura) metadata PCAP en `host.deep_scan.pcap_capture`
 
 ### Auto-Actualización Segura
 
@@ -306,7 +306,7 @@ Consulta [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) para soluciones deta
 ### Características Principales
 
 - **Deep Scan Adaptativo**: Estrategia de 3 fases (TCP agresivo → UDP prioritario → UDP completo)
-- **Captura PCAP Concurrente**: Tráfico capturado durante escaneos
+- **Captura PCAP Concurrente**: Tráfico capturado durante escaneos profundos
 - **Motor Pre-scan**: Descubrimiento rápido asyncio antes de nmap
 - **Inteligencia de Exploits**: Integración SearchSploit para versiones detectadas
 - **Análisis SSL/TLS**: Escaneo profundo TestSSL.sh

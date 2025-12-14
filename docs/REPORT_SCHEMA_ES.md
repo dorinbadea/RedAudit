@@ -97,6 +97,33 @@ Este campo aparece solo si se activó el escaneo profundo automático.
 | `pcap_capture.tshark_error` | string | (Opcional) Error de tshark si falló |
 | `pcap_capture.tcpdump_error` | string | (Opcional) Error de tcpdump si falló |
 
+### Campos de Enriquecimiento CVE (Opcional)
+
+Estos campos aparecen solo cuando la correlación CVE está activada (por ejemplo, `--cve-lookup`) y hay datos de enriquecimiento disponibles.
+El enriquecimiento solo se realiza para servicios con información de versión detectada (o un CPE con versión).
+
+**Campos a nivel de puerto** (dentro de `hosts[].ports[]`):
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `cves` | array | (Opcional) Lista de CVEs (top 10) asociados al servicio |
+| `cves[].cve_id` | string | Identificador CVE (ej: `CVE-2024-12345`) |
+| `cves[].cvss_score` | number | (Opcional) Puntuación base CVSS |
+| `cves[].cvss_severity` | string | (Opcional) Severidad CVSS (LOW/MEDIUM/HIGH/CRITICAL) |
+| `cves[].description` | string | (Opcional) Descripción corta (truncada) |
+| `cves[].published` | string | (Opcional) Fecha de publicación (ISO 8601) |
+| `cve_count` | integer | (Opcional) Número total de CVEs asociados (puede ser >10) |
+| `cve_max_severity` | string | (Opcional) Severidad máxima entre CVEs asociados |
+
+**Campos a nivel de host** (dentro de `hosts[]`):
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `cve_summary` | object | (Opcional) Estadísticas agregadas de CVE para el host |
+| `cve_summary.total` | integer | Total de CVEs en todos los puertos |
+| `cve_summary.critical` | integer | Número de puertos con severidad máxima CRITICAL |
+| `cve_summary.high` | integer | Número de puertos con severidad máxima HIGH |
+
 ### Objeto DNS (Opcional)
 
 Aparece en registros de host cuando se realizó enriquecimiento DNS/whois.

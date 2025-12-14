@@ -36,7 +36,16 @@ This document outlines the technical roadmap, planned architectural improvements
 
 ## Completed Milestones
 
-### v3.0.1 (Completed - December 2025) -> **CURRENT**
+### v3.0.2 (Completed - December 2025) -> **CURRENT**
+
+*Patch release focused on CLI polish, reporting clarity, and safer CVE enrichment.*
+
+- [x] **Thread-safe CLI output**: Prevents interleaved log lines and mid-word wrapping.
+- [x] **Spanish UX improvements**: Completed missing translations for scan status/progress messages.
+- [x] **PCAP visibility**: Final summary shows PCAP count; TXT report includes PCAP path when captured.
+- [x] **NVD enrichment safety**: Avoid wildcard CPE queries when version is unknown; correct API key source messaging.
+
+### v3.0.1 (Completed - December 2025)
 
 *Patch release focused on configuration, update hardening, and documentation alignment.*
 
@@ -72,7 +81,7 @@ This document outlines the technical roadmap, planned architectural improvements
 *Focus on concurrency, security, and external tool integration.*
 
 - [x] **Adaptive Deep Scan**: 3-phase strategy (TCP aggressive → Priority UDP → Full UDP)
-- [x] **Concurrent PCAP**: Traffic captured during scans, not after
+- [x] **Concurrent PCAP**: Traffic captured during deep scans, not after
 - [x] **Secure Auto-Update**: GitHub-integrated with automatic restart
 - [x] **Pre-scan Engine**: Fast asyncio port discovery before nmap
 - [x] **Exploit Intelligence**: SearchSploit integration for version-based lookups

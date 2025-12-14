@@ -97,6 +97,33 @@ This field appears only if automatic deep scan was triggered.
 | `pcap_capture.tshark_error` | string | (Optional) Error from tshark if it failed |
 | `pcap_capture.tcpdump_error` | string | (Optional) Error from tcpdump if it failed |
 
+### CVE Enrichment Fields (Optional)
+
+These fields appear only when CVE correlation is enabled (e.g., `--cve-lookup`) and enrichment data is available.
+Enrichment is performed only for services with detected version information (or a versioned CPE).
+
+**Port-level fields** (inside `hosts[].ports[]`):
+
+| Field | Type | Description |
+|---|---|---|
+| `cves` | array | (Optional) List of CVEs (top 10) mapped to the service |
+| `cves[].cve_id` | string | CVE identifier (e.g., `CVE-2024-12345`) |
+| `cves[].cvss_score` | number | (Optional) CVSS base score |
+| `cves[].cvss_severity` | string | (Optional) CVSS severity (LOW/MEDIUM/HIGH/CRITICAL) |
+| `cves[].description` | string | (Optional) Short description (truncated) |
+| `cves[].published` | string | (Optional) Published timestamp (ISO 8601) |
+| `cve_count` | integer | (Optional) Total number of matched CVEs (may be >10) |
+| `cve_max_severity` | string | (Optional) Max severity across matched CVEs |
+
+**Host-level fields** (inside `hosts[]`):
+
+| Field | Type | Description |
+|---|---|---|
+| `cve_summary` | object | (Optional) Aggregated CVE statistics for the host |
+| `cve_summary.total` | integer | Total CVEs across all ports |
+| `cve_summary.critical` | integer | Count of ports with max severity CRITICAL |
+| `cve_summary.high` | integer | Count of ports with max severity HIGH |
+
 ### DNS Object (Optional)
 
 Appears in host records when DNS/whois enrichment was performed.

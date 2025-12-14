@@ -1,13 +1,13 @@
-# RedAudit v3.0.1
+# RedAudit v3.0.2
 
-## Patch Release - Configuration Management
+## Patch Release - UX, Reporting & NVD Improvements
 
-### v3.0.1 Highlights
+### v3.0.2 Highlights
 
-- **Persistent NVD API Key Storage**: Secure configuration file (`~/.redaudit/config.json`) for NVD API keys.
-- **Interactive Setup Prompts**: Guided configuration for CVE correlation (installer saves to config file, runtime offers more options).
-- **Environment Variable Support**: `NVD_API_KEY` environment variable integration.
-- **Documentation Perfection**: Complete synchronization across all 25+ documentation files.
+- **Cleaner CLI Output**: Thread-safe status printing + word-wrapping avoids split words and interleaved lines during concurrent scans.
+- **Improved Spanish UX**: Completed missing translations for scan status/progress and deep scan messaging.
+- **PCAP Visibility**: Final summary shows PCAP count; TXT report includes PCAP path when captured.
+- **Safer NVD Enrichment**: Avoids wildcard-version CPE queries when the service version is unknown; correct API key source messaging.
 
 ### v3.0 Major Features
 
@@ -66,7 +66,7 @@ redaudit/core/
 └── proxy.py        # SOCKS5 proxy manager
 
 redaudit/utils/
-└── config.py       # Persistent configuration (v3.0.1)
+└── config.py       # Persistent configuration (v3.0.1+)
 ```
 
 ### Testing & Quality
@@ -87,5 +87,5 @@ Complete bilingual documentation (English/Spanish):
 ### Links
 
 - **Full Changelog**: [CHANGELOG.md](CHANGELOG.md)
-- **Release Notes**: [RELEASE_NOTES_v3.0.1.md](RELEASE_NOTES_v3.0.1.md)
+- **Release Notes**: [RELEASE_NOTES_v3.0.2.md](RELEASE_NOTES_v3.0.2.md)
 - **Security Specs**: [docs/SECURITY.md](docs/SECURITY.md)

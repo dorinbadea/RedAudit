@@ -133,11 +133,24 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
             lines.append(
                 f"    - {p['port']}/{p['protocol']}  {service}  {version}\n"
             )
+            if p.get("cve_count"):
+                max_sev = p.get("cve_max_severity") or "UNKNOWN"
+                lines.append(f"      CVEs: {p['cve_count']} (max severity: {max_sev})\n")
             # Show known exploits if found
             if p.get("known_exploits"):
                 lines.append(f"      ⚠️  Known Exploits ({len(p['known_exploits'])}):\n")
                 for exploit in p["known_exploits"][:3]:  # Max 3 for readability
                     lines.append(f"         - {exploit}\n")
+
+        if h.get("cve_summary"):
+            cve_sum = h["cve_summary"]
+            lines.append(
+                "  CVE Summary: total {total} (critical {critical}, high {high})\n".format(
+                    total=cve_sum.get("total", 0),
+                    critical=cve_sum.get("critical", 0),
+                    high=cve_sum.get("high", 0),
+                )
+            )
 
         if h.get("dns", {}).get("reverse"):
             lines.append("  Reverse DNS:\n")
@@ -149,11 +162,21 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
             lines.append("    " + h["dns"]["whois_summary"].replace("\n", "\n    ") + "\n")
 
         if h.get("deep_scan"):
+            deep = h["deep_scan"] or {}
             lines.append("  Deep scan data present.\n")
-            if h["deep_scan"].get("mac_address"):
-                lines.append(f"    MAC: {h['deep_scan']['mac_address']}\n")
-            if h["deep_scan"].get("vendor"):
-                lines.append(f"    Vendor: {h['deep_scan']['vendor']}\n")
+            if deep.get("mac_address"):
+                lines.append(f"    MAC: {deep['mac_address']}\n")
+            if deep.get("vendor"):
+                lines.append(f"    Vendor: {deep['vendor']}\n")
+            commands = deep.get("commands") or []
+            if commands:
+                lines.append(f"    Commands: {len(commands)}\n")
+            else:
+                lines.append("    Commands: 0 (identity-only)\n")
+            pcap = deep.get("pcap_capture") or {}
+            pcap_file = pcap.get("pcap_file")
+            if pcap_file:
+                lines.append(f"    PCAP: {pcap_file}\n")
 
         lines.append("\n")
 
@@ -304,11 +327,13 @@ def show_config_summary(config: Dict, t_fn, colors: Dict) -> None:
         t_fn("targets"): config["target_networks"],
         t_fn("mode"): config["scan_mode"],
         t_fn("threads"): config["threads"],
-        "Vulns": config.get("scan_vulnerabilities"),
+        t_fn("web_vulns"): config.get("scan_vulnerabilities"),
+        t_fn("cve_lookup"): config.get("cve_lookup_enabled"),
         t_fn("output"): config["output_dir"],
     }
     for k, v in conf.items():
-        print(f"  {k}: {v}")
+        label = str(k).rstrip(":")
+        print(f"  {label}: {v}")
 
 
 def show_results_summary(results: Dict, t_fn, colors: Dict, output_dir: str) -> None:
@@ -328,4 +353,11 @@ def show_results_summary(results: Dict, t_fn, colors: Dict, output_dir: str) -> 
     print(t_fn("hosts_full", s.get("hosts_scanned")))
     print(t_fn("vulns_web", s.get("vulns_found")))
     print(t_fn("duration", s.get("duration")))
+    pcap_count = 0
+    for h in results.get("hosts", []) or []:
+        deep = h.get("deep_scan") or {}
+        pcap = deep.get("pcap_capture") or {}
+        if isinstance(pcap, dict) and pcap.get("pcap_file"):
+            pcap_count += 1
+    print(t_fn("pcaps", pcap_count))
     print(f"{colors['OKGREEN']}{t_fn('reports_gen', output_dir)}{colors['ENDC']}")

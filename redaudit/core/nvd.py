@@ -19,6 +19,8 @@ from typing import Dict, List, Optional, Tuple
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
+from redaudit.utils.constants import VERSION
+
 # Import config module for API key management
 try:
     from redaudit.utils.config import get_nvd_api_key as config_get_nvd_api_key
@@ -213,7 +215,7 @@ def query_nvd(
     url = f"{NVD_API_URL}?{'&'.join(params)}"
     
     req = Request(url)
-    req.add_header("User-Agent", "RedAudit/3.0.1")
+    req.add_header("User-Agent", f"RedAudit/{VERSION}")
     
     if api_key:
         req.add_header("apiKey", api_key)
@@ -349,10 +351,22 @@ def enrich_port_with_cves(
         if cpe_23:
             break
 
-    # Try to extract product/version if not already separated
-    if not product and service:
-        product, extracted_version = extract_product_version(service)
-        if product and extracted_version:
+    # Try to extract product/version when one of them is missing.
+    service_info = " ".join(
+        str(x)
+        for x in (
+            product,
+            version,
+            port_info.get("extrainfo", ""),
+            service,
+        )
+        if x
+    )
+    if service_info and (not product or not version):
+        extracted_product, extracted_version = extract_product_version(service_info)
+        if not product and extracted_product:
+            product = extracted_product
+        if not version and extracted_version:
             version = extracted_version
 
     if not product:
@@ -364,8 +378,20 @@ def enrich_port_with_cves(
     # Rate limiting
     rate_limit = NVD_RATE_LIMIT_WITH_KEY if api_key else NVD_RATE_LIMIT_NO_KEY
 
-    # Query NVD
+    # Query NVD (avoid querying wildcard-version CPEs when we don't know the version).
+    cves = []
     if cpe_23:
+        parts = cpe_23.split(":")
+        cpe_version = parts[5] if len(parts) > 5 else ""
+        if cpe_version in ("*", "-", ""):
+            if not version:
+                return port_info
+            sanitized_version = re.sub(r"[^a-zA-Z0-9_\\-.]", "", str(version))[:20]
+            if not sanitized_version:
+                return port_info
+            if len(parts) > 5:
+                parts[5] = sanitized_version
+                cpe_23 = ":".join(parts)
         cves = query_nvd(cpe_name=cpe_23, api_key=api_key, logger=logger)
     else:
         cpe = build_cpe_query(product, version)
@@ -416,8 +442,14 @@ def enrich_host_with_cves(
     ports = host_record.get("ports", [])
     
     for i, port_info in enumerate(ports):
-        # Only check services with version info
-        if port_info.get("version"):
+        # Check services with version info OR reported CPE (Nmap may provide CPE without a version string).
+        cpe_value = port_info.get("cpe")
+        has_cpe = False
+        if isinstance(cpe_value, str):
+            has_cpe = bool(cpe_value.strip())
+        elif isinstance(cpe_value, list):
+            has_cpe = any(isinstance(c, str) and c.strip() for c in cpe_value)
+        if port_info.get("version") or has_cpe:
             ports[i] = enrich_port_with_cves(port_info, api_key, logger)
     
     # Calculate host-level CVE summary

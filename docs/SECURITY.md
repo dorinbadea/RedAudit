@@ -98,7 +98,7 @@ RedAudit includes a secure update mechanism that checks GitHub for new releases:
 - **Local changes protection**: Refuses to update if uncommitted changes exist
 - **Module location**: `redaudit/core/updater.py`
 
-## 8. NVD API Key Storage (v3.0.1)
+## 8. NVD API Key Storage (v3.0.1+)
 
 RedAudit supports storing NVD API keys for CVE correlation:
 

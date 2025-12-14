@@ -4,7 +4,7 @@
 
 RedAudit is a CLI tool for structured network auditing and hardening on Kali/Debian systems.
 
-![Version](https://img.shields.io/badge/version-3.0.1-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.0.2-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 ![CI/CD](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg?style=flat-square)
@@ -15,7 +15,7 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                     v3.0.1
+                                     v3.0.2
         Interactive Network Audit Tool
 ```
 
@@ -70,7 +70,7 @@ redaudit/
 └── utils/              # Utilities
     ├── constants.py    # Configuration constants
     ├── i18n.py         # Internationalization
-    └── config.py       # Persistent configuration (v3.0.1)
+    └── config.py       # Persistent configuration (v3.0.1+)
 ```
 
 ## Installation
@@ -175,13 +175,13 @@ RedAudit applies a smart 3-phase adaptive scan to maximize information gathering
 
 **Deep Scan features:**
 
-- **Concurrent PCAP Capture**: Traffic is captured during the scan (not after)
+- **Concurrent PCAP Capture**: Traffic is captured during deep scans (not after)
 - **Banner Grab Fallback**: Uses `--script banner,ssl-cert` for unidentified ports
 - **Host Status Accuracy**: New status types (`up`, `filtered`, `no-response`, `down`)
 - **Intelligent Skip**: Phases 2a/2b are skipped if MAC/OS is already detected
 
 - **Trigger**: Automatic based on heuristics (few ports, suspicious services, etc.)
-- **Output**: Full logs, MAC/Vendor data, and PCAP in `host.deep_scan`
+- **Output**: Full logs, MAC/Vendor data, and (when captured) PCAP metadata in `host.deep_scan.pcap_capture`
 
 ### UDP Taming
 
@@ -298,7 +298,7 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for detailed fixes.
 ### Core Features
 
 - **Adaptive Deep Scan**: 3-phase strategy (TCP aggressive → Priority UDP → Full UDP)
-- **Concurrent PCAP**: Traffic captured during scans, not after
+- **Concurrent PCAP**: Traffic captured during deep scans, not after
 - **Pre-scan Engine**: Fast asyncio port discovery before nmap
 - **Exploit Intelligence**: SearchSploit integration for version-based lookups
 - **SSL/TLS Analysis**: TestSSL.sh deep vulnerability scanning

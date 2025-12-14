@@ -36,7 +36,16 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 
 ## Hitos Completados
 
-### v3.0.1 (Completado - Diciembre 2025) -> **ACTUAL**
+### v3.0.2 (Completado - Diciembre 2025) -> **ACTUAL**
+
+*Patch centrado en pulido del CLI, claridad de reportes y correlación CVE más segura.*
+
+- [x] **Salida CLI thread-safe**: Evita líneas intercaladas y cortes a mitad de palabra.
+- [x] **Mejoras de UX en Español**: Traducciones completadas para mensajes de estado/progreso.
+- [x] **Visibilidad de PCAP**: Resumen final muestra contador de PCAP; reporte TXT incluye la ruta del PCAP si se captura.
+- [x] **Seguridad en enriquecimiento NVD**: Evita CPEs comodín cuando la versión es desconocida; corrige mensajes sobre el origen de la API key.
+
+### v3.0.1 (Completado - Diciembre 2025)
 
 *Patch centrado en configuración, endurecimiento de update e higiene documental.*
 
@@ -72,7 +81,7 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 *Enfoque en concurrencia, seguridad e integración de herramientas externas.*
 
 - [x] **Deep Scan Adaptativo**: Estrategia de 3 fases (TCP agresivo → UDP prioritario → UDP completo)
-- [x] **Captura PCAP Concurrente**: Tráfico capturado durante escaneos
+- [x] **Captura PCAP Concurrente**: Tráfico capturado durante escaneos profundos
 - [x] **Auto-Actualización Segura**: Integración GitHub con reinicio automático
 - [x] **Motor Pre-scan**: Descubrimiento rápido asyncio antes de nmap
 - [x] **Inteligencia de Exploits**: Integración SearchSploit para versiones detectadas

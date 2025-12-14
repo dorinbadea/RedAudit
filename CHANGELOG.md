@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.2] - 2025-12-14 (UX, Reporting & NVD)
+
+### Added
+
+- **PCAP visibility**: Final summary includes a PCAP count; TXT reports include PCAP path when captured.
+- **TXT reporting clarity**: Deep scan sections include command counts (identity-only vs executed deep scan).
+- **CVE reporting (TXT)**: When CVE enrichment is present, TXT reports include CVE summaries and per-port CVE counts.
+
+### Changed
+
+- **Version**: Updated to 3.0.2
+- **CLI output**: Thread-safe status printing + word-wrapping avoids split words and interleaved output in concurrent scans.
+- **Spanish UX**: Completed missing translations for scan status/progress and deep scan messaging.
+- **NVD enrichment**: Skips overly broad wildcard-version CPE queries when service version is unknown.
+
+### Fixed
+
+- **NVD messaging**: Correct API key source messaging (no longer reports CLI when key came from config/env).
+
+---
+
 ## [3.0.1] - 2025-12-13 (Configuration & UX)
 
 ### Added

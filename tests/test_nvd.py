@@ -165,6 +165,19 @@ class TestEnrichPortWithCves(unittest.TestCase):
         self.assertIn("cpe_name", kwargs)
         self.assertTrue(kwargs["cpe_name"].startswith("cpe:2.3:a:apache:http_server:2.4.49"))
 
+    @patch("redaudit.core.nvd.query_nvd")
+    @patch("redaudit.core.nvd.time.sleep")
+    def test_skips_wildcard_cpe_without_version_info(self, _mock_sleep, mock_query):
+        """Avoid querying NVD for CPEs without a specific version (too broad)."""
+        port = {
+            "service": "dns",
+            "product": "",
+            "version": "",
+            "cpe": ["cpe:/a:nlnetlabs:nsd"],
+        }
+        enrich_port_with_cves(port, api_key="12345678-1234-1234-1234-123456789abc", logger=None)
+        mock_query.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

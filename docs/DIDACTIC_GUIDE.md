@@ -4,7 +4,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](GUIA_DIDACTICA.md)
 
-This guide is designed to help professors, instructors, and mentors explain the complete functionality of **RedAudit v3.0.1**. The document breaks down the tool from a pedagogical perspective, combining theory, visual diagrams, practical exercises, and code references.
+This guide is designed to help professors, instructors, and mentors explain the complete functionality of **RedAudit v3.0.2**. The document breaks down the tool from a pedagogical perspective, combining theory, visual diagrams, practical exercises, and code references.
 
 > **TL;DR for Instructors**: RedAudit is a network auditing orchestration tool perfect for teaching structured security workflows. Key teaching points: (1) Automated tool orchestration vs manual scanning, (2) Adaptive heuristics (Deep Scan triggers), (3) Professional reporting (SIEM-ready JSON). For a 60-minute lecture, focus on Sections 1-3. For hands-on labs, use Section 8 practical exercises. For research students, Section 5 provides Python internals reference.
 
@@ -83,7 +83,7 @@ graph TD
 
 ### Phase 1: Validation and Environment
 
-**Function in code**: [`check_dependencies()`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py#L318-L369)
+**Function in code**: [`check_dependencies()`](../redaudit/core/auditor.py#L318-L369)
 
 Before touching the network, the program:
 
@@ -94,7 +94,7 @@ Before touching the network, the program:
 
 ### Phase 2: Discovery
 
-**Function in code**: [`scan_network_discovery()`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py#L614-L629)
+**Function in code**: [`scan_network_discovery()`](../redaudit/core/auditor.py#L614-L629)
 
 Uses a fast ping sweep (`nmap -sn -T4 --max-retries 1`) to identify which hosts are `UP` in the target range. This avoids wasting time scanning empty IPs.
 
@@ -102,7 +102,7 @@ Uses a fast ping sweep (`nmap -sn -T4 --max-retries 1`) to identify which hosts 
 
 ### Phase 3: Port Enumeration (Concurrent)
 
-**Function in code**: [`scan_hosts_concurrent()`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py#L788-L840)
+**Function in code**: [`scan_hosts_concurrent()`](../redaudit/core/auditor.py#L788-L840)
 
 This is where RedAudit shines. It uses a `ThreadPoolExecutor` to launch multiple Nmap instances in parallel.
 
@@ -121,9 +121,9 @@ This is where RedAudit shines. It uses a `ThreadPoolExecutor` to launch multiple
 
 **Functions in code**:
 
-- [`http_enrichment()`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/scanner.py#L402-L441)
-- [`ssl_deep_analysis()`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/scanner.py#L553-L652)
-- [`exploit_lookup()`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/scanner.py#L480-L550)
+- [`http_enrichment()`](../redaudit/core/scanner.py#L402-L441)
+- [`ssl_deep_analysis()`](../redaudit/core/scanner.py#L553-L652)
+- [`exploit_lookup()`](../redaudit/core/scanner.py#L480-L550)
 
 Once open ports are detected, RedAudit calls specialized tools based on the service:
 
@@ -139,7 +139,7 @@ RedAudit's most advanced feature is its **autonomous decision-making** capabilit
 
 ### When is Deep Scan Triggered? (Decision Code)
 
-**Function in code**: [`scan_host_ports()`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py#L738-L748)
+**Function in code**: [`scan_host_ports()`](../redaudit/core/auditor.py#L738-L748)
 
 ```python
 # Real code extract (auditor.py, lines 738-748)
@@ -163,7 +163,7 @@ if total_ports > 0 and not any_version:
 
 ### The 3 Phases of Deep Scan
 
-**Function in code**: [`deep_scan_host()`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py#L504-L612)
+**Function in code**: [`deep_scan_host()`](../redaudit/core/auditor.py#L504-L612)
 
 ```mermaid
 graph LR
@@ -186,7 +186,7 @@ If activated, Deep Scan executes an adaptive strategy:
 **Command**: `nmap -A -p- -sV --version-intensity 9 -Pn --open <IP>`
 
 - Objective: Force OS and service identification by all means.
-- **Traffic Capture**: Starts `tcpdump` in the background **before** the scan to capture the interaction (PCAP of ~20-50KB with 50 packet limit).
+- **Traffic Capture**: Starts `tcpdump` in the background **before** the deep scan to capture the interaction (PCAP of ~20-50KB with 50 packet limit).
 - Duration: 120-180 seconds.
 
 #### Phase 2a: Priority UDP
@@ -195,7 +195,7 @@ If activated, Deep Scan executes an adaptive strategy:
 
 - Scans only 17 critical UDP ports: `DNS`, `DHCP`, `NTP`, `SNMP`, `NetBIOS`.
 - Fast (~60-120s) and usually reveals host identity.
-- **Intelligence**: If Phase 1 already identified the OS or MAC address, this phase is **automatically skipped** ([code](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py#L552-L554)).
+- **Intelligence**: If Phase 1 already identified the OS or MAC address, this phase is **automatically skipped** ([code](../redaudit/core/auditor.py#L552-L554)).
 
 #### Phase 2b: Complete UDP (Only in `full` mode)
 
@@ -215,20 +215,20 @@ RedAudit acts as intelligent "glue" between external tools.
 
 | Component | External Tool | Function in RedAudit | Source Code |
 |:---|:---|:---|:---|
-| **Core Scanner** | `nmap` | Main packet scanning engine | [scanner.py](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/scanner.py) |
-| **Web Recon** | `whatweb`, `curl`, `nikto` | Web application analysis | [http_enrichment()](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/scanner.py#L402-L441) |
-| **SSL/TLS** | `testssl.sh`, `openssl` | Encryption and certificate auditing | [ssl_deep_analysis()](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/scanner.py#L553-L652) |
-| **Traffic** | `tcpdump`, `tshark` | Forensic evidence capture (PCAP) | [start_background_capture()](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/scanner.py#L655-L731) |
-| **Exploits** | `searchsploit` | Known vulnerability correlation | [exploit_lookup()](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/scanner.py#L480-L550) |
-| **DNS/Whois** | `dig`, `whois` | External network intelligence | [enrich_host_with_dns()](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/scanner.py#L349-L372) |
-| **Orchestrator** | `ThreadPoolExecutor` | Thread management for parallel scanning | [auditor.py](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py#L788-L840) |
-| **Encryption** | `python3-cryptography` | AES-128 for sensitive reports | [crypto.py](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/crypto.py) |
+| **Core Scanner** | `nmap` | Main packet scanning engine | [scanner.py](../redaudit/core/scanner.py) |
+| **Web Recon** | `whatweb`, `curl`, `nikto` | Web application analysis | [http_enrichment()](../redaudit/core/scanner.py#L402-L441) |
+| **SSL/TLS** | `testssl.sh`, `openssl` | Encryption and certificate auditing | [ssl_deep_analysis()](../redaudit/core/scanner.py#L553-L652) |
+| **Traffic** | `tcpdump`, `tshark` | Forensic evidence capture (PCAP) | [start_background_capture()](../redaudit/core/scanner.py#L655-L731) |
+| **Exploits** | `searchsploit` | Known vulnerability correlation | [exploit_lookup()](../redaudit/core/scanner.py#L480-L550) |
+| **DNS/Whois** | `dig`, `whois` | External network intelligence | [enrich_host_with_dns()](../redaudit/core/scanner.py#L349-L372) |
+| **Orchestrator** | `ThreadPoolExecutor` | Thread management for parallel scanning | [auditor.py](../redaudit/core/auditor.py#L788-L840) |
+| **Encryption** | `python3-cryptography` | AES-128 for sensitive reports | [crypto.py](../redaudit/core/crypto.py) |
 
 ### Reporting System
 
 Results aren't simply printed to screen. They're structured in JSON format with ECS v8.11 schema:
 
-**JSON Structure** ([REPORT_SCHEMA.md](file:///Users/dorin/Documents/AntiGravity/RedAudit/docs/REPORT_SCHEMA.md)):
+**JSON Structure** ([REPORT_SCHEMA.md](../docs/REPORT_SCHEMA.md)):
 
 - `timestamp`: ISO 8601.
 - `version`: RedAudit version.
@@ -295,7 +295,7 @@ Client → Receives:
 
 **ECS-Compliant Design**: RedAudit v2.9 generates reports following the **Elastic Common Schema (ECS) v8.11**, ensuring immediate compatibility with major market SIEMs.
 
-**Key fields optimized for SIEM** ([code](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/siem.py)):
+**Key fields optimized for SIEM** ([code](../redaudit/core/siem.py)):
 
 - `event.type`: `redaudit.scan.complete`
 - `event.severity`: Automatically calculated (0-100)
@@ -414,12 +414,12 @@ classDiagram
 
 The code mainly resides in the `redaudit/core/` package:
 
-- **[`Auditor`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py)** (`auditor.py`):
+- **[`Auditor`](../redaudit/core/auditor.py)** (`auditor.py`):
   - Main class: `InteractiveNetworkAuditor`.
   - Maintains global state (`self.results`, `self.config`).
   - Handles user interaction loop and signals (Ctrl+C).
 
-- **[`Scanner`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/scanner.py)** (`scanner.py`):
+- **[`Scanner`](../redaudit/core/scanner.py)** (`scanner.py`):
   - Contains pure functions and execution logic.
   - Encapsulates `subprocess` calls to execute system tools.
   - Parses raw text output from tools and converts to Python dictionaries.
@@ -457,7 +457,7 @@ with ThreadPoolExecutor(max_workers=self.config["threads"]) as executor:
 
 ### Asyncio and Pre-scan
 
-**Code**: [`prescan.py`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/prescan.py)
+**Code**: [`prescan.py`](../redaudit/core/prescan.py)
 
 For ultra-fast port discovery, `asyncio` is used:
 
@@ -484,7 +484,7 @@ async def check_port(ip: str, port: int, timeout: float = 0.5) -> bool:
 
 ### The Heartbeat Monitor
 
-**Code**: [`_heartbeat_loop()`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py#L246-L260)
+**Code**: [`_heartbeat_loop()`](../redaudit/core/auditor.py#L246-L260)
 
 Since Nmap scans can take minutes without output, RedAudit implements a "heartbeat monitor":
 
@@ -511,7 +511,7 @@ def _heartbeat_loop(self):
 
 ### Subprocess and Zombie Management
 
-**Code**: [`signal_handler()`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py#L262-L301)
+**Code**: [`signal_handler()`](../redaudit/core/auditor.py#L262-L301)
 
 A key challenge in orchestration tools is cleanup when the user presses Ctrl+C:
 
@@ -521,7 +521,7 @@ A key challenge in orchestration tools is cleanup when the user presses Ctrl+C:
 
 ### Constants Customization (Advanced)
 
-**Key file**: [`constants.py`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/utils/constants.py)
+**Key file**: [`constants.py`](../redaudit/utils/constants.py)
 
 RedAudit centralizes all configurable values in a single file. This allows **behavior adaptation** based on the usage environment.
 
@@ -604,7 +604,7 @@ git checkout redaudit/utils/constants.py
 
 ### Generated File Permissions
 
-**Security Configuration**: [`SECURE_FILE_MODE`](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/utils/constants.py#L62)
+**Security Configuration**: [`SECURE_FILE_MODE`](../redaudit/utils/constants.py#L62)
 
 RedAudit sets restrictive permissions on **all** generated files to protect sensitive information:
 
@@ -623,7 +623,7 @@ In Unix octal notation:
 
 **Result**: Only the user who ran `sudo redaudit` can read/write these files.
 
-**Affected files** ([code](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/reporter.py#L229)):
+**Affected files** ([code](../redaudit/core/reporter.py#L229)):
 
 1. `redaudit_YYYYMMDD_HHMMSS.json` (or `.json.enc`)
 2. `redaudit_YYYYMMDD_HHMMSS.txt` (or `.txt.enc`)
@@ -650,7 +650,7 @@ $ ls -la ~/Documents/RedAuditReports/RedAudit_2025-12-12_18-45-32/
 
 ### Directory Structure
 
-**Default location** ([constant](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/utils/constants.py#L55)):
+**Default location** ([constant](../redaudit/utils/constants.py#L55)):
 
 ```text
 ~/Documents/RedAuditReports/
@@ -690,7 +690,7 @@ This ensures all team members can access generated reports while maintaining pro
 |:---|:---|:---|
 | **JSON Report** | 10-100 KB per host | Depends on number of ports and services |
 | **TXT Report** | 5-20 KB per host | Human-readable version |
-| **PCAP File** | 20-50 KB per host | Limited to 50 packets (v2.8.1) |
+| **PCAP File** | 20-50 KB per deep scan host | Limited to 50 packets (v2.8.1) |
 | **Application Logs** | 1-10 MB/day | Automatic rotation (max 5 files) |
 
 **Practical estimate**:
@@ -698,7 +698,7 @@ This ensures all team members can access generated reports while maintaining pro
 - Scan of 10 hosts (normal mode): ~2-5 MB total.
 - Scan of 100 hosts (full mode + deep scan): ~50-150 MB total.
 
-**Log location** ([code](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py#L190-L197)):
+**Log location** ([code](../redaudit/core/auditor.py#L190-L197)):
 
 ```text
 ~/.redaudit/logs/
@@ -711,7 +711,7 @@ This ensures all team members can access generated reports while maintaining pro
 
 ### Network and Permission Considerations
 
-**Required permissions** ([verification](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py#L318-L324)):
+**Required permissions** ([verification](../redaudit/core/auditor.py#L318-L324)):
 
 1. **`sudo` mandatory**: To create raw sockets (necessary for Nmap SYN scans).
 2. **System tool access**:
@@ -737,7 +737,7 @@ sudo iptables -A OUTPUT -p tcp --tcp-flags SYN,ACK SYN,ACK -j ACCEPT
 
 **Critical point**: Encryption passwords are **never** written to logs.
 
-**Secure handling code** ([crypto.py](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/crypto.py)):
+**Secure handling code** ([crypto.py](../redaudit/core/crypto.py)):
 
 ```python
 # Passwords are handled in memory and derived to keys
@@ -969,16 +969,16 @@ To facilitate code study, here are the key entry points:
 
 ### Main File
 
-- [redaudit.py](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit.py): Program entry point (`main()`).
+- [redaudit.py](../redaudit.py): Program entry point (`main()`).
 
 ### Core Module
 
-- [auditor.py](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/auditor.py): Main class `InteractiveNetworkAuditor`.
-- [scanner.py](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/scanner.py): Scanning and enrichment functions.
-- [prescan.py](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/prescan.py): Fast discovery with asyncio.
-- [crypto.py](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/crypto.py): AES-128 encryption.
-- [reporter.py](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/reporter.py): JSON/TXT report generation.
-- [siem.py](file:///Users/dorin/Documents/AntiGravity/RedAudit/redaudit/core/siem.py): ECS v8.11 integration.
+- [auditor.py](../redaudit/core/auditor.py): Main class `InteractiveNetworkAuditor`.
+- [scanner.py](../redaudit/core/scanner.py): Scanning and enrichment functions.
+- [prescan.py](../redaudit/core/prescan.py): Fast discovery with asyncio.
+- [crypto.py](../redaudit/core/crypto.py): AES-128 encryption.
+- [reporter.py](../redaudit/core/reporter.py): JSON/TXT report generation.
+- [siem.py](../redaudit/core/siem.py): ECS v8.11 integration.
 
 ### Critical Functions to Study
 

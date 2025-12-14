@@ -19,6 +19,7 @@ import importlib
 import ipaddress
 import logging
 import base64
+import textwrap
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging.handlers import RotatingFileHandler
@@ -142,6 +143,7 @@ class InteractiveNetworkAuditor:
 
         self.last_activity = datetime.now()
         self.activity_lock = threading.Lock()
+        self._print_lock = threading.Lock()
         self.heartbeat_stop = False
         self.heartbeat_thread = None
         self.current_phase = "init"
@@ -173,17 +175,28 @@ class InteractiveNetworkAuditor:
         ts = datetime.now().strftime("%H:%M:%S")
         color = self.COLORS.get(status, self.COLORS["OKBLUE"])
 
-        if len(message) > 100:
-            lines = [message[i:i + 100] for i in range(0, len(message), 100)]
-        else:
-            lines = [message]
+        # Wrap long messages on word boundaries to avoid splitting words mid-line.
+        msg = "" if message is None else str(message)
+        lines = []
+        for raw_line in msg.splitlines() or [""]:
+            if not raw_line:
+                lines.append("")
+                continue
+            wrapped = textwrap.wrap(
+                raw_line,
+                width=100,
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+            lines.extend(wrapped if wrapped else [""])
 
         # NOTE: These print statements output status messages (e.g., "Scanning host X"),
         # NOT passwords or sensitive data. CodeQL incorrectly flags these.
-        print(f"{color}[{ts}] [{status}]{self.COLORS['ENDC']} {lines[0]}")  # lgtm[py/clear-text-logging-sensitive-data]
-        for line in lines[1:]:
-            print(f"  {line}")  # lgtm[py/clear-text-logging-sensitive-data]
-        sys.stdout.flush()
+        with self._print_lock:
+            print(f"{color}[{ts}] [{status}]{self.COLORS['ENDC']} {lines[0]}")  # lgtm[py/clear-text-logging-sensitive-data]
+            for line in lines[1:]:
+                print(f"  {line}")  # lgtm[py/clear-text-logging-sensitive-data]
+            sys.stdout.flush()
 
     @staticmethod
     def sanitize_ip(ip_str):
@@ -346,7 +359,7 @@ class InteractiveNetworkAuditor:
                 is_nvd_api_key_configured,
             )
         except ImportError:
-            self.print_status("Config module not available", "WARNING")
+            self.print_status(self.t("config_module_missing"), "WARNING")
             return
         
         # If key provided via CLI, just use it
@@ -425,7 +438,7 @@ class InteractiveNetworkAuditor:
         self.print_status(self.t("verifying_env"), "HEADER")
 
         if shutil.which("nmap") is None:
-            self.print_status("Error: nmap binary not found.", "FAIL")
+            self.print_status(self.t("nmap_binary_missing"), "FAIL")
             return False
 
         global nmap
@@ -626,7 +639,10 @@ class InteractiveNetworkAuditor:
         self.current_phase = f"deep:{safe_ip}"
         deep_obj = {"strategy": "adaptive_v2.8", "commands": []}
 
-        self.print_status(self.t("deep_identity_start", safe_ip, "Adaptive (3-Phase v2.8)"), "WARNING")
+        self.print_status(
+            self.t("deep_identity_start", safe_ip, self.t("deep_strategy_adaptive")),
+            "WARNING",
+        )
 
         # Start background traffic capture BEFORE scanning
         # v2.8.1: Use actual output dir (timestamped folder) for PCAP files
@@ -665,7 +681,7 @@ class InteractiveNetworkAuditor:
                     "--max-retries", "1", "--host-timeout", "120s", safe_ip
                 ]
                 self.print_status(
-                    f"[deep] {safe_ip} → {' '.join(cmd_p2a)} (~60-120s, priority UDP)",
+                    self.t("deep_udp_priority_cmd", safe_ip, " ".join(cmd_p2a)),
                     "WARNING"
                 )
                 rec2a = run_nmap_command(cmd_p2a, UDP_QUICK_TIMEOUT, safe_ip, deep_obj)
@@ -691,7 +707,7 @@ class InteractiveNetworkAuditor:
                         safe_ip
                     ]
                     self.print_status(
-                        f"[deep] {safe_ip} → {' '.join(cmd_p2b)} (~120-180s, top {UDP_TOP_PORTS} UDP)",
+                        self.t("deep_udp_full_cmd", safe_ip, " ".join(cmd_p2b), UDP_TOP_PORTS),
                         "WARNING"
                     )
                     rec2b = run_nmap_command(cmd_p2b, DEEP_SCAN_TIMEOUT, safe_ip, deep_obj)
@@ -859,7 +875,7 @@ class InteractiveNetworkAuditor:
             # v2.8.0: Banner grab fallback for unidentified ports
             if unknown_ports and len(unknown_ports) <= 20:
                 self.print_status(
-                    f"[banner] {safe_ip} → Grabbing banners for {len(unknown_ports)} unidentified ports",
+                    self.t("banner_grab", safe_ip, len(unknown_ports)),
                     "INFO"
                 )
                 banner_info = banner_grab_fallback(safe_ip, unknown_ports, logger=self.logger)
@@ -987,7 +1003,11 @@ class InteractiveNetworkAuditor:
                         except Exception as exc:
                             self.logger.error("Worker error for %s: %s", host_ip, exc)
                         done += 1
-                        progress.update(task, advance=1, description=f"[cyan]Scanned {host_ip}")
+                        progress.update(
+                            task,
+                            advance=1,
+                            description=f"[cyan]{self.t('scanned_host', host_ip)}",
+                        )
             else:
                 # Fallback to basic progress
                 for fut in as_completed(futures):
@@ -1163,7 +1183,11 @@ class InteractiveNetworkAuditor:
                         except Exception as exc:
                             self.logger.error("Vuln worker error for %s: %s", host_ip, exc)
                         done += 1
-                        progress.update(task, advance=1, description=f"[cyan]Scanned {host_ip}")
+                        progress.update(
+                            task,
+                            advance=1,
+                            description=f"[cyan]{self.t('scanned_host', host_ip)}",
+                        )
             else:
                 # Fallback without rich
                 for fut in as_completed(futures):
@@ -1178,7 +1202,7 @@ class InteractiveNetworkAuditor:
                             self.results["vulnerabilities"].append(res)
                             self.print_status(self.t("vulns_found", res["host"]), "WARNING")
                     except Exception as exc:
-                        self.print_status(f"[worker error] {exc}", "WARNING")
+                        self.print_status(self.t("worker_error", exc), "WARNING")
                     done += 1
 
 
@@ -1329,13 +1353,11 @@ class InteractiveNetworkAuditor:
 
             # v3.0.1: CVE correlation via NVD (optional; can be slow)
             if self.config.get("cve_lookup_enabled") and not self.interrupted:
-                # Ensure API key is loaded (from CLI, env, or config)
-                self.setup_nvd_api_key(
-                    non_interactive=True,
-                    api_key=self.config.get("nvd_api_key"),
-                )
                 try:
                     from redaudit.core.nvd import enrich_host_with_cves, get_api_key_from_config
+                    # Ensure API key is loaded (from CLI, env, or config) without mislabeling the source.
+                    if not self.config.get("nvd_api_key"):
+                        self.setup_nvd_api_key(non_interactive=True)
                     api_key = self.config.get("nvd_api_key") or get_api_key_from_config()
                     for i, host_record in enumerate(results):
                         if self.interrupted:
@@ -1402,7 +1424,7 @@ class InteractiveNetworkAuditor:
 
         # Kill all active subprocesses (nmap, tcpdump, etc.)
         if self._active_subprocesses:
-            self.print_status("Terminating active scans...", "WARNING")
+            self.print_status(self.t("terminating_scans"), "WARNING")
             self.kill_all_subprocesses()
 
         # Stop heartbeat monitoring

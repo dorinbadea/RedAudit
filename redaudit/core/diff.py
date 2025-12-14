@@ -13,6 +13,8 @@ import os
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 
+from redaudit.utils.constants import VERSION
+
 
 def load_report(path: str) -> Optional[Dict]:
     """
@@ -249,7 +251,7 @@ def generate_diff_report(old_path: str, new_path: str) -> Optional[Dict]:
     total_new_vulns = sum(len(h['new_vulnerabilities']) for h in changed_hosts)
     
     return {
-        'diff_version': '3.0.1',
+        'diff_version': VERSION,
         'generated_at': datetime.now().isoformat(),
         'old_report': {
             'path': os.path.basename(old_path),

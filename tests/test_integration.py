@@ -25,7 +25,7 @@ class TestIntegration(unittest.TestCase):
     
     def test_version(self):
         """Test that version is set."""
-        self.assertEqual(VERSION, "3.0.1")
+        self.assertEqual(VERSION, "3.0.2")
     
     def test_constants(self):
         """Test security constants."""
@@ -141,4 +141,3 @@ class TestIntegration(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

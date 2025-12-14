@@ -127,7 +127,7 @@ Cada sesión de escaneo crea su propia carpeta con:
 
 - **Texto Plano**: `.json` y `.txt`.
 - **Cifrados**: `.json.enc`, `.txt.enc` y `.salt`.
-- **PCAP**: Archivos de captura de tráfico.
+- **PCAP**: Archivos de captura de tráfico (cuando se ejecuta deep scan y las herramientas están disponibles).
 
 Para descifrar resultados:
 
@@ -141,9 +141,10 @@ Esto generará archivos `.decrypted` (o restaurará la extensión original) tras
 
 Los logs de depuración se guardan en `~/.redaudit/logs/`. Revisa estos archivos si el escaneo falla o se comporta de forma inesperada.
 
-## Configuración de Correlación CVE (v3.0.1)
+## Configuración de Correlación CVE (v3.0.2)
 
 RedAudit puede enriquecer los resultados del escaneo con datos CVE de la National Vulnerability Database (NVD) del NIST.
+Este enriquecimiento depende de versiones detectadas (o CPEs con versión); si la versión es desconocida, RedAudit omite ese puerto para evitar resultados demasiado amplios.
 
 ### Configuración de API Key
 
@@ -182,7 +183,7 @@ Crea `~/.redaudit/config.json`:
 
 ```json
 {
-  "version": "3.0.1",
+  "version": "3.0.2",
   "nvd_api_key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
 ```
