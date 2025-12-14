@@ -410,6 +410,15 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
     # v3.1: Add normalized_severity (0.0-10.0 scale, CVSS-like)
     enriched["normalized_severity"] = round(max_score / 10, 1)
     
+    # v3.2: Preserve original tool severity for traceability
+    tool_name = "nikto" if vuln_record.get("nikto_findings") else "testssl" if testssl else "unknown"
+    enriched["original_severity"] = {
+        "tool": tool_name,
+        "value": max_severity.upper(),
+        "score": max_score
+    }
+
+    
     # v3.1: Determine primary category
     if all_categories:
         # Priority: vuln > auth > crypto > misconfig > info-leak
@@ -536,9 +545,18 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
         # Add tags
         host["tags"] = generate_host_tags(host)
     
-    # Enrich vulnerabilities with severity, finding_id, and category
+    # Enrich vulnerabilities with severity, finding_id, category, and observations
     # Build host IP to observable_hash mapping for finding_id generation
     host_hash_map = {h.get("ip"): h.get("observable_hash", "") for h in enriched.get("hosts", [])}
+    
+    # v3.2: Import evidence parser for parsed_observations
+    try:
+        from redaudit.core.evidence_parser import enrich_with_observations
+        has_evidence_parser = True
+    except ImportError:
+        has_evidence_parser = False
+    
+    output_dir = config.get("_actual_output_dir")
     
     for vuln_entry in enriched.get("vulnerabilities", []):
         host_ip = vuln_entry.get("host", "")
@@ -547,6 +565,12 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
         for vuln in vuln_entry.get("vulnerabilities", []):
             enriched_vuln = enrich_vulnerability_severity(vuln, asset_id=asset_id)
             vuln.update(enriched_vuln)
+            
+            # v3.2: Add parsed observations
+            if has_evidence_parser:
+                obs_enriched = enrich_with_observations(vuln, output_dir)
+                vuln.update(obs_enriched)
+
 
     
     # Add summary statistics for SIEM dashboards
