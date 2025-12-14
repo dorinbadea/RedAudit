@@ -14,6 +14,7 @@ import json
 import hashlib
 import subprocess
 import tempfile
+import textwrap
 from typing import Optional, Tuple, Dict, List
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
@@ -110,7 +111,9 @@ def fetch_latest_version(logger=None) -> Optional[Dict]:
     return None
 
 
-def fetch_changelog_snippet(version: str, max_lines: int = 20, logger=None) -> Optional[str]:
+def fetch_changelog_snippet(
+    version: str, max_lines: int = 40, logger=None, lang: str = "en"
+) -> Optional[str]:
     """
     Fetch changelog snippet for a specific version from GitHub.
     
@@ -118,27 +121,33 @@ def fetch_changelog_snippet(version: str, max_lines: int = 20, logger=None) -> O
         version: Version to fetch changelog for
         max_lines: Maximum lines to return
         logger: Optional logger
+        lang: Preferred language ('en' or 'es')
     
     Returns:
         Changelog snippet string or None
     """
-    url = f"{GITHUB_RAW_BASE}/{GITHUB_OWNER}/{GITHUB_REPO}/main/CHANGELOG.md"
+    filename = "CHANGELOG_ES.md" if lang == "es" else "CHANGELOG.md"
+    urls = [f"{GITHUB_RAW_BASE}/{GITHUB_OWNER}/{GITHUB_REPO}/main/{filename}"]
+    if filename != "CHANGELOG.md":
+        urls.append(f"{GITHUB_RAW_BASE}/{GITHUB_OWNER}/{GITHUB_REPO}/main/CHANGELOG.md")
     
     try:
-        req = Request(url)
-        req.add_header("User-Agent", f"RedAudit/{VERSION}")
-        
-        with urlopen(req, timeout=API_TIMEOUT) as response:
-            if response.status == 200:
+        for url in urls:
+            req = Request(url)
+            req.add_header("User-Agent", f"RedAudit/{VERSION}")
+
+            with urlopen(req, timeout=API_TIMEOUT) as response:
+                if response.status != 200:
+                    continue
                 content = response.read().decode("utf-8")
-                
-                # Find the section for this version
-                pattern = rf"## \[{re.escape(version)}\].*?(?=## \[|$)"
-                match = re.search(pattern, content, re.DOTALL)
-                
-                if match:
-                    lines = match.group(0).strip().split("\n")[:max_lines]
-                    return "\n".join(lines)
+
+            # Find the section for this version
+            pattern = rf"## \[{re.escape(version)}\].*?(?=## \[|$)"
+            match = re.search(pattern, content, re.DOTALL)
+
+            if match:
+                lines = match.group(0).strip().split("\n")[:max_lines]
+                return "\n".join(lines)
     except Exception as e:
         if logger:
             logger.debug("Failed to fetch changelog: %s", e)
@@ -146,39 +155,205 @@ def fetch_changelog_snippet(version: str, max_lines: int = 20, logger=None) -> O
     return None
 
 
-def check_for_updates(logger=None) -> Tuple[bool, Optional[str], Optional[str]]:
+def check_for_updates(
+    logger=None, lang: str = "en"
+) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
     """
     Check if updates are available.
     
     Args:
         logger: Optional logger
+        lang: Preferred language ('en' or 'es')
     
     Returns:
-        Tuple of (update_available, latest_version, release_notes)
+        Tuple of (update_available, latest_version, release_notes, release_url)
     """
     release_info = fetch_latest_version(logger)
     
     if not release_info:
-        return (False, None, None)
+        return (False, None, None, None)
     
     latest_version = release_info.get("tag_name", "")
+    release_url = release_info.get("html_url", "") or None
     
     if not latest_version:
-        return (False, None, None)
+        return (False, None, None, None)
     
     comparison = compare_versions(VERSION, latest_version)
     
     if comparison < 0:  # Update available
-        # Get release notes (try release body first, then changelog)
-        release_notes = release_info.get("body", "")
-        if not release_notes or len(release_notes) < 50:
-            changelog = fetch_changelog_snippet(latest_version, logger=logger)
-            if changelog:
-                release_notes = changelog
-        
-        return (True, latest_version, release_notes)
+        # Prefer changelog section (compact + language-specific), then fall back to release body.
+        release_notes = (
+            fetch_changelog_snippet(latest_version, logger=logger, lang=lang) or ""
+        ).strip()
+        if not release_notes:
+            release_notes = (release_info.get("body", "") or "").strip()
+
+        return (True, latest_version, release_notes or None, release_url)
     
-    return (False, VERSION, None)
+    return (False, VERSION, None, None)
+
+
+def _strip_markdown_inline(text: str) -> str:
+    # Remove badge/image links: [![alt](img)](url)
+    text = re.sub(r"\[!\[.*?\]\(.*?\)\]\(.*?\)", "", text)
+    # Remove images: ![alt](url)
+    text = re.sub(r"!\[([^\]]*)\]\(.*?\)", r"\1", text)
+    # Replace links: [text](url) -> text
+    text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", text)
+    # Replace autolinks: <https://...> -> https://...
+    text = re.sub(r"<(https?://[^>]+)>", r"\1", text)
+    # Remove basic emphasis/code markers
+    text = text.replace("**", "").replace("__", "").replace("`", "")
+    # Remove remaining HTML tags (best-effort)
+    text = re.sub(r"</?[^>]+>", "", text)
+    return text
+
+
+def format_release_notes_for_cli(notes: str, width: int = 100, max_lines: int = 40) -> str:
+    """
+    Convert Markdown-ish release notes into a CLI-friendly, wrapped text preview.
+
+    This is intentionally lightweight (no external deps) and aims for readability in plain terminals.
+    """
+    if not notes:
+        return ""
+
+    try:
+        import shutil
+
+        term_width = shutil.get_terminal_size((width, 24)).columns
+        width = max(60, min(int(term_width), 140))
+    except Exception:
+        width = max(60, min(int(width or 100), 140))
+
+    raw_lines = notes.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    cleaned_lines: List[str] = []
+
+    for raw in raw_lines:
+        line = raw.rstrip()
+        if not line.strip():
+            # collapse multiple blank lines
+            if cleaned_lines and cleaned_lines[-1] != "":
+                cleaned_lines.append("")
+            continue
+
+        # Drop common visual-only markdown noise
+        if re.fullmatch(r"\s*[-*_]{3,}\s*", line):
+            continue
+
+        if re.search(r"\[!\[.*?\]\(.*?\)\]\(.*?\)", line):
+            continue
+
+        # Headings: "### Added" -> "Added:"
+        m = re.match(r"^\s{0,3}#{1,6}\s+(.*)$", line)
+        if m:
+            heading = _strip_markdown_inline(m.group(1).strip())
+            heading = heading.strip("[] ").strip()
+            if heading:
+                normalized = heading.lower().strip(":")
+                if normalized in {"added", "changed", "fixed", "security", "removed", "deprecated"}:
+                    heading = heading.rstrip(":") + ":"
+                if normalized in {"añadido", "cambiado", "corregido", "seguridad", "eliminado", "obsoleto"}:
+                    heading = heading.rstrip(":") + ":"
+                cleaned_lines.append(heading)
+            continue
+
+        # Normalize bullets ("*", "•") -> "-"
+        line = re.sub(r"^(\s*)[•*]\s+", r"\1- ", line)
+        cleaned_lines.append(_strip_markdown_inline(line).rstrip())
+
+    # Trim leading/trailing blank lines
+    while cleaned_lines and cleaned_lines[0] == "":
+        cleaned_lines.pop(0)
+    while cleaned_lines and cleaned_lines[-1] == "":
+        cleaned_lines.pop()
+
+    if not cleaned_lines:
+        return ""
+
+    wrapped_lines: List[str] = []
+    for line in cleaned_lines:
+        if line == "":
+            wrapped_lines.append("")
+            continue
+
+        indent_len = len(line) - len(line.lstrip(" "))
+        indent = " " * indent_len
+        body = line.lstrip(" ")
+
+        bullet_match = re.match(r"^(-\s+|\d+\.\s+)", body)
+        subsequent_indent = indent
+        if bullet_match:
+            subsequent_indent = indent + " " * len(bullet_match.group(1))
+
+        segments = textwrap.wrap(
+            body,
+            width=max(20, width - indent_len),
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        if not segments:
+            wrapped_lines.append(indent + body)
+            continue
+        wrapped_lines.append(indent + segments[0])
+        for seg in segments[1:]:
+            wrapped_lines.append(subsequent_indent + seg)
+
+    if max_lines and len(wrapped_lines) > max_lines:
+        wrapped_lines = wrapped_lines[:max_lines]
+        if wrapped_lines and wrapped_lines[-1] != "...":
+            wrapped_lines.append("...")
+
+    return "\n".join(wrapped_lines)
+
+
+def _suggest_restart_command() -> str:
+    # Best-effort hint: updates typically require sudo/root for system install.
+    if os.geteuid() == 0:
+        return "sudo redaudit"
+    return "redaudit"
+
+
+def restart_self(logger=None) -> bool:
+    """
+    Best-effort restart after a successful update.
+
+    Returns False if restart could not be performed.
+    """
+    import shutil
+    import sys
+
+    argv = list(sys.argv or [])
+    if not argv:
+        return False
+
+    argv0 = argv[0]
+    # 1) Re-run the original entrypoint (PATH-aware).
+    try:
+        os.execvp(argv0, argv)
+    except Exception as e:
+        if logger:
+            logger.debug("Restart via execvp failed: %s", e)
+
+    # 2) Resolve via PATH and try execv.
+    try:
+        resolved = shutil.which(argv0) or shutil.which(os.path.basename(argv0))
+        if resolved:
+            os.execv(resolved, [resolved] + argv[1:])
+    except Exception as e:
+        if logger:
+            logger.debug("Restart via resolved execv failed: %s", e)
+
+    # 3) Fallback: python + script path (only if argv0 is a file).
+    try:
+        if os.path.isfile(argv0):
+            os.execv(sys.executable, [sys.executable, argv0] + argv[1:])
+    except Exception as e:
+        if logger:
+            logger.debug("Restart via python execv failed: %s", e)
+
+    return False
 
 
 def compute_file_hash(filepath: str, algorithm: str = "sha256") -> str:
@@ -657,12 +832,14 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None,
         def ask_fn(q, default="yes"): 
             return input(f"{q} [y/n]: ").strip().lower() in ("y", "yes", "s", "si")
     if not t_fn:
-        t_fn = lambda key, *args: key
+        t_fn = lambda key, *args: key.format(*args) if args else key  # noqa: E731
     
     # Check for updates
     print_fn(t_fn("update_checking"), "INFO")
     
-    update_available, latest_version, release_notes = check_for_updates(logger)
+    update_available, latest_version, release_notes, release_url = check_for_updates(
+        logger=logger, lang=lang
+    )
     
     if not latest_version:
         print_fn(t_fn("update_check_failed"), "WARNING")
@@ -677,15 +854,15 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None,
     
     # Show release notes if available
     if release_notes:
+        formatted = format_release_notes_for_cli(release_notes)
         print("")
         print("=" * 60)
-        print(t_fn("update_release_notes"))
+        print(f"{t_fn('update_release_notes')} v{latest_version}")
         print("=" * 60)
-        # Limit to first 500 chars for display
-        notes_preview = release_notes[:500]
-        if len(release_notes) > 500:
-            notes_preview += "\n..."
-        print(notes_preview)
+        print(formatted)
+        if release_url:
+            print("")
+            print(t_fn("update_release_url", release_url))
         print("=" * 60)
         print("")
     
@@ -708,12 +885,13 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None,
             # v2.8.1: Auto-restart if update was installed to system
             if message == "UPDATE_SUCCESS_RESTART":
                 print_fn(t_fn("update_restarting"), "OKGREEN")
-                import sys
                 import time
                 time.sleep(1)  # Brief pause before restart
-                # Re-execute the current script
-                python = sys.executable
-                os.execv(python, [python] + sys.argv)
+                if not restart_self(logger=logger):
+                    print_fn(
+                        t_fn("update_restart_failed", _suggest_restart_command()),
+                        "WARNING",
+                    )
             else:
                 print_fn(message, "OKGREEN")
             return True

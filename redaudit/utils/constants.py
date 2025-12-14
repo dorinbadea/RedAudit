@@ -6,7 +6,7 @@ GPLv3 License
 """
 
 # Version
-VERSION = "3.1.1"
+VERSION = "3.1.2"
 
 # Default language (installer may override)
 DEFAULT_LANG = "en"

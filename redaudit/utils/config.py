@@ -19,7 +19,7 @@ except ImportError:  # pragma: no cover
 from typing import Dict, Optional, Any
 
 # Config version
-CONFIG_VERSION = "3.1.1"
+CONFIG_VERSION = "3.1.2"
 
 # Environment variable names
 ENV_NVD_API_KEY = "NVD_API_KEY"

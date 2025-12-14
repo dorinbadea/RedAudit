@@ -449,13 +449,16 @@ def main():
             if os.geteuid() != 0:
                 app.print_status(app.t("update_requires_root"), "WARNING")
             elif app.ask_yes_no(app.t("update_check_prompt"), default="yes"):
-                interactive_update_check(
+                did_update = interactive_update_check(
                     print_fn=app.print_status,
                     ask_fn=app.ask_yes_no,
                     t_fn=app.t,
                     logger=app.logger,
                     lang=app.lang,
                 )
+                if did_update:
+                    # Update may replace installed code; avoid continuing in the current process.
+                    sys.exit(0)
 
     # Non-interactive mode if --target is provided
     if args.target:

@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MANUAL SIEM**: Added SIEM Integration subsection (§6.2.1) with JSONL format examples and ingestion commands
 - **CHANGELOG Fix**: Corrected duplicate v2.5.0 entry (renamed to v2.4.0), fixed v3.1.0 date (2025-12-13)
 
+## [3.1.2] - 2025-12-14 (Update UX)
+
+### Fixed
+
+- **Updater notes preview**: Terminal-friendly rendering (strip Markdown noise, wrap long lines).
+- **Updater restart**: PATH-aware restart attempts and clear fallback instructions when restart fails.
+
 ## [3.1.1] - 2025-12-14 (Topology, Defaults & UDP Coverage)
 
 ### Added
