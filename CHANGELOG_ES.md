@@ -519,7 +519,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 - **Permisos de ficheros**: Todos los reportes generados usan permisos seguros (0o600)
 - **Manejo de errores**: Mejor manejo de excepciones reduce filtración de información
 
-## [2.5.0] - 2025-12-07 (Adaptive Deep Scan)
+## [2.4.0] - 2025-12-07 (Adaptive Deep Scan)
 
 ### Añadido
 
@@ -531,6 +531,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 
 - **Heartbeat**: Mensajería más profesional ("Nmap is still running") para reducir ansiedad durante escaneos largos.
 - **Reporting**: Añade campos `vendor` y `mac_address` en reportes JSON/TXT.
+- **Versión**: Actualizada a 2.4.0
 
 ## [2.3.1] - 2024-05-20 (Hardening de seguridad)
 

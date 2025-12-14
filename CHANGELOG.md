@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deep Scan UDP Phase 2b**: Uses configurable `--top-ports N` and records `udp_top_ports` in deep scan output
 - **Report Schema**: Added optional `topology` block in the root report (when enabled)
 
-## [3.1.0] - 2025-12-13 (SIEM & AI Pipeline)
+## [3.1.0] - 2025-12-14 (SIEM & AI Pipeline)
 
 ### Added
 
