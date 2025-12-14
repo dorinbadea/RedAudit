@@ -177,7 +177,7 @@ Include:
 
 Email: `security@dorinbadea.com`
 
-See [SECURITY.md](docs/en/SECURITY.md) for our vulnerability disclosure policy.
+See [SECURITY.md](../docs/en/SECURITY.md) for our vulnerability disclosure policy.
 
 ---
 
@@ -219,14 +219,13 @@ See [SECURITY.md](docs/en/SECURITY.md) for our vulnerability disclosure policy.
 
 By contributing to RedAudit, you agree that your contributions will be licensed under the **GNU General Public License v3.0 (GPLv3)**.
 
-See [LICENSE](LICENSE) for details.
+See [LICENSE](../LICENSE) for details.
 
 ---
 
 ## Questions?
 
-- **Discussions**: Use [GitHub Discussions](https://github.com/dorinbadea/RedAudit/discussions) for questions
 - **Issues**: Use [GitHub Issues](https://github.com/dorinbadea/RedAudit/issues) for bugs/features
 - **Contact**: See README.md for contact information
 
-Thank you for contributing to RedAudit! 
+Thank you for contributing to RedAudit!
