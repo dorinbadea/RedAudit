@@ -56,7 +56,18 @@ redaudit --with-topology --target 10.0.0.0/8 # Integrated with full audit
 
 ## Completed Milestones
 
-### v3.0.4 (Completed - December 2025) -> **CURRENT**
+### v3.1.0 (Completed - December 2025) -> **CURRENT**
+
+*Feature release focused on SIEM readiness and AI pipeline exports.*
+
+- [x] **JSONL exports**: `findings.jsonl`, `assets.jsonl`, `summary.json` for flat ingestion.
+- [x] **Deterministic finding IDs**: `finding_id` for cross-scan correlation and dedup.
+- [x] **Finding categorization**: surface/misconfig/crypto/auth/info-leak/vuln.
+- [x] **Normalized severity**: `normalized_severity` (0-10) + preserved original tool severity.
+- [x] **Parsed observations**: Structured extraction from Nikto/TestSSL (with raw evidence externalization when needed).
+- [x] **Scanner versions**: Tool provenance (`scanner_versions`).
+
+### v3.0.4 (Completed - December 2025)
 
 *Patch release focused on clearer interactive host-limit UX and documentation alignment.*
 

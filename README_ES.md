@@ -292,7 +292,7 @@ Consulta [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) para soluciones deta
 
 ### Características v3.1
 
-- **Exportaciones JSONL**: `findings.jsonl`, `assets.jsonl`, `summary.json` para pipelines SIEM/IA
+- **Exportaciones JSONL**: `findings.jsonl`, `assets.jsonl`, `summary.json` para pipelines SIEM/IA (solo cuando el cifrado está desactivado)
 - **IDs de Hallazgo**: Hashes determinísticos para correlación entre escaneos
 - **Clasificación por Categoría**: surface/misconfig/crypto/auth/info-leak/vuln
 - **Severidad Normalizada**: Escala 0-10 estilo CVSS con severidad original preservada

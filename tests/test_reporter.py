@@ -141,7 +141,12 @@ class TestReporter(unittest.TestCase):
         # Check file was created (search recursively due to timestamped subdirs)
         json_files = []
         for root, dirs, files in os.walk(self.sample_config["output_dir"]):
-            json_files.extend([os.path.join(root, f) for f in files if f.endswith(".json")])
+            json_files.extend([
+                os.path.join(root, f)
+                for f in files
+                if f.endswith(".json")
+                and (f.startswith("redaudit_") or f.startswith("PARTIAL_redaudit_"))
+            ])
         self.assertEqual(len(json_files), 1)
         
         # Check file permissions

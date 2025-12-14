@@ -4,7 +4,7 @@
 
 ### v3.1 Highlights
 
-- **JSONL Exports**: Auto-generated `findings.jsonl`, `assets.jsonl`, and `summary.json` for SIEM/AI pipelines.
+- **JSONL Exports**: Auto-generated `findings.jsonl`, `assets.jsonl`, and `summary.json` for SIEM/AI pipelines (when report encryption is disabled).
 - **Finding IDs**: Deterministic hashes for finding deduplication across scans.
 - **Category Classification**: Findings categorized as surface/misconfig/crypto/auth/info-leak/vuln.
 - **Normalized Severity**: CVSS-like 0-10 scale with preserved original tool severity.

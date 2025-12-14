@@ -284,7 +284,7 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for detailed fixes.
 
 ### v3.1 Features
 
-- **JSONL Exports**: Auto-generated `findings.jsonl`, `assets.jsonl`, `summary.json` for SIEM/AI pipelines
+- **JSONL Exports**: Auto-generated `findings.jsonl`, `assets.jsonl`, `summary.json` for SIEM/AI pipelines (when report encryption is disabled)
 - **Finding IDs**: Deterministic hashes for cross-scan finding correlation
 - **Category Classification**: surface/misconfig/crypto/auth/info-leak/vuln
 - **Normalized Severity**: CVSS-like 0-10 scale with preserved tool severity

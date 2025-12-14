@@ -342,13 +342,18 @@ Tras cada ejecución, RedAudit crea un directorio con sello temporal (v2.8+):
 └── RedAudit_2025-01-15_21-30-45/
     ├── redaudit_20250115_213045.json
     ├── redaudit_20250115_213045.txt
+    ├── findings.jsonl                # v3.1 exportación plana de hallazgos (SIEM/IA)
+    ├── assets.jsonl                  # v3.1 exportación plana de activos (SIEM/IA)
+    ├── summary.json                  # v3.1 resumen compacto para dashboards
+    ├── evidence/                     # output raw opcional (si es grande)
     ├── traffic_192_168_1_*.pcap     # capturas opcionales
     └── *.log                        # logs auxiliares
 ```
 
 Cada sesión de escaneo obtiene su propia subcarpeta para mejor organización.
 
-Si el cifrado está activado, los informes terminarán en `.enc` y aparecerán ficheros `.salt` asociados.
+Si el cifrado está activado, los informes terminarán en `.enc` y aparecerán ficheros `.salt` asociados.  
+Por seguridad, las vistas de exportación planas (JSONL/JSON) se generan solo cuando el cifrado está desactivado (para evitar artefactos en texto plano).
 
 ---
 
@@ -417,10 +422,8 @@ Si se activa `--encrypt`, RedAudit utiliza la librería `cryptography` (Fernet) 
 Utiliza `redaudit_decrypt.py`:
 
 ```bash
-python3 redaudit_decrypt.py \
-   --file redaudit_report_2025-01-15_213045.json.enc \
-   --password "ContraseñaFuerte123!" \
-   --output informe.descifrado.json
+# Descifra un informe JSON cifrado (se pedirá la contraseña)
+python3 redaudit_decrypt.py /ruta/a/redaudit_20250115_213045.json.enc
 ```
 
 El script:
@@ -428,7 +431,7 @@ El script:
 1. Localiza el fichero `.salt` correspondiente.
 2. Deriva la clave de cifrado.
 3. Verifica integridad y descifra.
-4. Escribe el resultado en la ruta indicada.
+4. Escribe el resultado junto al fichero cifrado (mismo nombre sin `.enc`, salvo que elijas otro nombre cuando te lo pida).
 
 Si se pierde la contraseña, no hay forma de recuperar el contenido de los informes. No existe mecanismo de "reset".
 

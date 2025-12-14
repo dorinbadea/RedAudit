@@ -5,6 +5,10 @@
 # Python cache
 __pycache__/
 *.pyc
+.pytest_cache/
+.coverage
+.venv/
+*.egg-info/
 
 # RedAudit output files (only ignore in root to allow docs/*.md)
 *.pcap

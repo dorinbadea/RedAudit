@@ -4,11 +4,21 @@
 
 ## Overview
 
-RedAudit generates machine-readable reports in JSON format. This document describes the schema structure for `redaudit_report_<timestamp>.json` artifacts.
+RedAudit generates machine-readable reports in JSON format. This document describes the schema structure for `redaudit_<timestamp>.json` artifacts.
 
 **Data Types**: Standard JSON types (`string`, `number`, `boolean`, `array`, `object`).
 **Nullable**: Fields are nullable unless specified otherwise.
 **Source Module**: `redaudit/core/reporter.py`
+
+## Additional Export Views (v3.1)
+
+In the same output directory, RedAudit can also generate flat export files optimized for SIEM and AI pipelines:
+
+- `findings.jsonl`: One finding per line
+- `assets.jsonl`: One asset per line
+- `summary.json`: Compact dashboard summary
+
+These exports are generated only when report encryption is **disabled**, to avoid creating plaintext artifacts alongside encrypted reports.
 
 ## Schema Definition
 

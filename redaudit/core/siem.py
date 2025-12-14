@@ -410,7 +410,7 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
     # v3.1: Add normalized_severity (0.0-10.0 scale, CVSS-like)
     enriched["normalized_severity"] = round(max_score / 10, 1)
     
-    # v3.2: Preserve original tool severity for traceability
+    # v3.1: Preserve original tool severity for traceability
     tool_name = "nikto" if vuln_record.get("nikto_findings") else "testssl" if testssl else "unknown"
     enriched["original_severity"] = {
         "tool": tool_name,
@@ -549,14 +549,15 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
     # Build host IP to observable_hash mapping for finding_id generation
     host_hash_map = {h.get("ip"): h.get("observable_hash", "") for h in enriched.get("hosts", [])}
     
-    # v3.2: Import evidence parser for parsed_observations
+    # v3.1: Import evidence parser for parsed_observations
     try:
         from redaudit.core.evidence_parser import enrich_with_observations
         has_evidence_parser = True
     except ImportError:
         has_evidence_parser = False
     
-    output_dir = config.get("_actual_output_dir")
+    encryption_enabled = bool(config.get("encryption_enabled"))
+    output_dir = config.get("_actual_output_dir") if not encryption_enabled else None
     
     for vuln_entry in enriched.get("vulnerabilities", []):
         host_ip = vuln_entry.get("host", "")
@@ -566,7 +567,7 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
             enriched_vuln = enrich_vulnerability_severity(vuln, asset_id=asset_id)
             vuln.update(enriched_vuln)
             
-            # v3.2: Add parsed observations
+            # v3.1: Add parsed observations
             if has_evidence_parser:
                 obs_enriched = enrich_with_observations(vuln, output_dir)
                 vuln.update(obs_enriched)

@@ -56,7 +56,18 @@ redaudit --with-topology --target 10.0.0.0/8 # Integrado con auditoría completa
 
 ## Hitos Completados
 
-### v3.0.4 (Completado - Diciembre 2025) -> **ACTUAL**
+### v3.1.0 (Completado - Diciembre 2025) -> **ACTUAL**
+
+*Release centrada en integraciones SIEM y exportaciones para pipelines de IA.*
+
+- [x] **Exportaciones JSONL**: `findings.jsonl`, `assets.jsonl`, `summary.json` para ingesta plana.
+- [x] **IDs determinísticos de hallazgo**: `finding_id` para correlación y deduplicación entre escaneos.
+- [x] **Categorización de hallazgos**: surface/misconfig/crypto/auth/info-leak/vuln.
+- [x] **Severidad normalizada**: `normalized_severity` (0-10) + severidad original de herramienta preservada.
+- [x] **Observaciones estructuradas**: Extracción de Nikto/TestSSL (con externalización de evidencia raw cuando aplica).
+- [x] **Versiones de herramientas**: Proveniencia (`scanner_versions`).
+
+### v3.0.4 (Completado - Diciembre 2025)
 
 *Patch centrado en mejorar la claridad del límite de hosts en modo interactivo y alinear documentación.*
 

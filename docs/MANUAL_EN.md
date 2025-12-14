@@ -338,13 +338,18 @@ After a run, RedAudit creates a timestamped output directory (v2.8+) such as:
 └── RedAudit_2025-01-15_21-30-45/
     ├── redaudit_20250115_213045.json
     ├── redaudit_20250115_213045.txt
+    ├── findings.jsonl                # v3.1 flat findings export (SIEM/AI)
+    ├── assets.jsonl                  # v3.1 flat assets export (SIEM/AI)
+    ├── summary.json                  # v3.1 compact dashboard summary
+    ├── evidence/                     # optional raw tool output (large)
     ├── traffic_192_168_1_*.pcap     # optional packet captures
     └── *.log                        # auxiliary logs, if enabled
 ```
 
 Each scan session gets its own subfolder for organization.
 
-If encryption is enabled, the JSON and TXT files will instead use `.enc` suffixes and have associated `.salt` files.
+If encryption is enabled, the JSON and TXT files will instead use `.enc` suffixes and have associated `.salt` files.  
+For safety, flat JSONL/JSON export views are generated only when encryption is disabled (to avoid plaintext artifacts).
 
 ---
 
@@ -413,11 +418,8 @@ When `--encrypt` is used, RedAudit leverages the Python `cryptography` library (
 Use `redaudit_decrypt.py`:
 
 ```bash
-# Decrypt an encrypted JSON report
-python3 redaudit_decrypt.py \
-   --file redaudit_report_2025-01-15_213045.json.enc \
-   --password "StrongPassw0rd!" \
-   --output report.decrypted.json
+# Decrypt an encrypted JSON report (you will be prompted for the password)
+python3 redaudit_decrypt.py /path/to/redaudit_20250115_213045.json.enc
 ```
 
 The helper script:
@@ -425,7 +427,7 @@ The helper script:
 1. Locates the corresponding `.salt` file (based on naming conventions).
 2. Derives the encryption key.
 3. Verifies integrity and decrypts the content.
-4. Writes the decrypted file to the chosen path.
+4. Writes the decrypted file next to the encrypted one (same name without `.enc`, unless you choose a different name when prompted).
 
 If you lose the password, the reports cannot be recovered. There is no backdoor or password reset mechanism.
 

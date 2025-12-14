@@ -4,7 +4,7 @@ RedAudit - Evidence Parser Module
 Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
-v3.2: Parse and structure tool output for SIEM/AI consumption.
+v3.1: Parse and structure tool output for SIEM/AI consumption.
 Separates raw output from structured observations.
 """
 
@@ -12,6 +12,8 @@ import os
 import re
 import hashlib
 from typing import Dict, List, Tuple, Optional
+
+from redaudit.utils.constants import SECURE_FILE_MODE
 
 
 # Patterns to extract meaningful observations from tool output
@@ -208,7 +210,11 @@ def save_raw_output(raw_output: str, output_dir: str, host: str, port: int) -> s
         Relative path to saved file
     """
     evidence_dir = os.path.join(output_dir, "evidence")
-    os.makedirs(evidence_dir, exist_ok=True)
+    os.makedirs(evidence_dir, mode=0o700, exist_ok=True)
+    try:
+        os.chmod(evidence_dir, 0o700)
+    except Exception:
+        pass
     
     # Sanitize filename
     safe_host = host.replace(".", "_").replace(":", "_")
@@ -217,6 +223,10 @@ def save_raw_output(raw_output: str, output_dir: str, host: str, port: int) -> s
     
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(raw_output)
+    try:
+        os.chmod(filepath, SECURE_FILE_MODE)
+    except Exception:
+        pass
     
     return f"evidence/{filename}"
 
@@ -225,7 +235,7 @@ def enrich_with_observations(vuln_record: Dict, output_dir: Optional[str] = None
     """
     Enrich vulnerability record with parsed observations.
     
-    v3.2: Adds parsed_observations, raw_tool_output_sha256, and optionally raw_tool_output_ref.
+    v3.1: Adds parsed_observations, raw_tool_output_sha256, and optionally raw_tool_output_ref.
     
     Args:
         vuln_record: Vulnerability dictionary

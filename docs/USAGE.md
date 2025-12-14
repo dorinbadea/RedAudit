@@ -127,6 +127,7 @@ Each scan session creates its own folder with:
 
 - **Plain**: `.json` and `.txt`.
 - **Encrypted**: `.json.enc`, `.txt.enc`, and `.salt`.
+- **SIEM/AI exports (v3.1)**: `findings.jsonl`, `assets.jsonl`, `summary.json` (generated only when encryption is disabled).
 - **PCAP**: Traffic capture files (when deep scan runs and capture tools are available).
 
 To decrypt results:

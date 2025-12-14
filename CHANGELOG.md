@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **JSONL Export Views**: Auto-generated flat files for SIEM/AI ingestion
+- **JSONL Export Views**: Auto-generated flat files for SIEM/AI ingestion (when report encryption is disabled)
   - `findings.jsonl` - One finding per line
   - `assets.jsonl` - One asset per line
   - `summary.json` - Compact dashboard summary
@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Parsed Observations**: Structured evidence extraction
   - New module: `redaudit/core/evidence_parser.py`
   - Extracts meaningful findings from Nikto/TestSSL raw output
-  - Large outputs externalized to `evidence/` folder
+  - Large outputs externalized to `evidence/` folder (only when report encryption is disabled)
 
 - **Scanner Versions**: Tool provenance tracking
   - New module: `redaudit/core/scanner_versions.py`

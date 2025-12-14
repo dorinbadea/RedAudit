@@ -4,7 +4,7 @@ RedAudit - JSONL Exporter Module
 Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
-v3.3: Generate flat JSONL exports for SIEM/AI pipelines.
+v3.1: Generate flat JSONL exports for SIEM/AI pipelines.
 Creates findings.jsonl, assets.jsonl, and summary.json.
 """
 
@@ -12,6 +12,8 @@ import os
 import json
 from typing import Dict, List, Optional
 from datetime import datetime
+
+from redaudit.utils.constants import SECURE_FILE_MODE
 
 
 def export_findings_jsonl(results: Dict, output_path: str) -> int:
@@ -47,6 +49,11 @@ def export_findings_jsonl(results: Dict, output_path: str) -> int:
                 
                 f.write(json.dumps(finding, ensure_ascii=False) + "\n")
                 count += 1
+
+    try:
+        os.chmod(output_path, SECURE_FILE_MODE)
+    except Exception:
+        pass
     
     return count
 
@@ -96,6 +103,11 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
             
             f.write(json.dumps(asset, ensure_ascii=False) + "\n")
             count += 1
+
+    try:
+        os.chmod(output_path, SECURE_FILE_MODE)
+    except Exception:
+        pass
     
     return count
 
@@ -143,6 +155,11 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
     
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
+
+    try:
+        os.chmod(output_path, SECURE_FILE_MODE)
+    except Exception:
+        pass
     
     return summary
 

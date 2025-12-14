@@ -4,11 +4,21 @@
 
 ## Visión General
 
-RedAudit genera reportes legibles por máquina en formato JSON. Este documento describe la estructura del esquema para los artefactos `redaudit_report_<timestamp>.json`.
+RedAudit genera reportes legibles por máquina en formato JSON. Este documento describe la estructura del esquema para los artefactos `redaudit_<timestamp>.json`.
 
 **Tipos de Datos**: Tipos JSON estándar (`string`, `number`, `boolean`, `array`, `object`).
 **Nullable**: Los campos son nullable a menos que se especifique lo contrario.
 **Módulo Fuente**: `redaudit/core/reporter.py`
+
+## Vistas de Exportación Adicionales (v3.1)
+
+En el mismo directorio de salida, RedAudit también puede generar archivos planos optimizados para pipelines SIEM e IA:
+
+- `findings.jsonl`: Un hallazgo por línea
+- `assets.jsonl`: Un activo por línea
+- `summary.json`: Resumen compacto para dashboards
+
+Estas exportaciones se generan solo cuando el cifrado de reportes está **desactivado**, para evitar crear artefactos en texto plano junto a reportes cifrados.
 
 ## Definición del Esquema
 
@@ -157,6 +167,8 @@ Lista de hallazgos de vulnerabilidades web. Cada entrada contiene:
 | `vulnerabilities[].normalized_severity` | float | Puntuación CVSS (0.0-10.0) **(v3.1)** |
 | `vulnerabilities[].original_severity` | object | Severidad original de la herramienta **(v3.1)** |
 | `vulnerabilities[].parsed_observations` | array | Hallazgos estructurados de Nikto/TestSSL **(v3.1)** |
+| `vulnerabilities[].raw_tool_output_sha256` | string | (Opcional) Hash del output raw **(v3.1)** |
+| `vulnerabilities[].raw_tool_output_ref` | string | (Opcional) Ruta a evidencia externalizada **(v3.1)** |
 | `vulnerabilities[].curl_headers` | string | (Opcional) Cabeceras HTTP de curl |
 | `vulnerabilities[].wget_spider` | string | (Opcional) Salida de spider de Wget |
 | `vulnerabilities[].tls_info` | string | (Opcional) Info de certificado TLS |

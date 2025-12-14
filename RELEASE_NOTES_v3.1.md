@@ -12,7 +12,7 @@ v3.1 introduces enterprise-grade SIEM integration and AI pipeline support. The n
 
 #### JSONL Export Views
 
-Each scan now auto-generates three flat export files:
+Each scan now auto-generates three flat export files (when report encryption is disabled):
 
 | File | Purpose |
 |:---|:---|
@@ -48,7 +48,7 @@ Findings are now automatically classified:
 
 - **`parsed_observations`**: Structured list extracted from Nikto/TestSSL
 - Reduces noise for AI processing
-- Large raw outputs externalized to `evidence/` folder
+- Large raw outputs externalized to `evidence/` folder (only when report encryption is disabled)
 
 #### Scanner Versions
 

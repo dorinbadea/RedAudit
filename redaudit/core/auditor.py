@@ -294,6 +294,9 @@ class InteractiveNetworkAuditor:
             non_interactive: If True, skip interactive prompts
             password: Password to use (required if non_interactive=True and --encrypt is used)
         """
+        # Expose a non-secret flag for downstream modules (e.g., evidence/jsonl export behavior).
+        self.config["encryption_enabled"] = False
+
         if not self.cryptography_available:
             self.print_status(self.t("crypto_missing"), "WARNING")
             if non_interactive:
@@ -308,6 +311,7 @@ class InteractiveNetworkAuditor:
                     self.encryption_key = key
                     self.config["encryption_salt"] = base64.b64encode(salt).decode()
                     self.encryption_enabled = True
+                    self.config["encryption_enabled"] = True
                     self.print_status(self.t("encryption_enabled"), "OKGREEN")
                 except RuntimeError as exc:
                     if "cryptography not available" in str(exc):
@@ -331,6 +335,7 @@ class InteractiveNetworkAuditor:
                 self.encryption_key = key
                 self.config["encryption_salt"] = base64.b64encode(salt).decode()
                 self.encryption_enabled = True
+                self.config["encryption_enabled"] = True
                 self.print_status(self.t("encryption_enabled"), "OKGREEN")
             except RuntimeError as exc:
                 if "cryptography not available" in str(exc):

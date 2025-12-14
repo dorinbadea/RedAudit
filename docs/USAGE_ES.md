@@ -127,6 +127,7 @@ Cada sesión de escaneo crea su propia carpeta con:
 
 - **Texto Plano**: `.json` y `.txt`.
 - **Cifrados**: `.json.enc`, `.txt.enc` y `.salt`.
+- **Exportaciones SIEM/IA (v3.1)**: `findings.jsonl`, `assets.jsonl`, `summary.json` (solo cuando el cifrado está desactivado).
 - **PCAP**: Archivos de captura de tráfico (cuando se ejecuta deep scan y las herramientas están disponibles).
 
 Para descifrar resultados:
