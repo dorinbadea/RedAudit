@@ -414,11 +414,118 @@ bash redaudit_verify.sh
 
 ## 12. Troubleshooting
 
-See [docs/en/TROUBLESHOOTING.md](docs/en/TROUBLESHOOTING.md) for detailed fixes.
+For comprehensive troubleshooting, see [docs/en/TROUBLESHOOTING.md](docs/en/TROUBLESHOOTING.md).
 
-- **"Permission denied"**: Ensure you run with `sudo`.
-- **"Cryptography missing"**: Run `sudo apt install python3-cryptography`.
-- **"Scan frozen"**: Check `~/.redaudit/logs/` or reduce `rate_limit_delay`.
+### Common Installation Issues
+
+**1. "Permission denied" / Root privileges required**
+
+- **Cause**: Running without `sudo` (nmap requires raw sockets)
+- **Fix**: Prepend `sudo` to command, or use `--allow-non-root` for limited mode
+- **Verify**: `id -u` should return 0 when running with sudo
+
+**2. "nmap: command not found"**
+
+- **Cause**: nmap not installed or not in PATH
+- **Fix**: `sudo apt update && sudo apt install nmap`
+- **Verify**: `which nmap` should show `/usr/bin/nmap`
+
+**3. "ModuleNotFoundError: cryptography"**
+
+- **Cause**: Python dependencies missing
+- **Fix**: `sudo bash redaudit_install.sh` or `sudo apt install python3-cryptography python3-nmap python3-netifaces`
+
+**4. Alias not working after installation**
+
+- **Cause**: Shell configuration not reloaded
+- **Fix**: Run `source ~/.zshrc` (Kali) or `source ~/.bashrc` (Debian/Ubuntu), or open new terminal
+
+### Scanning Issues
+
+**5. "Scan appears frozen" / Long pauses**
+
+- **Cause**: Deep scan legitimately takes 90-150s per complex host
+- **Check**: Look for `[deep]` marker in output - this is normal
+- **Monitor**: Check `~/.redaudit/logs/` for heartbeat messages
+- **Workaround**: Use `--no-deep-scan` or reduce `--threads` to 4
+
+**6. "Too many hosts, scan never finishes"**
+
+- **Cause**: Scanning large /16 networks without optimization
+- **Fix**: Use `--prescan` for faster discovery, or `--max-hosts N` to limit scope
+- **Example**: `sudo redaudit -t 192.168.0.0/16 --prescan --max-hosts 100 --yes`
+
+**7. Heartbeat warnings in logs**
+
+- **Cause**: Nikto/TestSSL running slowly on filtered hosts
+- **Status**: Normal - tools are still running
+- **Action**: Wait or reduce `--rate-limit` if too aggressive
+
+### Encryption & Decryption
+
+**8. "Decryption failed: Invalid token"**
+
+- **Cause**: Wrong password or corrupted `.salt` file
+- **Fix**: Verify password (case-sensitive), ensure `.salt` file exists in same directory
+- **Check**: `.salt` file should be 16 bytes: `ls -lh *.salt`
+
+**9. "Cryptography not available" warning**
+
+- **Cause**: `python3-cryptography` package missing
+- **Impact**: Encryption options will be disabled
+- **Fix**: `sudo apt install python3-cryptography`
+
+### Network & Connectivity
+
+**10. IPv6 scanning not working**
+
+- **Cause**: IPv6 disabled on system or nmap built without IPv6 support
+- **Verify**: `ip -6 addr show` and `nmap -6 ::1`
+- **Fix**: Enable IPv6 in `/etc/sysctl.conf` or use IPv4 targets
+
+**11. NVD API rate limit errors**
+
+- **Cause**: Using NVD API without key (limited to 5 requests/30s)
+- **Fix**: Get free API key from <https://nvd.nist.gov/developers/request-an-api-key>
+- **Usage**: `--nvd-key YOUR_KEY` or store in `~/.redaudit/config.json`
+
+**12. Proxy connection failed**
+
+- **Cause**: `proxychains` not installed or proxy unreachable
+- **Fix**: `sudo apt install proxychains4` and test proxy: `curl --socks5 host:port http://example.com`
+- **Format**: `--proxy socks5://host:port`
+
+### Output & Reports
+
+**13. JSONL exports not generated**
+
+- **Cause**: Report encryption is enabled (JSONL only generated when encryption is off)
+- **Fix**: Run without `--encrypt` flag to generate `findings.jsonl`, `assets.jsonl`, `summary.json`
+
+**14. "Output directory not found"**
+
+- **Cause**: Custom output path doesn't exist
+- **Fix**: Create directory first: `mkdir -p /path/to/output` or let RedAudit use default (`~/Documents/RedAuditReports`)
+
+### Performance Tuning
+
+**15. Scans too slow on large networks**
+
+- **Optimization 1**: Use `--prescan` for asyncio fast discovery
+- **Optimization 2**: Increase `--threads` to 12-16 (but watch for network congestion)
+- **Optimization 3**: Use `--mode fast` for quick inventory, then targeted `full` scans
+- **Example**: `sudo redaudit -t 10.0.0.0/16 --prescan --threads 12 --mode fast --yes`
+
+**16. High CPU/memory usage**
+
+- **Cause**: Too many concurrent threads or deep scans on many hosts
+- **Fix**: Reduce `--threads` to 4-6, use `--no-deep-scan`, or add `--rate-limit 1`
+
+**17. Network congestion / IDS alerts**
+
+- **Cause**: Aggressive scanning triggering security systems
+- **Fix**: Add `--rate-limit 2` (with ±30% jitter) and reduce `--threads` to 4
+- **Stealth mode**: `sudo redaudit -t TARGET --mode normal --rate-limit 3 --threads 2 --yes`
 
 ## 13. Changelog
 

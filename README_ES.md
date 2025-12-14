@@ -418,11 +418,118 @@ bash redaudit_verify.sh
 
 ## 12. Solución de Problemas
 
-Consulta [docs/es/TROUBLESHOOTING.md](docs/es/TROUBLESHOOTING.md) para soluciones detalladas.
+Para troubleshooting completo, consulta [docs/es/TROUBLESHOOTING.md](docs/es/TROUBLESHOOTING.md).
 
-- **"Permission denied"**: Asegúrate de usar `sudo`.
-- **"Cryptography missing"**: Ejecuta `sudo apt install python3-cryptography`.
-- **"Scan frozen"**: Revisa `~/.redaudit/logs/` o reduce `rate_limit_delay`.
+### Problemas Comunes de Instalación
+
+**1. "Permission denied" / Se requieren privilegios root**
+
+- **Causa**: Ejecutar sin `sudo` (nmap requiere raw sockets)
+- **Solución**: Añadir `sudo` al comando, o usar `--allow-non-root` para modo limitado
+- **Verificar**: `id -u` debe devolver 0 al ejecutar con sudo
+
+**2. "nmap: command not found"**
+
+- **Causa**: nmap no instalado o no está en PATH
+- **Solución**: `sudo apt update && sudo apt install nmap`
+- **Verificar**: `which nmap` debe mostrar `/usr/bin/nmap`
+
+**3. "ModuleNotFoundError: cryptography"**
+
+- **Causa**: Dependencias Python faltantes
+- **Solución**: `sudo bash redaudit_install.sh` o `sudo apt install python3-cryptography python3-nmap python3-netifaces`
+
+**4. Alias no funciona tras instalación**
+
+- **Causa**: Configuración del shell no recargada
+- **Solución**: Ejecutar `source ~/.zshrc` (Kali) o `source ~/.bashrc` (Debian/Ubuntu), o abrir nueva terminal
+
+### Problemas de Escaneo
+
+**5. "Escaneo parece congelado" / Pausas largas**
+
+- **Causa**: Deep scan legítimamente toma 90-150s por host complejo
+- **Verificar**: Buscar marcador `[deep]` en salida - es normal
+- **Monitorear**: Revisar `~/.redaudit/logs/` para mensajes de heartbeat
+- **Solución alternativa**: Usar `--no-deep-scan` o reducir `--threads` a 4
+
+**6. "Demasiados hosts, escaneo nunca termina"**
+
+- **Causa**: Escanear redes /16 grandes sin optimización
+- **Solución**: Usar `--prescan` para descubrimiento rápido, o `--max-hosts N` para limitar alcance
+- **Ejemplo**: `sudo redaudit -t 192.168.0.0/16 --prescan --max-hosts 100 --yes`
+
+**7. Advertencias de heartbeat en logs**
+
+- **Causa**: Nikto/TestSSL ejecutándose lentamente en hosts filtrados
+- **Estado**: Normal - las herramientas siguen ejecutándose
+- **Acción**: Esperar o reducir `--rate-limit` si es demasiado agresivo
+
+### Cifrado y Descifrado
+
+**8. "Decryption failed: Invalid token"**
+
+- **Causa**: Contraseña incorrecta o archivo `.salt` corrupto
+- **Solución**: Verificar contraseña (sensible a mayúsculas), asegurar que archivo `.salt` existe en mismo directorio
+- **Verificar**: Archivo `.salt` debe tener 16 bytes: `ls -lh *.salt`
+
+**9. Advertencia "Cryptography not available"**
+
+- **Causa**: Paquete `python3-cryptography` faltante
+- **Impacto**: Opciones de cifrado estarán deshabilitadas
+- **Solución**: `sudo apt install python3-cryptography`
+
+### Red y Conectividad
+
+**10. Escaneo IPv6 no funciona**
+
+- **Causa**: IPv6 deshabilitado en sistema o nmap compilado sin soporte IPv6
+- **Verificar**: `ip -6 addr show` y `nmap -6 ::1`
+- **Solución**: Habilitar IPv6 en `/etc/sysctl.conf` o usar objetivos IPv4
+
+**11. Errores de rate limit API NVD**
+
+- **Causa**: Usar API NVD sin clave (limitado a 5 peticiones/30s)
+- **Solución**: Obtener clave API gratuita de <https://nvd.nist.gov/developers/request-an-api-key>
+- **Uso**: `--nvd-key TU_CLAVE` o guardar en `~/.redaudit/config.json`
+
+**12. Conexión proxy fallida**
+
+- **Causa**: `proxychains` no instalado o proxy inalcanzable
+- **Solución**: `sudo apt install proxychains4` y probar proxy: `curl --socks5 host:port http://example.com`
+- **Formato**: `--proxy socks5://host:port`
+
+### Salida y Reportes
+
+**13. Exportaciones JSONL no generadas**
+
+- **Causa**: Cifrado de reportes está habilitado (JSONL solo se genera cuando cifrado está desactivado)
+- **Solución**: Ejecutar sin flag `--encrypt` para generar `findings.jsonl`, `assets.jsonl`, `summary.json`
+
+**14. "Directorio de salida no encontrado"**
+
+- **Causa**: Ruta de salida personalizada no existe
+- **Solución**: Crear directorio primero: `mkdir -p /ruta/a/salida` o dejar que RedAudit use default (`~/Documents/RedAuditReports`)
+
+### Optimización de Rendimiento
+
+**15. Escaneos demasiado lentos en redes grandes**
+
+- **Optimización 1**: Usar `--prescan` para descubrimiento asyncio rápido
+- **Optimización 2**: Aumentar `--threads` a 12-16 (pero vigilar congestión de red)
+- **Optimización 3**: Usar `--mode fast` para inventario rápido, luego escaneos `full` específicos
+- **Ejemplo**: `sudo redaudit -t 10.0.0.0/16 --prescan --threads 12 --mode fast --yes`
+
+**16. Uso alto de CPU/memoria**
+
+- **Causa**: Demasiados hilos concurrentes o deep scans en muchos hosts
+- **Solución**: Reducir `--threads` a 4-6, usar `--no-deep-scan`, o añadir `--rate-limit 1`
+
+**17. Congestión de red / Alertas IDS**
+
+- **Causa**: Escaneo agresivo disparando sistemas de seguridad
+- **Solución**: Añadir `--rate-limit 2` (con jitter ±30%) y reducir `--threads` a 4
+- **Modo sigiloso**: `sudo redaudit -t OBJETIVO --mode normal --rate-limit 3 --threads 2 --yes`
 
 ## 13. Historial de Cambios
 
