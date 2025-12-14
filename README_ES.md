@@ -4,7 +4,7 @@
 
 RedAudit es una herramienta CLI para auditoría de red estructurada y hardening en sistemas Kali/Debian.
 
-![Version](https://img.shields.io/badge/version-3.0.4-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.1-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 ![CI/CD](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg?style=flat-square)
@@ -15,7 +15,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                     v3.0.4
+                                       v3.1
       Herramienta Interactiva de Auditoría de Red
 ```
 
@@ -64,13 +64,16 @@ redaudit/
 │   ├── verify_vuln.py  # Smart-Check filtrado falsos positivos
 │   ├── entity_resolver.py  # Agrupación hosts multi-interfaz
 │   ├── siem.py         # Integración SIEM profesional
-│   ├── nvd.py          # Correlación CVE vía API NVD (v3.0)
-│   ├── diff.py         # Análisis diferencial (v3.0)
-│   └── proxy.py        # Soporte proxy SOCKS5 (v3.0)
+│   ├── nvd.py          # Correlación CVE vía API NVD
+│   ├── diff.py         # Análisis diferencial
+│   ├── proxy.py        # Soporte proxy SOCKS5
+│   ├── scanner_versions.py  # Detección de versiones (v3.1)
+│   ├── evidence_parser.py   # Extracción de observaciones (v3.1)
+│   └── jsonl_exporter.py    # Exportaciones JSONL (v3.1)
 └── utils/              # Utilidades
     ├── constants.py    # Constantes de configuración
     ├── i18n.py         # Internacionalización
-    └── config.py       # Configuración persistente (v3.0.1+)
+    └── config.py       # Configuración persistente
 ```
 
 ## Instalación
@@ -285,31 +288,31 @@ Consulta [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) para soluciones deta
 - **"Cryptography missing"**: Ejecuta `sudo apt install python3-cryptography`.
 - **"Scan frozen"**: Revisa `~/.redaudit/logs/` o reduce `rate_limit_delay`.
 
-## 13. Historial de Cambios (v3.0.0)
+## 13. Historial de Cambios
+
+### Características v3.1
+
+- **Exportaciones JSONL**: `findings.jsonl`, `assets.jsonl`, `summary.json` para pipelines SIEM/IA
+- **IDs de Hallazgo**: Hashes determinísticos para correlación entre escaneos
+- **Clasificación por Categoría**: surface/misconfig/crypto/auth/info-leak/vuln
+- **Severidad Normalizada**: Escala 0-10 estilo CVSS con severidad original preservada
+- **Observaciones Estructuradas**: Extracción de salida Nikto/TestSSL
+- **Versiones de Escáners**: Detección de versiones de herramientas
 
 ### Características v3.0
 
-- **Soporte IPv6**: Escaneo completo de redes IPv6 con flag `-6` automático
-- **Correlación CVE (NVD)**: Inteligencia profunda de vulnerabilidades via API NIST NVD con caché de 7 días
-- **Análisis Diferencial**: Comparar dos reportes para detectar cambios de red (`--diff`)
-- **Proxy Chains (SOCKS5)**: Soporte para pivoting via wrapper proxychains
-- **Validación Magic Bytes**: Detección mejorada de falsos positivos con verificación de firmas
-- **Auto-Update Mejorado**: Enfoque git clone con verificación y copia a carpeta home
+- **Soporte IPv6**: Escaneo completo de redes IPv6
+- **Correlación CVE (NVD)**: Inteligencia de vulnerabilidades via API NIST NVD
+- **Análisis Diferencial**: Comparar reportes para detectar cambios (`--diff`)
+- **Proxy Chains (SOCKS5)**: Soporte para pivoting via proxychains
+- **Validación Magic Bytes**: Detección mejorada de falsos positivos
 
 ### Mejoras v2.9
 
-- **Smart-Check**: Filtrado automático de falsos positivos de Nikto via Content-Type
-- **UDP Taming**: Escaneo 50-80% más rápido con `--top-ports 100` y timeouts estrictos
-- **Entity Resolution**: Consolidación de hosts multi-interfaz (`unified_assets`)
-- **SIEM Profesional**: Cumplimiento ECS v8.11, severidad, risk scores, auto-tags
-
-### Características Principales
-
-- **Deep Scan Adaptativo**: Estrategia de 3 fases (TCP agresivo → UDP prioritario → UDP completo)
-- **Captura PCAP Concurrente**: Tráfico capturado durante escaneos profundos
-- **Motor Pre-scan**: Descubrimiento rápido asyncio antes de nmap
-- **Inteligencia de Exploits**: Integración SearchSploit para versiones detectadas
-- **Análisis SSL/TLS**: Escaneo profundo TestSSL.sh
+- **Smart-Check**: Filtrado automático de falsos positivos de Nikto
+- **UDP Taming**: Escaneo 50-80% más rápido con estrategia optimizada
+- **Entity Resolution**: Consolidación de hosts multi-interfaz
+- **SIEM Profesional**: Cumplimiento ECS v8.11, puntuación de severidad
 
 Para el changelog detallado, consulta [CHANGELOG.md](CHANGELOG.md)
 

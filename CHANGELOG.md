@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2025-12-14 (SIEM & AI Pipeline)
+
+### Added
+
+- **JSONL Export Views**: Auto-generated flat files for SIEM/AI ingestion
+  - `findings.jsonl` - One finding per line
+  - `assets.jsonl` - One asset per line
+  - `summary.json` - Compact dashboard summary
+  - New module: `redaudit/core/jsonl_exporter.py`
+
+- **Finding Deduplication**: Deterministic `finding_id` hashes
+  - SHA256 of asset + scanner + port + signature + title
+  - Enables cross-scan correlation and tracking
+
+- **Category Classification**: Automatic finding categorization
+  - Categories: surface, misconfig, crypto, auth, info-leak, vuln
+  - New function: `classify_finding_category()` in `siem.py`
+
+- **Severity Normalization**: CVSS-like scoring
+  - `normalized_severity`: 0.0-10.0 scale
+  - `original_severity`: Preserved tool-native values
+  - Enum: `info`, `low`, `medium`, `high`, `critical`
+
+- **Parsed Observations**: Structured evidence extraction
+  - New module: `redaudit/core/evidence_parser.py`
+  - Extracts meaningful findings from Nikto/TestSSL raw output
+  - Large outputs externalized to `evidence/` folder
+
+- **Scanner Versions**: Tool provenance tracking
+  - New module: `redaudit/core/scanner_versions.py`
+  - Detects: nmap, nikto, testssl, whatweb, searchsploit
+  - Added to report as `scanner_versions` object
+
+### Changed
+
+- **Schema Version**: Updated from 2.0 to 3.1
+- **Report Metadata**: Added `generated_at` timestamp
+- **Version**: Updated to 3.1.0
+
+---
+
 ## [3.0.4] - 2025-12-14 (Interactive UX)
 
 ### Changed

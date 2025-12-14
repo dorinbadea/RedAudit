@@ -18,13 +18,15 @@ The top-level container for the scan session.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `schema_version` | `string` | Schema version ("2.0") |
+| `schema_version` | `string` | Schema version ("3.1") |
+| `generated_at` | `string` | Report generation timestamp (ISO 8601) **(v3.1)** |
 | `event_type` | `string` | Event type for SIEM ingestion ("redaudit.scan.complete") |
 | `session_id` | `string` | Unique UUID for this scan session |
 | `timestamp` | `string` | Scan start timestamp (ISO 8601) |
 | `timestamp_end` | `string` | Scan end timestamp (ISO 8601) |
 | `version` | `string` | RedAudit version |
 | `scanner` | `object` | Scanner metadata: `name`, `version`, `mode` |
+| `scanner_versions` | `object` | Detected tool versions (nmap, nikto, testssl, etc.) **(v3.1)** |
 | `targets` | `array` | List of target networks scanned |
 | `network_info` | `array` | List of network interface objects |
 | `hosts` | `array` | List of `Host` objects (see below) |
@@ -147,13 +149,20 @@ List of web vulnerability findings. Each entry contains:
 | `vulnerabilities[].findings` | array | List of vulnerability strings |
 | `vulnerabilities[].whatweb` | string | (Optional) WhatWeb output |
 | `vulnerabilities[].nikto_findings` | array | (Optional) Nikto findings (if FULL mode) |
-| `vulnerabilities[].testssl_analysis` | object | (Optional) TestSSL.sh results (if FULL mode and HTTPS). Contains `weak_ciphers`, `vulnerabilities`, `protocols`. |
-| `vulnerabilities[].severity` | string | Severity level: critical/high/medium/low/info |
+| `vulnerabilities[].testssl_analysis` | object | (Optional) TestSSL.sh results (if FULL mode and HTTPS) |
+| `vulnerabilities[].severity` | string | Severity enum: critical/high/medium/low/info |
 | `vulnerabilities[].severity_score` | integer | Numeric severity (0-100) |
+| `vulnerabilities[].finding_id` | string | Deterministic hash for deduplication **(v3.1)** |
+| `vulnerabilities[].category` | string | Classification: surface/misconfig/crypto/auth/info-leak/vuln **(v3.1)** |
+| `vulnerabilities[].normalized_severity` | float | CVSS-like score (0.0-10.0) **(v3.1)** |
+| `vulnerabilities[].original_severity` | object | Preserved tool-native severity **(v3.1)** |
+| `vulnerabilities[].parsed_observations` | array | Structured findings from Nikto/TestSSL **(v3.1)** |
+| `vulnerabilities[].raw_tool_output_sha256` | string | (Optional) Hash of raw output **(v3.1)** |
+| `vulnerabilities[].raw_tool_output_ref` | string | (Optional) Path to externalized output **(v3.1)** |
 | `vulnerabilities[].curl_headers` | string | (Optional) HTTP headers from curl |
 | `vulnerabilities[].wget_spider` | string | (Optional) Wget spider output |
 | `vulnerabilities[].tls_info` | string | (Optional) OpenSSL TLS certificate info |
-| `vulnerabilities[].nikto_filtered_count` | integer | Number of Nikto false positives filtered by Smart-Check |
+| `vulnerabilities[].nikto_filtered_count` | integer | Number of Nikto false positives filtered |
 
 ## Scan Summary Object
 

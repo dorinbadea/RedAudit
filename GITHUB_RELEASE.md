@@ -1,11 +1,15 @@
-# RedAudit v3.0.4
+# RedAudit v3.1
 
-## Patch Release - Interactive UX Clarifications
+## Feature Release - SIEM & AI Pipeline Enhancements
 
-### v3.0.4 Highlights
+### v3.1 Highlights
 
-- **Clearer host limit prompt**: Interactive default is now all discovered hosts (`todos`/`all`), and the prompt clarifies that numbers apply a global cap (not a host selector).
-- **Documentation alignment**: Updated manuals and usage docs to clarify `--max-hosts` behavior.
+- **JSONL Exports**: Auto-generated `findings.jsonl`, `assets.jsonl`, and `summary.json` for SIEM/AI pipelines.
+- **Finding IDs**: Deterministic hashes for finding deduplication across scans.
+- **Category Classification**: Findings categorized as surface/misconfig/crypto/auth/info-leak/vuln.
+- **Normalized Severity**: CVSS-like 0-10 scale with preserved original tool severity.
+- **Parsed Observations**: Structured extraction from Nikto/TestSSL raw output.
+- **Scanner Versions**: Provenance tracking with detected tool versions.
 
 ### v3.0 Major Features
 
@@ -14,7 +18,6 @@
 - **Differential Analysis**: Compare two JSON reports to track network changes over time.
 - **Proxy Chains (SOCKS5)**: Network pivoting support via proxychains wrapper.
 - **Magic Byte Validation**: Enhanced false positive detection with file signature verification.
-- **Enhanced Auto-Update**: Git clone approach with verification and home folder copy.
 
 ### Previous (v2.9) Features
 
@@ -33,7 +36,29 @@ cd RedAudit
 sudo bash redaudit_install.sh
 ```
 
-### New CLI Options (v3.0)
+### New in v3.1 - JSON Output
+
+```json
+{
+  "schema_version": "3.1",
+  "scanner_versions": {"redaudit": "3.1.0", "nmap": "7.95"},
+  "finding_id": "12273fca7e8dbe0e...",
+  "category": "misconfig",
+  "normalized_severity": 7.0,
+  "parsed_observations": ["Missing X-Frame-Options header"]
+}
+```
+
+### New Modules (v3.1)
+
+```text
+redaudit/core/
+├── scanner_versions.py  # Tool version detection
+├── evidence_parser.py   # Nikto/TestSSL parsing
+└── jsonl_exporter.py    # JSONL/JSON export views
+```
+
+### CLI Options
 
 | Flag | Description |
 |:---|:---|
@@ -43,30 +68,6 @@ sudo bash redaudit_install.sh
 | `--cve-lookup` | Enable CVE correlation via NVD API |
 | `--nvd-key KEY` | NVD API key for faster rate limits |
 | `--allow-non-root` | Run in limited mode without sudo/root |
-
-### Core CLI Options
-
-- `--target, -t`: Target network(s) in CIDR notation
-- `--mode, -m`: fast/normal/full (default: normal)
-- `--threads, -j`: 1-16 (default: 6)
-- `--max-hosts`: Maximum number of discovered hosts to scan (default: all)
-- `--rate-limit`: Delay between hosts in seconds
-- `--encrypt, -e`: Encrypt reports
-- `--udp-mode`: UDP scan mode (quick/full)
-- `--prescan`: Enable fast asyncio pre-scan
-- `--lang`: Language (en/es)
-
-### New Modules (v3.0)
-
-```text
-redaudit/core/
-├── nvd.py          # CVE correlation via NVD API
-├── diff.py         # Differential analysis engine
-└── proxy.py        # SOCKS5 proxy manager
-
-redaudit/utils/
-└── config.py       # Persistent configuration (v3.0.1+)
-```
 
 ### Testing & Quality
 
@@ -86,5 +87,5 @@ Complete bilingual documentation (English/Spanish):
 ### Links
 
 - **Full Changelog**: [CHANGELOG.md](CHANGELOG.md)
-- **Release Notes**: [RELEASE_NOTES_v3.0.4.md](RELEASE_NOTES_v3.0.4.md)
+- **Release Notes**: [RELEASE_NOTES_v3.1.md](RELEASE_NOTES_v3.1.md)
 - **Security Specs**: [docs/SECURITY.md](docs/SECURITY.md)
