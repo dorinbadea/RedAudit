@@ -793,6 +793,8 @@ class InteractiveNetworkAuditor:
                     name = svc.get("name", "") or ""
                     product = svc.get("product", "") or ""
                     version = svc.get("version", "") or ""
+                    extrainfo = svc.get("extrainfo", "") or ""
+                    cpe = svc.get("cpe") or []
                     is_web = is_web_service(name)
                     if is_web:
                         web_count += 1
@@ -812,6 +814,8 @@ class InteractiveNetworkAuditor:
                         "service": name,
                         "product": product,
                         "version": version,
+                        "extrainfo": extrainfo,
+                        "cpe": cpe,
                         "is_web_service": is_web,
                     })
 
@@ -1293,6 +1297,25 @@ class InteractiveNetworkAuditor:
                 all_hosts = all_hosts[:max_val]
 
             results = self.scan_hosts_concurrent(all_hosts)
+
+            # v3.0.1: CVE correlation via NVD (optional; can be slow)
+            if self.config.get("cve_lookup_enabled") and not self.interrupted:
+                # Ensure API key is loaded (from CLI, env, or config)
+                self.setup_nvd_api_key(
+                    non_interactive=True,
+                    api_key=self.config.get("nvd_api_key"),
+                )
+                try:
+                    from redaudit.core.nvd import enrich_host_with_cves, get_api_key_from_config
+                    api_key = self.config.get("nvd_api_key") or get_api_key_from_config()
+                    for i, host_record in enumerate(results):
+                        if self.interrupted:
+                            break
+                        results[i] = enrich_host_with_cves(host_record, api_key=api_key, logger=self.logger)
+                    self.results["hosts"] = results
+                except Exception:
+                    # Best-effort: CVE enrichment should never break scans
+                    pass
 
             if self.config.get("scan_vulnerabilities") and not self.interrupted:
                 self.scan_vulnerabilities_concurrent(results)

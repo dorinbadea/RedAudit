@@ -314,31 +314,65 @@ def enrich_port_with_cves(
     service = port_info.get("service", "")
     version = port_info.get("version", "")
     product = port_info.get("product", "")
-    
-    if not version:
-        return port_info
-    
+
+    def cpe_to_23(cpe: str) -> Optional[str]:
+        s = (cpe or "").strip()
+        if not s:
+            return None
+        if s.startswith("cpe:2.3:"):
+            return s
+        # Nmap often returns legacy CPE 2.2 URIs like: cpe:/a:vendor:product:version
+        if s.startswith("cpe:/"):
+            rest = s[len("cpe:/"):]
+            parts = rest.split(":")
+            if len(parts) < 3:
+                return None
+            part = (parts[0] or "*").strip()  # a|o|h
+            vendor = (parts[1] or "*").strip()
+            prod = (parts[2] or "*").strip()
+            ver = (parts[3] if len(parts) > 3 and parts[3] else "*").strip()
+            fields = [part, vendor, prod, ver] + ["*"] * 7
+            return "cpe:2.3:" + ":".join(fields)
+        return None
+
+    # Prefer Nmap-reported CPE when present (works even if version string is missing).
+    cpe_value = port_info.get("cpe")
+    cpe_candidates: List[str] = []
+    if isinstance(cpe_value, str):
+        cpe_candidates = [cpe_value]
+    elif isinstance(cpe_value, list):
+        cpe_candidates = [c for c in cpe_value if isinstance(c, str)]
+
+    cpe_23 = None
+    for c in cpe_candidates:
+        cpe_23 = cpe_to_23(c)
+        if cpe_23:
+            break
+
     # Try to extract product/version if not already separated
     if not product and service:
         product, extracted_version = extract_product_version(service)
         if product and extracted_version:
             version = extracted_version
-    
+
     if not product:
         product = service.split()[0] if service else ""
-    
-    if not product or not version:
+
+    if not cpe_23 and (not product or not version):
         return port_info
-    
+
     # Rate limiting
     rate_limit = NVD_RATE_LIMIT_WITH_KEY if api_key else NVD_RATE_LIMIT_NO_KEY
-    
+
     # Query NVD
-    cpe = build_cpe_query(product, version)
-    cves = query_nvd(cpe_name=cpe, api_key=api_key, logger=logger)
+    if cpe_23:
+        cves = query_nvd(cpe_name=cpe_23, api_key=api_key, logger=logger)
+    else:
+        cpe = build_cpe_query(product, version)
+        cves = query_nvd(cpe_name=cpe, api_key=api_key, logger=logger)
     
     # If CPE query failed, try keyword search
-    if not cves:
+    if not cves and not cpe_23:
         keyword = f"{product} {version}"
         cves = query_nvd(keyword=keyword, api_key=api_key, logger=logger)
         time.sleep(rate_limit)

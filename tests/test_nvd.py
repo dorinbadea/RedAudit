@@ -24,6 +24,7 @@ from redaudit.core.nvd import (
     get_cache_key,
     ensure_cache_dir,
     NVD_CACHE_DIR,
+    enrich_port_with_cves,
 )
 
 
@@ -144,6 +145,25 @@ class TestCacheDirPermissions(unittest.TestCase):
                 dir_stat = os.stat(test_cache_dir)
                 mode = stat.S_IMODE(dir_stat.st_mode)
                 self.assertEqual(mode, 0o700)
+
+
+class TestEnrichPortWithCves(unittest.TestCase):
+    """Tests for port enrichment logic (no network)."""
+
+    @patch("redaudit.core.nvd.query_nvd")
+    @patch("redaudit.core.nvd.time.sleep")
+    def test_uses_nmap_cpe_without_version(self, _mock_sleep, mock_query):
+        mock_query.return_value = []
+        port = {
+            "service": "http",
+            "product": "Apache httpd",
+            "version": "",
+            "cpe": ["cpe:/a:apache:http_server:2.4.49"],
+        }
+        enrich_port_with_cves(port, api_key="12345678-1234-1234-1234-123456789abc", logger=None)
+        args, kwargs = mock_query.call_args
+        self.assertIn("cpe_name", kwargs)
+        self.assertTrue(kwargs["cpe_name"].startswith("cpe:2.3:a:apache:http_server:2.4.49"))
 
 
 if __name__ == "__main__":
