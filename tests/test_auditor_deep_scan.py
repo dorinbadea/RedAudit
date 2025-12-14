@@ -81,7 +81,13 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
             {
                 "tcp": {
                     80: {"name": "http", "product": "", "version": "", "extrainfo": "", "cpe": []},
-                    443: {"name": "https", "product": "", "version": "", "extrainfo": "", "cpe": []},
+                    443: {
+                        "name": "https",
+                        "product": "",
+                        "version": "",
+                        "extrainfo": "",
+                        "cpe": [],
+                    },
                 },
             }
         )
@@ -95,7 +101,31 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
 
         self.assertTrue(app.deep_scan_host.called)
 
+    def test_udp_full_uses_configurable_top_ports(self):
+        app = InteractiveNetworkAuditor()
+        app.print_status = lambda *_args, **_kwargs: None
+        app.config["udp_mode"] = "full"
+        app.config["udp_top_ports"] = 222
+
+        with patch("redaudit.core.auditor.start_background_capture", return_value=None):
+            with patch("redaudit.core.auditor.stop_background_capture", return_value=None):
+                with patch("redaudit.core.auditor.output_has_identity", return_value=False):
+                    with patch(
+                        "redaudit.core.auditor.extract_vendor_mac", return_value=(None, None)
+                    ):
+                        with patch("redaudit.core.auditor.run_nmap_command") as mock_run:
+                            mock_run.return_value = {"stdout": "", "stderr": "", "returncode": 0}
+                            deep = app.deep_scan_host("192.168.1.50")
+
+        self.assertIsInstance(deep, dict)
+        self.assertEqual(deep.get("udp_top_ports"), 222)
+
+        cmds = [call.args[0] for call in mock_run.call_args_list]
+        self.assertGreaterEqual(len(cmds), 3)
+        full_udp_cmd = cmds[2]
+        self.assertIn("--top-ports", full_udp_cmd)
+        self.assertIn("222", full_udp_cmd)
+
 
 if __name__ == "__main__":
     unittest.main()
-

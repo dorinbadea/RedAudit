@@ -24,6 +24,8 @@ from redaudit.utils.config import (
     load_config,
     save_config,
     get_nvd_api_key,
+    get_persistent_defaults,
+    update_persistent_defaults,
     DEFAULT_CONFIG,
     CONFIG_VERSION,
     ensure_config_dir,
@@ -92,6 +94,21 @@ class TestDefaultConfig(unittest.TestCase):
         """DEFAULT_CONFIG should have nvd_api_key_storage key."""
         self.assertIn("nvd_api_key_storage", DEFAULT_CONFIG)
 
+    def test_default_config_has_persistent_defaults(self):
+        """DEFAULT_CONFIG should have defaults dict for persistent settings."""
+        self.assertIn("defaults", DEFAULT_CONFIG)
+        self.assertIsInstance(DEFAULT_CONFIG["defaults"], dict)
+        for k in [
+            "threads",
+            "output_dir",
+            "rate_limit",
+            "udp_mode",
+            "udp_top_ports",
+            "topology_enabled",
+            "lang",
+        ]:
+            self.assertIn(k, DEFAULT_CONFIG["defaults"])
+
 
 class TestEnvPriority(unittest.TestCase):
     """Tests for environment variable priority over config file."""
@@ -100,9 +117,7 @@ class TestEnvPriority(unittest.TestCase):
     @patch("redaudit.utils.config.load_config")
     def test_env_takes_priority_over_config(self, mock_load):
         """Environment variable should take priority over config file."""
-        mock_load.return_value = {
-            "nvd_api_key": "config-key-should-not-be-used"
-        }
+        mock_load.return_value = {"nvd_api_key": "config-key-should-not-be-used"}
         result = get_nvd_api_key()
         self.assertEqual(result, "env-12345678-1234-1234-1234-123456789abc")
 
@@ -113,9 +128,7 @@ class TestEnvPriority(unittest.TestCase):
         # Clear NVD_API_KEY if it exists
         if "NVD_API_KEY" in os.environ:
             del os.environ["NVD_API_KEY"]
-        mock_load.return_value = {
-            "nvd_api_key": "config-key-value"
-        }
+        mock_load.return_value = {"nvd_api_key": "config-key-value"}
         result = get_nvd_api_key()
         self.assertEqual(result, "config-key-value")
 
@@ -127,18 +140,69 @@ class TestConfigFilePermissions(unittest.TestCase):
         """save_config should set 0o600 permissions on config file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_file = os.path.join(tmpdir, "config.json")
-            
-            with patch("redaudit.utils.config.get_config_paths", return_value=(tmpdir, config_file)):
+
+            with patch(
+                "redaudit.utils.config.get_config_paths", return_value=(tmpdir, config_file)
+            ):
                 with patch("redaudit.utils.config.ensure_config_dir", return_value=tmpdir):
                     result = save_config({"test": "value"})
-                    
+
                     self.assertTrue(result)
                     self.assertTrue(os.path.exists(config_file))
-                    
+
                     # Check permissions
                     file_stat = os.stat(config_file)
                     mode = stat.S_IMODE(file_stat.st_mode)
                     self.assertEqual(mode, 0o600)
+
+
+class TestPersistentDefaults(unittest.TestCase):
+    """Tests for v3.1+ persistent defaults storage."""
+
+    def test_get_persistent_defaults_returns_all_keys(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = os.path.join(tmpdir, "config.json")
+            with patch(
+                "redaudit.utils.config.get_config_paths", return_value=(tmpdir, config_file)
+            ):
+                with patch("redaudit.utils.config.ensure_config_dir", return_value=tmpdir):
+                    defaults = get_persistent_defaults()
+
+        self.assertIsInstance(defaults, dict)
+        for k in DEFAULT_CONFIG["defaults"].keys():
+            self.assertIn(k, defaults)
+
+    def test_update_persistent_defaults_roundtrip_and_does_not_mutate_default(self):
+        before = DEFAULT_CONFIG["defaults"].copy()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = os.path.join(tmpdir, "config.json")
+            with patch(
+                "redaudit.utils.config.get_config_paths", return_value=(tmpdir, config_file)
+            ):
+                with patch("redaudit.utils.config.ensure_config_dir", return_value=tmpdir):
+                    ok = update_persistent_defaults(
+                        threads=5,
+                        output_dir="~/Reports",
+                        rate_limit=1.5,
+                        udp_mode="full",
+                        udp_top_ports=150,
+                        topology_enabled=True,
+                        lang="es",
+                        bogus_key="ignored",
+                    )
+                    self.assertTrue(ok)
+
+                    defaults = get_persistent_defaults()
+
+        self.assertEqual(DEFAULT_CONFIG["defaults"], before)
+        self.assertEqual(defaults["threads"], 5)
+        self.assertEqual(defaults["output_dir"], "~/Reports")
+        self.assertEqual(defaults["rate_limit"], 1.5)
+        self.assertEqual(defaults["udp_mode"], "full")
+        self.assertEqual(defaults["udp_top_ports"], 150)
+        self.assertEqual(defaults["topology_enabled"], True)
+        self.assertEqual(defaults["lang"], "es")
+        self.assertNotIn("bogus_key", defaults)
 
 
 class TestSudoConfigPaths(unittest.TestCase):

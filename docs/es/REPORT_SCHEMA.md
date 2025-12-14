@@ -39,6 +39,7 @@ El contenedor de nivel superior para la sesión de escaneo.
 | `scanner_versions` | `object` | Versiones detectadas de herramientas (nmap, nikto, etc.) **(v3.1)** |
 | `targets` | `array` | Lista de redes objetivo escaneadas |
 | `network_info` | `array` | Lista de objetos de interfaz de red |
+| `topology` | `object` | (Opcional) Salida best-effort de descubrimiento de topología (ARP/VLAN/LLDP + gateway/rutas) **(v3.1+)** |
 | `hosts` | `array` | Lista de objetos `Host` (ver abajo) |
 | `vulnerabilities` | `array` | Lista de hallazgos de vulnerabilidades |
 | `summary` | `object` | Estadísticas agregadas |
@@ -89,12 +90,13 @@ Este campo aparece solo si se activó el escaneo profundo automático.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `strategy` | string | Identificador de estrategia (`adaptive`) |
+| `strategy` | string | Identificador de estrategia (p. ej., `adaptive_v2.8`) |
 | `mac_address` | string | (Opcional) Dirección MAC si se detectó |
 | `vendor` | string | (Opcional) Fabricante de hardware si se detectó |
 | `phase2_skipped` | boolean | True si la Fase 2 (UDP/SO) se omitió porque la Fase 1 encontró identidad |
-| `phase2b_skipped` | boolean | True si el escaneo UDP completo se omitió (modo quick) |
+| `phase2b_skipped` | boolean | True si se omitió el escaneo UDP extendido de identidad (modo quick) |
 | `udp_mode` | string | Modo de escaneo UDP usado: `quick` o `full` |
+| `udp_top_ports` | integer | (Opcional) Número de top puertos UDP usados en Fase 2b (50-500) **(v3.1+)** |
 | `commands` | array | Lista de comandos Nmap ejecutados, logs y duraciones |
 | `commands[].command` | string | Línea de comando completa ejecutada |
 | `commands[].returncode` | integer | Código de salida del comando |
@@ -108,6 +110,36 @@ Este campo aparece solo si se activó el escaneo profundo automático.
 | `pcap_capture.tshark_summary` | string | (Opcional) Estadísticas de protocolos de alto nivel si tshark está instalado |
 | `pcap_capture.tshark_error` | string | (Opcional) Error de tshark si falló |
 | `pcap_capture.tcpdump_error` | string | (Opcional) Error de tcpdump si falló |
+
+### Objeto Topology (Opcional) (v3.1+)
+
+Este campo aparece solo si se activó el descubrimiento de topología (CLI: `--topology` / `--topology-only`, o mediante pregunta en modo interactivo).
+
+El descubrimiento es **best-effort**: si faltan herramientas, permisos o tráfico, habrá menos visibilidad, pero no debería fallar el escaneo principal.
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `enabled` | boolean | Siempre true cuando el bloque está presente |
+| `generated_at` | string | Marca de tiempo (ISO 8601) |
+| `tools` | object | Flags de disponibilidad (`ip`, `tcpdump`, `arp-scan`, `lldpctl`) |
+| `routes` | array | Salida de `ip route show` parseada en objetos |
+| `default_gateway` | object | (Opcional) Gateway por defecto con `ip`, `interface`, `metric` |
+| `interfaces` | array | Objetos de topología por interfaz (ARP, VLAN, LLDP, etc.) |
+| `candidate_networks` | array | Redes en la tabla de rutas no incluidas en objetivos ni redes locales |
+| `errors` | array | Errores best-effort durante el descubrimiento |
+
+**interfaces[]** (alto nivel):
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `interface` | string | Nombre de interfaz (p. ej., `eth0`) |
+| `ip` | string | (Opcional) IP de la interfaz |
+| `networks` | array | Redes locales asociadas a la interfaz |
+| `arp` | object | Salida de descubrimiento ARP (`method`, `hosts`, `error`) |
+| `neighbor_cache` | object | Entradas parseadas de `ip neigh` (si está disponible) |
+| `vlan` | object | VLAN IDs observados (`ids`, `sources`) |
+| `lldp` | object | Resumen de vecinos LLDP (si está disponible) |
+| `cdp` | object | Observaciones CDP raw (best-effort, si se capturan) |
 
 ### Campos de Enriquecimiento CVE (Opcional)
 

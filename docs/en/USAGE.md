@@ -36,6 +36,7 @@ Note: for limited mode without sudo/root, add `--allow-non-root` (some scan feat
 | `--prescan-ports` | Port range for pre-scan (default: 1-1024). |
 | `--prescan-timeout` | Pre-scan connection timeout in seconds (default: 0.5). |
 | `--udp-mode` | UDP scan mode: `quick` (default) or `full`. |
+| `--udp-ports` | Number of top UDP ports to scan in `--udp-mode full` (50-500, default: 100). |
 | `--skip-update-check` | Skip update check at startup. |
 | `--no-deep-scan` | Disable adaptive deep scan. |
 | `--no-vuln-scan` | Disable web vulnerability scanning. |
@@ -52,6 +53,15 @@ Note: for limited mode without sudo/root, add `--allow-non-root` (some scan feat
 | `--cve-lookup` | Enable CVE correlation via NVD API. |
 | `--nvd-key KEY` | NVD API key for faster rate limits (optional). |
 | `--allow-non-root` | Run in limited mode without sudo (no OS detection/pcap; some scans may fail). |
+
+### v3.1+ Features
+
+| Flag | Description |
+| :--- | :--- |
+| `--topology` | Enable topology discovery (ARP/VLAN/LLDP + gateway/routes). |
+| `--no-topology` | Disable topology discovery (override persisted defaults). |
+| `--topology-only` | Run topology discovery only (skip host scanning). |
+| `--save-defaults` | Save current CLI settings as persistent defaults (`~/.redaudit/config.json`). |
 
 ### Security
 
@@ -185,7 +195,16 @@ Create `~/.redaudit/config.json`:
 ```json
 {
   "version": "3.1.0",
-  "nvd_api_key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  "nvd_api_key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "defaults": {
+    "threads": 6,
+    "rate_limit": 1.5,
+    "udp_mode": "full",
+    "udp_top_ports": 200,
+    "topology_enabled": true,
+    "lang": "es",
+    "output_dir": "~/Documents/RedAuditReports"
+  }
 }
 ```
 

@@ -152,6 +152,11 @@ sudo redaudit --target "192.168.1.0/24,10.0.0.0/24" --mode normal --threads 6
 - `--prescan-ports`: Rango de puertos para pre-scan (defecto: 1-1024)
 - `--prescan-timeout`: Timeout de pre-scan en segundos (defecto: 0.5)
 - `--udp-mode`: Modo de escaneo UDP: quick (defecto) o full
+- `--udp-ports`: Número de top puertos UDP usado en `--udp-mode full` (50-500, defecto: 100) **(v3.1+)**
+- `--topology`: Activar descubrimiento de topología (ARP/VLAN/LLDP + gateway/rutas) **(v3.1+)**
+- `--no-topology`: Desactivar descubrimiento de topología (anula defaults persistentes) **(v3.1+)**
+- `--topology-only`: Ejecutar solo topología (omitir escaneo de hosts) **(v3.1+)**
+- `--save-defaults`: Guardar ajustes CLI como defaults persistentes (`~/.redaudit/config.json`) **(v3.1+)**
 - `--skip-update-check`: Omitir verificación de actualizaciones al iniciar
 - `--yes, -y`: Saltar advertencia legal (usar con precaución)
 - `--lang`: Idioma (en/es)
@@ -191,7 +196,7 @@ RedAudit aplica un escaneo adaptativo inteligente de 3 fases para maximizar la r
 
 1. **Fase 1 - TCP Agresivo**: Escaneo completo de puertos con detección de versión (`-A -p- -sV -Pn`)
 2. **Fase 2a - UDP Prioritario**: Escaneo rápido de 17 puertos UDP comunes (DNS, DHCP, SNMP, NetBIOS)
-3. **Fase 2b - UDP Completo**: Solo en modo `full` si no se encontró identidad (`-O -sSU -p-`)
+3. **Fase 2b - UDP extendido de identidad**: Solo en modo `full` si no se encontró identidad (`-O -sU --top-ports N`, configurable con `--udp-ports`)
 
 **Características de Deep Scan:**
 
@@ -298,6 +303,9 @@ Consulta [docs/es/TROUBLESHOOTING.md](docs/es/TROUBLESHOOTING.md) para solucione
 - **Severidad Normalizada**: Escala 0-10 estilo CVSS con severidad original preservada
 - **Observaciones Estructuradas**: Extracción de salida Nikto/TestSSL
 - **Versiones de Escáners**: Detección de versiones de herramientas
+- **Descubrimiento de Topología (best-effort)**: ARP/VLAN/LLDP + gateway/rutas (`--topology`, `--topology-only`)
+- **Defaults Persistentes**: `--save-defaults` guarda ajustes comunes en `~/.redaudit/config.json`
+- **Cobertura UDP Configurable**: `--udp-ports` para ajustar la cobertura del UDP full de identidad
 
 ### Características v3.0
 

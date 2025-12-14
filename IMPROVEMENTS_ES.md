@@ -6,17 +6,19 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 
 ## Roadmap Inmediato (v3.1+)
 
-| Prioridad | Característica | Descripción |
-| :--- | :--- | :--- |
-| **Alta** | **Descubrimiento de Topología de Red** | Reconocimiento pre-scan con escaneo ARP, detección de VLANs, mapeo de gateways y visualización de topología L2. Usa `arp-scan`, `nmap broadcast scripts` y parsing CDP/LLDP. |
-| **Alta** | **Puertos UDP Configurables** | Añadir flag CLI `--udp-ports N` (rango: 50-500, defecto: 100) para cobertura UDP ajustable. |
-| **Media** | **Descubrimiento NetBIOS/mDNS** | Consultas activas de hostname (puerto 137/5353) para mejorar resolución de entidades. |
-| **Media** | **Contenedorización** | Dockerfile oficial y configuración Docker Compose para contenedores de auditoría efímeros. |
-| **Baja** | **Ampliar Configuración Persistente** | Extender `~/.redaudit/config.json` más allá de la clave NVD (p.ej. hilos por defecto, directorio de salida, rate limits) y añadir importación/exportación YAML opcional. |
+| Prioridad | Característica | Estado | Descripción |
+| :--- | :--- | :--- | :--- |
+| **Alta** | **Descubrimiento de Topología de Red** | ✅ Implementado (best-effort) | Descubrimiento de topología opcional (ARP/VLAN/LLDP + gateway/rutas) orientado a pistas de "redes ocultas" y contexto L2. |
+| **Alta** | **Puertos UDP Configurables** | ✅ Implementado | Añadido flag CLI `--udp-ports N` (rango: 50-500, defecto: 100) para cobertura UDP ajustable en modo UDP full de identidad. |
+| **Media** | **Descubrimiento NetBIOS/mDNS** | Planificado | Consultas activas de hostname (puerto 137/5353) para mejorar resolución de entidades. |
+| **Media** | **Contenedorización** | Aparcado | Dockerfile oficial y configuración Docker Compose para contenedores de auditoría efímeros. |
+| **Baja** | **Ampliar Configuración Persistente** | ✅ Implementado (inicial) | Extendido `~/.redaudit/config.json` más allá de la clave NVD (defaults comunes: hilos/salida/rate-limit/UDP/topología/idioma). |
 
 ### Descubrimiento de Topología de Red (Objetivo v4.0)
 
 **Objetivo**: Reconocimiento rápido pre-scan para mapear la arquitectura de red antes del escaneo profundo.
+
+**Estado actual (v3.1+)**: Existe una implementación base best-effort (rutas/gateway por defecto, ARP scan, pistas de VLAN, LLDP/CDP best-effort). v4.0 amplía esto con descubrimiento activo más rico (scripts broadcast de nmap, mapeo por traceroute, etc.).
 
 | Capacidad | Herramienta | Salida |
 | :--- | :--- | :--- |
@@ -29,8 +31,8 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 **Opciones CLI**:
 
 ```bash
-redaudit --topology-only 192.168.0.0/16      # Solo escaneo de topología
-redaudit --with-topology --target 10.0.0.0/8 # Integrado con auditoría completa
+redaudit --topology-only --target 192.168.0.0/16 --yes  # Solo topología (sin escaneo de hosts)
+redaudit --topology --target 10.0.0.0/8 --yes           # Integrado con auditoría completa
 ```
 
 ## Propuestas Arquitectónicas
@@ -40,6 +42,8 @@ redaudit --with-topology --target 10.0.0.0/8 # Integrado con auditoría completa
 **Estado**: En Consideración
 **Concepto**: Desacoplar el escáner principal de las herramientas. Permitir "Plugins" basados en Python para definir nuevos wrappers de herramientas sin modificar la lógica central.
 **Beneficio**: Facilita contribución de la comunidad y extensibilidad.
+
+**Nota**: La arquitectura "plugin-first" está aparcada por ahora; la prioridad es estabilidad y coherencia del core.
 
 ### 2. Escaneo Distribuido (Coordinador/Workers)
 

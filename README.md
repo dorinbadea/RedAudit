@@ -135,6 +135,11 @@ sudo redaudit --target 192.168.1.0/24 --mode normal --encrypt --encrypt-password
 - `--prescan-ports`: Port range for pre-scan (default: 1-1024)
 - `--prescan-timeout`: Pre-scan timeout in seconds (default: 0.5)
 - `--udp-mode`: UDP scan mode: quick (default) or full
+- `--udp-ports`: Top UDP ports count used in `--udp-mode full` (50-500, default: 100) **(v3.1+)**
+- `--topology`: Enable topology discovery (ARP/VLAN/LLDP + gateway/routes) **(v3.1+)**
+- `--no-topology`: Disable topology discovery (override persisted defaults) **(v3.1+)**
+- `--topology-only`: Run topology discovery only (skip host scanning) **(v3.1+)**
+- `--save-defaults`: Save current CLI settings as persistent defaults (`~/.redaudit/config.json`) **(v3.1+)**
 - `--skip-update-check`: Skip update check at startup
 - `--yes, -y`: Skip legal warning (use with caution)
 - `--lang`: Language (en/es)
@@ -174,7 +179,7 @@ RedAudit applies a smart 3-phase adaptive scan to maximize information gathering
 
 1. **Phase 1 - Aggressive TCP**: Full port scan with version detection (`-A -p- -sV -Pn`)
 2. **Phase 2a - Priority UDP**: Quick scan of 17 common UDP ports (DNS, DHCP, SNMP, NetBIOS)
-3. **Phase 2b - Full UDP**: Only in `full` mode if no identity found yet (`-O -sSU -p-`)
+3. **Phase 2b - Extended UDP identity**: Only in `full` mode if no identity found yet (`-O -sU --top-ports N`, configurable via `--udp-ports`)
 
 **Deep Scan features:**
 
@@ -190,7 +195,7 @@ RedAudit applies a smart 3-phase adaptive scan to maximize information gathering
 
 Faster UDP scanning without sacrificing detection quality:
 
-- Uses `--top-ports 100` instead of full 65535 ports
+- Uses `--top-ports N` (default: 100, configurable via `--udp-ports`) instead of full 65535 ports
 - Strict `--host-timeout 300s` per host
 - Reduced retries (`--max-retries 1`) for LAN efficiency
 - **Result**: 50-80% faster UDP scans
@@ -290,6 +295,9 @@ See [docs/en/TROUBLESHOOTING.md](docs/en/TROUBLESHOOTING.md) for detailed fixes.
 - **Normalized Severity**: CVSS-like 0-10 scale with preserved tool severity
 - **Parsed Observations**: Structured extraction from Nikto/TestSSL output
 - **Scanner Versions**: Tool version detection for provenance tracking
+- **Topology Discovery (best-effort)**: Optional ARP/VLAN/LLDP + gateway/routes (`--topology`, `--topology-only`)
+- **Persistent Defaults**: `--save-defaults` stores common settings in `~/.redaudit/config.json`
+- **Configurable UDP Coverage**: `--udp-ports` to tune full UDP identity scan coverage
 
 ### v3.0 Features
 

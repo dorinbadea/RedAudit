@@ -36,6 +36,7 @@ Nota: para modo limitado sin sudo/root, añade `--allow-non-root` (algunas funci
 | `--prescan-ports` | Rango de puertos pre-scan (defecto: 1-1024). |
 | `--prescan-timeout` | Timeout pre-scan segundos (defecto: 0.5). |
 | `--udp-mode` | Modo de escaneo UDP: `quick` (defecto) o `full`. |
+| `--udp-ports` | Número de top puertos UDP a escanear en `--udp-mode full` (50-500, defecto: 100). |
 | `--skip-update-check` | Omitir verificación de actualizaciones al iniciar. |
 | `--no-deep-scan` | Desactiva el deep scan adaptativo. |
 | `--no-vuln-scan` | Desactiva el escaneo de vulnerabilidades web. |
@@ -52,6 +53,15 @@ Nota: para modo limitado sin sudo/root, añade `--allow-non-root` (algunas funci
 | `--cve-lookup` | Activa correlación CVE vía API NVD. |
 | `--nvd-key KEY` | Clave API NVD para límites de velocidad más rápidos (opcional). |
 | `--allow-non-root` | Ejecuta en modo limitado sin sudo (sin detección de SO/pcap; algunos scans pueden fallar). |
+
+### Características v3.1+
+
+| Flag | Descripción |
+| :--- | :--- |
+| `--topology` | Activa descubrimiento de topología (ARP/VLAN/LLDP + gateway/rutas). |
+| `--no-topology` | Desactiva descubrimiento de topología (anula defaults persistentes). |
+| `--topology-only` | Ejecuta solo topología (omite escaneo de hosts). |
+| `--save-defaults` | Guarda ajustes CLI como defaults persistentes (`~/.redaudit/config.json`). |
 
 ### Seguridad
 
@@ -185,7 +195,16 @@ Crea `~/.redaudit/config.json`:
 ```json
 {
   "version": "3.1.0",
-  "nvd_api_key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  "nvd_api_key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "defaults": {
+    "threads": 6,
+    "rate_limit": 1.5,
+    "udp_mode": "full",
+    "udp_top_ports": 200,
+    "topology_enabled": true,
+    "lang": "es",
+    "output_dir": "~/Documents/RedAuditReports"
+  }
 }
 ```
 

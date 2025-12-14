@@ -39,6 +39,7 @@ The top-level container for the scan session.
 | `scanner_versions` | `object` | Detected tool versions (nmap, nikto, testssl, etc.) **(v3.1)** |
 | `targets` | `array` | List of target networks scanned |
 | `network_info` | `array` | List of network interface objects |
+| `topology` | `object` | (Optional) Best-effort topology discovery output (ARP/VLAN/LLDP + gateway/routes) **(v3.1+)** |
 | `hosts` | `array` | List of `Host` objects (see below) |
 | `vulnerabilities` | `array` | List of vulnerability findings |
 | `summary` | `object` | Aggregated statistics |
@@ -89,12 +90,13 @@ This field appears only if automatic deep scan was triggered.
 
 | Field | Type | Description |
 |---|---|---|
-| `strategy` | string | Strategy identifier (`adaptive`) |
+| `strategy` | string | Strategy identifier (e.g., `adaptive_v2.8`) |
 | `mac_address` | string | (Optional) MAC address if detected |
 | `vendor` | string | (Optional) Hardware vendor if detected |
 | `phase2_skipped` | boolean | True if Phase 2 (UDP/OS) was skipped because Phase 1 found identity |
-| `phase2b_skipped` | boolean | True if full UDP scan was skipped (quick mode) |
+| `phase2b_skipped` | boolean | True if extended UDP identity scan was skipped (quick mode) |
 | `udp_mode` | string | UDP scan mode used: `quick` or `full` |
+| `udp_top_ports` | integer | (Optional) Top UDP ports count used in full mode Phase 2b (50-500) **(v3.1+)** |
 | `commands` | array | List of executed Nmap commands, logs, and durations |
 | `commands[].command` | string | Full command line executed |
 | `commands[].returncode` | integer | Exit code of the command |
@@ -108,6 +110,36 @@ This field appears only if automatic deep scan was triggered.
 | `pcap_capture.tshark_summary` | string | (Optional) High-level protocol stats if tshark is installed |
 | `pcap_capture.tshark_error` | string | (Optional) Error from tshark if it failed |
 | `pcap_capture.tcpdump_error` | string | (Optional) Error from tcpdump if it failed |
+
+### Topology Object (Optional) (v3.1+)
+
+This field appears only if topology discovery was enabled (CLI: `--topology` / `--topology-only`, or interactive prompt).
+
+Topology discovery is **best-effort**: missing tools, permissions, or lack of traffic will reduce visibility but should not fail the scan.
+
+| Field | Type | Description |
+|---|---|---|
+| `enabled` | boolean | Always true when the block is present |
+| `generated_at` | string | Timestamp (ISO 8601) |
+| `tools` | object | Tool availability flags (`ip`, `tcpdump`, `arp-scan`, `lldpctl`) |
+| `routes` | array | Output of `ip route show` parsed into objects |
+| `default_gateway` | object | (Optional) Default gateway object with `ip`, `interface`, `metric` |
+| `interfaces` | array | Per-interface topology objects (ARP, VLAN, LLDP, etc.) |
+| `candidate_networks` | array | Route-table networks not in scan targets or local interface nets |
+| `errors` | array | Best-effort errors encountered during discovery |
+
+**interfaces[]** entries (high level):
+
+| Field | Type | Description |
+|---|---|---|
+| `interface` | string | Interface name (e.g., `eth0`) |
+| `ip` | string | (Optional) Interface IP address |
+| `networks` | array | Local networks associated with the interface |
+| `arp` | object | ARP discovery output (`method`, `hosts`, `error`) |
+| `neighbor_cache` | object | `ip neigh` parsed entries (if available) |
+| `vlan` | object | Observed VLAN IDs (`ids`, `sources`) |
+| `lldp` | object | LLDP neighbor summaries (if available) |
+| `cdp` | object | CDP raw observations (best-effort, if captured) |
 
 ### CVE Enrichment Fields (Optional)
 

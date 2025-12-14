@@ -195,14 +195,15 @@ Si se activa, el Deep Scan ejecuta una estrategia adaptativa:
 - Es rápido (~60-120s) y suele revelar la identidad del host.
 - **Inteligencia**: Si la Fase 1 ya identificó el SO o la dirección MAC, esta fase **se salta automáticamente** ([código](../../redaudit/core/auditor.py#L552-L554)).
 
-#### Fase 2b: UDP Completo (Solo en modo `full`)
+#### Fase 2b: UDP extendido de identidad (Solo en modo `full`)
 
-**Comando**: `nmap -O -sU -Pn --top-ports 100 --max-retries 1 --host-timeout 300s <IP>`
+**Comando**: `nmap -O -sU -Pn --top-ports N --max-retries 1 --host-timeout 300s <IP>`
 
 - Solo se ejecuta si:
   1. Usuario especificó `--udp-mode full`.
   2. Las fases anteriores fallaron en identificar el host.
-- Utiliza optimización v2.9: `--top-ports 100` en lugar de `-p-` (50-80% más rápido).
+- La cobertura se controla con `--udp-ports` (rango: 50-500, defecto: 100).
+- Utiliza optimización v2.9: `--top-ports N` en lugar de `-p-` (50-80% más rápido).
 - Es el "último recurso" porque el escaneo UDP es lento y propenso a falsos positivos.
 
 ---

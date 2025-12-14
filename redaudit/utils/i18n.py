@@ -93,7 +93,20 @@ TRANSLATIONS = {
         "rate_limiting": "Enable rate limiting (slower but stealthier)?",
         "rate_delay": "Delay between hosts (seconds):",
         "ports_truncated": "⚠️  {}: {} ports found, showing top 50",
+        # v3.1+: Persisted defaults
+        "save_defaults_q": "Save these settings as defaults for future runs?",
+        "defaults_saved": "✓ Defaults saved to ~/.redaudit/config.json",
+        "defaults_save_error": "Could not save defaults to ~/.redaudit/config.json",
         "jsonl_exports": "JSONL exports: {} findings, {} assets",
+        # v3.1+: UDP configuration
+        "udp_mode_q": "UDP scan mode (deep scan):",
+        "udp_mode_quick": "QUICK (priority UDP ports only)",
+        "udp_mode_full": "FULL (top UDP ports for identity discovery)",
+        "udp_ports_q": "Top UDP ports to scan in FULL mode (50-500):",
+        # v3.1+: Topology discovery
+        "topology_q": "Enable topology discovery (ARP/VLAN/LLDP + gateway/routes)?",
+        "topology_only_q": "Topology only (skip host scanning)?",
+        "topology_start": "Discovering topology (best-effort)...",
         "deep_identity_start": "Deep identity scan for {} (strategy: {})",
         "deep_identity_cmd": "[deep] {} → {} (~{}s estimated)",
         "deep_identity_done": "Deep identity scan finished for {} in {:.1f}s",
@@ -220,7 +233,20 @@ TRANSLATIONS = {
         "rate_limiting": "¿Activar limitación de velocidad (más lento pero más sigiloso)?",
         "rate_delay": "Retardo entre hosts (segundos):",
         "ports_truncated": "⚠️  {}: {} puertos encontrados, mostrando los 50 principales",
+        # v3.1+: Defaults persistentes
+        "save_defaults_q": "¿Guardar estos ajustes como valores por defecto para futuras ejecuciones?",
+        "defaults_saved": "✓ Valores por defecto guardados en ~/.redaudit/config.json",
+        "defaults_save_error": "No se pudieron guardar los valores por defecto en ~/.redaudit/config.json",
         "jsonl_exports": "Exportaciones JSONL: {} hallazgos, {} activos",
+        # v3.1+: Configuración UDP
+        "udp_mode_q": "Modo UDP (deep scan):",
+        "udp_mode_quick": "RÁPIDO (solo puertos UDP prioritarios)",
+        "udp_mode_full": "COMPLETO (top puertos UDP para identidad)",
+        "udp_ports_q": "Top puertos UDP a escanear en modo COMPLETO (50-500):",
+        # v3.1+: Descubrimiento de topología
+        "topology_q": "¿Activar descubrimiento de topología (ARP/VLAN/LLDP + gateway/rutas)?",
+        "topology_only_q": "¿Solo topología (omitir escaneo de hosts)?",
+        "topology_start": "Descubriendo topología (en la medida de lo posible)...",
         "deep_identity_start": "Escaneo de identidad profundo para {} (estrategia: {})",
         "deep_identity_cmd": "[deep] {} → {} (~{}s estimados)",
         "deep_identity_done": "Escaneo de identidad profundo finalizado para {} en {:.1f}s",

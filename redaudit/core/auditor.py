@@ -124,12 +124,16 @@ class InteractiveNetworkAuditor:
             "prescan_timeout": 0.5,
             # UDP scan config (v2.8)
             "udp_mode": DEFAULT_UDP_MODE,
+            "udp_top_ports": UDP_TOP_PORTS,
             # v3.0 configuration
             "ipv6_only": False,
             "cve_lookup_enabled": False,
             "nvd_api_key": None,
             # v2.8: Adaptive deep identity scan
             "deep_id_scan": True,
+            # v3.1+: Optional topology discovery
+            "topology_enabled": False,
+            "topology_only": False,
         }
 
         self.encryption_enabled = False
@@ -137,7 +141,7 @@ class InteractiveNetworkAuditor:
         self.cryptography_available = is_crypto_available()
         self.rate_limit_delay = 0.0
         self.extra_tools = {}
-        
+
         # v3.0: Proxy manager (set by CLI if --proxy used)
         self.proxy_manager = None
 
@@ -193,7 +197,9 @@ class InteractiveNetworkAuditor:
         # NOTE: These print statements output status messages (e.g., "Scanning host X"),
         # NOT passwords or sensitive data. CodeQL incorrectly flags these.
         with self._print_lock:
-            print(f"{color}[{ts}] [{status}]{self.COLORS['ENDC']} {lines[0]}")  # lgtm[py/clear-text-logging-sensitive-data]
+            print(
+                f"{color}[{ts}] [{status}]{self.COLORS['ENDC']} {lines[0]}"
+            )  # lgtm[py/clear-text-logging-sensitive-data]
             for line in lines[1:]:
                 print(f"  {line}")  # lgtm[py/clear-text-logging-sensitive-data]
             sys.stdout.flush()
@@ -326,8 +332,7 @@ class InteractiveNetworkAuditor:
             if password is None:
                 password = generate_random_password()
                 self.print_status(
-                    f"⚠️  Generated random encryption password (save this!): {password}",
-                    "WARNING"
+                    f"⚠️  Generated random encryption password (save this!): {password}", "WARNING"
                 )
 
             try:
@@ -348,9 +353,9 @@ class InteractiveNetworkAuditor:
     def setup_nvd_api_key(self, non_interactive=False, api_key=None):
         """
         Setup NVD API key for CVE correlation.
-        
+
         v3.0.1: Interactive prompt for API key storage preference.
-        
+
         Args:
             non_interactive: If True, skip interactive prompts
             api_key: API key to use (from CLI --nvd-key)
@@ -366,7 +371,7 @@ class InteractiveNetworkAuditor:
         except ImportError:
             self.print_status(self.t("config_module_missing"), "WARNING")
             return
-        
+
         # If key provided via CLI, just use it
         if api_key:
             if validate_nvd_api_key(api_key):
@@ -375,38 +380,40 @@ class InteractiveNetworkAuditor:
             else:
                 self.print_status(self.t("nvd_key_invalid"), "WARNING")
             return
-        
+
         # If already configured, use existing
         existing_key = get_nvd_api_key()
         if existing_key:
             self.config["nvd_api_key"] = existing_key
             return
-        
+
         # Non-interactive mode without key - warn but continue
         if non_interactive:
             self.print_status(self.t("nvd_key_not_configured"), "WARNING")
             return
-        
+
         # Interactive: ask user
         if not self.config.get("cve_lookup_enabled"):
             return  # Only prompt if CVE lookup is enabled
-        
+
         print(f"\n{self.COLORS['WARNING']}")
         print("=" * 60)
         print(self.t("nvd_setup_header"))
         print("=" * 60)
         print(f"{self.COLORS['ENDC']}")
         print(self.t("nvd_setup_info"))
-        print(f"\n{self.COLORS['CYAN']}https://nvd.nist.gov/developers/request-an-api-key{self.COLORS['ENDC']}\n")
-        
+        print(
+            f"\n{self.COLORS['CYAN']}https://nvd.nist.gov/developers/request-an-api-key{self.COLORS['ENDC']}\n"
+        )
+
         options = [
             self.t("nvd_option_config"),  # Save in config file
-            self.t("nvd_option_env"),     # Use environment variable
-            self.t("nvd_option_skip"),    # Continue without
+            self.t("nvd_option_env"),  # Use environment variable
+            self.t("nvd_option_skip"),  # Continue without
         ]
-        
+
         choice = self.ask_choice(self.t("nvd_ask_storage"), options, default=2)
-        
+
         if choice == 0:  # Save in config file
             while True:
                 try:
@@ -414,7 +421,7 @@ class InteractiveNetworkAuditor:
                     if not key:
                         self.print_status(self.t("nvd_key_skipped"), "INFO")
                         break
-                    
+
                     if validate_nvd_api_key(key):
                         if set_nvd_api_key(key, "config"):
                             self.config["nvd_api_key"] = key
@@ -427,12 +434,14 @@ class InteractiveNetworkAuditor:
                 except KeyboardInterrupt:
                     print("")
                     break
-        
+
         elif choice == 1:  # Environment variable
             print(f"\n{self.t('nvd_env_instructions')}")
-            print(f"  {self.COLORS['CYAN']}export NVD_API_KEY='your-api-key-here'{self.COLORS['ENDC']}")
+            print(
+                f"  {self.COLORS['CYAN']}export NVD_API_KEY='your-api-key-here'{self.COLORS['ENDC']}"
+            )
             self.print_status(self.t("nvd_env_set_later"), "INFO")
-        
+
         else:  # Skip
             self.print_status(self.t("nvd_slow_mode"), "WARNING")
 
@@ -459,9 +468,21 @@ class InteractiveNetworkAuditor:
             self.print_status(self.t("crypto_missing"), "WARNING")
 
         tools = [
-            "whatweb", "nikto", "curl", "wget", "openssl",
-            "tcpdump", "tshark", "whois", "dig",
-            "searchsploit", "testssl.sh",
+            "whatweb",
+            "nikto",
+            "curl",
+            "wget",
+            "openssl",
+            "tcpdump",
+            "tshark",
+            "whois",
+            "dig",
+            "searchsploit",
+            "testssl.sh",
+            # v3.1+: Topology discovery (optional)
+            "arp-scan",
+            "lldpctl",
+            "traceroute",
         ]
         # Fallback paths for tools not in standard PATH
         fallback_paths = {
@@ -502,14 +523,21 @@ class InteractiveNetworkAuditor:
             else self.t("ask_yes_no_opts_neg")
         )
         valid = {
-            "yes": True, "y": True, "s": True, "si": True, "sí": True,
-            "no": False, "n": False,
+            "yes": True,
+            "y": True,
+            "s": True,
+            "si": True,
+            "sí": True,
+            "no": False,
+            "n": False,
         }
         while True:
             try:
-                ans = input(
-                    f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {question}{opts}: "
-                ).strip().lower()
+                ans = (
+                    input(f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {question}{opts}: ")
+                    .strip()
+                    .lower()
+                )
                 if ans == "":
                     return valid.get(default, True)
                 if ans in valid:
@@ -632,12 +660,12 @@ class InteractiveNetworkAuditor:
     def deep_scan_host(self, host_ip):
         """
         Adaptive Deep Scan v2.8.0
-        
+
         Improvements over v2.5:
         - Concurrent traffic capture (starts before scanning, stops after)
         - Intelligent 3-phase UDP: Priority ports first, then full scan (optional)
         - Better identity detection with MAC/OS fallback
-        
+
         Phase 1: TCP Connect + Service Version + Scripts (Aggressive)
         Phase 2a: UDP Priority Ports scan (quick, common services)
         Phase 2b: Full UDP scan (only if udp_mode == 'full' and no identity yet)
@@ -661,13 +689,25 @@ class InteractiveNetworkAuditor:
             self.config.get("_actual_output_dir", self.config["output_dir"]),
             self.results.get("network_info", []),
             self.extra_tools,
-            logger=self.logger
+            logger=self.logger,
         )
 
         try:
             # Phase 1: Aggressive TCP
-            cmd_p1 = ["nmap", "-A", "-sV", "-Pn", "-p-", "--open", "--version-intensity", "9", safe_ip]
-            self.print_status(self.t("deep_identity_cmd", safe_ip, " ".join(cmd_p1), "120-180"), "WARNING")
+            cmd_p1 = [
+                "nmap",
+                "-A",
+                "-sV",
+                "-Pn",
+                "-p-",
+                "--open",
+                "--version-intensity",
+                "9",
+                safe_ip,
+            ]
+            self.print_status(
+                self.t("deep_identity_cmd", safe_ip, " ".join(cmd_p1), "120-180"), "WARNING"
+            )
             rec1 = run_nmap_command(cmd_p1, DEEP_SCAN_TIMEOUT, safe_ip, deep_obj)
 
             # Check for Identity
@@ -687,15 +727,22 @@ class InteractiveNetworkAuditor:
                 # Phase 2a: Quick UDP scan of priority ports only
                 udp_mode = self.config.get("udp_mode", DEFAULT_UDP_MODE)
                 cmd_p2a = [
-                    "nmap", "-sU", "-Pn", "-p", UDP_PRIORITY_PORTS,
-                    "--max-retries", "1", "--host-timeout", "120s", safe_ip
+                    "nmap",
+                    "-sU",
+                    "-Pn",
+                    "-p",
+                    UDP_PRIORITY_PORTS,
+                    "--max-retries",
+                    "1",
+                    "--host-timeout",
+                    "120s",
+                    safe_ip,
                 ]
                 self.print_status(
-                    self.t("deep_udp_priority_cmd", safe_ip, " ".join(cmd_p2a)),
-                    "WARNING"
+                    self.t("deep_udp_priority_cmd", safe_ip, " ".join(cmd_p2a)), "WARNING"
                 )
                 rec2a = run_nmap_command(cmd_p2a, UDP_QUICK_TIMEOUT, safe_ip, deep_obj)
-                
+
                 # Extract MAC from Phase 2a if not found yet
                 if not mac:
                     m2a, v2a = extract_vendor_mac(rec2a.get("stdout", ""))
@@ -709,17 +756,27 @@ class InteractiveNetworkAuditor:
                 # v2.9: Optimized to use top-ports instead of full 65535 port scan
                 has_identity_now = output_has_identity(deep_obj.get("commands", []))
                 if udp_mode == UDP_SCAN_MODE_FULL and not has_identity_now and not mac:
+                    udp_top_ports = self.config.get("udp_top_ports", UDP_TOP_PORTS)
+                    if not isinstance(udp_top_ports, int) or not (50 <= udp_top_ports <= 500):
+                        udp_top_ports = UDP_TOP_PORTS
                     cmd_p2b = [
-                        "nmap", "-O", "-sU", "-Pn",
-                        "--top-ports", str(UDP_TOP_PORTS),
-                        "--max-retries", str(UDP_MAX_RETRIES_LAN),
-                        "--host-timeout", UDP_HOST_TIMEOUT_STRICT,
-                        safe_ip
+                        "nmap",
+                        "-O",
+                        "-sU",
+                        "-Pn",
+                        "--top-ports",
+                        str(udp_top_ports),
+                        "--max-retries",
+                        str(UDP_MAX_RETRIES_LAN),
+                        "--host-timeout",
+                        UDP_HOST_TIMEOUT_STRICT,
+                        safe_ip,
                     ]
                     self.print_status(
-                        self.t("deep_udp_full_cmd", safe_ip, " ".join(cmd_p2b), UDP_TOP_PORTS),
-                        "WARNING"
+                        self.t("deep_udp_full_cmd", safe_ip, " ".join(cmd_p2b), udp_top_ports),
+                        "WARNING",
                     )
+                    deep_obj["udp_top_ports"] = udp_top_ports
                     rec2b = run_nmap_command(cmd_p2b, DEEP_SCAN_TIMEOUT, safe_ip, deep_obj)
                     if not mac:
                         m2b, v2b = extract_vendor_mac(rec2b.get("stdout", ""))
@@ -762,7 +819,7 @@ class InteractiveNetworkAuditor:
     def scan_host_ports(self, host):
         """
         Scan ports on a single host (v2.8.0).
-        
+
         Improvements:
         - Intelligent status finalization based on deep scan results
         - Banner grab fallback for unidentified services
@@ -833,21 +890,23 @@ class InteractiveNetworkAuditor:
                         suspicious = True
                     if product or version:
                         any_version = True
-                    
+
                     # Track ports with no useful info for banner fallback
                     if not product and name in ("", "tcpwrapped", "unknown"):
                         unknown_ports.append(p)
 
-                    ports.append({
-                        "port": p,
-                        "protocol": proto,
-                        "service": name,
-                        "product": product,
-                        "version": version,
-                        "extrainfo": extrainfo,
-                        "cpe": cpe,
-                        "is_web_service": is_web,
-                    })
+                    ports.append(
+                        {
+                            "port": p,
+                            "protocol": proto,
+                            "service": name,
+                            "product": product,
+                            "version": version,
+                            "extrainfo": extrainfo,
+                            "cpe": cpe,
+                            "is_web_service": is_web,
+                        }
+                    )
 
             total_ports = len(ports)
             if total_ports > MAX_PORTS_DISPLAY:
@@ -868,7 +927,9 @@ class InteractiveNetworkAuditor:
                 addresses = (data.get("addresses") or {}) if hasattr(data, "get") else {}
                 mac = addresses.get("mac") if isinstance(addresses, dict) else None
                 if mac:
-                    deep_meta = host_record.setdefault("deep_scan", {"strategy": "nmap", "commands": []})
+                    deep_meta = host_record.setdefault(
+                        "deep_scan", {"strategy": "nmap", "commands": []}
+                    )
                     deep_meta["mac_address"] = mac
                     vendor_map = (data.get("vendor") or {}) if hasattr(data, "get") else {}
                     if isinstance(vendor_map, dict):
@@ -884,10 +945,7 @@ class InteractiveNetworkAuditor:
 
             # v2.8.0: Banner grab fallback for unidentified ports
             if unknown_ports and len(unknown_ports) <= 20:
-                self.print_status(
-                    self.t("banner_grab", safe_ip, len(unknown_ports)),
-                    "INFO"
-                )
+                self.print_status(self.t("banner_grab", safe_ip, len(unknown_ports)), "INFO")
                 banner_info = banner_grab_fallback(safe_ip, unknown_ports, logger=self.logger)
                 if banner_info:
                     # Merge banner info into ports
@@ -930,7 +988,7 @@ class InteractiveNetworkAuditor:
                             port_info["known_exploits"] = exploits
                             self.print_status(
                                 self.t("exploits_found", len(exploits), f"{product} {version}"),
-                                "WARNING"
+                                "WARNING",
                             )
 
             if trigger_deep:
@@ -940,10 +998,10 @@ class InteractiveNetworkAuditor:
 
             enrich_host_with_dns(host_record, self.extra_tools)
             enrich_host_with_whois(host_record, self.extra_tools)
-            
+
             # v2.8.0: Finalize status based on all collected data
             host_record["status"] = finalize_host_status(host_record)
-            
+
             return host_record
 
         except Exception as exc:
@@ -966,7 +1024,14 @@ class InteractiveNetworkAuditor:
 
         # Try to use rich for better progress visualization
         try:
-            from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+            from rich.progress import (
+                Progress,
+                SpinnerColumn,
+                BarColumn,
+                TextColumn,
+                TimeElapsedColumn,
+            )
+
             use_rich = True
         except ImportError:
             use_rich = False
@@ -997,9 +1062,7 @@ class InteractiveNetworkAuditor:
                     TextColumn("({task.completed}/{task.total})"),
                     TimeElapsedColumn(),
                 ) as progress:
-                    task = progress.add_task(
-                        f"[cyan]{self.t('scanning_hosts')}", total=total
-                    )
+                    task = progress.add_task(f"[cyan]{self.t('scanning_hosts')}", total=total)
                     for fut in as_completed(futures):
                         if self.interrupted:
                             # C2 fix: Cancel pending futures
@@ -1064,13 +1127,12 @@ class InteractiveNetworkAuditor:
             if scheme == "https":
                 tls_data = tls_enrichment(ip, port, self.extra_tools)
                 finding.update(tls_data)
-                
+
                 # TestSSL deep analysis (only in completo mode)
                 if self.config["scan_mode"] == "completo" and self.extra_tools.get("testssl.sh"):
                     self.current_phase = f"vulns:testssl:{ip}:{port}"
                     self.print_status(
-                        f"[testssl] {ip}:{port} → {self.t('testssl_analysis', ip, port)}",
-                        "INFO"
+                        f"[testssl] {ip}:{port} → {self.t('testssl_analysis', ip, port)}", "INFO"
                     )
                     ssl_analysis = ssl_deep_analysis(ip, port, self.extra_tools, self.logger)
                     if ssl_analysis:
@@ -1078,8 +1140,7 @@ class InteractiveNetworkAuditor:
                         # Alert if vulnerabilities found
                         if ssl_analysis.get("vulnerabilities"):
                             self.print_status(
-                                f"⚠️  SSL/TLS vulnerabilities detected on {ip}:{port}",
-                                "WARNING"
+                                f"⚠️  SSL/TLS vulnerabilities detected on {ip}:{port}", "WARNING"
                             )
 
             # WhatWeb
@@ -1087,9 +1148,12 @@ class InteractiveNetworkAuditor:
                 try:
                     self.current_phase = f"vulns:whatweb:{ip}:{port}"
                     import subprocess
+
                     res = subprocess.run(
                         [self.extra_tools["whatweb"], "-q", "-a", "3", url],
-                        capture_output=True, text=True, timeout=30,
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
                     )
                     if res.stdout.strip():
                         finding["whatweb"] = res.stdout.strip()[:2000]
@@ -1103,10 +1167,12 @@ class InteractiveNetworkAuditor:
                     self.current_phase = f"vulns:nikto:{ip}:{port}"
                     import subprocess
                     from redaudit.core.verify_vuln import filter_nikto_false_positives
-                    
+
                     res = subprocess.run(
                         [self.extra_tools["nikto"], "-h", url, "-maxtime", "120s", "-Tuning", "x"],
-                        capture_output=True, text=True, timeout=150,
+                        capture_output=True,
+                        text=True,
+                        timeout=150,
                     )
                     output = res.stdout or res.stderr
                     if output:
@@ -1125,7 +1191,7 @@ class InteractiveNetworkAuditor:
                                     finding["nikto_filtered_count"] = filtered
                                     self.print_status(
                                         f"[nikto] {ip}:{port} → Filtered {filtered}/{original_count} false positives",
-                                        "INFO"
+                                        "INFO",
                                     )
                 except Exception:
                     pass
@@ -1140,27 +1206,33 @@ class InteractiveNetworkAuditor:
         web_hosts = [h for h in host_results if h.get("web_ports_count", 0) > 0]
         if not web_hosts:
             return
-        
+
         # Count total web ports for info
         total_ports = sum(h.get("web_ports_count", 0) for h in web_hosts)
-        
+
         self.current_phase = "vulns"
         self.print_status(self.t("vuln_analysis", len(web_hosts)), "HEADER")
         workers = min(3, self.config["threads"])
 
         # Try to use rich for progress visualization
         try:
-            from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+            from rich.progress import (
+                Progress,
+                SpinnerColumn,
+                BarColumn,
+                TextColumn,
+                TimeElapsedColumn,
+            )
+
             use_rich = True
         except ImportError:
             use_rich = False
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {
-                executor.submit(self.scan_vulnerabilities_web, h): h["ip"]
-                for h in web_hosts
+                executor.submit(self.scan_vulnerabilities_web, h): h["ip"] for h in web_hosts
             }
-            
+
             total = len(futures)
             done = 0
 
@@ -1174,9 +1246,7 @@ class InteractiveNetworkAuditor:
                     TextColumn("({task.completed}/{task.total})"),
                     TimeElapsedColumn(),
                 ) as progress:
-                    task = progress.add_task(
-                        f"[cyan]Vuln scan ({total_ports} ports)", total=total
-                    )
+                    task = progress.add_task(f"[cyan]Vuln scan ({total_ports} ports)", total=total)
                     for fut in as_completed(futures):
                         if self.interrupted:
                             for pending_fut in futures:
@@ -1215,7 +1285,6 @@ class InteractiveNetworkAuditor:
                         self.print_status(self.t("worker_error", exc), "WARNING")
                     done += 1
 
-
     # ---------- Reporting ----------
 
     def show_config_summary(self):
@@ -1242,7 +1311,7 @@ class InteractiveNetworkAuditor:
             partial,
             self.print_status,
             self.t,
-            self.logger
+            self.logger,
         )
 
     # ---------- Interactive flow ----------
@@ -1270,6 +1339,19 @@ class InteractiveNetworkAuditor:
 
     def interactive_setup(self):
         """Run interactive configuration setup."""
+        # Apply persisted defaults early (language affects the banner/prompt text).
+        persisted_defaults = {}
+        try:
+            from redaudit.utils.config import get_persistent_defaults
+
+            persisted_defaults = get_persistent_defaults()
+        except Exception:
+            persisted_defaults = {}
+
+        default_lang = persisted_defaults.get("lang")
+        if default_lang in TRANSLATIONS:
+            self.lang = default_lang
+
         self.clear_screen()
         self.print_banner()
 
@@ -1298,11 +1380,26 @@ class InteractiveNetworkAuditor:
             self.config["max_hosts_value"] = "all"
 
         self.config["threads"] = self.ask_number(
-            self.t("threads"), default=DEFAULT_THREADS, min_val=MIN_THREADS, max_val=MAX_THREADS
+            self.t("threads"),
+            default=(
+                persisted_defaults.get("threads")
+                if isinstance(persisted_defaults.get("threads"), int)
+                and MIN_THREADS <= persisted_defaults.get("threads") <= MAX_THREADS
+                else DEFAULT_THREADS
+            ),
+            min_val=MIN_THREADS,
+            max_val=MAX_THREADS,
         )
 
-        if self.ask_yes_no(self.t("rate_limiting"), default="no"):
-            delay = self.ask_number(self.t("rate_delay"), default=1, min_val=0, max_val=60)
+        default_rate = persisted_defaults.get("rate_limit")
+        if not isinstance(default_rate, (int, float)) or default_rate < 0:
+            default_rate = 0.0
+        if self.ask_yes_no(self.t("rate_limiting"), default="yes" if default_rate > 0 else "no"):
+            delay_default = int(default_rate) if default_rate > 0 else 1
+            delay_default = min(max(delay_default, 0), 60)
+            delay = self.ask_number(
+                self.t("rate_delay"), default=delay_default, min_val=0, max_val=60
+            )
             self.rate_limit_delay = float(delay)
 
         self.config["scan_vulnerabilities"] = self.ask_yes_no(self.t("vuln_scan_q"), default="yes")
@@ -1316,6 +1413,9 @@ class InteractiveNetworkAuditor:
             self.config["cve_lookup_enabled"] = False
 
         default_reports = os.path.expanduser(DEFAULT_OUTPUT_DIR)
+        persisted_output = persisted_defaults.get("output_dir")
+        if isinstance(persisted_output, str) and persisted_output.strip():
+            default_reports = os.path.expanduser(persisted_output.strip())
         out_dir = input(
             f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('output_dir')} [{default_reports}]: "
         ).strip()
@@ -1325,9 +1425,63 @@ class InteractiveNetworkAuditor:
 
         self.config["save_txt_report"] = self.ask_yes_no(self.t("gen_txt"), default="yes")
 
+        # v3.1+: UDP coverage configuration (affects adaptive deep scan)
+        if self.config["scan_mode"] != "rapido" and self.config.get("deep_id_scan"):
+            udp_modes = [self.t("udp_mode_quick"), self.t("udp_mode_full")]
+            udp_map = {0: UDP_SCAN_MODE_QUICK, 1: UDP_SCAN_MODE_FULL}
+
+            persisted_udp_mode = persisted_defaults.get("udp_mode")
+            udp_default_idx = 0 if persisted_udp_mode != UDP_SCAN_MODE_FULL else 1
+            self.config["udp_mode"] = udp_map[
+                self.ask_choice(self.t("udp_mode_q"), udp_modes, udp_default_idx)
+            ]
+
+            persisted_udp_ports = persisted_defaults.get("udp_top_ports")
+            udp_ports_default = (
+                persisted_udp_ports if isinstance(persisted_udp_ports, int) else UDP_TOP_PORTS
+            )
+            udp_ports_default = min(max(udp_ports_default, 50), 500)
+            self.config["udp_top_ports"] = self.ask_number(
+                self.t("udp_ports_q"),
+                default=udp_ports_default,
+                min_val=50,
+                max_val=500,
+            )
+
+        # v3.1+: Optional topology discovery
+        persisted_topo = persisted_defaults.get("topology_enabled")
+        topo_default = "yes" if persisted_topo is True else "no"
+        self.config["topology_enabled"] = self.ask_yes_no(
+            self.t("topology_q"), default=topo_default
+        )
+        if self.config["topology_enabled"]:
+            self.config["topology_only"] = self.ask_yes_no(self.t("topology_only_q"), default="no")
+
         self.setup_encryption()
 
         self.show_config_summary()
+
+        # v3.1+: Save chosen settings as persistent defaults (optional).
+        if self.ask_yes_no(self.t("save_defaults_q"), default="no"):
+            try:
+                from redaudit.utils.config import update_persistent_defaults
+
+                ok = update_persistent_defaults(
+                    threads=self.config.get("threads"),
+                    output_dir=self.config.get("output_dir"),
+                    rate_limit=self.rate_limit_delay,
+                    udp_mode=self.config.get("udp_mode"),
+                    udp_top_ports=self.config.get("udp_top_ports"),
+                    topology_enabled=self.config.get("topology_enabled"),
+                    lang=self.lang,
+                )
+                self.print_status(
+                    self.t("defaults_saved") if ok else self.t("defaults_save_error"),
+                    "OKGREEN" if ok else "WARNING",
+                )
+            except Exception:
+                self.print_status(self.t("defaults_save_error"), "WARNING")
+
         return self.ask_yes_no(self.t("start_audit"), default="yes")
 
     def run_complete_scan(self):
@@ -1339,9 +1493,42 @@ class InteractiveNetworkAuditor:
             # v2.8.1: Create timestamped output folder BEFORE scanning
             # This ensures PCAP files are saved inside the result folder
             ts_folder = self.scan_start_time.strftime("%Y-%m-%d_%H-%M-%S")
-            output_base = self.config.get("output_dir", os.path.expanduser("~/Documents/RedAuditReports"))
+            output_base = self.config.get(
+                "output_dir", os.path.expanduser("~/Documents/RedAuditReports")
+            )
             self.config["_actual_output_dir"] = os.path.join(output_base, f"RedAudit_{ts_folder}")
             os.makedirs(self.config["_actual_output_dir"], exist_ok=True)
+
+            # Ensure network_info is populated for reports and topology discovery.
+            if not self.results.get("network_info"):
+                try:
+                    self.detect_all_networks()
+                except Exception:
+                    pass
+
+            # v3.1+: Optional topology discovery (best-effort)
+            if self.config.get("topology_enabled") and not self.interrupted:
+                try:
+                    from redaudit.core.topology import discover_topology
+
+                    self.current_phase = "topology"
+                    self.print_status(self.t("topology_start"), "INFO")
+                    self.results["topology"] = discover_topology(
+                        target_networks=self.config.get("target_networks", []),
+                        network_info=self.results.get("network_info", []),
+                        extra_tools=self.extra_tools,
+                        logger=self.logger,
+                    )
+                except Exception as exc:
+                    if self.logger:
+                        self.logger.warning("Topology discovery failed: %s", exc)
+                    self.results["topology"] = {"enabled": True, "error": str(exc)}
+
+                if self.config.get("topology_only"):
+                    generate_summary(self.results, self.config, [], [], self.scan_start_time)
+                    self.save_results(partial=self.interrupted)
+                    self.show_results()
+                    return True
 
             all_hosts = []
             for network in self.config["target_networks"]:
@@ -1365,6 +1552,7 @@ class InteractiveNetworkAuditor:
             if self.config.get("cve_lookup_enabled") and not self.interrupted:
                 try:
                     from redaudit.core.nvd import enrich_host_with_cves, get_api_key_from_config
+
                     # Ensure API key is loaded (from CLI, env, or config) without mislabeling the source.
                     if not self.config.get("nvd_api_key"):
                         self.setup_nvd_api_key(non_interactive=True)
@@ -1372,7 +1560,9 @@ class InteractiveNetworkAuditor:
                     for i, host_record in enumerate(results):
                         if self.interrupted:
                             break
-                        results[i] = enrich_host_with_cves(host_record, api_key=api_key, logger=self.logger)
+                        results[i] = enrich_host_with_cves(
+                            host_record, api_key=api_key, logger=self.logger
+                        )
                     self.results["hosts"] = results
                 except Exception:
                     # Best-effort: CVE enrichment should never break scans
@@ -1381,13 +1571,7 @@ class InteractiveNetworkAuditor:
             if self.config.get("scan_vulnerabilities") and not self.interrupted:
                 self.scan_vulnerabilities_concurrent(results)
 
-            generate_summary(
-                self.results,
-                self.config,
-                all_hosts,
-                results,
-                self.scan_start_time
-            )
+            generate_summary(self.results, self.config, all_hosts, results, self.scan_start_time)
             self.save_results(partial=self.interrupted)
             self.show_results()
 

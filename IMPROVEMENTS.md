@@ -6,17 +6,19 @@ This document outlines the technical roadmap, planned architectural improvements
 
 ## Immediate Roadmap (v3.1+)
 
-| Priority | Feature | Description |
-| :--- | :--- | :--- |
-| **High** | **Network Topology Discovery** | Pre-scan reconnaissance with ARP scanning, VLAN detection, gateway mapping, and L2 topology visualization. Uses `arp-scan`, `nmap broadcast scripts`, and CDP/LLDP parsing. |
-| **High** | **Configurable UDP Ports** | Add `--udp-ports N` CLI flag (range: 50-500, default: 100) for user-tunable UDP scan coverage. |
-| **Medium** | **NetBIOS/mDNS Discovery** | Active hostname queries (port 137/5353) for improved entity resolution on networks without DNS PTR records. |
-| **Medium** | **Containerization** | Official Dockerfile and Docker Compose setup for ephemeral audit containers. |
-| **Low** | **Expand Persistent Configuration** | Extend `~/.redaudit/config.json` beyond NVD key (e.g., default threads, output dir, rate limits) and optionally support YAML import/export. |
+| Priority | Feature | Status | Description |
+| :--- | :--- | :--- | :--- |
+| **High** | **Network Topology Discovery** | ✅ Implemented (best-effort) | Optional topology discovery (ARP/VLAN/LLDP + gateway/routes) focused on "hidden network" hints and L2 context. |
+| **High** | **Configurable UDP Ports** | ✅ Implemented | Added `--udp-ports N` CLI flag (range: 50-500, default: 100) for user-tunable UDP scan coverage in full UDP identity mode. |
+| **Medium** | **NetBIOS/mDNS Discovery** | Planned | Active hostname queries (port 137/5353) for improved entity resolution on networks without DNS PTR records. |
+| **Medium** | **Containerization** | Paused | Official Dockerfile and Docker Compose setup for ephemeral audit containers. |
+| **Low** | **Expand Persistent Configuration** | ✅ Implemented (initial) | Extended `~/.redaudit/config.json` beyond NVD key (persist common defaults like threads/output/rate-limit/UDP/topology/lang). |
 
 ### Network Topology Discovery (v4.0 Target)
 
 **Goal**: Fast pre-scan reconnaissance to map network architecture before deep scanning.
+
+**Current status (v3.1+)**: A baseline best-effort implementation is available (routes/default gateway, ARP scan, VLAN hints, LLDP/CDP best-effort). v4.0 expands this with richer active discovery (nmap broadcast scripts, traceroute path mapping, etc.).
 
 | Capability | Tool | Output |
 | :--- | :--- | :--- |
@@ -29,8 +31,8 @@ This document outlines the technical roadmap, planned architectural improvements
 **CLI Options**:
 
 ```bash
-redaudit --topology-only 192.168.0.0/16      # Quick topology scan
-redaudit --with-topology --target 10.0.0.0/8 # Integrated with full audit
+redaudit --topology-only --target 192.168.0.0/16 --yes  # Quick topology scan (no host scan)
+redaudit --topology --target 10.0.0.0/8 --yes           # Integrated with full audit
 ```
 
 ## Architectural Proposals
@@ -40,6 +42,8 @@ redaudit --with-topology --target 10.0.0.0/8 # Integrated with full audit
 **Status**: Under Consideration
 **Concept**: Decouple the core scanner from tools. Allow Python-based "Plugins" to define new tool wrappers (e.g., specific IoT scanners) without modifying core logic.
 **Benefit**: easier community contribution and extensibility.
+
+**Note**: A "plugin-first" architecture is currently deferred; priority is stability and coherent core behavior.
 
 ### 2. Distributed Scanning (Coordinator/Workers)
 

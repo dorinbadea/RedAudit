@@ -7,6 +7,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Topology Discovery (best-effort)**: Optional ARP/VLAN/LLDP + gateway/routes mapping (`--topology`, `--topology-only`)
+- **Persistent Defaults**: Save common settings to `~/.redaudit/config.json` via `--save-defaults` (used as defaults in future runs)
+- **Configurable UDP Coverage**: `--udp-ports N` (50-500) to tune full UDP identity scan coverage
+
+### Changed
+
+- **Deep Scan UDP Phase 2b**: Uses configurable `--top-ports N` and records `udp_top_ports` in deep scan output
+- **Report Schema**: Added optional `topology` block in the root report (when enabled)
+
 ## [3.1.0] - 2025-12-14 (SIEM & AI Pipeline)
 
 ### Added

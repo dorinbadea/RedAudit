@@ -61,6 +61,8 @@ RedAudit is not an exploit framework and does not perform automatic exploitation
 - JSON report schema designed for ingestion into SIEM / reporting pipelines.
 - Optional AES-based encryption of reports with proper key derivation.
 - Rate-limiting and jitter to control scan noise.
+- Persistent defaults stored in `~/.redaudit/config.json` (optional, for automation).
+- Optional topology discovery (ARP/VLAN/LLDP + gateway/routes) for L2 context and "hidden network" hints.
 - Bilingual messages (English / Spanish).
 
 ---
@@ -194,21 +196,24 @@ At a high level, a run of RedAudit follows this sequence:
 1. **Discovery**
    - Uses `nmap -sn` (host discovery) to find live hosts in the target range.
 
-2. **Port & service scan**
+2. **Topology discovery (optional, v3.1+)**
+   - Best-effort gateway/routes mapping plus L2 hints (ARP/VLAN/LLDP) when tools and privileges are available.
+
+3. **Port & service scan**
    - Uses `nmap -sV` (service/version detection) on discovered hosts.
    - For `full` mode, scans a wider port range and additional scripts.
 
-3. **Conditional web & TLS analysis**
+4. **Conditional web & TLS analysis**
    - If HTTP/HTTPS ports are found:
      - `whatweb` fingerprints technologies.
      - `curl` / `wget` fetch headers.
      - In `full` mode, `nikto` and `testssl.sh` are invoked for deeper checks.
 
-4. **Deep identity scan (triggered selectively)**
+5. **Deep identity scan (triggered selectively)**
    - If a host is ambiguous or "interesting" (few ports, strange services, incomplete fingerprint), a deeper scan is run:
      - Additional `nmap` probes, optional packet capture with `tcpdump`, optional summarisation with `tshark`.
 
-5. **Post-processing & reporting**
+6. **Post-processing & reporting**
    - Consolidates all collected data into a structured JSON report.
    - Generates a text/Markdown summary.
    - Optionally encrypts the report files using `cryptography` (Fernet).
@@ -279,7 +284,12 @@ The most important options:
 | `--prescan`                 | Enable asynchronous pre-scan to reduce nmap calls on very large ranges.                                           |
 | `--prescan-ports`           | Port range for pre-scan (e.g., `1-1000` or `top-1000`). Default: `1-1024`.                                               |
 | `--prescan-timeout`         | Timeout per port in seconds for pre-scan. Default: `0.5`.                                                                |
-| `--udp-mode {quick,full}`   | UDP scan mode: `quick` (priority ports) or `full` (all ports). Default: `quick`.                                  |
+| `--udp-mode {quick,full}`   | UDP deep-scan mode: `quick` (priority ports) or `full` (top UDP ports for identity discovery). Default: `quick`.   |
+| `--udp-ports N`             | Top UDP ports count used in `--udp-mode full` (range: 50-500). Default: 100. **(v3.1+)**                            |
+| `--topology`                | Enable topology discovery (ARP/VLAN/LLDP + gateway/routes). **(v3.1+)**                                               |
+| `--no-topology`             | Disable topology discovery (override persisted defaults). **(v3.1+)**                                                 |
+| `--topology-only`           | Run topology discovery only (skip host scanning). **(v3.1+)**                                                         |
+| `--save-defaults`           | Save current CLI settings as persistent defaults (`~/.redaudit/config.json`). **(v3.1+)**                             |
 | `--skip-update-check`       | Skip the update check prompt at startup.                                                                          |
 | `--ipv6`                    | Enable IPv6-only scanning mode. **(v3.0)**                                                                        |
 | `--proxy URL`               | SOCKS5 proxy for pivoting (e.g., `socks5://host:1080`). **(v3.0)**                                                |
@@ -287,6 +297,8 @@ The most important options:
 | `--cve-lookup`              | Enable CVE correlation via NVD API. **(v3.0)**                                                                    |
 | `--nvd-key KEY`             | NVD API key for faster rate limits (optional). **(v3.0)**                                                         |
 | `-V`, `--version`           | Print RedAudit version and exit.                                                                                         |
+
+Persistent defaults: if `--save-defaults` is used, RedAudit stores settings under `defaults` in `~/.redaudit/config.json` and reuses them as defaults in future runs.
 
 Interactive note: when asked for “Maximum number of hosts to scan”, press ENTER to scan all discovered hosts, or type a number to apply a global limit.
 
@@ -360,6 +372,7 @@ The JSON schema is described in detail in [REPORT_SCHEMA.md](REPORT_SCHEMA.md). 
 - **Root object**
   - Metadata: tool version, start/end times, operator options, exit status.
   - Target information: ranges, resolved hostnames if available.
+  - Optional topology block (`topology`) when topology discovery is enabled.
 
 - **hosts[]**
   - One object per discovered host:
