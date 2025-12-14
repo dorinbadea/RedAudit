@@ -25,6 +25,21 @@ RedAudit automatiza las fases de descubrimiento, enumeración y reporte en evalu
 
 La herramienta cubre la brecha entre el escaneo ad-hoc y la auditoría formal, proporcionando artefactos estructurados (JSON/TXT) listos para su ingesta en frameworks de reporte o análisis SIEM.
 
+## Características
+
+- **Deep Scan Adaptativo de 3 Fases**: Escalado inteligente (TCP agresivo → UDP prioritario → UDP identidad completa) disparado por ambigüedad del host
+- **Filtrado Smart-Check de Falsos Positivos**: Verificación de 3 capas (Content-Type, checks de tamaño, validación magic bytes) reduce ruido Nikto en 90%
+- **Descubrimiento de Topología de Red**: Mapeo best-effort L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para detección de redes ocultas
+- **Inteligencia CVE**: Integración NVD API 2.0 con matching CPE 2.3, caché de 7 días, y finding IDs determinísticos
+- **Exportaciones SIEM**: Auto-generación de archivos planos JSONL (findings, assets, summary) con cumplimiento ECS v8.11
+- **Entity Resolution**: Consolidación de dispositivos multi-interfaz vía fingerprinting hostname/NetBIOS/mDNS
+- **Defaults Persistentes**: Preferencias de usuario guardadas en `~/.redaudit/config.json` para automatización de workflows
+- **Análisis Diferencial**: Motor de comparación de reportes JSON para rastrear cambios de red en el tiempo
+- **Soporte IPv6 + Proxy**: Escaneo dual-stack completo con capacidades de pivoting SOCKS5
+- **Cifrado de Reportes**: AES-128-CBC (Fernet) con derivación de claves PBKDF2-HMAC-SHA256 (480k iteraciones)
+- **Rate Limiting con Jitter**: Retardo inter-host configurable (randomización ±30%) para evasión IDS
+- **Interfaz Bilingüe**: Localización completa Inglés/Español
+
 ## Arquitectura
 
 RedAudit opera como una capa de orquestación, gestionando hilos de ejecución concurrentes para la interacción de red y el procesamiento de datos. Implementa una arquitectura de dos fases: descubrimiento genérico seguido de escaneos profundos dirigidos.
@@ -392,58 +407,20 @@ bash redaudit_verify.sh
 
 ## 11. Glosario
 
-### Conceptos Fundamentales
+### Infraestructura y Criptografía
 
 - **Fernet**: Estándar de cifrado simétrico usando AES-128-CBC y HMAC-SHA256, proporcionando cifrado autenticado para confidencialidad de reportes.
 - **PBKDF2**: Password-Based Key Derivation Function 2. Transforma contraseñas de usuario en claves criptográficas mediante 480,000 iteraciones para resistir ataques de fuerza bruta.
 - **Salt**: Dato aleatorio de 16 bytes añadido al hash de contraseñas para prevenir ataques de rainbow table, guardado en archivos `.salt` junto a reportes cifrados.
-- **Heartbeat**: Hilo de monitorización en segundo plano que verifica el progreso del escaneo cada 30s y advierte si las herramientas están silenciosas por >300s, indicando posibles bloqueos.
 - **Thread Pool**: Colección de workers concurrentes gestionados por `ThreadPoolExecutor` para escaneo paralelo de hosts (por defecto: 6 hilos, configurable vía `-j`).
-
-### Estrategias de Escaneo
-
-- **Deep Scan**: Estrategia de escaneo adaptativo de 3 fases, disparada selectivamente cuando los hosts muestran fingerprints ambiguos, pocos puertos o servicios sospechosos.
-  - Fase 1: TCP agresivo (`-A`) con detección de SO
-  - Fase 2a: UDP prioritario (17 puertos comunes: DNS, DHCP, SNMP, NetBIOS)
-  - Fase 2b: Escaneo UDP completo de identidad (top-N puertos, por defecto 100, configurable vía `--udp-ports`)
-- **Pre-scan**: Escaneo rápido asyncio TCP connect antes de invocación nmap, reduciendo escaneos completos en rangos grandes (activado vía `--prescan`).
-- **Smart-Check**: Sistema de filtrado de falsos positivos con verificación de 3 capas: validación Content-Type, checks de tamaño y verificación de magic bytes para hallazgos Nikto.
-- **Entity Resolution**: Consolidación de dispositivos multi-interfaz que agrupa hosts con mismo hostname/NetBIOS/mDNS en activos unificados.
-- **Descubrimiento de Topología** (v3.1+): Mapping best-effort L2/L3 de red incluyendo descubrimiento ARP, detección VLAN, parsing LLDP/CDP y análisis de gateway/rutas.
-
-### Características v3.0
-
-- **IPv6**: Soporte dual-stack completo para escaneo de redes IPv6 con inyección automática de flag `-6` y detección IPv6 mediante `netifaces`.
-- **Correlación CVE**: Integración con NVD API 2.0 para inteligencia de vulnerabilidades vía matching CPE 2.3, con caché de 7 días y cumplimiento de rate-limits.
-- **Análisis Diferencial**: Motor de comparación de reportes JSON (`--diff`) que identifica hosts nuevos, hosts eliminados y cambios de puertos entre escaneos.
-- **Proxy Chains**: Soporte SOCKS5 via wrapper `proxychains` para pivoting a través de hosts comprometidos o jump boxes.
-- **Magic Bytes**: Verificación de firmas de archivo (análisis de header de 512 bytes) para detectar respuestas soft-404 de servidores web disfrazadas de archivos.
-
-### Integración SIEM v3.1
-
-- **Exportaciones JSONL**: Archivos planos para ingesta SIEM/IA (generados solo cuando el cifrado está desactivado):
-  - `findings.jsonl`: Un hallazgo de vulnerabilidad por línea
-  - `assets.jsonl`: Un registro de host por línea
-  - `summary.json`: Estadísticas compactas para dashboards
+- **Heartbeat**: Hilo de monitorización en segundo plano que verifica el progreso del escaneo cada 30s y advierte si las herramientas están silenciosas por >300s, indicando posibles bloqueos.
+- **Rate Limiting**: Retardo inter-host configurable con jitter ±30% para evadir detección por umbral IDS (activado vía `--rate-limit`).
+- **ECS**: Compatibilidad Elastic Common Schema v8.11 para integración SIEM con tipado de eventos, puntuación de riesgo (0-100) y hashing observable para deduplicación.
 - **Finding ID**: Hash determinístico SHA256 (`asset_id + scanner + port + signature + title`) para correlación entre escaneos y deduplicación.
-- **Categoría de Hallazgo**: Auto-clasificación en: `surface` (recon), `misconfig`, `crypto` (TLS/SSL), `auth`, `info-leak`, `vuln`.
-- **Severidad Normalizada**: Puntuación estilo CVSS 0.0-10.0 con mapeo enum (`info`/`low`/`medium`/`high`/`critical`), preservando severidad original de herramienta.
-- **Evidence Parser**: Extracción estructurada de observaciones desde output raw Nikto/TestSSL, con payloads grandes externalizados al directorio `evidence/`.
-- **Versiones de Escáneres**: Tracking de proveniencia de herramientas (versiones de nmap, nikto, testssl, whatweb, searchsploit) capturadas en campo `scanner_versions` del reporte.
-- **Cumplimiento ECS**: Compatibilidad Elastic Common Schema v8.11 con tipado de eventos, puntuación de riesgo (0-100) y hashing de observables para dedup.
+- **CPE**: Common Platform Enumeration v2.3 formato usado para matching de versiones de software contra base de datos NVD CVE.
+- **JSONL**: Formato JSON Lines - un objeto JSON por línea, optimizado para ingesta streaming en pipelines SIEM/IA.
 
-### Características v3.1.1
-
-- **Defaults Persistentes**: Preferencias de usuario guardadas en `~/.redaudit/config.json` (hilos, rate-limit, modo UDP, topología, idioma) y auto-cargadas en ejecuciones futuras.
-- **Cobertura UDP Configurable**: Flag `--udp-ports N` (rango 50-500, por defecto 100) para ajustar la profundidad del escaneo UDP de identidad Fase 2b sin barrido completo de 65535 puertos.
-- **Bloque de Topología**: Sección opcional en reporte JSON con rutas, gateway por defecto, hosts ARP, IDs de VLAN y datos de vecinos LLDP (requiere `arp-scan`, `tcpdump`, `lldpctl`).
-
-### Modelo de Seguridad
-
-- **Limitación de Velocidad**: Retardo inter-host configurable con jitter ±30% para evadir detección por umbral IDS (activado vía `--rate-limit`).
-- **Sanitización**: Todas las entradas externas (IPs, hostnames, interfaces) validadas mediante regex allowlist y checks de tipo antes de ejecución subprocess.
-- **Sin Expansión Shell**: Todas las llamadas subprocess usan listas de argumentos (`subprocess.run([...])`) para prevenir inyección de comandos; `shell=True` está estrictamente prohibido.
-- **Permisos de Archivos**: Reportes, configs y logs creados con permisos `0o600` (solo lectura/escritura propietario) para prevenir divulgación local de información.
+**Nota**: Para explicaciones detalladas de estrategias de escaneo (Deep Scan, Smart-Check, Topology Discovery, etc.), ver la sección Características arriba.
 
 ## 12. Solución de Problemas
 

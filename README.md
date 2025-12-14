@@ -25,6 +25,21 @@ RedAudit automates the discovery, enumeration, and reporting phases of network s
 
 The tool bridges the gap between ad-hoc scanning and formal auditing, providing structured artifacts (JSON/TXT) that are ready for ingestion into reporting frameworks or SIEM analysis.
 
+## Features
+
+- **3-Phase Adaptive Deep Scan**: Intelligent escalation (TCP aggressive → Priority UDP → Full UDP identity) triggered by host ambiguity
+- **Smart-Check False Positive Filtering**: 3-layer verification (Content-Type, size checks, magic byte validation) reduces Nikto noise by 90%
+- **Network Topology Discovery**: Best-effort L2/L3 mapping (ARP/VLAN/LLDP + gateway/routes) for hidden network detection
+- **CVE Intelligence**: NVD API 2.0 integration with CPE 2.3 matching, 7-day caching, and deterministic finding IDs
+- **SIEM-Ready Exports**: Auto-generated JSONL flat files (findings, assets, summary) with ECS v8.11 compliance
+- **Entity Resolution**: Multi-interface device consolidation via hostname/NetBIOS/mDNS fingerprinting
+- **Persistent Defaults**: User preferences stored in `~/.redaudit/config.json` for workflow automation
+- **Differential Analysis**: JSON report comparison engine to track network changes over time
+- **IPv6 + Proxy Support**: Full dual-stack scanning with SOCKS5 pivoting capabilities
+- **Report Encryption**: AES-128-CBC (Fernet) with PBKDF2-HMAC-SHA256 key derivation (480k iterations)
+- **Rate Limiting with Jitter**: Configurable inter-host delay (±30% randomization) for IDS evasion
+- **Bilingual Interface**: Complete English/Spanish localization
+
 ## Architecture
 
 RedAudit operates as an orchestration layer, managing concurrent execution threads for network interaction and data processing. It implements a two-phase architecture: generic discovery followed by targeted deep scans.
@@ -388,58 +403,20 @@ bash redaudit_verify.sh
 
 ## 11. Glossary
 
-### Core Concepts
+### Infrastructure & Cryptography
 
 - **Fernet**: Symmetric encryption standard using AES-128-CBC and HMAC-SHA256, providing authenticated encryption for report confidentiality.
 - **PBKDF2**: Password-Based Key Derivation Function 2. Transforms user passwords into cryptographic keys through 480,000 iterations to resist brute-force attacks.
 - **Salt**: Random 16-byte data added to password hashing to prevent rainbow table attacks, stored in `.salt` files alongside encrypted reports.
-- **Heartbeat**: Background monitoring thread that checks scan progress every 30s and warns if tools are silent for >300s, indicating potential hangs.
 - **Thread Pool**: Concurrent worker collection managed by `ThreadPoolExecutor` for parallel host scanning (default: 6 threads, configurable via `-j`).
-
-### Scanning Strategies
-
-- **Deep Scan**: Adaptive 3-phase scanning strategy triggered selectively when hosts show ambiguous fingerprints, few ports, or suspicious services.
-  - Phase 1: Aggressive TCP (`-A`) with OS detection
-  - Phase 2a: Priority UDP (17 common ports: DNS, DHCP, SNMP, NetBIOS)
-  - Phase 2b: Full UDP identity scan (top-N ports, default 100, configurable via `--udp-ports`)
-- **Pre-scan**: Asyncio-based fast TCP connect scan before nmap invocation, reducing full scans on large ranges (activated via `--prescan`).
-- **Smart-Check**: False positive filtering system with 3-layer verification: Content-Type validation, size checks, and magic byte verification for Nikto findings.
-- **Entity Resolution**: Multi-interface device consolidation that groups hosts with same hostname/NetBIOS/mDNS into unified assets.
-- **Topology Discovery** (v3.1+): Best-effort L2/L3 network mapping including ARP discovery, VLAN detection, LLDP/CDP parsing, and gateway/routes analysis.
-
-### v3.0 Features
-
-- **IPv6**: Full dual-stack support for IPv6 network scanning with automatic `-6` flag injection and `netifaces` IPv6 detection.
-- **CVE Correlation**: NVD API 2.0 integration for vulnerability intelligence via CPE 2.3 matching, with 7-day caching and rate-limit compliance.
-- **Differential Analysis**: JSON report comparison engine (`--diff`) that identifies new hosts, removed hosts, and port changes between scans.
-- **Proxy Chains**: SOCKS5 proxy support via `proxychains` wrapper for pivoting through compromised hosts or jump boxes.
-- **Magic Bytes**: File signature verification (512-byte header analysis) to detect web server soft-404 responses masquerading as archives.
-
-### v3.1 SIEM Integration
-
-- **JSONL Exports**: Flat-file exports for SIEM/AI ingestion (generated only when encryption is disabled):
-  - `findings.jsonl`: One vulnerability finding per line
-  - `assets.jsonl`: One host record per line
-  - `summary.json`: Compact dashboard statistics
-- **Finding ID**: Deterministic SHA256 hash (`asset_id + scanner + port + signature + title`) for cross-scan correlation and deduplication.
-- **Finding Category**: Auto-classification into: `surface` (recon), `misconfig`, `crypto` (TLS/SSL), `auth`, `info-leak`, `vuln`.
-- **Normalized Severity**: CVSS-style 0.0-10.0 scoring with enum mapping (`info`/`low`/`medium`/`high`/`critical`), preserving original tool severity.
-- **Evidence Parser**: Structured observation extraction from Nikto/TestSSL raw output, with large payloads externalized to `evidence/` directory.
-- **Scanner Versions**: Tool provenance tracking (nmap, nikto, testssl, whatweb, searchsploit versions) captured in `scanner_versions` report field.
-- **ECS Compliance**: Elastic Common Schema v8.11 compatibility with event typing, risk scoring (0-100), and observable hashing for dedup.
-
-### v3.1.1 Features
-
-- **Persistent Defaults**: User preferences stored in `~/.redaudit/config.json` (threads, rate-limit, UDP mode, topology, language) and auto-loaded on future runs.
-- **Configurable UDP Coverage**: `--udp-ports N` flag (50-500 range, default 100) to tune Phase 2b UDP identity scan depth without full 65535-port sweep.
-- **Topology Block**: Optional JSON report section with routes, default gateway, ARP hosts, VLAN IDs, and LLDP neighbor data (requires `arp-scan`, `tcpdump`, `lldpctl`).
-
-### Security Model
-
+- **Heartbeat**: Background monitoring thread that checks scan progress every 30s and warns if tools are silent for >300s, indicating potential hangs.
 - **Rate Limiting**: Configurable inter-host delay with ±30% jitter to evade IDS threshold detection (activated via `--rate-limit`).
-- **Sanitization**: All external inputs (IPs, hostnames, interfaces) validated through allowlist regex and type checks before subprocess execution.
-- **No Shell Expansion**: All subprocess calls use argument lists (`subprocess.run([...])`) to prevent command injection; `shell=True` is strictly forbidden.
-- **File Permissions**: Reports, configs, and logs created with `0o600` (owner read/write only) to prevent local information disclosure.
+- **ECS**: Elastic Common Schema v8.11 compatibility for SIEM integration with event typing, risk scoring (0-100), and observable hashing for deduplication.
+- **Finding ID**: Deterministic SHA256 hash (`asset_id + scanner + port + signature + title`) for cross-scan correlation and deduplication.
+- **CPE**: Common Platform Enumeration v2.3 format used for matching software versions against NVD CVE database.
+- **JSONL**: JSON Lines format - one JSON object per line, optimized for streaming ingestion into SIEM/AI pipelines.
+
+**Note**: For detailed explanations of scanning strategies (Deep Scan, Smart-Check, Topology Discovery, etc.), see the Features section above.
 
 ## 12. Troubleshooting
 
