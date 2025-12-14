@@ -40,6 +40,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 | **DNS/Whois** | `dig`, `whois` | Búsquedas DNS inversas e información de propiedad para IPs públicas. |
 | **Análisis Diferencial** | Integrado | Compara reportes JSON para rastrear cambios en la red (v3.0). |
 | **Pivoting** | Wrapper `proxychains` | Soporte de proxy SOCKS5 para acceso a redes internas (v3.0). |
+| **Topología** | `arp-scan`, `ip route` | Descubrimiento L2, detección de VLANs y mapeo de gateways (v3.1+). |
 | **Orquestador** | `concurrent.futures` (Python) | Gestiona pools de hilos para escaneo paralelo de hosts. |
 | **Cifrado** | `python3-cryptography` | Cifrado AES-128 para reportes de auditoría sensibles. |
 
@@ -325,12 +326,16 @@ Consulta [docs/es/TROUBLESHOOTING.md](docs/es/TROUBLESHOOTING.md) para solucione
 
 Para el changelog detallado, consulta [CHANGELOG.md](CHANGELOG.md)
 
-## 14. Licencia
+## 14. Contribución
+
+¡Agradecemos las contribuciones! Consulta [CONTRIBUTING_ES.md](.github/CONTRIBUTING_ES.md) para más detalles.
+
+## 15. Licencia
 
 RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**.  
 Consulta el archivo [LICENSE](LICENSE) para ver el texto completo y las condiciones.
 
-## 15. Internos & Glosario (Por qué RedAudit se comporta así)
+## 16. Internos & Glosario (Por qué RedAudit se comporta así)
 
 ### Pool de hilos (`threads`)
 
@@ -356,7 +361,7 @@ Sirve para distinguir un escaneo "silencioso pero sano" de un bloqueo real.
 Los reportes pueden cifrarse con contraseña.  
 La clave se deriva con PBKDF2-HMAC-SHA256 (480k iteraciones) y se acompaña de un archivo `.salt` para poder descifrarlos posteriormente con `redaudit_decrypt.py`.
 
-## 16. Aviso Legal
+## 17. Aviso Legal
 
 **RedAudit** es una herramienta de seguridad únicamente para **auditorías autorizadas**.
 Escanear redes sin permiso es ilegal. Al usar esta herramienta, aceptas total responsabilidad por tus acciones y acuerdas usarla solo en sistemas de tu propiedad o para los que tengas autorización explícita.

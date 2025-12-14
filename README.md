@@ -40,6 +40,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 | **DNS/Whois** | `dig`, `whois` | Reverse DNS lookups and ownership information for public IPs. |
 | **Diff Analysis** | Built-in | Compare JSON reports to track network changes over time (v3.0). |
 | **Pivoting** | `proxychains` wrapper | SOCKS5 proxy support for internal network access (v3.0). |
+| **Topology** | `arp-scan`, `ip route` | L2 discovery, VLAN detection, and gateway mapping (v3.1+). |
 | **Orchestrator** | `concurrent.futures` (Python) | Manages thread pools for parallel host scanning. |
 | **Encryption** | `python3-cryptography` | AES-128 encryption for sensitive audit reports. |
 
@@ -317,12 +318,16 @@ See [docs/en/TROUBLESHOOTING.md](docs/en/TROUBLESHOOTING.md) for detailed fixes.
 
 For detailed changelog, see [CHANGELOG.md](CHANGELOG.md)
 
-## 14. License
+## 14. Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](.github/CONTRIBUTING.md) for details.
+
+## 15. License
 
 RedAudit is released under the **GNU General Public License v3.0 (GPLv3)**.  
 See the [LICENSE](LICENSE) file for the full text and terms.
 
-## 15. Internals & Glossary (Why RedAudit behaves this way)
+## 16. Internals & Glossary (Why RedAudit behaves this way)
 
 ### Thread pool (`threads`)
 
@@ -348,7 +353,7 @@ This helps distinguish a "silent but healthy" scan from a real freeze.
 Reports can be encrypted with a user password.  
 Keys are derived with PBKDF2-HMAC-SHA256 (480k iterations) and a separate `.salt` file, so decryption is possible later with `redaudit_decrypt.py`.
 
-## 16. Legal Notice
+## 17. Legal Notice
 
 **RedAudit** is a security tool for **authorized auditing only**.
 Scanning networks without permission is illegal. By using this tool, you accept full responsibility for your actions and agree to use it only on systems you own or have explicit authorization to test.
