@@ -822,6 +822,13 @@ def stop_background_capture(
         result["tcpdump_error"] = str(exc)
     
     # Generate tshark summary if available
+    if os.path.exists(pcap_file):
+        # Ensure PCAP is stored with secure permissions (best-effort).
+        try:
+            os.chmod(pcap_file, 0o600)
+        except Exception:
+            pass
+
     if extra_tools.get("tshark") and os.path.exists(pcap_file):
         try:
             res = subprocess.run(
@@ -979,4 +986,3 @@ def finalize_host_status(host_record: Dict) -> str:
             return STATUS_NO_RESPONSE
     
     return current_status
-

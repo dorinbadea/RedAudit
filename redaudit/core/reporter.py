@@ -116,13 +116,22 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
     lines.append(f"Web Vulns:     {summ.get('vulns_found', 0)}\n\n")
 
     for h in results.get("hosts", []):
-        lines.append(f"Host: {h.get('ip')} ({h.get('hostname')})\n")
-        lines.append(f"  Status: {h.get('status')}\n")
-        lines.append(f"  Total Ports: {h.get('total_ports_found')}\n")
+        hostname = h.get("hostname") or "-"
+        status = h.get("status") or "unknown"
+        total_ports = h.get("total_ports_found") or 0
+        risk_score = h.get("risk_score")
+
+        lines.append(f"Host: {h.get('ip')} ({hostname})\n")
+        lines.append(f"  Status: {status}\n")
+        lines.append(f"  Total Ports: {total_ports}\n")
+        if risk_score is not None:
+            lines.append(f"  Risk Score: {risk_score}/100\n")
 
         for p in h.get("ports", []):
+            service = p.get("service", "")
+            version = p.get("version", "") or ""
             lines.append(
-                f"    - {p['port']}/{p['protocol']}  {p['service']}  {p['version']}\n"
+                f"    - {p['port']}/{p['protocol']}  {service}  {version}\n"
             )
             # Show known exploits if found
             if p.get("known_exploits"):
@@ -154,6 +163,12 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
             lines.append(f"\nHost: {v['host']}\n")
             for item in v.get("vulnerabilities", []):
                 lines.append(f"  URL: {item.get('url', '')}\n")
+                if item.get("severity"):
+                    score = item.get("severity_score")
+                    if score is None:
+                        lines.append(f"    Severity: {item['severity']}\n")
+                    else:
+                        lines.append(f"    Severity: {item['severity']} ({score})\n")
                 if item.get("whatweb"):
                     lines.append(f"    WhatWeb: {item['whatweb'][:80]}...\n")
                 if item.get("nikto_findings"):

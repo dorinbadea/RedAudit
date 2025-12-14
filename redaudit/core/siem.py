@@ -10,6 +10,7 @@ Implements ECS (Elastic Common Schema), severity scoring, and CEF format.
 
 import hashlib
 import json
+import re
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 
@@ -76,10 +77,45 @@ def calculate_severity(finding: str) -> str:
         return "info"
     
     finding_lower = finding.lower()
+
+    # Ignore common Nikto metadata / non-findings that should not influence severity.
+    benign_substrings = (
+        "target ip:",
+        "target hostname:",
+        "target port:",
+        "start time:",
+        "end time:",
+        "host(s) tested",
+        "server: no banner retrieved",
+        "scan terminated:",
+        "no cgi directories found",
+    )
+    if any(s in finding_lower for s in benign_substrings):
+        return "info"
+
+    def keyword_matches(keyword: str) -> bool:
+        kw = (keyword or "").lower()
+        if not kw:
+            return False
+
+        # Multi-word phrases are matched as substrings.
+        if any(ch.isspace() for ch in kw):
+            return kw in finding_lower
+
+        # Prefix-like tokens (e.g., "cve-") are matched as substrings.
+        if kw.endswith("-"):
+            return kw in finding_lower
+
+        # Short acronyms (e.g., RCE/XSS/SSL) must match as a standalone token to avoid
+        # false positives like "fo[rce]".
+        if len(kw) <= 3:
+            return re.search(rf"(?<![a-z0-9]){re.escape(kw)}(?![a-z0-9])", finding_lower) is not None
+
+        return kw in finding_lower
     
     for level in ["critical", "high", "medium", "low"]:
         for keyword in SEVERITY_KEYWORDS[level]:
-            if keyword in finding_lower:
+            if keyword_matches(keyword):
                 return level
     
     return "info"

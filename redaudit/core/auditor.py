@@ -756,7 +756,18 @@ class InteractiveNetworkAuditor:
             if safe_ip not in nm.all_hosts():
                 # Host didn't respond to initial scan - do deep scan
                 deep = self.deep_scan_host(safe_ip)
-                result = {"ip": safe_ip, "status": STATUS_NO_RESPONSE, "deep_scan": deep} if deep else {"ip": safe_ip, "status": STATUS_DOWN}
+                base = {
+                    "ip": safe_ip,
+                    "hostname": "",
+                    "ports": [],
+                    "web_ports_count": 0,
+                    "total_ports_found": 0,
+                }
+                result = (
+                    {**base, "status": STATUS_NO_RESPONSE, "deep_scan": deep}
+                    if deep
+                    else {**base, "status": STATUS_DOWN}
+                )
                 # Finalize status based on deep scan results
                 result["status"] = finalize_host_status(result)
                 return result

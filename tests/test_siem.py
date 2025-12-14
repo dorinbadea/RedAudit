@@ -56,6 +56,12 @@ class TestSIEM(unittest.TestCase):
         result = calculate_severity(finding)
         self.assertEqual(result, "info")
 
+    def test_calculate_severity_rce_false_positive_force(self):
+        """Avoid false-positive RCE classification from substring matches (e.g., fo[rce])."""
+        finding = "+ No CGI Directories found (use '-C all' to force check all possible dirs)"
+        result = calculate_severity(finding)
+        self.assertEqual(result, "info")
+
     def test_calculate_risk_score_empty(self):
         """Test risk score for host with no ports."""
         host = {"ip": "192.168.1.1", "ports": []}
