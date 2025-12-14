@@ -104,6 +104,35 @@ Después de la instalación, necesitas recargar la configuración de tu shell pa
 
 > **¿Por qué dos shells?** Kali Linux cambió de Bash a Zsh en 2020 para ofrecer características mejoradas y más personalización. La mayoría de otras distros basadas en Debian siguen usando Bash por defecto. El instalador detecta automáticamente tu shell y configura el archivo correcto.
 
+### Verificación Post-Instalación
+
+Verifica la integridad de la instalación:
+
+```bash
+# 1. Comprobar que el comando está disponible
+which redaudit  # Debe devolver: /usr/local/bin/redaudit
+
+# 2. Verificar versión
+redaudit --version  # Debe mostrar: RedAudit v3.1.1
+
+# 3. Verificar dependencias core
+command -v nmap && command -v tcpdump && command -v python3  # Todos deben existir
+
+# 4. Opcional: Ejecutar script de verificación
+bash redaudit_verify.sh  # Verifica checksums, dependencias y configuración
+```
+
+**Configuración Opcional (v3.1.1):**
+
+```bash
+# Guardar clave API NVD para correlación CVE (setup único)
+redaudit  # Modo interactivo pedirá la clave si se usa --cve-lookup
+
+# Establecer defaults persistentes para evitar repetir flags
+redaudit --target 192.168.1.0/24 --threads 8 --rate-limit 1 --save-defaults --yes
+# Las ejecuciones futuras usarán estos ajustes automáticamente
+```
+
 ### Asistente Interactivo
 
 El asistente te guiará:

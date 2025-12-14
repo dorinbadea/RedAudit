@@ -104,6 +104,35 @@ After installation, you need to reload your shell configuration to use the `reda
 
 > **Why two shells?** Kali Linux switched from Bash to Zsh in 2020 for enhanced features and customization. Most other Debian-based distros still use Bash as default. The installer automatically detects your shell and configures the correct file.
 
+### Post-Install Verification
+
+Verify installation integrity:
+
+```bash
+# 1. Check command is available
+which redaudit  # Should return: /usr/local/bin/redaudit
+
+# 2. Verify version
+redaudit --version  # Should show: RedAudit v3.1.1
+
+# 3. Check core dependencies
+command -v nmap && command -v tcpdump && command -v python3  # All should succeed
+
+# 4. Optional: Run verification script
+bash redaudit_verify.sh  # Checks checksums, dependencies, and configuration
+```
+
+**Optional Configuration (v3.1.1):**
+
+```bash
+# Store NVD API key for CVE correlation (one-time setup)
+redaudit  # Interactive mode will prompt for API key if --cve-lookup is used
+
+# Set persistent defaults to avoid repeating flags
+redaudit --target 192.168.1.0/24 --threads 8 --rate-limit 1 --save-defaults --yes
+# Future runs will use these settings automatically
+```
+
 ### Usage Examples
 
 #### Basic Scanning
