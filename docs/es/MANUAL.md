@@ -401,6 +401,45 @@ El esquema detallado se documenta en [REPORT_SCHEMA.md](REPORT_SCHEMA.md). A alt
 
 El esquema es estable y versionado, pensado para su integración en SIEMs o scripts propios.
 
+#### 6.2.1 Integración SIEM (v3.1)
+
+Cuando el cifrado está desactivado, RedAudit genera tres exportaciones planas optimizadas para ingesta SIEM/IA:
+
+**findings.jsonl** - Una vulnerabilidad por línea:
+
+```json
+{"finding_id":"a3f5...","asset_id":"192.168.1.10","scanner":"nikto","port":80,"title":"Apache mod_status enabled","category":"info-leak","severity":"medium","normalized_severity":5.0}
+```
+
+**assets.jsonl** - Un host por línea:
+
+```json
+{"asset_id":"192.168.1.10","ip":"192.168.1.10","hostname":"webserver.local","os":"Linux","open_ports":3,"risk_score":62}
+```
+
+**summary.json** - Métricas para dashboards:
+
+```json
+{"total_hosts":15,"total_findings":47,"critical":2,"high":8,"medium":21,"low":16,"scan_duration_seconds":342}
+```
+
+**Ejemplos de ingesta:**
+
+```bash
+# Elasticsearch
+cat findings.jsonl | curl -X POST "localhost:9200/redaudit-findings/_bulk" \
+  -H 'Content-Type: application/x-ndjson' --data-binary @-
+
+# Splunk HEC
+cat findings.jsonl | while read line; do
+  curl -k "https://splunk:8088/services/collector" \
+    -H "Authorization: Splunk TU_TOKEN" -d "{\"event\":$line}"
+done
+
+# Procesamiento personalizado
+jq -r 'select(.normalized_severity >= 7.0) | "\(.ip) - \(.title)"' findings.jsonl
+```
+
 ---
 
 ### 6.3 Resúmenes en texto / Markdown

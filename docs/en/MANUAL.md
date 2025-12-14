@@ -397,6 +397,45 @@ The JSON schema is described in detail in [REPORT_SCHEMA.md](REPORT_SCHEMA.md). 
 
 The schema is stable and versioned to ease integration with SIEM, dashboards, or custom scripts.
 
+#### 6.2.1 SIEM Integration (v3.1)
+
+When encryption is disabled, RedAudit generates three flat-file exports optimized for SIEM/AI ingestion:
+
+**findings.jsonl** - One vulnerability per line:
+
+```json
+{"finding_id":"a3f5...","asset_id":"192.168.1.10","scanner":"nikto","port":80,"title":"Apache mod_status enabled","category":"info-leak","severity":"medium","normalized_severity":5.0}
+```
+
+**assets.jsonl** - One host per line:
+
+```json
+{"asset_id":"192.168.1.10","ip":"192.168.1.10","hostname":"webserver.local","os":"Linux","open_ports":3,"risk_score":62}
+```
+
+**summary.json** - Dashboard-ready metrics:
+
+```json
+{"total_hosts":15,"total_findings":47,"critical":2,"high":8,"medium":21,"low":16,"scan_duration_seconds":342}
+```
+
+**Ingestion examples:**
+
+```bash
+# Elasticsearch
+cat findings.jsonl | curl -X POST "localhost:9200/redaudit-findings/_bulk" \
+  -H 'Content-Type: application/x-ndjson' --data-binary @-
+
+# Splunk HEC
+cat findings.jsonl | while read line; do
+  curl -k "https://splunk:8088/services/collector" \
+    -H "Authorization: Splunk YOUR_TOKEN" -d "{\"event\":$line}"
+done
+
+# Custom processing
+jq -r 'select(.normalized_severity >= 7.0) | "\(.ip) - \(.title)"' findings.jsonl
+```
+
 ---
 
 ### 6.3 Text / Markdown summaries
