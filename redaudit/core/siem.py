@@ -62,6 +62,72 @@ SERVICE_TAGS = {
     "vnc": ["remote-access", "desktop"],
 }
 
+# v3.1: Finding categories for classification
+FINDING_CATEGORIES = {
+    "surface": ["open port", "exposed", "listening", "service detected"],
+    "misconfig": ["directory listing", "missing header", "x-frame-options", 
+                  "x-content-type", "hsts", "cors", "csp", "clickjacking"],
+    "crypto": ["ssl", "tls 1.0", "tls 1.1", "weak cipher", "certificate", 
+               "expired", "self-signed", "sha1", "md5", "rc4", "des", "3des"],
+    "auth": ["authentication", "unauthenticated", "no password", "default", 
+             "anonymous", "guest access", "password"],
+    "info-leak": ["disclosure", "internal ip", "version", "stack trace", 
+                  "error message", "debug", "backup", "source code"],
+    "vuln": ["cve-", "vulnerability", "exploit", "injection", "xss", "sqli",
+             "rce", "remote code", "command injection"],
+}
+
+
+def generate_finding_id(asset_id: str, scanner: str, port: int, 
+                        protocol: str, signature: str, title: str) -> str:
+    """
+    Generate deterministic finding_id for deduplication across runs.
+    
+    v3.1: Enables correlation of findings between scans.
+    
+    Args:
+        asset_id: Observable hash of the asset
+        scanner: Tool that detected the finding (nikto, testssl, etc.)
+        port: Port number
+        protocol: Protocol (tcp/udp)
+        signature: Unique identifier (CVE, plugin ID, or rule name)
+        title: Normalized title of the finding
+        
+    Returns:
+        SHA256 hash as finding_id
+    """
+    # Normalize title for consistent hashing
+    title_normalized = re.sub(r'\s+', ' ', title.lower().strip())[:100]
+    
+    fingerprint = f"{asset_id}|{scanner}|{protocol}:{port}|{signature}|{title_normalized}"
+    return hashlib.sha256(fingerprint.encode()).hexdigest()[:32]
+
+
+def classify_finding_category(finding_text: str) -> str:
+    """
+    Classify a finding into a category based on its content.
+    
+    v3.1: Simple category classification without MITRE ATT&CK.
+    
+    Args:
+        finding_text: The finding description text
+        
+    Returns:
+        Category string: surface, misconfig, crypto, auth, info-leak, or vuln
+    """
+    if not finding_text:
+        return "surface"
+    
+    text_lower = finding_text.lower()
+    
+    # Check categories in priority order (vuln first, surface last)
+    for category in ["vuln", "auth", "crypto", "misconfig", "info-leak"]:
+        for keyword in FINDING_CATEGORIES[category]:
+            if keyword in text_lower:
+                return category
+    
+    return "surface"
+
 
 def calculate_severity(finding: str) -> str:
     """
@@ -285,21 +351,26 @@ def build_ecs_host(host_record: Dict) -> Dict:
     return ecs_host
 
 
-def enrich_vulnerability_severity(vuln_record: Dict) -> Dict:
+def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict:
     """
-    Enrich a vulnerability record with severity scoring.
+    Enrich a vulnerability record with severity scoring, finding_id, and category.
+    
+    v3.1: Added finding_id for dedup, category for classification, normalized_severity.
     
     Args:
         vuln_record: Vulnerability dictionary
+        asset_id: Observable hash of the parent asset (for finding_id generation)
         
     Returns:
-        Enriched vulnerability with severity fields
+        Enriched vulnerability with severity fields, finding_id, and category
     """
     enriched = vuln_record.copy()
     
     # Calculate max severity from all findings
     max_severity = "info"
     max_score = 0
+    all_categories = set()
+    primary_finding = ""
     
     # Check Nikto findings
     for finding in vuln_record.get("nikto_findings", []):
@@ -308,6 +379,12 @@ def enrich_vulnerability_severity(vuln_record: Dict) -> Dict:
         if score > max_score:
             max_score = score
             max_severity = severity
+            primary_finding = finding
+        
+        # Collect categories from all findings
+        cat = classify_finding_category(finding)
+        if cat != "surface":
+            all_categories.add(cat)
     
     # Check TestSSL vulnerabilities
     testssl = vuln_record.get("testssl_analysis", {})
@@ -316,14 +393,62 @@ def enrich_vulnerability_severity(vuln_record: Dict) -> Dict:
         if max_score < 70:
             max_score = 70
             max_severity = "high"
+        all_categories.add("crypto")
+        if not primary_finding and testssl.get("vulnerabilities"):
+            primary_finding = str(testssl["vulnerabilities"][0]) if testssl["vulnerabilities"] else ""
     
     if testssl.get("weak_ciphers"):
         if max_score < 50:
             max_score = 50
             max_severity = "medium"
+        all_categories.add("crypto")
     
+    # Set severity fields
     enriched["severity"] = max_severity
     enriched["severity_score"] = max_score
+    
+    # v3.1: Add normalized_severity (0.0-10.0 scale, CVSS-like)
+    enriched["normalized_severity"] = round(max_score / 10, 1)
+    
+    # v3.1: Determine primary category
+    if all_categories:
+        # Priority: vuln > auth > crypto > misconfig > info-leak
+        for cat in ["vuln", "auth", "crypto", "misconfig", "info-leak"]:
+            if cat in all_categories:
+                enriched["category"] = cat
+                break
+    else:
+        enriched["category"] = "surface"
+    
+    # v3.1: Generate finding_id for deduplication
+    port = vuln_record.get("port", 0)
+    url = vuln_record.get("url", "")
+    
+    # Extract signature from CVE, Nikto plugin ID, or URL
+    signature = ""
+    if "cve-" in primary_finding.lower():
+        match = re.search(r'(cve-\d{4}-\d+)', primary_finding.lower())
+        if match:
+            signature = match.group(1).upper()
+    
+    if not signature:
+        # Use first meaningful finding line as signature
+        for finding in vuln_record.get("nikto_findings", [])[:3]:
+            if not any(x in finding.lower() for x in ["target ip:", "start time:", "end time:"]):
+                signature = finding[:50]
+                break
+    
+    if not signature:
+        signature = url or f"port-{port}"
+    
+    enriched["finding_id"] = generate_finding_id(
+        asset_id=asset_id,
+        scanner="nikto" if vuln_record.get("nikto_findings") else "testssl",
+        port=port,
+        protocol="tcp",
+        signature=signature,
+        title=primary_finding[:100] if primary_finding else url
+    )
     
     return enriched
 
@@ -411,11 +536,18 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
         # Add tags
         host["tags"] = generate_host_tags(host)
     
-    # Enrich vulnerabilities with severity
+    # Enrich vulnerabilities with severity, finding_id, and category
+    # Build host IP to observable_hash mapping for finding_id generation
+    host_hash_map = {h.get("ip"): h.get("observable_hash", "") for h in enriched.get("hosts", [])}
+    
     for vuln_entry in enriched.get("vulnerabilities", []):
+        host_ip = vuln_entry.get("host", "")
+        asset_id = host_hash_map.get(host_ip, "")
+        
         for vuln in vuln_entry.get("vulnerabilities", []):
-            enriched_vuln = enrich_vulnerability_severity(vuln)
+            enriched_vuln = enrich_vulnerability_severity(vuln, asset_id=asset_id)
             vuln.update(enriched_vuln)
+
     
     # Add summary statistics for SIEM dashboards
     summary = enriched.get("summary", {})
