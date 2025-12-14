@@ -14,7 +14,7 @@ import json
 import hashlib
 import subprocess
 import tempfile
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, List
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
@@ -201,11 +201,98 @@ def compute_file_hash(filepath: str, algorithm: str = "sha256") -> str:
     return hasher.hexdigest()
 
 
+def _iter_files(root_dir: str) -> List[str]:
+    """
+    Return sorted relative file paths under root_dir.
+
+    Excludes common Python cache artifacts.
+    """
+    root_dir = os.path.abspath(root_dir)
+    rel_paths: List[str] = []
+    for root, dirs, files in os.walk(root_dir):
+        # Skip Python cache directories
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        for f in files:
+            if f.endswith((".pyc", ".pyo")):
+                continue
+            abs_path = os.path.join(root, f)
+            rel_paths.append(os.path.relpath(abs_path, root_dir))
+    return sorted(set(rel_paths))
+
+
+def compute_tree_diff(old_dir: str, new_dir: str) -> Dict[str, List[str]]:
+    """
+    Compute a simple diff between two directory trees.
+
+    Returns:
+        Dict with keys: added, removed, modified (lists of relative file paths)
+    """
+    old_dir = os.path.abspath(old_dir)
+    new_dir = os.path.abspath(new_dir)
+
+    old_files = set(_iter_files(old_dir)) if os.path.isdir(old_dir) else set()
+    new_files = set(_iter_files(new_dir)) if os.path.isdir(new_dir) else set()
+
+    added = sorted(new_files - old_files)
+    removed = sorted(old_files - new_files)
+    common = sorted(old_files & new_files)
+
+    modified: List[str] = []
+    for rel_path in common:
+        old_path = os.path.join(old_dir, rel_path)
+        new_path = os.path.join(new_dir, rel_path)
+        try:
+            if os.path.getsize(old_path) != os.path.getsize(new_path):
+                modified.append(rel_path)
+                continue
+            if compute_file_hash(old_path) != compute_file_hash(new_path):
+                modified.append(rel_path)
+        except Exception:
+            # If we can't compare, assume modified
+            modified.append(rel_path)
+
+    return {"added": added, "removed": removed, "modified": sorted(modified)}
+
+
+def _inject_default_lang(constants_file: str, lang: str) -> bool:
+    """
+    Inject DEFAULT_LANG into a constants.py file.
+
+    Returns True if the file was modified or already had the desired value.
+    """
+    if lang not in ("en", "es"):
+        lang = "en"
+    try:
+        if not os.path.isfile(constants_file):
+            return False
+        content = ""
+        with open(constants_file, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Replace DEFAULT_LANG assignment line
+        pattern = re.compile(r'^DEFAULT_LANG\s*=\s*["\'].*?["\']\s*$', re.MULTILINE)
+        replacement = f'DEFAULT_LANG = "{lang}"'
+        if pattern.search(content):
+            new_content = pattern.sub(replacement, content, count=1)
+        else:
+            # If missing, append (should not happen, but keep robust)
+            new_content = content.rstrip() + "\n\n" + replacement + "\n"
+
+        if new_content != content:
+            with open(constants_file, "w", encoding="utf-8") as f:
+                f.write(new_content)
+        return True
+    except Exception:
+        return False
+
+
 def perform_git_update(
     repo_path: str,
     lang: str = "en",
     target_version: Optional[str] = None,
     logger=None,
+    print_fn=None,
+    t_fn=None,
 ) -> Tuple[bool, str]:
     """
     v3.0: Perform update using git clone approach for reliability.
@@ -225,6 +312,12 @@ def perform_git_update(
         Tuple of (success, message)
     """
     import shutil
+
+    if print_fn is None:
+        def print_fn(msg, _status=None):  # type: ignore[no-redef]
+            print(msg, flush=True)
+    if t_fn is None:
+        t_fn = lambda key, *args: key.format(*args) if args else key  # noqa: E731
 
     GITHUB_CLONE_URL = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}.git"
     target_version = target_version or VERSION
@@ -263,14 +356,19 @@ def perform_git_update(
         except Exception:
             return (False, f"Could not resolve tag {target_ref} from GitHub.")
 
+        print_fn(f"  → Target ref: {target_ref}", "INFO")
+        print_fn(f"  → Target commit: {expected_commit}", "INFO")
+
         # Step 2: Clone to temporary directory pinned to the tag
         temp_dir = tempfile.mkdtemp(prefix="redaudit_update_")
         clone_path = os.path.join(temp_dir, "RedAudit")
+        print_fn(f"  → Temp directory: {temp_dir}", "INFO")
+        print_fn(f"  → Clone path: {clone_path}", "INFO")
         
         if logger:
             logger.info("Cloning RedAudit to temp folder: %s", temp_dir)
         
-        print("  → Cloning from GitHub...", flush=True)
+        print_fn("  → Cloning from GitHub...", "INFO")
         
         # Ensure git doesn't prompt for credentials or any interaction
         git_env = os.environ.copy()
@@ -340,7 +438,7 @@ def perform_git_update(
                 f"Clone verification failed (expected {expected_commit}, got {cloned_commit})",
             )
 
-        print("  → Clone complete and verified!", flush=True)
+        print_fn("  → Clone complete and verified!", "OKGREEN")
         
         # Step 2: Run install script with user's language
         install_script = os.path.join(clone_path, "redaudit_install.sh")
@@ -348,6 +446,7 @@ def perform_git_update(
         if os.path.isfile(install_script) and os.geteuid() == 0:
             if logger:
                 logger.info("Running install script with language: %s", lang)
+            print_fn(f"  → Running installer script (lang={lang}, auto-update=1)", "INFO")
             
             # Make script executable
             os.chmod(install_script, 0o755)
@@ -367,9 +466,12 @@ def perform_git_update(
             )
             
             if result.returncode != 0:
+                print_fn("  → Installer script returned non-zero; continuing with manual install", "WARNING")
                 if logger:
                     logger.warning("Install script returned non-zero: %s", result.stderr)
                 # Continue anyway, we'll do manual installation
+            else:
+                print_fn("  → Installer script completed", "OKGREEN")
         
         # Step 3: Manual installation to /usr/local/lib/redaudit
         source_module = os.path.join(clone_path, "redaudit")
@@ -377,13 +479,42 @@ def perform_git_update(
         if os.path.isdir(source_module) and os.geteuid() == 0:
             if logger:
                 logger.info("Installing to %s", install_path)
+
+            # Show file-level changes vs existing system install (if present)
+            if os.path.isdir(install_path):
+                try:
+                    diff = compute_tree_diff(install_path, source_module)
+                    print_fn(
+                        f"  → System install changes: +{len(diff['added'])} "
+                        f"~{len(diff['modified'])} -{len(diff['removed'])}",
+                        "INFO",
+                    )
+                    for label in ("added", "modified", "removed"):
+                        items = diff[label]
+                        if not items:
+                            continue
+                        preview = items[:25]
+                        print(f"    {label.upper()} ({len(items)}):")
+                        for p in preview:
+                            print(f"      - {p}")
+                        if len(items) > len(preview):
+                            print(f"      ... ({len(items) - len(preview)} more)")
+                except Exception:
+                    pass
             
             # Remove old installation
             if os.path.exists(install_path):
+                print_fn(f"  → Removing old system install: {install_path}", "WARNING")
                 shutil.rmtree(install_path)
             
             # Copy new files
+            print_fn(f"  → Installing new system files: {install_path}", "INFO")
             shutil.copytree(source_module, install_path)
+
+            # Preserve language preference (manual install overwrites installer injection)
+            constants_file = os.path.join(install_path, "utils", "constants.py")
+            if _inject_default_lang(constants_file, lang):
+                print_fn(f"  → Default language preserved: {lang}", "OKGREEN")
             
             # Set permissions
             for root, dirs, files in os.walk(install_path):
@@ -391,7 +522,9 @@ def perform_git_update(
                     os.chmod(os.path.join(root, d), 0o755)
                 for f in files:
                     os.chmod(os.path.join(root, f), 0o644)
-        
+        elif os.geteuid() != 0:
+            print_fn("  → Skipping system install (not running as root)", "WARNING")
+
         # Step 4: Refuse to overwrite local changes in home repo (if present)
         if os.path.isdir(home_redaudit_path) and os.path.isdir(os.path.join(home_redaudit_path, ".git")):
             try:
@@ -418,16 +551,22 @@ def perform_git_update(
         # Step 5: Copy to user's home folder with documentation
         if logger:
             logger.info("Copying to home folder: %s", home_redaudit_path)
+        print_fn(f"  → Updating home folder copy: {home_redaudit_path}", "INFO")
         
         # Backup existing if present
         if os.path.exists(home_redaudit_path):
             backup_path = f"{home_redaudit_path}_backup_{int(__import__('time').time())}"
+            print_fn(f"  → Backing up home folder: {home_redaudit_path} → {backup_path}", "WARNING")
             shutil.move(home_redaudit_path, backup_path)
             if logger:
                 logger.info("Backed up existing to: %s", backup_path)
         
         # Copy entire clone (including docs) to home
         shutil.copytree(clone_path, home_redaudit_path)
+
+        # Keep home copy consistent with language preference (useful for local runs/docs).
+        home_constants_file = os.path.join(home_redaudit_path, "redaudit", "utils", "constants.py")
+        _inject_default_lang(home_constants_file, lang)
         
         # Fix ownership if running as root
         if os.geteuid() == 0 and target_uid is not None and target_gid is not None:
@@ -561,6 +700,8 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None,
             lang=lang,
             target_version=latest_version,
             logger=logger,
+            print_fn=print_fn,
+            t_fn=t_fn,
         )
         
         if success:

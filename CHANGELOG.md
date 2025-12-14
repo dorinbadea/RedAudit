@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.3] - 2025-12-14 (Update UX)
+
+### Added
+
+- **More explicit auto-update output**: Shows target ref/commit, file changes (+/~/-), and explicit install/backup steps.
+
+### Fixed
+
+- **Language preservation on update**: Auto-update no longer resets the installed language (e.g., Spanish stays Spanish).
+
+### Changed
+
+- **Version**: Updated to 3.0.3
+
+---
+
 ## [3.0.2] - 2025-12-14 (UX, Reporting & NVD)
 
 ### Added

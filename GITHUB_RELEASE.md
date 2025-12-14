@@ -1,13 +1,11 @@
-# RedAudit v3.0.2
+# RedAudit v3.0.3
 
-## Patch Release - UX, Reporting & NVD Improvements
+## Patch Release - Update UX & Language Preservation
 
-### v3.0.2 Highlights
+### v3.0.3 Highlights
 
-- **Cleaner CLI Output**: Thread-safe status printing + word-wrapping avoids split words and interleaved lines during concurrent scans.
-- **Improved Spanish UX**: Completed missing translations for scan status/progress and deep scan messaging.
-- **PCAP Visibility**: Final summary shows PCAP count; TXT report includes PCAP path when captured.
-- **Safer NVD Enrichment**: Avoids wildcard-version CPE queries when the service version is unknown; correct API key source messaging.
+- **Language Preserved on Update**: Auto-update keeps the installed language (e.g., Spanish stays Spanish).
+- **More Explicit Auto-Update Output**: Shows target ref/commit, file changes (+/~/-), and explicit install/backup steps.
 
 ### v3.0 Major Features
 
@@ -87,5 +85,5 @@ Complete bilingual documentation (English/Spanish):
 ### Links
 
 - **Full Changelog**: [CHANGELOG.md](CHANGELOG.md)
-- **Release Notes**: [RELEASE_NOTES_v3.0.2.md](RELEASE_NOTES_v3.0.2.md)
+- **Release Notes**: [RELEASE_NOTES_v3.0.3.md](RELEASE_NOTES_v3.0.3.md)
 - **Security Specs**: [docs/SECURITY.md](docs/SECURITY.md)

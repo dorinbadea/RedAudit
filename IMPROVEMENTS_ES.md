@@ -36,7 +36,14 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 
 ## Hitos Completados
 
-### v3.0.2 (Completado - Diciembre 2025) -> **ACTUAL**
+### v3.0.3 (Completado - Diciembre 2025) -> **ACTUAL**
+
+*Patch centrado en transparencia del auto-update y preservación de idioma.*
+
+- [x] **Idioma preservado en actualización**: El auto-update mantiene el idioma instalado (ej: Español sigue en Español).
+- [x] **Salida de update más explícita**: Muestra ref/commit objetivo, cambios de ficheros (+/~/-) y pasos claros de instalación/backup.
+
+### v3.0.2 (Completado - Diciembre 2025)
 
 *Patch centrado en pulido del CLI, claridad de reportes y correlación CVE más segura.*
 

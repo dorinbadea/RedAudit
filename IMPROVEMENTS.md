@@ -36,7 +36,14 @@ This document outlines the technical roadmap, planned architectural improvements
 
 ## Completed Milestones
 
-### v3.0.2 (Completed - December 2025) -> **CURRENT**
+### v3.0.3 (Completed - December 2025) -> **CURRENT**
+
+*Patch release focused on auto-update transparency and language preservation.*
+
+- [x] **Language preserved on update**: Auto-update keeps the previously installed language (e.g., Spanish stays Spanish).
+- [x] **Verbose update output**: Shows target ref/commit, system file changes (+/~/-), and explicit install/backup steps.
+
+### v3.0.2 (Completed - December 2025)
 
 *Patch release focused on CLI polish, reporting clarity, and safer CVE enrichment.*
 

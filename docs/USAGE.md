@@ -141,7 +141,7 @@ This will generate `.decrypted` files (or restore original extension) after pass
 
 Debug logs are stored in `~/.redaudit/logs/`. Check these files if the scan fails or behaves unexpectedly.
 
-## CVE Correlation Setup (v3.0.2)
+## CVE Correlation Setup (v3.0.3)
 
 RedAudit can enrich scan results with CVE data from NIST's National Vulnerability Database (NVD).
 This enrichment depends on detected service versions (or versioned CPEs); when version is unknown, RedAudit skips that port to avoid overly broad results.
@@ -183,7 +183,7 @@ Create `~/.redaudit/config.json`:
 
 ```json
 {
-  "version": "3.0.2",
+  "version": "3.0.3",
   "nvd_api_key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
 ```

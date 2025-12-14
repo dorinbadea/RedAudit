@@ -1,8 +1,8 @@
-# Manual de Usuario de RedAudit v3.0.2 (ES)
+# Manual de Usuario de RedAudit v3.0.3 (ES)
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](MANUAL_EN.md)
 
-**Versión:** 3.0.2  
+**Versión:** 3.0.3  
 **Audiencia objetivo:** Analistas de seguridad, pentesters, administradores de sistemas y redes  
 **Licencia:** GPLv3
 

@@ -141,7 +141,7 @@ Esto generará archivos `.decrypted` (o restaurará la extensión original) tras
 
 Los logs de depuración se guardan en `~/.redaudit/logs/`. Revisa estos archivos si el escaneo falla o se comporta de forma inesperada.
 
-## Configuración de Correlación CVE (v3.0.2)
+## Configuración de Correlación CVE (v3.0.3)
 
 RedAudit puede enriquecer los resultados del escaneo con datos CVE de la National Vulnerability Database (NVD) del NIST.
 Este enriquecimiento depende de versiones detectadas (o CPEs con versión); si la versión es desconocida, RedAudit omite ese puerto para evitar resultados demasiado amplios.
@@ -183,7 +183,7 @@ Crea `~/.redaudit/config.json`:
 
 ```json
 {
-  "version": "3.0.2",
+  "version": "3.0.3",
   "nvd_api_key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
 ```
