@@ -311,6 +311,17 @@ def save_results(
         # Update config with actual output directory for display
         config["_actual_output_dir"] = output_dir
 
+        # v3.3: Generate JSONL exports for SIEM/AI pipelines
+        try:
+            from redaudit.core.jsonl_exporter import export_all
+            export_stats = export_all(results, output_dir)
+            if print_fn and t_fn:
+                print_fn(f"📊 JSONL exports: {export_stats['findings']} findings, {export_stats['assets']} assets", "OKGREEN")
+        except Exception as jsonl_err:
+            if logger:
+                logger.warning("JSONL export failed: %s", jsonl_err)
+
+
         return True
 
     except Exception as exc:
