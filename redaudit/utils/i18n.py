@@ -12,10 +12,10 @@ TRANSLATIONS = {
         "interrupted": "\n⚠️  Interruption received. Saving current state...",
         "terminating_scans": "Terminating active scans...",
         "heartbeat_info": "⏱  Activity Monitor: {} ({}s elapsed)",
-        "heartbeat_warn": "⏱  Activity Monitor: {} - No output for {}s (nmap might be busy)",
+        "heartbeat_warn": "⏱  Activity Monitor: {} - No output for {}s (tool may be busy)",
         "heartbeat_fail": (
-            "⏱  Activity Monitor: {} - Long silence (> {}s). "
-            "Nmap is still running; this is normal on slow or filtered hosts."
+            "⏱  Activity Monitor: {} - Long silence (>{}s). "
+            "The active tool is still running; this is normal for slow or filtered hosts."
         ),
         "deep_scan_skip": "✅ Info sufficient (MAC/OS found), skipping phase 2.",
         "verifying_env": "Verifying environment integrity...",
@@ -138,10 +138,10 @@ TRANSLATIONS = {
         "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
         "terminating_scans": "Terminando escaneos activos...",
         "heartbeat_info": "⏱  Monitor de Actividad: {} ({}s transcurridos)",
-        "heartbeat_warn": "⏱  Monitor de Actividad: {} - Sin salida hace {}s (nmap puede estar ocupado)",
+        "heartbeat_warn": "⏱  Monitor de Actividad: {} - Sin salida hace {}s (herramienta ocupada)",
         "heartbeat_fail": (
-            "⏱  Monitor de Actividad: {} - Silencio prolongado (> {}s). "
-            "Nmap sigue ejecutándose; esto es normal en hosts lentos o filtrados."
+            "⏱  Monitor de Actividad: {} - Silencio prolongado (>{}s). "
+            "La herramienta activa sigue ejecutándose; esto es normal en hosts lentos o filtrados."
         ),
         "deep_scan_skip": "✅ Info suficiente (MAC/OS detectado), saltando fase 2.",
         "verifying_env": "Verificando integridad del entorno...",
@@ -197,7 +197,7 @@ TRANSLATIONS = {
         "final_summary": "RESUMEN FINAL",
         "nets": "  Redes:       {}",
         "hosts_up": "  Hosts vivos: {}",
-        "hosts_full": "  Hosts full:  {}",
+        "hosts_full": "  Completos:   {}",
         "vulns_web": "  Vulns web:   {}",
         "duration": "  Duración:    {}",
         "pcaps": "  PCAPs:       {}",
