@@ -8,10 +8,30 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 
 | Prioridad | Característica | Descripción |
 | :--- | :--- | :--- |
+| **Alta** | **Descubrimiento de Topología de Red** | Reconocimiento pre-scan con escaneo ARP, detección de VLANs, mapeo de gateways y visualización de topología L2. Usa `arp-scan`, `nmap broadcast scripts` y parsing CDP/LLDP. |
 | **Alta** | **Puertos UDP Configurables** | Añadir flag CLI `--udp-ports N` (rango: 50-500, defecto: 100) para cobertura UDP ajustable. |
 | **Media** | **Descubrimiento NetBIOS/mDNS** | Consultas activas de hostname (puerto 137/5353) para mejorar resolución de entidades. |
 | **Media** | **Contenedorización** | Dockerfile oficial y configuración Docker Compose para contenedores de auditoría efímeros. |
 | **Baja** | **Ampliar Configuración Persistente** | Extender `~/.redaudit/config.json` más allá de la clave NVD (p.ej. hilos por defecto, directorio de salida, rate limits) y añadir importación/exportación YAML opcional. |
+
+### Descubrimiento de Topología de Red (Objetivo v4.0)
+
+**Objetivo**: Reconocimiento rápido pre-scan para mapear la arquitectura de red antes del escaneo profundo.
+
+| Capacidad | Herramienta | Salida |
+| :--- | :--- | :--- |
+| **Descubrimiento L2** | `arp-scan --localnet` | Direcciones MAC + vendor OUI |
+| **Detección de VLAN** | `nmap --script broadcast-dhcp-discover,broadcast-arp` | IDs de VLAN, servidores DHCP |
+| **Mapeo de Gateway** | `traceroute` + análisis de ICMP redirect | Rutas de routers, detección NAT |
+| **Topología L2** | Parsing CDP/LLDP via `tcpdump -nn -v -c 50 ether proto 0x88cc` | Relaciones switch/puerto |
+| **Redes Ocultas** | Detección de anomalías ARP + análisis de tabla de rutas | Subredes mal configuradas |
+
+**Opciones CLI**:
+
+```bash
+redaudit --topology-only 192.168.0.0/16      # Solo escaneo de topología
+redaudit --with-topology --target 10.0.0.0/8 # Integrado con auditoría completa
+```
 
 ## Propuestas Arquitectónicas
 

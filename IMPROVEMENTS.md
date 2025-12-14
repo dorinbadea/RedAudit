@@ -8,10 +8,30 @@ This document outlines the technical roadmap, planned architectural improvements
 
 | Priority | Feature | Description |
 | :--- | :--- | :--- |
+| **High** | **Network Topology Discovery** | Pre-scan reconnaissance with ARP scanning, VLAN detection, gateway mapping, and L2 topology visualization. Uses `arp-scan`, `nmap broadcast scripts`, and CDP/LLDP parsing. |
 | **High** | **Configurable UDP Ports** | Add `--udp-ports N` CLI flag (range: 50-500, default: 100) for user-tunable UDP scan coverage. |
 | **Medium** | **NetBIOS/mDNS Discovery** | Active hostname queries (port 137/5353) for improved entity resolution on networks without DNS PTR records. |
 | **Medium** | **Containerization** | Official Dockerfile and Docker Compose setup for ephemeral audit containers. |
 | **Low** | **Expand Persistent Configuration** | Extend `~/.redaudit/config.json` beyond NVD key (e.g., default threads, output dir, rate limits) and optionally support YAML import/export. |
+
+### Network Topology Discovery (v4.0 Target)
+
+**Goal**: Fast pre-scan reconnaissance to map network architecture before deep scanning.
+
+| Capability | Tool | Output |
+| :--- | :--- | :--- |
+| **L2 Host Discovery** | `arp-scan --localnet` | MAC addresses + vendor OUI |
+| **VLAN Detection** | `nmap --script broadcast-dhcp-discover,broadcast-arp` | VLAN IDs, DHCP servers |
+| **Gateway Mapping** | `traceroute` + ICMP redirect analysis | Router paths, NAT detection |
+| **L2 Topology** | CDP/LLDP parsing via `tcpdump -nn -v -c 50 ether proto 0x88cc` | Switch/port relationships |
+| **Hidden Networks** | ARP anomaly detection + route table analysis | Bridged/misconfigured subnets |
+
+**CLI Options**:
+
+```bash
+redaudit --topology-only 192.168.0.0/16      # Quick topology scan
+redaudit --with-topology --target 10.0.0.0/8 # Integrated with full audit
+```
 
 ## Architectural Proposals
 
