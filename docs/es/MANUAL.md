@@ -248,11 +248,27 @@ El modo elegido afecta a cuántos puertos se analizan y qué herramientas extern
 RedAudit se puede usar en modo interactivo (sin argumentos) o no interactivo.
 
 ```bash
-# Modo interactivo (con preguntas)
+# Modo interactivo (lanza el Menú Principal)
 sudo redaudit
+```
 
-# Modo no interactivo
+Cuando se inicia sin argumentos, RedAudit presenta ahora un **Menú Principal Interactivo**:
+
+1. **Start Network Scan**: Inicia el asistente de escaneo.
+2. **Diff Two Reports**: Compara 2 reportes JSON para ver diferencias.
+3. **Exit**: Salir.
+
+Si eliges escanear, el asistente te guiará por:
+
+- Selección de objetivo (IP/CIDR).
+- **Modo Topología**: Elige entre Escaneo Completo (+Topología), Estándar (Sin Topología) o Solo Topología.
+- Modo de Escaneo (Fast, Normal, Full).
+- Opciones adicionales (Cifrado, Defaults).
+
+# Modo no interactivo (automatización)
+
 sudo redaudit --target 192.168.1.0/24 --mode normal --yes
+
 ```
 
 También se puede invocar como módulo:

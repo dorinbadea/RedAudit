@@ -194,7 +194,13 @@ RedAudit's design philosophy is:
 
 At a high level, a run of RedAudit follows this sequence:
 
-1. **Discovery**
+At a high level, a run of RedAudit follows this sequence:
+
+1. **Interactive Setup (Wizard)**
+   - If running interactively, the user selects an action from the **Main Menu**.
+   - Input of target ranges and selection of **Topology Mode** (Full, Standard, or Topology Only).
+
+2. **Discovery**
    - Uses `nmap -sn` (host discovery) to find live hosts in the target range.
 
 2. **Topology discovery (optional, v3.1+)**
@@ -244,11 +250,27 @@ Changing the mode affects how aggressively external tools are invoked and how ma
 You can run RedAudit either interactively (no arguments) or non-interactively.
 
 ```bash
-# Interactive mode (guided prompts)
+# Interactive mode (launches the Main Menu)
 sudo redaudit
+```
 
-# Non-interactive mode
+When launched without arguments, RedAudit now presents an **Interactive Main Menu**:
+
+1. **Start Network Scan**: Enters the guided wizard for scanning.
+2. **Diff Two Reports**: Compares 2 JSON reports to show changes.
+3. **Exit**: Quits the application.
+
+If you choose to scan, you will be guided through:
+
+- Target selection (IP/CIDR).
+- **Topology Mode**: Choose between Full Scan (+Topology), Standard (No Topology), or Topology Only.
+- Scan Mode (Fast, Normal, Full).
+- Additional options (Encryption, Defaults).
+
+# Non-interactive mode (automation)
+
 sudo redaudit --target 192.168.1.0/24 --mode normal --yes
+
 ```
 
 The module can also be invoked directly:

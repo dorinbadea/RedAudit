@@ -64,8 +64,10 @@ graph TD
     A[Start: sudo redaudit] --> B[Environment Validation]
     B --> C{Dependencies OK?}
     C -->|No| D[Error: Install dependencies]
-    C -->|Yes| E[Detect Network Interfaces]
-    E --> F[CIDR Target Selection]
+    C -->|No| D[Error: Install dependencies]
+    C -->|Yes| E[Main Menu]
+    E -->|Start Scan| F[Assistant: Target/Topology/Mode]
+    E -->|Diff| Z[Compare Reports]
     F --> G[Discovery: nmap -sn]
     G --> H[List of UP Hosts]
     H --> I[Parallel Port Scanning]
@@ -90,7 +92,18 @@ Before touching the network, the program:
 - Verifies `sudo` permissions (necessary for raw sockets).
 - Checks critical dependencies (`nmap`, `python3-nmap`).
 - Detects optional tools (`nikto`, `testssl.sh`, `searchsploit`).
-- Detects active network interfaces to offer automatic targets.
+- Detects optional tools (`nikto`, `testssl.sh`, `searchsploit`).
+
+### Phase 1.5: Interactive Configuration (New in v3.2)
+
+**Code Function**: [`show_main_menu()`](../../redaudit/core/auditor.py) and [`interactive_setup()`](../../redaudit/core/auditor.py)
+
+At startup, RedAudit presents a **Main Menu** allowing you to choose between scanning, comparing reports (Diff), or exiting.
+If converting to scan, the wizard requests:
+
+1. **Target**: IP or CIDR.
+2. **Topology**: Simplified choice between Full Scan, Standard (no topology), or Topology Only.
+3. **Mode**: Fast, Normal, or Full.
 
 ### Phase 2: Discovery
 

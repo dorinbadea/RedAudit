@@ -62,8 +62,10 @@ graph TD
     A[Inicio: sudo redaudit] --> B[Validación de Entorno]
     B --> C{Dependencias OK?}
     C -->|No| D[Error: Instalar dependencias]
-    C -->|Sí| E[Detectar Interfaces de Red]
-    E --> F[Selección de Objetivo CIDR]
+    C -->|No| D[Error: Instalar dependencias]
+    C -->|Sí| E[Menú Principal]
+    E -->|Start Scan| F[Asistente: Target/Topología/Modo]
+    E -->|Diff| Z[Comparar Reportes]
     F --> G[Descubrimiento: nmap -sn]
     G --> H[Lista de Hosts UP]
     H --> I[Escaneo Paralelo de Puertos]
@@ -88,7 +90,18 @@ Antes de tocar la red, el programa:
 - Verifica permisos de `sudo` (necesarios para sockets raw).
 - Comprueba dependencias críticas (`nmap`, `python3-nmap`).
 - Detecta herramientas opcionales (`nikto`, `testssl.sh`, `searchsploit`).
-- Detecta interfaces de red activas para ofrecer objetivos automáticos.
+- Detecta herramientas opcionales (`nikto`, `testssl.sh`, `searchsploit`).
+
+### Fase 1.5: Configuración Interactiva (Nuevo en v3.2)
+
+**Función en código**: [`show_main_menu()`](../../redaudit/core/auditor.py) y [`interactive_setup()`](../../redaudit/core/auditor.py)
+
+Al iniciar, RedAudit presenta un **Menú Principal** que permite elegir entre escanear, comparar reportes (Diff) o salir.
+Si se elige escanear, el asistente solicita:
+
+1. **Objetivo**: IP o CIDR.
+2. **Topología**: Elección simplificada entre Escaneo Completo, Estándar (sin topología) o Solo Topología.
+3. **Modo**: Fast, Normal o Full.
 
 ### Fase 2: Descubrimiento (Discovery)
 

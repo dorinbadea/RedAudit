@@ -4,9 +4,10 @@
 
 RedAudit es una herramienta CLI para auditoría de red estructurada y hardening en sistemas Kali/Debian.
 
-![Version](https://img.shields.io/badge/version-3.2.0-blue?style=flat-square)
-![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
-![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
+![Versión](https://img.shields.io/badge/versión-3.2.1-blue?style=flat-square)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square)
+![Licencia](https://img.shields.io/badge/licencia-GPLv3-green?style=flat-square)
+
 ![CI/CD](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg?style=flat-square)
 
 ```text
@@ -147,7 +148,7 @@ bash redaudit_verify.sh  # Verifica checksums, dependencias y configuración
 
 ```bash
 # Guardar clave API NVD para correlación CVE (setup único)
-redaudit  # Modo interactivo pedirá la clave si se usa --cve-lookup
+redaudit  # Lanza el Menú Principal Interactivo (Escáner, Diff, Config)
 
 # Establecer defaults persistentes para evitar repetir flags
 redaudit --target 192.168.1.0/24 --threads 8 --rate-limit 1 --save-defaults --yes
