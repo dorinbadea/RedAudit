@@ -128,7 +128,17 @@ redaudit --topology --target 10.0.0.0/8 --yes           # Integrado con auditor�
 
 ## Hitos Completados
 
-### v3.2.0 (Completado - Diciembre 2025) -> **ACTUAL**
+### v3.2.1 (Completado - Diciembre 2025) -> **ACTUAL**
+
+*Release centrado en pulido de UX, Menú Principal Interactivo y simplificación de Topología.*
+
+- [x] **Menú Principal Interactivo**: Punto de entrada unificado para Escaneo, Diff y Config.
+- [x] **Topología Simplificada**: Wizard simplificado para elección de topología vs escaneo completo.
+- [x] **Soporte Non-TTY**: Mejor compatibilidad con CI/Pipelines (sin colores/spinners).
+- [x] **Defaults Consolidados**: Manejo de "Valores Base" y persistencia más limpia.
+- [x] **i18n Completo**: Traducción completada de todos los prompts y menús CLI.
+
+### v3.2.0 (Completado - Diciembre 2025)
 
 *Versión centrada en descubrimiento de red mejorado (estándar + recon Red Team opcional), con documentación alineada.*
 

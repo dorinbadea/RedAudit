@@ -128,7 +128,17 @@ redaudit --topology --target 10.0.0.0/8 --yes           # Integrated with full a
 
 ## Completed Milestones
 
-### v3.2.0 (Completed - December 2025) -> **CURRENT**
+### v3.2.1 (Completed - December 2025) -> **CURRENT**
+
+*Release focused on UX polish, Interactive Main Menu, and Topology Streamlining.*
+
+- [x] **Interactive Main Menu**: Unified entry point for Scan, Diff, and Config.
+- [x] **Streamlined Topology**: Simplified wizard for topology vs full scan.
+- [x] **Non-TTY Support**: Better CI/Pipeline compatibility (no colors/spinners).
+- [x] **Consolidated Defaults**: "Base Values" handling and cleaner persistence.
+- [x] **Full i18n**: Completed translation of all CLI prompts and menus.
+
+### v3.2.0 (Completed - December 2025)
 
 *Feature release focused on enhanced network discovery (standard + optional Red Team recon), with full documentation alignment.*
 

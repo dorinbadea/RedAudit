@@ -232,7 +232,7 @@ if [[ -n "$NVD_KEY" ]]; then
         CONFIG_FILE="$CONFIG_DIR/config.json"
         mkdir -p "$CONFIG_DIR"
         chmod 700 "$CONFIG_DIR"
-        echo "{\"version\": \"3.2.0\", \"nvd_api_key\": \"$NVD_KEY\", \"nvd_api_key_storage\": \"config\"}" > "$CONFIG_FILE"
+        echo "{\"version\": \"3.2.1\", \"nvd_api_key\": \"$NVD_KEY\", \"nvd_api_key_storage\": \"config\"}" > "$CONFIG_FILE"
         chmod 600 "$CONFIG_FILE"
         chown "$REAL_USER:$REAL_USER" "$CONFIG_DIR" "$CONFIG_FILE"
         echo "$MSG_NVD_SAVED $CONFIG_FILE"
