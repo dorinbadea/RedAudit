@@ -194,16 +194,19 @@ class InteractiveNetworkAuditor:
 
         ts = datetime.now().strftime("%H:%M:%S")
 
-        # v3.2.2+: Map status names for non-TTY mode (no [OKGREEN] artifacts)
+        # v3.2.2+: Map internal status tokens to professional display labels
+        # Applied for ALL modes (TTY and non-TTY) to avoid leaking internal names
+        status_map = {
+            "OKGREEN": "OK",
+            "OKBLUE": "INFO",
+            "HEADER": "INFO",
+            "WARNING": "WARN",
+            "FAIL": "FAIL",
+            "INFO": "INFO",
+            "OK": "OK",
+        }
         is_tty = sys.stdout.isatty()
-        status_display = status
-        if not is_tty:
-            status_map = {
-                "OKGREEN": "OK",
-                "OKBLUE": "INFO",
-                "HEADER": "INFO",
-            }
-            status_display = status_map.get(status, status)
+        status_display = status_map.get(status, status)
 
         color = self.COLORS.get(status, self.COLORS["OKBLUE"]) if is_tty else ""
         endc = self.COLORS["ENDC"] if is_tty else ""

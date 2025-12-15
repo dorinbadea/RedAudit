@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-RedAudit - Secure Update Module
+RedAudit - Reliable Update Module
 Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
-Secure update checking and installation from GitHub repository.
-Implements version comparison, release notes fetching, and secure download verification.
+Reliable update checking and installation from GitHub repository.
+Implements version comparison, release notes fetching, and verified tag checkout.
+
+Note: This module verifies that cloned commits match expected git refs (ls-remote),
+but does NOT perform cryptographic signature verification of tags or releases.
 """
 
 import os
@@ -872,12 +875,14 @@ def perform_git_update(
             else:
                 print_fn("  → Installer script completed", "OKGREEN")
         
-        # Step 3: Manual installation to /usr/local/lib/redaudit
+        # Step 3: Manual installation to /usr/local/lib/redaudit (STAGED/ATOMIC)
         source_module = os.path.join(clone_path, "redaudit")
+        staged_install_path = f"{install_path}.new"
+        old_install_path = f"{install_path}.old"
         
         if os.path.isdir(source_module) and os.geteuid() == 0:
             if logger:
-                logger.info("Installing to %s", install_path)
+                logger.info("Installing to %s (staged)", install_path)
 
             # Show file-level changes vs existing system install (if present)
             if os.path.isdir(install_path):
@@ -901,26 +906,61 @@ def perform_git_update(
                 except Exception:
                     pass
             
-            # Remove old installation
-            if os.path.exists(install_path):
-                print_fn(f"  → Removing old system install: {install_path}", "WARNING")
-                shutil.rmtree(install_path)
+            # STAGED INSTALL: Copy to .new first (non-destructive)
+            if os.path.exists(staged_install_path):
+                shutil.rmtree(staged_install_path)  # Clean previous failed attempt
             
-            # Copy new files
-            print_fn(f"  → Installing new system files: {install_path}", "INFO")
-            shutil.copytree(source_module, install_path)
-
-            # Preserve language preference (manual install overwrites installer injection)
-            constants_file = os.path.join(install_path, "utils", "constants.py")
-            if _inject_default_lang(constants_file, lang):
-                print_fn(f"  → Default language preserved: {lang}", "OKGREEN")
+            print_fn(f"  → Staging new files: {staged_install_path}", "INFO")
+            shutil.copytree(source_module, staged_install_path)
             
-            # Set permissions
-            for root, dirs, files in os.walk(install_path):
+            # Inject language preference into staged copy
+            staged_constants = os.path.join(staged_install_path, "utils", "constants.py")
+            _inject_default_lang(staged_constants, lang)
+            
+            # Set permissions on staged copy
+            for root, dirs, files in os.walk(staged_install_path):
                 for d in dirs:
                     os.chmod(os.path.join(root, d), 0o755)
                 for f in files:
                     os.chmod(os.path.join(root, f), 0o644)
+            
+            # Validate staged copy before swapping
+            key_files = ["__init__.py", "cli.py", "core/auditor.py"]
+            for key_file in key_files:
+                if not os.path.isfile(os.path.join(staged_install_path, key_file)):
+                    shutil.rmtree(staged_install_path, ignore_errors=True)
+                    return (False, f"Staged install missing key file: {key_file}")
+            
+            # ATOMIC SWAP: rename old → .old, rename .new → final
+            try:
+                # Clean up any previous .old backup
+                if os.path.exists(old_install_path):
+                    shutil.rmtree(old_install_path)
+                
+                # Move current install to .old (if exists)
+                if os.path.exists(install_path):
+                    print_fn(f"  → Backing up current install: {install_path} → {old_install_path}", "INFO")
+                    os.rename(install_path, old_install_path)
+                
+                # Move staged install to final location
+                print_fn(f"  → Activating new install: {staged_install_path} → {install_path}", "INFO")
+                os.rename(staged_install_path, install_path)
+                
+                print_fn(f"  → Default language preserved: {lang}", "OKGREEN")
+                
+                # Cleanup .old on success (keep for now, cleaned at end)
+                
+            except Exception as e:
+                # ROLLBACK: restore .old if swap failed
+                if os.path.exists(old_install_path) and not os.path.exists(install_path):
+                    print_fn(f"  → ROLLBACK: Restoring previous install", "WARNING")
+                    try:
+                        os.rename(old_install_path, install_path)
+                    except Exception:
+                        pass
+                shutil.rmtree(staged_install_path, ignore_errors=True)
+                return (False, f"System install swap failed: {e}")
+                
         elif os.geteuid() != 0:
             print_fn("  → Skipping system install (not running as root)", "WARNING")
 
@@ -947,26 +987,59 @@ def perform_git_update(
                     f"Could not verify local changes in {home_redaudit_path}. Update aborted for safety.",
                 )
 
-        # Step 5: Copy to user's home folder with documentation
+        # Step 5: Copy to user's home folder with documentation (STAGED/ATOMIC)
+        staged_home_path = f"{home_redaudit_path}.new"
+        backup_path = None
+        
         if logger:
-            logger.info("Copying to home folder: %s", home_redaudit_path)
+            logger.info("Copying to home folder: %s (staged)", home_redaudit_path)
         print_fn(f"  → Updating home folder copy: {home_redaudit_path}", "INFO")
         
-        # Backup existing if present
-        if os.path.exists(home_redaudit_path):
-            backup_path = f"{home_redaudit_path}_backup_{int(__import__('time').time())}"
-            print_fn(f"  → Backing up home folder: {home_redaudit_path} → {backup_path}", "WARNING")
-            shutil.move(home_redaudit_path, backup_path)
-            if logger:
-                logger.info("Backed up existing to: %s", backup_path)
+        # Clean previous failed staged attempt
+        if os.path.exists(staged_home_path):
+            shutil.rmtree(staged_home_path, ignore_errors=True)
         
-        # Copy entire clone (including docs) to home
-        shutil.copytree(clone_path, home_redaudit_path)
+        # Stage: copy to .new first
+        print_fn(f"  → Staging home folder: {staged_home_path}", "INFO")
+        shutil.copytree(clone_path, staged_home_path)
+        
+        # Inject language preference into staged copy
+        staged_home_constants = os.path.join(staged_home_path, "redaudit", "utils", "constants.py")
+        _inject_default_lang(staged_home_constants, lang)
+        
+        # Validate staged home copy
+        staged_key_file = os.path.join(staged_home_path, "redaudit", "__init__.py")
+        if not os.path.isfile(staged_key_file):
+            shutil.rmtree(staged_home_path, ignore_errors=True)
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return (False, "Staged home copy missing key files")
+        
+        # ATOMIC SWAP for home folder
+        try:
+            # Backup existing if present
+            if os.path.exists(home_redaudit_path):
+                backup_path = f"{home_redaudit_path}_backup_{int(__import__('time').time())}"
+                print_fn(f"  → Backing up home folder: {home_redaudit_path} → {backup_path}", "INFO")
+                os.rename(home_redaudit_path, backup_path)
+                if logger:
+                    logger.info("Backed up existing to: %s", backup_path)
+            
+            # Activate staged home folder
+            print_fn(f"  → Activating home folder: {staged_home_path} → {home_redaudit_path}", "INFO")
+            os.rename(staged_home_path, home_redaudit_path)
+            
+        except Exception as e:
+            # ROLLBACK: restore backup if swap failed
+            if backup_path and os.path.exists(backup_path) and not os.path.exists(home_redaudit_path):
+                print_fn(f"  → ROLLBACK: Restoring home folder from backup", "WARNING")
+                try:
+                    os.rename(backup_path, home_redaudit_path)
+                except Exception:
+                    pass
+            shutil.rmtree(staged_home_path, ignore_errors=True)
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return (False, f"Home folder swap failed: {e}")
 
-        # Keep home copy consistent with language preference (useful for local runs/docs).
-        home_constants_file = os.path.join(home_redaudit_path, "redaudit", "utils", "constants.py")
-        _inject_default_lang(home_constants_file, lang)
-        
         # Fix ownership if running as root
         if os.geteuid() == 0 and target_uid is not None and target_gid is not None:
             try:
@@ -980,21 +1053,22 @@ def perform_git_update(
                 if logger:
                     logger.warning("Could not fix ownership: %s", e)
         
-        # Step 6: Verify installation
+        # Step 6: Post-install verification with ROLLBACK
         verification_passed = True
         verification_errors = []
         
-        # Check that main module exists
-        if not os.path.isdir(install_path):
-            verification_passed = False
-            verification_errors.append("Module not installed to /usr/local/lib")
-        
-        # Check that key files exist
-        key_files = ["__init__.py", "cli.py", "core/auditor.py"]
-        for key_file in key_files:
-            if not os.path.isfile(os.path.join(install_path, key_file)):
+        # Check that main module exists (only if running as root)
+        if os.geteuid() == 0:
+            if not os.path.isdir(install_path):
                 verification_passed = False
-                verification_errors.append(f"Missing file: {key_file}")
+                verification_errors.append("Module not installed to /usr/local/lib")
+            else:
+                # Check that key files exist
+                key_files = ["__init__.py", "cli.py", "core/auditor.py"]
+                for key_file in key_files:
+                    if not os.path.isfile(os.path.join(install_path, key_file)):
+                        verification_passed = False
+                        verification_errors.append(f"Missing file: {key_file}")
         
         # Check home copy
         if not os.path.isdir(home_redaudit_path):
@@ -1005,7 +1079,34 @@ def perform_git_update(
         shutil.rmtree(temp_dir, ignore_errors=True)
         
         if not verification_passed:
-            return (False, f"Installation verification failed: {'; '.join(verification_errors)}")
+            # ROLLBACK on verification failure
+            print_fn(f"  → Post-install verification failed, attempting rollback", "WARNING")
+            
+            # Restore system install from .old
+            if os.geteuid() == 0 and os.path.exists(old_install_path):
+                try:
+                    if os.path.exists(install_path):
+                        shutil.rmtree(install_path, ignore_errors=True)
+                    os.rename(old_install_path, install_path)
+                    print_fn(f"  → System install rolled back", "INFO")
+                except Exception:
+                    pass
+            
+            # Restore home from backup
+            if backup_path and os.path.exists(backup_path):
+                try:
+                    if os.path.exists(home_redaudit_path):
+                        shutil.rmtree(home_redaudit_path, ignore_errors=True)
+                    os.rename(backup_path, home_redaudit_path)
+                    print_fn(f"  → Home folder rolled back", "INFO")
+                except Exception:
+                    pass
+            
+            return (False, f"Installation verification failed (rolled back): {'; '.join(verification_errors)}")
+        
+        # Cleanup .old system install on success
+        if os.geteuid() == 0 and os.path.exists(old_install_path):
+            shutil.rmtree(old_install_path, ignore_errors=True)
         
         # Success!
         return (True, "UPDATE_SUCCESS_RESTART")
