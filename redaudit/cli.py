@@ -254,6 +254,21 @@ Examples:
         help="Save current CLI settings as persistent defaults (~/.redaudit/config.json)",
     )
 
+    # v3.2+: Enhanced network discovery
+    parser.add_argument(
+        "--net-discovery",
+        nargs="?",
+        const="all",
+        default=None,
+        metavar="PROTOCOLS",
+        help="Enable network discovery (all, or comma-separated: dhcp,netbios,mdns,upnp,arp,fping)",
+    )
+    parser.add_argument(
+        "--redteam",
+        action="store_true",
+        help="Include Red Team discovery techniques (SNMP/SMB enum, slower/noisier)",
+    )
+
     return parser.parse_args()
 
 
@@ -358,6 +373,17 @@ def configure_from_args(app, args) -> bool:
     app.config["cve_lookup_enabled"] = args.cve_lookup if hasattr(args, "cve_lookup") else False
     app.config["nvd_api_key"] = args.nvd_key if hasattr(args, "nvd_key") else None
     app.config["allow_non_root"] = args.allow_non_root
+
+    # v3.2+: Enhanced network discovery
+    if args.net_discovery:
+        app.config["net_discovery_enabled"] = True
+        if args.net_discovery != "all":
+            protocols = [p.strip().lower() for p in args.net_discovery.split(",")]
+            valid_protocols = ["dhcp", "netbios", "mdns", "upnp", "arp", "fping"]
+            app.config["net_discovery_protocols"] = [p for p in protocols if p in valid_protocols]
+        else:
+            app.config["net_discovery_protocols"] = None  # All protocols
+    app.config["net_discovery_redteam"] = args.redteam
 
     # Setup encryption if requested
     if args.encrypt:
