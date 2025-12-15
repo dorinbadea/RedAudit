@@ -4,7 +4,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](../es/DIDACTIC_GUIDE.md)
 
-This guide is designed to help professors, instructors, and mentors explain the complete functionality of **RedAudit v3.1.3**. The document breaks down the tool from a pedagogical perspective, combining theory, visual diagrams, practical exercises, and code references.
+This guide is designed to help professors, instructors, and mentors explain the complete functionality of **RedAudit v3.1.4**. The document breaks down the tool from a pedagogical perspective, combining theory, visual diagrams, practical exercises, and code references.
 
 > **TL;DR for Instructors**: RedAudit is a network auditing orchestration tool perfect for teaching structured security workflows. Key teaching points: (1) Automated tool orchestration vs manual scanning, (2) Adaptive heuristics (Deep Scan triggers), (3) Professional reporting (SIEM-ready JSON). For a 60-minute lecture, focus on Sections 1-3. For hands-on labs, use Section 8 practical exercises. For research students, Section 5 provides Python internals reference.
 

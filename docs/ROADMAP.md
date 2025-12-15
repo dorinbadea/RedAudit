@@ -60,7 +60,19 @@ redaudit --topology --target 10.0.0.0/8 --yes           # Integrated with full a
 
 ## Completed Milestones
 
-### v3.1.3 (Completed - December 2025) -> **CURRENT**
+### v3.1.4 (Completed - December 2025) -> **CURRENT**
+
+*Patch release focused on output quality improvements for maximum SIEM/AI scoring.*
+
+- [x] **Descriptive finding titles**: Human-readable titles based on finding type (e.g., "Missing X-Frame-Options Header" instead of generic "Finding on URL").
+- [x] **Nikto cross-validation**: `detect_nikto_false_positives()` compares findings with curl/wget headers to identify contradictions.
+- [x] **RFC-1918 severity adjustment**: Internal IP disclosure on private networks now correctly rated as "low" severity.
+- [x] **OS fingerprint extraction**: New `extract_os_detection()` function for structured OS info from Nmap output.
+- [x] **Relative PCAP paths**: Reports use portable relative paths for PCAP files.
+- [x] **Configurable TestSSL timeout**: Increased default from 60s to 90s with configurable parameter.
+- [x] **Schema version constant**: Separate `SCHEMA_VERSION` constant for report versioning clarity.
+
+### v3.1.3 (Completed - December 2025)
 
 *Patch release focused on asyncio performance improvements.*
 

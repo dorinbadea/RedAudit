@@ -140,6 +140,12 @@ Each scan session creates its own folder with:
 - **SIEM/AI exports (v3.1)**: `findings.jsonl`, `assets.jsonl`, `summary.json` (generated only when encryption is disabled).
 - **PCAP**: Traffic capture files (when deep scan runs and capture tools are available).
 
+**New fields in v3.1.4**:
+
+- `severity_note`: Explanation when severity was adjusted (e.g., "RFC-1918 disclosure on private network")
+- `potential_false_positives`: Array of detected contradictions from cross-validation
+- `pcap_file`: Portable relative filename for PCAP captures
+
 To decrypt results:
 
 ```bash
@@ -194,7 +200,7 @@ Create `~/.redaudit/config.json`:
 
 ```json
 {
-  "version": "3.1.3",
+  "version": "3.1.4",
   "nvd_api_key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
   "defaults": {
     "threads": 6,

@@ -140,6 +140,12 @@ Cada sesión de escaneo crea su propia carpeta con:
 - **Exportaciones SIEM/IA (v3.1)**: `findings.jsonl`, `assets.jsonl`, `summary.json` (solo cuando el cifrado está desactivado).
 - **PCAP**: Archivos de captura de tráfico (cuando se ejecuta deep scan y las herramientas están disponibles).
 
+**Nuevos campos en v3.1.4**:
+
+- `severity_note`: Explicación cuando la severidad fue ajustada (ej: "Divulgación RFC-1918 en red privada")
+- `potential_false_positives`: Array de contradicciones detectadas en cross-validación
+- `pcap_file`: Nombre de archivo relativo portable para capturas PCAP
+
 Para descifrar resultados:
 
 ```bash
@@ -194,7 +200,7 @@ Crea `~/.redaudit/config.json`:
 
 ```json
 {
-  "version": "3.1.3",
+  "version": "3.1.4",
   "nvd_api_key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
   "defaults": {
     "threads": 6,

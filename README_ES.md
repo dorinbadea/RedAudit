@@ -4,7 +4,7 @@
 
 RedAudit es una herramienta CLI para auditoría de red estructurada y hardening en sistemas Kali/Debian.
 
-![Version](https://img.shields.io/badge/version-3.1.3-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.1.4-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 ![CI/CD](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg?style=flat-square)
@@ -15,7 +15,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.1.3
+                                      v3.1.4
       Herramienta Interactiva de Auditoría de Red
 ```
 
@@ -31,6 +31,8 @@ La herramienta cubre la brecha entre el escaneo ad-hoc y la auditoría formal, p
 - **Sondeo UDP Prioritario Async (v3.1.3)**: Sondeo asyncio concurrente rápido de puertos UDP prioritarios durante deep scan para triage de servicios
 - **Descubrimiento de Topología Async (v3.1.3)**: Recolección L2/L3 paralelizada (ARP/VLAN/LLDP + gateway/rutas) para mapeo de red más rápido
 - **Filtrado Smart-Check de Falsos Positivos**: Verificación de 3 capas (Content-Type, checks de tamaño, validación magic bytes) reduce ruido Nikto en 90%
+- **Cross-Validation (v3.1.4)**: Detecta falsos positivos de Nikto comparando hallazgos con cabeceras curl/wget
+- **Títulos Descriptivos (v3.1.4)**: Los títulos de hallazgos ahora describen el tipo de problema, no solo la URL
 - **Descubrimiento de Topología de Red**: Mapeo best-effort L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para detección de redes ocultas
 - **Inteligencia CVE**: Integración NVD API 2.0 con matching CPE 2.3, caché de 7 días, y finding IDs determinísticos
 - **Exportaciones SIEM**: Auto-generación de archivos planos JSONL (findings, assets, summary) con cumplimiento ECS v8.11
@@ -131,7 +133,7 @@ Verifica la integridad de la instalación:
 which redaudit  # Debe devolver: /usr/local/bin/redaudit
 
 # 2. Verificar versión
-redaudit --version  # Debe mostrar: RedAudit v3.1.3
+redaudit --version  # Debe mostrar: RedAudit v3.1.4
 
 # 3. Verificar dependencias core
 command -v nmap && command -v tcpdump && command -v python3  # Todos deben existir

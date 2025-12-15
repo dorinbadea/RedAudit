@@ -4,7 +4,7 @@
 
 RedAudit is a CLI tool for structured network auditing and hardening on Kali/Debian systems.
 
-![Version](https://img.shields.io/badge/version-3.1.3-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.1.4-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-red?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
 ![CI/CD](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg?style=flat-square)
@@ -15,7 +15,7 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.1.3
+                                      v3.1.4
         Interactive Network Audit Tool
 ```
 
@@ -31,6 +31,8 @@ The tool bridges the gap between ad-hoc scanning and formal auditing, providing 
 - **Async UDP Priority Probe (v3.1.3)**: Fast concurrent asyncio probing of priority UDP ports during deep scan for rapid service triage
 - **Async Topology Discovery (v3.1.3)**: Parallelized L2/L3 collection (ARP/VLAN/LLDP + gateway/routes) for faster network mapping
 - **Smart-Check False Positive Filtering**: 3-layer verification (Content-Type, size checks, magic byte validation) reduces Nikto noise by 90%
+- **Cross-Validation (v3.1.4)**: Detects Nikto false positives by comparing findings with curl/wget headers
+- **Descriptive Titles (v3.1.4)**: Finding titles now describe the issue type, not just the URL
 - **Network Topology Discovery**: Best-effort L2/L3 mapping (ARP/VLAN/LLDP + gateway/routes) for hidden network detection
 - **CVE Intelligence**: NVD API 2.0 integration with CPE 2.3 matching, 7-day caching, and deterministic finding IDs
 - **SIEM-Ready Exports**: Auto-generated JSONL flat files (findings, assets, summary) with ECS v8.11 compliance
@@ -131,7 +133,7 @@ Verify installation integrity:
 which redaudit  # Should return: /usr/local/bin/redaudit
 
 # 2. Verify version
-redaudit --version  # Should show: RedAudit v3.1.3
+redaudit --version  # Should show: RedAudit v3.1.4
 
 # 3. Check core dependencies
 command -v nmap && command -v tcpdump && command -v python3  # All should succeed

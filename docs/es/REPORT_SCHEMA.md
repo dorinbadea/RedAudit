@@ -204,6 +204,18 @@ Lista de hallazgos de vulnerabilidades web. Cada entrada contiene:
 | `vulnerabilities[].curl_headers` | string | (Opcional) Cabeceras HTTP de curl |
 | `vulnerabilities[].wget_spider` | string | (Opcional) Salida de spider de Wget |
 | `vulnerabilities[].tls_info` | string | (Opcional) Info de certificado TLS |
+| `vulnerabilities[].nikto_filtered_count` | integer | Número de falsos positivos de Nikto filtrados |
+| `vulnerabilities[].severity_note` | string | (Opcional) Explicación cuando la severidad fue ajustada **(v3.1.4)** |
+| `vulnerabilities[].potential_false_positives` | array | (Opcional) Contradicciones detectadas en cross-validación **(v3.1.4)** |
+
+### Campos de Captura PCAP (v3.1.4)
+
+Desde v3.1.4, las referencias a archivos PCAP usan rutas relativas portables:
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `pcap_file` | string | Nombre de archivo relativo (ej: `traffic_192.168.1.1.pcap`) - portable |
+| `pcap_file_abs` | string | Ruta absoluta - para uso interno |
 
 ## Objeto Scan Summary
 

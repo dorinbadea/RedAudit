@@ -205,6 +205,17 @@ List of web vulnerability findings. Each entry contains:
 | `vulnerabilities[].wget_spider` | string | (Optional) Wget spider output |
 | `vulnerabilities[].tls_info` | string | (Optional) OpenSSL TLS certificate info |
 | `vulnerabilities[].nikto_filtered_count` | integer | Number of Nikto false positives filtered |
+| `vulnerabilities[].severity_note` | string | (Optional) Explanation when severity was adjusted **(v3.1.4)** |
+| `vulnerabilities[].potential_false_positives` | array | (Optional) Detected contradictions from cross-validation **(v3.1.4)** |
+
+### PCAP Capture Fields (v3.1.4)
+
+Starting in v3.1.4, PCAP file references use portable relative paths:
+
+| Field | Type | Description |
+|---|---|---|
+| `pcap_file` | string | Relative filename (e.g., `traffic_192.168.1.1.pcap`) - portable |
+| `pcap_file_abs` | string | Absolute path - for internal use |
 
 ## Scan Summary Object
 

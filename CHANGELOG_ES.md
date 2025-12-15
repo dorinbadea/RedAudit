@@ -11,6 +11,22 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 - (pendiente)
 
+## [3.1.4] - 2025-12-15 (Calidad de salida)
+
+### Añadido
+
+- **Títulos descriptivos de hallazgos**: Genera títulos legibles según tipo de hallazgo (ej: "Cabecera X-Frame-Options Faltante" en vez de "Hallazgo en URL")
+- **Extracción de fingerprint de SO**: Nueva función `extract_os_detection()` captura info de SO estructurada desde salida Nmap
+- **Cross-validación Nikto**: `detect_nikto_false_positives()` compara hallazgos de Nikto con cabeceras curl/wget para detectar contradicciones
+- **Ajuste de severidad RFC-1918**: `is_rfc1918_address()` reduce severidad para divulgación de IP interna en redes privadas
+- **Constante de versión de schema**: Nueva constante `SCHEMA_VERSION` separada de `VERSION` para versionado de schema de reportes
+
+### Cambiado
+
+- **Timeout de TestSSL**: Por defecto aumentado de 60s a 90s, ahora configurable vía parámetro `timeout`
+- **Rutas PCAP**: Los reportes usan rutas relativas (`pcap_file`) para portabilidad, con `pcap_file_abs` para uso interno
+- **siem.py**: `enrich_vulnerability_severity()` añade campos `severity_note` y `potential_false_positives` cuando aplica
+
 ## [3.1.3] - 2025-12-15 (UDP y topología asíncronos)
 
 ### Añadido
