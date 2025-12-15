@@ -11,6 +11,8 @@ import os
 import json
 import base64
 import uuid
+import re
+import ipaddress
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -90,6 +92,79 @@ def generate_summary(
     return summary
 
 
+def _detect_network_leaks(results: Dict, config: Dict) -> list:
+    """
+    Detect potential hidden networks by analyzing finding leaks (redirects, headers).
+    
+    Args:
+        results: Results dictionary containing vulnerabilities
+        config: Configuration dictionary with target networks
+        
+    Returns:
+        List of strings describing detected leaks
+    """
+    leaks = set()
+    targets = []
+    for t in config.get("target_networks", []):
+        try:
+            targets.append(ipaddress.ip_network(t, strict=False))
+        except ValueError:
+            pass
+
+    # Regex for IPv4
+    ip_regex = re.compile(r"\b((?:10|172\.(?:1[6-9]|2[0-9]|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3})\b")
+    
+    # helper to check if IP is interesting (private + not in targets)
+    def is_cand(ip_str):
+        try:
+            ip = ipaddress.ip_address(ip_str)
+            if not ip.is_private or ip.is_loopback:
+                return False
+            # Check if in any target network
+            for net in targets:
+                if ip in net:
+                    return False
+            return True
+        except ValueError:
+            return False
+
+    for host_vuln in results.get("vulnerabilities", []):
+        host_ip = host_vuln.get("host")
+        for finding in host_vuln.get("vulnerabilities", []):
+            content_to_check = []
+            
+            # Check headers
+            if finding.get("curl_headers"):
+                content_to_check.append(finding["curl_headers"])
+            if finding.get("wget_headers"):
+                content_to_check.append(finding["wget_headers"])
+                
+            # Check redirects
+            if finding.get("redirect_url"):
+                content_to_check.append(finding["redirect_url"])
+                
+            # Check tool output
+            if finding.get("nikto_findings"):
+                content_to_check.extend(finding["nikto_findings"])
+                
+            for text in content_to_check:
+                if not isinstance(text, str):
+                    continue
+                matches = ip_regex.findall(text)
+                for m in matches:
+                    if m != host_ip and is_cand(m):
+                        # Infer subnet
+                        try:
+                            # Guess /24 for reporting context
+                            pip = ipaddress.ip_address(m)
+                            net = ipaddress.ip_network(f"{m}/24", strict=False)
+                            leaks.add(f"Host {host_ip} leaks internal IP {m} (Potential Network: {net})")
+                        except ValueError:
+                            leaks.add(f"Host {host_ip} leaks internal IP {m}")
+                            
+    return sorted(list(leaks))
+
+
 def generate_text_report(results: Dict, partial: bool = False) -> str:
     """
     Generate human-readable text report.
@@ -113,6 +188,16 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
     lines.append(f"Hosts Found:   {summ.get('hosts_found', 0)}\n")
     lines.append(f"Hosts Scanned: {summ.get('hosts_scanned', 0)}\n")
     lines.append(f"Web Vulns:     {summ.get('vulns_found', 0)}\n\n")
+
+    # v3.2.1: Check for network leaks (Guest Networks / Pivoting opportunities)
+    # The user specifically requested techniques to discover "all networks here"
+    network_leaks = _detect_network_leaks(results, results.get("config", {}))
+    if network_leaks:
+        lines.append("⚠️  POTENTIAL HIDDEN NETWORKS (LEAKS DETECTED):\n")
+        lines.append("   (Professional Pivot / Discovery Tip: These networks are referenced in headers/redirects but were not scanned)\n")
+        for leak in network_leaks:
+            lines.append(f"   - {leak}\n")
+        lines.append("\n")
 
     for h in results.get("hosts", []):
         hostname = h.get("hostname") or "-"
