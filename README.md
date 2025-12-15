@@ -86,7 +86,8 @@ redaudit/
 │   ├── scanner_versions.py  # Tool version detection (v3.1)
 │   ├── evidence_parser.py   # Observation extraction (v3.1)
 │   ├── jsonl_exporter.py    # JSONL exports (v3.1)
-│   └── topology.py     # Topology discovery (v3.1+)
+│   ├── udp_probe.py     # Async UDP probing (v3.1.3)
+│   └── topology.py      # Async topology discovery (v3.1+)
 └── utils/              # Utilities
     ├── constants.py    # Configuration constants
     ├── i18n.py         # Internationalization

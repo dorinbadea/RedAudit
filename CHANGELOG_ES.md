@@ -9,22 +9,20 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-### Cambiado
-
-- **Reestructuración README**: Añadida sección Features tras Overview para visibilidad inmediata de capacidades
-- **Ejemplos README**: Expandidos de 4 a 20 escenarios categorizados (v3.0, v3.1, v3.1.1, workflows reales)
-- **Troubleshooting README**: Expandido de 3 a 17 problemas categorizados con formato diagnóstico/solución
-- **Instalación README**: Añadida subsección de verificación post-instalación y guía de configuración de defaults persistentes
-- **Glosario README**: Simplificado a solo términos infra/crypto (detalles de features movidos a sección Features)
-- **MANUAL SIEM**: Añadida subsección Integración SIEM (§6.2.1) con ejemplos de formato JSONL y comandos de ingesta
-- **Corrección CHANGELOG**: Corregida entrada duplicada v2.5.0 (renombrada a v2.4.0), corregida fecha v3.1.0 (2025-12-13)
+- (pendiente)
 
 ## [3.1.3] - 2025-12-15 (UDP y topología asíncronos)
 
 ### Añadido
 
-- **Probe UDP asíncrono (best-effort)**: Probing concurrente rápido de puertos UDP prioritarios durante deep scan, registrado como `deep_scan.udp_priority_probe`.
-- **Topología asíncrona**: Recolección paralela de comandos para acelerar ARP/VLAN/LLDP + gateway mapping (best-effort).
+- **Sondeo UDP asíncrono (best-effort)**: Sondeo concurrente rápido de puertos UDP prioritarios durante deep scan, registrado como `deep_scan.udp_priority_probe`.
+- **Descubrimiento de topología asíncrono**: Recolección de comandos en paralelo para mapping ARP/VLAN/LLDP + gateway más rápido (best-effort).
+
+### Cambiado
+
+- **Estructura README**: Añadido módulo `udp_probe.py` a la estructura del proyecto
+- **README Topología**: Actualizada descripción de topology.py para reflejar implementación async
+- **Actualización ROADMAP**: Añadidos hitos v3.1.2/v3.1.3, marcado v3.1.3 como ACTUAL
 
 ## [3.1.2] - 2025-12-14 (UX de actualización)
 

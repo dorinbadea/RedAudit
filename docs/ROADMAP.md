@@ -60,7 +60,22 @@ redaudit --topology --target 10.0.0.0/8 --yes           # Integrated with full a
 
 ## Completed Milestones
 
-### v3.1.1 (Completed - December 2025) -> **CURRENT**
+### v3.1.3 (Completed - December 2025) -> **CURRENT**
+
+*Patch release focused on asyncio performance improvements.*
+
+- [x] **Async UDP probe**: Fast concurrent probing of priority UDP ports during deep scan.
+- [x] **Async topology discovery**: Parallelized command collection (ARP/VLAN/LLDP + gateway).
+
+### v3.1.2 (Completed - December 2025)
+
+*Patch release focused on auto-update UX improvements.*
+
+- [x] **CLI-friendly update notes**: Terminal-friendly rendering (strip Markdown noise).
+- [x] **Reliable restart**: PATH-aware restart with clear fallback instructions.
+- [x] **Clearer prompts**: UDP presets, topology-only clarification, save-defaults confirmation.
+
+### v3.1.1 (Completed - December 2025)
 
 *Patch release focused on topology discovery, persistent defaults, and configurable UDP coverage.*
 

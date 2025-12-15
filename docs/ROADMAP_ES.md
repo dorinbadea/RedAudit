@@ -60,7 +60,22 @@ redaudit --topology --target 10.0.0.0/8 --yes           # Integrado con auditor�
 
 ## Hitos Completados
 
-### v3.1.1 (Completado - Diciembre 2025) -> **ACTUAL**
+### v3.1.3 (Completado - Diciembre 2025) -> **ACTUAL**
+
+*Patch centrado en mejoras de rendimiento con asyncio.*
+
+- [x] **Sondeo UDP asíncrono**: Sondeo concurrente rápido de puertos UDP prioritarios durante deep scan.
+- [x] **Topología asíncrona**: Recolección de comandos en paralelo (ARP/VLAN/LLDP + gateway).
+
+### v3.1.2 (Completado - Diciembre 2025)
+
+*Patch centrado en mejoras de UX del auto-update.*
+
+- [x] **Notas de update CLI-friendly**: Renderizado amigable para terminal (sin ruido Markdown).
+- [x] **Reinicio fiable**: Reinicio PATH-aware con instrucciones de fallback claras.
+- [x] **Prompts más claros**: Presets UDP, clarificación topology-only, confirmación save-defaults.
+
+### v3.1.1 (Completado - Diciembre 2025)
 
 *Patch centrado en descubrimiento de topología, defaults persistentes y cobertura UDP configurable.*
 

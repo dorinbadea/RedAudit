@@ -9,15 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- **README Restructure**: Added Features section after Overview for immediate capability visibility
-- **README Examples**: Expanded usage examples from 4 to 20 categorized scenarios (v3.0, v3.1, v3.1.1, real-world workflows)
-- **README Troubleshooting**: Expanded from 3 to 17 categorized issues with diagnosis/solution format
-- **README Installation**: Added post-install verification subsection and persistent defaults setup guide
-- **README Glossary**: Simplified to infrastructure/crypto terms only (moved feature details to Features section)
-- **MANUAL SIEM**: Added SIEM Integration subsection (§6.2.1) with JSONL format examples and ingestion commands
-- **CHANGELOG Fix**: Corrected duplicate v2.5.0 entry (renamed to v2.4.0), fixed v3.1.0 date (2025-12-13)
+- (none yet)
 
 ## [3.1.3] - 2025-12-15 (Async UDP & Topology)
 
@@ -25,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Async UDP probe (best-effort)**: Fast concurrent probing of priority UDP ports during deep scan, recorded as `deep_scan.udp_priority_probe`.
 - **Async topology discovery**: Parallelized command collection for faster ARP/VLAN/LLDP + gateway mapping (best-effort).
+
+### Changed
+
+- **README Structure**: Added `udp_probe.py` module to project structure
+- **README Topology**: Updated topology.py description to reflect async implementation
+- **ROADMAP Update**: Added v3.1.2/v3.1.3 milestones, marked v3.1.3 as CURRENT
 
 ## [3.1.2] - 2025-12-14 (Update UX)
 
