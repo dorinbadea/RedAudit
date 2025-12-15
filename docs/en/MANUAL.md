@@ -272,6 +272,17 @@ If you choose to scan, you will be guided through:
 - Scan Mode (Fast, Normal, Full).
 - Additional options (Encryption, Defaults).
 
+#### Interactive vs Non-Interactive Modes
+
+| Aspect | Interactive Mode | Non-Interactive Mode |
+|--------|------------------|----------------------|
+| **Launch** | `sudo redaudit` | `sudo redaudit --target X --yes` |
+| **Configuration** | Guided wizard prompts | All via CLI flags |
+| **Main Menu** | Yes (Scan / Diff / Exit) | No (direct execution) |
+| **Defaults** | Prompted to use/save | Must specify `--use-defaults` or `--ignore-defaults` |
+| **Use Case** | Manual audits, exploration | Automation, scripts, CI/CD |
+| **Update Check** | Prompted at startup | Skipped (use `--skip-update-check` explicit) |
+
 ### Non-interactive mode (automation)
 
 ```bash

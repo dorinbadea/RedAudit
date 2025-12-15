@@ -16,7 +16,7 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.2.0
+                                      v3.2.1
         Interactive Network Audit Tool
 ```
 
@@ -459,7 +459,15 @@ bash redaudit_verify.sh
 
 ## 12. Troubleshooting
 
-For comprehensive troubleshooting, see [docs/en/TROUBLESHOOTING.md](docs/en/TROUBLESHOOTING.md).
+For comprehensive troubleshooting covering all scenarios, see the full guide:  
+📖 **[Complete Troubleshooting Guide](docs/en/TROUBLESHOOTING.md)**
+
+**Quick Links**:
+
+- [Installation Issues](docs/en/TROUBLESHOOTING.md#1-permission-denied--root-privileges-required)
+- [Scanning Problems](docs/en/TROUBLESHOOTING.md#5-scan-appears-frozen--long-pauses)
+- [Network Discovery Issues](docs/en/TROUBLESHOOTING.md#12-net-discovery-missing-tools--tool_missing-v32)
+- [Encryption/Decryption](docs/en/TROUBLESHOOTING.md#8-decryption-failed-invalid-token)
 
 ### Common Installation Issues
 

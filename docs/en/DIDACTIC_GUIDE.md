@@ -100,6 +100,19 @@ Before touching the network, the program:
 **Code Function**: [`show_main_menu()`](../../redaudit/core/auditor.py) and [`interactive_setup()`](../../redaudit/core/auditor.py)
 
 At startup, RedAudit presents a **Main Menu** allowing you to choose between scanning, comparing reports (Diff), or exiting.
+
+```text
+┌─────────────────────────────────────────────────┐
+│         RedAudit v3.2.1 - Main Menu            │
+├─────────────────────────────────────────────────┤
+│  [1] Start Network Scan (Wizard)               │
+│  [2] Check for Updates                          │
+│  [3] Diff Reports (JSON)                        │
+│  [0] Exit                                        │
+└─────────────────────────────────────────────────┘
+Your choice:
+```
+
 If converting to scan, the wizard requests:
 
 1. **Target**: IP or CIDR.

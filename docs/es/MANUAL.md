@@ -277,6 +277,17 @@ Si eliges escanear, el asistente te guiará por:
 - Modo de Escaneo (Fast, Normal, Full).
 - Opciones adicionales (Cifrado, Defaults).
 
+#### Modo Interactivo vs No-Interactivo
+
+| Aspecto | Modo Interactivo | Modo No-Interactivo |
+|--------|------------------|---------------------|
+| **Lanzamiento** | `sudo redaudit` | `sudo redaudit --target X --yes` |
+| **Configuración** | Asistente con prompts | Todo por flags CLI |
+| **Menú Principal** | Sí (Escanear / Diff / Salir) | No (ejecución directa) |
+| **Valores por Defecto** | Prompt para usar/guardar | Especificar `--use-defaults` o `--ignore-defaults` |
+| **Caso de uso** | Auditorías manuales, exploración | Automatización, scripts, CI/CD |
+| **Check de actualizaciones** | Prompt al inicio | Omitido (usar `--skip-update-check` explícito) |
+
 ### Modo no interactivo (automatización)
 
 ```bash

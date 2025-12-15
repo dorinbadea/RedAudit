@@ -97,12 +97,25 @@ Antes de tocar la red, el programa:
 
 **Función en código**: [`show_main_menu()`](../../redaudit/core/auditor.py) y [`interactive_setup()`](../../redaudit/core/auditor.py)
 
-Al iniciar, RedAudit presenta un **Menú Principal** que permite elegir entre escanear, comparar reportes (Diff) o salir.
+Al inicio, RedAudit presenta un **Menú Principal** que permite elegir entre escanear, comparar reportes (Diff), o salir.
+
+```text
+┌─────────────────────────────────────────────────┐
+│         RedAudit v3.2.1 - Menú Principal       │
+├─────────────────────────────────────────────────┤
+│  [1] Iniciar Auditoría (Wizard)                │
+│  [2] Buscar Actualizaciones                     │
+│  [3] Diff Reportes (JSON)                       │
+│  [0] Salir                                       │
+└─────────────────────────────────────────────────┘
+Tu opción:
+```
+
 Si se elige escanear, el asistente solicita:
 
 1. **Objetivo**: IP o CIDR.
-2. **Topología**: Elección simplificada entre Escaneo Completo, Estándar (sin topología) o Solo Topología.
-3. **Modo**: Fast, Normal o Full.
+2. **Topología**: Elección simplificada entre Escaneo Completo, Estándar (sin topología), o Solo Topología.
+3. **Modo**: Rápido, Normal, o Completo.
 
 ### Fase 2: Descubrimiento (Discovery)
 

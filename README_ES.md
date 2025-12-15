@@ -16,7 +16,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.2.0
+                                      v3.2.1
       Herramienta Interactiva de Auditoría de Red
 ```
 
@@ -463,7 +463,15 @@ bash redaudit_verify.sh
 
 ## 12. Solución de Problemas
 
-Para troubleshooting completo, consulta [docs/es/TROUBLESHOOTING.md](docs/es/TROUBLESHOOTING.md).
+Para solución integral cubriendo todos los escenarios, consulta la guía completa:  
+📖 **[Guía Completa de Solución de Problemas](docs/es/TROUBLESHOOTING.md)**
+
+**Enlaces Directos**:
+
+- [Problemas de Instalación](docs/es/TROUBLESHOOTING.md#1-permission-denied--se-requieren-privilegios-root)
+- [Problemas de Escaneo](docs/es/TROUBLESHOOTING.md#5-el-escaneo-parece-congelado--pausas-largas)
+- [Problemas de Network Discovery](docs/es/TROUBLESHOOTING.md#12-net-discovery-herramientas-faltantes--tool_missing-v32)
+- [Cifrado/Descifrado](docs/es/TROUBLESHOOTING.md#8-fallo-en-el-descifrado-token-inválido)
 
 ### Problemas Comunes de Instalación
 
