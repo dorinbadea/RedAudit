@@ -258,6 +258,7 @@ RedAudit acts as intelligent "glue" between external tools.
 |:---|:---|:---|:---|
 | **Core Scanner** | `nmap` | Main packet scanning engine | [scanner.py](../../redaudit/core/scanner.py) |
 | **Net Discovery** | `netdiscover`, `nbtscan` | Enhanced L2/L3 discovery findings (v3.2) | [net_discovery.py](../../redaudit/core/net_discovery.py) |
+| **Red Team Recon** | `snmpwalk`, `enum4linux`, `masscan`, `rpcclient`, `ldapsearch`, `bettercap` | Optional deep enumeration (SNMP walking, SMB shares, LDAP queries, fast port scanning) for comprehensive Blue Team analysis (v3.2+) | [net_discovery.py](../../redaudit/core/net_discovery.py) |
 | **Web Recon** | `whatweb`, `curl`, `nikto` | Web application analysis | [http_enrichment()](../../redaudit/core/scanner.py#L402-L441) |
 | **SSL/TLS** | `testssl.sh`, `openssl` | Encryption and certificate auditing | [ssl_deep_analysis()](../../redaudit/core/scanner.py#L553-L652) |
 | **Traffic** | `tcpdump`, `tshark` | Forensic evidence capture (PCAP) | [start_background_capture()](../../redaudit/core/scanner.py#L655-L731) |

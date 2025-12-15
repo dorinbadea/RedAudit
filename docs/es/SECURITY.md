@@ -106,6 +106,26 @@ RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `
 - **Trazabilidad**: A diferencia de la escucha pasiva, estas acciones **generarán logs** en los sistemas objetivo y pueden activar reglas IDS/IPS.
 - **Autorización**: Asegúrese de tener permiso explícito para descubrimiento interno **activo**, no solo para escaneo de vulnerabilidades externo.
 
+### Advertencias Específicas por Herramienta
+
+| Herramienta | Capacidad | Nivel de Riesgo | Autorización Requerida |
+|:------------|:----------|:----------------|:-----------------------|
+| `snmpwalk` | Consulta agentes SNMP para información de dispositivos red (VLANs, tablas ARP, configs interfaces) | **Medio** - Logs en dispositivos con SNMP | ✅ Aprobación admin interno |
+| `enum4linux` | Enumera recursos SMB Windows, usuarios, políticas contraseñas, info dominio | **Alto** - Activa logs seguridad, puede alertar SOC | ✅ Aprobación admin dominio |
+| `masscan` | Escáner puertos ultra-rápido (capacidad 1M paquetes/seg) | **Alto** - Alto ruido red, probable trigger IDS | ✅ Aprobación equipo red + seguridad |
+| `rpcclient` | Enumeración Windows RPC (usuarios, grupos, recursos) | **Alto** - Logs Active Directory, intentos auth | ✅ Aprobación admin dominio |
+| `ldapsearch` | Consultas LDAP/AD para estructura organizacional | **Medio** - Servidor LDAP registra consultas | ✅ Aprobación admin directorio |
+| `bettercap` | Framework multi-propósito ataques L2 (ARP spoofing, MITM, inyección) | **Crítico** - Ataques activos red, ilegal sin autorización | ✅ Aprobación ejecutiva + legal |
+| `scapy` (pasivo) | Sniffing pasivo de paquetes para etiquetas VLAN 802.1Q | **Bajo** - Solo pasivo (sin inyección) | ⚠️ Requiere modo promiscuo (root) |
+
+### Mejores Prácticas para Características Red Team
+
+1. **Documentar Autorización**: Obtener aprobación escrita antes de usar flags `--redteam`
+2. **Limitar Alcance**: Usar `--redteam-max-targets` para restringir número de hosts sondeados
+3. **Evitar Horas Producción**: Programar recon activo durante ventanas de mantenimiento
+4. **Monitorear Impacto**: Vigilar congestión red o degradación servicios
+5. **Deshabilitar bettercap**: A menos que sea absolutamente necesario, evitar `--redteam-active-l2` (habilita ataques L2 potencialmente destructivos)
+
 ## 12. Licencia
 
 Este modelo de seguridad es parte del proyecto RedAudit y está cubierto por la  

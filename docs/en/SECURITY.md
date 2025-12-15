@@ -130,6 +130,26 @@ RedAudit v3.2 introduces **Active Reconnaissance** capabilities (`--redteam`, `-
 - **Traceability**: Unlike passive listening, these actions **will generate logs** on target systems and may trigger IDS/IPS rules.
 - **Authorization**: Ensure you have explicit permission for **active** internal discovery, not just external vulnerability scanning.
 
+### Tool-Specific Warnings
+
+| Tool | Capability | Risk Level | Authorization Required |
+|:-----|:-----------|:-----------|:-----------------------|
+| `snmpwalk` | Queries SNMP agents for network device information (VLANs, ARP tables, interface configs) | **Medium** - Logs on SNMP-enabled devices | ✅ Internal admin approval |
+| `enum4linux` | Enumerates Windows SMB shares, users, password policies, domain info | **High** - Triggers security logs, may alert SOC | ✅ Domain admin approval |
+| `masscan` | Ultra-fast port scanner (1M packets/sec capability) | **High** - High network noise, likely IDS trigger | ✅ Network team + security approval |
+| `rpcclient` | Windows RPC enumeration (users, groups, shares) | **High** - Active Directory logs, auth attempts | ✅ Domain admin approval |
+| `ldapsearch` | LDAP/AD queries for organizational structure | **Medium** - LDAP server logs queries | ✅ Directory admin approval |
+| `bettercap` | Multi-purpose L2 attack framework (ARP spoofing, MITM, injection) | **Critical** - Active network attacks, illegal without authorization | ✅ Executive + legal approval |
+| `scapy` (passive) | Passive packet sniffing for 802.1Q VLAN tags | **Low** - Passive only (no injection) | ⚠️ Requires promiscuous mode (root) |
+
+### Best Practices for Red Team Features
+
+1. **Document Authorization**: Obtain written approval before using `--redteam` flags
+2. **Limit Scope**: Use `--redteam-max-targets` to constrain the number of probed hosts
+3. **Avoid Production Hours**: Schedule active recon during maintenance windows
+4. **Monitor Impact**: Watch for network congestion or service degradation
+5. **Disable bettercap**: Unless absolutely necessary, avoid `--redteam-active-l2` (enables potentially destructive L2 attacks)
+
 ## 12. License
 
 This security model is part of the RedAudit project and is covered by the  

@@ -255,8 +255,9 @@ RedAudit actúa como un "pegamento" inteligente entre herramientas externas.
 | Componente | Herramienta Externa | Función en RedAudit | Código Fuente |
 |:---|:---|:---|:---|
 | **Escáner Core** | `nmap` | Motor principal de escaneo de paquetes | [scanner.py](../../redaudit/core/scanner.py) |
-| **Net Discovery** | `netdiscover`, `nbtscan` | Hallazgos de descubrimiento L2/L3 (v3.2) | [net_discovery.py](../../redaudit/core/net_discovery.py) |
-| **Web Recon** | `whatweb`, `curl`, `nikto` | Análisis de aplicaciones web | [http_enrichment()](../../redaudit/core/scanner.py#L402-L441) |
+| **Descubrimiento de Red** | `netdiscover`, `nbtscan` | Hallazgos de descubrimiento L2/L3 mejorado (v3.2) | [net_discovery.py](../../redaudit/core/net_discovery.py) |
+| **Recon Red Team** | `snmpwalk`, `enum4linux`, `masscan`, `rpcclient`, `ldapsearch`, `bettercap` | Enumeración profunda opcional (SNMP walking, recursos SMB, consultas LDAP, escaneo rápido de puertos) para análisis Blue Team integral (v3.2+) | [net_discovery.py](../../redaudit/core/net_discovery.py) |
+| **Recon Web** | `whatweb`, `curl`, `nikto` | Análisis de aplicaciones web | [http_enrichment()](../../redaudit/core/scanner.py#L402-L441) |
 | **SSL/TLS** | `testssl.sh`, `openssl` | Auditoría de cifrado y certificados | [ssl_deep_analysis()](../../redaudit/core/scanner.py#L553-L652) |
 | **Tráfico** | `tcpdump`, `tshark` | Captura de evidencia forense (PCAP) | [start_background_capture()](../../redaudit/core/scanner.py#L655-L731) |
 | **Exploits** | `searchsploit` | Correlación de vulnerabilidades conocidas | [exploit_lookup()](../../redaudit/core/scanner.py#L480-L550) |
