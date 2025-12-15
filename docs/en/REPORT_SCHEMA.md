@@ -65,6 +65,7 @@ Network discovery is **best-effort**: missing tools will reduce visibility but s
 | `mdns_services` | array | mDNS/Bonjour services discovered |
 | `upnp_devices` | array | UPNP devices discovered |
 | `candidate_vlans` | array | Potential guest networks/VLANs detected |
+| `redteam` | object | (Optional) Red Team discovery results (SNMP/SMB/masscan) |
 | `errors` | array | Best-effort errors encountered |
 
 **dhcp_servers[]** entries:
@@ -94,9 +95,26 @@ Network discovery is **best-effort**: missing tools will reduce visibility but s
 | `subnet` | string | Subnet mask |
 | `description` | string | Human-readable description |
 
+**redteam** object (when enabled):
+
+| Field | Type | Description |
+|---|---|---|
+| `targets_considered` | integer | Number of candidate targets selected for Red Team checks |
+| `targets_sample` | array | Sample of target IPs (first 10) |
+| `snmp` | object | SNMP enumeration summary (best-effort, read-only) |
+| `smb` | object | SMB enumeration summary (best-effort, read-only) |
+| `masscan` | object | Optional masscan summary (requires root; skipped on large ranges) |
+| `vlan_enum` | object | VLAN probing status (skipped by default) |
+
 ### Host Object
 
 Represents a single targeted IP address.
+
+Additional host-level fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `os_detected` | string | (Optional) OS fingerprint (best-effort, usually from deep scan output) **(v3.1.4+)** |
 
 ```json
 {
@@ -143,6 +161,7 @@ This field appears only if automatic deep scan was triggered.
 | `strategy` | string | Strategy identifier (e.g., `adaptive_v2.8`) |
 | `mac_address` | string | (Optional) MAC address if detected |
 | `vendor` | string | (Optional) Hardware vendor if detected |
+| `os_detected` | string | (Optional) OS fingerprint extracted from Nmap output **(v3.1.4+)** |
 | `phase2_skipped` | boolean | True if Phase 2 (UDP/OS) was skipped because Phase 1 found identity |
 | `phase2b_skipped` | boolean | True if extended UDP identity scan was skipped (quick mode) |
 | `udp_mode` | string | UDP scan mode used: `quick` or `full` |

@@ -30,7 +30,7 @@ This document outlines the technical roadmap, planned architectural improvements
 - ✅ UPNP device discovery
 - ✅ Netdiscover ARP scan
 - ✅ VLAN candidate analysis
-- 🔲 Red Team techniques (in progress)
+- ✅ Red Team basics (v3.2): SNMP/SMB enumeration + guarded masscan sweep
 
 **Standard Discovery Tools (Implemented)**:
 
@@ -47,14 +47,14 @@ This document outlines the technical roadmap, planned architectural improvements
 
 | Technique | Tool | Status | What It Detects |
 | :--- | :--- | :--- | :--- |
-| **SNMP Walking** | `snmpwalk -v2c -c public <ip>` | 🔲 Pending | Switch port mappings, VLAN assignments, ARP tables |
-| **SMB Enumeration** | `enum4linux -a <ip>` / `crackmapexec smb` | 🔲 Pending | Windows shares, users, password policies, domains |
+| **SNMP Walking** | `snmpwalk -v2c -c public <ip>` | ✅ Implemented (v3.2) | Switch port mappings, VLAN assignments, ARP tables |
+| **SMB Enumeration** | `enum4linux -a <ip>` / `crackmapexec smb` | ✅ Implemented (v3.2) | Windows shares, users, password policies, domains |
 | **VLAN Enumeration** | `yersinia -G` / `frogger` | 🔲 Planned | 802.1Q VLAN IDs, DTP negotiation, trunk ports |
 | **STP Topology** | `yersinia -I eth0 -G stp` | 🔲 Planned | Spanning Tree root bridges, network topology |
 | **HSRP/VRRP Discovery** | `nmap --script broadcast-eigrp-discovery` | 🔲 Planned | Gateway redundancy, virtual IPs, priorities |
 | **LLMNR/NBT-NS** | `responder --analyze` (passive mode) | 🔲 Planned | Windows name resolution requests (recon only) |
 | **Bettercap Recon** | `bettercap -eval "net.recon on"` | 🔲 Planned | Live host discovery, OS fingerprinting, traffic analysis |
-| **Masscan** | `masscan -p1-65535 --rate 10000` | 🔲 Planned | Ultra-fast port discovery across large ranges |
+| **Masscan** | `masscan -p1-65535 --rate 10000` | 🔄 Partial (guarded) | Ultra-fast port discovery across large ranges |
 | **Router Discovery** | `nmap --script broadcast-igmp-discovery` | 🔲 Planned | Multicast routers, IGMP snooping |
 | **IPv6 Discovery** | `nmap -6 --script targets-ipv6-multicast-*` | 🔲 Planned | IPv6 hosts via multicast (link-local) |
 | **Scapy Custom** | Python Scapy scripts | 🔲 Planned | Custom 802.1Q tagged packets, VLAN hopping attempts |

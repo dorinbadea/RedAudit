@@ -70,6 +70,7 @@ from redaudit.core.scanner import (
     get_nmap_arguments,
     get_nmap_arguments_for_target,
     extract_vendor_mac,
+    extract_os_detection,
     output_has_identity,
     run_nmap_command,
     capture_traffic_snippet,
@@ -720,11 +721,16 @@ class InteractiveNetworkAuditor:
             # Check for Identity
             has_identity = output_has_identity([rec1])
             mac, vendor = extract_vendor_mac(rec1.get("stdout", ""))
+            os_detected = extract_os_detection(
+                (rec1.get("stdout", "") or "") + "\n" + (rec1.get("stderr", "") or "")
+            )
 
             if mac:
                 deep_obj["mac_address"] = mac
             if vendor:
                 deep_obj["vendor"] = vendor
+            if os_detected:
+                deep_obj["os_detected"] = os_detected
 
             # Phase 2: UDP scanning (Intelligent strategy)
             if has_identity:
@@ -823,6 +829,12 @@ class InteractiveNetworkAuditor:
                             deep_obj["mac_address"] = m2b
                         if v2b:
                             deep_obj["vendor"] = v2b
+                    if "os_detected" not in deep_obj:
+                        os2b = extract_os_detection(
+                            (rec2b.get("stdout", "") or "") + "\n" + (rec2b.get("stderr", "") or "")
+                        )
+                        if os2b:
+                            deep_obj["os_detected"] = os2b
                 elif udp_mode == UDP_SCAN_MODE_QUICK:
                     deep_obj["phase2b_skipped"] = True
                     deep_obj["udp_mode"] = "quick"
@@ -895,6 +907,8 @@ class InteractiveNetworkAuditor:
                     if deep
                     else {**base, "status": STATUS_DOWN}
                 )
+                if deep and deep.get("os_detected"):
+                    result["os_detected"] = deep["os_detected"]
                 # Finalize status based on deep scan results
                 result["status"] = finalize_host_status(result)
                 return result
@@ -1040,6 +1054,8 @@ class InteractiveNetworkAuditor:
                 deep = self.deep_scan_host(safe_ip)
                 if deep:
                     host_record["deep_scan"] = deep
+                    if deep.get("os_detected"):
+                        host_record["os_detected"] = deep["os_detected"]
 
             enrich_host_with_dns(host_record, self.extra_tools)
             enrich_host_with_whois(host_record, self.extra_tools)

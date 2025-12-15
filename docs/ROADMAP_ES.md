@@ -30,7 +30,7 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 - ✅ Descubrimiento de dispositivos UPNP
 - ✅ Escaneo ARP Netdiscover
 - ✅ Análisis de VLANs candidatas
-- 🔲 Técnicas Red Team (en progreso)
+- ✅ Red Team básico (v3.2): enumeración SNMP/SMB + sweep masscan con guardas
 
 **Herramientas de Descubrimiento Estándar (Implementadas)**:
 
@@ -47,14 +47,14 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 
 | Técnica | Herramienta | Estado | Qué Detecta |
 | :--- | :--- | :--- | :--- |
-| **SNMP Walking** | `snmpwalk -v2c -c public <ip>` | 🔲 Pendiente | Mapeo de puertos de switch, asignaciones VLAN, tablas ARP |
-| **Enumeración SMB** | `enum4linux -a <ip>` / `crackmapexec smb` | 🔲 Pendiente | Shares Windows, usuarios, políticas de contraseña, dominios |
+| **SNMP Walking** | `snmpwalk -v2c -c public <ip>` | ✅ Implementado (v3.2) | Mapeo de puertos de switch, asignaciones VLAN, tablas ARP |
+| **Enumeración SMB** | `enum4linux -a <ip>` / `crackmapexec smb` | ✅ Implementado (v3.2) | Shares Windows, usuarios, políticas de contraseña, dominios |
 | **Enumeración VLAN** | `yersinia -G` / `frogger` | 🔲 Planificado | IDs VLAN 802.1Q, negociación DTP, puertos trunk |
 | **Topología STP** | `yersinia -I eth0 -G stp` | 🔲 Planificado | Root bridges Spanning Tree, topología de red |
 | **Descubrimiento HSRP/VRRP** | `nmap --script broadcast-eigrp-discovery` | 🔲 Planificado | Redundancia de gateway, IPs virtuales, prioridades |
 | **LLMNR/NBT-NS** | `responder --analyze` (modo pasivo) | 🔲 Planificado | Peticiones de resolución de nombres Windows (solo recon) |
 | **Bettercap Recon** | `bettercap -eval "net.recon on"` | 🔲 Planificado | Descubrimiento de hosts, fingerprinting OS, análisis de tráfico |
-| **Masscan** | `masscan -p1-65535 --rate 10000` | 🔲 Planificado | Descubrimiento de puertos ultra-rápido en rangos grandes |
+| **Masscan** | `masscan -p1-65535 --rate 10000` | 🔄 Parcial (con guardas) | Descubrimiento de puertos ultra-rápido en rangos grandes |
 | **Descubrimiento de Routers** | `nmap --script broadcast-igmp-discovery` | 🔲 Planificado | Routers multicast, IGMP snooping |
 | **Descubrimiento IPv6** | `nmap -6 --script targets-ipv6-multicast-*` | 🔲 Planificado | Hosts IPv6 vía multicast (link-local) |
 | **Scapy Custom** | Scripts Python Scapy | 🔲 Planificado | Paquetes 802.1Q personalizados, intentos de VLAN hopping |

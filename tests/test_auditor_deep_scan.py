@@ -43,6 +43,27 @@ class _FakePortScanner:
 
 
 class TestAuditorDeepScanHeuristics(unittest.TestCase):
+    def test_deep_scan_extracts_os_detection(self):
+        app = InteractiveNetworkAuditor()
+        app.print_status = lambda *_args, **_kwargs: None
+        app.config["udp_mode"] = "quick"
+        app.config["udp_top_ports"] = 100
+
+        ip = "192.168.1.50"
+        rec1 = {"stdout": "OS details: Linux 5.4 - 5.11\n", "stderr": "", "returncode": 0}
+
+        with patch("redaudit.core.auditor.start_background_capture", return_value=None):
+            with patch("redaudit.core.auditor.stop_background_capture", return_value=None):
+                with patch("redaudit.core.auditor.run_nmap_command", return_value=rec1):
+                    with patch("redaudit.core.auditor.output_has_identity", return_value=True):
+                        with patch(
+                            "redaudit.core.auditor.extract_vendor_mac", return_value=(None, None)
+                        ):
+                            deep = app.deep_scan_host(ip)
+
+        self.assertIsInstance(deep, dict)
+        self.assertEqual(deep.get("os_detected"), "Linux 5.4 - 5.11")
+
     def test_full_mode_skips_deep_scan_for_quiet_host(self):
         app = InteractiveNetworkAuditor()
         app.print_status = lambda *_args, **_kwargs: None

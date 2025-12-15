@@ -65,6 +65,7 @@ El descubrimiento de red es **best-effort**: herramientas faltantes reducirán l
 | `mdns_services` | array | Servicios mDNS/Bonjour descubiertos |
 | `upnp_devices` | array | Dispositivos UPNP descubiertos |
 | `candidate_vlans` | array | Potenciales redes de invitados/VLANs detectadas |
+| `redteam` | object | (Opcional) Resultados de descubrimiento Red Team (SNMP/SMB/masscan) |
 | `errors` | array | Errores best-effort encontrados |
 
 **Entradas dhcp_servers[]:**
@@ -94,9 +95,26 @@ El descubrimiento de red es **best-effort**: herramientas faltantes reducirán l
 | `subnet` | string | Máscara de subred |
 | `description` | string | Descripción legible |
 
+**Objeto `redteam`** (cuando está activado):
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `targets_considered` | integer | Número de objetivos candidatos seleccionados para checks Red Team |
+| `targets_sample` | array | Muestra de IPs objetivo (primeras 10) |
+| `snmp` | object | Resumen de enumeración SNMP (best-effort, solo lectura) |
+| `smb` | object | Resumen de enumeración SMB (best-effort, solo lectura) |
+| `masscan` | object | Resumen opcional de masscan (requiere root; se omite en rangos grandes) |
+| `vlan_enum` | object | Estado de probing VLAN (omitido por defecto) |
+
 ### Objeto Host
 
 Representa una única dirección IP objetivo.
+
+Campos adicionales a nivel de host:
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `os_detected` | string | (Opcional) Fingerprint de SO (best-effort; normalmente desde salida de deep scan) **(v3.1.4+)** |
 
 ```json
 {
@@ -143,6 +161,7 @@ Este campo aparece solo si se activó el escaneo profundo automático.
 | `strategy` | string | Identificador de estrategia (p. ej., `adaptive_v2.8`) |
 | `mac_address` | string | (Opcional) Dirección MAC si se detectó |
 | `vendor` | string | (Opcional) Fabricante de hardware si se detectó |
+| `os_detected` | string | (Opcional) Fingerprint de SO extraído desde salida de Nmap **(v3.1.4+)** |
 | `phase2_skipped` | boolean | True si la Fase 2 (UDP/SO) se omitió porque la Fase 1 encontró identidad |
 | `phase2b_skipped` | boolean | True si se omitió el escaneo UDP extendido de identidad (modo quick) |
 | `udp_mode` | string | Modo de escaneo UDP usado: `quick` o `full` |

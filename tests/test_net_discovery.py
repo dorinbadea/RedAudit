@@ -189,5 +189,75 @@ class TestDiscoverNetworks(unittest.TestCase):
         self.assertEqual(len(result["alive_hosts"]), 1)
 
 
+class TestRedTeamDiscovery(unittest.TestCase):
+    """Test Red Team net discovery helpers (best-effort)."""
+
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.net_discovery.shutil.which")
+    @patch("redaudit.core.net_discovery.fping_sweep")
+    @patch("redaudit.core.net_discovery._check_tools")
+    def test_redteam_snmp_and_smb(self, mock_tools, mock_fping, mock_which, mock_run):
+        mock_tools.return_value = {
+            "nmap": True,
+            "fping": True,
+            "nbtscan": False,
+            "netdiscover": False,
+            "avahi-browse": False,
+            "snmpwalk": True,
+            "enum4linux": False,
+            "masscan": False,
+        }
+        mock_fping.return_value = {"alive_hosts": ["192.168.1.10"], "error": None}
+
+        def which_side_effect(name: str):
+            if name in ("snmpwalk", "nmap"):
+                return f"/usr/bin/{name}"
+            return None
+
+        mock_which.side_effect = which_side_effect
+
+        def run_side_effect(args, timeout_s, logger=None):
+            if args and args[0] == "snmpwalk":
+                return (
+                    0,
+                    ".1.3.6.1.2.1.1.1.0 = STRING: Linux test\n"
+                    ".1.3.6.1.2.1.1.5.0 = STRING: host1\n",
+                    "",
+                )
+            if args and args[0] == "nmap":
+                return (
+                    0,
+                    "Host script results:\n"
+                    "| smb-os-discovery:\n"
+                    "|   OS: Windows 10\n"
+                    "|   Computer name: DESKTOP-ABC\n"
+                    "|   Domain name: WORKGROUP\n"
+                    "| smb-enum-shares:\n"
+                    "|   Sharename: PUBLIC\n",
+                    "",
+                )
+            return (0, "", "")
+
+        mock_run.side_effect = run_side_effect
+
+        result = discover_networks(
+            target_networks=["192.168.1.0/24"],
+            protocols=["fping"],
+            redteam=True,
+        )
+
+        self.assertTrue(result.get("redteam_enabled"))
+        self.assertIn("redteam", result)
+        self.assertEqual(result["redteam"]["targets_considered"], 1)
+
+        snmp = result["redteam"]["snmp"]
+        self.assertEqual(snmp["status"], "ok")
+        self.assertEqual(snmp["hosts"][0]["sysDescr"], "Linux test")
+
+        smb = result["redteam"]["smb"]
+        self.assertEqual(smb["status"], "ok")
+        self.assertEqual(smb["hosts"][0]["os"], "Windows 10")
+
+
 if __name__ == "__main__":
     unittest.main()

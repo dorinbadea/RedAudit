@@ -16,6 +16,8 @@ Goals:
 from __future__ import annotations
 
 import json
+import ipaddress
+import os
 import re
 import shutil
 import subprocess
@@ -557,13 +559,308 @@ def _run_redteam_discovery(
     Run optional Red Team discovery techniques.
     Modifies result in place.
     """
-    # TODO: Implement in Phase 2
-    # - SNMP walking
-    # - SMB enumeration
-    # - Masscan sweep
-    # - VLAN enumeration (yersinia)
-    result["redteam"] = {
-        "snmp": {"status": "not_implemented"},
-        "smb": {"status": "not_implemented"},
-        "vlan_enum": {"status": "not_implemented"},
+    tools = result.get("tools") or _check_tools()
+
+    target_ips = _gather_redteam_targets(result, max_targets=50)
+    redteam: Dict[str, Any] = {
+        "enabled": True,
+        "targets_considered": len(target_ips),
+        "targets_sample": target_ips[:10],
+        "snmp": _redteam_snmp_walk(target_ips, tools=tools, logger=logger),
+        "smb": _redteam_smb_enum(target_ips, tools=tools, logger=logger),
+        "masscan": _redteam_masscan_sweep(target_networks, tools=tools, logger=logger),
+        "vlan_enum": {
+            "status": "skipped",
+            "reason": "Active VLAN/DTP/STP probing is intentionally not run by default.",
+        },
     }
+    result["redteam"] = redteam
+
+
+def _is_ipv4(ip_str: str) -> bool:
+    try:
+        return isinstance(ipaddress.ip_address(ip_str), ipaddress.IPv4Address)
+    except ValueError:
+        return False
+
+
+def _dedupe_preserve_order(items: List[str]) -> List[str]:
+    seen = set()
+    out: List[str] = []
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        out.append(item)
+    return out
+
+
+def _gather_redteam_targets(discovery_result: Dict[str, Any], max_targets: int = 50) -> List[str]:
+    candidates: List[str] = []
+
+    for ip_str in discovery_result.get("alive_hosts", []) or []:
+        if isinstance(ip_str, str) and _is_ipv4(ip_str):
+            candidates.append(ip_str)
+
+    for host in discovery_result.get("arp_hosts", []) or []:
+        if isinstance(host, dict):
+            ip_str = host.get("ip")
+            if isinstance(ip_str, str) and _is_ipv4(ip_str):
+                candidates.append(ip_str)
+
+    for host in discovery_result.get("netbios_hosts", []) or []:
+        if isinstance(host, dict):
+            ip_str = host.get("ip")
+            if isinstance(ip_str, str) and _is_ipv4(ip_str):
+                candidates.append(ip_str)
+
+    for srv in discovery_result.get("dhcp_servers", []) or []:
+        if isinstance(srv, dict):
+            ip_str = srv.get("ip")
+            if isinstance(ip_str, str) and _is_ipv4(ip_str):
+                candidates.append(ip_str)
+
+    return _dedupe_preserve_order(candidates)[:max_targets]
+
+
+_SNMP_OID_MAP = {
+    "1.3.6.1.2.1.1.1.0": "sysDescr",
+    "1.3.6.1.2.1.1.2.0": "sysObjectID",
+    "1.3.6.1.2.1.1.3.0": "sysUpTime",
+    "1.3.6.1.2.1.1.4.0": "sysContact",
+    "1.3.6.1.2.1.1.5.0": "sysName",
+    "1.3.6.1.2.1.1.6.0": "sysLocation",
+    "1.3.6.1.2.1.1.7.0": "sysServices",
+}
+
+
+def _parse_snmpwalk(output: str) -> Dict[str, str]:
+    parsed: Dict[str, str] = {}
+    for line in (output or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        m = re.match(r"^([.0-9]+)\s*(?:=\s*)?(.*)$", line)
+        if not m:
+            continue
+        oid = m.group(1).lstrip(".")
+        value = (m.group(2) or "").strip()
+        value = re.sub(r"^[A-Z][A-Z0-9\-]*:\s*", "", value).strip()
+        value = value.strip('"')
+        key = _SNMP_OID_MAP.get(oid)
+        if key and value:
+            parsed[key] = value[:250]
+    return parsed
+
+
+def _redteam_snmp_walk(
+    target_ips: List[str],
+    tools: Dict[str, bool],
+    community: str = "public",
+    logger=None,
+) -> Dict[str, Any]:
+    if not target_ips:
+        return {"status": "no_targets", "hosts": []}
+    if not tools.get("snmpwalk") or not shutil.which("snmpwalk"):
+        return {"status": "tool_missing", "tool": "snmpwalk", "hosts": []}
+
+    results: List[Dict[str, Any]] = []
+    errors: List[str] = []
+
+    for ip_str in target_ips[:20]:
+        # Keep it quick and read-only: 1s timeout, 0 retries, system group only.
+        cmd = [
+            "snmpwalk",
+            "-v2c",
+            "-c",
+            community,
+            "-t",
+            "1",
+            "-r",
+            "0",
+            "-On",
+            ip_str,
+            "1.3.6.1.2.1.1",
+        ]
+        rc, out, err = _run_cmd(cmd, timeout_s=4, logger=logger)
+        text = out or ""
+        if rc != 0 and not text.strip():
+            if err.strip():
+                errors.append(f"{ip_str}: {err.strip()[:160]}")
+            continue
+        if "timeout" in (err or "").lower() or "timeout" in text.lower():
+            continue
+        parsed = _parse_snmpwalk(text)
+        if parsed:
+            results.append({"ip": ip_str, **parsed})
+        else:
+            # Keep a tiny sample for debugging (avoid bloating the report).
+            snippet = (text.strip() or err.strip())[:400]
+            if snippet:
+                results.append({"ip": ip_str, "raw": snippet})
+
+    status = "ok" if results else "no_data"
+    payload: Dict[str, Any] = {
+        "status": status,
+        "community": community,
+        "hosts": results,
+    }
+    if errors:
+        payload["errors"] = errors[:20]
+    return payload
+
+
+def _parse_smb_nmap(output: str) -> Dict[str, Any]:
+    text = output or ""
+    parsed: Dict[str, Any] = {}
+
+    # smb-os-discovery patterns (best-effort)
+    patterns = {
+        "os": r"\bOS:\s*(.+)",
+        "computer_name": r"\bComputer name:\s*(\S+)",
+        "netbios_name": r"\bNetBIOS computer name:\s*(\S+)",
+        "domain": r"\bDomain name:\s*(\S+)",
+        "workgroup": r"\bWorkgroup:\s*(\S+)",
+    }
+    for key, pat in patterns.items():
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            parsed[key] = m.group(1).strip()[:200]
+
+    shares: List[str] = []
+    for m in re.finditer(r"\bSharename:\s*([^\s]+)", text, re.IGNORECASE):
+        share = m.group(1).strip()
+        if share and share not in shares:
+            shares.append(share)
+    if shares:
+        parsed["shares"] = shares[:20]
+
+    return parsed
+
+
+def _redteam_smb_enum(
+    target_ips: List[str],
+    tools: Dict[str, bool],
+    logger=None,
+) -> Dict[str, Any]:
+    if not target_ips:
+        return {"status": "no_targets", "hosts": []}
+
+    has_enum4linux = tools.get("enum4linux") and shutil.which("enum4linux")
+    has_nmap = tools.get("nmap") and shutil.which("nmap")
+
+    if not has_enum4linux and not has_nmap:
+        return {"status": "tool_missing", "tool": "enum4linux/nmap", "hosts": []}
+
+    tool = "enum4linux" if has_enum4linux else "nmap"
+    results: List[Dict[str, Any]] = []
+
+    for ip_str in target_ips[:15]:
+        if tool == "enum4linux":
+            cmd = ["enum4linux", "-a", ip_str]
+            rc, out, err = _run_cmd(cmd, timeout_s=25, logger=logger)
+            text = (out or "") + "\n" + (err or "")
+            snippet = text.strip()[:1200]
+            if not snippet:
+                continue
+            results.append({"ip": ip_str, "tool": "enum4linux", "raw": snippet})
+        else:
+            cmd = [
+                "nmap",
+                "-p",
+                "445",
+                "--script",
+                "smb-os-discovery,smb-enum-shares,smb-enum-users",
+                ip_str,
+            ]
+            rc, out, err = _run_cmd(cmd, timeout_s=25, logger=logger)
+            text = (out or "") + "\n" + (err or "")
+            parsed = _parse_smb_nmap(text)
+            if parsed:
+                results.append({"ip": ip_str, "tool": "nmap", **parsed})
+            else:
+                snippet = text.strip()[:800]
+                if snippet:
+                    results.append({"ip": ip_str, "tool": "nmap", "raw": snippet})
+
+    return {"status": "ok" if results else "no_data", "tool": tool, "hosts": results}
+
+
+def _is_root() -> bool:
+    try:
+        return hasattr(os, "geteuid") and os.geteuid() == 0
+    except Exception:
+        return False
+
+
+def _redteam_masscan_sweep(
+    target_networks: List[str],
+    tools: Dict[str, bool],
+    logger=None,
+) -> Dict[str, Any]:
+    """
+    Optional fast port discovery using masscan.
+
+    Safety defaults:
+    - Requires root
+    - Skips if targets are too large (to avoid accidental large-scale scans)
+    - Scans only a small port set used by redteam discovery (SMB/SNMP)
+    """
+    if not target_networks:
+        return {"status": "no_targets"}
+    if not tools.get("masscan") or not shutil.which("masscan"):
+        return {"status": "tool_missing", "tool": "masscan"}
+    if not _is_root():
+        return {"status": "skipped_requires_root"}
+
+    nets: List[ipaddress.IPv4Network] = []
+    total_addrs = 0
+    for token in target_networks:
+        try:
+            net = ipaddress.ip_network(token, strict=False)
+        except ValueError:
+            continue
+        if net.version != 4:
+            continue
+        nets.append(net)
+        total_addrs += int(net.num_addresses)
+
+    if total_addrs > 4096:
+        return {"status": "skipped_too_large", "total_addresses": total_addrs}
+
+    cmd = [
+        "masscan",
+        "-p",
+        "445,161",
+        "--rate",
+        "500",
+        "--wait",
+        "0",
+        "--open-only",
+    ] + [str(n) for n in nets]
+
+    rc, out, err = _run_cmd(cmd, timeout_s=25, logger=logger)
+    text = (out or "") + "\n" + (err or "")
+
+    open_ports: List[Dict[str, Any]] = []
+    for line in text.splitlines():
+        m = re.search(
+            r"Discovered open port (\d+)/(tcp|udp) on (\d{1,3}(?:\.\d{1,3}){3})",
+            line,
+            re.IGNORECASE,
+        )
+        if not m:
+            continue
+        port = int(m.group(1))
+        proto = m.group(2).lower()
+        ip_str = m.group(3)
+        open_ports.append({"ip": ip_str, "port": port, "protocol": proto})
+
+    payload: Dict[str, Any] = {
+        "status": "ok" if open_ports else "no_data",
+        "ports_scanned": [161, 445],
+        "open_ports": open_ports[:200],
+    }
+    if rc != 0 and err.strip():
+        payload["error"] = err.strip()[:200]
+    return payload
