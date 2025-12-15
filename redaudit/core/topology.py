@@ -368,7 +368,11 @@ async def _discover_topology_async(
                 except Exception:
                     lldp_json = {}
             elif (err or "").strip():
-                errors.append(f"lldpctl failed: {(err or '').strip()}")
+                lldp_err = (err or "").strip()
+                # v3.2.1: Provide helpful suggestion for common LLDP socket error
+                if "socket" in lldp_err.lower() or "unable to connect" in lldp_err.lower():
+                    lldp_err += " (Hint: try 'sudo systemctl start lldpd')"
+                errors.append(f"lldpctl failed: {lldp_err}")
         except Exception:
             pass
 
@@ -681,7 +685,12 @@ def _discover_topology_sync(
             except Exception:
                 lldp_json = {}
         elif err.strip():
-            errors.append(f"lldpctl failed: {err.strip()}")
+            lldp_err = err.strip()
+            # v3.2.1: Provide helpful suggestion for common LLDP socket error
+            if "socket" in lldp_err.lower() or "unable to connect" in lldp_err.lower():
+                lldp_err += " (Hint: try 'sudo systemctl start lldpd')"
+            errors.append(f"lldpctl failed: {lldp_err}")
+
 
     for iface in selected_ifaces:
         iface_entry: Dict[str, Any] = iface_map.get(

@@ -201,6 +201,12 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                         lines.append(f"      Vulnerabilities ({len(tssl['vulnerabilities'])}):\n")
                         for vuln in tssl["vulnerabilities"][:3]:
                             lines.append(f"        - {vuln}\n")
+                # v3.2.1: Show potential false positives for transparency
+                if item.get("potential_false_positives"):
+                    fps = item["potential_false_positives"]
+                    lines.append(f"    ⚠️  Possible False Positives ({len(fps)}):\n")
+                    for fp in fps[:3]:
+                        lines.append(f"      - {fp}\n")
 
     return "".join(lines)
 
