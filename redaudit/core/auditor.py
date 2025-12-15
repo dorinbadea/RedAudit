@@ -192,7 +192,20 @@ class InteractiveNetworkAuditor:
                 self.last_activity = datetime.now()
 
         ts = datetime.now().strftime("%H:%M:%S")
-        color = self.COLORS.get(status, self.COLORS["OKBLUE"])
+
+        # v3.2.2+: Map status names for non-TTY mode (no [OKGREEN] artifacts)
+        is_tty = sys.stdout.isatty()
+        status_display = status
+        if not is_tty:
+            status_map = {
+                "OKGREEN": "OK",
+                "OKBLUE": "INFO",
+                "HEADER": "INFO",
+            }
+            status_display = status_map.get(status, status)
+
+        color = self.COLORS.get(status, self.COLORS["OKBLUE"]) if is_tty else ""
+        endc = self.COLORS["ENDC"] if is_tty else ""
 
         # Wrap long messages on word boundaries to avoid splitting words mid-line.
         msg = "" if message is None else str(message)
@@ -213,7 +226,7 @@ class InteractiveNetworkAuditor:
         # NOT passwords or sensitive data. CodeQL incorrectly flags these.
         with self._print_lock:
             print(
-                f"{color}[{ts}] [{status}]{self.COLORS['ENDC']} {lines[0]}"
+                f"{color}[{ts}] [{status_display}]{endc} {lines[0]}"
             )  # lgtm[py/clear-text-logging-sensitive-data]
             for line in lines[1:]:
                 print(f"  {line}")  # lgtm[py/clear-text-logging-sensitive-data]
@@ -1457,6 +1470,34 @@ class InteractiveNetworkAuditor:
 """
         print(banner)
 
+    def show_main_menu(self):
+        """
+        Display main menu and return user choice.
+
+        Returns:
+            int: 0=exit, 1=scan, 2=update, 3=diff
+        """
+        print(f"\n{self.COLORS['HEADER']}RedAudit v{VERSION}{self.COLORS['ENDC']}")
+        print("─" * 60)
+        print(f"  {self.COLORS['CYAN']}1){self.COLORS['ENDC']} {self.t('menu_option_scan')}")
+        print(f"  {self.COLORS['CYAN']}2){self.COLORS['ENDC']} {self.t('menu_option_update')}")
+        print(f"  {self.COLORS['CYAN']}3){self.COLORS['ENDC']} {self.t('menu_option_diff')}")
+        print(f"  {self.COLORS['CYAN']}0){self.COLORS['ENDC']} {self.t('menu_option_exit')}")
+        print("─" * 60)
+
+        while True:
+            try:
+                ans = input(
+                    f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('menu_prompt')} "
+                ).strip()
+                if ans in ("0", "1", "2", "3"):
+                    return int(ans)
+                self.print_status(self.t("menu_invalid_option"), "WARNING")
+            except KeyboardInterrupt:
+                print("")
+                return 0
+
+
     def interactive_setup(self):
         """Run interactive configuration setup."""
         # Apply persisted defaults early (language affects the banner/prompt text).
@@ -1649,24 +1690,35 @@ class InteractiveNetworkAuditor:
                 else:
                     self.config["udp_top_ports"] = selected
 
-        # v3.1+: Optional topology discovery
+        # v3.1+: Optional topology discovery (simplified v3.2.2+)
+        topo_options = [
+            self.t("topology_disabled"),
+            self.t("topology_enabled_scan"),
+            self.t("topology_only_mode"),
+        ]
+        # Determine default based on persisted values
         persisted_topo = defaults_for_run.get("topology_enabled")
-        topo_default = "yes" if persisted_topo is True else "no"
-        self.config["topology_enabled"] = self.ask_yes_no(
-            self.t("topology_q"), default=topo_default
-        )
-        if self.config["topology_enabled"]:
-            self.print_status(self.t("topology_only_help"), "INFO")
-            self.config["topology_only"] = self.ask_yes_no(self.t("topology_only_q"), default="no")
+        persisted_only = defaults_for_run.get("topology_only")
+        if persisted_only:
+            topo_default_idx = 2
+        elif persisted_topo:
+            topo_default_idx = 1
+        else:
+            topo_default_idx = 0
+
+        topo_choice = self.ask_choice(self.t("topology_discovery_q"), topo_options, topo_default_idx)
+        self.config["topology_enabled"] = topo_choice != 0
+        self.config["topology_only"] = topo_choice == 2
+
 
         self.setup_encryption()
 
         self.show_config_summary()
 
         # v3.1+: Save chosen settings as persistent defaults (optional).
+        # v3.2.2+: Simplified - max 2 final prompts (save + start)
         wants_save_defaults = self.ask_yes_no(self.t("save_defaults_q"), default="no")
         if wants_save_defaults:
-            self.print_status(self.t("save_defaults_info_yes"), "INFO")
             try:
                 from redaudit.utils.config import update_persistent_defaults
 
@@ -1677,20 +1729,17 @@ class InteractiveNetworkAuditor:
                     udp_mode=self.config.get("udp_mode"),
                     udp_top_ports=self.config.get("udp_top_ports"),
                     topology_enabled=self.config.get("topology_enabled"),
+                    topology_only=self.config.get("topology_only"),
                     lang=self.lang,
                 )
                 self.print_status(
                     self.t("defaults_saved") if ok else self.t("defaults_save_error"),
                     "OKGREEN" if ok else "WARNING",
                 )
-                if ok:
-                    self.print_status(self.t("save_defaults_effect"), "INFO")
             except Exception:
                 self.print_status(self.t("defaults_save_error"), "WARNING")
                 if self.logger:
                     self.logger.debug("Failed to persist defaults", exc_info=True)
-        else:
-            self.print_status(self.t("defaults_not_saved_run_only"), "INFO")
 
         return self.ask_yes_no(self.t("start_audit"), default="yes")
 

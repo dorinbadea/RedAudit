@@ -367,7 +367,7 @@ def configure_from_args(app, args) -> bool:
         if not app.show_legal_warning():
             return False
     else:
-        app.print_status("⚠️  Legal warning skipped (--yes flag)", "WARNING")
+        app.print_status(app.t("legal_warning_skipped"), "WARNING")
 
     # Parse targets
     if args.target:
@@ -375,19 +375,19 @@ def configure_from_args(app, args) -> bool:
         valid_targets = []
         for t in targets:
             if len(t) > MAX_CIDR_LENGTH:
-                app.print_status(f"Invalid target (too long): {t}", "FAIL")
+                app.print_status(app.t("invalid_target_too_long", t), "FAIL")
                 continue
             try:
                 ipaddress.ip_network(t, strict=False)
                 valid_targets.append(t)
             except ValueError:
-                app.print_status(f"Invalid CIDR: {t}", "FAIL")
+                app.print_status(app.t("invalid_cidr_target", t), "FAIL")
         if not valid_targets:
-            app.print_status("No valid targets provided", "FAIL")
+            app.print_status(app.t("no_valid_targets"), "FAIL")
             return False
         app.config["target_networks"] = valid_targets
     else:
-        app.print_status("Error: --target is required in non-interactive mode", "FAIL")
+        app.print_status(app.t("target_required_non_interactive"), "FAIL")
         return False
 
     # Set scan mode
@@ -561,33 +561,15 @@ def main():
 
         proxy_manager = ProxyManager(args.proxy)
         if not proxy_manager.is_valid():
-            app.print_status(f"Invalid proxy URL: {args.proxy}", "FAIL")
+            app.print_status(app.t("invalid_proxy_url", args.proxy), "FAIL")
             sys.exit(1)
         success, msg = proxy_manager.test_connection()
         if success:
-            app.print_status(f"Proxy configured: {msg}", "OKGREEN")
+            app.print_status(app.t("proxy_configured", msg), "OKGREEN")
             app.proxy_manager = proxy_manager
         else:
-            app.print_status(f"Proxy test failed: {msg}", "FAIL")
+            app.print_status(app.t("proxy_test_failed", msg), "FAIL")
             sys.exit(1)
-
-    # Update check at startup (v2.8.0)
-    if not args.skip_update_check:
-        # In interactive mode, ask user
-        if not args.target:
-            if os.geteuid() != 0:
-                app.print_status(app.t("update_requires_root"), "WARNING")
-            elif app.ask_yes_no(app.t("update_check_prompt"), default="yes"):
-                did_update = interactive_update_check(
-                    print_fn=app.print_status,
-                    ask_fn=app.ask_yes_no,
-                    t_fn=app.t,
-                    logger=app.logger,
-                    lang=app.lang,
-                )
-                if did_update:
-                    # Update may replace installed code; avoid continuing in the current process.
-                    sys.exit(0)
 
     # Non-interactive mode if --target is provided
     if args.target:
@@ -597,13 +579,73 @@ def main():
         else:
             sys.exit(1)
     else:
-        # Interactive mode
-        if app.interactive_setup():
-            ok = app.run_complete_scan()
-            sys.exit(0 if ok else 1)
-        else:
-            print(app.t("config_cancel"))
-            sys.exit(0)
+        # Interactive mode with main menu (v3.2.2+)
+        app.clear_screen()
+        app.print_banner()
+
+        # Update check before menu (respects --skip-update-check)
+        if not args.skip_update_check and os.geteuid() == 0:
+            if app.ask_yes_no(app.t("update_check_prompt"), default="no"):
+                did_update = interactive_update_check(
+                    print_fn=app.print_status,
+                    ask_fn=app.ask_yes_no,
+                    t_fn=app.t,
+                    logger=app.logger,
+                    lang=app.lang,
+                )
+                if did_update:
+                    sys.exit(0)
+
+        # Main menu loop
+        while True:
+            choice = app.show_main_menu()
+
+            if choice == 0:  # Exit
+                sys.exit(0)
+
+            elif choice == 1:  # Start scan (wizard)
+                if app.interactive_setup():
+                    ok = app.run_complete_scan()
+                    sys.exit(0 if ok else 1)
+                else:
+                    print(app.t("config_cancel"))
+                    sys.exit(0)
+
+            elif choice == 2:  # Check for updates
+                if os.geteuid() != 0:
+                    app.print_status(app.t("update_requires_root"), "WARNING")
+                else:
+                    interactive_update_check(
+                        print_fn=app.print_status,
+                        ask_fn=app.ask_yes_no,
+                        t_fn=app.t,
+                        logger=app.logger,
+                        lang=app.lang,
+                    )
+
+            elif choice == 3:  # Diff reports
+                from redaudit.core.diff import generate_diff_report, format_diff_text, format_diff_markdown
+
+                try:
+                    old_path = input(
+                        f"{app.COLORS['CYAN']}?{app.COLORS['ENDC']} {app.t('diff_enter_old_path')} "
+                    ).strip()
+                    new_path = input(
+                        f"{app.COLORS['CYAN']}?{app.COLORS['ENDC']} {app.t('diff_enter_new_path')} "
+                    ).strip()
+
+                    if old_path and new_path:
+                        diff = generate_diff_report(old_path, new_path)
+                        if diff:
+                            print(format_diff_text(diff))
+                            md_path = f"diff_report_{diff['generated_at'][:10]}.md"
+                            with open(md_path, "w") as f:
+                                f.write(format_diff_markdown(diff))
+                            app.print_status(f"Markdown report saved: {md_path}", "OKGREEN")
+                        else:
+                            app.print_status("Could not compare reports. Check file paths.", "FAIL")
+                except KeyboardInterrupt:
+                    print("")
 
 
 if __name__ == "__main__":

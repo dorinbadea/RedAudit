@@ -38,6 +38,7 @@ DEFAULT_CONFIG = {
         "udp_mode": None,
         "udp_top_ports": None,
         "topology_enabled": None,
+        "topology_only": None,  # v3.2.2+
         "lang": None,
     },
 }
