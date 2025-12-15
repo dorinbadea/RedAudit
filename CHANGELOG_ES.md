@@ -11,6 +11,28 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 - (pendiente)
 
+## [3.2.2] - 2025-12-16 (Producción Hardening)
+
+### Añadido
+
+- **Instalación Atómica Staged**: La instalación de actualizaciones usa un directorio temporal `.new` antes del rename atómico, con rollback automático en caso de fallo.
+- **Verificación Post-Instalación**: Valida que archivos clave existan tras instalar; rollback de sistema y home si falla.
+- **Tests de Salida CLI**: 3 nuevos tests unitarios verificando mapeo de tokens (OKGREEN→OK, WARNING→WARN).
+
+### Cambiado
+
+- **Labels de Estado CLI**: `print_status` muestra labels user-friendly (`[OK]`, `[INFO]`, `[WARN]`) en vez de tokens internos (`[OKGREEN]`, `[OKBLUE]`, `[WARNING]`) en todos los modos de salida.
+- **Documentación del Updater**: Renombrado de "Secure Update Module" a "Reliable Update Module" con documentación honesta del modelo de seguridad.
+- **SECURITY.md**: Sección 7 renombrada a "Auto-Actualización Fiable" con nota explícita sobre verificación de integridad vs. autenticidad.
+
+### Corregido
+
+- **Fuga Visual de Tokens (B3)**: Los tokens internos de estado ya no aparecen como texto literal en la salida CLI.
+
+### Seguridad
+
+- **Claims de Seguridad Honestos**: Documentado que el sistema de actualización verifica hashes de commit (integridad) pero NO realiza verificación criptográfica de firmas (autenticidad).
+
 ## [3.2.1] - 2025-12-15 (UX CLI)
 
 ### Añadido

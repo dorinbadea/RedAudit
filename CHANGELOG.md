@@ -11,6 +11,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.2.2] - 2025-12-16 (Production Hardening)
+
+### Added
+
+- **Staged Atomic Installation**: Update installation uses `.new` staging directory before atomic rename, with automatic rollback on failure.
+- **Post-Install Verification**: Validates key files exist after installation; rolls back both system and home installs if verification fails.
+- **CLI Output Tests**: 3 new unit tests verifying status token mapping (OKGREEN→OK, WARNING→WARN).
+
+### Changed
+
+- **CLI Status Labels**: `print_status` now displays user-friendly labels (`[OK]`, `[INFO]`, `[WARN]`) instead of internal tokens (`[OKGREEN]`, `[OKBLUE]`, `[WARNING]`) in all output modes.
+- **Updater Documentation**: Renamed from "Secure Update Module" to "Reliable Update Module" with honest documentation about security model.
+- **SECURITY.md**: Section 7 renamed to "Reliable Auto-Update" with explicit note about integrity vs. authenticity verification.
+
+### Fixed
+
+- **Visual Token Leakage (B3)**: Internal status tokens no longer appear as literal text in CLI output.
+
+### Security
+
+- **Honest Security Claims**: Documented that the update system verifies commit hashes (integrity) but does NOT perform cryptographic signature verification (authenticity).
+
 ## [3.2.1] - 2025-12-15 (CLI UX)
 
 ### Added

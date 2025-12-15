@@ -88,17 +88,22 @@ The codebase is organized into focused modules to improve maintainability and au
 - **Utilities** (`redaudit/utils/`): Constants and internationalization
 - **Tests**: Automated test suite runs in GitHub Actions (`.github/workflows/tests.yml`) across Python 3.9–3.12; the exact test count is tracked by CI rather than hard-coded in docs.
 
-## 7. Secure Auto-Update
+## 7. Reliable Auto-Update
 
-RedAudit includes a secure update mechanism that checks GitHub for new releases:
+RedAudit includes an update mechanism that checks GitHub for new releases:
 
 - **No arbitrary downloads**: Uses `git clone` from the official repository
 - **Pinned to tags**: Update flow resolves the published tag and verifies the commit hash before installing
-- **Integrity verification**: Git's built-in hash verification ensures authenticity
+- **Integrity verification**: Git's built-in hash verification ensures data has not been corrupted in transit
 - **User confirmation**: Always prompts before applying updates
 - **Network failure handling**: Graceful degradation if GitHub is unavailable
 - **Local changes protection**: Refuses to update if uncommitted changes exist
+- **Staged installation**: New files are copied to a staging directory before atomically replacing the current installation (v3.2.2+)
+- **Rollback on failure**: If installation fails, the previous version is restored automatically (v3.2.2+)
 - **Module location**: `redaudit/core/updater.py`
+
+> [!IMPORTANT]
+> **Security Limitation**: The update system verifies that cloned commits match expected git refs (integrity) but does **NOT** perform cryptographic signature verification of tags or releases (authenticity). If GitHub or the repository is compromised, malicious code could be distributed. Users requiring higher assurance should verify releases manually or implement GPG signature verification.
 
 ## 8. NVD API Key Storage (v3.0.1+)
 

@@ -66,17 +66,22 @@ El código está organizado en módulos enfocados para mejorar la mantenibilidad
 - **Utilidades** (`redaudit/utils/`): Constantes e internacionalización
 - **Tests**: La suite automatizada se ejecuta en GitHub Actions (`.github/workflows/tests.yml`) en Python 3.9–3.12; el número exacto de tests lo reporta CI y no se fija en la documentación.
 
-## 7. Auto-Actualización Segura
+## 7. Auto-Actualización Fiable
 
-RedAudit incluye un mecanismo de actualización seguro que verifica GitHub para nuevas versiones:
+RedAudit incluye un mecanismo de actualización que verifica GitHub para nuevas versiones:
 
 - **Sin descargas arbitrarias**: Usa `git clone` desde el repositorio oficial
 - **Fijado a tags**: El flujo de actualización resuelve el tag publicado y verifica el hash del commit antes de instalar
-- **Verificación de integridad**: La verificación de hash integrada de Git asegura autenticidad
+- **Verificación de integridad**: La verificación de hash integrada de Git asegura que los datos no se corrompieron en tránsito
 - **Confirmación del usuario**: Siempre pregunta antes de aplicar actualizaciones
 - **Manejo de fallos de red**: Degradación elegante si GitHub no está disponible
 - **Protección de cambios locales**: Rechaza actualizar si hay cambios sin commitear
+- **Instalación staged**: Los nuevos ficheros se copian a un directorio temporal antes de reemplazar atómicamente la instalación actual (v3.2.2+)
+- **Rollback en caso de fallo**: Si la instalación falla, la versión anterior se restaura automáticamente (v3.2.2+)
 - **Ubicación del módulo**: `redaudit/core/updater.py`
+
+> [!IMPORTANT]
+> **Limitación de Seguridad**: El sistema de actualización verifica que los commits clonados coincidan con las refs de git esperadas (integridad), pero **NO** realiza verificación criptográfica de firmas de tags o releases (autenticidad). Si GitHub o el repositorio están comprometidos, código malicioso podría distribuirse. Los usuarios que requieran mayor seguridad deben verificar releases manualmente o implementar verificación de firmas GPG.
 
 ## 8. Almacenamiento de API Key NVD (v3.0.1+)
 
