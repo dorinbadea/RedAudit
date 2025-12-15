@@ -1794,7 +1794,10 @@ class InteractiveNetworkAuditor:
                     return True
 
             # v3.2+: Enhanced network discovery (best-effort)
-            if self.config.get("net_discovery_enabled") and not self.interrupted:
+            # v3.2.1: Auto-enabled in 'completo' mode for complete network visibility
+            net_discovery_auto = self.config.get("scan_mode") == "completo"
+            net_discovery_explicit = self.config.get("net_discovery_enabled")
+            if (net_discovery_explicit or net_discovery_auto) and not self.interrupted:
                 try:
                     from redaudit.core.net_discovery import discover_networks
 
