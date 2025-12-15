@@ -102,6 +102,8 @@ class InteractiveNetworkAuditor:
 
     def __init__(self):
         self.lang = DEFAULT_LANG if DEFAULT_LANG in TRANSLATIONS else "en"
+        # How to apply persisted defaults: ask/use/ignore (CLI may override).
+        self.defaults_mode = "ask"
         self.results = {
             "timestamp": datetime.now().isoformat(),
             "version": VERSION,
@@ -1480,6 +1482,61 @@ class InteractiveNetworkAuditor:
         if not self.show_legal_warning():
             return False
 
+        # v3.2.1+: Give explicit control over persisted defaults.
+        defaults_for_run = persisted_defaults
+        scan_default_keys = (
+            "threads",
+            "output_dir",
+            "rate_limit",
+            "udp_mode",
+            "udp_top_ports",
+            "topology_enabled",
+        )
+        has_scan_defaults = any(persisted_defaults.get(k) is not None for k in scan_default_keys)
+
+        if has_scan_defaults:
+            mode = getattr(self, "defaults_mode", "ask") or "ask"
+            if mode == "ignore":
+                defaults_for_run = {}
+                self.print_status(self.t("defaults_ignore_confirm"), "INFO")
+            elif mode == "ask":
+                self.print_status(self.t("defaults_detected"), "INFO")
+                options = [
+                    self.t("defaults_action_use"),
+                    self.t("defaults_action_review"),
+                    self.t("defaults_action_ignore"),
+                ]
+                choice = self.ask_choice(self.t("defaults_action_q"), options, 0)
+                if choice == 2:
+                    defaults_for_run = {}
+                    self.print_status(self.t("defaults_ignore_confirm"), "INFO")
+                elif choice == 1 and self.ask_yes_no(self.t("defaults_show_summary_q"), default="no"):
+                    self.print_status(self.t("defaults_summary_title"), "INFO")
+                    self.print_status(
+                        f"- {self.t('defaults_summary_threads')}: {persisted_defaults.get('threads')}",
+                        "INFO",
+                    )
+                    self.print_status(
+                        f"- {self.t('defaults_summary_output')}: {persisted_defaults.get('output_dir')}",
+                        "INFO",
+                    )
+                    self.print_status(
+                        f"- {self.t('defaults_summary_rate_limit')}: {persisted_defaults.get('rate_limit')}",
+                        "INFO",
+                    )
+                    self.print_status(
+                        f"- {self.t('defaults_summary_udp_mode')}: {persisted_defaults.get('udp_mode')}",
+                        "INFO",
+                    )
+                    self.print_status(
+                        f"- {self.t('defaults_summary_udp_ports')}: {persisted_defaults.get('udp_top_ports')}",
+                        "INFO",
+                    )
+                    self.print_status(
+                        f"- {self.t('defaults_summary_topology')}: {persisted_defaults.get('topology_enabled')}",
+                        "INFO",
+                    )
+
         print(f"\n{self.COLORS['HEADER']}{self.t('scan_config')}{self.COLORS['ENDC']}")
         print("=" * 60)
 
@@ -1502,16 +1559,16 @@ class InteractiveNetworkAuditor:
         self.config["threads"] = self.ask_number(
             self.t("threads"),
             default=(
-                persisted_defaults.get("threads")
-                if isinstance(persisted_defaults.get("threads"), int)
-                and MIN_THREADS <= persisted_defaults.get("threads") <= MAX_THREADS
+                defaults_for_run.get("threads")
+                if isinstance(defaults_for_run.get("threads"), int)
+                and MIN_THREADS <= defaults_for_run.get("threads") <= MAX_THREADS
                 else DEFAULT_THREADS
             ),
             min_val=MIN_THREADS,
             max_val=MAX_THREADS,
         )
 
-        default_rate = persisted_defaults.get("rate_limit")
+        default_rate = defaults_for_run.get("rate_limit")
         if not isinstance(default_rate, (int, float)) or default_rate < 0:
             default_rate = 0.0
         if self.ask_yes_no(self.t("rate_limiting"), default="yes" if default_rate > 0 else "no"):
@@ -1533,7 +1590,7 @@ class InteractiveNetworkAuditor:
             self.config["cve_lookup_enabled"] = False
 
         default_reports = os.path.expanduser(DEFAULT_OUTPUT_DIR)
-        persisted_output = persisted_defaults.get("output_dir")
+        persisted_output = defaults_for_run.get("output_dir")
         if isinstance(persisted_output, str) and persisted_output.strip():
             default_reports = os.path.expanduser(persisted_output.strip())
         out_dir = input(
@@ -1550,13 +1607,13 @@ class InteractiveNetworkAuditor:
             udp_modes = [self.t("udp_mode_quick"), self.t("udp_mode_full")]
             udp_map = {0: UDP_SCAN_MODE_QUICK, 1: UDP_SCAN_MODE_FULL}
 
-            persisted_udp_mode = persisted_defaults.get("udp_mode")
+            persisted_udp_mode = defaults_for_run.get("udp_mode")
             udp_default_idx = 0 if persisted_udp_mode != UDP_SCAN_MODE_FULL else 1
             self.config["udp_mode"] = udp_map[
                 self.ask_choice(self.t("udp_mode_q"), udp_modes, udp_default_idx)
             ]
 
-            persisted_udp_ports = persisted_defaults.get("udp_top_ports")
+            persisted_udp_ports = defaults_for_run.get("udp_top_ports")
             udp_ports_default = (
                 persisted_udp_ports if isinstance(persisted_udp_ports, int) else UDP_TOP_PORTS
             )
@@ -1593,7 +1650,7 @@ class InteractiveNetworkAuditor:
                     self.config["udp_top_ports"] = selected
 
         # v3.1+: Optional topology discovery
-        persisted_topo = persisted_defaults.get("topology_enabled")
+        persisted_topo = defaults_for_run.get("topology_enabled")
         topo_default = "yes" if persisted_topo is True else "no"
         self.config["topology_enabled"] = self.ask_yes_no(
             self.t("topology_q"), default=topo_default
@@ -1610,12 +1667,6 @@ class InteractiveNetworkAuditor:
         wants_save_defaults = self.ask_yes_no(self.t("save_defaults_q"), default="no")
         if wants_save_defaults:
             self.print_status(self.t("save_defaults_info_yes"), "INFO")
-            wants_save_defaults = self.ask_yes_no(self.t("save_defaults_confirm_yes"), default="yes")
-        else:
-            self.print_status(self.t("save_defaults_info_no"), "INFO")
-            wants_save_defaults = self.ask_yes_no(self.t("save_defaults_confirm_no"), default="no")
-
-        if wants_save_defaults:
             try:
                 from redaudit.utils.config import update_persistent_defaults
 
@@ -1639,7 +1690,7 @@ class InteractiveNetworkAuditor:
                 if self.logger:
                     self.logger.debug("Failed to persist defaults", exc_info=True)
         else:
-            self.print_status(self.t("defaults_not_saved"), "INFO")
+            self.print_status(self.t("defaults_not_saved_run_only"), "INFO")
 
         return self.ask_yes_no(self.t("start_audit"), default="yes")
 

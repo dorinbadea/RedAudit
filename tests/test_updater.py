@@ -8,7 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 # Add parent directory to path for CI compatibility
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -17,8 +17,10 @@ from redaudit.core.updater import (
     compute_tree_diff,
     _inject_default_lang,
     format_release_notes_for_cli,
+    render_update_summary_for_cli,
     restart_self,
 )
+from redaudit.utils.i18n import get_text
 
 
 class TestComputeTreeDiff(unittest.TestCase):
@@ -94,6 +96,69 @@ class TestReleaseNotesFormatting(unittest.TestCase):
         self.assertNotIn("[![", out)
         self.assertNotIn("#", out)
         self.assertNotIn("`", out)
+
+
+class TestUpdateSummaryRendering(unittest.TestCase):
+    def test_render_update_summary_for_cli_is_concise_and_plain(self):
+        notes = """## [3.2.1] - 2025-12-16 (Example)
+
+### Added
+- **Feature**: Something useful
+
+### Fixed
+- Bug fix in update prompt
+
+### Breaking changes
+- Changed defaults behavior
+"""
+        fake_stdout = Mock()
+        fake_stdout.isatty.return_value = False
+        with patch("redaudit.core.updater.sys.stdout", new=fake_stdout):
+            out = render_update_summary_for_cli(
+                current_version="3.2.0",
+                latest_version="3.2.1",
+                release_notes=notes,
+                release_url="https://example.com/release",
+                published_at=None,
+                lang="en",
+                notes_lang="en",
+                t_fn=lambda key, *args: get_text(key, "en", *args),
+                max_items=10,
+                max_breaking=5,
+            )
+
+        self.assertIn("Release date: 2025-12-16", out)
+        self.assertIn("Type: Patch", out)
+        self.assertIn("Highlights:", out)
+        self.assertIn("- Feature: Something useful", out)
+        self.assertIn("- Bug fix in update prompt", out)
+        self.assertIn("Breaking changes:", out)
+        self.assertIn("- Changed defaults behavior", out)
+        self.assertIn("Full release notes: https://example.com/release", out)
+
+    def test_render_update_summary_adds_language_fallback_note(self):
+        notes = """## [3.2.1] - 2025-12-16 (Example)
+
+### Added
+- Something
+"""
+        fake_stdout = Mock()
+        fake_stdout.isatty.return_value = False
+        with patch("redaudit.core.updater.sys.stdout", new=fake_stdout):
+            out = render_update_summary_for_cli(
+                current_version="3.2.0",
+                latest_version="3.2.1",
+                release_notes=notes,
+                release_url=None,
+                published_at=None,
+                lang="es",
+                notes_lang="en",
+                t_fn=lambda key, *args: get_text(key, "es", *args),
+                max_items=5,
+                max_breaking=0,
+            )
+
+        self.assertIn("Notas solo disponibles en inglés.", out)
 
 
 class TestRestartSelf(unittest.TestCase):

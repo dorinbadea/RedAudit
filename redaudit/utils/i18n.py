@@ -7,6 +7,10 @@ GPLv3 License
 Translation strings for English and Spanish.
 """
 
+import locale
+import os
+from typing import Optional
+
 TRANSLATIONS = {
     "en": {
         "interrupted": "\n⚠️  Interruption received. Saving current state...",
@@ -102,7 +106,25 @@ TRANSLATIONS = {
         "defaults_saved": "✓ Defaults saved to ~/.redaudit/config.json",
         "defaults_save_error": "Could not save defaults to ~/.redaudit/config.json",
         "defaults_not_saved": "Defaults not saved.",
+        "defaults_not_saved_run_only": (
+            "OK. Defaults will not be updated. The scan will run with these parameters for this run only."
+        ),
         "save_defaults_effect": "From now on, these values will be used as defaults (you can override them with CLI flags).",
+        # v3.2.1+: Defaults control at startup
+        "defaults_detected": "Saved defaults detected for future runs.",
+        "defaults_action_q": "How would you like to proceed?",
+        "defaults_action_use": "Use defaults and continue",
+        "defaults_action_review": "Review/modify parameters before continuing",
+        "defaults_action_ignore": "Ignore defaults (factory values for this run)",
+        "defaults_show_summary_q": "Show current defaults summary?",
+        "defaults_summary_title": "Current saved defaults:",
+        "defaults_summary_threads": "Threads",
+        "defaults_summary_output": "Output dir",
+        "defaults_summary_rate_limit": "Rate limit (s)",
+        "defaults_summary_udp_mode": "UDP mode",
+        "defaults_summary_udp_ports": "UDP ports (full mode)",
+        "defaults_summary_topology": "Topology discovery",
+        "defaults_ignore_confirm": "OK. Saved defaults will be ignored for this run.",
         "jsonl_exports": "JSONL exports: {} findings, {} assets",
         # v3.1+: UDP configuration
         "udp_mode_q": "UDP scan mode (deep scan):",
@@ -138,8 +160,13 @@ TRANSLATIONS = {
         "update_checking": "Checking for updates...",
         "update_check_failed": "Could not check for updates (network issue or GitHub unavailable)",
         "update_current": "You are running the latest version ({})",
-        "update_available": "Update available! Current: {} → Latest: {}",
-        "update_release_notes": "What's new:",
+        "update_available": "RedAudit v{} available (current: v{})",
+        "update_release_date": "Release date: {}",
+        "update_release_type": "Type: {}",
+        "update_highlights": "Highlights:",
+        "update_breaking_changes": "Breaking changes:",
+        "update_notes_fallback_en": "Notes available in English only.",
+        "update_notes_fallback_es": "Notes available in Spanish only.",
         "update_release_url": "Full release notes: {}",
         "update_prompt": "Would you like to update now?",
         "update_starting": "Downloading update...",
@@ -265,7 +292,25 @@ TRANSLATIONS = {
         "defaults_saved": "✓ Valores por defecto guardados en ~/.redaudit/config.json",
         "defaults_save_error": "No se pudieron guardar los valores por defecto en ~/.redaudit/config.json",
         "defaults_not_saved": "Valores por defecto no guardados.",
+        "defaults_not_saved_run_only": (
+            "OK. No se actualizarán los defaults. El escaneo se ejecutará con estos parámetros solo en esta ejecución."
+        ),
         "save_defaults_effect": "A partir de ahora, estos valores se usarán como valores por defecto (puedes sobrescribirlos con flags CLI).",
+        # v3.2.1+: Control de defaults al inicio
+        "defaults_detected": "Se han detectado valores por defecto guardados para futuras ejecuciones.",
+        "defaults_action_q": "¿Qué quieres hacer?",
+        "defaults_action_use": "Usar defaults y continuar",
+        "defaults_action_review": "Revisar/modificar parámetros antes de continuar",
+        "defaults_action_ignore": "Ignorar defaults (valores de fábrica en esta ejecución)",
+        "defaults_show_summary_q": "¿Mostrar resumen de defaults actuales?",
+        "defaults_summary_title": "Defaults guardados actuales:",
+        "defaults_summary_threads": "Hilos",
+        "defaults_summary_output": "Salida",
+        "defaults_summary_rate_limit": "Limitación (s)",
+        "defaults_summary_udp_mode": "Modo UDP",
+        "defaults_summary_udp_ports": "Puertos UDP (modo completo)",
+        "defaults_summary_topology": "Descubrimiento de topología",
+        "defaults_ignore_confirm": "OK. Los defaults guardados se ignorarán en esta ejecución.",
         "jsonl_exports": "Exportaciones JSONL: {} hallazgos, {} activos",
         # v3.1+: Configuración UDP
         "udp_mode_q": "Modo UDP (deep scan):",
@@ -299,8 +344,13 @@ TRANSLATIONS = {
         "update_checking": "Buscando actualizaciones...",
         "update_check_failed": "No se pudo verificar actualizaciones (problema de red o GitHub no disponible)",
         "update_current": "Estás ejecutando la última versión ({})",
-        "update_available": "¡Actualización disponible! Actual: {} → Nueva: {}",
-        "update_release_notes": "Novedades:",
+        "update_available": "RedAudit v{} disponible (actual: v{})",
+        "update_release_date": "Fecha: {}",
+        "update_release_type": "Tipo: {}",
+        "update_highlights": "Novedades:",
+        "update_breaking_changes": "Cambios incompatibles:",
+        "update_notes_fallback_en": "Notas solo disponibles en inglés.",
+        "update_notes_fallback_es": "Notas solo disponibles en español.",
         "update_release_url": "Notas completas: {}",
         "update_prompt": "¿Deseas actualizar ahora?",
         "update_starting": "Descargando actualización...",
@@ -350,3 +400,51 @@ def get_text(key: str, lang: str = "en", *args) -> str:
     lang_dict = TRANSLATIONS.get(lang, TRANSLATIONS["en"])
     val = lang_dict.get(key, key)
     return val.format(*args) if args else val
+
+
+def detect_preferred_language(preferred: Optional[str] = None) -> str:
+    """
+    Detect preferred language for the CLI (en/es).
+
+    Priority:
+    1) Explicit preference (if valid)
+    2) Environment (LC_ALL, LC_MESSAGES, LANG)
+    3) System locale
+    4) Fallback: en
+    """
+
+    if preferred in TRANSLATIONS:
+        return preferred
+
+    def _map(val: str) -> Optional[str]:
+        if not val:
+            return None
+        raw = val.strip()
+        if not raw:
+            return None
+        # Examples: es_ES.UTF-8, en_US, es-ES, C.UTF-8
+        raw = raw.split(".", 1)[0].split("@", 1)[0]
+        raw = raw.replace("-", "_")
+        code = raw.split("_", 1)[0].lower()
+        return code if code in TRANSLATIONS else None
+
+    for var in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        detected = _map(os.environ.get(var, ""))
+        if detected:
+            return detected
+
+    try:
+        detected = _map(locale.getlocale()[0] or "")
+        if detected:
+            return detected
+    except Exception:
+        pass
+
+    try:
+        detected = _map((locale.getdefaultlocale() or (None, None))[0] or "")
+        if detected:
+            return detected
+    except Exception:
+        pass
+
+    return "en"

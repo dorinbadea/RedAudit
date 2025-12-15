@@ -309,6 +309,9 @@ cat ~/Documents/RedAuditReports/RedAudit_*/findings.jsonl | tu-herramienta-inges
 - `--no-topology`: Desactivar descubrimiento de topología (anula defaults persistentes) **(v3.1+)**
 - `--topology-only`: Ejecutar solo topología (omitir escaneo de hosts) **(v3.1+)**
 - `--save-defaults`: Guardar ajustes CLI como defaults persistentes (`~/.redaudit/config.json`) **(v3.1+)**
+- `--defaults {ask,use,ignore}`: Comportamiento de defaults persistentes (en interactivo pregunta; en no-interactivo mantiene el comportamiento actual) **(v3.2.1+)**
+- `--use-defaults`: Atajo para `--defaults use` **(v3.2.1+)**
+- `--ignore-defaults`: Atajo para `--defaults ignore` **(v3.2.1+)**
 - `--net-discovery [PROTO,...]`: Activar descubrimiento de red mejorado (all, o lista: dhcp,netbios,mdns,upnp,arp,fping) **(v3.2+)**
 - `--redteam`: Incluir bloque opcional de recon Red Team en net discovery **(v3.2+)**
 - `--net-discovery-interface IFACE`: Interfaz para net discovery y capturas L2 (ej: eth0) **(v3.2+)**

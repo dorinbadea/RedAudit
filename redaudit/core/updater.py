@@ -9,13 +9,14 @@ Implements version comparison, release notes fetching, and secure download verif
 """
 
 import os
+import sys
 import re
 import json
 import hashlib
 import subprocess
 import tempfile
 import textwrap
-from typing import Optional, Tuple, Dict, List
+from typing import Optional, Tuple, Dict, List, Any
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
@@ -113,7 +114,7 @@ def fetch_latest_version(logger=None) -> Optional[Dict]:
 
 def fetch_changelog_snippet(
     version: str, max_lines: int = 40, logger=None, lang: str = "en"
-) -> Optional[str]:
+) -> Optional[Tuple[str, str]]:
     """
     Fetch changelog snippet for a specific version from GitHub.
     
@@ -127,12 +128,14 @@ def fetch_changelog_snippet(
         Changelog snippet string or None
     """
     filename = "CHANGELOG_ES.md" if lang == "es" else "CHANGELOG.md"
-    urls = [f"{GITHUB_RAW_BASE}/{GITHUB_OWNER}/{GITHUB_REPO}/main/{filename}"]
+    urls: List[Tuple[str, str]] = [
+        (f"{GITHUB_RAW_BASE}/{GITHUB_OWNER}/{GITHUB_REPO}/main/{filename}", lang)
+    ]
     if filename != "CHANGELOG.md":
-        urls.append(f"{GITHUB_RAW_BASE}/{GITHUB_OWNER}/{GITHUB_REPO}/main/CHANGELOG.md")
+        urls.append((f"{GITHUB_RAW_BASE}/{GITHUB_OWNER}/{GITHUB_REPO}/main/CHANGELOG.md", "en"))
     
     try:
-        for url in urls:
+        for url, used_lang in urls:
             req = Request(url)
             req.add_header("User-Agent", f"RedAudit/{VERSION}")
 
@@ -147,7 +150,7 @@ def fetch_changelog_snippet(
 
             if match:
                 lines = match.group(0).strip().split("\n")[:max_lines]
-                return "\n".join(lines)
+                return ("\n".join(lines), used_lang)
     except Exception as e:
         if logger:
             logger.debug("Failed to fetch changelog: %s", e)
@@ -157,7 +160,7 @@ def fetch_changelog_snippet(
 
 def check_for_updates(
     logger=None, lang: str = "en"
-) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
+) -> Tuple[bool, Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
     """
     Check if updates are available.
     
@@ -166,32 +169,253 @@ def check_for_updates(
         lang: Preferred language ('en' or 'es')
     
     Returns:
-        Tuple of (update_available, latest_version, release_notes, release_url)
+        Tuple of (update_available, latest_version, release_notes, release_url, published_at, notes_lang)
     """
     release_info = fetch_latest_version(logger)
     
     if not release_info:
-        return (False, None, None, None)
+        return (False, None, None, None, None, None)
     
     latest_version = release_info.get("tag_name", "")
     release_url = release_info.get("html_url", "") or None
+    published_at = release_info.get("published_at", "") or None
     
     if not latest_version:
-        return (False, None, None, None)
+        return (False, None, None, None, published_at, None)
     
     comparison = compare_versions(VERSION, latest_version)
     
     if comparison < 0:  # Update available
         # Prefer changelog section (compact + language-specific), then fall back to release body.
-        release_notes = (
-            fetch_changelog_snippet(latest_version, logger=logger, lang=lang) or ""
-        ).strip()
+        notes_lang = None
+        snippet = fetch_changelog_snippet(latest_version, logger=logger, lang=lang)
+        release_notes = (snippet[0] if snippet else "").strip()
+        notes_lang = snippet[1] if snippet else None
         if not release_notes:
             release_notes = (release_info.get("body", "") or "").strip()
+            # GitHub release bodies are typically English; leave notes_lang unknown.
+            notes_lang = notes_lang or None
 
-        return (True, latest_version, release_notes or None, release_url)
+        return (True, latest_version, release_notes or None, release_url, published_at, notes_lang)
     
-    return (False, VERSION, None, None)
+    return (False, VERSION, None, None, published_at, None)
+
+
+def _parse_published_date(published_at: Optional[str]) -> Optional[str]:
+    if not published_at:
+        return None
+    m = re.match(r"(\d{4}-\d{2}-\d{2})", str(published_at).strip())
+    return m.group(1) if m else None
+
+
+def _extract_release_date_from_notes(notes: str, version: str) -> Optional[str]:
+    if not notes:
+        return None
+    try:
+        m = re.search(
+            rf"^##\s*\[{re.escape(version)}\]\s*-\s*(\d{{4}}-\d{{2}}-\d{{2}})",
+            notes,
+            flags=re.MULTILINE,
+        )
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return None
+
+
+def _classify_release_type(current: str, latest: str) -> str:
+    cur = parse_version(current)
+    lat = parse_version(latest)
+    if lat[0] > cur[0]:
+        return "Major"
+    if lat[1] > cur[1]:
+        return "Minor"
+    return "Patch"
+
+
+def _extract_release_items(notes: str) -> Dict[str, Any]:
+    """
+    Extract structured items from a changelog/release notes Markdown block.
+
+    Returns:
+        Dict with keys: highlights (list), breaking (list)
+    """
+    if not notes:
+        return {"highlights": [], "breaking": []}
+
+    def normalize_heading(text: str) -> str:
+        h = _strip_markdown_inline(text).strip().strip(":").lower()
+        h = (
+            h.replace("ó", "o")
+            .replace("í", "i")
+            .replace("á", "a")
+            .replace("é", "e")
+            .replace("ú", "u")
+            .replace("ñ", "n")
+        )
+        mapping = {
+            "added": "added",
+            "anadido": "added",
+            "changed": "changed",
+            "cambiado": "changed",
+            "fixed": "fixed",
+            "corregido": "fixed",
+            "security": "security",
+            "seguridad": "security",
+            "removed": "removed",
+            "eliminado": "removed",
+            "deprecated": "deprecated",
+            "obsoleto": "deprecated",
+            "breaking": "breaking",
+            "breaking changes": "breaking",
+            "cambios incompatibles": "breaking",
+            "incompatible": "breaking",
+            "incompatibles": "breaking",
+        }
+        return mapping.get(h, h)
+
+    def should_drop(item: str) -> bool:
+        low = item.lower()
+        if "shields.io" in low:
+            return True
+        if "view in english" in low or "ver en español" in low:
+            return True
+        if "view in spanish" in low or "ver en ingles" in low:
+            return True
+        if re.fullmatch(r"https?://\\S+", item.strip()):
+            return True
+        return False
+
+    current_section = "other"
+    items: Dict[str, List[str]] = {
+        "security": [],
+        "added": [],
+        "changed": [],
+        "fixed": [],
+        "removed": [],
+        "deprecated": [],
+        "breaking": [],
+        "other": [],
+    }
+
+    lines = notes.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
+
+        h = re.match(r"^#{2,6}\s+(.*)$", line)
+        if h:
+            current_section = normalize_heading(h.group(1))
+            continue
+
+        m = re.match(r"^[-*•]\s+(.*)$", line) or re.match(r"^\d+\.\s+(.*)$", line)
+        if not m:
+            continue
+
+        item = _strip_markdown_inline(m.group(1)).strip()
+        if not item or should_drop(item):
+            continue
+        if current_section in items:
+            items[current_section].append(item)
+        else:
+            items["other"].append(item)
+
+    highlights: List[str] = []
+    for section in ("security", "added", "changed", "fixed"):
+        for item in items.get(section, []):
+            if item not in highlights:
+                highlights.append(item)
+
+    if not highlights:
+        for item in items.get("other", []):
+            if item not in highlights:
+                highlights.append(item)
+
+    return {"highlights": highlights, "breaking": items.get("breaking", [])}
+
+
+def render_update_summary_for_cli(
+    *,
+    current_version: str,
+    latest_version: str,
+    release_notes: Optional[str],
+    release_url: Optional[str],
+    published_at: Optional[str],
+    lang: str,
+    t_fn,
+    notes_lang: Optional[str] = None,
+    max_items: int = 10,
+    max_breaking: int = 5,
+) -> str:
+    """
+    Render a concise, terminal-friendly update summary (no raw Markdown).
+    """
+    try:
+        import shutil
+
+        width = shutil.get_terminal_size((100, 24)).columns if sys.stdout.isatty() else 100
+        width = max(60, min(int(width), 120))
+    except Exception:
+        width = 100
+
+    release_type = _classify_release_type(current_version, latest_version)
+    release_date = _parse_published_date(published_at) or _extract_release_date_from_notes(
+        release_notes or "", latest_version
+    )
+
+    extracted = _extract_release_items(release_notes or "")
+    highlights = (extracted.get("highlights") or [])[: max(1, int(max_items))]
+    breaking = (extracted.get("breaking") or [])[: max(0, int(max_breaking))]
+
+    lines: List[str] = []
+    if release_date:
+        lines.append(t_fn("update_release_date", release_date))
+    lines.append(t_fn("update_release_type", release_type))
+    lines.append(t_fn("update_highlights"))
+    for item in highlights:
+        lines.append(f"- {item}")
+    if breaking:
+        lines.append(t_fn("update_breaking_changes"))
+        for item in breaking:
+            lines.append(f"- {item}")
+
+    if notes_lang and notes_lang != lang:
+        # Keep the note minimal; avoid mixing languages inside highlights.
+        if notes_lang == "en":
+            lines.append(t_fn("update_notes_fallback_en"))
+        elif notes_lang == "es":
+            lines.append(t_fn("update_notes_fallback_es"))
+
+    if release_url:
+        lines.append(t_fn("update_release_url", release_url))
+
+    # Wrap while preserving bullet indentation.
+    wrapped: List[str] = []
+    for line in lines:
+        if line.startswith("- "):
+            wrapped.append(
+                textwrap.fill(
+                    line[2:],
+                    width=width,
+                    initial_indent="- ",
+                    subsequent_indent="  ",
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                )
+            )
+        else:
+            wrapped.append(
+                textwrap.fill(
+                    line,
+                    width=width,
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                )
+            )
+
+    return "\n".join([w for w in wrapped if w is not None])
 
 
 def _strip_markdown_inline(text: str) -> str:
@@ -837,7 +1061,14 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None,
     # Check for updates
     print_fn(t_fn("update_checking"), "INFO")
     
-    update_available, latest_version, release_notes, release_url = check_for_updates(
+    (
+        update_available,
+        latest_version,
+        release_notes,
+        release_url,
+        published_at,
+        notes_lang,
+    ) = check_for_updates(
         logger=logger, lang=lang
     )
     
@@ -850,21 +1081,35 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None,
         return False
     
     # Update available
-    print_fn(t_fn("update_available", VERSION, latest_version), "WARNING")
-    
-    # Show release notes if available
-    if release_notes:
-        formatted = format_release_notes_for_cli(release_notes)
-        print("")
-        print("=" * 60)
-        print(f"{t_fn('update_release_notes')} v{latest_version}")
-        print("=" * 60)
-        print(formatted)
-        if release_url:
+    print_fn(t_fn("update_available", latest_version, VERSION), "WARNING")
+
+    # Show concise update summary (terminal-friendly; no raw Markdown).
+    if release_notes or release_url or published_at:
+        try:
+            import shutil
+
+            sep_width = shutil.get_terminal_size((60, 24)).columns if sys.stdout.isatty() else 60
+            sep_width = max(60, min(int(sep_width), 120))
+        except Exception:
+            sep_width = 60
+
+        summary = render_update_summary_for_cli(
+            current_version=VERSION,
+            latest_version=latest_version,
+            release_notes=release_notes,
+            release_url=release_url,
+            published_at=published_at,
+            lang=lang,
+            notes_lang=notes_lang,
+            t_fn=t_fn,
+        )
+
+        if summary.strip():
             print("")
-            print(t_fn("update_release_url", release_url))
-        print("=" * 60)
-        print("")
+            print("-" * sep_width)
+            print(summary)
+            print("-" * sep_width)
+            print("")
     
     # Ask user
     if ask_fn(t_fn("update_prompt"), default="yes"):

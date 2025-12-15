@@ -21,7 +21,7 @@ from redaudit.utils.constants import (
     DEFAULT_UDP_MODE,
     UDP_TOP_PORTS,
 )
-from redaudit.utils.i18n import TRANSLATIONS
+from redaudit.utils.i18n import TRANSLATIONS, detect_preferred_language
 
 
 def parse_arguments():
@@ -252,6 +252,29 @@ Examples:
         "--save-defaults",
         action="store_true",
         help="Save current CLI settings as persistent defaults (~/.redaudit/config.json)",
+    )
+
+    # v3.2.1+: Control whether persisted defaults are applied
+    defaults_group = parser.add_mutually_exclusive_group()
+    defaults_group.add_argument(
+        "--defaults",
+        choices=["ask", "use", "ignore"],
+        default="ask",
+        help="Persistent defaults behavior: ask (interactive), use, ignore",
+    )
+    defaults_group.add_argument(
+        "--use-defaults",
+        dest="defaults",
+        action="store_const",
+        const="use",
+        help="Use persisted defaults without prompting",
+    )
+    defaults_group.add_argument(
+        "--ignore-defaults",
+        dest="defaults",
+        action="store_const",
+        const="ignore",
+        help="Ignore persisted defaults (factory values for this run)",
     )
 
     # v3.2+: Enhanced network discovery
@@ -508,6 +531,29 @@ def main():
     from redaudit.core.updater import interactive_update_check
 
     app = InteractiveNetworkAuditor()
+    app.lang = detect_preferred_language(getattr(args, "lang", None))
+    app.defaults_mode = getattr(args, "defaults", "ask")
+
+    # Non-interactive mode: allow forcing "factory" values even if persisted defaults exist.
+    if args.target and getattr(args, "defaults", None) == "ignore":
+        argv = sys.argv[1:]
+
+        def _has_any(flags):
+            return any(f in argv for f in flags)
+
+        if not _has_any(["--threads", "-j"]):
+            args.threads = DEFAULT_THREADS
+        if not _has_any(["--rate-limit"]):
+            args.rate_limit = 0.0
+        if not _has_any(["--output", "-o"]):
+            args.output = None
+        if not _has_any(["--udp-mode"]):
+            args.udp_mode = DEFAULT_UDP_MODE
+        if not _has_any(["--udp-ports"]):
+            args.udp_ports = UDP_TOP_PORTS
+        if not _has_any(["--topology", "--no-topology", "--topology-only"]):
+            args.topology = False
+            args.topology_only = False
 
     # v3.0: Configure proxy if specified
     if args.proxy:

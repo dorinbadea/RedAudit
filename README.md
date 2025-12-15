@@ -296,6 +296,9 @@ cat ~/Documents/RedAuditReports/RedAudit_*/findings.jsonl | your-siem-ingestion-
 - `--no-topology`: Disable topology discovery (override persisted defaults) **(v3.1+)**
 - `--topology-only`: Run topology discovery only (skip host scanning) **(v3.1+)**
 - `--save-defaults`: Save current CLI settings as persistent defaults (`~/.redaudit/config.json`) **(v3.1+)**
+- `--defaults {ask,use,ignore}`: Persisted defaults behavior (interactive asks; non-interactive defaults to current behavior) **(v3.2.1+)**
+- `--use-defaults`: Shortcut for `--defaults use` **(v3.2.1+)**
+- `--ignore-defaults`: Shortcut for `--defaults ignore` **(v3.2.1+)**
 - `--net-discovery [PROTO,...]`: Enable enhanced network discovery (all, or comma-separated: dhcp,netbios,mdns,upnp,arp,fping) **(v3.2+)**
 - `--redteam`: Include optional Red Team recon block in net discovery **(v3.2+)**
 - `--net-discovery-interface IFACE`: Network interface for net discovery and L2 captures (e.g., eth0) **(v3.2+)**

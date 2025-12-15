@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.2.1] - 2025-12-15 (CLI UX)
+
+### Added
+
+- **Defaults control flags**: `--defaults {ask,use,ignore}`, `--use-defaults`, `--ignore-defaults`.
+- **Locale language fallback**: CLI detects ES/EN from env/locale when no stored preference exists.
+
+### Fixed
+
+- **Update prompt output**: Terminal-friendly summary (date/type/highlights), filters Markdown noise, and keeps language consistent with a clear fallback note.
+- **Defaults wizard UX**: Removed redundant confirmations when the user answers "no" to saving defaults; added an explicit startup choice when persisted defaults exist (use/review/ignore).
+
 ## [3.2.0] - 2025-12-15 (Enhanced Net Discovery)
 
 ### Added

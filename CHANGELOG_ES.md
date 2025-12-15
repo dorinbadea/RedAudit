@@ -11,6 +11,18 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 - (pendiente)
 
+## [3.2.1] - 2025-12-15 (UX CLI)
+
+### Añadido
+
+- **Flags de control de defaults**: `--defaults {ask,use,ignore}`, `--use-defaults`, `--ignore-defaults`.
+- **Fallback de idioma por locale**: El CLI detecta ES/EN desde env/locale cuando no existe preferencia guardada.
+
+### Corregido
+
+- **Salida del prompt de actualización**: Resumen legible en terminal (fecha/tipo/novedades), filtra ruido de Markdown y mantiene idioma consistente con nota de fallback clara.
+- **UX de defaults en wizard**: Eliminadas confirmaciones redundantes al responder "no" a guardar defaults; añadido control explícito al inicio cuando existen defaults persistentes (usar/revisar/ignorar).
+
 ## [3.2.0] - 2025-12-15 (Descubrimiento de Red Mejorado)
 
 ### Añadido
