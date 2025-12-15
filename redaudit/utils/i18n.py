@@ -164,6 +164,12 @@ TRANSLATIONS = {
         "nvd_env_instructions": "Add this to your ~/.bashrc or ~/.zshrc:",
         "nvd_env_set_later": "You can set the environment variable later",
         "nvd_slow_mode": "⚠️  Continuing with slow mode (5 requests/30 seconds)",
+        # v3.2+: Network discovery
+        "net_discovery_start": "Running enhanced network discovery (DHCP/NetBIOS/mDNS)...",
+        "net_discovery_dhcp_found": "✓ Found {} DHCP server(s)",
+        "net_discovery_vlans_found": "⚠️  Detected {} potential guest network(s)/VLAN(s)",
+        "net_discovery_q": "Enable enhanced network discovery (DHCP/NetBIOS/mDNS/UPNP)?",
+        "net_discovery_redteam_q": "Include Red Team techniques (SNMP/SMB enum, slower/noisier)?",
     },
     "es": {
         "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
@@ -319,6 +325,12 @@ TRANSLATIONS = {
         "nvd_env_instructions": "Añade esto a tu ~/.bashrc o ~/.zshrc:",
         "nvd_env_set_later": "Puedes configurar la variable de entorno más tarde",
         "nvd_slow_mode": "⚠️  Continuando en modo lento (5 peticiones/30 segundos)",
+        # v3.2+: Descubrimiento de red
+        "net_discovery_start": "Ejecutando descubrimiento de red mejorado (DHCP/NetBIOS/mDNS)...",
+        "net_discovery_dhcp_found": "✓ Encontrado(s) {} servidor(es) DHCP",
+        "net_discovery_vlans_found": "⚠️  Detectada(s) {} red(es) de invitados/VLAN(s) potencial(es)",
+        "net_discovery_q": "¿Activar descubrimiento de red mejorado (DHCP/NetBIOS/mDNS/UPNP)?",
+        "net_discovery_redteam_q": "¿Incluir técnicas Red Team (enum SNMP/SMB, más lento/ruidoso)?",
     },
 }
 

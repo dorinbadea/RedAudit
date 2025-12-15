@@ -135,6 +135,10 @@ class InteractiveNetworkAuditor:
             # v3.1+: Optional topology discovery
             "topology_enabled": False,
             "topology_only": False,
+            # v3.2+: Enhanced network discovery
+            "net_discovery_enabled": False,
+            "net_discovery_protocols": None,  # None = all, or list like ["dhcp", "netbios"]
+            "net_discovery_redteam": False,
         }
 
         self.encryption_enabled = False
@@ -1629,6 +1633,40 @@ class InteractiveNetworkAuditor:
                     self.save_results(partial=self.interrupted)
                     self.show_results()
                     return True
+
+            # v3.2+: Enhanced network discovery (best-effort)
+            if self.config.get("net_discovery_enabled") and not self.interrupted:
+                try:
+                    from redaudit.core.net_discovery import discover_networks
+
+                    self.current_phase = "net_discovery"
+                    self.print_status(self.t("net_discovery_start"), "INFO")
+                    self.results["net_discovery"] = discover_networks(
+                        target_networks=self.config.get("target_networks", []),
+                        interface=None,  # Auto-detect
+                        protocols=self.config.get("net_discovery_protocols"),
+                        redteam=self.config.get("net_discovery_redteam", False),
+                        extra_tools=self.extra_tools,
+                        logger=self.logger,
+                    )
+                    # Log discovered DHCP servers
+                    dhcp_servers = self.results["net_discovery"].get("dhcp_servers", [])
+                    if dhcp_servers:
+                        self.print_status(
+                            self.t("net_discovery_dhcp_found", len(dhcp_servers)),
+                            "OKGREEN",
+                        )
+                    candidate_vlans = self.results["net_discovery"].get("candidate_vlans", [])
+                    if candidate_vlans:
+                        self.print_status(
+                            self.t("net_discovery_vlans_found", len(candidate_vlans)),
+                            "WARNING",
+                        )
+                except Exception as exc:
+                    if self.logger:
+                        self.logger.warning("Net discovery failed: %s", exc)
+                        self.logger.debug("Net discovery exception details", exc_info=True)
+                    self.results["net_discovery"] = {"enabled": True, "error": str(exc)}
 
             all_hosts = []
             for network in self.config["target_networks"]:
