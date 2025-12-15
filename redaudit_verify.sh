@@ -94,5 +94,25 @@ check_cmd arp-scan
 check_cmd lldpctl
 
 echo
+echo "Red Team tools (v3.2+):"
+echo "------------------------"
+check_cmd snmpwalk
+check_cmd enum4linux
+check_cmd smbclient
+check_cmd masscan
+check_cmd rpcclient
+check_cmd ldapsearch
+check_cmd bettercap
+
+echo
+echo "Python modules (optional):"
+echo "--------------------------"
+if python3 -c "import scapy" 2>/dev/null; then
+    echo "✅ python3-scapy"
+else
+    echo "❌ python3-scapy (optional, for passive 802.1Q sniffing)"
+fi
+
+echo
 echo "========================================"
 echo "Verification complete!"
