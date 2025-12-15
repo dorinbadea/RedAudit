@@ -14,6 +14,7 @@ Goals:
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import json
 import re
@@ -261,15 +262,331 @@ def discover_topology(
     """
     Best-effort topology discovery.
 
-    Args:
-        target_networks: Networks configured for the scan (CIDRs)
-        network_info: Output of detect_all_networks() stored in results["network_info"]
-        extra_tools: Tool availability map (from auditor.check_dependencies)
-        logger: Optional logger
-
-    Returns:
-        Topology dict (best-effort)
+    Async acceleration (v3.1.3):
+    - Runs independent commands concurrently (bounded by timeouts).
+    - Falls back to the original sequential implementation if an event loop is already running
+      or if asyncio execution fails for any reason.
     """
+    try:
+        # Avoid "asyncio.run() cannot be called from a running event loop"
+        asyncio.get_running_loop()
+    except RuntimeError:
+        try:
+            return asyncio.run(
+                _discover_topology_async(
+                    target_networks=target_networks,
+                    network_info=network_info,
+                    extra_tools=extra_tools,
+                    logger=logger,
+                )
+            )
+        except Exception as exc:
+            if logger:
+                logger.warning("Async topology discovery failed, falling back: %s", exc)
+    return _discover_topology_sync(
+        target_networks=target_networks,
+        network_info=network_info,
+        extra_tools=extra_tools,
+        logger=logger,
+    )
+
+
+async def _run_cmd_async(
+    args: List[str],
+    timeout_s: int,
+    logger=None,
+) -> Tuple[int, str, str]:
+    return await asyncio.to_thread(_run_cmd, args, timeout_s, logger)
+
+
+async def _discover_topology_async(
+    target_networks: List[str],
+    network_info: List[Dict[str, Any]],
+    extra_tools: Optional[Dict[str, str]] = None,
+    logger=None,
+) -> Dict[str, Any]:
+    tools = extra_tools or {}
+    errors: List[str] = []
+
+    # Detect system tools as needed (do not treat as hard deps).
+    has_ip = bool(shutil.which("ip"))
+    has_tcpdump = bool(shutil.which("tcpdump")) or bool(tools.get("tcpdump"))
+    has_arp_scan = bool(shutil.which("arp-scan")) or bool(tools.get("arp-scan"))
+    has_lldpctl = bool(shutil.which("lldpctl"))
+
+    topology: Dict[str, Any] = {
+        "enabled": True,
+        "generated_at": datetime.now().isoformat(),
+        "tools": {
+            "ip": has_ip,
+            "tcpdump": has_tcpdump,
+            "arp-scan": has_arp_scan,
+            "lldpctl": has_lldpctl,
+        },
+        "routes": [],
+        "default_gateway": None,
+        "interfaces": [],
+        "candidate_networks": [],
+        "errors": errors,
+    }
+
+    # Route table + LLDP can be gathered in parallel.
+    routes: List[Dict[str, Any]] = []
+    lldp_json: Dict[str, Any] = {}
+
+    tasks: List[asyncio.Task] = []
+    route_task = None
+    lldp_task = None
+    if has_ip:
+        route_task = asyncio.create_task(_run_cmd_async(["ip", "route", "show"], timeout_s=3, logger=logger))
+        tasks.append(route_task)
+    if has_lldpctl:
+        lldp_task = asyncio.create_task(_run_cmd_async(["lldpctl", "-f", "json"], timeout_s=3, logger=logger))
+        tasks.append(lldp_task)
+
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    if route_task is not None:
+        try:
+            rc, out, err = route_task.result()
+            if rc == 0 and (out or "").strip():
+                routes = _parse_ip_route(out)
+            else:
+                errors.append(f"ip route show failed: {(err or '').strip() or 'unknown error'}")
+        except Exception:
+            errors.append("ip route show failed: unknown error")
+    else:
+        errors.append("ip command not found; route/gateway mapping unavailable")
+
+    if lldp_task is not None:
+        try:
+            rc, out, err = lldp_task.result()
+            if rc == 0 and (out or "").strip():
+                try:
+                    lldp_json = json.loads(out)
+                except Exception:
+                    lldp_json = {}
+            elif (err or "").strip():
+                errors.append(f"lldpctl failed: {(err or '').strip()}")
+        except Exception:
+            pass
+
+    topology["routes"] = routes
+    topology["default_gateway"] = _extract_default_gateway(routes)
+
+    # Choose interfaces relevant to target networks (best-effort intersection with local networks).
+    target_objs: List[ipaddress._BaseNetwork] = []
+    for t in target_networks or []:
+        try:
+            target_objs.append(ipaddress.ip_network(t, strict=False))
+        except Exception:
+            continue
+
+    iface_map: Dict[str, Dict[str, Any]] = {}
+    for ni in network_info or []:
+        iface = ni.get("interface")
+        if not iface:
+            continue
+        if iface not in iface_map:
+            iface_map[iface] = {
+                "interface": iface,
+                "ip": ni.get("ip"),
+                "networks": [],
+            }
+        if ni.get("network"):
+            iface_map[iface]["networks"].append(ni["network"])
+
+    selected_ifaces: List[str] = []
+    if target_objs:
+        for iface, meta in iface_map.items():
+            for net_str in meta.get("networks", []) or []:
+                try:
+                    local_net = ipaddress.ip_network(net_str, strict=False)
+                except Exception:
+                    continue
+                if any(local_net.overlaps(tn) for tn in target_objs):
+                    selected_ifaces.append(iface)
+                    break
+    if not selected_ifaces:
+        # Fallback to default gateway interface if known.
+        gw = topology.get("default_gateway") or {}
+        if gw.get("interface"):
+            selected_ifaces.append(gw["interface"])
+        else:
+            selected_ifaces = list(iface_map.keys())
+
+    # Deduplicate preserving order
+    seen = set()
+    selected_ifaces = [i for i in selected_ifaces if not (i in seen or seen.add(i))]
+
+    async def _collect_iface(iface: str) -> Tuple[Dict[str, Any], List[str]]:
+        iface_errors: List[str] = []
+        iface_entry: Dict[str, Any] = iface_map.get(
+            iface, {"interface": iface, "networks": []}
+        ).copy()
+        iface_entry["arp"] = {"method": None, "hosts": [], "error": None}
+        iface_entry["neighbor_cache"] = {"entries": [], "error": None}
+        iface_entry["vlan"] = {"ids": [], "sources": []}
+        iface_entry["lldp"] = {"neighbors": []}
+        iface_entry["cdp"] = {"observations": []}
+
+        arp_task = None
+        neigh_task = None
+        link_task = None
+
+        if has_arp_scan:
+            arp_task = asyncio.create_task(
+                _run_cmd_async(
+                    ["arp-scan", "--localnet", "--interface", iface],
+                    timeout_s=15,
+                    logger=logger,
+                )
+            )
+        if has_ip:
+            neigh_task = asyncio.create_task(
+                _run_cmd_async(["ip", "neigh", "show", "dev", iface], timeout_s=3, logger=logger)
+            )
+            link_task = asyncio.create_task(
+                _run_cmd_async(
+                    ["ip", "-d", "link", "show", "dev", iface], timeout_s=3, logger=logger
+                )
+            )
+
+        # tcpdump is intentionally kept sequential per interface to avoid concurrent sniffers on the same iface.
+        vlan_result = None
+        if has_tcpdump:
+            vlan_result = await _run_cmd_async(
+                ["tcpdump", "-nn", "-e", "-i", iface, "-c", "20", "vlan"], timeout_s=3, logger=logger
+            )
+
+        cdp_result = None
+        if has_tcpdump:
+            cdp_result = await _run_cmd_async(
+                [
+                    "tcpdump",
+                    "-nn",
+                    "-e",
+                    "-i",
+                    iface,
+                    "-c",
+                    "10",
+                    "ether",
+                    "dst",
+                    "01:00:0c:cc:cc:cc",
+                ],
+                timeout_s=3,
+                logger=logger,
+            )
+
+        # Await other tasks
+        if arp_task is not None:
+            try:
+                rc, out, err = await arp_task
+                iface_entry["arp"]["method"] = "arp-scan"
+                if rc == 0 and (out or "").strip():
+                    iface_entry["arp"]["hosts"] = _parse_arp_scan(out)
+                else:
+                    iface_entry["arp"]["error"] = (err or "").strip() or "arp-scan failed"
+            except Exception as exc:
+                iface_entry["arp"]["method"] = "arp-scan"
+                iface_entry["arp"]["error"] = str(exc)
+
+        if neigh_task is not None:
+            try:
+                rc, out, err = await neigh_task
+                if rc == 0 and (out or "").strip():
+                    iface_entry["neighbor_cache"]["entries"] = _parse_ip_neigh(out)
+                elif (err or "").strip():
+                    iface_entry["neighbor_cache"]["error"] = (err or "").strip()
+            except Exception as exc:
+                iface_entry["neighbor_cache"]["error"] = str(exc)
+
+        if link_task is not None:
+            try:
+                rc, out, err = await link_task
+                if rc == 0 and (out or "").strip():
+                    vids = _parse_vlan_ids_from_ip_link(out)
+                    if vids:
+                        iface_entry["vlan"]["ids"].extend(
+                            [v for v in vids if v not in iface_entry["vlan"]["ids"]]
+                        )
+                        iface_entry["vlan"]["sources"].append("ip_link")
+                elif (err or "").strip():
+                    iface_errors.append(f"ip link show failed for {iface}: {(err or '').strip()}")
+            except Exception:
+                pass
+
+        if vlan_result is not None:
+            _rc, out, _err = vlan_result
+            if (out or "").strip():
+                vids = _parse_vlan_ids_from_tcpdump(out)
+                if vids:
+                    iface_entry["vlan"]["ids"].extend(
+                        [v for v in vids if v not in iface_entry["vlan"]["ids"]]
+                    )
+                    iface_entry["vlan"]["sources"].append("tcpdump_vlan")
+
+        if cdp_result is not None:
+            _rc, out, _err = cdp_result
+            if (out or "").strip():
+                obs = []
+                for line in out.splitlines():
+                    s = line.strip()
+                    if s and s not in obs:
+                        obs.append(s[:200])
+                    if len(obs) >= 10:
+                        break
+                iface_entry["cdp"]["observations"] = obs
+
+        if lldp_json:
+            iface_entry["lldp"]["neighbors"] = _extract_lldp_neighbors(lldp_json, iface)
+
+        return iface_entry, iface_errors
+
+    iface_tasks = [asyncio.create_task(_collect_iface(iface)) for iface in selected_ifaces]
+    iface_results = await asyncio.gather(*iface_tasks, return_exceptions=True)
+
+    for res in iface_results:
+        if isinstance(res, Exception):
+            continue
+        iface_entry, iface_errors = res
+        topology["interfaces"].append(iface_entry)
+        errors.extend(iface_errors)
+
+    # Candidate networks: route destinations that are NOT already in targets.
+    route_nets = _networks_from_route_table(routes)
+    local_nets = set()
+    for ni in network_info or []:
+        if ni.get("network"):
+            try:
+                local_nets.add(str(ipaddress.ip_network(ni["network"], strict=False)))
+            except Exception:
+                continue
+
+    target_nets = set(str(n) for n in target_objs)
+    candidates = []
+    for n in route_nets:
+        if n in target_nets:
+            continue
+        if n in local_nets:
+            continue
+        # Skip special routes
+        if n.startswith("127.") or n.startswith("169.254."):
+            continue
+        candidates.append(n)
+    topology["candidate_networks"] = candidates
+
+    return topology
+
+
+def _discover_topology_sync(
+    target_networks: List[str],
+    network_info: List[Dict[str, Any]],
+    extra_tools: Optional[Dict[str, str]] = None,
+    logger=None,
+) -> Dict[str, Any]:
+    """Original sequential topology discovery implementation (fallback)."""
     tools = extra_tools or {}
     errors: List[str] = []
 

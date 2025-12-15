@@ -58,7 +58,8 @@ from redaudit.core.crypto import (
     ask_password_twice,
     generate_random_password,
 )
-from redaudit.core.network import detect_all_networks
+from redaudit.core.network import detect_all_networks, get_neighbor_mac
+from redaudit.core.udp_probe import run_udp_probe
 from redaudit.core.scanner import (
     sanitize_ip,
     sanitize_hostname,
@@ -726,31 +727,59 @@ class InteractiveNetworkAuditor:
             else:
                 # Phase 2a: Quick UDP scan of priority ports only
                 udp_mode = self.config.get("udp_mode", DEFAULT_UDP_MODE)
-                cmd_p2a = [
-                    "nmap",
-                    "-sU",
-                    "-Pn",
-                    "-p",
-                    UDP_PRIORITY_PORTS,
-                    "--max-retries",
-                    "1",
-                    "--host-timeout",
-                    "120s",
-                    safe_ip,
-                ]
+                priority_ports = []
+                for p in str(UDP_PRIORITY_PORTS).split(","):
+                    try:
+                        pi = int(p.strip())
+                        if 1 <= pi <= 65535:
+                            priority_ports.append(pi)
+                    except Exception:
+                        continue
                 self.print_status(
-                    self.t("deep_udp_priority_cmd", safe_ip, " ".join(cmd_p2a)), "WARNING"
+                    self.t(
+                        "deep_udp_priority_cmd",
+                        safe_ip,
+                        f"async UDP probe ({len(priority_ports)} ports)",
+                    ),
+                    "WARNING",
                 )
-                rec2a = run_nmap_command(cmd_p2a, UDP_QUICK_TIMEOUT, safe_ip, deep_obj)
+                udp_probe_timeout = 0.8
+                probe_start = time.time()
+                udp_probe = run_udp_probe(
+                    safe_ip,
+                    priority_ports,
+                    timeout=udp_probe_timeout,
+                    concurrency=200,
+                )
+                probe_dur = time.time() - probe_start
 
-                # Extract MAC from Phase 2a if not found yet
+                responded = [str(r.get("port")) for r in udp_probe if r.get("state") == "responded"]
+                closed = [str(r.get("port")) for r in udp_probe if r.get("state") == "closed"]
+                noresp_count = sum(1 for r in udp_probe if r.get("state") == "no_response")
+
+                record = {
+                    "command": f"udp_probe {safe_ip} priority_ports={len(priority_ports)} timeout={udp_probe_timeout}",
+                    "returncode": 0,
+                    "stdout": (
+                        f"responded_ports: {', '.join(responded) if responded else 'none'}\n"
+                        f"closed_ports: {', '.join(closed) if closed else 'none'}\n"
+                        f"no_response_ports: {noresp_count}\n"
+                    ),
+                    "stderr": "",
+                    "duration_seconds": round(probe_dur, 2),
+                }
+                deep_obj.setdefault("commands", []).append(record)
+                deep_obj["udp_priority_probe"] = {
+                    "timeout_seconds": udp_probe_timeout,
+                    "results": udp_probe,
+                }
+
+                # Extract MAC from neighbor cache if not found yet (LAN best-effort).
                 if not mac:
-                    m2a, v2a = extract_vendor_mac(rec2a.get("stdout", ""))
-                    if m2a:
-                        deep_obj["mac_address"] = m2a
-                        mac = m2a
-                    if v2a:
-                        deep_obj["vendor"] = v2a
+                    neigh_mac = get_neighbor_mac(safe_ip)
+                    if neigh_mac:
+                        deep_obj["mac_address"] = neigh_mac
+                        mac = neigh_mac
 
                 # Phase 2b: Full UDP scan (only if mode is 'full' and still no identity)
                 # v2.9: Optimized to use top-ports instead of full 65535 port scan

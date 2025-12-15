@@ -9,6 +9,7 @@ Handles local network interface detection and enumeration.
 
 import subprocess
 import ipaddress
+import re
 from typing import List, Dict, Optional
 
 from redaudit.utils.i18n import get_text
@@ -236,4 +237,36 @@ def find_interface_for_ip(ip_str: str, networks: List[Dict]) -> Optional[str]:
                 continue
     except ValueError:
         pass
+    return None
+
+
+def get_neighbor_mac(ip_str: str) -> Optional[str]:
+    """
+    Best-effort MAC lookup for an IP using local neighbor/ARP tables.
+
+    Notes:
+    - Works best on local L2 networks (same subnet/VLAN).
+    - Does not require raw sockets; relies on system commands when available.
+    """
+    if not isinstance(ip_str, str) or not ip_str.strip():
+        return None
+
+    mac_re = re.compile(r"(?i)\b([0-9a-f]{2}(?::[0-9a-f]{2}){5})\b")
+
+    candidates = [
+        (["ip", "neigh", "show", ip_str], 2),
+        (["arp", "-n", ip_str], 2),
+        (["arp", "-a", ip_str], 2),
+    ]
+
+    for cmd, timeout in candidates:
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            text = (res.stdout or "") + "\n" + (res.stderr or "")
+            m = mac_re.search(text)
+            if m:
+                return m.group(1).lower()
+        except Exception:
+            continue
+
     return None

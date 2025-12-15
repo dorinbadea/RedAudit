@@ -4,7 +4,7 @@ RedAudit - Pre-scan Module
 Copyright (C) 2025  Dorin Badea
 GPLv3 License
 
-Fast port discovery using asyncio TCP connect (RustScan-style).
+Fast port discovery using asyncio TCP connect.
 """
 
 import asyncio

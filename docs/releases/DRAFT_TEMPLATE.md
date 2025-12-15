@@ -51,7 +51,7 @@ sudo bash redaudit_install.sh
 ```json
 {
   "schema_version": "3.1",
-  "scanner_versions": {"redaudit": "3.1.2", "nmap": "7.95"},
+  "scanner_versions": {"redaudit": "3.1.3", "nmap": "7.95"},
   "topology": {"candidate_networks": ["10.0.0.0/8"]},
   "hosts": [{"ip": "192.168.1.50", "deep_scan": {"udp_top_ports": 200}}]
 }
@@ -155,7 +155,7 @@ sudo bash redaudit_install.sh
 ```json
 {
   "schema_version": "3.1",
-  "scanner_versions": {"redaudit": "3.1.2", "nmap": "7.95"},
+  "scanner_versions": {"redaudit": "3.1.3", "nmap": "7.95"},
   "topology": {"candidate_networks": ["10.0.0.0/8"]},
   "hosts": [{"ip": "192.168.1.50", "deep_scan": {"udp_top_ports": 200}}]
 }

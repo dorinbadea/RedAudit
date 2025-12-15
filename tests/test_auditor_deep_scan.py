@@ -113,16 +113,19 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
                     with patch(
                         "redaudit.core.auditor.extract_vendor_mac", return_value=(None, None)
                     ):
-                        with patch("redaudit.core.auditor.run_nmap_command") as mock_run:
-                            mock_run.return_value = {"stdout": "", "stderr": "", "returncode": 0}
-                            deep = app.deep_scan_host("192.168.1.50")
+                        with patch("redaudit.core.auditor.run_udp_probe", return_value=[]):
+                            with patch("redaudit.core.auditor.get_neighbor_mac", return_value=None):
+                                with patch("redaudit.core.auditor.run_nmap_command") as mock_run:
+                                    mock_run.return_value = {"stdout": "", "stderr": "", "returncode": 0}
+                                    deep = app.deep_scan_host("192.168.1.50")
 
         self.assertIsInstance(deep, dict)
         self.assertEqual(deep.get("udp_top_ports"), 222)
+        self.assertIn("udp_priority_probe", deep)
 
         cmds = [call.args[0] for call in mock_run.call_args_list]
-        self.assertGreaterEqual(len(cmds), 3)
-        full_udp_cmd = cmds[2]
+        self.assertGreaterEqual(len(cmds), 2)
+        full_udp_cmd = cmds[1]
         self.assertIn("--top-ports", full_udp_cmd)
         self.assertIn("222", full_udp_cmd)
 

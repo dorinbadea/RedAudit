@@ -19,6 +19,13 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **MANUAL SIEM**: Añadida subsección Integración SIEM (§6.2.1) con ejemplos de formato JSONL y comandos de ingesta
 - **Corrección CHANGELOG**: Corregida entrada duplicada v2.5.0 (renombrada a v2.4.0), corregida fecha v3.1.0 (2025-12-13)
 
+## [3.1.3] - 2025-12-15 (UDP y topología asíncronos)
+
+### Añadido
+
+- **Probe UDP asíncrono (best-effort)**: Probing concurrente rápido de puertos UDP prioritarios durante deep scan, registrado como `deep_scan.udp_priority_probe`.
+- **Topología asíncrona**: Recolección paralela de comandos para acelerar ARP/VLAN/LLDP + gateway mapping (best-effort).
+
 ## [3.1.2] - 2025-12-14 (UX de actualización)
 
 ### Corregido
