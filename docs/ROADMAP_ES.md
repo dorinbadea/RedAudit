@@ -10,9 +10,52 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 | :--- | :--- | :--- | :--- |
 | **Alta** | **Descubrimiento de Topología de Red** | ✅ Implementado (best-effort) | Descubrimiento de topología opcional (ARP/VLAN/LLDP + gateway/rutas) orientado a pistas de "redes ocultas" y contexto L2. |
 | **Alta** | **Puertos UDP Configurables** | ✅ Implementado | Añadido flag CLI `--udp-ports N` (rango: 50-500, defecto: 100) para cobertura UDP ajustable en modo UDP full de identidad. |
+| **Alta** | **Descubrimiento de Red Mejorado (v3.2)** | Planificado | Descubrimiento activo de redes de invitados y VLANs vía protocolos broadcast. Ver detalles abajo. |
 | **Media** | **Descubrimiento NetBIOS/mDNS** | Planificado | Consultas activas de hostname (puerto 137/5353) para mejorar resolución de entidades. |
 | **Media** | **Contenedorización** | Aparcado | Dockerfile oficial y configuración Docker Compose para contenedores de auditoría efímeros. |
 | **Baja** | **Ampliar Configuración Persistente** | ✅ Implementado (inicial) | Extendido `~/.redaudit/config.json` más allá de la clave NVD (defaults comunes: hilos/salida/rate-limit/UDP/topología/idioma). |
+
+### Descubrimiento de Red Mejorado (Objetivo v3.2)
+
+**Objetivo**: Detectar redes de invitados, VLANs ocultas y servidores DHCP adicionales no visibles desde el segmento de red principal.
+
+**Herramientas/Técnicas Propuestas**:
+
+| Técnica | Herramienta | Qué Detecta |
+| :--- | :--- | :--- |
+| **Descubrimiento DHCP** | `nmap --script broadcast-dhcp-discover` | Servidores DHCP en todas las VLANs, incluyendo redes de invitados |
+| **Descubrimiento NetBIOS** | `nbtscan` / `nmap --script nbstat` | Nombres de host Windows, grupos de trabajo, pertenencia a dominio |
+| **mDNS/Bonjour** | `avahi-browse` / `nmap --script dns-service-discovery` | Dispositivos Apple, impresoras, IoT (puerto 5353) |
+| **Netdiscover** | `netdiscover -r <rango> -P` | Reconocimiento ARP pasivo/activo (mapeo L2 rápido) |
+| **Broadcast ARP** | `nmap --script broadcast-arp` | Todos los hosts alcanzables vía broadcast ARP |
+| **Descubrimiento UPNP** | `nmap --script broadcast-upnp-info` | Routers, NAS, dispositivos multimedia que anuncian vía UPNP |
+
+**Técnicas Red Team / Pentesting**:
+
+| Técnica | Herramienta | Qué Detecta |
+| :--- | :--- | :--- |
+| **Enumeración VLAN** | `yersinia -G` / `frogger` | IDs VLAN 802.1Q, negociación DTP, puertos trunk |
+| **Topología STP** | `yersinia -I eth0 -G stp` | Root bridges Spanning Tree, topología de red |
+| **SNMP Walking** | `snmpwalk -v2c -c public <ip>` | Mapeo de puertos de switch, asignaciones VLAN, tablas ARP |
+| **Descubrimiento HSRP/VRRP** | `nmap --script broadcast-eigrp-discovery` | Redundancia de gateway, IPs virtuales, prioridades |
+| **Enumeración SMB** | `enum4linux -a <ip>` / `crackmapexec smb` | Shares Windows, usuarios, políticas de contraseña, dominios |
+| **LLMNR/NBT-NS** | `responder --analyze` (modo pasivo) | Peticiones de resolución de nombres Windows (solo recon) |
+| **Bettercap Recon** | `bettercap -eval "net.recon on"` | Descubrimiento de hosts activo, fingerprinting OS, análisis de tráfico |
+| **Masscan** | `masscan -p1-65535 --rate 10000` | Descubrimiento de puertos ultra-rápido en rangos grandes |
+| **Fping Sweep** | `fping -a -g <rango>` | Descubrimiento de hosts ICMP rápido |
+| **Descubrimiento de Routers** | `nmap --script broadcast-igmp-discovery` | Routers multicast, IGMP snooping |
+| **Descubrimiento IPv6** | `nmap -6 --script targets-ipv6-multicast-*` | Hosts IPv6 vía multicast (link-local) |
+| **Scapy Custom** | Scripts Python Scapy | Paquetes 802.1Q personalizados, intentos de VLAN hopping |
+
+**Opciones CLI (Propuestas)**:
+
+```bash
+redaudit --net-discovery --target 192.168.0.0/16 --yes   # Descubrimiento broadcast completo
+redaudit --net-discovery dhcp,netbios --target 10.0.0.0/8  # Solo protocolos específicos
+redaudit --net-discovery --redteam --target 10.0.0.0/8   # Incluir técnicas Red Team (más lento, más ruido)
+```
+
+**Salida**: Nuevo bloque `net_discovery` en el reporte JSON con servidores detectados, redes de invitados, mapeos VLAN y observaciones cross-VLAN.
 
 ### Descubrimiento de Topología de Red (Objetivo v4.0)
 

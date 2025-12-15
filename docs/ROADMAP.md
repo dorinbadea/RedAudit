@@ -10,9 +10,52 @@ This document outlines the technical roadmap, planned architectural improvements
 | :--- | :--- | :--- | :--- |
 | **High** | **Network Topology Discovery** | ✅ Implemented (best-effort) | Optional topology discovery (ARP/VLAN/LLDP + gateway/routes) focused on "hidden network" hints and L2 context. |
 | **High** | **Configurable UDP Ports** | ✅ Implemented | Added `--udp-ports N` CLI flag (range: 50-500, default: 100) for user-tunable UDP scan coverage in full UDP identity mode. |
+| **High** | **Enhanced Net Discovery (v3.2)** | Planned | Active discovery of guest networks and VLANs via broadcast protocols. See details below. |
 | **Medium** | **NetBIOS/mDNS Discovery** | Planned | Active hostname queries (port 137/5353) for improved entity resolution on networks without DNS PTR records. |
 | **Medium** | **Containerization** | Paused | Official Dockerfile and Docker Compose setup for ephemeral audit containers. |
 | **Low** | **Expand Persistent Configuration** | ✅ Implemented (initial) | Extended `~/.redaudit/config.json` beyond NVD key (persist common defaults like threads/output/rate-limit/UDP/topology/lang). |
+
+### Enhanced Network Discovery (v3.2 Target)
+
+**Goal**: Detect guest networks, hidden VLANs, and additional DHCP servers not visible from the primary network segment.
+
+**Proposed Tools/Techniques**:
+
+| Technique | Tool | What It Detects |
+| :--- | :--- | :--- |
+| **DHCP Discovery** | `nmap --script broadcast-dhcp-discover` | DHCP servers on all VLANs, including guest networks |
+| **NetBIOS Discovery** | `nbtscan` / `nmap --script nbstat` | Windows hostnames, workgroups, domain membership |
+| **mDNS/Bonjour** | `avahi-browse` / `nmap --script dns-service-discovery` | Apple devices, printers, IoT (port 5353) |
+| **Netdiscover** | `netdiscover -r <range> -P` | Passive/active ARP reconnaissance (fast L2 mapping) |
+| **Broadcast ARP** | `nmap --script broadcast-arp` | All reachable hosts via ARP broadcast |
+| **UPNP Discovery** | `nmap --script broadcast-upnp-info` | Routers, NAS, media devices advertising via UPNP |
+
+**Red Team / Penetration Testing Techniques**:
+
+| Technique | Tool | What It Detects |
+| :--- | :--- | :--- |
+| **VLAN Enumeration** | `yersinia -G` / `frogger` | 802.1Q VLAN IDs, DTP negotiation, trunk ports |
+| **STP Topology** | `yersinia -I eth0 -G stp` | Spanning Tree root bridges, network topology |
+| **SNMP Walking** | `snmpwalk -v2c -c public <ip>` | Switch port mappings, VLAN assignments, ARP tables |
+| **HSRP/VRRP Discovery** | `nmap --script broadcast-eigrp-discovery` | Gateway redundancy, virtual IPs, priorities |
+| **SMB Enumeration** | `enum4linux -a <ip>` / `crackmapexec smb` | Windows shares, users, password policies, domains |
+| **LLMNR/NBT-NS** | `responder --analyze` (passive mode) | Windows name resolution requests (recon only) |
+| **Bettercap Recon** | `bettercap -eval "net.recon on"` | Live host discovery, OS fingerprinting, traffic analysis |
+| **Masscan** | `masscan -p1-65535 --rate 10000` | Ultra-fast port discovery across large ranges |
+| **Fping Sweep** | `fping -a -g <range>` | Fast ICMP host discovery |
+| **Router Discovery** | `nmap --script broadcast-igmp-discovery` | Multicast routers, IGMP snooping |
+| **IPv6 Discovery** | `nmap -6 --script targets-ipv6-multicast-*` | IPv6 hosts via multicast (link-local) |
+| **Scapy Custom** | Python Scapy scripts | Custom 802.1Q tagged packets, VLAN hopping attempts |
+
+**CLI Options (Proposed)**:
+
+```bash
+redaudit --net-discovery --target 192.168.0.0/16 --yes   # Full broadcast discovery
+redaudit --net-discovery dhcp,netbios --target 10.0.0.0/8  # Specific protocols only
+redaudit --net-discovery --redteam --target 10.0.0.0/8   # Include Red Team techniques (slower, noisier)
+```
+
+**Output**: New `net_discovery` block in JSON report with detected servers, guest networks, VLAN mappings, and cross-VLAN observations.
 
 ### Network Topology Discovery (v4.0 Target)
 
