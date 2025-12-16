@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.2.3] - 2025-12-16 (HyperScan Fast Discovery)
+
+### Added
+
+- **HyperScan Module**: New `redaudit/core/hyperscan.py` for ultra-fast parallel discovery.
+- **Batch TCP Scanning**: 3000 concurrent connections using asyncio semaphores.
+- **Full UDP Sweep**: 45+ ports with protocol-specific payloads (DNS, NTP, SNMP, NetBIOS, mDNS, SSDP, SIP, etc.).
+- **UDP IoT Broadcast**: Targeted probes for WiZ bulbs, SSDP, Chromecast, Yeelight, LIFX.
+- **Aggressive ARP**: 3-retry sweep with arp-scan + arping fallback.
+- **Backdoor Detection**: Flags suspicious ports (31337, 4444, 6666, etc.) with severity levels.
+
 ## [3.2.2b] - 2025-12-16 (IoT & Enterprise Discovery)
 
 ### Added
