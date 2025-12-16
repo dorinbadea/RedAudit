@@ -4,7 +4,7 @@
 
 RedAudit es una herramienta CLI para auditoría de red estructurada y hardening en sistemas Kali/Debian.
 
-![Versión](https://img.shields.io/badge/versión-3.2.2-blue?style=flat-square)
+![Versión](https://img.shields.io/badge/versión-3.2.3-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square)
 ![Licencia](https://img.shields.io/badge/licencia-GPLv3-green?style=flat-square)
 
@@ -16,7 +16,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.2.2
+                                      v3.2.3
       Herramienta Interactiva de Auditoría de Red
 ```
 
@@ -48,6 +48,8 @@ La herramienta cubre la brecha entre el escaneo ad-hoc y la auditoría formal, p
 - **Rate Limiting con Jitter**: Retardo inter-host configurable (randomización ±30%) para evasión IDS
 - **Detección de Fugas de Subred (v3.2.1)**: Identifica redes ocultas/invitados analizando fugas HTTP (via redirects y headers) para pivoting.
 - **Menú Principal Interactivo (v3.2)**: Asistente amigable para escaneo, configuración y análisis diff (sin argumentos).
+- **Módulo HyperScan (v3.2.3)**: Descubrimiento paralelo ultrarrápido (TCP batch asyncio, 45+ puertos UDP, ARP agresivo, broadcast IoT) con detección de backdoors.
+- **Modo Sigiloso (v3.2.3)**: Flag `--stealth` activa timing paranoid T1, escaneo mono-hilo, y retardos 5s+ para evasión IDS empresarial.
 - **Interfaz Bilingüe**: Localización completa Inglés/Español
 
 ## Arquitectura

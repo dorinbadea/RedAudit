@@ -6,7 +6,7 @@ GPLv3 License
 """
 
 # Version
-VERSION = "3.2.2"
+VERSION = "3.2.3"
 SCHEMA_VERSION = "3.2"  # Report schema version (may differ from app version)
 
 # Default language (installer may override)
@@ -78,6 +78,7 @@ WEB_SERVICES_EXACT = [
 ]
 
 SUSPICIOUS_SERVICE_KEYWORDS = [
+    # Original suspicious services
     "socks",
     "socks5",
     "nagios",
@@ -86,7 +87,44 @@ SUSPICIOUS_SERVICE_KEYWORDS = [
     "vpn",
     "tor",
     "tcpwrapped",
+    # v3.2.2b: Backdoor/unusual indicators
+    "unknown",
+    "backdoor",
+    "rootkit",
+    "shell",
+    "reverse",
+    "bindshell",
+    "netcat",
+    "ncat",
+    "metasploit",
+    "meterpreter",
+    "c2",
+    "rat",
+    "cobalt",
+    "empire",
+    "beacon",
 ]
+
+# v3.2.2b: Well-known ports that should NOT have unexpected services
+# If a service appears on standard port but doesn't match expected, flag it
+STANDARD_PORT_SERVICES = {
+    21: ["ftp"],
+    22: ["ssh", "openssh"],
+    23: ["telnet"],
+    25: ["smtp", "mail"],
+    53: ["domain", "dns"],
+    80: ["http", "www"],
+    110: ["pop3"],
+    143: ["imap"],
+    443: ["https", "ssl"],
+    445: ["microsoft-ds", "smb"],
+    3306: ["mysql"],
+    3389: ["ms-wbt-server", "rdp"],
+    5432: ["postgresql"],
+    5900: ["vnc"],
+    8080: ["http-proxy", "http"],
+}
+
 
 # Console colors
 COLORS = {

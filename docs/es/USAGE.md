@@ -77,6 +77,12 @@ Nota: para modo limitado sin sudo/root, añade `--allow-non-root` (algunas funci
 | `--kerberos-userlist PATH` | Lista opcional de usuarios para userenum Kerberos (requiere kerbrute; solo con autorización). |
 | `--redteam-active-l2` | Activa checks L2 adicionales potencialmente más ruidosos (bettercap/scapy sniff; requiere root). |
 
+### Características v3.2.3
+
+| Flag | Descripción |
+| :--- | :--- |
+| `--stealth` | Modo sigiloso: timing paranoid nmap (T1), mono-hilo, retardo 5s+. Para redes empresariales con IDS/rate limiters. |
+
 ### Seguridad
 
 | Flag | Descripción |

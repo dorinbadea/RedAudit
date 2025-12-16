@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](../en/DIDACTIC_GUIDE.md)
 
-Esta guía está diseñada para ayudar a profesores, instructores y mentores a explicar el funcionamiento completo de **RedAudit v3.2.2**. El documento desglosa la herramienta desde una perspectiva pedagógica, combinando teoría, diagramas visuales, ejercicios prácticos y referencias al código.
+Esta guía está diseñada para ayudar a profesores, instructores y mentores a explicar el funcionamiento completo de **RedAudit v3.2.3**. El documento desglosa la herramienta desde una perspectiva pedagógica, combinando teoría, diagramas visuales, ejercicios prácticos y referencias al código.
 
 > **Resumen Ejecutivo para Instructores**: RedAudit es una herramienta de orquestación de auditoría de red ideal para enseñar flujos de seguridad estructurados. Puntos clave de enseñanza: (1) Orquestación automatizada vs escaneo manual, (2) Heurística adaptativa (activadores de Deep Scan), (3) Reportes profesionales (JSON listo para SIEM). Para una clase de 60 minutos, enfocarse en Secciones 1-3. Para laboratorios prácticos, usar ejercicios de la Sección 8. Para estudiantes de investigación, la Sección 5 provee referencia de internals en Python.
 
@@ -101,7 +101,7 @@ Al inicio, RedAudit presenta un **Menú Principal** que permite elegir entre esc
 
 ```text
 ┌─────────────────────────────────────────────────┐
-│         RedAudit v3.2.2 - Menú Principal       │
+│         RedAudit v3.2.3 - Menú Principal       │
 ├─────────────────────────────────────────────────┤
 │  [1] Iniciar Auditoría (Wizard)                │
 │  [2] Buscar Actualizaciones                     │
@@ -129,7 +129,7 @@ Utiliza un ping sweep rápido (`nmap -sn -T4 --max-retries 1`) para identificar 
 
 **Función en código**: [`net_discovery.py`](../../redaudit/core/net_discovery.py)
 
-**v3.2.2**: **Auto-habilitado en modo Completo** (sin flag). También disponible vía `--net-discovery` en otros modos.
+**v3.2.3**: **Auto-habilitado en modo Completo** (sin flag). También disponible vía `--net-discovery` en otros modos.
 
 RedAudit va más allá de ICMP y utiliza protocolos de capa 2:
 
@@ -262,7 +262,7 @@ RedAudit actúa como un "pegamento" inteligente entre herramientas externas.
 
 ### Técnica Destacada: Descubrimiento Pasivo de Pivote (Redes de Invitados)
 
-*Nuevo en v3.2.2*
+*Nuevo en v3.2.3*
 
 Los pentesters profesionales a menudo encuentran redes ocultas no escaneando rangos, sino observando **fugas** en servicios disponibles.
 
@@ -276,7 +276,7 @@ Los pentesters profesionales a menudo encuentran redes ocultas no escaneando ran
 
 ### Técnica Destacada: Sondeo Activo de Identidad (Red Team)
 
-*Nuevo en v3.2.2*
+*Nuevo en v3.2.3*
 
 Para evaluaciones autorizadas, encontrar nombres de usuario es clave para el movimiento lateral.
 

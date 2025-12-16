@@ -224,6 +224,12 @@ Examples:
         action="store_true",
         help="Allow running without root (limited features; some scans may fail)",
     )
+    # v3.2.3: Stealth mode for enterprise networks
+    parser.add_argument(
+        "--stealth",
+        action="store_true",
+        help="Stealth mode: slow scanning for enterprise networks with IDS/rate limiters (T1 timing, 1 thread, 5s delay)",
+    )
 
     # v3.1+: Topology discovery (ARP/VLAN/LLDP + gateway/routes)
     topology_group = parser.add_mutually_exclusive_group()
@@ -443,6 +449,17 @@ def configure_from_args(app, args) -> bool:
     app.config["cve_lookup_enabled"] = args.cve_lookup if hasattr(args, "cve_lookup") else False
     app.config["nvd_api_key"] = args.nvd_key if hasattr(args, "nvd_key") else None
     app.config["allow_non_root"] = args.allow_non_root
+
+    # v3.2.3: Stealth mode for enterprise networks
+    if getattr(args, "stealth", False):
+        app.config["stealth_mode"] = True
+        app.config["threads"] = 1  # Sequential scanning
+        app.rate_limit_delay = max(app.rate_limit_delay, 5.0)  # Minimum 5s delay
+        app.config["nmap_timing"] = "T1"  # Paranoid timing
+        app.print_status("Stealth mode: T1 timing, 1 thread, 5s+ delay", "INFO")
+    else:
+        app.config["stealth_mode"] = False
+        app.config["nmap_timing"] = "T4"  # Default aggressive
 
     # v3.2+: Enhanced network discovery
     if args.net_discovery:

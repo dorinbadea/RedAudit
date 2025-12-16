@@ -4,7 +4,7 @@
 
 RedAudit is a CLI tool for structured network auditing and hardening on Kali/Debian systems.
 
-![Version](https://img.shields.io/badge/version-3.2.2-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.2.3-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-green?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
@@ -16,7 +16,7 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.2.2
+                                      v3.2.3
         Interactive Network Audit Tool
 ```
 
@@ -47,6 +47,8 @@ The tool bridges the gap between ad-hoc scanning and formal auditing, providing 
 - **Rate Limiting with Jitter**: Configurable inter-host delay (±30% randomization) for IDS evasion
 - **Subnet Leak Detection (v3.2.1)**: Automatically identifies potential hidden networks (e.g., Guest zones) by analyzing service leaks (headers, redirects).
 - **Interactive Main Menu (v3.2)**: Friendly wizard for scanning, configuration, and diff analysis (no arguments required).
+- **HyperScan Module (v3.2.3)**: Ultra-fast parallel discovery (asyncio batch TCP, 45+ UDP ports, aggressive ARP, IoT broadcast) with backdoor detection.
+- **Stealth Mode (v3.2.3)**: `--stealth` flag enables T1 paranoid timing, single-thread scanning, and 5s+ delays for enterprise IDS evasion.
 - **Bilingual Interface**: Complete English/Spanish localization
 
 ## Architecture

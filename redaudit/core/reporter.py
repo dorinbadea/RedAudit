@@ -85,6 +85,19 @@ def generate_summary(
             summary["unified_asset_count"] = len(unified)
             summary["multi_interface_devices"] = multi_interface
 
+    # v3.2.2b: Populate hidden_networks for SIEM/AI pipelines
+    # This detects IPs leaked in headers/redirects outside target networks
+    hidden_network_leaks = _detect_network_leaks(results, config)
+    if hidden_network_leaks:
+        results["hidden_networks"] = hidden_network_leaks
+        summary["leaked_networks_detected"] = len(hidden_network_leaks)
+    
+    # v3.2.2b: Also extract scannable CIDRs for auto-pivot
+    leaked_cidrs = extract_leaked_networks(results, config)
+    if leaked_cidrs:
+        results["leaked_networks_cidr"] = leaked_cidrs
+        summary["pivot_candidates"] = len(leaked_cidrs)
+
     # v2.9: SIEM Enhancement - ECS compliance, severity scoring, tags, risk scores
     enriched = enrich_report_for_siem(results, config)
     results.update(enriched)
@@ -163,6 +176,77 @@ def _detect_network_leaks(results: Dict, config: Dict) -> list:
                             leaks.add(f"Host {host_ip} leaks internal IP {m}")
                             
     return sorted(list(leaks))
+
+
+def extract_leaked_networks(results: Dict, config: Dict) -> list:
+    """
+    Extract potential hidden networks as scannable CIDR ranges.
+    
+    v3.2.2b: For automatic pivot - returns /24 networks discovered via leaks.
+    
+    Args:
+        results: Results dictionary containing vulnerabilities
+        config: Configuration dictionary with target networks
+        
+    Returns:
+        List of unique network CIDRs (e.g., ["192.168.10.0/24", "10.0.1.0/24"])
+    """
+    networks = set()
+    targets = []
+    for t in config.get("target_networks", []):
+        try:
+            targets.append(ipaddress.ip_network(t, strict=False))
+        except ValueError:
+            pass
+
+    # Regex for private IPv4
+    ip_regex = re.compile(r"\b((?:10|172\.(?:1[6-9]|2[0-9]|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3})\b")
+    
+    def is_new_network(ip_str):
+        """Check if IP is in a network not already being scanned."""
+        try:
+            ip = ipaddress.ip_address(ip_str)
+            if not ip.is_private or ip.is_loopback:
+                return False
+            for net in targets:
+                if ip in net:
+                    return False
+            return True
+        except ValueError:
+            return False
+
+    # Search vulnerabilities for leaked IPs
+    for host_vuln in results.get("vulnerabilities", []):
+        for finding in host_vuln.get("vulnerabilities", []):
+            content_to_check = []
+            if finding.get("curl_headers"):
+                content_to_check.append(finding["curl_headers"])
+            if finding.get("wget_headers"):
+                content_to_check.append(finding["wget_headers"])
+            if finding.get("redirect_url"):
+                content_to_check.append(finding["redirect_url"])
+            if finding.get("nikto_findings"):
+                content_to_check.extend(finding["nikto_findings"])
+                
+            for text in content_to_check:
+                if not isinstance(text, str):
+                    continue
+                matches = ip_regex.findall(text)
+                for m in matches:
+                    if is_new_network(m):
+                        try:
+                            net = ipaddress.ip_network(f"{m}/24", strict=False)
+                            networks.add(str(net))
+                        except ValueError:
+                            pass
+
+    # Also check hidden_networks if already populated
+    for leak_str in results.get("hidden_networks", []):
+        match = re.search(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2})", leak_str)
+        if match:
+            networks.add(match.group(1))
+
+    return sorted(list(networks))
 
 
 def generate_text_report(results: Dict, partial: bool = False) -> str:

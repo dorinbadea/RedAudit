@@ -11,6 +11,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.2.3] - 2025-12-16 (HyperScan + Stealth Mode)
+
+### Added
+
+- **HyperScan Module**: New `redaudit/core/hyperscan.py` (~1000 lines) for ultra-fast parallel discovery.
+  - Batch TCP scanning with 3000 concurrent connections using asyncio
+  - Full UDP sweep across 45+ ports with protocol-specific payloads
+  - UDP IoT broadcast probes (WiZ, SSDP, Chromecast, Yeelight, LIFX)
+  - Aggressive ARP sweep with 3 retries using arp-scan + arping fallback
+  - Backdoor detection with severity levels for suspicious ports (31337, 4444, 6666, etc.)
+  - Deep scan mode: full 65535-port scan on suspicious hosts
+
+- **Stealth Mode**: New `--stealth` CLI flag for enterprise networks with IDS/rate limiters.
+  - Uses nmap `-T1` paranoid timing template
+  - Forces single-threaded sequential scanning
+  - Enforces minimum 5 second delay between probes
+  - Random jitter already built into rate limiting
+
+- **CLI Logging**: Added visible progress messages for HyperScan results showing ARP/UDP/TCP host counts and duration.
+
+- **Progress Spinners**: Added animated spinners for topology and net_discovery phases showing elapsed time during long-running discovery operations.
+
+### Fixed
+
+- **Network Deduplication**: "Scan ALL" now correctly removes duplicate CIDRs when same network is detected on multiple interfaces (e.g., eth0 + eth1).
+- **Defaults Display**: Interactive configuration review now shows 10 fields (was 6) including scan_mode, web_vulns, cve_lookup, txt_report.
+- **Config Persistence**: `DEFAULT_CONFIG` expanded to 12 fields for complete settings preservation.
+
+## [3.2.2b] - 2025-12-16 (IoT & Enterprise Discovery)
+
+### Added
+
+- **Enhanced UPNP Discovery**: Increased timeout (10s → 25s), added retry mechanism (2 attempts), SSDP M-SEARCH fallback.
+- **Active ARP Scanning**: `netdiscover` now uses active mode by default (`-f` flag), with interface support for multi-homed setups.
+- **New `arp_scan_active()`**: Dedicated function using `arp-scan` with retry for more reliable IoT discovery.
+- **Dual ARP Discovery**: Uses both `arp-scan` and `netdiscover` with automatic deduplication for maximum coverage.
+- **IoT mDNS Service Types**: Added specific queries for `_amzn-wplay` (Alexa), `_googlecast` (Chromecast), `_hap` (HomeKit), `_airplay`.
+- **Auto-Pivot `extract_leaked_networks()`**: Returns scannable /24 CIDRs from leaked IPs for automatic hidden network discovery.
+
+### Changed
+
+- **mDNS Timeout**: Increased from 5s to 15s for better IoT device capture.
+- **netdiscover Timeout**: Increased from 15s to 20s.
+- **Version**: Bumped to 3.2.2b (development/testing).
+
+### Fixed
+
+- **IoT Device Discovery**: Previous scans only found 3 of 10+ devices due to passive ARP mode and short timeouts.
+- **hidden_networks JSON sync**: Leaked network IPs now correctly populate `hidden_networks` and `leaked_networks_cidr` in JSON for SIEM/AI pipelines (was only in text report before).
+
 ## [3.2.2] - 2025-12-16 (Production Hardening)
 
 ### Added

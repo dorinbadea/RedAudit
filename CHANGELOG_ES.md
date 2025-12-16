@@ -11,6 +11,56 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 - (pendiente)
 
+## [3.2.3] - 2025-12-16 (HyperScan + Modo Sigiloso)
+
+### Añadido
+
+- **Módulo HyperScan**: Nuevo `redaudit/core/hyperscan.py` (~1000 líneas) para descubrimiento paralelo ultrarrápido.
+  - Escaneo TCP batch con 3000 conexiones concurrentes usando asyncio
+  - Barrido UDP completo en 45+ puertos con payloads específicos por protocolo
+  - Broadcast UDP IoT (WiZ, SSDP, Chromecast, Yeelight, LIFX)
+  - Barrido ARP agresivo con 3 reintentos usando arp-scan + arping fallback
+  - Detección de backdoors con niveles de severidad para puertos sospechosos (31337, 4444, 6666, etc.)
+  - Modo deep scan: escaneo completo de 65535 puertos en hosts sospechosos
+
+- **Modo Sigiloso**: Nuevo flag CLI `--stealth` para redes empresariales con IDS/rate limiters.
+  - Usa template de timing nmap `-T1` (paranoid)
+  - Fuerza escaneo secuencial con un solo hilo
+  - Impone retardo mínimo de 5 segundos entre sondas
+  - Jitter aleatorio ya integrado en rate limiting
+
+- **Logging CLI**: Añadidos mensajes de progreso visibles para resultados de HyperScan mostrando conteos de hosts ARP/UDP/TCP y duración.
+
+- **Spinners de Progreso**: Añadidos spinners animados para las fases topology y net_discovery mostrando tiempo transcurrido durante operaciones de descubrimiento largas.
+
+### Corregido
+
+- **Deduplicación de Redes**: "Escanear TODAS" ahora elimina correctamente CIDRs duplicados cuando la misma red se detecta en múltiples interfaces (ej: eth0 + eth1).
+- **Visualización de Defaults**: La revisión de configuración interactiva ahora muestra 10 campos (antes 6) incluyendo scan_mode, web_vulns, cve_lookup, txt_report.
+- **Persistencia de Config**: `DEFAULT_CONFIG` expandido a 12 campos para preservar ajustes completos.
+
+## [3.2.2b] - 2025-12-16 (IoT & Descubrimiento Enterprise)
+
+### Añadido
+
+- **Descubrimiento UPNP Mejorado**: Timeout aumentado (10s → 25s), mecanismo de reintentos (2 intentos), fallback SSDP M-SEARCH.
+- **Escaneo ARP Activo**: `netdiscover` ahora usa modo activo por defecto (flag `-f`), con soporte de interface para setups multi-homed.
+- **Nuevo `arp_scan_active()`**: Función dedicada usando `arp-scan` con reintentos para descubrimiento IoT más fiable.
+- **Descubrimiento ARP Dual**: Usa tanto `arp-scan` como `netdiscover` con deduplicación automática para máxima cobertura.
+- **Tipos de Servicio mDNS IoT**: Añadidas queries específicas para `_amzn-wplay` (Alexa), `_googlecast` (Chromecast), `_hap` (HomeKit), `_airplay`.
+- **Auto-Pivot `extract_leaked_networks()`**: Retorna CIDRs /24 escaneables de IPs filtradas para descubrimiento automático de redes ocultas.
+
+### Cambiado
+
+- **Timeout mDNS**: Aumentado de 5s a 15s para mejor captura de dispositivos IoT.
+- **Timeout netdiscover**: Aumentado de 15s a 20s.
+- **Versión**: Actualizada a 3.2.2b (desarrollo/testing).
+
+### Corregido
+
+- **Descubrimiento de Dispositivos IoT**: Escaneos anteriores solo encontraban 3 de 10+ dispositivos debido al modo ARP pasivo y timeouts cortos.
+- **Sincronización JSON hidden_networks**: Las IPs de redes filtradas ahora correctamente populan `hidden_networks` y `leaked_networks_cidr` en JSON para pipelines SIEM/AI (antes solo aparecía en el reporte de texto).
+
 ## [3.2.2] - 2025-12-16 (Producción Hardening)
 
 ### Añadido

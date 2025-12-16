@@ -31,6 +31,7 @@ DEFAULT_CONFIG = {
     "nvd_api_key": None,
     "nvd_api_key_storage": None,  # "config", "env", or None
     # v3.1+: Persistent defaults for common CLI/interactive settings.
+    # v3.2.3: Expanded to cover all scan parameters
     "defaults": {
         "threads": None,
         "output_dir": None,
@@ -40,6 +41,11 @@ DEFAULT_CONFIG = {
         "topology_enabled": None,
         "topology_only": None,  # v3.2.2+
         "lang": None,
+        # v3.2.3: Additional scan parameters
+        "scan_mode": None,  # "rapido", "normal", "completo"
+        "scan_vulnerabilities": None,  # True/False
+        "cve_lookup_enabled": None,  # True/False
+        "generate_txt": None,  # True/False
     },
 }
 

@@ -98,8 +98,8 @@ RedAudit includes an update mechanism that checks GitHub for new releases:
 - **User confirmation**: Always prompts before applying updates
 - **Network failure handling**: Graceful degradation if GitHub is unavailable
 - **Local changes protection**: Refuses to update if uncommitted changes exist
-- **Staged installation**: New files are copied to a staging directory before atomically replacing the current installation (v3.2.2+)
-- **Rollback on failure**: If installation fails, the previous version is restored automatically (v3.2.2+)
+- **Staged installation**: New files are copied to a staging directory before atomically replacing the current installation (v3.2.3+)
+- **Rollback on failure**: If installation fails, the previous version is restored automatically (v3.2.3+)
 - **Module location**: `redaudit/core/updater.py`
 
 > [!IMPORTANT]

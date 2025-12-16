@@ -58,6 +58,7 @@ def _check_tools() -> Dict[str, bool]:
         "fping": bool(shutil.which("fping")),
         "nbtscan": bool(shutil.which("nbtscan")),
         "netdiscover": bool(shutil.which("netdiscover")),
+        "arp-scan": bool(shutil.which("arp-scan")),
         "avahi-browse": bool(shutil.which("avahi-browse")),
         "tcpdump": bool(shutil.which("tcpdump")),
         "snmpwalk": bool(shutil.which("snmpwalk")),
@@ -288,14 +289,22 @@ def netbios_discover(
 
 def netdiscover_scan(
     target: str,
-    timeout_s: int = 15,
+    timeout_s: int = 20,
+    active: bool = True,
+    interface: Optional[str] = None,
     logger=None,
 ) -> Dict[str, Any]:
     """
-    Fast L2 ARP discovery using netdiscover.
+    L2 ARP discovery using netdiscover.
+    
+    v3.2.2b: Added active mode (default), increased timeout, interface support.
+    Active mode sends ARP requests vs passive just sniffing.
     
     Args:
         target: Network range (e.g., "192.168.178.0/24")
+        timeout_s: Timeout in seconds (default 20s)
+        active: If True, use active ARP scanning (no -P flag)
+        interface: Network interface to use (optional)
     
     Returns:
         {
@@ -309,8 +318,20 @@ def netdiscover_scan(
         result["error"] = "netdiscover not available"
         return result
     
-    # -P = passive/parseable output, -r = range
-    cmd = ["netdiscover", "-r", target, "-P", "-N"]
+    # Build command
+    # -r = range, -N = no headers, -P = passive (only if not active)
+    cmd = ["netdiscover", "-r", target, "-N"]
+    
+    if interface:
+        safe_iface = _sanitize_iface(interface)
+        if safe_iface:
+            cmd.extend(["-i", safe_iface])
+    
+    if not active:
+        cmd.append("-P")  # Passive mode (just sniff)
+    else:
+        cmd.append("-f")  # Fast mode (active ARP)
+    
     rc, out, err = _run_cmd(cmd, timeout_s, logger)
     
     # Parse netdiscover output
@@ -331,16 +352,85 @@ def netdiscover_scan(
     return result
 
 
+def arp_scan_active(
+    target: Optional[str] = None,
+    interface: Optional[str] = None,
+    timeout_s: int = 30,
+    logger=None,
+) -> Dict[str, Any]:
+    """
+    Active ARP scanning using arp-scan.
+    
+    v3.2.2b: New function for more reliable IoT discovery.
+    arp-scan is more reliable than netdiscover for discovering devices
+    behind client isolation or in power-save mode.
+    
+    Args:
+        target: Network range (e.g., "192.168.178.0/24") or None for localnet
+        interface: Network interface (-I option)
+        timeout_s: Command timeout
+    
+    Returns:
+        {
+            "hosts": [{"ip": "...", "mac": "...", "vendor": "..."}],
+            "error": None or "error message"
+        }
+    """
+    result: Dict[str, Any] = {"hosts": [], "error": None}
+    
+    if not shutil.which("arp-scan"):
+        result["error"] = "arp-scan not available"
+        return result
+    
+    # Build command
+    cmd = ["arp-scan"]
+    
+    if interface:
+        safe_iface = _sanitize_iface(interface)
+        if safe_iface:
+            cmd.extend(["-I", safe_iface])
+    
+    if target:
+        cmd.append(target)
+    else:
+        cmd.append("-l")  # Scan local network
+    
+    # Add retry for better IoT discovery
+    cmd.extend(["--retry", "2"])
+    
+    rc, out, err = _run_cmd(cmd, timeout_s, logger)
+    
+    # Parse arp-scan output
+    # 192.168.178.1	d4:24:dd:07:7c:c5	AVM GmbH
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 2:
+            ip_match = re.match(r"^(\d{1,3}(?:\.\d{1,3}){3})$", parts[0].strip())
+            if ip_match:
+                host = {
+                    "ip": ip_match.group(1),
+                    "mac": parts[1].strip() if len(parts) > 1 else None,
+                }
+                if len(parts) > 2:
+                    host["vendor"] = parts[2].strip()
+                result["hosts"].append(host)
+    
+    return result
+
+
 # =============================================================================
 # mDNS Discovery
 # =============================================================================
 
 def mdns_discover(
-    timeout_s: int = 5,
+    timeout_s: int = 15,
+    interface: Optional[str] = None,
     logger=None,
 ) -> Dict[str, Any]:
     """
     Discover services via mDNS/Bonjour.
+    
+    v3.2.2b: Increased timeout (5s -> 15s), added IoT-specific service queries.
     
     Returns:
         {
@@ -350,8 +440,23 @@ def mdns_discover(
     """
     result: Dict[str, Any] = {"services": [], "error": None}
     
+    # IoT-specific service types to query
+    iot_service_types = [
+        "_hap._tcp",           # HomeKit
+        "_airplay._tcp",       # AirPlay / Apple TV
+        "_raop._tcp",          # AirPlay audio
+        "_googlecast._tcp",    # Chromecast / Google Home
+        "_spotify-connect._tcp",  # Spotify Connect
+        "_amzn-wplay._tcp",    # Amazon Alexa
+        "_http._tcp",          # Generic HTTP (many IoT)
+        "_https._tcp",         # Generic HTTPS
+        "_smb._tcp",           # SMB shares
+        "_printer._tcp",       # Printers
+        "_ipp._tcp",           # IPP printing
+    ]
+    
     if shutil.which("avahi-browse"):
-        # -a = all services, -p = parseable, -t = terminate after timeout
+        # First: browse all services
         cmd = ["avahi-browse", "-apt", "--resolve"]
         rc, out, err = _run_cmd(cmd, timeout_s, logger)
         
@@ -370,6 +475,24 @@ def mdns_discover(
                     if len(parts) >= 8:
                         service["ip"] = parts[7]
                     result["services"].append(service)
+        
+        # Second: query specific IoT service types if first pass found nothing
+        if not result["services"]:
+            for svc_type in iot_service_types[:5]:  # Top 5 most common
+                cmd_specific = ["avahi-browse", "-pt", "--resolve", svc_type]
+                rc2, out2, err2 = _run_cmd(cmd_specific, 5, logger)
+                for line in out2.splitlines():
+                    if line.startswith("="):
+                        parts = line.split(";")
+                        if len(parts) >= 5:
+                            service = {
+                                "interface": parts[1],
+                                "name": parts[3],
+                                "type": parts[4],
+                            }
+                            if len(parts) >= 8:
+                                service["ip"] = parts[7]
+                            result["services"].append(service)
         return result
     
     # Fallback to nmap dns-service-discovery
@@ -390,11 +513,14 @@ def mdns_discover(
 # =============================================================================
 
 def upnp_discover(
-    timeout_s: int = 10,
+    timeout_s: int = 25,
+    retries: int = 2,
     logger=None,
 ) -> Dict[str, Any]:
     """
-    Discover UPNP devices (routers, NAS, media servers).
+    Discover UPNP devices (routers, NAS, media servers, IoT).
+    
+    v3.2.2b: Increased timeout (10s -> 25s), added retry mechanism and SSDP fallback.
     
     Returns:
         {
@@ -404,34 +530,55 @@ def upnp_discover(
     """
     result: Dict[str, Any] = {"devices": [], "error": None}
     
+    def _parse_upnp_output(out: str) -> List[Dict[str, Any]]:
+        """Parse nmap UPNP output into device list."""
+        devices = []
+        current_device: Dict[str, Any] = {}
+        for line in out.splitlines():
+            line = line.strip()
+            
+            if "Server:" in line:
+                if current_device.get("ip") or current_device.get("device"):
+                    devices.append(current_device)
+                current_device = {"services": []}
+                match = re.search(r"Server:\s*(.+)", line)
+                if match:
+                    current_device["device"] = match.group(1)
+            
+            if re.match(r"^\d{1,3}(?:\.\d{1,3}){3}:", line):
+                current_device["ip"] = line.split(":")[0]
+            
+            if "urn:" in line:
+                current_device.setdefault("services", []).append(line.strip())
+        
+        if current_device.get("ip") or current_device.get("device"):
+            devices.append(current_device)
+        return devices
+    
     if not shutil.which("nmap"):
         result["error"] = "nmap not available"
         return result
     
-    cmd = ["nmap", "--script", "broadcast-upnp-info"]
-    rc, out, err = _run_cmd(cmd, timeout_s, logger)
+    # Try nmap broadcast-upnp-info with retries
+    for attempt in range(retries):
+        cmd = ["nmap", "--script", "broadcast-upnp-info"]
+        rc, out, err = _run_cmd(cmd, timeout_s, logger)
+        devices = _parse_upnp_output(out)
+        if devices:
+            result["devices"] = devices
+            return result
+        # Wait briefly before retry
+        if attempt < retries - 1:
+            import time
+            time.sleep(1)
     
-    # Parse UPNP responses
-    current_device: Dict[str, Any] = {}
-    for line in out.splitlines():
-        line = line.strip()
-        
-        if "Server:" in line:
-            if current_device.get("ip"):
-                result["devices"].append(current_device)
-            current_device = {"services": []}
-            match = re.search(r"Server:\s*(.+)", line)
-            if match:
-                current_device["device"] = match.group(1)
-        
-        if re.match(r"^\d{1,3}(?:\.\d{1,3}){3}:", line):
-            current_device["ip"] = line.split(":")[0]
-        
-        if "urn:" in line:
-            current_device.setdefault("services", []).append(line.strip())
-    
-    if current_device.get("ip") or current_device.get("device"):
-        result["devices"].append(current_device)
+    # SSDP M-SEARCH fallback using raw socket simulation via nmap
+    # This uses a different discovery method that may catch more devices
+    cmd_ssdp = ["nmap", "--script", "upnp-info", "-sU", "-p", "1900", "--open", "239.255.255.250"]
+    rc, out, err = _run_cmd(cmd_ssdp, timeout_s // 2, logger)
+    devices = _parse_upnp_output(out)
+    if devices:
+        result["devices"] = devices
     
     return result
 
@@ -465,7 +612,7 @@ def discover_networks(
         Complete net_discovery result object for JSON report
     """
     if protocols is None:
-        protocols = ["dhcp", "fping", "netbios", "mdns", "upnp", "arp"]
+        protocols = ["dhcp", "fping", "netbios", "mdns", "upnp", "arp", "hyperscan"]
     
     tools = _check_tools()
     errors: List[str] = []
@@ -514,15 +661,39 @@ def discover_networks(
                 errors.append(f"netbios ({target}): {netbios_result['error']}")
         result["netbios_hosts"] = all_netbios
     
-    # ARP discovery via netdiscover
+    # ARP discovery via netdiscover (active mode) + arp-scan
+    # v3.2.2b: Use multiple tools for better IoT coverage
     if "arp" in protocols:
         all_arp = []
+        seen_ips = set()
+        
+        # Method 1: arp-scan per interface (more reliable for IoT)
+        if tools.get("arp-scan") or shutil.which("arp-scan"):
+            for target in target_networks:
+                arp_result = arp_scan_active(target=target, interface=interface, logger=logger)
+                for host in arp_result.get("hosts", []):
+                    ip = host.get("ip")
+                    if ip and ip not in seen_ips:
+                        seen_ips.add(ip)
+                        all_arp.append(host)
+                if arp_result.get("error"):
+                    errors.append(f"arp-scan ({target}): {arp_result['error']}")
+        
+        # Method 2: netdiscover (active mode)
         for target in target_networks:
-            arp_result = netdiscover_scan(target, logger=logger)
-            all_arp.extend(arp_result.get("hosts", []))
+            arp_result = netdiscover_scan(
+                target, active=True, interface=interface, logger=logger
+            )
+            for host in arp_result.get("hosts", []):
+                ip = host.get("ip")
+                if ip and ip not in seen_ips:
+                    seen_ips.add(ip)
+                    all_arp.append(host)
             if arp_result.get("error"):
-                errors.append(f"arp ({target}): {arp_result['error']}")
+                errors.append(f"netdiscover ({target}): {arp_result['error']}")
+        
         result["arp_hosts"] = all_arp
+
     
     # mDNS discovery
     if "mdns" in protocols:
@@ -539,6 +710,60 @@ def discover_networks(
             result["upnp_devices"] = upnp_result["devices"]
         if upnp_result.get("error"):
             errors.append(f"upnp: {upnp_result['error']}")
+    
+    # v3.2.3: HyperScan parallel discovery (optional, adds IoT and hidden hosts)
+    if "hyperscan" in protocols:
+        try:
+            from redaudit.core.hyperscan import (
+                hyperscan_full_discovery,
+                hyperscan_with_nmap_enrichment,
+            )
+            
+            if logger:
+                logger.info("Running HyperScan parallel discovery...")
+            
+            hyperscan_result = hyperscan_full_discovery(
+                target_networks,
+                logger=logger,
+            )
+            
+            # Merge HyperScan ARP hosts with existing
+            existing_ips = {h.get("ip") for h in result.get("arp_hosts", [])}
+            for host in hyperscan_result.get("arp_hosts", []):
+                if host.get("ip") not in existing_ips:
+                    result["arp_hosts"].append(host)
+                    existing_ips.add(host.get("ip"))
+            
+            # Merge HyperScan UDP devices (IoT)
+            for device in hyperscan_result.get("udp_devices", []):
+                result["upnp_devices"].append({
+                    "ip": device.get("ip"),
+                    "device": f"IoT ({device.get('protocol', 'unknown')})",
+                    "source": "hyperscan_udp",
+                })
+            
+            # Store HyperScan TCP hosts for port analysis
+            if hyperscan_result.get("tcp_hosts"):
+                result["hyperscan_tcp_hosts"] = hyperscan_result["tcp_hosts"]
+            
+            # Store backdoor candidates
+            if hyperscan_result.get("potential_backdoors"):
+                result["potential_backdoors"] = hyperscan_result["potential_backdoors"]
+            
+            result["hyperscan_duration"] = hyperscan_result.get("duration_seconds", 0)
+            
+            # v3.2.3: Visible CLI logging for HyperScan results
+            if logger:
+                arp_count = len(hyperscan_result.get("arp_hosts", []))
+                udp_count = len(hyperscan_result.get("udp_devices", []))
+                tcp_count = len(hyperscan_result.get("tcp_hosts", {}))
+                duration = hyperscan_result.get("duration_seconds", 0)
+                logger.info(f"HyperScan complete: {arp_count} ARP, {udp_count} UDP, {tcp_count} TCP hosts in {duration:.1f}s")
+            
+        except ImportError as exc:
+            errors.append(f"hyperscan: module not available ({exc})")
+        except Exception as exc:
+            errors.append(f"hyperscan: {exc}")
     
     # Analyze for candidate VLANs
     result["candidate_vlans"] = _analyze_vlans(result)
