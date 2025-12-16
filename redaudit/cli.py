@@ -522,6 +522,15 @@ def main():
     """Main entry point for RedAudit CLI."""
     args = parse_arguments()
 
+    # v3.2.3: Disable ANSI colors for non-TTY output or when explicitly requested.
+    # Many modules import the COLORS dict directly, so we mutate it in-place to
+    # propagate the setting globally.
+    if getattr(args, "no_color", False) or not sys.stdout.isatty():
+        from redaudit.utils.constants import COLORS
+
+        for key in list(COLORS.keys()):
+            COLORS[key] = ""
+
     # v3.0: Handle --diff mode (no scan, just comparison) - does not require root
     if args.diff:
         from redaudit.core.diff import generate_diff_report, format_diff_text, format_diff_markdown
