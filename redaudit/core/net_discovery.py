@@ -752,6 +752,14 @@ def discover_networks(
             
             result["hyperscan_duration"] = hyperscan_result.get("duration_seconds", 0)
             
+            # v3.2.3: Visible CLI logging for HyperScan results
+            if logger:
+                arp_count = len(hyperscan_result.get("arp_hosts", []))
+                udp_count = len(hyperscan_result.get("udp_devices", []))
+                tcp_count = len(hyperscan_result.get("tcp_hosts", {}))
+                duration = hyperscan_result.get("duration_seconds", 0)
+                logger.info(f"HyperScan complete: {arp_count} ARP, {udp_count} UDP, {tcp_count} TCP hosts in {duration:.1f}s")
+            
         except ImportError as exc:
             errors.append(f"hyperscan: module not available ({exc})")
         except Exception as exc:
