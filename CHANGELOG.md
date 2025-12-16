@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **CLI Logging**: Added visible progress messages for HyperScan results showing ARP/UDP/TCP host counts and duration.
 
+- **Progress Spinners**: Added animated spinners for topology and net_discovery phases showing elapsed time during long-running discovery operations.
+
 ### Fixed
 
 - **Network Deduplication**: "Scan ALL" now correctly removes duplicate CIDRs when same network is detected on multiple interfaces (e.g., eth0 + eth1).

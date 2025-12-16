@@ -4,7 +4,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](../es/DIDACTIC_GUIDE.md)
 
-This guide is designed to help professors, instructors, and mentors explain the complete functionality of **RedAudit v3.2.2**. The document breaks down the tool from a pedagogical perspective, combining theory, visual diagrams, practical exercises, and code references.
+This guide is designed to help professors, instructors, and mentors explain the complete functionality of **RedAudit v3.2.3**. The document breaks down the tool from a pedagogical perspective, combining theory, visual diagrams, practical exercises, and code references.
 
 > **TL;DR for Instructors**: RedAudit is a network auditing orchestration tool perfect for teaching structured security workflows. Key teaching points: (1) Automated tool orchestration vs manual scanning, (2) Adaptive heuristics (Deep Scan triggers), (3) Professional reporting (SIEM-ready JSON). For a 60-minute lecture, focus on Sections 1-3. For hands-on labs, use Section 8 practical exercises. For research students, Section 5 provides Python internals reference.
 
@@ -103,7 +103,7 @@ At startup, RedAudit presents a **Main Menu** allowing you to choose between sca
 
 ```text
 ┌─────────────────────────────────────────────────┐
-│         RedAudit v3.2.2 - Main Menu            │
+│         RedAudit v3.2.3 - Main Menu            │
 ├─────────────────────────────────────────────────┤
 │  [1] Start Network Scan (Wizard)               │
 │  [2] Check for Updates                          │
@@ -131,7 +131,7 @@ Uses a fast ping sweep (`nmap -sn -T4 --max-retries 1`) to identify which hosts 
 
 **Function in code**: [`net_discovery.py`](../../redaudit/core/net_discovery.py)
 
-**v3.2.2**: **Auto-enabled in Full mode** (no flag needed). Also available via `--net-discovery` in other modes.
+**v3.2.3**: **Auto-enabled in Full mode** (no flag needed). Also available via `--net-discovery` in other modes.
 
 RedAudit goes beyond ICMP and uses L2 protocols:
 
@@ -263,7 +263,7 @@ RedAudit acts as intelligent "glue" between external tools.
 
 ### Technique Spotlight: Passive Pivot Discovery (Guest Networks)
 
-*New in v3.2.2*
+*New in v3.2.3*
 
 Professional pentesters often find hidden networks not by scanning ranges, but by observing **leaks** in available services.
 
@@ -277,7 +277,7 @@ Professional pentesters often find hidden networks not by scanning ranges, but b
 
 ### Technique Spotlight: Active Identity Probing (Red Team)
 
-*New in v3.2.2*
+*New in v3.2.3*
 
 For authorized assessments, finding usernames is key to lateral movement.
 

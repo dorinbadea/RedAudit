@@ -1790,12 +1790,33 @@ class InteractiveNetworkAuditor:
 
                     self.current_phase = "topology"
                     self.print_status(self.t("topology_start"), "INFO")
-                    self.results["topology"] = discover_topology(
-                        target_networks=self.config.get("target_networks", []),
-                        network_info=self.results.get("network_info", []),
-                        extra_tools=self.extra_tools,
-                        logger=self.logger,
-                    )
+                    
+                    # v3.2.3: Add spinner progress for topology phase
+                    try:
+                        from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+                        from rich.console import Console
+                        with Progress(
+                            SpinnerColumn(),
+                            TextColumn("[bold cyan]Topology[/bold cyan] {task.description}"),
+                            TimeElapsedColumn(),
+                            console=Console(stderr=True),
+                            transient=True,
+                        ) as progress:
+                            task = progress.add_task("discovering...", total=None)
+                            self.results["topology"] = discover_topology(
+                                target_networks=self.config.get("target_networks", []),
+                                network_info=self.results.get("network_info", []),
+                                extra_tools=self.extra_tools,
+                                logger=self.logger,
+                            )
+                            progress.update(task, description="complete")
+                    except ImportError:
+                        self.results["topology"] = discover_topology(
+                            target_networks=self.config.get("target_networks", []),
+                            network_info=self.results.get("network_info", []),
+                            extra_tools=self.extra_tools,
+                            logger=self.logger,
+                        )
                 except Exception as exc:
                     if self.logger:
                         self.logger.warning("Topology discovery failed: %s", exc)
@@ -1828,15 +1849,41 @@ class InteractiveNetworkAuditor:
                         "kerberos_userlist": self.config.get("net_discovery_kerberos_userlist"),
                         "active_l2": bool(self.config.get("net_discovery_active_l2", False)),
                     }
-                    self.results["net_discovery"] = discover_networks(
-                        target_networks=self.config.get("target_networks", []),
-                        interface=iface,  # Best-effort auto-detect
-                        protocols=self.config.get("net_discovery_protocols"),
-                        redteam=self.config.get("net_discovery_redteam", False),
-                        redteam_options=redteam_options,
-                        extra_tools=self.extra_tools,
-                        logger=self.logger,
-                    )
+                    
+                    # v3.2.3: Add spinner progress for net_discovery phase
+                    try:
+                        from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+                        from rich.console import Console
+                        with Progress(
+                            SpinnerColumn(),
+                            TextColumn("[bold blue]Net Discovery[/bold blue] {task.description}"),
+                            TimeElapsedColumn(),
+                            console=Console(stderr=True),
+                            transient=True,
+                        ) as progress:
+                            task = progress.add_task("running...", total=None)
+                            self.results["net_discovery"] = discover_networks(
+                                target_networks=self.config.get("target_networks", []),
+                                interface=iface,
+                                protocols=self.config.get("net_discovery_protocols"),
+                                redteam=self.config.get("net_discovery_redteam", False),
+                                redteam_options=redteam_options,
+                                extra_tools=self.extra_tools,
+                                logger=self.logger,
+                            )
+                            progress.update(task, description="complete")
+                    except ImportError:
+                        # Fallback without progress bar
+                        self.results["net_discovery"] = discover_networks(
+                            target_networks=self.config.get("target_networks", []),
+                            interface=iface,
+                            protocols=self.config.get("net_discovery_protocols"),
+                            redteam=self.config.get("net_discovery_redteam", False),
+                            redteam_options=redteam_options,
+                            extra_tools=self.extra_tools,
+                            logger=self.logger,
+                        )
+                    
                     # Log discovered DHCP servers
                     dhcp_servers = self.results["net_discovery"].get("dhcp_servers", [])
                     if dhcp_servers:

@@ -76,8 +76,8 @@ RedAudit incluye un mecanismo de actualización que verifica GitHub para nuevas 
 - **Confirmación del usuario**: Siempre pregunta antes de aplicar actualizaciones
 - **Manejo de fallos de red**: Degradación elegante si GitHub no está disponible
 - **Protección de cambios locales**: Rechaza actualizar si hay cambios sin commitear
-- **Instalación staged**: Los nuevos ficheros se copian a un directorio temporal antes de reemplazar atómicamente la instalación actual (v3.2.2+)
-- **Rollback en caso de fallo**: Si la instalación falla, la versión anterior se restaura automáticamente (v3.2.2+)
+- **Instalación staged**: Los nuevos ficheros se copian a un directorio temporal antes de reemplazar atómicamente la instalación actual (v3.2.3+)
+- **Rollback en caso de fallo**: Si la instalación falla, la versión anterior se restaura automáticamente (v3.2.3+)
 - **Ubicación del módulo**: `redaudit/core/updater.py`
 
 > [!IMPORTANT]
