@@ -711,6 +711,52 @@ def discover_networks(
         if upnp_result.get("error"):
             errors.append(f"upnp: {upnp_result['error']}")
     
+    # v3.2.3: HyperScan parallel discovery (optional, adds IoT and hidden hosts)
+    if "hyperscan" in protocols:
+        try:
+            from redaudit.core.hyperscan import (
+                hyperscan_full_discovery,
+                hyperscan_with_nmap_enrichment,
+            )
+            
+            if logger:
+                logger.info("Running HyperScan parallel discovery...")
+            
+            hyperscan_result = hyperscan_full_discovery(
+                target_networks,
+                logger=logger,
+            )
+            
+            # Merge HyperScan ARP hosts with existing
+            existing_ips = {h.get("ip") for h in result.get("arp_hosts", [])}
+            for host in hyperscan_result.get("arp_hosts", []):
+                if host.get("ip") not in existing_ips:
+                    result["arp_hosts"].append(host)
+                    existing_ips.add(host.get("ip"))
+            
+            # Merge HyperScan UDP devices (IoT)
+            for device in hyperscan_result.get("udp_devices", []):
+                result["upnp_devices"].append({
+                    "ip": device.get("ip"),
+                    "device": f"IoT ({device.get('protocol', 'unknown')})",
+                    "source": "hyperscan_udp",
+                })
+            
+            # Store HyperScan TCP hosts for port analysis
+            if hyperscan_result.get("tcp_hosts"):
+                result["hyperscan_tcp_hosts"] = hyperscan_result["tcp_hosts"]
+            
+            # Store backdoor candidates
+            if hyperscan_result.get("potential_backdoors"):
+                result["potential_backdoors"] = hyperscan_result["potential_backdoors"]
+            
+            result["hyperscan_duration"] = hyperscan_result.get("duration_seconds", 0)
+            
+        except ImportError as exc:
+            errors.append(f"hyperscan: module not available ({exc})")
+        except Exception as exc:
+            errors.append(f"hyperscan: {exc}")
+    
     # Analyze for candidate VLANs
     result["candidate_vlans"] = _analyze_vlans(result)
     

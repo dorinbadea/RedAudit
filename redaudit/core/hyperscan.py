@@ -736,6 +736,7 @@ def hyperscan_full_discovery(
 
 def detect_potential_backdoors(
     tcp_results: Dict[str, List[int]],
+    service_info: Dict[str, Dict[int, str]] = None,
     logger=None,
 ) -> List[Dict]:
     """
@@ -748,11 +749,19 @@ def detect_potential_backdoors(
     
     Args:
         tcp_results: Dict mapping IP -> list of open ports
+        service_info: Optional dict mapping IP -> {port: service_name}
         logger: Optional logger
         
     Returns:
         List of suspicious findings
     """
+    # Import is_port_anomaly from scanner if available
+    try:
+        from redaudit.core.scanner import is_port_anomaly, is_suspicious_service
+        has_scanner_integration = True
+    except ImportError:
+        has_scanner_integration = False
+    
     # Known suspicious port patterns
     SUSPICIOUS_RANGES = [
         (31337, 31337, "elite backdoor"),
@@ -762,6 +771,9 @@ def detect_potential_backdoors(
         (12345, 12346, "netbus"),
         (27374, 27374, "subseven"),
         (54321, 54321, "back orifice 2k"),
+        (1337, 1337, "leet backdoor"),
+        (666, 666, "doom/backdoor"),
+        (65535, 65535, "unusual max port"),
     ]
     
     # Unusual high ports (above 49152 = dynamic range)
@@ -783,8 +795,22 @@ def detect_potential_backdoors(
             
             # Check unusual high ports
             if not reason and port >= DYNAMIC_PORT_START:
-                reason = f"Unusual high port in dynamic range"
+                reason = "Unusual high port in dynamic range"
                 severity = "medium"
+            
+            # Check service anomalies if we have service info
+            if not reason and has_scanner_integration and service_info:
+                ip_services = service_info.get(ip, {})
+                service_name = ip_services.get(port, "")
+                if service_name:
+                    # Check if service is suspicious
+                    if is_suspicious_service(service_name):
+                        reason = f"Suspicious service detected: {service_name}"
+                        severity = "high"
+                    # Check if port/service mismatch
+                    elif is_port_anomaly(port, service_name):
+                        reason = f"Port/service anomaly: {service_name} on port {port}"
+                        severity = "high"
             
             if reason:
                 suspicious.append({
@@ -798,3 +824,195 @@ def detect_potential_backdoors(
         logger.warning("HyperScan: Found %d potential backdoor indicators", len(suspicious))
     
     return suspicious
+
+
+# ============================================================================
+# Deep Scan - Full 65535 Port Coverage
+# ============================================================================
+
+def hyperscan_deep_scan(
+    target_ips: List[str],
+    batch_size: int = 5000,
+    timeout: float = 0.3,
+    logger=None,
+    progress_callback=None,
+) -> Dict[str, List[int]]:
+    """
+    Deep scan ALL 65535 ports on suspicious hosts.
+    
+    This is the "sniffer dog" mode - scans absolutely everything.
+    Use on hosts flagged as suspicious for comprehensive backdoor detection.
+    
+    Args:
+        target_ips: List of IPs to deep scan
+        batch_size: Concurrent connections (higher = faster but more aggressive)
+        timeout: Connection timeout (lower = faster)
+        logger: Optional logger
+        progress_callback: Optional callback(completed, total, desc)
+        
+    Returns:
+        Dict mapping IP -> list of ALL open ports
+    """
+    if not target_ips:
+        return {}
+    
+    # Generate all 65535 ports
+    all_ports = list(range(1, 65536))
+    
+    if logger:
+        logger.info("HyperScan DEEP: Scanning ALL 65535 ports on %d hosts", len(target_ips))
+    
+    return hyperscan_tcp_sweep_sync(
+        target_ips,
+        all_ports,
+        batch_size=batch_size,
+        timeout=timeout,
+        logger=logger,
+    )
+
+
+# ============================================================================
+# Rich Progress Bar Wrapper
+# ============================================================================
+
+def hyperscan_with_progress(
+    networks: List[str],
+    print_fn=None,
+    logger=None,
+) -> Dict:
+    """
+    Run HyperScan with rich progress bars (for CLI integration).
+    
+    Args:
+        networks: List of network CIDRs to scan
+        print_fn: Optional print function for status messages
+        logger: Optional logger
+        
+    Returns:
+        Full discovery results
+    """
+    try:
+        from rich.progress import (
+            Progress,
+            SpinnerColumn,
+            BarColumn,
+            TextColumn,
+            TimeElapsedColumn,
+        )
+        use_rich = True
+    except ImportError:
+        use_rich = False
+    
+    if use_rich:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeElapsedColumn(),
+        ) as progress:
+            task_id = progress.add_task("[cyan]HyperScan Discovery...", total=100)
+            
+            def progress_cb(completed, total, desc):
+                pct = (completed / total * 100) if total > 0 else 0
+                progress.update(task_id, completed=pct, description=f"[cyan]{desc}")
+            
+            # Run discovery with progress
+            results = hyperscan_full_discovery(
+                networks,
+                logger=logger,
+            )
+            
+            progress.update(task_id, completed=100)
+            
+            return results
+    else:
+        # Fallback without rich
+        return hyperscan_full_discovery(networks, logger=logger)
+
+
+# ============================================================================
+# Integration Helper - Use All Available Tools
+# ============================================================================
+
+def hyperscan_with_nmap_enrichment(
+    discovery_results: Dict,
+    extra_tools: Dict = None,
+    logger=None,
+) -> Dict:
+    """
+    Enrich HyperScan results with nmap service detection.
+    
+    For hosts with open ports, runs nmap -sV to identify services,
+    then applies backdoor detection with service info.
+    
+    Args:
+        discovery_results: Results from hyperscan_full_discovery
+        extra_tools: Dict of tool paths (e.g., {'nmap': '/usr/bin/nmap'})
+        logger: Optional logger
+        
+    Returns:
+        Enriched results with service info and backdoor analysis
+    """
+    import subprocess
+    import shutil
+    
+    nmap_path = (extra_tools or {}).get("nmap") or shutil.which("nmap")
+    if not nmap_path:
+        return discovery_results
+    
+    tcp_hosts = discovery_results.get("tcp_hosts", {})
+    if not tcp_hosts:
+        return discovery_results
+    
+    service_info: Dict[str, Dict[int, str]] = {}
+    
+    for ip, ports in tcp_hosts.items():
+        if not ports:
+            continue
+        
+        # Run nmap service detection on found ports
+        port_list = ",".join(str(p) for p in ports[:50])  # Limit to 50 ports
+        cmd = [nmap_path, "-sV", "--version-light", "-p", port_list, ip]
+        
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            
+            # Parse nmap output for service names
+            ip_services: Dict[int, str] = {}
+            for line in result.stdout.splitlines():
+                # Match lines like: 22/tcp   open  ssh     OpenSSH 8.9
+                import re
+                match = re.match(r"(\d+)/tcp\s+open\s+(\S+)", line)
+                if match:
+                    port = int(match.group(1))
+                    service = match.group(2)
+                    ip_services[port] = service
+            
+            if ip_services:
+                service_info[ip] = ip_services
+                
+        except Exception as exc:
+            if logger:
+                logger.debug("Nmap enrichment failed for %s: %s", ip, exc)
+    
+    # Add service info to results
+    if service_info:
+        discovery_results["service_info"] = service_info
+        
+        # Run backdoor detection with service info
+        backdoors = detect_potential_backdoors(
+            tcp_hosts,
+            service_info=service_info,
+            logger=logger,
+        )
+        if backdoors:
+            discovery_results["potential_backdoors"] = backdoors
+    
+    return discovery_results
+
