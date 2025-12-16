@@ -294,6 +294,7 @@ For authorized assessments, finding usernames is key to lateral movement.
 | **Exploits** | `searchsploit` | Known vulnerability correlation | [exploit_lookup()](../../redaudit/core/scanner.py#L480-L550) |
 | **DNS/Whois** | `dig`, `whois` | External network intelligence | [enrich_host_with_dns()](../../redaudit/core/scanner.py#L349-L372) |
 | **Orchestrator** | `ThreadPoolExecutor` | Thread management for parallel scanning | [auditor.py](../../redaudit/core/auditor.py#L788-L840) |
+| **HyperScan** | Python `asyncio` | Ultra-fast parallel discovery: batch TCP, UDP IoT, aggressive ARP (v3.2.3) | [hyperscan.py](../../redaudit/core/hyperscan.py) |
 | **Encryption** | `python3-cryptography` | AES-128 for sensitive reports | [crypto.py](../../redaudit/core/crypto.py) |
 
 ### Reporting System

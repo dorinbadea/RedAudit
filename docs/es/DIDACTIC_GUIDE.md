@@ -292,6 +292,7 @@ Para evaluaciones autorizadas, encontrar nombres de usuario es clave para el mov
 | **Exploits** | `searchsploit` | Correlación de vulnerabilidades conocidas | [exploit_lookup()](../../redaudit/core/scanner.py#L480-L550) |
 | **DNS/Whois** | `dig`, `whois` | Inteligencia de red externa | [enrich_host_with_dns()](../../redaudit/core/scanner.py#L349-L372) |
 | **Orquestador** | `ThreadPoolExecutor` | Gestión de hilos para escaneo paralelo | [auditor.py](../../redaudit/core/auditor.py#L788-L840) |
+| **HyperScan** | Python `asyncio` | Descubrimiento paralelo ultrarrápido: batch TCP, broadcast UDP IoT, ARP agresivo (v3.2.3) | [hyperscan.py](../../redaudit/core/hyperscan.py) |
 | **Cifrado** | `python3-cryptography` | AES-128 para reportes sensibles | [crypto.py](../../redaudit/core/crypto.py) |
 
 ### Sistema de Reportes
