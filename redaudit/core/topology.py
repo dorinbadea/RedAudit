@@ -19,9 +19,10 @@ import ipaddress
 import json
 import re
 import shutil
-import subprocess
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
+
+from redaudit.core.command_runner import CommandRunner
 
 
 def _run_cmd(
@@ -29,24 +30,16 @@ def _run_cmd(
     timeout_s: int,
     logger=None,
 ) -> Tuple[int, str, str]:
-    try:
-        res = subprocess.run(
-            args,
-            capture_output=True,
-            text=True,
-            timeout=timeout_s,
-        )
-        return res.returncode, res.stdout or "", res.stderr or ""
-    except subprocess.TimeoutExpired as exc:
-        out = exc.stdout or ""
-        err = exc.stderr or ""
-        if logger:
-            logger.info("Topology command timed out: %s", args)
-        return 124, out if isinstance(out, str) else "", err if isinstance(err, str) else ""
-    except Exception as exc:
-        if logger:
-            logger.warning("Topology command failed: %s (%s)", args, exc)
-        return 1, "", str(exc)
+    runner = CommandRunner(
+        logger=logger,
+        dry_run=False,
+        default_timeout=float(timeout_s),
+        default_retries=0,
+        backoff_base_s=0.0,
+        redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
+    )
+    res = runner.run(args, timeout=float(timeout_s), capture_output=True, check=False, text=True)
+    return int(res.returncode), res.stdout or "", res.stderr or ""
 
 
 def _parse_ip_route(stdout: str) -> List[Dict[str, Any]]:

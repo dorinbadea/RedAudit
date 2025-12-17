@@ -261,4 +261,3 @@ class CommandRunner:
                 self._logger.info(message)
         except Exception:
             return
-
