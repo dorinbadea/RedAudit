@@ -28,6 +28,7 @@ from redaudit.utils.constants import (
     STATUS_FILTERED,
     STATUS_NO_RESPONSE,
 )
+from redaudit.core.command_runner import CommandRunner
 
 
 def sanitize_ip(ip_str) -> Optional[str]:
@@ -316,7 +317,15 @@ def output_has_identity(records: List[Dict]) -> bool:
 
 
 def run_nmap_command(
-    cmd: List[str], timeout: int, host_ip: str, deep_obj: Dict, print_fn=None, t_fn=None
+    cmd: List[str],
+    timeout: int,
+    host_ip: str,
+    deep_obj: Dict,
+    print_fn=None,
+    t_fn=None,
+    *,
+    logger=None,
+    dry_run: bool = False,
 ) -> Dict:
     """
     Run a single nmap command and collect output.
@@ -335,26 +344,23 @@ def run_nmap_command(
     start = time.time()
     record: Dict[str, Any] = {"command": " ".join(cmd)}
 
-    try:
-        res = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        duration = time.time() - start
-        record["returncode"] = res.returncode
-        record["stdout"] = (res.stdout or "")[:8000]
-        record["stderr"] = (res.stderr or "")[:2000]
-        record["duration_seconds"] = round(duration, 2)
-    except subprocess.TimeoutExpired as exc:
-        duration = time.time() - start
-        record["error"] = f"Timeout after {exc.timeout}s"
-        record["duration_seconds"] = round(duration, 2)
-    except Exception as exc:
-        duration = time.time() - start
-        record["error"] = str(exc)
-        record["duration_seconds"] = round(duration, 2)
+    runner = CommandRunner(
+        logger=logger,
+        dry_run=bool(dry_run),
+        default_timeout=float(timeout),
+        default_retries=0,
+        backoff_base_s=0.0,
+        redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
+    )
+    res = runner.run(cmd, timeout=float(timeout), capture_output=True, check=False, text=True)
+
+    duration = time.time() - start
+    record["returncode"] = res.returncode
+    record["stdout"] = (res.stdout or "")[:8000]
+    record["stderr"] = (res.stderr or "")[:2000]
+    record["duration_seconds"] = round(duration, 2)
+    if res.timed_out:
+        record["error"] = f"Timeout after {timeout}s"
 
     deep_obj.setdefault("commands", []).append(record)
     return record

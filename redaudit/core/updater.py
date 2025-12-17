@@ -755,7 +755,7 @@ def perform_git_update(
     try:
         runner = CommandRunner(
             logger=logger,
-            dry_run=False,
+            dry_run=bool(os.environ.get("REDAUDIT_DRY_RUN")),
             default_timeout=30.0,
             default_retries=1,
             redact_env_keys={"GITHUB_TOKEN", "NVD_API_KEY"},

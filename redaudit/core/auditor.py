@@ -786,7 +786,14 @@ class InteractiveNetworkAuditor:
             self.print_status(
                 self.t("deep_identity_cmd", safe_ip, " ".join(cmd_p1), "120-180"), "WARNING"
             )
-            rec1 = run_nmap_command(cmd_p1, DEEP_SCAN_TIMEOUT, safe_ip, deep_obj)
+            rec1 = run_nmap_command(
+                cmd_p1,
+                DEEP_SCAN_TIMEOUT,
+                safe_ip,
+                deep_obj,
+                logger=self.logger,
+                dry_run=bool(self.config.get("dry_run", False)),
+            )
 
             # Check for Identity
             has_identity = output_has_identity([rec1])
@@ -892,7 +899,14 @@ class InteractiveNetworkAuditor:
                         "WARNING",
                     )
                     deep_obj["udp_top_ports"] = udp_top_ports
-                    rec2b = run_nmap_command(cmd_p2b, DEEP_SCAN_TIMEOUT, safe_ip, deep_obj)
+                    rec2b = run_nmap_command(
+                        cmd_p2b,
+                        DEEP_SCAN_TIMEOUT,
+                        safe_ip,
+                        deep_obj,
+                        logger=self.logger,
+                        dry_run=bool(self.config.get("dry_run", False)),
+                    )
                     if not mac:
                         m2b, v2b = extract_vendor_mac(rec2b.get("stdout", ""))
                         if m2b:

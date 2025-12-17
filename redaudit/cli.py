@@ -438,6 +438,8 @@ def configure_from_args(app, args) -> bool:
 
     # v3.5: Dry-run (print commands where supported)
     app.config["dry_run"] = bool(getattr(args, "dry_run", False))
+    if app.config["dry_run"]:
+        os.environ["REDAUDIT_DRY_RUN"] = "1"
 
     # Set max hosts
     if args.max_hosts:

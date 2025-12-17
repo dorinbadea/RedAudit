@@ -33,7 +33,7 @@ def _run_cmd(
     """Execute a command with timeout, returning (returncode, stdout, stderr)."""
     runner = CommandRunner(
         logger=logger,
-        dry_run=False,
+        dry_run=bool(os.environ.get("REDAUDIT_DRY_RUN")),
         default_timeout=float(timeout_s),
         default_retries=0,
         backoff_base_s=0.0,
