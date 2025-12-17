@@ -106,6 +106,12 @@ Nota: para modo limitado sin sudo/root, añade `--allow-non-root` (algunas funci
 
 **Notas**: Los playbooks se deduplican (uno por host + categoría) y se omiten cuando el cifrado de reportes está activado (`--encrypt`).
 
+### v3.5 (En Desarrollo)
+
+| Flag | Descripción |
+| :--- | :--- |
+| `--dry-run` | Muestra los comandos que se ejecutarían sin ejecutarlos. **Nota:** se está desplegando módulo a módulo en v3.5 (algunas herramientas externas pueden seguir ejecutándose hasta completar la migración). |
+
 ### Seguridad
 
 | Flag | Descripción |

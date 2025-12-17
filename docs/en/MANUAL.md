@@ -332,6 +332,7 @@ The most important options:
 | `-j`, `--threads N`         | Concurrent scanning threads. Range constrained by built-in safe defaults.                                               |
 | `--max-hosts N`             | Maximum number of discovered hosts to scan. Default: all. *(This is a cap, not a host selector.)*                         |
 | `--rate-limit SECONDS`      | Delay between host scans to reduce noise on the wire. Default: 0.                                                        |
+| `--dry-run`                 | Print commands that would be executed without running them. **(v3.5, incremental rollout)**                               |
 | `-e`, `--encrypt`           | Enable encryption of generated reports.                                                                                  |
 | `--encrypt-password PASS`   | Password for encryption in non-interactive runs. If omitted with `--encrypt`, you'll be prompted or a random password may be generated and printed. |
 | `--no-vuln-scan`            | Disable web vulnerability scanning (skip nikto / certain HTTP checks).                                                   |

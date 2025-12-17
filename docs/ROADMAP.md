@@ -28,7 +28,7 @@ This document outlines the technical roadmap, planned architectural improvements
 | Priority | Feature | Status | Description |
 | :--- | :--- | :--- | :--- |
 | **Medium** | **Containerization** | Paused | Official Dockerfile and Docker Compose setup for ephemeral audit containers. |
-| **Medium** | **Centralized CommandRunner** | 🎯 Planned (v3.5) | Single module for external command execution: args as list (anti-injection), configurable timeouts, retries with backoff, secret redaction in logs, dry-run support. Refactors 50+ subprocess calls. |
+| **Medium** | **Centralized CommandRunner** | 🚧 In Progress (v3.5) | Single module for external command execution: args as list (anti-injection), configurable timeouts, retries with backoff, secret redaction in logs, dry-run support. Refactors 50+ subprocess calls. |
 | **Medium** | **Full `--dry-run` Support** | 🎯 Planned | Propagate `--dry-run` flag to all modules so commands are printed but not executed. Depends on CommandRunner. Useful for auditing and debugging. |
 | **Low** | **Single Version Source** | 🎯 Planned | Read version from `pyproject.toml` via `importlib.metadata` instead of manual `VERSION = "x.y.z"`. Prevents version drift across files. |
 | **Low** | **TTY Autodetection** | 🎯 Planned | Auto-disable colors when stdout is not a TTY (pipes/CI). Flag `--no-color` already exists but behavior not fully implemented. |

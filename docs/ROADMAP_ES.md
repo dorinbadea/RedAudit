@@ -28,7 +28,7 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 | Prioridad | Característica | Estado | Descripción |
 | :--- | :--- | :--- | :--- |
 | **Media** | **Contenedorización** | Aparcado | Dockerfile oficial y configuración Docker Compose para contenedores de auditoría efímeros. |
-| **Media** | **CommandRunner Centralizado** | 🎯 Planificado (v3.5) | Módulo único para ejecución de comandos externos: args como lista (anti-inyección), timeouts configurables, reintentos con backoff, redacción de secretos en logs, soporte dry-run. Refactoriza 50+ llamadas subprocess. |
+| **Media** | **CommandRunner Centralizado** | 🚧 En progreso (v3.5) | Módulo único para ejecución de comandos externos: args como lista (anti-inyección), timeouts configurables, reintentos con backoff, redacción de secretos en logs, soporte dry-run. Refactoriza 50+ llamadas subprocess. |
 | **Media** | **Soporte Completo `--dry-run`** | 🎯 Planificado | Propagar flag `--dry-run` a todos los módulos para que los comandos se impriman pero no se ejecuten. Depende de CommandRunner. Útil para auditoría y debugging. |
 | **Baja** | **Única Fuente de Versión** | 🎯 Planificado | Leer versión de `pyproject.toml` via `importlib.metadata` en vez de `VERSION = "x.y.z"` manual. Previene drift de versiones entre archivos. |
 | **Baja** | **Autodetección TTY** | 🎯 Planificado | Desactivar colores automáticamente cuando stdout no es un TTY (pipes/CI). Flag `--no-color` ya existe pero el comportamiento no está completamente implementado. |

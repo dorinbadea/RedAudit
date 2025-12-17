@@ -106,6 +106,12 @@ Note: for limited mode without sudo/root, add `--allow-non-root` (some scan feat
 
 **Notes**: Playbooks are deduplicated (one per host + category) and are skipped when report encryption is enabled (`--encrypt`).
 
+### v3.5 (In Development)
+
+| Flag | Description |
+| :--- | :--- |
+| `--dry-run` | Print commands that would be executed without running them. **Note:** this is being rolled out module-by-module in v3.5 (some external tools may still execute until migration is complete). |
+
 ### Security
 
 | Flag | Description |

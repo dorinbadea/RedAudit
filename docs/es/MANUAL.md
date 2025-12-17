@@ -336,6 +336,7 @@ Las opciones más importantes:
 | `-j`, `--threads N`          | Número de hilos concurrentes. El rango está limitado por constantes internas seguras.                                  |
 | `--max-hosts N`              | Número máximo de hosts encontrados a escanear. Por defecto: todos. *(Es un límite, no un selector de host/IP.)*        |
 | `--rate-limit SEGUNDOS`      | Retraso entre hosts para reducir ruido. Por defecto: 0.                                                                 |
+| `--dry-run`                  | Muestra los comandos que se ejecutarían sin ejecutarlos. **(v3.5, despliegue incremental)**                            |
 | `-e`, `--encrypt`            | Activa el cifrado de los informes generados.                                                                            |
 | `--encrypt-password PASS`    | Contraseña de cifrado en modo no interactivo. Si se omite con `--encrypt`, se pedirá por consola o se generará una aleatoria. |
 | `--no-vuln-scan`             | Desactiva el escaneo de vulnerabilidades web (omite nikto y ciertas pruebas HTTP).                                      |
