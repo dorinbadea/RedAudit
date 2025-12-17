@@ -120,7 +120,13 @@ redaudit --net-discovery --redteam --target 10.0.0.0/8
 
 ## Completed Milestones
 
-### v3.4.1 (Hotfix - December 2025) -> **CURRENT**
+### v3.4.2 (Hotfix - December 2025) -> **CURRENT**
+
+*Patch release focused on correcting persisted output defaults under `sudo` in the interactive wizard.*
+
+- [x] **Wizard output_dir migration**: If an older persisted default points to `/root/...`, RedAudit automatically rewrites it to the invoking user’s `Documents` directory under `sudo`.
+
+### v3.4.1 (Hotfix - December 2025)
 
 *Patch release focused on saving reports under the invoking user when running with `sudo`.*
 

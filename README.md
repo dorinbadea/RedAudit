@@ -16,7 +16,7 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.4.1
+                                      v3.4.2
         Interactive Network Audit Tool
 ```
 
@@ -153,7 +153,7 @@ Verify installation integrity:
 which redaudit  # Should return: /usr/local/bin/redaudit
 
 # 2. Verify version
-redaudit --version  # Should show: RedAudit v3.4.1
+redaudit --version  # Should show: RedAudit v3.4.2
 
 # 3. Check core dependencies
 command -v nmap && command -v tcpdump && command -v python3  # All should succeed
