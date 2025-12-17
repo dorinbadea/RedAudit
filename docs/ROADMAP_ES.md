@@ -6,7 +6,7 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 
 ## Roadmap Activo (Próximos Pasos)
 
-### Funcionalidades de Seguridad y Alta Prioridad (v3.4+)
+### Funcionalidades de Seguridad y Alta Prioridad (v3.5+)
 
 | Prioridad | Característica | Estado | Descripción |
 | :--- | :--- | :--- | :--- |
@@ -120,7 +120,25 @@ redaudit --net-discovery --redteam --target 10.0.0.0/8
 
 ## Hitos Completados
 
-### v3.3 (Completado - Diciembre 2025) -> **ACTUAL**
+### v3.4.1 (Hotfix - Diciembre 2025) -> **PENDIENTE DE RELEASE**
+
+*Patch centrado en guardar reportes bajo el usuario invocador cuando se ejecuta con `sudo`.*
+
+- [x] **Salida por defecto bajo sudo**: La salida por defecto resuelve a `Documentos` del usuario invocador (en lugar de `/root`).
+- [x] **Expansión de `~` bajo sudo**: `--output ~/...` y defaults persistidos expanden contra el usuario invocador.
+- [x] **Endurecimiento de ownership**: `chown` best-effort del árbol del directorio de salida para evitar artefactos propiedad de root bajo el home del usuario.
+- [x] **Tests unitarios**: Cobertura añadida para la lógica de resolución de rutas.
+
+### v3.4.0 (Completado - Diciembre 2025) -> **ACTUAL**
+
+*Release centrada en playbooks de remediación y alineación de documentación.*
+
+- [x] **Playbooks de Remediación**: Playbooks Markdown auto-generados por host/categoría en `<output_dir>/playbooks/` (TLS, cabeceras HTTP, remediación CVE, hardening web, hardening puertos).
+- [x] **Integración**: Playbooks generados automáticamente al finalizar el scan (sin flag; omitidos con `--encrypt`).
+- [x] **Testing**: Tests unitarios añadidos para el generador de playbooks.
+- [x] **Documentación**: README, manuales, uso, guía didáctica, troubleshooting, seguridad, changelogs y release notes actualizados y coherentes.
+
+### v3.3 (Completado - Diciembre 2025)
 
 *Release centrada en alertas SIEM, dashboards Blue Team y salida diff visual.*
 
@@ -132,7 +150,7 @@ redaudit --net-discovery --redteam --target 10.0.0.0/8
 
 *Release centrado en pulido de UX, Menú Principal Interactivo y simplificación de Topología.*
 
-- [x] **Menú Principal Interactivo**: Punto de entrada unificado para Escaneo, Diff y Config.
+- [x] **Menú Principal Interactivo**: Punto de entrada unificado para Escaneo, Actualizar, Diff y Salir.
 - [x] **Topología Simplificada**: Wizard simplificado para elección de topología vs escaneo completo.
 - [x] **Soporte Non-TTY**: Mejor compatibilidad con CI/Pipelines (sin colores/spinners).
 - [x] **Defaults Consolidados**: Manejo de "Valores Base" y persistencia más limpia.

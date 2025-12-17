@@ -6,7 +6,7 @@ This document outlines the technical roadmap, planned architectural improvements
 
 ## Active Roadmap (Upcoming)
 
-### High Priority & Security Features (v3.4+)
+### High Priority & Security Features (v3.5+)
 
 | Priority | Feature | Status | Description |
 | :--- | :--- | :--- | :--- |
@@ -120,7 +120,25 @@ redaudit --net-discovery --redteam --target 10.0.0.0/8
 
 ## Completed Milestones
 
-### v3.3 (Completed - December 2025) -> **CURRENT**
+### v3.4.1 (Hotfix - December 2025) -> **PENDING RELEASE**
+
+*Patch release focused on saving reports under the invoking user when running with `sudo`.*
+
+- [x] **Default output under sudo**: Default output resolves to the invoking user’s `Documents` directory (instead of `/root`).
+- [x] **Sudo-aware `~` expansion**: `--output ~/...` and persisted defaults expand against the invoking user.
+- [x] **Ownership hardening**: Best-effort `chown` of report output folder tree to avoid root-owned artifacts under the user’s home.
+- [x] **Unit tests**: Added coverage for path resolution logic.
+
+### v3.4.0 (Completed - December 2025) -> **CURRENT**
+
+*Feature release focused on remediation playbooks and documentation alignment.*
+
+- [x] **Remediation Playbooks**: Auto-generated Markdown playbooks per host/category in `<output_dir>/playbooks/` (TLS, HTTP headers, CVE remediation, web hardening, port hardening).
+- [x] **Integration**: Playbooks generated automatically after scan completion (no CLI flag; skipped when `--encrypt` is enabled).
+- [x] **Testing**: Unit tests added for playbook generator.
+- [x] **Docs refresh**: README, manuals, usage, didactic guides, troubleshooting, security docs, changelogs, release notes updated and made consistent.
+
+### v3.3 (Completed - December 2025)
 
 *Feature release focused on SIEM alerting, Blue Team dashboards, and visual diff output.*
 
@@ -132,7 +150,7 @@ redaudit --net-discovery --redteam --target 10.0.0.0/8
 
 *Release focused on UX polish, Interactive Main Menu, and Topology Streamlining.*
 
-- [x] **Interactive Main Menu**: Unified entry point for Scan, Diff, and Config.
+- [x] **Interactive Main Menu**: Unified entry point for Scan, Update, Diff, and Exit.
 - [x] **Streamlined Topology**: Simplified wizard for topology vs full scan.
 - [x] **Non-TTY Support**: Better CI/Pipeline compatibility (no colors/spinners).
 - [x] **Consolidated Defaults**: "Base Values" handling and cleaner persistence.
