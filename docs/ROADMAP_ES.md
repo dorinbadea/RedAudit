@@ -120,7 +120,15 @@ redaudit --net-discovery --redteam --target 10.0.0.0/8
 
 ## Hitos Completados
 
-### v3.4.2 (Hotfix - Diciembre 2025) -> **ACTUAL**
+### v3.4.3 (Hotfix - Diciembre 2025) -> **ACTUAL**
+
+*Patch centrado en mejorar la legibilidad de hallazgos y pulir defaults del wizard.*
+
+- [x] **Títulos descriptivos de hallazgos**: Los hallazgos web ahora tienen un `descriptive_title` corto derivado de observaciones parseadas (mejora encabezados de playbooks, webhooks y legibilidad en HTML).
+- [x] **Directorio de salida por defecto (wizard)**: Cuando el wizard iba a proponer `/root/...`, RedAudit ahora prefiere `Documentos` del usuario (usuario invocador bajo `sudo`, y un único usuario detectado bajo `/home/<usuario>` cuando se ejecuta como root sin `sudo`).
+- [x] **Marcador de selección (wizard)**: Usa un marcador ASCII `>` para máxima compatibilidad con terminales/fuentes.
+
+### v3.4.2 (Hotfix - Diciembre 2025)
 
 *Patch centrado en corregir defaults persistidos de salida bajo `sudo` en el wizard interactivo.*
 

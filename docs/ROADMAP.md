@@ -120,7 +120,15 @@ redaudit --net-discovery --redteam --target 10.0.0.0/8
 
 ## Completed Milestones
 
-### v3.4.2 (Hotfix - December 2025) -> **CURRENT**
+### v3.4.3 (Hotfix - December 2025) -> **CURRENT**
+
+*Patch release focused on improving finding readability and smoothing wizard defaults.*
+
+- [x] **Descriptive finding titles**: Web findings now get a short `descriptive_title` derived from parsed observations (improves playbook headings, webhooks, and HTML readability).
+- [x] **Wizard output directory default**: When the wizard would default under `/root/...`, RedAudit now prefers the user’s `Documents` folder (invoking user under `sudo`, and a single detected `/home/<user>` when running as root without `sudo`).
+- [x] **Wizard selection marker**: Uses an ASCII `>` marker for maximum terminal compatibility.
+
+### v3.4.2 (Hotfix - December 2025)
 
 *Patch release focused on correcting persisted output defaults under `sudo` in the interactive wizard.*
 
