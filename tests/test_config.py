@@ -99,6 +99,7 @@ class TestDefaultConfig(unittest.TestCase):
         self.assertIn("defaults", DEFAULT_CONFIG)
         self.assertIsInstance(DEFAULT_CONFIG["defaults"], dict)
         for k in [
+            "target_networks",
             "threads",
             "output_dir",
             "rate_limit",
