@@ -11,18 +11,21 @@ import os
 from datetime import datetime
 from typing import Dict, Optional
 
-from jinja2 import Environment, PackageLoader, select_autoescape
-
 from redaudit.utils.constants import VERSION
 
 
-def get_template_env() -> Environment:
+def get_template_env():
     """
     Get Jinja2 environment configured for RedAudit templates.
     
     Returns:
         Configured Jinja2 Environment
+        
+    Raises:
+        ImportError: If jinja2 is not installed
     """
+    from jinja2 import Environment, PackageLoader, select_autoescape
+    
     return Environment(
         loader=PackageLoader("redaudit", "templates"),
         autoescape=select_autoescape(["html", "xml"]),
@@ -93,7 +96,7 @@ def prepare_report_data(results: Dict, config: Dict) -> Dict:
         "version": VERSION,
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "scan_timestamp": results.get("timestamp", "-"),
-        "target": config.get("target", "-"),
+        "target": ", ".join(config.get("target_networks", [])) or "-",
         "scan_mode": config.get("scan_mode", "-"),
         "summary": summary,
         "host_count": len(hosts),
