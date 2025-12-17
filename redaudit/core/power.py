@@ -14,7 +14,7 @@ import re
 import shutil
 import subprocess
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 
 @dataclass
@@ -146,7 +146,9 @@ class SleepInhibitor:
             state = self._capture_xset_state(xset)
             self._xset_state = state
             subprocess.run([xset, "s", "off"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run([xset, "s", "noblank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(
+                [xset, "s", "noblank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
             subprocess.run([xset, "-dpms"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self._log("DEBUG", "Display sleep inhibited via xset")
         except Exception:
@@ -218,8 +220,13 @@ class SleepInhibitor:
             and state.dpms_off is not None
         ):
             subprocess.run(
-                [xset, "dpms", str(state.dpms_standby), str(state.dpms_suspend), str(state.dpms_off)],
+                [
+                    xset,
+                    "dpms",
+                    str(state.dpms_standby),
+                    str(state.dpms_suspend),
+                    str(state.dpms_off),
+                ],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-
