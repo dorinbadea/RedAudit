@@ -16,6 +16,23 @@ import time
 from typing import Any, Dict, List, Optional, Set, Tuple
 from datetime import datetime
 
+from redaudit.core.command_runner import CommandRunner
+from redaudit.utils.dry_run import is_dry_run
+
+
+_REDAUDIT_REDACT_ENV_KEYS = {"NVD_API_KEY", "GITHUB_TOKEN"}
+
+
+def _make_runner(*, logger=None, dry_run: Optional[bool] = None, timeout: Optional[float] = None):
+    return CommandRunner(
+        logger=logger,
+        dry_run=is_dry_run(dry_run),
+        default_timeout=timeout,
+        default_retries=0,
+        backoff_base_s=0.0,
+        redact_env_keys=_REDAUDIT_REDACT_ENV_KEYS,
+    )
+
 
 # ============================================================================
 # Configuration
@@ -508,6 +525,7 @@ def hyperscan_arp_aggressive(
     retries: int = DEFAULT_ARP_RETRIES,
     timeout: float = DEFAULT_ARP_TIMEOUT,
     logger=None,
+    dry_run: Optional[bool] = None,
 ) -> List[Dict]:
     """
     Aggressive ARP sweep with multiple retries.
@@ -524,11 +542,11 @@ def hyperscan_arp_aggressive(
     Returns:
         List of discovered hosts with MAC addresses
     """
-    import subprocess
     import shutil
 
     discovered = []
     seen_ips: Set[str] = set()
+    runner = _make_runner(logger=logger, dry_run=dry_run, timeout=float(max(5.0, timeout * 2)))
 
     # Try arp-scan first (more reliable)
     arp_scan = shutil.which("arp-scan")
@@ -546,26 +564,36 @@ def hyperscan_arp_aggressive(
                 # Try to detect interface for network
                 try:
                     # Simple heuristic for interface detection
-                    route_output = subprocess.run(
-                        ["ip", "route", "show", network], capture_output=True, text=True, timeout=5
+                    route_output = runner.run(
+                        ["ip", "route", "show", network],
+                        capture_output=True,
+                        text=True,
+                        timeout=5.0,
+                        check=False,
                     )
-                    if "dev" in route_output.stdout:
-                        parts = route_output.stdout.split("dev")
+                    route_stdout = str(route_output.stdout or "")
+                    if "dev" in route_stdout:
+                        parts = route_stdout.split("dev")
                         if len(parts) > 1:
                             iface = parts[1].split()[0].strip()
                             cmd[1] = f"--interface={iface}"
                 except Exception:
                     pass
 
-                result = subprocess.run(
+                result = runner.run(
                     cmd,
                     capture_output=True,
                     text=True,
-                    timeout=timeout * 2,
+                    timeout=float(timeout * 2),
+                    check=False,
                 )
+                if result.timed_out:
+                    if logger:
+                        logger.warning("HyperScan ARP attempt %d timeout", attempt + 1)
+                    continue
 
                 # Parse arp-scan output
-                for line in result.stdout.splitlines():
+                for line in str(result.stdout or "").splitlines():
                     parts = line.split()
                     if len(parts) >= 2:
                         ip = parts[0]
@@ -589,9 +617,6 @@ def hyperscan_arp_aggressive(
                         except ValueError:
                             pass
 
-            except subprocess.TimeoutExpired:
-                if logger:
-                    logger.warning("HyperScan ARP attempt %d timeout", attempt + 1)
             except Exception as exc:
                 if logger:
                     logger.debug("HyperScan ARP attempt %d error: %s", attempt + 1, exc)
@@ -608,13 +633,14 @@ def hyperscan_arp_aggressive(
                     continue
 
                 try:
-                    result = subprocess.run(
+                    result = runner.run(
                         [arping, "-c", "1", "-w", "1", ip],
                         capture_output=True,
                         text=True,
-                        timeout=3,
+                        timeout=3.0,
+                        check=False,
                     )
-                    if "reply from" in result.stdout.lower():
+                    if "reply from" in str(result.stdout or "").lower():
                         seen_ips.add(ip)
                         discovered.append(
                             {
@@ -647,6 +673,7 @@ def hyperscan_full_discovery(
     include_arp: bool = True,
     tcp_batch_size: int = DEFAULT_TCP_BATCH_SIZE,
     logger=None,
+    dry_run: Optional[bool] = None,
 ) -> Dict:
     """
     Full parallel discovery combining TCP/UDP/ARP scans.
@@ -723,7 +750,7 @@ def hyperscan_full_discovery(
 
         # 1. ARP sweep first (fastest for L2)
         if include_arp:
-            arp_results = hyperscan_arp_aggressive(network, logger=logger)
+            arp_results = hyperscan_arp_aggressive(network, logger=logger, dry_run=dry_run)
             results["arp_hosts"].extend(arp_results)
 
         # 2. UDP IoT probes
@@ -1003,6 +1030,7 @@ def hyperscan_with_nmap_enrichment(
     discovery_results: Dict,
     extra_tools: Dict = None,
     logger=None,
+    dry_run: Optional[bool] = None,
 ) -> Dict:
     """
     Enrich HyperScan results with nmap service detection.
@@ -1018,7 +1046,6 @@ def hyperscan_with_nmap_enrichment(
     Returns:
         Enriched results with service info and backdoor analysis
     """
-    import subprocess
     import shutil
 
     nmap_path = (extra_tools or {}).get("nmap") or shutil.which("nmap")
@@ -1030,6 +1057,7 @@ def hyperscan_with_nmap_enrichment(
         return discovery_results
 
     service_info: Dict[str, Dict[int, str]] = {}
+    runner = _make_runner(logger=logger, dry_run=dry_run, timeout=60.0)
 
     for ip, ports in tcp_hosts.items():
         if not ports:
@@ -1040,16 +1068,11 @@ def hyperscan_with_nmap_enrichment(
         cmd = [nmap_path, "-sV", "--version-light", "-p", port_list, ip]
 
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
+            result = runner.run(cmd, capture_output=True, text=True, timeout=60.0, check=False)
 
             # Parse nmap output for service names
             ip_services: Dict[int, str] = {}
-            for line in result.stdout.splitlines():
+            for line in str(result.stdout or "").splitlines():
                 # Match lines like: 22/tcp   open  ssh     OpenSSH 8.9
                 import re
 

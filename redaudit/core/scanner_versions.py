@@ -9,11 +9,11 @@ v3.1: Detect and report versions of external scanning tools.
 
 import shutil
 import re
-import os
 from typing import Dict, Optional
 
 from redaudit.utils.constants import VERSION
 from redaudit.core.command_runner import CommandRunner
+from redaudit.utils.dry_run import is_dry_run
 
 
 # Tool detection configuration
@@ -70,7 +70,7 @@ def _get_tool_version(tool_name: str, config: dict) -> Optional[str]:
 
     try:
         runner = CommandRunner(
-            dry_run=bool(os.environ.get("REDAUDIT_DRY_RUN")),
+            dry_run=is_dry_run(),
             default_timeout=5.0,
             default_retries=0,
             backoff_base_s=0.0,

@@ -75,7 +75,12 @@ class CommandRunner:
             raise ValueError("stdout/stderr cannot be used with capture_output=True")
 
         if self._dry_run:
-            self._log("INFO", f"[dry-run] {self._format_cmd(cmd, redact_values)}")
+            formatted = self._format_cmd(cmd, redact_values)
+            self._log("INFO", f"[dry-run] {formatted}")
+            try:
+                print(f"[dry-run] {formatted}", flush=True)
+            except Exception:
+                pass
             empty_out: str | bytes | None
             if not capture_output:
                 empty_out = None

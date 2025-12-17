@@ -54,6 +54,7 @@ from redaudit.utils.paths import (
     maybe_chown_to_invoking_user,
 )
 from redaudit.utils.i18n import TRANSLATIONS, get_text
+from redaudit.utils.dry_run import is_dry_run
 from redaudit.core.command_runner import CommandRunner
 from redaudit.core.crypto import (
     is_crypto_available,
@@ -941,9 +942,11 @@ class InteractiveNetworkAuditor:
         """Perform network discovery scan."""
         self.current_phase = f"discovery:{network}"
         self.logger.info("Discovery on %s", network)
-        nm = nmap.PortScanner()
         args = get_nmap_arguments("rapido")
         self.print_status(self.t("nmap_cmd", network, f"nmap {args} {network}"), "INFO")
+        if is_dry_run(self.config.get("dry_run")):
+            return []
+        nm = nmap.PortScanner()
         try:
             nm.scan(hosts=network, arguments=args)
         except Exception as exc:
@@ -970,10 +973,20 @@ class InteractiveNetworkAuditor:
             return {"ip": host, "error": "Invalid IP"}
 
         self.current_phase = f"ports:{safe_ip}"
-        nm = nmap.PortScanner()
         args = get_nmap_arguments(self.config["scan_mode"])
         self.logger.debug("Nmap scan %s %s", safe_ip, args)
         self.print_status(self.t("nmap_cmd", safe_ip, f"nmap {args} {safe_ip}"), "INFO")
+        if is_dry_run(self.config.get("dry_run")):
+            return {
+                "ip": safe_ip,
+                "hostname": "",
+                "ports": [],
+                "web_ports_count": 0,
+                "total_ports_found": 0,
+                "status": STATUS_DOWN,
+                "dry_run": True,
+            }
+        nm = nmap.PortScanner()
 
         try:
             nm.scan(safe_ip, arguments=args)
@@ -1512,6 +1525,8 @@ class InteractiveNetworkAuditor:
 
     def clear_screen(self):
         """Clear the terminal screen."""
+        if is_dry_run(self.config.get("dry_run")):
+            return
         os.system("clear" if os.name == "posix" else "cls")
 
     def print_banner(self):
