@@ -35,6 +35,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     # v3.1+: Persistent defaults for common CLI/interactive settings.
     # v3.2.3: Expanded to cover all scan parameters
     "defaults": {
+        # v3.4.4: Persist last selected targets for "start immediately" wizard flow.
+        "target_networks": None,  # list[str] of CIDRs (e.g., ["192.168.1.0/24"])
         "threads": None,
         "output_dir": None,
         "rate_limit": None,

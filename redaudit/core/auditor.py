@@ -1536,7 +1536,9 @@ class InteractiveNetworkAuditor:
         # v3.2.1+: Give explicit control over persisted defaults.
         defaults_for_run = persisted_defaults
         should_skip_config = False
+        auto_start = False
         scan_default_keys = (
+            "target_networks",
             "threads",
             "output_dir",
             "rate_limit",
@@ -1562,17 +1564,37 @@ class InteractiveNetworkAuditor:
                 if choice == 2:
                     defaults_for_run = {}
                     self.print_status(self.t("defaults_ignore_confirm"), "INFO")
+                elif choice == 0:
+                    # Use defaults and continue immediately (no re-asking scan parameters).
+                    should_skip_config = True
+                    auto_start = True
                 elif choice == 1:
                     if self.ask_yes_no(self.t("defaults_show_summary_q"), default="no"):
                         self._show_defaults_summary(persisted_defaults)
 
                     if self.ask_yes_no(self.t("defaults_use_immediately_q"), default="yes"):
                         should_skip_config = True
+                        auto_start = True
 
         print(f"\n{self.COLORS['HEADER']}{self.t('scan_config')}{self.COLORS['ENDC']}")
         print("=" * 60)
 
-        self.config["target_networks"] = self.ask_network_range()
+        # Targets: if the user chose to start immediately, prefer persisted targets when valid.
+        target_networks = (
+            defaults_for_run.get("target_networks") if isinstance(defaults_for_run, dict) else None
+        )
+        if (
+            should_skip_config
+            and isinstance(target_networks, list)
+            and target_networks
+            and all(isinstance(t, str) and t.strip() for t in target_networks)
+        ):
+            self.config["target_networks"] = [t.strip() for t in target_networks]
+            self.print_status(
+                self.t("defaults_targets_applied", len(self.config["target_networks"])), "INFO"
+            )
+        else:
+            self.config["target_networks"] = self.ask_network_range()
 
         if should_skip_config:
             self._apply_run_defaults(defaults_for_run)
@@ -1582,6 +1604,9 @@ class InteractiveNetworkAuditor:
 
         self.show_config_summary()
 
+        if auto_start:
+            return True
+
         # v3.1+: Save chosen settings as persistent defaults (optional).
         # v3.2.2+: Simplified - max 2 final prompts (save + start)
         wants_save_defaults = self.ask_yes_no(self.t("save_defaults_q"), default="no")
@@ -1590,6 +1615,7 @@ class InteractiveNetworkAuditor:
                 from redaudit.utils.config import update_persistent_defaults
 
                 ok = update_persistent_defaults(
+                    target_networks=self.config.get("target_networks"),
                     threads=self.config.get("threads"),
                     output_dir=self.config.get("output_dir"),
                     rate_limit=self.rate_limit_delay,
@@ -2076,6 +2102,12 @@ class InteractiveNetworkAuditor:
         # v3.2.3: Display ALL saved defaults
         self.print_status(self.t("defaults_summary_title"), "INFO")
 
+        def fmt_targets(val):
+            if not isinstance(val, list) or not val:
+                return "-"
+            cleaned = [t.strip() for t in val if isinstance(t, str) and t.strip()]
+            return ", ".join(cleaned) if cleaned else "-"
+
         # Helper to format boolean values
         def fmt_bool(val):
             if val is None:
@@ -2084,6 +2116,7 @@ class InteractiveNetworkAuditor:
 
         # Display all saved defaults
         fields = [
+            ("defaults_summary_targets", fmt_targets(persisted_defaults.get("target_networks"))),
             ("defaults_summary_scan_mode", persisted_defaults.get("scan_mode")),
             ("defaults_summary_threads", persisted_defaults.get("threads")),
             ("defaults_summary_output", persisted_defaults.get("output_dir")),
