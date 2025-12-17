@@ -110,15 +110,15 @@ redaudit --topology --target 10.0.0.0/8 --yes           # Integrado con auditor�
 | Prioridad | Característica | Descripción |
 | :--- | :--- | :--- |
 | **Alta** | **Pipeline SIEM Nativo** | Exporters directos: módulo Filebeat personalizado (autoconfig ingest Elasticsearch), mapping Sigma rules para findings comunes (Nikto, CVE, cifrados débiles). JSONL con ECS completo (risk_score calculado, rule.id). Flag `--siem-pipeline elk\|splunk\|qradar`. |
-| **Alta** | **Webhook Alertas en Tiempo Real** | `--webhook URL` para enviar findings críticos (CVE alto, servicios expuestos) via POST JSON a Slack/Teams/PagerDuty/TheHive durante el scan. Respuesta inmediata Blue Team. |
-| **Media** | **Diff Visual y Tracking Longitudinal** | Extender `--diff` con salida HTML comparativa (side-by-side, highlight nuevo/resuelto), dashboard timeline risk_score por subnet/host. Export diferencial JSONL para SIEM histórico. |
+| **Alta** | ~~**Webhook Alertas en Tiempo Real**~~ | ✅ **v3.3** `--webhook URL` para enviar findings críticos (CVE alto, servicios expuestos) via POST JSON a Slack/Teams/PagerDuty/TheHive durante el scan. Respuesta inmediata Blue Team. |
+| **Media** | ~~**Diff Visual y Tracking Longitudinal**~~ | ✅ **v3.3** Extender `--diff` con salida HTML comparativa (side-by-side, highlight nuevo/resuelto). Export diferencial JSONL para SIEM histórico. |
 
 ### Herramientas Blue Team Manual
 
 | Prioridad | Característica | Descripción |
 | :--- | :--- | :--- |
-| **Alta** | **Dashboard HTML Interactivo** | Reporte HTML autogenerado (Jinja2 + Bootstrap + Chart.js): tablas sortable assets/findings, gráficos (top vulns, puertos, timeline diffs), mapa topología SVG clickable, búsqueda full-text. Flag `--html-report`. |
-| **Media** | **Export Playbooks** | Generar Markdown/YAML playbooks por finding (remediación TLS débil, referencias MITRE/CVE, comandos sugeridos). Incluido en reporte para triage rápido. |
+| **Alta** | ~~**Dashboard HTML Interactivo**~~ | ✅ **v3.3** Reporte HTML autogenerado (Jinja2 + Chart.js): tablas sortable assets/findings, gráficos (distribución severidad, top puertos). Flag `--html-report`. |
+| **Media** | **Export Playbooks** | 🎯 **v3.4** Generar Markdown/YAML playbooks por finding (remediación TLS débil, referencias MITRE/CVE, comandos sugeridos). Incluido en reporte para triage rápido. |
 | **Baja** | **Verificación Hardening con Osquery** | Módulo post-scan que ejecute queries Osquery (via fleet o directo) en hosts vivos para validar configs detectadas (firewall, servicios). Merge en reporte SIEM/HTML para closed-loop. |
 
 ### Extensiones Red Team Testing (Validación Defensiva)
@@ -127,14 +127,14 @@ redaudit --topology --target 10.0.0.0/8 --yes           # Integrado con auditor�
 | :--- | :--- | :--- |
 | **Media** | **Integración Impacket** | Módulo opcional `--redteam-deep` usando Impacket (smbexec, wmiexec, secretsdump) sobre credenciales dummy o null sessions detectadas. Genera evidencia PoC para validar detección Blue Team (SMB signing, LAPS). |
 | **Media** | **BloodHound Collector Automático** | Ejecutar SharpHound/BloodHound.py en hosts Windows vivos (via psexec/winrm detectado). Importar JSON a Neo4j local y generar reporte paths ataque comunes (Kerberoast, AS-REProast). Ayuda Blue Team a priorizar hardening AD. |
-| **Media** | **Automatización Nuclei** | Lanzar Nuclei sobre HTTP/HTTPS/servicios detectados con templates community + opción cargar custom. Output mergeado en findings con PoC URLs. Permite simular ataques modernos y generar Sigma rules defensivas. |
+| **Media** | **Automatización Nuclei** | 🎯 **v3.6** Lanzar Nuclei sobre HTTP/HTTPS/servicios detectados con templates community + opción cargar custom. Output mergeado en findings con PoC URLs. Permite simular ataques modernos y generar Sigma rules defensivas. |
 | **Baja** | **Generación Playbook Red Team** | Por finding exploitable (ej: CVE alto, auth débil), generar scripts PoC automáticos (sugerencias Python/Impacket/Msfvenom) en carpeta evidence. Incluye safeguards (solo labs, `--dry-run`). Facilita testing controles Blue Team (EDR, logging). |
 
 ### Experiencia de Desarrollador / Deuda Técnica (v3.3+)
 
 | Prioridad | Característica | Descripción |
 | :--- | :--- | :--- |
-| **Media** | **CommandRunner Centralizado** | Módulo único para ejecución de comandos externos: args como lista (anti-inyección), timeouts configurables, reintentos con backoff, redacción de secretos en logs, soporte dry-run. Refactoriza 50+ llamadas subprocess. |
+| **Media** | **CommandRunner Centralizado** | 🎯 **v3.5** Módulo único para ejecución de comandos externos: args como lista (anti-inyección), timeouts configurables, reintentos con backoff, redacción de secretos en logs, soporte dry-run. Refactoriza 50+ llamadas subprocess. |
 | **Media** | **Soporte Completo `--dry-run`** | Propagar flag `--dry-run` a todos los módulos para que los comandos se impriman pero no se ejecuten. Depende de CommandRunner. Útil para auditoría y debugging. |
 | **Baja** | **Única Fuente de Versión** | Leer versión de `pyproject.toml` via `importlib.metadata` en vez de `VERSION = "x.y.z"` manual. Previene drift de versiones entre archivos. |
 | **Baja** | **Autodetección TTY** | Desactivar colores automáticamente cuando stdout no es un TTY (pipes/CI). Flag `--no-color` ya existe pero el comportamiento no está completamente implementado. |

@@ -110,15 +110,15 @@ redaudit --topology --target 10.0.0.0/8 --yes           # Integrated with full a
 | Priority | Feature | Description |
 | :--- | :--- | :--- |
 | **High** | **Native SIEM Pipeline** | Direct exporters: custom Filebeat module (Elasticsearch ingest autoconfig), Sigma rule mapping for common findings (Nikto, CVE, weak ciphers). JSONL with full ECS (calculated risk_score, rule.id). Flag `--siem-pipeline elk\|splunk\|qradar`. |
-| **High** | **Webhook Realtime Alerting** | `--webhook URL` to send critical findings (high CVE, exposed services) via POST JSON to Slack/Teams/PagerDuty/TheHive during scan. Immediate Blue Team response. |
-| **Medium** | **Diff Visual & Longitudinal Tracking** | Extend `--diff` with comparative HTML output (side-by-side, highlight new/resolved), timeline dashboard risk_score by subnet/host. JSONL differential export for historical SIEM. |
+| **High** | ~~**Webhook Realtime Alerting**~~ | ✅ **v3.3** `--webhook URL` to send critical findings (high CVE, exposed services) via POST JSON to Slack/Teams/PagerDuty/TheHive during scan. Immediate Blue Team response. |
+| **Medium** | ~~**Diff Visual & Longitudinal Tracking**~~ | ✅ **v3.3** Extend `--diff` with comparative HTML output (side-by-side, highlight new/resolved). JSONL differential export for historical SIEM. |
 
 ### Blue Team Manual Tools
 
 | Priority | Feature | Description |
 | :--- | :--- | :--- |
-| **High** | **Interactive HTML Dashboard** | Auto-generated HTML report (Jinja2 + Bootstrap + Chart.js): sortable assets/findings tables, charts (top vulns, ports, timeline diffs), clickable SVG topology map, full-text search. Flag `--html-report`. |
-| **Medium** | **Playbook Export** | Generate Markdown/YAML playbooks per finding (weak TLS remediation, MITRE/CVE references, suggested commands). Included in report for rapid triage. |
+| **High** | ~~**Interactive HTML Dashboard**~~ | ✅ **v3.3** Auto-generated HTML report (Jinja2 + Chart.js): sortable assets/findings tables, charts (severity distribution, top ports). Flag `--html-report`. |
+| **Medium** | **Playbook Export** | 🎯 **v3.4** Generate Markdown/YAML playbooks per finding (weak TLS remediation, MITRE/CVE references, suggested commands). Included in report for rapid triage. |
 | **Low** | **Osquery Hardening Verification** | Post-scan module that executes Osquery queries (via fleet or direct) on live hosts to validate detected configs (firewall, services). Merged in SIEM/HTML report for closed-loop. |
 
 ### Red Team Testing Extensions (Defensive Validation)
@@ -127,14 +127,14 @@ redaudit --topology --target 10.0.0.0/8 --yes           # Integrated with full a
 | :--- | :--- | :--- |
 | **Medium** | **Impacket Integration** | Optional module `--redteam-deep` using Impacket (smbexec, wmiexec, secretsdump) on dummy credentials or detected null sessions. Generates PoC evidence to validate Blue Team detection (SMB signing, LAPS). |
 | **Medium** | **BloodHound Auto-Collector** | Execute SharpHound/BloodHound.py on live Windows hosts (via detected psexec/winrm). Import JSON to local Neo4j and generate common attack paths report (Kerberoast, AS-REProast). Helps Blue Team prioritize AD hardening. |
-| **Medium** | **Nuclei Automation** | Launch Nuclei on detected HTTP/HTTPS/services with community templates + option to load custom. Output merged in findings with PoC URLs. Enables simulating modern attacks and generating defensive Sigma rules. |
+| **Medium** | **Nuclei Automation** | 🎯 **v3.6** Launch Nuclei on detected HTTP/HTTPS/services with community templates + option to load custom. Output merged in findings with PoC URLs. Enables simulating modern attacks and generating defensive Sigma rules. |
 | **Low** | **Red Team Playbook Generation** | For exploitable findings (e.g., high CVE, weak auth), generate automatic PoC scripts (Python/Impacket/Msfvenom suggestions) in evidence folder. Includes safeguards (labs only, `--dry-run`). Facilitates testing Blue Team controls (EDR, logging). |
 
 ### Developer Experience / Technical Debt (v3.3+)
 
 | Priority | Feature | Description |
 | :--- | :--- | :--- |
-| **Medium** | **Centralized CommandRunner** | Single module for external command execution: args as list (anti-injection), configurable timeouts, retries with backoff, secret redaction in logs, dry-run support. Refactors 50+ subprocess calls. |
+| **Medium** | **Centralized CommandRunner** | 🎯 **v3.5** Single module for external command execution: args as list (anti-injection), configurable timeouts, retries with backoff, secret redaction in logs, dry-run support. Refactors 50+ subprocess calls. |
 | **Medium** | **Full `--dry-run` Support** | Propagate `--dry-run` flag to all modules so commands are printed but not executed. Depends on CommandRunner. Useful for auditing and debugging. |
 | **Low** | **Single Version Source** | Read version from `pyproject.toml` via `importlib.metadata` instead of manual `VERSION = "x.y.z"`. Prevents version drift across files. |
 | **Low** | **TTY Autodetection** | Auto-disable colors when stdout is not a TTY (pipes/CI). Flag `--no-color` already exists but behavior not fully implemented. |
