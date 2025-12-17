@@ -11,6 +11,12 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 - (nada aún)
 
+## [3.4.3] - 2025-12-17 (Hotfix)
+
+### Corregido
+
+- **Títulos de hallazgos**: Los hallazgos web ahora tienen un `descriptive_title` corto derivado de observaciones parseadas (mejora títulos en HTML, webhooks y encabezados de playbooks).
+
 ## [3.4.2] - 2025-12-17 (Hotfix)
 
 ### Corregido
