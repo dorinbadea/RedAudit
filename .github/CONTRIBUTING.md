@@ -36,7 +36,7 @@ Thank you for considering contributing to RedAudit! This document outlines the d
    ```bash
    # Core dependencies
    pip3 install -r requirements.txt
-   
+
    # Development dependencies (optional)
    pip3 install -e ".[dev]"
    ```

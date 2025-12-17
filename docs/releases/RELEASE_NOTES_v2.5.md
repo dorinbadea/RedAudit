@@ -83,7 +83,6 @@ Thanks to all contributors and users who provided feedback!
 
 ---
 
-**Full Changelog**: [CHANGELOG.md](../../CHANGELOG.md)  
-**Documentation**: [docs/](docs/)  
+**Full Changelog**: [CHANGELOG.md](../../CHANGELOG.md)
+**Documentation**: [docs/](docs/)
 **License**: GPLv3
-

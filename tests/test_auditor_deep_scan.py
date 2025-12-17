@@ -137,7 +137,11 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
                         with patch("redaudit.core.auditor.run_udp_probe", return_value=[]):
                             with patch("redaudit.core.auditor.get_neighbor_mac", return_value=None):
                                 with patch("redaudit.core.auditor.run_nmap_command") as mock_run:
-                                    mock_run.return_value = {"stdout": "", "stderr": "", "returncode": 0}
+                                    mock_run.return_value = {
+                                        "stdout": "",
+                                        "stderr": "",
+                                        "returncode": 0,
+                                    }
                                     deep = app.deep_scan_host("192.168.1.50")
 
         self.assertIsInstance(deep, dict)

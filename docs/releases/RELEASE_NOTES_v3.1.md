@@ -2,8 +2,8 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v3.1_ES.md)
 
-**Release Date**: December 14, 2025  
-**Type**: Feature Release - SIEM & AI Pipeline Enhancements  
+**Release Date**: December 14, 2025
+**Type**: Feature Release - SIEM & AI Pipeline Enhancements
 **Previous Version**: v3.0.4
 
 ---

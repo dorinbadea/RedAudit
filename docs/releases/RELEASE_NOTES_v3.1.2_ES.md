@@ -2,8 +2,8 @@
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.1.2.md)
 
-**Fecha de release**: 14 de diciembre de 2025  
-**Tipo**: Patch Release - UX de actualización y formato CLI  
+**Fecha de release**: 14 de diciembre de 2025
+**Tipo**: Patch Release - UX de actualización y formato CLI
 **Versión anterior**: v3.1.1
 
 ---

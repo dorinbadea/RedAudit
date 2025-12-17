@@ -2,8 +2,8 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](../es/MANUAL.md)
 
-**Version:** 3.2.3  
-**Target audience:** Security analysts, penetration testers, systems / network administrators  
+**Version:** 3.2.3
+**Target audience:** Security analysts, penetration testers, systems / network administrators
 **License:** GPLv3
 
 ---
@@ -427,7 +427,7 @@ After a run, RedAudit creates a timestamped output directory (v2.8+) such as:
 
 Each scan session gets its own subfolder for organization.
 
-If encryption is enabled, the JSON and TXT files will instead use `.enc` suffixes and have associated `.salt` files.  
+If encryption is enabled, the JSON and TXT files will instead use `.enc` suffixes and have associated `.salt` files.
 For safety, flat JSONL/JSON export views are generated only when encryption is disabled (to avoid plaintext artifacts).
 
 ---

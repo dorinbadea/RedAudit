@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v3.2.1_ES.md)
 
-**Release Date**: December 15, 2025  
+**Release Date**: December 15, 2025
 **Focus**: Professional CLI UX, Main Menu, and Interaction Polish
 
 ---

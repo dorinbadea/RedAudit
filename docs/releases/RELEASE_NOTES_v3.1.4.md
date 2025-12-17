@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v3.1.4_ES.md)
 
-**Release Date**: December 15, 2025  
+**Release Date**: December 15, 2025
 **Focus**: Output Quality Improvements for Maximum SIEM/AI Scoring
 
 ---
@@ -17,7 +17,7 @@ Version 3.1.4 addresses output quality issues identified during scan analysis. T
 
 ### Descriptive Finding Titles
 
-**Before**: Generic titles like `"Finding on http://192.168.1.1:80/"`  
+**Before**: Generic titles like `"Finding on http://192.168.1.1:80/"`
 **After**: Contextual titles like `"Missing X-Frame-Options Header (Clickjacking Risk)"`
 
 The `_extract_title()` function in `jsonl_exporter.py` now analyzes finding observations to generate meaningful titles:

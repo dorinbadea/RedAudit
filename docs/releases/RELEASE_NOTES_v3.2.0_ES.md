@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.2.0.md)
 
-**Fecha de lanzamiento**: 15 de diciembre de 2025  
+**Fecha de lanzamiento**: 15 de diciembre de 2025
 **Enfoque**: Descubrimiento de red mejorado + Recon Red Team con guardas
 
 ---
@@ -88,4 +88,3 @@ sudo redaudit --target 192.168.1.0/24 --net-discovery --yes
 # Con recon redteam con guardas (best-effort)
 sudo redaudit --target 192.168.1.0/24 --net-discovery --redteam --net-discovery-interface eth0 --yes
 ```
-

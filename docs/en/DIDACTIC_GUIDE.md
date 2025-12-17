@@ -416,8 +416,8 @@ done
 **Splunk Search**:
 
 ```spl
-index="security" sourcetype="redaudit" 
-| where risk.score > 70 
+index="security" sourcetype="redaudit"
+| where risk.score > 70
 | stats count by host.ip, event.severity
 | sort -count
 ```
@@ -505,14 +505,14 @@ RedAudit uses `concurrent.futures.ThreadPoolExecutor` for I/O parallelism:
 # Real code from auditor.py (lines 814-828)
 with ThreadPoolExecutor(max_workers=self.config["threads"]) as executor:
     futures = {}
-    
+
     for ip in unique_hosts:
         if self.rate_limit_delay > 0:
             time.sleep(self.rate_limit_delay)
-        
+
         future = executor.submit(self.scan_host_ports, ip)
         futures[future] = ip
-    
+
     for future in as_completed(futures):
         try:
             result = future.result()
@@ -574,7 +574,7 @@ def _heartbeat_loop(self):
                 self.print_status(self.t("heartbeat_warn", phase, int(delta)), "WARNING", False)
             elif delta >= HEARTBEAT_FAIL_THRESHOLD:
                 self.print_status(self.t("heartbeat_fail", phase, int(delta)), "FAIL", False)
-        
+
         time.sleep(HEARTBEAT_INTERVAL)
 ```
 

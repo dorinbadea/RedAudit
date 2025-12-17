@@ -52,7 +52,9 @@ class TestDHCPDiscover(unittest.TestCase):
     @patch("shutil.which")
     def test_dhcp_parse_single_server(self, mock_which, mock_run):
         mock_which.return_value = "/usr/bin/nmap"
-        mock_run.return_value = (0, """
+        mock_run.return_value = (
+            0,
+            """
 Pre-scan script results:
 | broadcast-dhcp-discover:
 |   Response 1 of 1:
@@ -62,8 +64,10 @@ Pre-scan script results:
 |       Subnet Mask: 255.255.255.0
 |       Router: 192.168.178.1
 |       Domain Name Server: 8.8.8.8
-""", "")
-        
+""",
+            "",
+        )
+
         result = dhcp_discover()
         self.assertIsNone(result["error"])
         self.assertEqual(len(result["servers"]), 1)
@@ -84,11 +88,15 @@ class TestFpingSweep(unittest.TestCase):
     @patch("shutil.which")
     def test_fping_parse_hosts(self, mock_which, mock_run):
         mock_which.return_value = "/usr/bin/fping"
-        mock_run.return_value = (0, """192.168.1.1
+        mock_run.return_value = (
+            0,
+            """192.168.1.1
 192.168.1.2
 192.168.1.10
-""", "")
-        
+""",
+            "",
+        )
+
         result = fping_sweep("192.168.1.0/24")
         self.assertIsNone(result["error"])
         self.assertEqual(len(result["alive_hosts"]), 3)
@@ -108,12 +116,16 @@ class TestNetBIOSDiscover(unittest.TestCase):
     @patch("shutil.which")
     def test_netbios_nbtscan_parse(self, mock_which, mock_run):
         mock_which.return_value = "/usr/bin/nbtscan"
-        mock_run.return_value = (0, """
+        mock_run.return_value = (
+            0,
+            """
 IP               NetBIOS Name     Server    User              MAC
 192.168.1.10     DESKTOP-ABC      <server>  ADMIN             aa:bb:cc:dd:ee:ff
 192.168.1.20     LAPTOP-XYZ       <server>  USER              11:22:33:44:55:66
-""", "")
-        
+""",
+            "",
+        )
+
         result = netbios_discover("192.168.1.0/24")
         self.assertIsNone(result["error"])
         self.assertEqual(len(result["hosts"]), 2)
@@ -133,11 +145,15 @@ class TestNetdiscoverScan(unittest.TestCase):
     @patch("shutil.which")
     def test_netdiscover_parse(self, mock_which, mock_run):
         mock_which.return_value = "/usr/bin/netdiscover"
-        mock_run.return_value = (0, """
+        mock_run.return_value = (
+            0,
+            """
 192.168.1.1     d4:24:dd:07:7c:c5      1      60  Unknown vendor
 192.168.1.10    aa:bb:cc:dd:ee:ff      1      60  Intel Corporation
-""", "")
-        
+""",
+            "",
+        )
+
         result = netdiscover_scan("192.168.1.0/24")
         self.assertIsNone(result["error"])
         self.assertEqual(len(result["hosts"]), 2)
@@ -178,12 +194,12 @@ class TestDiscoverNetworks(unittest.TestCase):
         mock_tools.return_value = {"nmap": True, "fping": True, "nbtscan": False}
         mock_dhcp.return_value = {"servers": [], "error": None}
         mock_fping.return_value = {"alive_hosts": ["192.168.1.1"], "error": None}
-        
+
         result = discover_networks(
             target_networks=["192.168.1.0/24"],
             protocols=["dhcp", "fping"],
         )
-        
+
         self.assertTrue(result["enabled"])
         self.assertIn("dhcp", result["protocols_used"])
         self.assertEqual(len(result["alive_hosts"]), 1)

@@ -2,8 +2,8 @@
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.2.2.md)
 
-**Fecha de release**: 16 de diciembre de 2025  
-**Tipo**: Production Hardening  
+**Fecha de release**: 16 de diciembre de 2025
+**Tipo**: Production Hardening
 **Versión anterior**: v3.2.1
 
 ---

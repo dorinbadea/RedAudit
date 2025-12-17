@@ -1,7 +1,7 @@
 # RedAudit v3.0.1 - Release Notes
 
-**Release Date**: December 13, 2025  
-**Type**: Patch Release - Configuration Management  
+**Release Date**: December 13, 2025
+**Type**: Patch Release - Configuration Management
 **Previous Version**: v3.0.0
 
 ---

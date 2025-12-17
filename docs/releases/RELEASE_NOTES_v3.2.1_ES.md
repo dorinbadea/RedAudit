@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.2.1.md)
 
-**Fecha de Lanzamiento**: 15 de Diciembre de 2025  
+**Fecha de Lanzamiento**: 15 de Diciembre de 2025
 **Enfoque**: UX Profesional CLI, Menú Principal y Pulido de Interacción
 
 ---

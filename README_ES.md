@@ -11,10 +11,10 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 ![CI/CD](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg?style=flat-square)
 
 ```text
- ____          _    _             _ _ _   
-|  _ \ ___  __| |  / \  _   _  __| (_) |_ 
+ ____          _    _             _ _ _
+|  _ \ ___  __| |  / \  _   _  __| (_) |_
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
-|  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
+|  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
                                       v3.2.3
       Herramienta Interactiva de Auditoría de Red
@@ -201,7 +201,7 @@ sudo redaudit --target 192.168.1.0/24 --net-discovery --topology --yes
 redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 ```
 
-Para más ejemplos incluyendo IPv6, correlación CVE, pivoting SOCKS5 e integración SIEM, consulta:  
+Para más ejemplos incluyendo IPv6, correlación CVE, pivoting SOCKS5 e integración SIEM, consulta:
 📖 **[Guía Completa de Uso](docs/es/USAGE.md)**
 
 **Opciones CLI Principales:**
@@ -351,7 +351,7 @@ bash redaudit_verify.sh
 
 ## 12. Solución de Problemas
 
-Para una guía completa de resolución de problemas cubriendo todos los escenarios, consulta la guía completa:  
+Para una guía completa de resolución de problemas cubriendo todos los escenarios, consulta la guía completa:
 📖 **[Guía Completa de Solución de Problemas](docs/es/TROUBLESHOOTING.md)**
 
 **Enlaces Rápidos**:
@@ -372,14 +372,14 @@ Consulta [CHANGELOG_ES.md](CHANGELOG_ES.md) para el historial completo de versio
 
 ## 15. Licencia
 
-RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**.  
+RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**.
 Consulta el archivo [LICENSE](LICENSE) para ver el texto completo y las condiciones.
 
 ## 16. Internos & Glosario (Por qué RedAudit se comporta así)
 
 ### Pool de hilos (`threads`)
 
-RedAudit utiliza un *pool* de hilos para escanear varios hosts en paralelo.  
+RedAudit utiliza un *pool* de hilos para escanear varios hosts en paralelo.
 El parámetro `threads` controla cuántos hosts se analizan simultáneamente:
 
 - Valor bajo (2–4): más lento, pero más sigiloso y con menos ruido.
@@ -388,17 +388,17 @@ El parámetro `threads` controla cuántos hosts se analizan simultáneamente:
 
 ### Limitación de tasa (*rate limiting*)
 
-Para no saturar la red, RedAudit puede introducir un pequeño retardo entre host y host.  
+Para no saturar la red, RedAudit puede introducir un pequeño retardo entre host y host.
 Esto sacrifica velocidad a cambio de estabilidad y menor huella en entornos sensibles.
 
 ### Heartbeat y watchdog
 
-En escaneos largos, RedAudit muestra mensajes de *heartbeat* cuando lleva un tiempo sin imprimir nada.  
+En escaneos largos, RedAudit muestra mensajes de *heartbeat* cuando lleva un tiempo sin imprimir nada.
 Sirve para distinguir un escaneo "silencioso pero sano" de un bloqueo real.
 
 ### Reportes cifrados
 
-Los reportes pueden cifrarse con contraseña.  
+Los reportes pueden cifrarse con contraseña.
 La clave se deriva con PBKDF2-HMAC-SHA256 (480k iteraciones) y se acompaña de un archivo `.salt` para poder descifrarlos posteriormente con `redaudit_decrypt.py`.
 
 ## 17. Aviso Legal

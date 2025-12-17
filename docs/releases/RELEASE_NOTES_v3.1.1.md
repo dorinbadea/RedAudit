@@ -2,8 +2,8 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v3.1.1_ES.md)
 
-**Release Date**: December 14, 2025  
-**Type**: Patch Release - Topology, Persistent Defaults & UDP Coverage  
+**Release Date**: December 14, 2025
+**Type**: Patch Release - Topology, Persistent Defaults & UDP Coverage
 **Previous Version**: v3.1.0
 
 ---
@@ -61,4 +61,3 @@ This release is backward compatible with v3.1.0 and requires no migration steps.
 - **Manual (ES)**: [docs/es/MANUAL.md](../es/MANUAL.md)
 - **Report Schema (EN)**: [docs/en/REPORT_SCHEMA.md](../en/REPORT_SCHEMA.md)
 - **Report Schema (ES)**: [docs/es/REPORT_SCHEMA.md](../es/REPORT_SCHEMA.md)
-

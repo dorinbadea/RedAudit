@@ -2,8 +2,8 @@
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.1.3.md)
 
-**Fecha de release**: 15 de diciembre de 2025  
-**Tipo**: Patch Release - UDP y topología asíncronos  
+**Fecha de release**: 15 de diciembre de 2025
+**Tipo**: Patch Release - UDP y topología asíncronos
 **Versión anterior**: v3.1.2
 
 ---

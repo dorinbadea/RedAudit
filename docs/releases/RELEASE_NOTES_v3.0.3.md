@@ -1,7 +1,7 @@
 # RedAudit v3.0.3 - Release Notes
 
-**Release Date**: December 14, 2025  
-**Type**: Patch Release - Update UX & Language Preservation  
+**Release Date**: December 14, 2025
+**Type**: Patch Release - Update UX & Language Preservation
 **Previous Version**: v3.0.2
 
 ---

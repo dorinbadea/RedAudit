@@ -2,8 +2,8 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v3.2.3_ES.md)
 
-**Release Date**: December 16, 2025  
-**Type**: Feature Release (HyperScan + Stealth Mode)  
+**Release Date**: December 16, 2025
+**Type**: Feature Release (HyperScan + Stealth Mode)
 **Previous Version**: v3.2.2
 
 ---

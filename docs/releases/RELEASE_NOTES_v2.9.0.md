@@ -1,6 +1,6 @@
 # RedAudit v2.9.0 Release Notes
 
-**Release Date:** 2025-12-12  
+**Release Date:** 2025-12-12
 **Codename:** Smart Improvements & Clean Docs
 
 ---

@@ -62,7 +62,12 @@ class TestUdpProbePort(unittest.IsolatedAsyncioTestCase):
 class TestUdpProbeHost(unittest.IsolatedAsyncioTestCase):
     async def test_multiple_ports_sorted(self):
         async def fake_probe(ip, port, timeout=0.8, payload=None):
-            return {"port": port, "state": "responded", "response_bytes": 1, "response_sample_hex": "00"}
+            return {
+                "port": port,
+                "state": "responded",
+                "response_bytes": 1,
+                "response_sample_hex": "00",
+            }
 
         with patch("redaudit.core.udp_probe.udp_probe_port", new=AsyncMock(side_effect=fake_probe)):
             res = await udp_probe_host("127.0.0.1", [53, 1, 9999], timeout=0.1, concurrency=2)

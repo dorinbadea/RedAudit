@@ -187,7 +187,9 @@ class TestRestartSelf(unittest.TestCase):
             ok = restart_self(logger=None)
 
         self.assertFalse(ok)
-        m_execv.assert_called_with("/usr/local/bin/redaudit", ["/usr/local/bin/redaudit", "--version"])
+        m_execv.assert_called_with(
+            "/usr/local/bin/redaudit", ["/usr/local/bin/redaudit", "--version"]
+        )
 
 
 class TestPrintStatusMapping(unittest.TestCase):
@@ -197,15 +199,14 @@ class TestPrintStatusMapping(unittest.TestCase):
         """Verify internal tokens are mapped to user-friendly labels in non-TTY mode."""
         from io import StringIO
         from redaudit.core.auditor import InteractiveNetworkAuditor
-        
+
         auditor = InteractiveNetworkAuditor()
-        
+
         # Mock non-TTY output
         captured = StringIO()
-        with patch('sys.stdout', captured), \
-             patch('sys.stdout.isatty', return_value=False):
+        with patch("sys.stdout", captured), patch("sys.stdout.isatty", return_value=False):
             auditor.print_status("Test message", "OKGREEN")
-        
+
         output = captured.getvalue()
         # Should contain [OK], not [OKGREEN]
         self.assertIn("[OK]", output)
@@ -216,14 +217,13 @@ class TestPrintStatusMapping(unittest.TestCase):
         """Verify WARNING is mapped to WARN."""
         from io import StringIO
         from redaudit.core.auditor import InteractiveNetworkAuditor
-        
+
         auditor = InteractiveNetworkAuditor()
-        
+
         captured = StringIO()
-        with patch('sys.stdout', captured), \
-             patch('sys.stdout.isatty', return_value=False):
+        with patch("sys.stdout", captured), patch("sys.stdout.isatty", return_value=False):
             auditor.print_status("Warning test", "WARNING")
-        
+
         output = captured.getvalue()
         self.assertIn("[WARN]", output)
         self.assertNotIn("[WARNING]", output)
@@ -232,9 +232,9 @@ class TestPrintStatusMapping(unittest.TestCase):
         """Verify all known internal tokens have mappings."""
         from redaudit.core.auditor import InteractiveNetworkAuditor
         from io import StringIO
-        
+
         auditor = InteractiveNetworkAuditor()
-        
+
         # These internal tokens should be mapped
         token_map = {
             "OKGREEN": "OK",
@@ -244,33 +244,34 @@ class TestPrintStatusMapping(unittest.TestCase):
             "FAIL": "FAIL",
             "INFO": "INFO",
         }
-        
+
         for internal, expected in token_map.items():
             captured = StringIO()
-            with patch('sys.stdout', captured), \
-                 patch('sys.stdout.isatty', return_value=False):
+            with patch("sys.stdout", captured), patch("sys.stdout.isatty", return_value=False):
                 auditor.print_status(f"Testing {internal}", internal)
-            
+
             output = captured.getvalue()
-            self.assertIn(f"[{expected}]", output, 
-                         f"Token {internal} should map to [{expected}]")
+            self.assertIn(f"[{expected}]", output, f"Token {internal} should map to [{expected}]")
             if internal != expected:
-                self.assertNotIn(f"[{internal}]", output,
-                               f"Internal token [{internal}] should not appear in output")
+                self.assertNotIn(
+                    f"[{internal}]",
+                    output,
+                    f"Internal token [{internal}] should not appear in output",
+                )
 
     def test_status_mapping_tty_no_internal_tokens(self):
         """Verify internal tokens are NOT displayed in TTY mode (only colors differ)."""
         from io import StringIO
         from redaudit.core.auditor import InteractiveNetworkAuditor
-        
+
         auditor = InteractiveNetworkAuditor()
-        
+
         # Mock TTY output
         captured = StringIO()
         captured.isatty = lambda: True  # Simulate TTY
-        with patch('sys.stdout', captured):
+        with patch("sys.stdout", captured):
             auditor.print_status("Test TTY message", "OKGREEN")
-        
+
         output = captured.getvalue()
         # Should contain [OK] (with color codes), NOT [OKGREEN]
         self.assertIn("[OK]", output)

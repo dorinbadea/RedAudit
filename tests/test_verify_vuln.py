@@ -81,25 +81,25 @@ class TestVerifyVuln(unittest.TestCase):
         result = is_false_positive_by_size(".tar", 50000)  # 50KB
         self.assertFalse(result)
 
-    @patch('redaudit.core.verify_vuln.verify_content_type')
+    @patch("redaudit.core.verify_vuln.verify_content_type")
     def test_verify_finding_filtered(self, mock_verify):
         """Test that a finding with JSON response is filtered."""
         mock_verify.return_value = ("application/json", 47)
-        
+
         finding = "+ /backup.tar: May contain sensitive config."
         is_valid, reason = verify_nikto_finding(finding, "http://192.168.1.1:8189")
-        
+
         self.assertFalse(is_valid)
         self.assertIn("filtered", reason)
 
-    @patch('redaudit.core.verify_vuln.verify_content_type')
+    @patch("redaudit.core.verify_vuln.verify_content_type")
     def test_verify_finding_kept(self, mock_verify):
         """Test that a finding with binary response is kept."""
         mock_verify.return_value = ("application/x-tar", 102400)
-        
+
         finding = "+ /backup.tar: May contain sensitive config."
         is_valid, reason = verify_nikto_finding(finding, "http://192.168.1.1")
-        
+
         self.assertTrue(is_valid)
         self.assertIn("kept", reason)
 
@@ -108,7 +108,7 @@ class TestVerifyVuln(unittest.TestCase):
         result = filter_nikto_false_positives([], "http://test.com")
         self.assertEqual(result, [])
 
-    @patch('redaudit.core.verify_vuln.verify_nikto_finding')
+    @patch("redaudit.core.verify_vuln.verify_nikto_finding")
     def test_filter_removes_fps(self, mock_verify):
         """Test that filter removes false positives."""
         # First finding is FP, second is valid
@@ -116,14 +116,14 @@ class TestVerifyVuln(unittest.TestCase):
             (False, "filtered:content_type"),
             (True, "kept:verified"),
         ]
-        
+
         findings = [
             "+ /backup.tar: May contain data.",
             "+ /admin/: Possible admin directory.",
         ]
-        
+
         result = filter_nikto_false_positives(findings, "http://test.com")
-        
+
         self.assertEqual(len(result), 1)
         self.assertIn("admin", result[0])
 

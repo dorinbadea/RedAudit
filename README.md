@@ -11,10 +11,10 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 ![CI/CD](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg?style=flat-square)
 
 ```text
- ____          _    _             _ _ _   
-|  _ \ ___  __| |  / \  _   _  __| (_) |_ 
+ ____          _    _             _ _ _
+|  _ \ ___  __| |  / \  _   _  __| (_) |_
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
-|  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_ 
+|  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
                                       v3.2.3
         Interactive Network Audit Tool
@@ -187,7 +187,7 @@ sudo redaudit --target 192.168.1.0/24 --net-discovery --topology --yes
 redaudit --diff ~/reports/monday.json ~/reports/friday.json
 ```
 
-For more examples including IPv6, CVE correlation, SOCKS5 pivoting, and SIEM integration, see:  
+For more examples including IPv6, CVE correlation, SOCKS5 pivoting, and SIEM integration, see:
 📖 **[Complete Usage Guide](docs/en/USAGE.md)**
 
 **Core CLI Options:**
@@ -346,7 +346,7 @@ bash redaudit_verify.sh
 
 ## 12. Troubleshooting
 
-For comprehensive troubleshooting covering all scenarios, see the full guide:  
+For comprehensive troubleshooting covering all scenarios, see the full guide:
 📖 **[Complete Troubleshooting Guide](docs/en/TROUBLESHOOTING.md)**
 
 **Quick Links**:
@@ -367,14 +367,14 @@ We welcome contributions! Please see [CONTRIBUTING.md](.github/CONTRIBUTING.md) 
 
 ## 15. License
 
-RedAudit is released under the **GNU General Public License v3.0 (GPLv3)**.  
+RedAudit is released under the **GNU General Public License v3.0 (GPLv3)**.
 See the [LICENSE](LICENSE) file for the full text and terms.
 
 ## 16. Internals & Glossary (Why RedAudit behaves this way)
 
 ### Thread pool (`threads`)
 
-RedAudit uses a thread pool to scan multiple hosts in parallel.  
+RedAudit uses a thread pool to scan multiple hosts in parallel.
 The `threads` setting controls how many hosts are scanned concurrently:
 
 - Low (2–4): slower but stealthier and less noisy.
@@ -383,17 +383,17 @@ The `threads` setting controls how many hosts are scanned concurrently:
 
 ### Rate limiting
 
-RedAudit can insert a small delay between host scans.  
+RedAudit can insert a small delay between host scans.
 This trades raw speed for stability and stealth during long operations.
 
 ### Heartbeat & watchdog
 
-During long scans, RedAudit prints heartbeat messages if no output appears for a while.  
+During long scans, RedAudit prints heartbeat messages if no output appears for a while.
 This helps distinguish a "silent but healthy" scan from a real freeze.
 
 ### Encrypted reports
 
-Reports can be encrypted with a user password.  
+Reports can be encrypted with a user password.
 Keys are derived with PBKDF2-HMAC-SHA256 (480k iterations) and a separate `.salt` file, so decryption is possible later with `redaudit_decrypt.py`.
 
 ## 17. Legal Notice

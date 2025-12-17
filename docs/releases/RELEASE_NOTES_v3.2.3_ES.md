@@ -2,8 +2,8 @@
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.2.3.md)
 
-**Fecha de Lanzamiento**: 16 de Diciembre, 2025  
-**Tipo**: Versión con nuevas funcionalidades (HyperScan + Modo Sigiloso)  
+**Fecha de Lanzamiento**: 16 de Diciembre, 2025
+**Tipo**: Versión con nuevas funcionalidades (HyperScan + Modo Sigiloso)
 **Versión Anterior**: v3.2.2
 
 ---

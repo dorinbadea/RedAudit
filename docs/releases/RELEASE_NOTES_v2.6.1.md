@@ -1,6 +1,6 @@
 # RedAudit v2.6.1 Release Notes
 
-**Release Date**: December 8, 2025  
+**Release Date**: December 8, 2025
 **Type**: Feature Enhancement
 
 ## Overview

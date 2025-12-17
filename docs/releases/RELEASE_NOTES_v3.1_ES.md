@@ -2,8 +2,8 @@
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.1.md)
 
-**Fecha de lanzamiento**: 14 de diciembre de 2025  
-**Tipo**: Release de features - Mejoras SIEM y pipelines de IA  
+**Fecha de lanzamiento**: 14 de diciembre de 2025
+**Tipo**: Release de features - Mejoras SIEM y pipelines de IA
 **Versión anterior**: v3.0.4
 
 ---

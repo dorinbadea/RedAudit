@@ -431,7 +431,7 @@ Tras cada ejecución, RedAudit crea un directorio con sello temporal (v2.8+):
 
 Cada sesión de escaneo obtiene su propia subcarpeta para mejor organización.
 
-Si el cifrado está activado, los informes terminarán en `.enc` y aparecerán ficheros `.salt` asociados.  
+Si el cifrado está activado, los informes terminarán en `.enc` y aparecerán ficheros `.salt` asociados.
 Por seguridad, las vistas de exportación planas (JSONL/JSON) se generan solo cuando el cifrado está desactivado (para evitar artefactos en texto plano).
 
 ---

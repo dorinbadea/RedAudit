@@ -414,8 +414,8 @@ done
 **Búsqueda en Splunk**:
 
 ```spl
-index="security" sourcetype="redaudit" 
-| where risk.score > 70 
+index="security" sourcetype="redaudit"
+| where risk.score > 70
 | stats count by host.ip, event.severity
 | sort -count
 ```
@@ -503,14 +503,14 @@ RedAudit utiliza `concurrent.futures.ThreadPoolExecutor` para paralelismo de I/O
 # Código real de auditor.py (líneas 814-828)
 with ThreadPoolExecutor(max_workers=self.config["threads"]) as executor:
     futures = {}
-    
+
     for ip in unique_hosts:
         if self.rate_limit_delay > 0:
             time.sleep(self.rate_limit_delay)
-        
+
         future = executor.submit(self.scan_host_ports, ip)
         futures[future] = ip
-    
+
     for future in as_completed(futures):
         try:
             result = future.result()
@@ -572,7 +572,7 @@ def _heartbeat_loop(self):
                 self.print_status(self.t("heartbeat_warn", phase, int(delta)), "WARNING", False)
             elif delta >= HEARTBEAT_FAIL_THRESHOLD:
                 self.print_status(self.t("heartbeat_fail", phase, int(delta)), "FAIL", False)
-        
+
         time.sleep(HEARTBEAT_INTERVAL)
 ```
 
@@ -610,7 +610,7 @@ RedAudit centraliza todos los valores configurables en un único archivo. Esto p
 #### Ejemplo 1: Aumentar límite de PCAP para análisis forense
 
 ```python
-# Caso: Estás investigando un incidente de seguridad y necesitas 
+# Caso: Estás investigando un incidente de seguridad y necesitas
 # capturar TODO el tráfico de handshake SSL/TLS completo
 
 # Editar: redaudit/utils/constants.py

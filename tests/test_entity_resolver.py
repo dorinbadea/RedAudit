@@ -52,11 +52,7 @@ class TestEntityResolver(unittest.TestCase):
 
     def test_extract_fingerprint_from_dns_reverse(self):
         """Test identity extraction from DNS reverse lookup."""
-        host = {
-            "ip": "192.168.1.10",
-            "hostname": "",
-            "dns": {"reverse": ["server.local"]}
-        }
+        host = {"ip": "192.168.1.10", "hostname": "", "dns": {"reverse": ["server.local"]}}
         result = extract_identity_fingerprint(host)
         self.assertEqual(result, "server")
 
@@ -81,10 +77,10 @@ class TestEntityResolver(unittest.TestCase):
             "ip": "192.168.1.10",
             "hostname": "test-host",
             "status": "up",
-            "ports": [{"port": 22, "protocol": "tcp", "service": "ssh"}]
+            "ports": [{"port": 22, "protocol": "tcp", "service": "ssh"}],
         }
         result = create_unified_asset([host])
-        
+
         self.assertEqual(result["asset_name"], "test-host")
         self.assertEqual(len(result["interfaces"]), 1)
         self.assertEqual(result["interfaces"][0]["ip"], "192.168.1.10")
@@ -98,18 +94,18 @@ class TestEntityResolver(unittest.TestCase):
                 "hostname": "msi.fritz.box",
                 "status": "up",
                 "ports": [{"port": 22, "protocol": "tcp", "service": "ssh"}],
-                "deep_scan": {"mac_address": "D8:43:AE:00:00:01", "vendor": "Micro-Star"}
+                "deep_scan": {"mac_address": "D8:43:AE:00:00:01", "vendor": "Micro-Star"},
             },
             {
                 "ip": "192.168.1.15",
                 "hostname": "msi.fritz.box",
                 "status": "up",
                 "ports": [{"port": 445, "protocol": "tcp", "service": "microsoft-ds"}],
-                "deep_scan": {"mac_address": "10:91:D1:00:00:02", "vendor": "Intel Corporate"}
-            }
+                "deep_scan": {"mac_address": "10:91:D1:00:00:02", "vendor": "Intel Corporate"},
+            },
         ]
         result = create_unified_asset(hosts)
-        
+
         # Should merge into single asset with 2 interfaces
         self.assertEqual(len(result["interfaces"]), 2)
         self.assertEqual(len(result["source_ips"]), 2)
@@ -125,12 +121,12 @@ class TestEntityResolver(unittest.TestCase):
             {"ip": "192.168.1.11", "hostname": "device-b.fritz.box", "ports": []},
             {"ip": "192.168.1.12", "hostname": "device-a.fritz.box", "ports": []},  # Same as first
         ]
-        
+
         result = reconcile_assets(hosts)
-        
+
         # Should have 2 unified assets (device-a with 2 interfaces, device-b with 1)
         self.assertEqual(len(result), 2)
-        
+
         # Find device-a and check it has 2 source IPs
         device_a = next((a for a in result if "device-a" in a.get("asset_name", "")), None)
         self.assertIsNotNone(device_a)
@@ -147,9 +143,9 @@ class TestEntityResolver(unittest.TestCase):
             {"ip": "192.168.1.10", "hostname": "", "ports": []},
             {"ip": "192.168.1.11", "hostname": "", "ports": []},
         ]
-        
+
         result = reconcile_assets(hosts)
-        
+
         # Each should be its own asset
         self.assertEqual(len(result), 2)
 

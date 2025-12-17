@@ -131,16 +131,17 @@ class TestCacheDirPermissions(unittest.TestCase):
         """ensure_cache_dir should create directory with 0o700 permissions."""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_cache_dir = os.path.join(tmpdir, "test_cache", "nvd")
-            
+
             with patch("redaudit.core.nvd.NVD_CACHE_DIR", test_cache_dir):
                 # Re-import to get patched value
                 from redaudit.core import nvd
+
                 nvd.NVD_CACHE_DIR = test_cache_dir
-                
+
                 result = nvd.ensure_cache_dir()
-                
+
                 self.assertTrue(os.path.isdir(test_cache_dir))
-                
+
                 # Check permissions
                 dir_stat = os.stat(test_cache_dir)
                 mode = stat.S_IMODE(dir_stat.st_mode)

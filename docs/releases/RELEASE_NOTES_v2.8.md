@@ -1,6 +1,6 @@
 # RedAudit v2.8.0 Release Notes
 
-**Release Date:** 2025-12-11  
+**Release Date:** 2025-12-11
 **Codename:** Completeness & Reliability
 
 ---
@@ -31,7 +31,7 @@ The old approach scanned all 65,535 UDP ports, often timing out after 400+ secon
 - **Phase 2b**: Full UDP only if:
   - User selected `--udp-mode full`
   - No identity found in Phase 2a
-  
+
 **Result**: Typical deep scans now complete 3-5x faster.
 
 ### 3. Synchronized Traffic Capture

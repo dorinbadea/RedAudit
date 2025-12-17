@@ -75,7 +75,7 @@ class TestSIEM(unittest.TestCase):
             "ports": [
                 {"port": 22, "service": "ssh"},
                 {"port": 80, "service": "http"},
-            ]
+            ],
         }
         score = calculate_risk_score(host)
         self.assertGreater(score, 0)
@@ -84,19 +84,17 @@ class TestSIEM(unittest.TestCase):
         """Test risk score penalty for insecure services."""
         host_secure = {"ip": "192.168.1.1", "ports": [{"port": 22, "service": "ssh"}]}
         host_insecure = {"ip": "192.168.1.2", "ports": [{"port": 23, "service": "telnet"}]}
-        
+
         score_secure = calculate_risk_score(host_secure)
         score_insecure = calculate_risk_score(host_insecure)
-        
+
         self.assertGreater(score_insecure, score_secure)
 
     def test_calculate_risk_score_with_exploits(self):
         """Test risk score with known exploits."""
         host = {
             "ip": "192.168.1.1",
-            "ports": [
-                {"port": 80, "service": "http", "known_exploits": ["CVE-2021-1234"]}
-            ]
+            "ports": [{"port": 80, "service": "http", "known_exploits": ["CVE-2021-1234"]}],
         }
         score = calculate_risk_score(host)
         self.assertGreaterEqual(score, 15)  # At least exploit penalty
@@ -106,14 +104,14 @@ class TestSIEM(unittest.TestCase):
         host = {
             "ip": "192.168.1.1",
             "hostname": "test.local",
-            "ports": [{"port": 22, "protocol": "tcp", "service": "ssh"}]
+            "ports": [{"port": 22, "protocol": "tcp", "service": "ssh"}],
         }
         hash1 = generate_observable_hash(host)
-        
+
         # Same host should produce same hash
         hash2 = generate_observable_hash(host)
         self.assertEqual(hash1, hash2)
-        
+
         # SHA256 should be 64 chars
         self.assertEqual(len(hash1), 64)
 
@@ -121,17 +119,17 @@ class TestSIEM(unittest.TestCase):
         """Test different hosts produce different hashes."""
         host1 = {"ip": "192.168.1.1", "hostname": "", "ports": []}
         host2 = {"ip": "192.168.1.2", "hostname": "", "ports": []}
-        
+
         hash1 = generate_observable_hash(host1)
         hash2 = generate_observable_hash(host2)
-        
+
         self.assertNotEqual(hash1, hash2)
 
     def test_generate_host_tags_web(self):
         """Test tag generation for web server."""
         host = {
             "ip": "192.168.1.1",
-            "ports": [{"port": 80, "service": "http", "is_web_service": True}]
+            "ports": [{"port": 80, "service": "http", "is_web_service": True}],
         }
         tags = generate_host_tags(host)
         self.assertIn("web", tags)
@@ -139,21 +137,14 @@ class TestSIEM(unittest.TestCase):
 
     def test_generate_host_tags_database(self):
         """Test tag generation for database server."""
-        host = {
-            "ip": "192.168.1.1",
-            "ports": [{"port": 3306, "service": "mysql"}]
-        }
+        host = {"ip": "192.168.1.1", "ports": [{"port": 3306, "service": "mysql"}]}
         tags = generate_host_tags(host)
         self.assertIn("database", tags)
         self.assertIn("sql", tags)
 
     def test_generate_host_tags_deep_scanned(self):
         """Test tag for deep scanned hosts."""
-        host = {
-            "ip": "192.168.1.1",
-            "ports": [],
-            "deep_scan": {"mac_address": "AA:BB:CC:DD:EE:FF"}
-        }
+        host = {"ip": "192.168.1.1", "ports": [], "deep_scan": {"mac_address": "AA:BB:CC:DD:EE:FF"}}
         tags = generate_host_tags(host)
         self.assertIn("deep-scanned", tags)
         self.assertIn("mac-identified", tags)
@@ -161,7 +152,7 @@ class TestSIEM(unittest.TestCase):
     def test_build_ecs_event(self):
         """Test ECS event object generation."""
         event = build_ecs_event("completo", "00:05:30")
-        
+
         self.assertIn("ecs", event)
         self.assertEqual(event["ecs"]["version"], ECS_VERSION)
         self.assertIn("event", event)
@@ -173,10 +164,10 @@ class TestSIEM(unittest.TestCase):
         host = {
             "ip": "192.168.1.10",
             "hostname": "server.local",
-            "deep_scan": {"mac_address": "AA:BB:CC:DD:EE:FF", "vendor": "Intel"}
+            "deep_scan": {"mac_address": "AA:BB:CC:DD:EE:FF", "vendor": "Intel"},
         }
         ecs_host = build_ecs_host(host)
-        
+
         self.assertEqual(ecs_host["ip"], ["192.168.1.10"])
         self.assertEqual(ecs_host["name"], "server.local")
         self.assertEqual(ecs_host["mac"], ["AA:BB:CC:DD:EE:FF"])
@@ -184,12 +175,9 @@ class TestSIEM(unittest.TestCase):
 
     def test_enrich_vulnerability_severity(self):
         """Test vulnerability severity enrichment."""
-        vuln = {
-            "url": "http://192.168.1.1/",
-            "nikto_findings": ["+ SQL injection in parameter id"]
-        }
+        vuln = {"url": "http://192.168.1.1/", "nikto_findings": ["+ SQL injection in parameter id"]}
         enriched = enrich_vulnerability_severity(vuln)
-        
+
         self.assertEqual(enriched["severity"], "high")
         self.assertGreaterEqual(enriched["severity_score"], 70)
 
@@ -201,27 +189,27 @@ class TestSIEM(unittest.TestCase):
                     "ip": "192.168.1.10",
                     "hostname": "test",
                     "status": "up",
-                    "ports": [{"port": 22, "protocol": "tcp", "service": "ssh"}]
+                    "ports": [{"port": 22, "protocol": "tcp", "service": "ssh"}],
                 }
             ],
             "vulnerabilities": [],
-            "summary": {"duration": "00:05:00"}
+            "summary": {"duration": "00:05:00"},
         }
         config = {"scan_mode": "normal"}
-        
+
         enriched = enrich_report_for_siem(results, config)
-        
+
         # Check ECS fields
         self.assertIn("ecs", enriched)
         self.assertIn("event", enriched)
-        
+
         # Check host enrichment
         host = enriched["hosts"][0]
         self.assertIn("ecs_host", host)
         self.assertIn("risk_score", host)
         self.assertIn("observable_hash", host)
         self.assertIn("tags", host)
-        
+
         # Check summary stats
         summary = enriched.get("summary", {})
         self.assertIn("max_risk_score", summary)

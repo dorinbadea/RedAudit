@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.1.4.md)
 
-**Fecha de lanzamiento**: 15 de Diciembre de 2025  
+**Fecha de lanzamiento**: 15 de Diciembre de 2025
 **Enfoque**: Mejoras de Calidad de Salida para Máximo Scoring SIEM/IA
 
 ---
@@ -17,7 +17,7 @@ La versión 3.1.4 aborda problemas de calidad de salida identificados durante el
 
 ### Títulos Descriptivos de Hallazgos
 
-**Antes**: Títulos genéricos como `"Hallazgo en http://192.168.1.1:80/"`  
+**Antes**: Títulos genéricos como `"Hallazgo en http://192.168.1.1:80/"`
 **Después**: Títulos contextuales como `"Cabecera X-Frame-Options Faltante (Riesgo de Clickjacking)"`
 
 La función `_extract_title()` en `jsonl_exporter.py` ahora analiza las observaciones para generar títulos significativos:

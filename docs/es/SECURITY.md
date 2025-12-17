@@ -133,5 +133,5 @@ RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `
 
 ## 12. Licencia
 
-Este modelo de seguridad es parte del proyecto RedAudit y está cubierto por la  
+Este modelo de seguridad es parte del proyecto RedAudit y está cubierto por la
 **GNU General Public License v3.0 (GPLv3)**. Consulta [LICENSE](../../LICENSE) para el texto completo.

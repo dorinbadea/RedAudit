@@ -2,8 +2,8 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v3.1.3_ES.md)
 
-**Release Date**: December 15, 2025  
-**Type**: Patch Release - Async UDP & Topology  
+**Release Date**: December 15, 2025
+**Type**: Patch Release - Async UDP & Topology
 **Previous Version**: v3.1.2
 
 ---
