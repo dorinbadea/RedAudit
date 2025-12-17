@@ -18,4 +18,3 @@ RedAudit v3.5.0 es una release menor centrada en estabilidad durante auditorías
 ## Notas
 
 - Si actualizas y el banner sigue mostrando una versión antigua, reinicia el terminal o ejecuta `hash -r` (zsh/bash).
-

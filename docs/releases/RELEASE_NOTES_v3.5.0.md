@@ -18,4 +18,3 @@ RedAudit v3.5.0 is a minor release focused on stability during long-running audi
 ## Notes
 
 - If you updated and your banner still shows an older version, restart the terminal or run `hash -r` (zsh/bash).
-
