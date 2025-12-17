@@ -1,4 +1,4 @@
-# Manual de Usuario de RedAudit v3.4.1 (ES)
+# Manual de Usuario de RedAudit v3.4.2 (ES)
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](../en/MANUAL.md)
 

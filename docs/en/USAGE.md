@@ -261,7 +261,7 @@ export NVD_API_KEY="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 Create `~/.redaudit/config.json`:
 
-**Note**: The `version` field in `~/.redaudit/config.json` is the **config schema version** (currently `3.2.3`) and does not need to match the RedAudit application version (v3.4.1).
+**Note**: The `version` field in `~/.redaudit/config.json` is the **config schema version** (currently `3.2.3`) and does not need to match the RedAudit application version (v3.4.2).
 
 ```json
 {

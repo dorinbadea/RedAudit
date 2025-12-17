@@ -11,6 +11,12 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 - (nada aún)
 
+## [3.4.2] - 2025-12-17 (Hotfix)
+
+### Corregido
+
+- **Prompt del directorio de salida (sudo)**: Si un default persistido antiguo apunta a `/root/...`, RedAudit lo reescribe automáticamente a `Documentos` del usuario invocador cuando se ejecuta con `sudo`.
+
 ## [3.4.1] - 2025-12-17 (Hotfix)
 
 ### Corregido

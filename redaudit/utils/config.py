@@ -19,6 +19,8 @@ except ImportError:  # pragma: no cover
     pwd = None
 from typing import Dict, Optional, Any
 
+from redaudit.utils.paths import get_default_reports_base_dir, get_invoking_user
+
 # Config version
 CONFIG_VERSION = "3.2.3"
 
@@ -327,6 +329,17 @@ def get_persistent_defaults() -> Dict[str, Any]:
     defaults = DEFAULT_CONFIG.get("defaults", {}).copy()
     if isinstance(raw, dict):
         defaults.update(raw)
+
+    # v3.4.2 hotfix: Old versions could persist /root paths when running under sudo
+    # (because ~ expanded to /root). If we detect an output_dir under /root while
+    # a non-root invoking user exists, rewrite to the invoking user's Documents folder.
+    output_dir = defaults.get("output_dir")
+    invoking_user = get_invoking_user()
+    if invoking_user and isinstance(output_dir, str):
+        normalized = output_dir.strip()
+        if normalized == "/root" or normalized.startswith("/root/"):
+            defaults["output_dir"] = get_default_reports_base_dir()
+
     return defaults
 
 

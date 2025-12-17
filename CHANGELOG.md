@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.4.2] - 2025-12-17 (Hotfix)
+
+### Fixed
+
+- **Wizard output directory prompt (sudo)**: If an older persisted default points to `/root/...`, RedAudit automatically rewrites it to the invoking user’s `Documents` directory when running under `sudo`.
+
 ## [3.4.1] - 2025-12-17 (Hotfix)
 
 ### Fixed
