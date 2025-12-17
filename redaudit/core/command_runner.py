@@ -61,6 +61,8 @@ class CommandRunner:
         env: Optional[Mapping[str, str]] = None,
         timeout: Optional[float] = None,
         capture_output: bool = True,
+        stdout: Any = None,
+        stderr: Any = None,
         check: bool = False,
         text: bool = True,
         input_text: Optional[str] = None,
@@ -68,6 +70,9 @@ class CommandRunner:
         cmd = self._validate_args(args)
         merged_env = self._merge_env(env)
         redact_values = self._collect_redact_values(merged_env)
+
+        if capture_output and (stdout is not None or stderr is not None):
+            raise ValueError("stdout/stderr cannot be used with capture_output=True")
 
         if self._dry_run:
             self._log("INFO", f"[dry-run] {self._format_cmd(cmd, redact_values)}")
@@ -99,6 +104,8 @@ class CommandRunner:
                     env=merged_env,
                     timeout=timeout_val,
                     capture_output=capture_output,
+                    stdout=stdout,
+                    stderr=stderr,
                     text=text,
                     check=check,
                     input=input_text if input_text is not None else None,
