@@ -61,7 +61,7 @@ sudo apt install python3-nmap python3-cryptography python3-netifaces
 ### 6. "Scans seem to hang" / Slow progress
 
 **Symptom**: The tool pauses for 1-2 minutes on a single host.
-**Explanation**: RedAudit v2.8.0 performs **Deep Identity Scans** on complex hosts (combined TCP/UDP/OS fingerprinting).
+**Explanation**: RedAudit can perform **Deep Scans / identity refinement** on complex hosts (combined TCP/UDP/OS fingerprinting).
 
 - **Duration**: These scans can legitimately take **90–150 seconds** per host.
 - **Why**: Essential for identifying IoT boxes, firewalls, or filtered servers that hide their OS.
@@ -181,5 +181,20 @@ touch ~/Documents/RedAuditReports/test_write
 **Resolution**:
 - Test URL with curl: `curl -X POST -d '{"test":true}' YOUR_WEBHOOK_URL`
 - Verify URL starts with `http://` or `https://`.
+
+### 16. Playbooks not generated / missing `playbooks/` folder (v3.4)
+
+**Symptom**: No playbooks appear in `<output_dir>/playbooks/`, or the count is 0.
+**Common causes**:
+
+- **Encryption enabled**: plaintext artifacts (HTML/JSONL/playbooks) are skipped when `--encrypt` is used.
+- **No matched categories**: playbooks are generated only when findings match the built-in categories (TLS, headers, CVE, web, ports).
+- **Expected deduplication**: only one playbook per host + category is generated (you may have many findings but few playbooks).
+- **Permissions**: the output directory is not writable by the current user.
+
+**Resolution**:
+
+- Run without encryption if you need playbooks: `sudo redaudit ... --mode normal --yes`
+- Confirm output directory and permissions: `ls -la <output_dir>`
 
 RedAudit and this troubleshooting guide are part of a GPLv3-licensed project. See [LICENSE](../../LICENSE).

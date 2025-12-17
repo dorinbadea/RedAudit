@@ -4,7 +4,7 @@
 
 RedAudit es una herramienta CLI para auditoría de red estructurada y hardening en sistemas Kali/Debian.
 
-![Versión](https://img.shields.io/badge/versión-3.3.0-blue?style=flat-square)
+![Versión](https://img.shields.io/badge/versión-3.4.0-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square)
 ![Licencia](https://img.shields.io/badge/licencia-GPLv3-green?style=flat-square)
 
@@ -16,7 +16,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.3.0
+                                      v3.4.0
       Herramienta Interactiva de Auditoría de Red
 ```
 
@@ -24,7 +24,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 
 RedAudit automatiza las fases de descubrimiento, enumeración y reporte en evaluaciones de seguridad de red. Está diseñado para su uso en entornos de laboratorio controlados, flujos de trabajo de hardening defensivo y ejercicios de seguridad ofensiva autorizados. Al orquestar herramientas estándar de la industria en un pipeline concurrente coherente, reduce la carga manual y garantiza una generación de resultados consistente.
 
-La herramienta cubre la brecha entre el escaneo ad-hoc y la auditoría formal, proporcionando artefactos estructurados (JSON/TXT) listos para su ingesta en frameworks de reporte o análisis SIEM.
+La herramienta cubre la brecha entre el escaneo ad-hoc y la auditoría formal, proporcionando artefactos estructurados (JSON/TXT/HTML/JSONL + playbooks de remediación) listos para workflows de reporte o análisis SIEM.
 
 ## Características
 
@@ -34,7 +34,7 @@ La herramienta cubre la brecha entre el escaneo ad-hoc y la auditoría formal, p
 - **Filtrado Smart-Check de Falsos Positivos**: Verificación de 3 capas (Content-Type, checks de tamaño, validación magic bytes) reduce ruido Nikto en 90%
 - **Cross-Validation (v3.1.4)**: Detecta falsos positivos de Nikto comparando hallazgos con cabeceras curl/wget
 - **Títulos Descriptivos (v3.1.4)**: Los títulos de hallazgos ahora describen el tipo de problema, no solo la URL
-- **Descubrimiento de Red Mejorado (v3.2)**: Descubrimiento broadcast/L2 (DHCP/NetBIOS/mDNS/UPNP/ARP/fping) — **auto-habilitado en modo `completo`** (v3.2.1). Recon Red Team disponible con flag `--redteam`.
+- **Descubrimiento de Red Mejorado (v3.2)**: Descubrimiento broadcast/L2 (DHCP/NetBIOS/mDNS/UPNP/ARP/fping) — **auto-habilitado en modo `full`** (v3.2.1). Recon Red Team disponible con flag `--redteam`.
 - **Detección de Fugas de Subred (v3.2.1)**: Identifica redes ocultas/invitados analizando fugas HTTP (via redirects y headers) para pivoting.
 - **Instalación Atómica con Rollback (v3.2.2)**: Las actualizaciones usan staging atómico con rollback automático en caso de fallo.
 - **Descubrimiento de Topología de Red**: Mapeo best-effort L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para detección de redes ocultas
@@ -46,10 +46,10 @@ La herramienta cubre la brecha entre el escaneo ad-hoc y la auditoría formal, p
 - **Soporte IPv6 + Proxy**: Escaneo dual-stack completo con capacidades de pivoting SOCKS5
 - **Cifrado de Reportes**: AES-128-CBC (Fernet) con derivación de claves PBKDF2-HMAC-SHA256 (480k iteraciones)
 - **Rate Limiting con Jitter**: Retardo inter-host configurable (randomización ±30%) para evasión IDS
-- **Detección de Fugas de Subred (v3.2.1)**: Identifica redes ocultas/invitados analizando fugas HTTP (via redirects y headers) para pivoting.
-- **Menú Principal Interactivo (v3.2)**: Asistente amigable para escaneo, configuración y análisis diff (sin argumentos).
+- **Menú Principal Interactivo (v3.2)**: Punto de entrada amigable para escaneo, actualizaciones y análisis diff (sin argumentos).
 - **Módulo HyperScan (v3.2.3)**: Descubrimiento paralelo ultrarrápido (TCP batch asyncio, 45+ puertos UDP, ARP agresivo, broadcast IoT) con detección de backdoors.
 - **Modo Sigiloso (v3.2.3)**: Flag `--stealth` activa timing paranoid T1, escaneo mono-hilo, y retardos 5s+ para evasión IDS empresarial.
+- **Playbooks de Remediación (v3.4.0)**: Playbooks Markdown auto-generados por host/categoría en `<output_dir>/playbooks/` (TLS, cabeceras, CVE, web, puertos) (omitidos cuando `--encrypt` está activado).
 - **Interfaz Bilingüe**: Localización completa Inglés/Español
 
 ## Arquitectura
@@ -73,6 +73,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 | **HyperScan** | Python `asyncio` | Descubrimiento paralelo ultrarrápido: batch TCP, broadcast UDP IoT, ARP agresivo (v3.2.3). |
 | **Orquestador** | `concurrent.futures` (Python) | Gestiona pools de hilos para escaneo paralelo de hosts. |
 | **Cifrado** | `python3-cryptography` | Cifrado AES-128 para reportes de auditoría sensibles. |
+| **Playbooks de Remediación** | Integrado | Genera playbooks Markdown accionables por host/categoría (v3.4.0). |
 
 ### Vista General del Sistema
 
@@ -90,7 +91,9 @@ redaudit/
 │   ├── scanner.py      # Lógica de escaneo Nmap + soporte IPv6
 │   ├── crypto.py       # Cifrado/descifrado AES-128
 │   ├── network.py      # Detección de interfaces (IPv4/IPv6)
-│   ├── reporter.py     # Salida JSON/TXT + SIEM
+│   ├── reporter.py     # Salida JSON/TXT/HTML/JSONL + playbooks
+│   ├── html_reporter.py  # Generador de reporte HTML interactivo (v3.3)
+│   ├── playbook_generator.py  # Generador de playbooks de remediación (v3.4)
 │   ├── updater.py      # Auto-actualización fiable (git clone)
 │   ├── verify_vuln.py  # Smart-Check filtrado falsos positivos
 │   ├── entity_resolver.py  # Agrupación hosts multi-interfaz
@@ -105,10 +108,14 @@ redaudit/
 │   ├── topology.py      # Descubrimiento de topología async (v3.1+)
 │   ├── net_discovery.py # Descubrimiento de red mejorado (v3.2+)
 │   └── hyperscan.py     # Descubrimiento paralelo ultrarrápido (v3.2.3)
+├── templates/          # Templates de reporte HTML / diff
+│   ├── report.html.j2  # Template dashboard HTML (v3.3)
+│   └── diff.html.j2    # Template diff HTML (v3.3)
 └── utils/              # Utilidades
-    ├── constants.py    # Constantes de configuración
-    ├── i18n.py         # Internacionalización
-    └── config.py       # Configuración persistente
+	    ├── constants.py    # Constantes de configuración
+	    ├── i18n.py         # Internacionalización
+	    ├── config.py       # Configuración persistente
+	    └── webhook.py      # Alertas webhook (v3.3)
 ```
 
 ## Instalación
@@ -146,7 +153,7 @@ Verifica la integridad de la instalación:
 which redaudit  # Debe devolver: /usr/local/bin/redaudit
 
 # 2. Verificar versión
-redaudit --version  # Debe mostrar: RedAudit v3.2.3
+redaudit --version  # Debe mostrar: RedAudit v3.4.0
 
 # 3. Verificar dependencias core
 command -v nmap && command -v tcpdump && command -v python3  # Todos deben existir
@@ -159,7 +166,7 @@ bash redaudit_verify.sh  # Verifica checksums, dependencias y configuración
 
 ```bash
 # Guardar clave API NVD para correlación CVE (setup único)
-redaudit  # Lanza el Menú Principal Interactivo (Escáner, Diff, Config)
+redaudit  # Lanza el Menú Principal Interactivo (Escanear / Actualizar / Diff)
 
 # Establecer defaults persistentes para evitar repetir flags
 redaudit --target 192.168.1.0/24 --threads 8 --rate-limit 1 --save-defaults --yes
@@ -218,6 +225,7 @@ Para más ejemplos incluyendo IPv6, correlación CVE, pivoting SOCKS5 e integrac
 - `--diff OLD NEW`: Análisis diferencial entre escaneos **(v3.0)**
 - `--html-report`: Genera dashboard HTML interactivo **(v3.3)**
 - `--webhook URL`: Envía alertas en tiempo real a endpoint webhook **(v3.3)**
+- `Playbooks`: Playbooks de remediación auto-generados en `<output_dir>/playbooks/` **(v3.4.0, sin flag; omitido con `--encrypt`)**
 - `--ipv6`: Modo solo IPv6 **(v3.0)**
 - `-y, --yes`: Omitir confirmaciones (modo automatización)
 
@@ -348,6 +356,12 @@ bash redaudit_verify.sh
 - **Finding ID**: Hash determinístico SHA256 (`asset_id + scanner + port + signature + title`) para correlación entre escaneos y deduplicación.
 - **CPE**: Common Platform Enumeration v2.3 formato usado para matching de versiones de software contra base de datos NVD CVE.
 - **JSONL**: Formato JSON Lines - un objeto JSON por línea, optimizado para ingesta streaming en pipelines SIEM/IA.
+
+### Operación y Reporting
+
+- **Entity Resolution**: Consolidación de dispositivos multi-interfaz en `unified_assets[]` para tracking de activos más limpio e ingesta SIEM.
+- **Deep Scan / Refinamiento de Identidad**: Escalado selectivo (fingerprinting TCP + UDP) para mejorar identificación en hosts ambiguos o filtrados.
+- **Playbook de Remediación**: Guía Markdown auto-generada por host/categoría con pasos de remediación y referencias (guardada en `<output_dir>/playbooks/`).
 
 **Nota**: Para explicaciones detalladas de estrategias de escaneo (Deep Scan, Smart-Check, Topology Discovery, etc.), ver la sección Características arriba.
 

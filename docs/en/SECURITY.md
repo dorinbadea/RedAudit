@@ -23,8 +23,9 @@ If you discover a security vulnerability in RedAudit, please report it responsib
 
 | Version | Supported          | Status |
 | ------- | ------------------ | ------ |
-| 3.2.x   | Yes                | Current stable |
-| 3.1.x   | Security fixes only | Maintenance |
+| 3.4.x   | Yes                | Current stable |
+| 3.3.x   | Yes                | Supported |
+| 3.2.x   | Security fixes only | Maintenance |
 | 2.9.x   | Security fixes only | EOL: March 2026 |
 | 2.8.x   | No                 | EOL |
 | < 2.8   | No                 | EOL |
@@ -60,8 +61,8 @@ Report encryption is handled via the `cryptography` library to ensure confidenti
 
 ## 3. Operational Security (OpSec)
 
-- **Artifact Permissions**: RedAudit enforces `0o600` (read/write by owner only) on generated artifacts (reports, JSONL export views, externalized evidence) to reduce leakage to other users on the same system.
-- **Encrypted Mode Safety**: When report encryption is enabled, RedAudit avoids generating additional plaintext export views (JSONL/summary and externalized evidence) alongside `.enc` reports.
+- **Artifact Permissions**: RedAudit enforces `0o600` (read/write by owner only) on generated artifacts (reports, HTML/playbooks, JSONL export views, externalized evidence) to reduce leakage to other users on the same system.
+- **Encrypted Mode Safety**: When report encryption is enabled, RedAudit avoids generating additional plaintext artifacts (HTML/JSONL/playbooks/summary and externalized evidence) alongside `.enc` reports.
 - **Jitter Rate-Limiting**: Configurable rate limiting with ±30% random variance to evade threshold-based IDS and behavioral analysis.
 - **Pre-scan Discretion**: Asyncio-based port discovery minimizes nmap invocations, reducing overall network footprint.
 - **Heartbeat**: Background monitoring ensures process integrity without requiring interactive shell access.

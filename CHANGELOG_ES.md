@@ -7,9 +7,25 @@ Todos los cambios relevantes de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Sin Publicar]
 
-- (pendiente)
+- (nada aún)
+
+## [3.4.0] - 2025-12-17 (Playbook Export)
+
+### Añadido
+
+- **Playbooks de Remediación**: Generación automática de guías de remediación accionables por hallazgo.
+  - Nuevo módulo: `redaudit/core/playbook_generator.py`
+  - Categorías: hardening TLS, cabeceras HTTP, remediación CVE, hardening web, hardening puertos
+  - Salida: archivos Markdown en el directorio `<output_dir>/playbooks/`
+  - Incluye: instrucciones paso a paso, comandos shell y enlaces de referencia
+  - Deduplicación: un playbook por categoría por host
+
+### Cambiado
+
+- **reporter.py**: Ahora genera playbooks automáticamente después de finalizar el escaneo.
+- **i18n.py**: Añadida clave de traducción `playbooks_generated`.
 
 ## [3.3.0] - 2025-12-17 (Mejoras DX)
 
@@ -73,7 +89,7 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Corregido
 
-- **Auto-Disparo Net Discovery**: Net discovery con HyperScan ahora se ejecuta automáticamente cuando topología está activada (no solo en modo 'completo'). Esto asegura que dispositivos IoT/WiZ se descubran en escaneos normales con topología.
+- **Auto-Disparo Net Discovery**: Net discovery con HyperScan ahora se ejecuta automáticamente cuando topología está activada (no solo en modo `full`). Esto asegura que dispositivos IoT/WiZ se descubran en escaneos normales con topología.
 - **Visibilidad HyperScan**: Añadida salida CLI visible para resultados de HyperScan mostrando conteos ARP/IoT/TCP y duración.
 - **Detección IoT Mejorada**: Mejorada detección de bombillas inteligentes con payload de registro WiZ (38899), Yeelight (55443), TP-Link Tapo (20002), y sondas mDNS. Timeout aumentado para dispositivos IoT lentos.
 - **Deduplicación de Redes**: "Escanear TODAS" ahora elimina correctamente CIDRs duplicados cuando la misma red se detecta en múltiples interfaces (ej: eth0 + eth1).
@@ -592,13 +608,13 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   - Consulta `searchsploit` para exploits conocidos cuando se identifica producto+versión
   - Resultados visibles en reportes JSON y TXT
   - Timeout: 10s por consulta
-  - Corre en todos los modos (fast/normal/completo)
+  - Corre en todos los modos (fast/normal/full)
   - Nueva función: `exploit_lookup()` en `redaudit/core/scanner.py`
 
 - **Integración TestSSL.sh**: Análisis profundo SSL/TLS para servicios HTTPS
   - Escaneo de vulnerabilidades SSL/TLS (Heartbleed, POODLE, BEAST, etc.)
   - Detección de cifrados débiles y problemas de protocolo
-  - Solo corre en modo `completo` (timeout 60s por puerto)
+  - Solo corre en modo `full` (timeout 60s por puerto)
   - Resultados incluyen summary, vulnerabilities, weak ciphers y protocols
   - Nueva función: `ssl_deep_analysis()` en `redaudit/core/scanner.py`
 

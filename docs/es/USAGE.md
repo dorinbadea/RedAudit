@@ -90,6 +90,22 @@ Nota: para modo limitado sin sudo/root, añade `--allow-non-root` (algunas funci
 | `--html-report` | Genera dashboard HTML interactivo con gráficos y tablas ordenables (funciona offline). |
 | `--webhook URL` | Envía alertas en tiempo real para hallazgos de alta severidad a una URL (Slack/Teams/Discord). |
 
+### Características v3.4.0
+
+**Playbooks de Remediación** se generan automáticamente tras cada escaneo. Proveen guías accionables para remediar hallazgos.
+
+| Categoría | Contenido |
+| :--- | :--- |
+| Hardening TLS | Suites de cifrado, versiones de protocolo, problemas de certificado |
+| Cabeceras HTTP | HSTS, CSP, X-Frame-Options faltantes, etc. |
+| Remediación CVE | Guías de parches con enlaces NVD |
+| Hardening Web | Directory listing, banners, páginas por defecto |
+| Hardening Puertos | Telnet, FTP, SMBv1, SNMP community public |
+
+**Salida**: directorio `<output_dir>/playbooks/` con un archivo Markdown por categoría por host.
+
+**Notas**: Los playbooks se deduplican (uno por host + categoría) y se omiten cuando el cifrado de reportes está activado (`--encrypt`).
+
 ### Seguridad
 
 | Flag | Descripción |
@@ -244,6 +260,8 @@ export NVD_API_KEY="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 **Opción 3: Archivo de Configuración**
 
 Crea `~/.redaudit/config.json`:
+
+**Nota**: El campo `version` en `~/.redaudit/config.json` es la **versión del esquema de configuración** (actualmente `3.2.3`) y no tiene por qué coincidir con la versión de la aplicación RedAudit (v3.4.0).
 
 ```json
 {

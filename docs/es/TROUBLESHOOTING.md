@@ -61,7 +61,7 @@ sudo apt install python3-nmap python3-cryptography python3-netifaces
 ### 6. "Los escaneos parecen colgarse" / Progreso lento
 
 **Síntoma**: La herramienta se pausa 1-2 minutos en un solo host.
-**Explicación**: RedAudit v2.8.0 realiza **Escaneos de Identidad Profundos** en hosts complejos (fingerprinting combinado TCP/UDP/SO).
+**Explicación**: RedAudit puede realizar **escaneos profundos / refinamiento de identidad** en hosts complejos (fingerprinting combinado TCP/UDP/SO).
 
 - **Duración**: Estos escaneos pueden legítimamente tomar **90–150 segundos** por host.
 - **Por qué**: Esencial para identificar cajas IoT, firewalls o servidores filtrados que ocultan su SO.
@@ -181,5 +181,20 @@ touch ~/Documents/RedAuditReports/test_write
 **Resolución**:
 - Probar URL con curl: `curl -X POST -d '{"test":true}' TU_URL_WEBHOOK`
 - Verificar que la URL comienza con `http://` o `https://`.
+
+### 16. Playbooks no generados / falta carpeta `playbooks/` (v3.4)
+
+**Síntoma**: No aparecen playbooks en `<output_dir>/playbooks/`, o el contador es 0.
+**Causas comunes**:
+
+- **Cifrado activado**: los artefactos en claro (HTML/JSONL/playbooks) se omiten cuando se usa `--encrypt`.
+- **No hay categorías que casen**: los playbooks solo se generan cuando los hallazgos entran en categorías internas (TLS, cabeceras, CVE, web, puertos).
+- **Deduplicación esperada**: solo se genera 1 playbook por host + categoría (puedes tener muchos hallazgos pero pocos playbooks).
+- **Permisos**: el directorio de salida no es escribible por el usuario actual.
+
+**Resolución**:
+
+- Ejecuta sin cifrado si necesitas playbooks: `sudo redaudit ... --mode normal --yes`
+- Confirma el directorio de salida y permisos: `ls -la <output_dir>`
 
 RedAudit y esta guía de solución de problemas son parte de un proyecto licenciado bajo GPLv3. Consulta [LICENSE](../../LICENSE).

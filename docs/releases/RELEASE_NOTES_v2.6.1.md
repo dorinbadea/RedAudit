@@ -23,7 +23,7 @@ Automatic ExploitDB lookup for services with detected versions.
 Comprehensive SSL/TLS vulnerability assessment for HTTPS services.
 
 - **What**: Deep analysis for Heartbleed, POODLE, BEAST, weak ciphers, deprecated protocols
-- **When**: Only in `completo` mode (heavy operation, 60s timeout)
+- **When**: Only in `full` mode (heavy operation, 60s timeout)
 - **Output**: Vulnerability summary, findings list, protocol analysis
 
 ## Technical Details

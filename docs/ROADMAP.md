@@ -11,7 +11,7 @@ This document outlines the technical roadmap, planned architectural improvements
 | Priority | Feature | Status | Description |
 | :--- | :--- | :--- | :--- |
 | **High** | **Native SIEM Pipeline** | 🎯 Planned | Direct exporters: custom Filebeat module (Elasticsearch ingest autoconfig), Sigma rule mapping for common findings (Nikto, CVE, weak ciphers). JSONL with full ECS (calculated risk_score, rule.id). Flag `--siem-pipeline elk\|splunk\|qradar`. |
-| **Medium** | **Playbook Export** | 🎯 Planned (v3.4) | Generate Markdown/YAML playbooks per finding (weak TLS remediation, MITRE/CVE references, suggested commands). Included in report for rapid triage. |
+| ~~Medium~~ | ~~Playbook Export~~ | ✅ **Implemented (v3.4.0)** | Markdown playbooks per finding (TLS, headers, CVE, web, ports). Auto-generated in `<output_dir>/playbooks/`. |
 | **Low** | **Osquery Hardening Verification** | 🎯 Planned | Post-scan module that executes Osquery queries (via fleet or direct) on live hosts to validate detected configs (firewall, services). Merged in SIEM/HTML report for closed-loop. |
 
 ### Red Team Extensions (v3.5+)

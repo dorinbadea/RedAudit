@@ -1,8 +1,8 @@
-# RedAudit v3.2.3 – User Manual (EN)
+# RedAudit v3.4.0 – User Manual (EN)
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](../es/MANUAL.md)
 
-**Version:** 3.3.0
+**Version:** 3.4.0
 **Target audience:** Security analysts, penetration testers, systems / network administrators
 **License:** GPLv3
 
@@ -27,7 +27,7 @@
 6. [Reports & output](#6-reports--output)
    - 6.1 [Directory layout](#61-directory-layout)
    - 6.2 [JSON report structure](#62-json-report-structure)
-   - 6.3 [Text / Markdown summaries](#63-text--markdown-summaries)
+   - 6.3 [Text (TXT) summary](#63-text-txt-summary)
 7. [Encryption & decryption](#7-encryption--decryption)
 8. [Security model](#8-security-model)
    - 8.1 [Input & command safety](#81-input--command-safety)
@@ -66,6 +66,7 @@ RedAudit is not an exploit framework and does not perform automatic exploitation
 - Optional enhanced network discovery (`--net-discovery`) with broadcast/L2 signals and an opt-in `redteam` recon block (best-effort).
 - **Interactive HTML Dashboard** (`--html-report`): Self-contained visual report with charts and search. (v3.3)
 - **Webhook Alerting** (`--webhook`): Real-time finding notifications to external services. (v3.3)
+- **Remediation Playbooks**: Auto-generated Markdown playbooks per host/category in `<output_dir>/playbooks/`. (v3.4)
 - Bilingual messages (English / Spanish).
 
 ---
@@ -226,21 +227,25 @@ At a high level, a run of RedAudit follows this sequence:
    - Uses `nmap -sV` (service/version detection) on discovered hosts.
    - For `full` mode, scans a wider port range and additional scripts.
 
-4. **Conditional web & TLS analysis**
+6. **Conditional web & TLS analysis**
    - If HTTP/HTTPS ports are found:
      - `whatweb` fingerprints technologies.
      - `curl` / `wget` fetch headers.
      - In `full` mode, `nikto` and `testssl.sh` are invoked for deeper checks.
 
-5. **Deep identity scan (triggered selectively)**
+7. **Deep scan / identity refinement (triggered selectively)**
    - If a host is ambiguous or "interesting" (few ports, strange services, incomplete fingerprint), a deeper scan is run:
      - Additional `nmap` probes, optional packet capture with `tcpdump`, optional summarisation with `tshark`.
 
-6. **Post-processing & reporting**
+8. **Post-processing & reporting**
    - Consolidates all collected data into a structured JSON report.
-   - Generates a text/Markdown summary.
+   - Generates a TXT summary report (if enabled).
+   - Generates remediation playbooks as Markdown in `<output_dir>/playbooks/`.
    - Generates an interactive HTML Dashboard (`--html-report`).
-   - Optionally encrypts the report files using `cryptography` (Fernet).
+   - Exports JSONL artifacts for SIEM/AI pipelines (when encryption is disabled).
+   - Optionally encrypts report files using `cryptography` (Fernet).
+
+> **Encryption note**: When report encryption is enabled, RedAudit writes encrypted JSON/TXT artifacts (plus a `.salt` file) and skips plaintext artifacts (HTML/JSONL/playbooks).
 
 The control logic for this pipeline lives mainly in the package `redaudit/core`.
 
@@ -271,11 +276,12 @@ You can run RedAudit either interactively (no arguments) or non-interactively.
 sudo redaudit
 ```
 
-When launched without arguments, RedAudit now presents an **Interactive Main Menu**:
+When launched without arguments, RedAudit presents an **Interactive Main Menu**:
 
 1. **Start Network Scan**: Enters the guided wizard for scanning.
-2. **Diff Two Reports**: Compares 2 JSON reports to show changes.
-3. **Exit**: Quits the application.
+2. **Check for Updates**: Runs the interactive updater (requires `sudo`).
+3. **Diff Two Reports**: Compares 2 JSON reports to show changes.
+0. **Exit**: Quits the application.
 
 If you choose to scan, you will be guided through:
 
@@ -290,7 +296,7 @@ If you choose to scan, you will be guided through:
 |--------|------------------|----------------------|
 | **Launch** | `sudo redaudit` | `sudo redaudit --target X --yes` |
 | **Configuration** | Guided wizard prompts | All via CLI flags |
-| **Main Menu** | Yes (Scan / Diff / Exit) | No (direct execution) |
+| **Main Menu** | Yes (Scan / Update / Diff / Exit) | No (direct execution) |
 | **Defaults** | Prompted to use/save | Must specify `--use-defaults` or `--ignore-defaults` |
 | **Use Case** | Manual audits, exploration | Automation, scripts, CI/CD |
 | **Update Check** | Prompted at startup | Skipped (use `--skip-update-check` explicit) |
@@ -329,7 +335,7 @@ The most important options:
 | `-e`, `--encrypt`           | Enable encryption of generated reports.                                                                                  |
 | `--encrypt-password PASS`   | Password for encryption in non-interactive runs. If omitted with `--encrypt`, you'll be prompted or a random password may be generated and printed. |
 | `--no-vuln-scan`            | Disable web vulnerability scanning (skip nikto / certain HTTP checks).                                                   |
-| `--no-txt-report`           | Skip generation of the human-readable TXT/Markdown report.                                                              |
+| `--no-txt-report`           | Skip generation of the human-readable TXT report.                                                                       |
 | `-o`, `--output DIR`        | Base output directory for reports. Default: `~/Documents/RedAuditReports` (a timestamped `RedAudit_...` folder is created). |
 | `--yes`                     | Non-interactive mode: assume "yes" to prompts. Essential for automation.                                                 |
 | `--prescan`                 | Enable asynchronous pre-scan to reduce nmap calls on very large ranges.                                           |
@@ -511,9 +517,9 @@ jq -r 'select(.normalized_severity >= 7.0) | "\(.ip) - \(.title)"' findings.json
 
 ---
 
-### 6.3 Text / Markdown summaries
+### 6.3 Text (TXT) summary
 
-The summary file (TXT/Markdown) is a human-oriented overview:
+The TXT summary file is a human-oriented overview:
 
 - High-level description of the run (targets, mode, duration).
 - Inventory of hosts with a compact list of open ports.

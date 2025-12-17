@@ -90,6 +90,22 @@ Note: for limited mode without sudo/root, add `--allow-non-root` (some scan feat
 | `--html-report` | Generate interactive HTML dashboard with charts and sortable tables (works offline). |
 | `--webhook URL` | Send real-time alerts for High/Critical findings to a webhook URL (Slack/Teams/Discord). |
 
+### v3.4.0 Features
+
+**Remediation Playbooks** are now automatically generated after each scan. Playbooks provide actionable guidance for remediating detected findings.
+
+| Category | Content |
+| :--- | :--- |
+| TLS Hardening | Cipher suites, protocol versions, certificate issues |
+| HTTP Headers | Missing HSTS, CSP, X-Frame-Options, etc. |
+| CVE Remediation | Patch guidance with NVD links |
+| Web Hardening | Directory listing, server banners, default pages |
+| Port Hardening | Telnet, FTP, SMBv1, SNMP public community |
+
+**Output**: `<output_dir>/playbooks/` directory with one Markdown file per category per host.
+
+**Notes**: Playbooks are deduplicated (one per host + category) and are skipped when report encryption is enabled (`--encrypt`).
+
 ### Security
 
 | Flag | Description |
@@ -245,6 +261,8 @@ export NVD_API_KEY="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 Create `~/.redaudit/config.json`:
 
+**Note**: The `version` field in `~/.redaudit/config.json` is the **config schema version** (currently `3.2.3`) and does not need to match the RedAudit application version (v3.4.0).
+
 ```json
 {
   "version": "3.2.3",
@@ -255,7 +273,7 @@ Create `~/.redaudit/config.json`:
     "udp_mode": "full",
     "udp_top_ports": 200,
     "topology_enabled": true,
-    "lang": "es",
+    "lang": "en",
     "output_dir": "~/Documents/RedAuditReports"
   }
 }

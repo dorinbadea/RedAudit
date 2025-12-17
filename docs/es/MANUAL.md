@@ -1,8 +1,8 @@
-# Manual de Usuario de RedAudit v3.2.3 (ES)
+# Manual de Usuario de RedAudit v3.4.0 (ES)
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](../en/MANUAL.md)
 
-**Versión:** 3.3.0
+**Versión:** 3.4.0
 **Fecha:** Diciembre 2025
 **Audiencia objetivo:** Analistas de seguridad, pentesters, administradores de sistemas / redes
 **Licencia:** GPLv3
@@ -28,7 +28,7 @@
 6. [Informes y salida](#6-informes-y-salida)
    - 6.1 [Estructura de directorios](#61-estructura-de-directorios)
    - 6.2 [Estructura del informe JSON](#62-estructura-del-informe-json)
-   - 6.3 [Resúmenes en texto / Markdown](#63-resúmenes-en-texto--markdown)
+   - 6.3 [Resumen en texto (TXT)](#63-resumen-en-texto-txt)
 7. [Cifrado y descifrado](#7-cifrado-y-descifrado)
 8. [Modelo de seguridad](#8-modelo-de-seguridad)
    - 8.1 [Seguridad de entrada y comandos](#81-seguridad-de-entrada-y-comandos)
@@ -67,6 +67,7 @@ RedAudit no explota vulnerabilidades por sí mismo. Su función es ofrecer visib
 - Descubrimiento de red mejorado opcional (`--net-discovery`) con señales broadcast/L2 y un bloque de recon `--redteam` (best-effort).
 - **Dashboard HTML Interactivo** (`--html-report`): Reporte visual autocontenido con gráficos y búsqueda. (v3.3)
 - **Alertas Webhook** (`--webhook`): Notificaciones de hallazgos en tiempo real a servicios externos. (v3.3)
+- **Playbooks de Remediación**: Playbooks Markdown auto-generados por host/categoría en `<output_dir>/playbooks/`. (v3.4)
 - Mensajes bilingües (inglés / español).
 
 ---
@@ -229,21 +230,25 @@ En un ciclo normal de ejecución, RedAudit realiza:
    - Uso de `nmap -sV` para descubrir puertos abiertos y versiones de servicios.
    - En modo `full`, el escaneo es más exhaustivo (más puertos y scripts adicionales).
 
-4. **Análisis web y TLS condicional**
+6. **Análisis web y TLS condicional**
    - Si detecta puertos HTTP/HTTPS:
      - `whatweb` identifica tecnologías y CMS.
      - `curl` y `wget` extraen cabeceras.
      - En `full`, se activan `nikto` y `testssl.sh` para un análisis más profundo.
 
-5. **Escaneo de identidad profundo (selectivo)**
+7. **Escaneo profundo / refinamiento de identidad (selectivo)**
    - Si un host es ambiguo o especialmente interesante (pocos puertos, servicios raros, fingerprint incompleto), se dispara un escaneo más agresivo:
      - Más sondas de `nmap`, posible captura de tráfico con `tcpdump` y resumen con `tshark`.
 
-6. **Post-procesado e informes**
+8. **Post-procesado e informes**
    - Se consolida toda la información en un informe JSON estructurado.
-   - Se genera un informe de texto / Markdown para lectura rápida.
+   - Se genera un informe TXT para lectura rápida (si está habilitado).
+   - Se generan playbooks de remediación en Markdown en `<output_dir>/playbooks/`.
    - Genera un Dashboard HTML interactivo (`--html-report`).
-   - Si se ha solicitado cifrado, los informes se protegen con `cryptography`.
+   - Exporta artefactos JSONL para pipelines SIEM/AI (si el cifrado está desactivado).
+   - Si se ha solicitado cifrado, los informes se protegen con `cryptography` (Fernet).
+
+> **Nota de cifrado**: Cuando el cifrado está activado, RedAudit escribe artefactos JSON/TXT cifrados (más un archivo `.salt`) y omite artefactos en claro (HTML/JSONL/playbooks).
 
 ---
 
@@ -258,7 +263,7 @@ RedAudit dispone de tres modos, con nombres de parámetro en inglés. Es importa
 |---|---|---|---|
 | Rápido | `fast` | Solo descubrimiento de hosts (`nmap -sn`). | Inventario rápido; verificar accesibilidad. |
 | Normal | `normal` | Puertos principales + versiones de servicios. | Auditoría de seguridad estándar. |
-| Completo | `completo` | Puertos extendidos + scripts + web/TLS + **net discovery** (v3.2.1). | Auditoría integral / revisión pre-pentest. |
+| Completo | `full` | Puertos extendidos + scripts + web/TLS + **net discovery** (v3.2.1). | Auditoría integral / revisión pre-pentest. |
 
 El modo elegido afecta a cuántos puertos se analizan y qué herramientas externas se activan.
 
@@ -275,11 +280,12 @@ RedAudit se puede usar en modo interactivo (sin argumentos) o no interactivo.
 sudo redaudit
 ```
 
-Cuando se inicia sin argumentos, RedAudit presenta ahora un **Menú Principal Interactivo**:
+Cuando se inicia sin argumentos, RedAudit presenta un **Menú Principal Interactivo**:
 
-1. **Start Network Scan**: Inicia el asistente de escaneo.
-2. **Diff Two Reports**: Compara 2 reportes JSON para ver diferencias.
-3. **Exit**: Salir.
+1. **Iniciar escaneo (wizard)**: Inicia el asistente guiado para escanear.
+2. **Buscar actualizaciones**: Ejecuta el actualizador interactivo (requiere `sudo`).
+3. **Comparar reportes (JSON)**: Compara 2 reportes JSON para ver diferencias.
+0. **Salir**: Salir.
 
 Si eliges escanear, el asistente te guiará por:
 
@@ -294,7 +300,7 @@ Si eliges escanear, el asistente te guiará por:
 |--------|------------------|---------------------|
 | **Lanzamiento** | `sudo redaudit` | `sudo redaudit --target X --yes` |
 | **Configuración** | Asistente con prompts | Todo por flags CLI |
-| **Menú Principal** | Sí (Escanear / Diff / Salir) | No (ejecución directa) |
+| **Menú Principal** | Sí (Escanear / Actualizar / Diff / Salir) | No (ejecución directa) |
 | **Valores por Defecto** | Prompt para usar/guardar | Especificar `--use-defaults` o `--ignore-defaults` |
 | **Caso de uso** | Auditorías manuales, exploración | Automatización, scripts, CI/CD |
 | **Check de actualizaciones** | Prompt al inicio | Omitido (usar `--skip-update-check` explícito) |
@@ -333,7 +339,7 @@ Las opciones más importantes:
 | `-e`, `--encrypt`            | Activa el cifrado de los informes generados.                                                                            |
 | `--encrypt-password PASS`    | Contraseña de cifrado en modo no interactivo. Si se omite con `--encrypt`, se pedirá por consola o se generará una aleatoria. |
 | `--no-vuln-scan`             | Desactiva el escaneo de vulnerabilidades web (omite nikto y ciertas pruebas HTTP).                                      |
-| `--no-txt-report`            | Evita generar el informe TXT/Markdown.                                                                                  |
+| `--no-txt-report`            | Evita generar el resumen en texto (TXT).                                                                                |
 | `-o`, `--output DIR`         | Directorio base destino para los informes. Por defecto: `~/Documents/RedAuditReports` (se crea `RedAudit_...` con timestamp). |
 | `--yes`                      | Modo no interactivo: asume "sí" a las preguntas. Imprescindible para automatización.                                    |
 | `--prescan`                  | Activa el pre-escaneo asíncrono antes de lanzar nmap sobre grandes rangos.                                        |
@@ -515,9 +521,9 @@ jq -r 'select(.normalized_severity >= 7.0) | "\(.ip) - \(.title)"' findings.json
 
 ---
 
-### 6.3 Resúmenes en texto / Markdown
+### 6.3 Resumen en texto (TXT)
 
-El informe TXT/Markdown está orientado a la lectura humana:
+El informe TXT está orientado a la lectura humana:
 
 - Descripción de alto nivel de la ejecución (objetivos, modo, duración).
 - Listado sintetizado de hosts y puertos abiertos.

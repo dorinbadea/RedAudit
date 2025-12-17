@@ -4,7 +4,7 @@
 
 RedAudit is a CLI tool for structured network auditing and hardening on Kali/Debian systems.
 
-![Version](https://img.shields.io/badge/version-3.3.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-3.4.0-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-green?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
@@ -16,7 +16,7 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.3.0
+                                      v3.4.0
         Interactive Network Audit Tool
 ```
 
@@ -24,7 +24,7 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 
 RedAudit automates the discovery, enumeration, and reporting phases of network security assessments. It is designed for use in controlled lab environments, defensive hardening workflows, and authorized offensive security exercises. By orchestrating standard industry tools into a coherent concurrent pipeline, it reduces manual overhead and ensures consistent output generation.
 
-The tool bridges the gap between ad-hoc scanning and formal auditing, providing structured artifacts (JSON/TXT) that are ready for ingestion into reporting frameworks or SIEM analysis.
+The tool bridges the gap between ad-hoc scanning and formal auditing, providing structured artifacts (JSON/TXT/HTML/JSONL + remediation playbooks) that are ready for reporting workflows or SIEM analysis.
 
 ## Features
 
@@ -46,9 +46,10 @@ The tool bridges the gap between ad-hoc scanning and formal auditing, providing 
 - **Report Encryption**: AES-128-CBC (Fernet) with PBKDF2-HMAC-SHA256 key derivation (480k iterations)
 - **Rate Limiting with Jitter**: Configurable inter-host delay (±30% randomization) for IDS evasion
 - **Subnet Leak Detection (v3.2.1)**: Automatically identifies potential hidden networks (e.g., Guest zones) by analyzing service leaks (headers, redirects).
-- **Interactive Main Menu (v3.2)**: Friendly wizard for scanning, configuration, and diff analysis (no arguments required).
+- **Interactive Main Menu (v3.2)**: Friendly entrypoint for scanning, updates, and diff analysis (no arguments required).
 - **HyperScan Module (v3.2.3)**: Ultra-fast parallel discovery (asyncio batch TCP, 45+ UDP ports, aggressive ARP, IoT broadcast) with backdoor detection.
 - **Stealth Mode (v3.2.3)**: `--stealth` flag enables T1 paranoid timing, single-thread scanning, and 5s+ delays for enterprise IDS evasion.
+- **Remediation Playbooks (v3.4.0)**: Auto-generated Markdown playbooks per host/category in `<output_dir>/playbooks/` (TLS, headers, CVE, web, ports) (skipped when `--encrypt` is enabled).
 - **Bilingual Interface**: Complete English/Spanish localization
 
 ## Architecture
@@ -72,6 +73,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 | **HyperScan** | Python `asyncio` | Ultra-fast parallel discovery: batch TCP, UDP IoT broadcast, aggressive ARP (v3.2.3). |
 | **Orchestrator** | `concurrent.futures` (Python) | Manages thread pools for parallel host scanning. |
 | **Encryption** | `python3-cryptography` | AES-128 encryption for sensitive audit reports. |
+| **Remediation Playbooks** | Built-in | Generates actionable Markdown playbooks per host/category (v3.4.0). |
 
 ### System Overview
 
@@ -89,7 +91,9 @@ redaudit/
 │   ├── scanner.py      # Nmap scanning logic + IPv6 support
 │   ├── crypto.py       # AES-128 encryption/decryption
 │   ├── network.py      # Interface detection (IPv4/IPv6)
-│   ├── reporter.py     # JSON/TXT + SIEM output
+│   ├── reporter.py     # JSON/TXT/HTML/JSONL + playbooks output
+│   ├── html_reporter.py  # Interactive HTML report generator (v3.3)
+│   ├── playbook_generator.py  # Remediation playbook generator (v3.4)
 │   ├── updater.py      # Reliable auto-update (git clone)
 │   ├── verify_vuln.py  # Smart-Check false positive filtering
 │   ├── entity_resolver.py  # Multi-interface host grouping
@@ -104,10 +108,14 @@ redaudit/
 │   ├── topology.py      # Async topology discovery (v3.1+)
 │   ├── net_discovery.py # Enhanced network discovery (v3.2+)
 │   └── hyperscan.py     # Ultra-fast parallel discovery (v3.2.3)
+├── templates/          # HTML report / diff templates
+│   ├── report.html.j2  # HTML dashboard template (v3.3)
+│   └── diff.html.j2    # HTML diff template (v3.3)
 └── utils/              # Utilities
-    ├── constants.py    # Configuration constants
-    ├── i18n.py         # Internationalization
-    └── config.py       # Persistent configuration
+	    ├── constants.py    # Configuration constants
+	    ├── i18n.py         # Internationalization
+	    ├── config.py       # Persistent configuration
+	    └── webhook.py      # Webhook alerting (v3.3)
 ```
 
 ## Installation
@@ -145,7 +153,7 @@ Verify installation integrity:
 which redaudit  # Should return: /usr/local/bin/redaudit
 
 # 2. Verify version
-redaudit --version  # Should show: RedAudit v3.2.3
+redaudit --version  # Should show: RedAudit v3.4.0
 
 # 3. Check core dependencies
 command -v nmap && command -v tcpdump && command -v python3  # All should succeed
@@ -158,7 +166,7 @@ bash redaudit_verify.sh  # Checks checksums, dependencies, and configuration
 
 ```bash
 # Store NVD API key for CVE correlation (one-time setup)
-redaudit  # Launches Interactive Main Menu (Scanner, Diff, Config)
+redaudit  # Launches Interactive Main Menu (Scan / Update / Diff)
 
 # Set persistent defaults to avoid repeating flags
 redaudit --target 192.168.1.0/24 --threads 8 --rate-limit 1 --save-defaults --yes
@@ -204,6 +212,7 @@ For more examples including IPv6, CVE correlation, SOCKS5 pivoting, and SIEM int
 - `--diff OLD NEW`: Differential analysis between scans **(v3.0)**
 - `--html-report`: Generate interactive HTML dashboard **(v3.3)**
 - `--webhook URL`: Send real-time alerts to webhook endpoint **(v3.3)**
+- `Playbooks`: Auto-generated remediation playbooks in `<output_dir>/playbooks/` **(v3.4.0, no flag; skipped when `--encrypt`)**
 - `--ipv6`: IPv6-only scanning mode **(v3.0)**
 - `-y, --yes`: Skip confirmations (automation mode)
 
@@ -343,6 +352,12 @@ bash redaudit_verify.sh
 - **Finding ID**: Deterministic SHA256 hash (`asset_id + scanner + port + signature + title`) for cross-scan correlation and deduplication.
 - **CPE**: Common Platform Enumeration v2.3 format used for matching software versions against NVD CVE database.
 - **JSONL**: JSON Lines format - one JSON object per line, optimized for streaming ingestion into SIEM/AI pipelines.
+
+### Operations & Reporting
+
+- **Entity Resolution**: Consolidation of multi-interface devices into `unified_assets[]` for cleaner asset tracking and SIEM ingestion.
+- **Deep Scan / Identity Refinement**: Selective escalation (TCP + UDP fingerprinting) to improve identification on ambiguous or filtered hosts.
+- **Remediation Playbook**: Auto-generated Markdown guide per host/category describing actionable remediation steps and references (saved under `<output_dir>/playbooks/`).
 
 **Note**: For detailed explanations of scanning strategies (Deep Scan, Smart-Check, Topology Discovery, etc.), see the Features section above.
 

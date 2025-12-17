@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.4.0] - 2025-12-17 (Playbook Export)
+
+### Added
+
+- **Remediation Playbooks**: Automatic generation of actionable remediation guides per finding.
+  - New module: `redaudit/core/playbook_generator.py`
+  - Categories: TLS hardening, HTTP headers, CVE remediation, web hardening, port hardening
+  - Output: Markdown files in `<output_dir>/playbooks/` directory
+  - Includes: step-by-step instructions, shell commands, and reference links
+  - Deduplication: one playbook per category per host
+
+### Changed
+
+- **reporter.py**: Now generates playbooks automatically after scan completion.
+- **i18n.py**: Added `playbooks_generated` translation key.
+
 ## [3.3.0] - 2025-12-17 (DX Improvements)
 
 ### Added
@@ -73,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Net Discovery Auto-Trigger**: Net discovery with HyperScan now automatically runs when topology is enabled (not just in 'completo' mode). This ensures IoT/WiZ devices are discovered in normal scans with topology.
+- **Net Discovery Auto-Trigger**: Net discovery with HyperScan now automatically runs when topology is enabled (not just in `full` mode). This ensures IoT/WiZ devices are discovered in normal scans with topology.
 - **HyperScan Visibility**: Added visible CLI output for HyperScan results showing ARP/IoT/TCP counts and duration.
 - **Enhanced IoT Discovery**: Improved smart bulb detection with WiZ registration payload (38899), Yeelight (55443), TP-Link Tapo (20002), and mDNS probes. Increased timeout for slow IoT devices.
 - **Network Deduplication**: "Scan ALL" now correctly removes duplicate CIDRs when same network is detected on multiple interfaces (e.g., eth0 + eth1).
@@ -595,13 +611,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Queries `searchsploit` for known exploits when product+version identified
   - Results displayed in both JSON and TXT reports
   - Timeout: 10 seconds per query
-  - Runs in all scan modes (fast/normal/completo)
+  - Runs in all scan modes (fast/normal/full)
   - New function: `exploit_lookup()` in `redaudit/core/scanner.py`
 
 - **TestSSL.sh Integration**: Comprehensive SSL/TLS security analysis for HTTPS services
   - Deep SSL/TLS vulnerability scanning (Heartbleed, POODLE, BEAST, etc.)
   - Weak cipher and protocol detection
-  - Only runs in `completo` mode (60-second timeout per port)
+  - Only runs in `full` mode (60-second timeout per port)
   - Results include summary, vulnerabilities, weak ciphers, and protocols
   - New function: `ssl_deep_analysis()` in `redaudit/core/scanner.py`
 

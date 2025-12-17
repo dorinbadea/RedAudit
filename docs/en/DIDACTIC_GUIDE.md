@@ -4,7 +4,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](../es/DIDACTIC_GUIDE.md)
 
-This guide is designed to help professors, instructors, and mentors explain the complete functionality of **RedAudit v3.3.0**. The document breaks down the tool from a pedagogical perspective, combining theory, visual diagrams, practical exercises, and code references.
+This guide is designed to help professors, instructors, and mentors explain the complete functionality of **RedAudit v3.4.0**. The document breaks down the tool from a pedagogical perspective, combining theory, visual diagrams, practical exercises, and code references.
 
 > **TL;DR for Instructors**: RedAudit is a network auditing orchestration tool perfect for teaching structured security workflows. Key teaching points: (1) Automated tool orchestration vs manual scanning, (2) Adaptive heuristics (Deep Scan triggers), (3) Professional reporting (SIEM-ready JSON). For a 60-minute lecture, focus on Sections 1-3. For hands-on labs, use Section 8 practical exercises. For research students, Section 5 provides Python internals reference.
 
@@ -65,10 +65,12 @@ graph TD
     A[Start: sudo redaudit] --> B[Environment Validation]
     B --> C{Dependencies OK?}
     C -->|No| D[Error: Install dependencies]
-    C -->|No| D[Error: Install dependencies]
     C -->|Yes| E[Main Menu]
     E -->|Start Scan| F[Assistant: Target/Topology/Mode]
+    E -->|Update| U[Check for Updates]
     E -->|Diff| Z[Compare Reports]
+    E -->|Exit| Q[End]
+    U --> E
     F --> G[Discovery: nmap -sn]
     G --> H[List of UP Hosts]
     H --> I[Parallel Port Scanning]
@@ -76,7 +78,7 @@ graph TD
     J -->|No| K[Enrichment: Web/SSL/DNS]
     J -->|Yes| L[Deep Scan: 3 Phases]
     L --> K
-    K --> M[JSON/TXT Report Generation]
+    K --> M[Artifacts Generation (JSON/TXT/HTML/JSONL/Playbooks)]
     M --> N{Encryption?}
     N -->|Yes| O[Encrypt with AES-128]
     N -->|No| P[Save to ~/Documents/RedAuditReports]
@@ -93,17 +95,16 @@ Before touching the network, the program:
 - Verifies `sudo` permissions (necessary for raw sockets).
 - Checks critical dependencies (`nmap`, `python3-nmap`).
 - Detects optional tools (`nikto`, `testssl.sh`, `searchsploit`).
-- Detects optional tools (`nikto`, `testssl.sh`, `searchsploit`).
 
 ### Phase 1.5: Interactive Configuration (New in v3.2)
 
 **Code Function**: [`show_main_menu()`](../../redaudit/core/auditor.py) and [`interactive_setup()`](../../redaudit/core/auditor.py)
 
-At startup, RedAudit presents a **Main Menu** allowing you to choose between scanning, comparing reports (Diff), or exiting.
+At startup, RedAudit presents a **Main Menu** allowing you to choose between scanning, checking for updates, comparing reports (Diff), or exiting.
 
 ```text
 ┌─────────────────────────────────────────────────┐
-│         RedAudit v3.3.0 - Main Menu            │
+│         RedAudit v3.4.0 - Main Menu            │
 ├─────────────────────────────────────────────────┤
 │  [1] Start Network Scan (Wizard)               │
 │  [2] Check for Updates                          │
@@ -177,7 +178,7 @@ Once open ports are detected, RedAudit calls specialized tools based on the serv
 
 **Code**: [`html_reporter.py`](../../redaudit/core/html_reporter.py)
 
-RedAudit v3.3 introduces an interactive **HTML Dashboard** (`--html-report`). Unlike static text files, this dashboard allows:
+RedAudit v3.3 introduced an interactive **HTML Dashboard** (`--html-report`) (still supported in v3.4). Unlike static text files, this dashboard allows:
 
 - **Sorting/Filtering**: Sort hosts by Open Ports, OS, or Risk Score.
 - **Visual Charts**: Donut charts for OS distribution and Severity/Risk overview.
@@ -187,6 +188,16 @@ RedAudit v3.3 introduces an interactive **HTML Dashboard** (`--html-report`). Un
 This teaches students the value of **data presentation**—raw data is useful for machines, but visualized data is crucial for executive decision-making.
 
 ---
+
+### Phase 4c: Remediation Playbooks (v3.4)
+
+**Code**: [`playbook_generator.py`](../../redaudit/core/playbook_generator.py)
+
+RedAudit v3.4 adds **Remediation Playbooks**: concise, actionable Markdown guides generated automatically after each scan in `<output_dir>/playbooks/`.
+
+- **One playbook per host + category** (deduplicated): TLS hardening, HTTP headers, CVE remediation, web hardening, port hardening.
+- **Teaching value**: bridges the gap between detection ("what is wrong") and operations ("what to do next"), without turning RedAudit into an exploit framework.
+- **Encryption behavior**: playbooks are plaintext artifacts and are skipped when report encryption is enabled.
 
 ## 3. Deep Scan Logic and Heuristics
 

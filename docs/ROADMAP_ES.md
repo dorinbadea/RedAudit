@@ -11,7 +11,7 @@ Este documento describe el roadmap técnico, las mejoras arquitectónicas planif
 | Prioridad | Característica | Estado | Descripción |
 | :--- | :--- | :--- | :--- |
 | **Alta** | **Pipeline SIEM Nativo** | 🎯 Planificado | Exporters directos: módulo Filebeat personalizado (autoconfig ingest Elasticsearch), mapping Sigma rules para findings comunes (Nikto, CVE, cifrados débiles). JSONL con ECS completo (risk_score calculado, rule.id). Flag `--siem-pipeline elk\|splunk\|qradar`. |
-| **Media** | **Export Playbooks** | 🎯 Planificado (v3.4) | Generar Markdown/YAML playbooks por finding (remediación TLS débil, referencias MITRE/CVE, comandos sugeridos). Incluido en reporte para triage rápido. |
+| ~~Media~~ | ~~Export Playbooks~~ | ✅ **Implementado (v3.4.0)** | Playbooks Markdown por hallazgo (TLS, cabeceras, CVE, web, puertos). Generados automáticamente en `<output_dir>/playbooks/`. |
 | **Baja** | **Verificación Hardening con Osquery** | 🎯 Planificado | Módulo post-scan que ejecute queries Osquery (via fleet o directo) en hosts vivos para validar configs detectadas (firewall, servicios). Merge en reporte SIEM/HTML para closed-loop. |
 
 ### Extensiones Red Team (v3.5+)

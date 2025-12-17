@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](../en/DIDACTIC_GUIDE.md)
 
-Esta guía está diseñada para ayudar a profesores, instructores y mentores a explicar el funcionamiento completo de **RedAudit v3.3.0**. El documento desglosa la herramienta desde una perspectiva pedagógica, combinando teoría, diagramas visuales, ejercicios prácticos y referencias al código.
+Esta guía está diseñada para ayudar a profesores, instructores y mentores a explicar el funcionamiento completo de **RedAudit v3.4.0**. El documento desglosa la herramienta desde una perspectiva pedagógica, combinando teoría, diagramas visuales, ejercicios prácticos y referencias al código.
 
 > **Resumen Ejecutivo para Instructores**: RedAudit es una herramienta de orquestación de auditoría de red ideal para enseñar flujos de seguridad estructurados. Puntos clave de enseñanza: (1) Orquestación automatizada vs escaneo manual, (2) Heurística adaptativa (activadores de Deep Scan), (3) Reportes profesionales (JSON listo para SIEM). Para una clase de 60 minutos, enfocarse en Secciones 1-3. Para laboratorios prácticos, usar ejercicios de la Sección 8. Para estudiantes de investigación, la Sección 5 provee referencia de internals en Python.
 
@@ -63,23 +63,25 @@ graph TD
     A[Inicio: sudo redaudit] --> B[Validación de Entorno]
     B --> C{Dependencias OK?}
     C -->|No| D[Error: Instalar dependencias]
-    C -->|No| D[Error: Instalar dependencias]
     C -->|Sí| E[Menú Principal]
-    E -->|Start Scan| F[Asistente: Target/Topología/Modo]
-    E -->|Diff| Z[Comparar Reportes]
+    E -->|Iniciar escaneo| F[Asistente: Objetivo/Topología/Modo]
+    E -->|Actualizar| U[Buscar actualizaciones]
+    E -->|Diff| Z[Comparar reportes]
+    E -->|Salir| Q[Fin]
+    U --> E
     F --> G[Descubrimiento: nmap -sn]
-    G --> H[Lista de Hosts UP]
-    H --> I[Escaneo Paralelo de Puertos]
-    I --> J{¿Trigger Deep Scan?}
+    G --> H[Lista de hosts activos]
+    H --> I[Escaneo paralelo de puertos]
+    I --> J{¿Activar Deep Scan?}
     J -->|No| K[Enriquecimiento: Web/SSL/DNS]
-    J -->|Sí| L[Deep Scan: 3 Fases]
+    J -->|Sí| L[Deep Scan: 3 fases]
     L --> K
-    K --> M[Generación de Reporte JSON/TXT]
+    K --> M[Generación de Artefactos (JSON/TXT/HTML/JSONL/Playbooks)]
     M --> N{¿Cifrado?}
-    N -->|Sí| O[Encriptar con AES-128]
+    N -->|Sí| O[Cifrar con AES-128]
     N -->|No| P[Guardar en ~/Documents/RedAuditReports]
     O --> P
-    P --> Q[Fin]
+    P --> Q
 ```
 
 ### Fase 1: Validación y Entorno
@@ -91,17 +93,16 @@ Antes de tocar la red, el programa:
 - Verifica permisos de `sudo` (necesarios para sockets raw).
 - Comprueba dependencias críticas (`nmap`, `python3-nmap`).
 - Detecta herramientas opcionales (`nikto`, `testssl.sh`, `searchsploit`).
-- Detecta herramientas opcionales (`nikto`, `testssl.sh`, `searchsploit`).
 
 ### Fase 1.5: Configuración Interactiva (Nuevo en v3.2)
 
 **Función en código**: [`show_main_menu()`](../../redaudit/core/auditor.py) y [`interactive_setup()`](../../redaudit/core/auditor.py)
 
-Al inicio, RedAudit presenta un **Menú Principal** que permite elegir entre escanear, comparar reportes (Diff), o salir.
+Al inicio, RedAudit presenta un **Menú Principal** que permite elegir entre escanear, buscar actualizaciones, comparar reportes (Diff), o salir.
 
 ```text
 ┌─────────────────────────────────────────────────┐
-│         RedAudit v3.3.0 - Menú Principal       │
+│         RedAudit v3.4.0 - Menú Principal       │
 ├─────────────────────────────────────────────────┤
 │  [1] Iniciar Auditoría (Wizard)                │
 │  [2] Buscar Actualizaciones                     │
@@ -115,7 +116,7 @@ Si se elige escanear, el asistente solicita:
 
 1. **Objetivo**: IP o CIDR.
 2. **Topología**: Elección simplificada entre Escaneo Completo, Estándar (sin topología), o Solo Topología.
-3. **Modo**: Rápido, Normal, o Completo.
+3. **Modo**: Rápido, Normal, o Completo (`full`).
 
 ### Fase 2: Descubrimiento (Discovery)
 
@@ -129,7 +130,7 @@ Utiliza un ping sweep rápido (`nmap -sn -T4 --max-retries 1`) para identificar 
 
 **Función en código**: [`net_discovery.py`](../../redaudit/core/net_discovery.py)
 
-**v3.2.3**: **Auto-habilitado en modo Completo** (sin flag). También disponible vía `--net-discovery` en otros modos.
+**v3.2.3**: **Auto-habilitado en modo Full (`full`)** (sin flag). También disponible vía `--net-discovery` en otros modos.
 
 RedAudit va más allá de ICMP y utiliza protocolos de capa 2:
 
@@ -175,7 +176,7 @@ Una vez detectados los puertos abiertos, RedAudit llama a herramientas especiali
 
 **Código**: [`html_reporter.py`](../../redaudit/core/html_reporter.py)
 
-RedAudit v3.3 introduce un **Dashboard HTML** interactivo (`--html-report`). A diferencia de los archivos de texto estáticos, este dashboard permite:
+RedAudit v3.3 introdujo un **Dashboard HTML** interactivo (`--html-report`) (soportado en v3.4). A diferencia de los archivos de texto estáticos, este dashboard permite:
 
 - **Ordenar/Filtrar**: Ordenar hosts por Puertos Abiertos, SO, o Puntuación de Riesgo.
 - **Gráficos Visuales**: Gráficos de donut para distribución de SO y resumen de Severidad/Riesgo.
@@ -185,6 +186,16 @@ RedAudit v3.3 introduce un **Dashboard HTML** interactivo (`--html-report`). A d
 Esto enseña a los estudiantes el valor de la **presentación de datos**: los datos crudos son útiles para máquinas, pero los datos visualizados son cruciales para la toma de decisiones ejecutiva.
 
 ---
+
+### Fase 4c: Playbooks de Remediación (v3.4)
+
+**Código**: [`playbook_generator.py`](../../redaudit/core/playbook_generator.py)
+
+RedAudit v3.4 añade **Playbooks de Remediación**: guías Markdown concisas y accionables generadas automáticamente tras cada escaneo en `<output_dir>/playbooks/`.
+
+- **Un playbook por host + categoría** (deduplicado): hardening TLS, cabeceras HTTP, remediación CVE, hardening web, hardening puertos.
+- **Valor didáctico**: conecta la detección ("qué está mal") con la operación ("qué hacer después") sin convertir RedAudit en un framework de explotación.
+- **Cifrado**: los playbooks son artefactos en claro y se omiten cuando el cifrado de reportes está activado.
 
 ## 3. Lógica de Deep Scan y Heurística
 
