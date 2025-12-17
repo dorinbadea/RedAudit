@@ -1624,9 +1624,7 @@ class InteractiveNetworkAuditor:
             # v2.8.1: Create timestamped output folder BEFORE scanning
             # This ensures PCAP files are saved inside the result folder
             ts_folder = self.scan_start_time.strftime("%Y-%m-%d_%H-%M-%S")
-            output_base = self.config.get(
-                "output_dir", get_default_reports_base_dir()
-            )
+            output_base = self.config.get("output_dir", get_default_reports_base_dir())
             self.config["_actual_output_dir"] = os.path.join(output_base, f"RedAudit_{ts_folder}")
             os.makedirs(self.config["_actual_output_dir"], exist_ok=True)
             maybe_chown_to_invoking_user(self.config["_actual_output_dir"])

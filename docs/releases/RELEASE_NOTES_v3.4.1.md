@@ -25,4 +25,3 @@ sudo bash redaudit_install.sh
 ---
 
 *RedAudit v3.4.1 - Small hotfix, smoother UX.*
-
