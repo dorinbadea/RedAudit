@@ -164,6 +164,12 @@ Examples:
         action="store_true",
         help="Print commands that would be executed without running them",
     )
+    # v3.3: HTML report generation
+    parser.add_argument(
+        "--html-report",
+        action="store_true",
+        help="Generate interactive HTML report with charts and tables",
+    )
     parser.add_argument("--version", "-V", action="version", version=f"RedAudit v{VERSION}")
 
     # Pre-scan options (v2.7)
@@ -433,6 +439,9 @@ def configure_from_args(app, args) -> bool:
 
     # Set TXT report
     app.config["save_txt_report"] = not args.no_txt_report
+
+    # v3.3: HTML report generation
+    app.config["html_report"] = getattr(args, "html_report", False)
 
     # Set deep scan
     app.config["deep_id_scan"] = not args.no_deep_scan

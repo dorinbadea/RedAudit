@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RedAudit Report - {{ target }}</title>
+    <style>
+        :root {
+            --bg-dark: #1a1d23;
+            --bg-card: #22262e;
+            --text-primary: #e4e6eb;
+            --text-secondary: #a0a3a8;
+            --accent-red: #e74c3c;
+            --accent-orange: #f39c12;
+            --accent-yellow: #f1c40f;
+            --accent-blue: #3498db;
+            --accent-gray: #7f8c8d;
+            --accent-green: #2ecc71;
+            --border-color: #3a3f47;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        h1 { font-size: 1.8rem; color: var(--accent-red); }
+        .meta { color: var(--text-secondary); font-size: 0.9rem; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 1.2rem;
+            border: 1px solid var(--border-color);
+        }
+        .card-title { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+        .card-value { font-size: 2rem; font-weight: 700; }
+        .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .chart-container { background: var(--bg-card); border-radius: 8px; padding: 1.5rem; border: 1px solid var(--border-color); }
+        .chart-title { font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary); }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
+        th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background: var(--bg-card); color: var(--text-secondary); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; }
+        tr:hover { background: rgba(255,255,255,0.03); }
+        .severity-critical { color: var(--accent-red); font-weight: 600; }
+        .severity-high { color: var(--accent-orange); font-weight: 600; }
+        .severity-medium { color: var(--accent-yellow); }
+        .severity-low { color: var(--accent-blue); }
+        .severity-info { color: var(--accent-gray); }
+        .risk-high { color: var(--accent-red); }
+        .risk-medium { color: var(--accent-orange); }
+        .risk-low { color: var(--accent-green); }
+        .section { margin-bottom: 2rem; }
+        .section-title { font-size: 1.2rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
+        .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .badge-critical { background: rgba(231,76,60,0.2); color: var(--accent-red); }
+        .badge-high { background: rgba(243,156,18,0.2); color: var(--accent-orange); }
+        .badge-medium { background: rgba(241,196,15,0.2); color: var(--accent-yellow); }
+        .badge-low { background: rgba(52,152,219,0.2); color: var(--accent-blue); }
+        .badge-info { background: rgba(127,140,141,0.2); color: var(--accent-gray); }
+        footer { text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding-top: 2rem; border-top: 1px solid var(--border-color); }
+        canvas { max-height: 300px; }
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable:hover { color: var(--text-primary); }
+        .sortable::after { content: ' ⇅'; opacity: 0.5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>🔴 RedAudit Report</h1>
+                <div class="meta">Target: <strong>{{ target }}</strong> | Mode: {{ scan_mode }} | Generated: {{ generated_at }}</div>
+            </div>
+            <div class="meta">v{{ version }}</div>
+        </header>
+
+        <div class="cards">
+            <div class="card">
+                <div class="card-title">Hosts Discovered</div>
+                <div class="card-value">{{ host_count }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Total Findings</div>
+                <div class="card-value">{{ finding_count }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Critical</div>
+                <div class="card-value severity-critical">{{ severity_counts.critical }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">High</div>
+                <div class="card-value severity-high">{{ severity_counts.high }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Medium</div>
+                <div class="card-value severity-medium">{{ severity_counts.medium }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Low / Info</div>
+                <div class="card-value">{{ severity_counts.low + severity_counts.info }}</div>
+            </div>
+        </div>
+
+        <div class="charts">
+            <div class="chart-container">
+                <div class="chart-title">Severity Distribution</div>
+                <canvas id="severityChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Top 10 Ports</div>
+                <canvas id="portsChart"></canvas>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Hosts ({{ host_count }})</div>
+            <table id="hostsTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-col="0">IP</th>
+                        <th class="sortable" data-col="1">Hostname</th>
+                        <th class="sortable" data-col="2">Ports</th>
+                        <th class="sortable" data-col="3">Risk Score</th>
+                        <th>MAC</th>
+                        <th>Vendor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for host in host_table %}
+                    <tr>
+                        <td><code>{{ host.ip }}</code></td>
+                        <td>{{ host.hostname }}</td>
+                        <td>{{ host.ports_count }}</td>
+                        <td>
+                            {% if host.risk_score >= 70 %}
+                            <span class="risk-high">{{ host.risk_score }}</span>
+                            {% elif host.risk_score >= 40 %}
+                            <span class="risk-medium">{{ host.risk_score }}</span>
+                            {% else %}
+                            <span class="risk-low">{{ host.risk_score }}</span>
+                            {% endif %}
+                        </td>
+                        <td><code>{{ host.mac }}</code></td>
+                        <td>{{ host.vendor }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Findings ({{ finding_count }})</div>
+            <table id="findingsTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-col="0">Host</th>
+                        <th class="sortable" data-col="1">Severity</th>
+                        <th class="sortable" data-col="2">Category</th>
+                        <th>Title</th>
+                        <th>Port</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for finding in finding_table %}
+                    <tr>
+                        <td><code>{{ finding.host }}</code></td>
+                        <td><span class="badge badge-{{ finding.severity }}">{{ finding.severity|upper }}</span></td>
+                        <td>{{ finding.category }}</td>
+                        <td>{{ finding.title }}</td>
+                        <td>{{ finding.port }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <footer>
+            Generated by RedAudit v{{ version }} — {{ generated_at }}
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        // Severity Chart
+        const severityCtx = document.getElementById('severityChart').getContext('2d');
+        new Chart(severityCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+                datasets: [{
+                    data: [{{ severity_counts.critical }}, {{ severity_counts.high }}, {{ severity_counts.medium }}, {{ severity_counts.low }}, {{ severity_counts.info }}],
+                    backgroundColor: ['#e74c3c', '#f39c12', '#f1c40f', '#3498db', '#7f8c8d'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'right', labels: { color: '#a0a3a8' } }
+                }
+            }
+        });
+
+        // Ports Chart
+        const portsCtx = document.getElementById('portsChart').getContext('2d');
+        new Chart(portsCtx, {
+            type: 'bar',
+            data: {
+                labels: [{% for port, count in top_ports %}'{{ port }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+                datasets: [{
+                    label: 'Host Count',
+                    data: [{% for port, count in top_ports %}{{ count }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                    backgroundColor: '#3498db',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { ticks: { color: '#a0a3a8' }, grid: { color: '#3a3f47' } },
+                    y: { ticks: { color: '#a0a3a8' }, grid: { display: false } }
+                }
+            }
+        });
+
+        // Simple table sorting
+        document.querySelectorAll('.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const table = th.closest('table');
+                const tbody = table.querySelector('tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const col = parseInt(th.dataset.col);
+                const asc = th.dataset.asc !== 'true';
+                th.dataset.asc = asc;
+                
+                rows.sort((a, b) => {
+                    const aVal = a.children[col].textContent.trim();
+                    const bVal = b.children[col].textContent.trim();
+                    const aNum = parseFloat(aVal);
+                    const bNum = parseFloat(bVal);
+                    
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        return asc ? aNum - bNum : bNum - aNum;
+                    }
+                    return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                });
+                
+                rows.forEach(row => tbody.appendChild(row));
+            });
+        });
+    </script>
+</body>
+</html>

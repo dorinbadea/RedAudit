@@ -1,0 +1,1 @@
+"""RedAudit templates package."""
