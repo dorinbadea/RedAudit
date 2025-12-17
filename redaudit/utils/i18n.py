@@ -515,14 +515,14 @@ def detect_preferred_language(preferred: Optional[str] = None) -> str:
         detected = _map(locale.getlocale()[0] or "")
         if detected:
             return detected
-    except Exception:
+    except Exception:  # nosec
         pass
 
     try:
         detected = _map((locale.getdefaultlocale() or (None, None))[0] or "")
         if detected:
             return detected
-    except Exception:
+    except Exception:  # nosec
         pass
 
     return "en"
