@@ -6,6 +6,10 @@
 
 RedAudit se adhiere a estándares estrictos de codificación y commits para mantener auditabilidad y confiabilidad.
 
+## Flujo de trabajo recomendado
+
+Para mantener un timeline limpio y releases consistentes, ver `AGENTS.md` (ramas, agrupación de commits, hooks de pre-commit, CI y checklist de release).
+
 ## Estándares de Código
 
 ### Python

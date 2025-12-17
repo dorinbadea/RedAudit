@@ -8,6 +8,10 @@ Thank you for considering contributing to RedAudit! This document outlines the d
 
 ## Development Setup
 
+### Engineering Workflow (Recommended)
+
+For a clean timeline and consistent releases, see `AGENTS.md` (branching, commit grouping, pre-commit hooks, CI checks, release checklist).
+
 ### Prerequisites
 
 - **OS**: Kali Linux, Debian 11+, Ubuntu 20.04+, or Parrot OS
