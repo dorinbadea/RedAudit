@@ -15,6 +15,7 @@ from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.utils.dry_run import is_dry_run
 
 
 def parse_proxy_url(url: str) -> Optional[Dict]:
@@ -95,7 +96,7 @@ def test_proxy_connection(proxy: Dict, timeout: int = 10) -> Tuple[bool, str]:
 
     try:
         runner = CommandRunner(
-            dry_run=bool(os.environ.get("REDAUDIT_DRY_RUN")),
+            dry_run=is_dry_run(),
             default_timeout=float(timeout + 5),
             default_retries=0,
             backoff_base_s=0.0,

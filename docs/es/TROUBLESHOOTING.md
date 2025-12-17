@@ -204,7 +204,7 @@ touch ~/Documents/RedAuditReports/test_write
 **Síntoma**: No aparecen playbooks en `<output_dir>/playbooks/`, o el contador es 0.
 **Causas comunes**:
 
-- **Cifrado activado**: los artefactos en claro (HTML/JSONL/playbooks) se omiten cuando se usa `--encrypt`.
+- **Cifrado activado**: los artefactos en claro (HTML/JSONL/playbooks/manifiestos) se omiten cuando se usa `--encrypt`.
 - **No hay categorías que casen**: los playbooks solo se generan cuando los hallazgos entran en categorías internas (TLS, cabeceras, CVE, web, puertos).
 - **Deduplicación esperada**: solo se genera 1 playbook por host + categoría (puedes tener muchos hallazgos pero pocos playbooks).
 - **Permisos**: el directorio de salida no es escribible por el usuario actual.

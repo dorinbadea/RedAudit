@@ -17,13 +17,13 @@ from __future__ import annotations
 import asyncio
 import ipaddress
 import json
-import os
 import re
 import shutil
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.utils.dry_run import is_dry_run
 
 
 def _run_cmd(
@@ -33,7 +33,7 @@ def _run_cmd(
 ) -> Tuple[int, str, str]:
     runner = CommandRunner(
         logger=logger,
-        dry_run=bool(os.environ.get("REDAUDIT_DRY_RUN")),
+        dry_run=is_dry_run(),
         default_timeout=float(timeout_s),
         default_retries=0,
         backoff_base_s=0.0,

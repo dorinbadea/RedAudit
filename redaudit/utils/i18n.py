@@ -186,6 +186,20 @@ TRANSLATIONS = {
         "update_skipped": "Update skipped. Continuing with current version.",
         "update_restarting": "Update installed! Restarting RedAudit...",
         "update_restart_failed": "Update installed, but restart failed. Please exit and re-run: {}",
+        "update_refresh_hint": (
+            "Note: If the banner/version does not refresh after an update, restart your terminal "
+            "or run `hash -r` (zsh/bash)."
+        ),
+        "update_home_changes_detected_skip": "Local changes detected in {}. Skipping home folder update.",
+        "update_home_changes_detected_abort": (
+            "Local changes detected in {}. Commit/stash or remove the folder before updating."
+        ),
+        "update_home_changes_verify_failed_skip": (
+            "Could not verify local changes in {}. Skipping home folder update for safety."
+        ),
+        "update_home_changes_verify_failed_abort": (
+            "Could not verify local changes in {}. Update aborted for safety."
+        ),
         "update_requires_root": "Update check requires sudo/root (or run with --skip-update-check).",
         # NVD API Key configuration (v3.0.1)
         "nvd_key_set_cli": "✓ NVD API key set from command line",
@@ -210,6 +224,21 @@ TRANSLATIONS = {
         "net_discovery_vlans_found": "⚠️  Detected {} potential guest network(s)/VLAN(s)",
         "net_discovery_q": "Enable enhanced network discovery (DHCP/NetBIOS/mDNS/UPNP)?",
         "net_discovery_redteam_q": "Include Red Team techniques (SNMP/SMB enum, slower/noisier)?",
+        "redteam_mode_q": "Red Team options:",
+        "redteam_mode_a": "A) Discovery only (recommended)",
+        "redteam_mode_b": "B) Enable Red Team modules (requires root; slower/noisier)",
+        "redteam_requires_root": (
+            "Red Team modules require root privileges. Re-run with sudo or disable Red Team."
+        ),
+        "redteam_active_l2_q": (
+            "Enable active Layer 2 (L2) probing? (Requires root; most intrusive)"
+        ),
+        "redteam_kerberos_userenum_q": (
+            "Enable Kerberos user enumeration via Kerbrute when Kerberos/AD is detected? "
+            "(Authorized testing only)"
+        ),
+        "kerberos_realm_q": "Kerberos realm (optional; leave blank to auto-detect)",
+        "kerberos_userlist_q": "Username wordlist path for Kerbrute (leave blank to skip)",
         # v3.2.2+: Main menu
         "menu_option_scan": "Start scan (wizard)",
         "menu_option_update": "Check for updates",
@@ -416,6 +445,22 @@ TRANSLATIONS = {
         "update_skipped": "Actualización omitida. Continuando con la versión actual.",
         "update_restarting": "¡Actualización instalada! Reiniciando RedAudit...",
         "update_restart_failed": "Actualización instalada, pero el reinicio falló. Sal y vuelve a ejecutar: {}",
+        "update_refresh_hint": (
+            "Nota: Si el banner/versión no se refresca tras actualizar, reinicia el terminal "
+            "o ejecuta `hash -r` (zsh/bash)."
+        ),
+        "update_home_changes_detected_skip": (
+            "Detectados cambios locales en {}. Omitiendo la actualización de la carpeta en home."
+        ),
+        "update_home_changes_detected_abort": (
+            "Detectados cambios locales en {}. Haz commit/stash o elimina la carpeta antes de actualizar."
+        ),
+        "update_home_changes_verify_failed_skip": (
+            "No se pudieron verificar cambios locales en {}. Omitiendo la actualización de la carpeta en home por seguridad."
+        ),
+        "update_home_changes_verify_failed_abort": (
+            "No se pudieron verificar cambios locales en {}. Actualización abortada por seguridad."
+        ),
         "update_requires_root": "La comprobación de actualizaciones requiere sudo/root (o usa --skip-update-check).",
         # Configuración de API Key de NVD (v3.0.1)
         "nvd_key_set_cli": "✓ API key de NVD establecida desde línea de comandos",
@@ -440,6 +485,19 @@ TRANSLATIONS = {
         "net_discovery_vlans_found": "⚠️  Detectada(s) {} red(es) de invitados/VLAN(s) potencial(es)",
         "net_discovery_q": "¿Activar descubrimiento de red mejorado (DHCP/NetBIOS/mDNS/UPNP)?",
         "net_discovery_redteam_q": "¿Incluir técnicas Red Team (enum SNMP/SMB, más lento/ruidoso)?",
+        "redteam_mode_q": "Opciones de Red Team:",
+        "redteam_mode_a": "A) Solo descubrimiento (recomendado)",
+        "redteam_mode_b": "B) Activar módulos Red Team (requiere root; más lento/ruidoso)",
+        "redteam_requires_root": (
+            "Los módulos de Red Team requieren privilegios de root. Ejecuta con sudo o desactiva Red Team."
+        ),
+        "redteam_active_l2_q": "¿Activar L2 activo (sondeo en capa 2)? (Requiere root; más intrusivo)",
+        "redteam_kerberos_userenum_q": (
+            "¿Habilitar enumeración de usuarios Kerberos con Kerbrute cuando se detecte Kerberos/AD? "
+            "(Solo con autorización)"
+        ),
+        "kerberos_realm_q": "Realm de Kerberos (opcional; en blanco para autodetectar)",
+        "kerberos_userlist_q": "Ruta al wordlist de usuarios para Kerbrute (en blanco para omitir)",
         # v3.2.2+: Menú principal
         "menu_option_scan": "Iniciar escaneo (wizard)",
         "menu_option_update": "Buscar actualizaciones",

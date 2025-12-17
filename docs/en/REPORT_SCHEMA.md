@@ -17,6 +17,7 @@ In the same output directory, RedAudit can also generate flat export files optim
 - `findings.jsonl`: One finding per line
 - `assets.jsonl`: One asset per line
 - `summary.json`: Compact dashboard summary
+- `run_manifest.json`: Output folder manifest (files + counts)
 
 These exports are generated only when report encryption is **disabled**, to avoid creating plaintext artifacts alongside encrypted reports.
 
@@ -28,7 +29,7 @@ The top-level container for the scan session.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `schema_version` | `string` | Schema version ("3.2") |
+| `schema_version` | `string` | Schema version (may differ from app version) |
 | `generated_at` | `string` | Report generation timestamp (ISO 8601) **(v3.1)** |
 | `event_type` | `string` | Event type for SIEM ingestion ("redaudit.scan.complete") |
 | `session_id` | `string` | Unique UUID for this scan session |
@@ -189,7 +190,7 @@ This field appears only if automatic deep scan was triggered.
 | `commands[].duration_seconds` | float | Execution time in seconds |
 | `commands[].error` | string | (Optional) Error message if command failed |
 | `pcap_capture` | object | (Optional) Details about the micro-traffic capture |
-| `pcap_capture.pcap_file` | string | Portable relative filename (e.g., `traffic_192.168.1.1.pcap`) **(v3.1.4)** |
+| `pcap_capture.pcap_file` | string | Portable relative filename (e.g., `traffic_192_168_1_1_235959.pcap`) **(v3.1.4)** |
 | `pcap_capture.pcap_file_abs` | string | (Optional) Absolute path - for internal use **(v3.1.4)** |
 | `pcap_capture.iface` | string | Network interface used for capture |
 | `pcap_capture.tshark_summary` | string | (Optional) High-level protocol stats if tshark is installed |

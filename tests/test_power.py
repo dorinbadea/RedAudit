@@ -41,7 +41,7 @@ class TestSleepInhibitor(unittest.TestCase):
         args = mock_popen.call_args[0][0]
         self.assertIn("systemd-inhibit", args[0])
 
-    @patch("redaudit.core.power.subprocess.run")
+    @patch("redaudit.core.command_runner.subprocess.run")
     @patch("redaudit.core.power.subprocess.Popen")
     @patch("redaudit.core.power.shutil.which")
     @patch("redaudit.core.power.platform.system", return_value="Linux")
@@ -60,6 +60,15 @@ class TestSleepInhibitor(unittest.TestCase):
             inst.start()
         # xset q + the 3 xset modifications
         self.assertGreaterEqual(mock_run.call_count, 1)
+
+    @patch("redaudit.core.command_runner.subprocess.run")
+    @patch("redaudit.core.power.subprocess.Popen")
+    def test_dry_run_skips_all_external_commands(self, mock_popen, mock_run):
+        inst = SleepInhibitor(dry_run=True)
+        inst.start()
+        inst.stop()
+        mock_popen.assert_not_called()
+        mock_run.assert_not_called()
 
 
 if __name__ == "__main__":

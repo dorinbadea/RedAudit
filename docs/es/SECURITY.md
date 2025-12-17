@@ -41,7 +41,7 @@ El cifrado de reportes se gestiona mediante la librería `cryptography` para ase
 ## 3. Seguridad Operacional (OpSec)
 
 - **Permisos de Artefactos**: RedAudit aplica `0o600` (lectura/escritura solo para el propietario) a los artefactos generados (reportes, HTML/playbooks, vistas JSONL/JSON, evidencia externalizada) para reducir filtraciones a otros usuarios del sistema.
-- **Seguridad en Modo Cifrado**: Si el cifrado de reportes está activado, RedAudit evita generar artefactos adicionales en texto plano (HTML/JSONL/playbooks/resumen y evidencia externalizada) junto a reportes `.enc`.
+- **Seguridad en Modo Cifrado**: Si el cifrado de reportes está activado, RedAudit evita generar artefactos adicionales en texto plano (HTML/JSONL/playbooks/resumen/manifiestos y evidencia externalizada) junto a reportes `.enc`.
 - **Rate-Limiting con Jitter**: Limitación de velocidad configurable con varianza aleatoria ±30% para evadir IDS basados en umbrales y análisis de comportamiento.
 - **Discreción Pre-scan**: Descubrimiento de puertos basado en asyncio minimiza las invocaciones de nmap, reduciendo la huella de red.
 - **Heartbeat**: Monitoreo en segundo plano asegura la integridad del proceso sin requerir acceso interactivo a la shell.

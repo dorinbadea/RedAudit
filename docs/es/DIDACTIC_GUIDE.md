@@ -1060,7 +1060,7 @@ time sudo redaudit --target 192.168.1.0/24 --mode fast --threads 16
 | **Nmap** | Network Mapper, escáner de puertos de código abierto | Motor principal de RedAudit |
 | **PBKDF2** | Password-Based Key Derivation Function 2 | Derivación de claves de cifrado (480k iteraciones) |
 | **PCAP** | Packet Capture, formato de archivo para tráfico de red | Evidencia capturada con tcpdump |
-| **Dry Run** | Modo que muestra comandos sin ejecutarlos | `--dry-run` ayuda a auditar/depurar el plan de comandos (despliegue incremental v3.5) |
+| **Dry Run** | Modo que muestra comandos sin ejecutarlos | `--dry-run` ayuda a auditar/depurar el plan de comandos (no se ejecuta ningún comando externo) |
 | **CommandRunner** | Wrapper centralizado para ejecutar comandos externos | Ejecución por args con timeouts/reintentos/redacción; base de dry-run |
 | **Inhibición de reposo** | Mecanismo para evitar reposo/pantalla | Prevención best-effort durante escaneos largos (opt-out `--no-prevent-sleep`) |
 | **SIGINT** | Señal de interrupción (Ctrl+C) | Manejo de cancelación limpia |

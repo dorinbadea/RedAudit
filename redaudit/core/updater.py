@@ -25,6 +25,7 @@ from urllib.error import URLError, HTTPError
 
 from redaudit.utils.constants import VERSION
 from redaudit.core.command_runner import CommandRunner
+from redaudit.utils.dry_run import is_dry_run
 
 # GitHub repository configuration
 GITHUB_OWNER = "dorinbadea"
@@ -545,9 +546,8 @@ def format_release_notes_for_cli(notes: str, width: int = 100, max_lines: int = 
 
 def _suggest_restart_command() -> str:
     # Best-effort hint: updates typically require sudo/root for system install.
-    if os.geteuid() == 0:
-        return "sudo redaudit"
-    return "redaudit"
+    base = "sudo redaudit" if os.geteuid() == 0 else "redaudit"
+    return f"hash -r && {base}"
 
 
 def restart_self(logger=None) -> bool:
@@ -734,6 +734,7 @@ def perform_git_update(
     GITHUB_CLONE_URL = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}.git"
     target_version = target_version or VERSION
     target_ref = f"v{target_version}"
+    dry_run_enabled = is_dry_run()
     sudo_user = os.environ.get("SUDO_USER")
     target_home_dir = os.path.expanduser("~")
     target_uid = None
@@ -751,15 +752,22 @@ def perform_git_update(
 
     home_redaudit_path = os.path.join(target_home_dir, "RedAudit")
     install_path = "/usr/local/lib/redaudit"
+    system_install_updated = False
+    update_home_copy = True
 
     try:
         runner = CommandRunner(
             logger=logger,
-            dry_run=bool(os.environ.get("REDAUDIT_DRY_RUN")),
+            dry_run=dry_run_enabled,
             default_timeout=30.0,
             default_retries=1,
             redact_env_keys={"GITHUB_TOKEN", "NVD_API_KEY"},
         )
+
+        if dry_run_enabled:
+            print_fn(f"  → [dry-run] would update to {target_ref} from GitHub", "INFO")
+            print_fn("  → [dry-run] skipping git clone/install steps", "INFO")
+            return (True, "Dry-run: update skipped")
 
         # Step 1: Determine target commit for the current version tag
         try:
@@ -889,13 +897,14 @@ def perform_git_update(
             env["REDAUDIT_LANG"] = lang
             env["REDAUDIT_AUTO_UPDATE"] = "1"  # Flag to skip prompts
 
-            result = subprocess.run(
+            result = runner.run(
                 ["bash", install_script],
                 cwd=clone_path,
                 env=env,
                 capture_output=True,
                 text=True,
-                timeout=300,  # 5 minutes max
+                timeout=300.0,  # 5 minutes max
+                check=False,
             )
 
             if result.returncode != 0:
@@ -984,6 +993,7 @@ def perform_git_update(
                     f"  → Activating new install: {staged_install_path} → {install_path}", "INFO"
                 )
                 os.rename(staged_install_path, install_path)
+                system_install_updated = True
 
                 print_fn(f"  → Default language preserved: {lang}", "OKGREEN")
 
@@ -1016,91 +1026,111 @@ def perform_git_update(
                     env=git_env,
                 ).strip()
                 if status:
+                    if system_install_updated:
+                        print_fn(
+                            f"  → {t_fn('update_home_changes_detected_skip', home_redaudit_path)}",
+                            "WARNING",
+                        )
+                        update_home_copy = False
+                    else:
+                        shutil.rmtree(temp_dir, ignore_errors=True)
+                        return (
+                            False,
+                            t_fn("update_home_changes_detected_abort", home_redaudit_path),
+                        )
+            except Exception:
+                if system_install_updated:
+                    print_fn(
+                        f"  → {t_fn('update_home_changes_verify_failed_skip', home_redaudit_path)}",
+                        "WARNING",
+                    )
+                    update_home_copy = False
+                else:
                     shutil.rmtree(temp_dir, ignore_errors=True)
                     return (
                         False,
-                        f"Local changes detected in {home_redaudit_path}. Commit/stash or remove the folder before updating.",
+                        t_fn("update_home_changes_verify_failed_abort", home_redaudit_path),
                     )
-            except Exception:
-                shutil.rmtree(temp_dir, ignore_errors=True)
-                return (
-                    False,
-                    f"Could not verify local changes in {home_redaudit_path}. Update aborted for safety.",
-                )
 
         # Step 5: Copy to user's home folder with documentation (STAGED/ATOMIC)
+        # (Optional when system install was updated; skip if home repo has local changes.)
         staged_home_path = f"{home_redaudit_path}.new"
         backup_path = None
 
-        if logger:
-            logger.info("Copying to home folder: %s (staged)", home_redaudit_path)
-        print_fn(f"  → Updating home folder copy: {home_redaudit_path}", "INFO")
+        if update_home_copy:
+            if logger:
+                logger.info("Copying to home folder: %s (staged)", home_redaudit_path)
+            print_fn(f"  → Updating home folder copy: {home_redaudit_path}", "INFO")
 
-        # Clean previous failed staged attempt
-        if os.path.exists(staged_home_path):
-            shutil.rmtree(staged_home_path, ignore_errors=True)
+            # Clean previous failed staged attempt
+            if os.path.exists(staged_home_path):
+                shutil.rmtree(staged_home_path, ignore_errors=True)
 
-        # Stage: copy to .new first
-        print_fn(f"  → Staging home folder: {staged_home_path}", "INFO")
-        shutil.copytree(clone_path, staged_home_path)
+            # Stage: copy to .new first
+            print_fn(f"  → Staging home folder: {staged_home_path}", "INFO")
+            shutil.copytree(clone_path, staged_home_path)
 
-        # Inject language preference into staged copy
-        staged_home_constants = os.path.join(staged_home_path, "redaudit", "utils", "constants.py")
-        _inject_default_lang(staged_home_constants, lang)
-
-        # Validate staged home copy
-        staged_key_file = os.path.join(staged_home_path, "redaudit", "__init__.py")
-        if not os.path.isfile(staged_key_file):
-            shutil.rmtree(staged_home_path, ignore_errors=True)
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            return (False, "Staged home copy missing key files")
-
-        # ATOMIC SWAP for home folder
-        try:
-            # Backup existing if present
-            if os.path.exists(home_redaudit_path):
-                backup_path = f"{home_redaudit_path}_backup_{int(__import__('time').time())}"
-                print_fn(
-                    f"  → Backing up home folder: {home_redaudit_path} → {backup_path}", "INFO"
-                )
-                os.rename(home_redaudit_path, backup_path)
-                if logger:
-                    logger.info("Backed up existing to: %s", backup_path)
-
-            # Activate staged home folder
-            print_fn(
-                f"  → Activating home folder: {staged_home_path} → {home_redaudit_path}", "INFO"
+            # Inject language preference into staged copy
+            staged_home_constants = os.path.join(
+                staged_home_path, "redaudit", "utils", "constants.py"
             )
-            os.rename(staged_home_path, home_redaudit_path)
+            _inject_default_lang(staged_home_constants, lang)
 
-        except Exception as e:
-            # ROLLBACK: restore backup if swap failed
-            if (
-                backup_path
-                and os.path.exists(backup_path)
-                and not os.path.exists(home_redaudit_path)
-            ):
-                print_fn("  → ROLLBACK: Restoring home folder from backup", "WARNING")
-                try:
-                    os.rename(backup_path, home_redaudit_path)
-                except Exception:
-                    pass
-            shutil.rmtree(staged_home_path, ignore_errors=True)
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            return (False, f"Home folder swap failed: {e}")
+            # Validate staged home copy
+            staged_key_file = os.path.join(staged_home_path, "redaudit", "__init__.py")
+            if not os.path.isfile(staged_key_file):
+                shutil.rmtree(staged_home_path, ignore_errors=True)
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                return (False, "Staged home copy missing key files")
 
-        # Fix ownership if running as root
-        if os.geteuid() == 0 and target_uid is not None and target_gid is not None:
+            # ATOMIC SWAP for home folder
             try:
-                for root, dirs, files in os.walk(home_redaudit_path):
-                    os.chown(root, target_uid, target_gid)
-                    for d in dirs:
-                        os.chown(os.path.join(root, d), target_uid, target_gid)
-                    for f in files:
-                        os.chown(os.path.join(root, f), target_uid, target_gid)
+                # Backup existing if present
+                if os.path.exists(home_redaudit_path):
+                    backup_path = f"{home_redaudit_path}_backup_{int(__import__('time').time())}"
+                    print_fn(
+                        f"  → Backing up home folder: {home_redaudit_path} → {backup_path}",
+                        "INFO",
+                    )
+                    os.rename(home_redaudit_path, backup_path)
+                    if logger:
+                        logger.info("Backed up existing to: %s", backup_path)
+
+                # Activate staged home folder
+                print_fn(
+                    f"  → Activating home folder: {staged_home_path} → {home_redaudit_path}",
+                    "INFO",
+                )
+                os.rename(staged_home_path, home_redaudit_path)
+
             except Exception as e:
-                if logger:
-                    logger.warning("Could not fix ownership: %s", e)
+                # ROLLBACK: restore backup if swap failed
+                if (
+                    backup_path
+                    and os.path.exists(backup_path)
+                    and not os.path.exists(home_redaudit_path)
+                ):
+                    print_fn("  → ROLLBACK: Restoring home folder from backup", "WARNING")
+                    try:
+                        os.rename(backup_path, home_redaudit_path)
+                    except Exception:
+                        pass
+                shutil.rmtree(staged_home_path, ignore_errors=True)
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                return (False, f"Home folder swap failed: {e}")
+
+            # Fix ownership if running as root
+            if os.geteuid() == 0 and target_uid is not None and target_gid is not None:
+                try:
+                    for root, dirs, files in os.walk(home_redaudit_path):
+                        os.chown(root, target_uid, target_gid)
+                        for d in dirs:
+                            os.chown(os.path.join(root, d), target_uid, target_gid)
+                        for f in files:
+                            os.chown(os.path.join(root, f), target_uid, target_gid)
+                except Exception as e:
+                    if logger:
+                        logger.warning("Could not fix ownership: %s", e)
 
         # Step 6: Post-install verification with ROLLBACK
         verification_passed = True
@@ -1119,10 +1149,11 @@ def perform_git_update(
                         verification_passed = False
                         verification_errors.append(f"Missing file: {key_file}")
 
-        # Check home copy
-        if not os.path.isdir(home_redaudit_path):
-            verification_passed = False
-            verification_errors.append("Home copy not created")
+        # Check home copy (required only when system install was not updated)
+        if (not system_install_updated) or update_home_copy:
+            if not os.path.isdir(home_redaudit_path):
+                verification_passed = False
+                verification_errors.append("Home copy not created")
 
         # Cleanup temp directory
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -1293,8 +1324,10 @@ def interactive_update_check(
                         t_fn("update_restart_failed", _suggest_restart_command()),
                         "WARNING",
                     )
+                    print_fn(t_fn("update_refresh_hint"), "INFO")
             else:
                 print_fn(message, "OKGREEN")
+                print_fn(t_fn("update_refresh_hint"), "INFO")
             return True
         else:
             print_fn(message, "FAIL")

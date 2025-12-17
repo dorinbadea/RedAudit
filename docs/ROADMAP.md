@@ -29,7 +29,9 @@ This document outlines the technical roadmap, planned architectural improvements
 | :--- | :--- | :--- | :--- |
 | **Medium** | **Containerization** | Paused | Official Dockerfile and Docker Compose setup for ephemeral audit containers. |
 | **Medium** | **Centralized CommandRunner** | ✅ **Implemented (v3.5.0)** | Single module for external command execution: args as list (anti-injection), configurable timeouts, retries with backoff, secret redaction in logs, dry-run support. Refactors subprocess calls across the codebase. |
-| **Medium** | **Full `--dry-run` Support** | 🎯 Planned | Propagate `--dry-run` flag to all modules so commands are printed but not executed. Depends on CommandRunner. Useful for auditing and debugging. |
+| **Medium** | **Full `--dry-run` Support** | ✅ **Implemented (v3.5.1)** | Propagate `--dry-run` flag to all modules so commands are printed but not executed (no external commands run). Depends on CommandRunner. Useful for auditing and debugging. |
+| **Low** | **Silent Progress UI (ETA)** | ✅ **Implemented (v3.5.1)** | Replace periodic "heartbeat" clocking warnings with Rich progress bars where possible (clear bars + ETA), keeping the terminal output calm and operator-friendly. |
+| **Low** | **Output Folder Manifest** | ✅ **Implemented (v3.5.1)** | Add `run_manifest.json` to each output folder (when encryption is disabled) to provide counts + artifact list for reproducibility and SIEM pipelines. |
 | **Low** | **Single Version Source** | 🎯 Planned | Read version from `pyproject.toml` via `importlib.metadata` instead of manual `VERSION = "x.y.z"`. Prevents version drift across files. |
 | **Low** | **TTY Autodetection** | 🎯 Planned | Auto-disable colors when stdout is not a TTY (pipes/CI). Flag `--no-color` already exists but behavior not fully implemented. |
 | **Low** | **Interactive Webhook Config** | 🎯 Planned | Add webhook URL prompt to interactive wizard for advanced users. Currently webhook is CLI-only (`--webhook URL`). |

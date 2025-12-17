@@ -29,6 +29,11 @@ def export_findings_jsonl(results: Dict, output_path: str) -> int:
     """
     count = 0
 
+    session_id = results.get("session_id", "")
+    schema_version = results.get("schema_version", "")
+    scanner_versions = results.get("scanner_versions", {}) or {}
+    redaudit_version = results.get("version") or scanner_versions.get("redaudit", "")
+
     with open(output_path, "w", encoding="utf-8") as f:
         for vuln_entry in results.get("vulnerabilities", []):
             host = vuln_entry.get("host", "")
@@ -45,6 +50,11 @@ def export_findings_jsonl(results: Dict, output_path: str) -> int:
                     "title": _extract_title(vuln),
                     "parsed_observations": vuln.get("parsed_observations", [])[:5],
                     "timestamp": results.get("timestamp_end", ""),
+                    # Provenance: makes JSONL ingestion self-contained
+                    "session_id": session_id,
+                    "schema_version": schema_version,
+                    "scanner": "RedAudit",
+                    "scanner_version": redaudit_version,
                 }
 
                 f.write(json.dumps(finding, ensure_ascii=False) + "\n")
@@ -70,6 +80,10 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
         Number of assets exported
     """
     count = 0
+    session_id = results.get("session_id", "")
+    schema_version = results.get("schema_version", "")
+    scanner_versions = results.get("scanner_versions", {}) or {}
+    redaudit_version = results.get("version") or scanner_versions.get("redaudit", "")
 
     # Build finding count per host
     finding_counts: Dict[str, int] = {}
@@ -94,6 +108,11 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
                 "finding_count": finding_counts.get(ip, 0),
                 "tags": host.get("tags", []),
                 "timestamp": results.get("timestamp_end", ""),
+                # Provenance: makes JSONL ingestion self-contained
+                "session_id": session_id,
+                "schema_version": schema_version,
+                "scanner": "RedAudit",
+                "scanner_version": redaudit_version,
             }
 
             # Add MAC if available
@@ -155,6 +174,9 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "high_risk_assets": results.get("summary", {}).get("high_risk_hosts", 0),
         "targets": results.get("targets", []),
         "scanner_versions": results.get("scanner_versions", {}),
+        # Convenience: summary consumers frequently need RedAudit version
+        "redaudit_version": results.get("version")
+        or (results.get("scanner_versions", {}) or {}).get("redaudit", ""),
     }
 
     with open(output_path, "w", encoding="utf-8") as f:

@@ -9,10 +9,10 @@ Uses Content-Type verification and Magic Bytes to detect Soft 404s.
 """
 
 import re
-import os
 from typing import Dict, List, Optional, Tuple
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.utils.dry_run import is_dry_run
 
 # File extensions that suggest sensitive/binary content
 SENSITIVE_EXTENSIONS = (".tar", ".zip", ".gz", ".bak", ".config", ".pem", ".key", ".pfx", ".p12")
@@ -117,7 +117,7 @@ def verify_content_type(
         curl_path = "curl"
 
     runner = CommandRunner(
-        dry_run=bool(os.environ.get("REDAUDIT_DRY_RUN")),
+        dry_run=is_dry_run(),
         default_timeout=float(timeout + 5),
         default_retries=0,
         backoff_base_s=0.0,
@@ -242,7 +242,7 @@ def verify_magic_bytes(
         return True, "kept:magic_not_defined"
 
     runner = CommandRunner(
-        dry_run=bool(os.environ.get("REDAUDIT_DRY_RUN")),
+        dry_run=is_dry_run(),
         default_timeout=float(timeout + 5),
         default_retries=0,
         backoff_base_s=0.0,

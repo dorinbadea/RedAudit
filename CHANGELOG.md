@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.5.1] - 2025-12-17 (Hotfix)
+
+### Added
+
+- **Output manifest**: When encryption is disabled, RedAudit now writes `run_manifest.json` in the output folder (counts + artifact list).
+- **SIEM provenance fields**: `findings.jsonl` / `assets.jsonl` now include `session_id`, `schema_version`, `scanner`, `scanner_version`; `summary.json` adds `redaudit_version`.
+- **Silent progress UI**: Rich progress bars now show an ETA for host/vuln phases, and heartbeat "no output" clocking messages no longer spam the terminal.
+
+### Fixed
+
+- **Full `--dry-run` support**: Propagated dry-run across remaining modules so no external commands are executed, while still printing planned commands.
+- **Updater UX**: If system install is updated but `~/RedAudit` has local git changes, RedAudit now skips updating the home copy instead of failing the whole update.
+- **Post-update hint**: After updating, RedAudit prints a reminder to restart the terminal or run `hash -r` if the banner/version does not refresh.
+
 ## [3.5.0] - 2025-12-17 (Reliability & Execution)
 
 ### Added

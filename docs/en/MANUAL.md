@@ -133,7 +133,7 @@ The script `redaudit_install.sh` performs the following steps:
    - `python3-nmap`, `python3-cryptography`, `python3-netifaces`
    - `exploitdb` (for searchsploit)
    - `nbtscan`, `netdiscover`, `fping`, `avahi-utils` (for enhanced discovery)
-   - `snmp`, `snmp-mibs-downloader`, `enum4linux`, `smbclient`, `masscan`, `rpcclient`, `ldap-utils`, `bettercap`, `python3-scapy`, `proxychains4` (for Red Team recon)
+   - `snmp`, `snmp-mibs-downloader`, `enum4linux`, `smbclient`, `samba-common-bin` (rpcclient), `masscan`, `ldap-utils`, `bettercap`, `python3-scapy`, `proxychains4` (for Red Team recon)
    - `kerbrute` (downloaded from GitHub)
 
 3. **Code deployment**
@@ -166,13 +166,13 @@ If you prefer not to use the installer:
 2. Install dependencies manually (example):
 
    ```bash
-   sudo apt update
-   sudo apt install curl wget openssl nmap tcpdump tshark \
-                    whois bind9-dnsutils python3-nmap \
-                    python3-cryptography python3-netifaces exploitdb git \
-                    nbtscan netdiscover fping avahi-utils arp-scan lldpd \
-                    snmp enum4linux smbclient masscan rpcclient ldap-utils bettercap python3-scapy proxychains4
-   ```
+	   sudo apt update
+	   sudo apt install curl wget openssl nmap tcpdump tshark \
+	                    whois bind9-dnsutils python3-nmap \
+	                    python3-cryptography python3-netifaces exploitdb git \
+	                    nbtscan netdiscover fping avahi-utils arp-scan lldpd \
+	                    snmp enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4
+	   ```
 
 3. Install `kerbrute` (manual step):
 
@@ -214,8 +214,9 @@ At a high level, a run of RedAudit follows this sequence:
    - Input of target ranges and selection of **Topology Mode** (Full, Standard, or Topology Only).
 
 2. **Network Discovery (Optional, v3.2)**
-   - If enabled (`--net-discovery`), broadcasts probes via ARP, mDNS, NetBIOS, and DHCP to find hidden hosts.
-   - Can optionally perform Red Team recon (SNMP, LDAP) if requested.
+   - If enabled (`--net-discovery` or via the interactive wizard), broadcasts probes via ARP, mDNS, NetBIOS, and DHCP to find hidden hosts.
+   - Opt-in Red Team recon can be enabled (`--redteam` or wizard option B); active L2 probing requires `--redteam-active-l2`.
+   - Kerberos user enumeration via Kerbrute runs only when explicitly enabled and a userlist is provided (authorized testing only).
 
 3. **Discovery**
    - Uses `nmap -sn` (host discovery) to find live hosts in the target range.
@@ -332,7 +333,7 @@ The most important options:
 | `-j`, `--threads N`         | Concurrent scanning threads. Range constrained by built-in safe defaults.                                               |
 | `--max-hosts N`             | Maximum number of discovered hosts to scan. Default: all. *(This is a cap, not a host selector.)*                         |
 | `--rate-limit SECONDS`      | Delay between host scans to reduce noise on the wire. Default: 0.                                                        |
-| `--dry-run`                 | Print commands that would be executed without running them. **(v3.5, incremental rollout)**                               |
+| `--dry-run`                 | Print commands that would be executed without running them (no external commands are executed). **(v3.5+)**               |
 | `--no-prevent-sleep`        | Do not inhibit system/display sleep while a scan is running. **(v3.5)**                                                   |
 | `-e`, `--encrypt`           | Enable encryption of generated reports.                                                                                  |
 | `--encrypt-password PASS`   | Password for encryption in non-interactive runs. If omitted with `--encrypt`, you'll be prompted or a random password may be generated and printed. |
@@ -430,19 +431,19 @@ After a run, RedAudit creates a timestamped output directory (v2.8+) such as:
 └── RedAudit_2025-01-15_21-30-45/
     ├── redaudit_20250115_213045.json
     ├── redaudit_20250115_213045.txt
-    ├── redaudit_20250115_213045.html # v3.3 Interactive Dashboard
-    ├── findings.jsonl                # v3.1 flat findings export (SIEM/AI)
-    ├── assets.jsonl                  # v3.1 flat assets export (SIEM/AI)
-    ├── summary.json                  # v3.1 compact dashboard summary
-    ├── evidence/                     # optional raw tool output (large)
-    ├── traffic_192_168_1_*.pcap     # optional packet captures
-    └── *.log                        # auxiliary logs, if enabled
+    ├── report.html                   # v3.3 Interactive Dashboard (fixed name)
+    ├── findings.jsonl                # Flat findings export (SIEM/AI)
+    ├── assets.jsonl                  # Flat assets export (SIEM/AI)
+    ├── summary.json                  # Compact dashboard summary
+    ├── run_manifest.json             # Output folder manifest (files + counts)
+    ├── playbooks/                    # Remediation playbooks (Markdown)
+    └── traffic_192_168_1_*.pcap      # Optional packet captures
 ```
 
 Each scan session gets its own subfolder for organization.
 
 If encryption is enabled, the JSON and TXT files will instead use `.enc` suffixes and have associated `.salt` files.
-For safety, flat JSONL/JSON export views are generated only when encryption is disabled (to avoid plaintext artifacts).
+For safety, plaintext artifacts (HTML/JSONL/playbooks/manifests) are generated only when encryption is disabled.
 
 ---
 
@@ -480,24 +481,30 @@ The schema is stable and versioned to ease integration with SIEM, dashboards, or
 
 #### 6.2.1 SIEM Integration (v3.1)
 
-When encryption is disabled, RedAudit generates three flat-file exports optimized for SIEM/AI ingestion:
+When encryption is disabled, RedAudit generates flat-file exports optimized for SIEM/AI ingestion:
 
 **findings.jsonl** - One vulnerability per line:
 
 ```json
-{"finding_id":"a3f5...","asset_id":"192.168.1.10","scanner":"nikto","port":80,"title":"Apache mod_status enabled","category":"info-leak","severity":"medium","normalized_severity":5.0}
+{"finding_id":"...","asset_ip":"192.168.1.10","port":80,"url":"http://192.168.1.10/","severity":"low","normalized_severity":1.0,"category":"surface","title":"Missing HTTP Strict Transport Security Header","timestamp":"...","session_id":"...","schema_version":"...","scanner":"RedAudit","scanner_version":"..."}
 ```
 
 **assets.jsonl** - One host per line:
 
 ```json
-{"asset_id":"192.168.1.10","ip":"192.168.1.10","hostname":"webserver.local","os":"Linux","open_ports":3,"risk_score":62}
+{"asset_id":"...","ip":"192.168.1.10","hostname":"webserver.local","status":"up","risk_score":62,"total_ports":3,"web_ports":1,"finding_count":7,"tags":["web"],"timestamp":"...","session_id":"...","schema_version":"...","scanner":"RedAudit","scanner_version":"..."}
 ```
 
 **summary.json** - Dashboard-ready metrics:
 
 ```json
-{"total_hosts":15,"total_findings":47,"critical":2,"high":8,"medium":21,"low":16,"scan_duration_seconds":342}
+{"schema_version":"...","generated_at":"...","session_id":"...","scan_duration":"0:05:42","total_assets":15,"total_findings":47,"severity_breakdown":{"critical":2,"high":8,"medium":21,"low":16,"info":0},"targets":["..."],"scanner_versions":{"redaudit":"..."},"redaudit_version":"..."}
+```
+
+**run_manifest.json** - Folder manifest with counts and file list:
+
+```json
+{"session_id":"...","redaudit_version":"...","counts":{"hosts":15,"findings":47,"pcaps":3},"artifacts":[{"path":"report.html","size_bytes":12345}]}
 ```
 
 **Ingestion examples:**
@@ -514,7 +521,7 @@ cat findings.jsonl | while read line; do
 done
 
 # Custom processing
-jq -r 'select(.normalized_severity >= 7.0) | "\(.ip) - \(.title)"' findings.jsonl
+jq -r 'select(.normalized_severity >= 7.0) | "\(.asset_ip) - \(.title)"' findings.jsonl
 ```
 
 ---

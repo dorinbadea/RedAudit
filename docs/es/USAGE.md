@@ -106,11 +106,11 @@ Nota: para modo limitado sin sudo/root, añade `--allow-non-root` (algunas funci
 
 **Notas**: Los playbooks se deduplican (uno por host + categoría) y se omiten cuando el cifrado de reportes está activado (`--encrypt`).
 
-### Características v3.5.0
+### Características v3.5+
 
 | Flag | Descripción |
 | :--- | :--- |
-| `--dry-run` | Muestra los comandos que se ejecutarían sin ejecutarlos. **Nota:** se está desplegando módulo a módulo en v3.5 (algunas herramientas externas pueden seguir ejecutándose hasta completar la migración). |
+| `--dry-run` | Muestra los comandos que se ejecutarían sin ejecutarlos (no se ejecuta ningún comando externo). |
 | `--no-prevent-sleep` | No inhibir reposo del sistema/pantalla mientras se ejecuta el scan (el inhibidor best-effort está habilitado por defecto). |
 
 ### Seguridad
@@ -201,7 +201,7 @@ Cada sesión de escaneo crea su propia carpeta con:
 
 - **Texto Plano**: `.json` y `.txt`.
 - **Cifrados**: `.json.enc`, `.txt.enc` y `.salt`.
-- **Exportaciones SIEM/IA (v3.1)**: `findings.jsonl`, `assets.jsonl`, `summary.json` (solo cuando el cifrado está desactivado).
+- **Exportaciones SIEM/IA**: `findings.jsonl`, `assets.jsonl`, `summary.json`, `run_manifest.json` (solo cuando el cifrado está desactivado).
 - **PCAP**: Archivos de captura de tráfico (cuando se ejecuta deep scan y las herramientas están disponibles).
 
 **Nuevos campos en v3.1.4**:

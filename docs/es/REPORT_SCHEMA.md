@@ -17,6 +17,7 @@ En el mismo directorio de salida, RedAudit también puede generar archivos plano
 - `findings.jsonl`: Un hallazgo por línea
 - `assets.jsonl`: Un activo por línea
 - `summary.json`: Resumen compacto para dashboards
+- `run_manifest.json`: Manifiesto de la carpeta de salida (archivos + métricas)
 
 Estas exportaciones se generan solo cuando el cifrado de reportes está **desactivado**, para evitar crear artefactos en texto plano junto a reportes cifrados.
 
@@ -28,7 +29,7 @@ El contenedor de nivel superior para la sesión de escaneo.
 
 | Campo | Tipo | Descripción |
 | :--- | :--- | :--- |
-| `schema_version` | `string` | Versión del esquema ("3.2") |
+| `schema_version` | `string` | Versión del esquema (puede diferir de la versión de la app) |
 | `generated_at` | `string` | Marca de tiempo de generación (ISO 8601) **(v3.1)** |
 | `event_type` | `string` | Tipo de evento para ingesta SIEM ("redaudit.scan.complete") |
 | `session_id` | `string` | UUID único para esta sesión de escaneo |
@@ -189,7 +190,7 @@ Este campo aparece solo si se activó el escaneo profundo automático.
 | `commands[].duration_seconds` | float | Tiempo de ejecución en segundos |
 | `commands[].error` | string | (Opcional) Mensaje de error si el comando falló |
 | `pcap_capture` | object | (Opcional) Detalles sobre la micro-captura de tráfico |
-| `pcap_capture.pcap_file` | string | Nombre de archivo relativo portable (p. ej., `traffic_192.168.1.1.pcap`) **(v3.1.4)** |
+| `pcap_capture.pcap_file` | string | Nombre de archivo relativo portable (p. ej., `traffic_192_168_1_1_235959.pcap`) **(v3.1.4)** |
 | `pcap_capture.pcap_file_abs` | string | (Opcional) Ruta absoluta - para uso interno **(v3.1.4)** |
 | `pcap_capture.iface` | string | Interfaz de red usada para la captura |
 | `pcap_capture.tshark_summary` | string | (Opcional) Estadísticas de protocolos de alto nivel si tshark está instalado |

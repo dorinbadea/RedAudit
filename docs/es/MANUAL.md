@@ -137,7 +137,7 @@ El script `redaudit_install.sh` realiza, de forma resumida, lo siguiente:
    - `python3-nmap`, `python3-cryptography`, `python3-netifaces`
    - `exploitdb` (para searchsploit)
    - `nbtscan`, `netdiscover`, `fping`, `avahi-utils` (para descubrimiento mejorado)
-   - `snmp`, `snmp-mibs-downloader`, `enum4linux`, `smbclient`, `masscan`, `rpcclient`, `ldap-utils`, `bettercap`, `python3-scapy`, `proxychains4` (para recon Red Team)
+   - `snmp`, `snmp-mibs-downloader`, `enum4linux`, `smbclient`, `samba-common-bin` (rpcclient), `masscan`, `ldap-utils`, `bettercap`, `python3-scapy`, `proxychains4` (para recon Red Team)
    - `kerbrute` (descargado desde GitHub)
 
 3. **Despliegue del código**
@@ -217,8 +217,9 @@ En un ciclo normal de ejecución, RedAudit realiza:
    - Input de rangos objetivo y selección de **Modo Topología** (Full, Standard o Topology Only).
 
 2. **Descubrimiento de Red (Opcional, v3.2)**
-   - Si se activa (`--net-discovery`), lanza sondas broadcast vía ARP, mDNS, NetBIOS y DHCP para encontrar hosts ocultos.
-   - Puede realizar recon Red Team (SNMP, LDAP) si se solicita.
+   - Si se activa (`--net-discovery` o desde el asistente interactivo), lanza sondas broadcast vía ARP, mDNS, NetBIOS y DHCP para encontrar hosts ocultos.
+   - Recon Red Team opt-in disponible (`--redteam` o la opción B del wizard); el L2 activo requiere `--redteam-active-l2`.
+   - La enumeración Kerberos con Kerbrute solo se ejecuta si se habilita explícitamente y se proporciona una lista de usuarios (solo con autorización).
 
 3. **Descubrimiento**
    - Uso de `nmap -sn` para detectar hosts vivos en los rangos indicados.
@@ -336,7 +337,7 @@ Las opciones más importantes:
 | `-j`, `--threads N`          | Número de hilos concurrentes. El rango está limitado por constantes internas seguras.                                  |
 | `--max-hosts N`              | Número máximo de hosts encontrados a escanear. Por defecto: todos. *(Es un límite, no un selector de host/IP.)*        |
 | `--rate-limit SEGUNDOS`      | Retraso entre hosts para reducir ruido. Por defecto: 0.                                                                 |
-| `--dry-run`                  | Muestra los comandos que se ejecutarían sin ejecutarlos. **(v3.5, despliegue incremental)**                            |
+| `--dry-run`                  | Muestra los comandos que se ejecutarían sin ejecutarlos (no se ejecuta ningún comando externo). **(v3.5+)**          |
 | `--no-prevent-sleep`         | No inhibir reposo del sistema/pantalla mientras se ejecuta el scan. **(v3.5)**                                          |
 | `-e`, `--encrypt`            | Activa el cifrado de los informes generados.                                                                            |
 | `--encrypt-password PASS`    | Contraseña de cifrado en modo no interactivo. Si se omite con `--encrypt`, se pedirá por consola o se generará una aleatoria. |
@@ -434,19 +435,19 @@ Tras cada ejecución, RedAudit crea un directorio con sello temporal (v2.8+):
 └── RedAudit_2025-01-15_21-30-45/
     ├── redaudit_20250115_213045.json
     ├── redaudit_20250115_213045.txt
-    ├── redaudit_20250115_213045.html # v3.3 Dashboard Interactivo
-    ├── findings.jsonl                # v3.1 exportación plana de hallazgos (SIEM/IA)
-    ├── assets.jsonl                  # v3.1 exportación plana de activos (SIEM/IA)
-    ├── summary.json                  # v3.1 resumen compacto para dashboards
-    ├── evidence/                     # output raw opcional (si es grande)
-    ├── traffic_192_168_1_*.pcap     # capturas opcionales
-    └── *.log                        # logs auxiliares
+    ├── report.html                   # v3.3 Dashboard Interactivo (nombre fijo)
+    ├── findings.jsonl                # Exportación plana de hallazgos (SIEM/IA)
+    ├── assets.jsonl                  # Exportación plana de activos (SIEM/IA)
+    ├── summary.json                  # Resumen compacto para dashboards
+    ├── run_manifest.json             # Manifiesto de la carpeta (archivos + métricas)
+    ├── playbooks/                    # Playbooks de remediación (Markdown)
+    └── traffic_192_168_1_*.pcap      # Capturas opcionales
 ```
 
 Cada sesión de escaneo obtiene su propia subcarpeta para mejor organización.
 
 Si el cifrado está activado, los informes terminarán en `.enc` y aparecerán ficheros `.salt` asociados.
-Por seguridad, las vistas de exportación planas (JSONL/JSON) se generan solo cuando el cifrado está desactivado (para evitar artefactos en texto plano).
+Por seguridad, los artefactos en claro (HTML/JSONL/playbooks/manifiestos) se generan solo cuando el cifrado está desactivado.
 
 ---
 
@@ -484,24 +485,30 @@ El esquema es estable y versionado, pensado para su integración en SIEMs o scri
 
 #### 6.2.1 Integración SIEM (v3.1)
 
-Cuando el cifrado está desactivado, RedAudit genera tres exportaciones planas optimizadas para ingesta SIEM/IA:
+Cuando el cifrado está desactivado, RedAudit genera exportaciones planas optimizadas para ingesta SIEM/IA:
 
 **findings.jsonl** - Una vulnerabilidad por línea:
 
 ```json
-{"finding_id":"a3f5...","asset_id":"192.168.1.10","scanner":"nikto","port":80,"title":"Apache mod_status enabled","category":"info-leak","severity":"medium","normalized_severity":5.0}
+{"finding_id":"...","asset_ip":"192.168.1.10","port":80,"url":"http://192.168.1.10/","severity":"low","normalized_severity":1.0,"category":"surface","title":"Missing HTTP Strict Transport Security Header","timestamp":"...","session_id":"...","schema_version":"...","scanner":"RedAudit","scanner_version":"..."}
 ```
 
 **assets.jsonl** - Un host por línea:
 
 ```json
-{"asset_id":"192.168.1.10","ip":"192.168.1.10","hostname":"webserver.local","os":"Linux","open_ports":3,"risk_score":62}
+{"asset_id":"...","ip":"192.168.1.10","hostname":"webserver.local","status":"up","risk_score":62,"total_ports":3,"web_ports":1,"finding_count":7,"tags":["web"],"timestamp":"...","session_id":"...","schema_version":"...","scanner":"RedAudit","scanner_version":"..."}
 ```
 
 **summary.json** - Métricas para dashboards:
 
 ```json
-{"total_hosts":15,"total_findings":47,"critical":2,"high":8,"medium":21,"low":16,"scan_duration_seconds":342}
+{"schema_version":"...","generated_at":"...","session_id":"...","scan_duration":"0:05:42","total_assets":15,"total_findings":47,"severity_breakdown":{"critical":2,"high":8,"medium":21,"low":16,"info":0},"targets":["..."],"scanner_versions":{"redaudit":"..."},"redaudit_version":"..."}
+```
+
+**run_manifest.json** - Manifiesto de la carpeta con métricas y lista de ficheros:
+
+```json
+{"session_id":"...","redaudit_version":"...","counts":{"hosts":15,"findings":47,"pcaps":3},"artifacts":[{"path":"report.html","size_bytes":12345}]}
 ```
 
 **Ejemplos de ingesta:**
@@ -518,7 +525,7 @@ cat findings.jsonl | while read line; do
 done
 
 # Procesamiento personalizado
-jq -r 'select(.normalized_severity >= 7.0) | "\(.ip) - \(.title)"' findings.jsonl
+jq -r 'select(.normalized_severity >= 7.0) | "\(.asset_ip) - \(.title)"' findings.jsonl
 ```
 
 ---

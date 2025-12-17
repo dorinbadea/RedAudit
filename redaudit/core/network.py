@@ -8,12 +8,12 @@ Handles local network interface detection and enumeration.
 """
 
 import ipaddress
-import os
 import re
 from typing import List, Dict, Optional
 
 from redaudit.utils.i18n import get_text
 from redaudit.core.command_runner import CommandRunner
+from redaudit.utils.dry_run import is_dry_run
 
 
 def detect_interface_type(iface: str) -> str:
@@ -139,7 +139,7 @@ def detect_networks_fallback(lang: str = "en", include_ipv6: bool = True) -> Lis
     # IPv4 detection
     try:
         runner = CommandRunner(
-            dry_run=bool(os.environ.get("REDAUDIT_DRY_RUN")),
+            dry_run=is_dry_run(),
             default_timeout=5.0,
             default_retries=0,
             backoff_base_s=0.0,
@@ -178,7 +178,7 @@ def detect_networks_fallback(lang: str = "en", include_ipv6: bool = True) -> Lis
     if include_ipv6:
         try:
             runner = CommandRunner(
-                dry_run=bool(os.environ.get("REDAUDIT_DRY_RUN")),
+                dry_run=is_dry_run(),
                 default_timeout=5.0,
                 default_retries=0,
                 backoff_base_s=0.0,
@@ -285,7 +285,7 @@ def get_neighbor_mac(ip_str: str) -> Optional[str]:
     for cmd, timeout in candidates:
         try:
             runner = CommandRunner(
-                dry_run=bool(os.environ.get("REDAUDIT_DRY_RUN")),
+                dry_run=is_dry_run(),
                 default_timeout=float(timeout),
                 default_retries=0,
                 backoff_base_s=0.0,

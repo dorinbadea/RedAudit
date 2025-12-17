@@ -158,6 +158,31 @@ class TestReporter(unittest.TestCase):
             loaded = json.load(f)
         self.assertEqual(loaded["version"], VERSION)
 
+    def test_save_results_writes_run_manifest(self):
+        """Test that save_results writes a run manifest into the timestamped output folder."""
+        self.sample_results["summary"] = {"networks": 1}
+        self.sample_config["save_txt_report"] = False
+
+        result = save_results(
+            self.sample_results,
+            self.sample_config,
+            encryption_enabled=False,
+        )
+        self.assertTrue(result)
+
+        manifest_files = []
+        for root, _dirs, files in os.walk(self.sample_config["output_dir"]):
+            for f in files:
+                if f == "run_manifest.json":
+                    manifest_files.append(os.path.join(root, f))
+        self.assertEqual(len(manifest_files), 1)
+
+        with open(manifest_files[0], "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+        self.assertIn("session_id", manifest)
+        self.assertIn("artifacts", manifest)
+        self.assertIsInstance(manifest["artifacts"], list)
+
     def test_save_results_txt(self):
         """Test TXT report saving."""
         self.sample_results["summary"] = {"networks": 1}

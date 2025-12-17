@@ -14,7 +14,7 @@ import uuid
 import re
 import ipaddress
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from redaudit.utils.constants import SCHEMA_VERSION, VERSION, SECURE_FILE_MODE
 from redaudit.utils.paths import get_default_reports_base_dir, maybe_chown_tree_to_invoking_user
@@ -547,6 +547,24 @@ def save_results(
                 if logger:
                     logger.warning("Webhook alerting failed: %s", webhook_err)
 
+        # vNext: Write a run manifest to make output folders self-describing.
+        # Skip in encrypted mode to avoid plaintext artifacts.
+        if not encryption_enabled:
+            try:
+                manifest_path = _write_output_manifest(
+                    output_dir=output_dir,
+                    results=results,
+                    config=config,
+                    encryption_enabled=encryption_enabled,
+                    partial=partial,
+                    logger=logger,
+                )
+                if manifest_path and logger:
+                    logger.debug("Wrote run manifest: %s", manifest_path)
+            except Exception as manifest_err:
+                if logger:
+                    logger.debug("Run manifest generation failed: %s", manifest_err, exc_info=True)
+
         maybe_chown_tree_to_invoking_user(output_dir)
         return True
 
@@ -556,6 +574,92 @@ def save_results(
         if print_fn and t_fn:
             print_fn(t_fn("save_err", exc), "FAIL")
         return False
+
+
+def _write_output_manifest(
+    *,
+    output_dir: str,
+    results: Dict,
+    config: Dict,
+    encryption_enabled: bool,
+    partial: bool,
+    logger=None,
+) -> Optional[str]:
+    if not output_dir or not isinstance(output_dir, str):
+        return None
+
+    total_findings = 0
+    for entry in results.get("vulnerabilities", []) or []:
+        if isinstance(entry, dict):
+            total_findings += len(entry.get("vulnerabilities", []) or [])
+
+    pcap_count = 0
+    for host in results.get("hosts", []) or []:
+        if not isinstance(host, dict):
+            continue
+        deep = host.get("deep_scan") or {}
+        if not isinstance(deep, dict):
+            continue
+        pcap = deep.get("pcap_capture") or {}
+        if isinstance(pcap, dict) and pcap.get("pcap_file"):
+            pcap_count += 1
+
+    scanner_versions = results.get("scanner_versions", {}) or {}
+    redaudit_version = results.get("version") or scanner_versions.get("redaudit", "")
+
+    manifest: Dict[str, Any] = {
+        "schema_version": results.get("schema_version", ""),
+        "generated_at": results.get("generated_at", datetime.now().isoformat()),
+        "timestamp": results.get("timestamp", ""),
+        "timestamp_end": results.get("timestamp_end", ""),
+        "session_id": results.get("session_id", ""),
+        "partial": bool(partial),
+        "encryption_enabled": bool(encryption_enabled),
+        "redaudit_version": redaudit_version,
+        "scanner_versions": scanner_versions,
+        "targets": results.get("targets", []),
+        "counts": {
+            "hosts": len(results.get("hosts", []) or []),
+            "findings": total_findings,
+            "pcaps": pcap_count,
+        },
+        "artifacts": [],
+    }
+
+    artifacts = []
+    try:
+        for root, _dirs, files in os.walk(output_dir):
+            for name in files:
+                abs_path = os.path.join(root, name)
+                try:
+                    rel_path = os.path.relpath(abs_path, output_dir)
+                except Exception:
+                    rel_path = name
+                try:
+                    size_bytes = os.path.getsize(abs_path)
+                except Exception:
+                    size_bytes = None
+                artifacts.append(
+                    {
+                        "path": rel_path.replace("\\", "/"),
+                        "size_bytes": size_bytes,
+                    }
+                )
+    except Exception:
+        if logger:
+            logger.debug("Failed to walk output directory for manifest", exc_info=True)
+
+    artifacts.sort(key=lambda item: str(item.get("path", "")))
+    manifest["artifacts"] = artifacts
+
+    out_path = os.path.join(output_dir, "run_manifest.json")
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2, ensure_ascii=False)
+    try:
+        os.chmod(out_path, SECURE_FILE_MODE)
+    except Exception:
+        pass
+    return out_path
 
 
 def show_config_summary(config: Dict, t_fn, colors: Dict) -> None:

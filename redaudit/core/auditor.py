@@ -54,6 +54,7 @@ from redaudit.utils.paths import (
     maybe_chown_to_invoking_user,
 )
 from redaudit.utils.i18n import TRANSLATIONS, get_text
+from redaudit.utils.dry_run import is_dry_run
 from redaudit.core.command_runner import CommandRunner
 from redaudit.core.crypto import (
     is_crypto_available,
@@ -141,7 +142,8 @@ class InteractiveNetworkAuditor:
             "topology_enabled": False,
             "topology_only": False,
             # v3.2+: Enhanced network discovery
-            "net_discovery_enabled": False,
+            # None = auto (enabled in full/topology), True/False = explicit override
+            "net_discovery_enabled": None,
             "net_discovery_protocols": None,  # None = all, or list like ["dhcp", "netbios"]
             "net_discovery_redteam": False,
             "net_discovery_interface": None,
@@ -318,9 +320,11 @@ class InteractiveNetworkAuditor:
             phase = self.current_phase
             if phase not in ("init", "saving", "interrupted"):
                 if HEARTBEAT_WARN_THRESHOLD <= delta < HEARTBEAT_FAIL_THRESHOLD:
-                    self.print_status(self.t("heartbeat_warn", phase, int(delta)), "WARNING", False)
+                    # Keep the terminal UI quiet: prefer progress bars (when available) over periodic
+                    # "clocking" warnings. Still record a debug trace in logs for troubleshooting.
+                    if self.logger:
+                        self.logger.debug("Heartbeat silence %ss in %s", int(delta), phase)
                 elif delta >= HEARTBEAT_FAIL_THRESHOLD:
-                    self.print_status(self.t("heartbeat_fail", phase, int(delta)), "FAIL", False)
                     if self.logger:
                         self.logger.warning("Heartbeat silence > %ss in %s", delta, phase)
             time.sleep(HEARTBEAT_INTERVAL)
@@ -941,9 +945,11 @@ class InteractiveNetworkAuditor:
         """Perform network discovery scan."""
         self.current_phase = f"discovery:{network}"
         self.logger.info("Discovery on %s", network)
-        nm = nmap.PortScanner()
         args = get_nmap_arguments("rapido")
         self.print_status(self.t("nmap_cmd", network, f"nmap {args} {network}"), "INFO")
+        if is_dry_run(self.config.get("dry_run")):
+            return []
+        nm = nmap.PortScanner()
         try:
             nm.scan(hosts=network, arguments=args)
         except Exception as exc:
@@ -970,10 +976,20 @@ class InteractiveNetworkAuditor:
             return {"ip": host, "error": "Invalid IP"}
 
         self.current_phase = f"ports:{safe_ip}"
-        nm = nmap.PortScanner()
         args = get_nmap_arguments(self.config["scan_mode"])
         self.logger.debug("Nmap scan %s %s", safe_ip, args)
         self.print_status(self.t("nmap_cmd", safe_ip, f"nmap {args} {safe_ip}"), "INFO")
+        if is_dry_run(self.config.get("dry_run")):
+            return {
+                "ip": safe_ip,
+                "hostname": "",
+                "ports": [],
+                "web_ports_count": 0,
+                "total_ports_found": 0,
+                "status": STATUS_DOWN,
+                "dry_run": True,
+            }
+        nm = nmap.PortScanner()
 
         try:
             nm.scan(safe_ip, arguments=args)
@@ -1180,7 +1196,9 @@ class InteractiveNetworkAuditor:
                 BarColumn,
                 TextColumn,
                 TimeElapsedColumn,
+                TimeRemainingColumn,
             )
+            from rich.console import Console
 
             use_rich = True
         except ImportError:
@@ -1211,6 +1229,8 @@ class InteractiveNetworkAuditor:
                     TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
                     TextColumn("({task.completed}/{task.total})"),
                     TimeElapsedColumn(),
+                    TimeRemainingColumn(),
+                    console=Console(stderr=True),
                 ) as progress:
                     task = progress.add_task(f"[cyan]{self.t('scanning_hosts')}", total=total)
                     for fut in as_completed(futures):
@@ -1409,7 +1429,9 @@ class InteractiveNetworkAuditor:
                 BarColumn,
                 TextColumn,
                 TimeElapsedColumn,
+                TimeRemainingColumn,
             )
+            from rich.console import Console
 
             use_rich = True
         except ImportError:
@@ -1432,6 +1454,8 @@ class InteractiveNetworkAuditor:
                     TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
                     TextColumn("({task.completed}/{task.total})"),
                     TimeElapsedColumn(),
+                    TimeRemainingColumn(),
+                    console=Console(stderr=True),
                 ) as progress:
                     task = progress.add_task(f"[cyan]Vuln scan ({total_ports} ports)", total=total)
                     for fut in as_completed(futures):
@@ -1446,7 +1470,11 @@ class InteractiveNetworkAuditor:
                                 self.results["vulnerabilities"].append(res)
                                 vuln_count = len(res.get("vulnerabilities", []))
                                 if vuln_count > 0:
-                                    self.print_status(self.t("vulns_found", res["host"]), "WARNING")
+                                    # Avoid noisy per-host warnings; progress + final summary is enough.
+                                    if self.logger:
+                                        self.logger.info(
+                                            "Vulnerabilities recorded on %s", res["host"]
+                                        )
                         except Exception as exc:
                             self.logger.error("Vuln worker error for %s: %s", host_ip, exc)
                             self.logger.debug(
@@ -1512,6 +1540,8 @@ class InteractiveNetworkAuditor:
 
     def clear_screen(self):
         """Clear the terminal screen."""
+        if is_dry_run(self.config.get("dry_run")):
+            return
         os.system("clear" if os.name == "posix" else "cls")
 
     def print_banner(self):
@@ -1782,9 +1812,12 @@ class InteractiveNetworkAuditor:
             # v3.2.3: Also auto-enabled when topology is enabled (intelligent discovery)
             net_discovery_auto = self.config.get("scan_mode") == "completo"
             topology_enabled = self.config.get("topology_enabled")
-            net_discovery_explicit = self.config.get("net_discovery_enabled")
+            net_discovery_setting = self.config.get("net_discovery_enabled")
+            net_discovery_explicit = net_discovery_setting is True
+            net_discovery_disabled = net_discovery_setting is False
             if (
-                net_discovery_explicit or net_discovery_auto or topology_enabled
+                (not net_discovery_disabled)
+                and (net_discovery_explicit or net_discovery_auto or topology_enabled)
             ) and not self.interrupted:
                 try:
                     from redaudit.core.net_discovery import discover_networks
@@ -2159,6 +2192,66 @@ class InteractiveNetworkAuditor:
         )
         self.config["topology_enabled"] = topo_choice != 0
         self.config["topology_only"] = topo_choice == 2
+
+        # Enhanced network discovery + optional Red Team block (explicit opt-in).
+        # Keep this best-effort, and default to OFF for Red Team options.
+        persisted_nd = defaults_for_run.get("net_discovery_enabled")
+        nd_default = (
+            bool(persisted_nd)
+            if isinstance(persisted_nd, bool)
+            else bool(
+                self.config.get("topology_enabled") or self.config.get("scan_mode") == "completo"
+            )
+        )
+        enable_net_discovery = self.ask_yes_no(
+            self.t("net_discovery_q"), default="yes" if nd_default else "no"
+        )
+        self.config["net_discovery_enabled"] = bool(enable_net_discovery)
+
+        if enable_net_discovery:
+            # Red Team recon requires explicit opt-in; default is NO.
+            redteam_choice = self.ask_choice(
+                self.t("redteam_mode_q"),
+                [self.t("redteam_mode_a"), self.t("redteam_mode_b")],
+                default=0,
+            )
+
+            wants_redteam = redteam_choice == 1
+            is_root = hasattr(os, "geteuid") and os.geteuid() == 0
+            if wants_redteam and not is_root:
+                # Should not happen in the default interactive flow (root required),
+                # but keep behavior safe for --allow-non-root runs.
+                self.print_status(self.t("redteam_requires_root"), "WARNING")
+                wants_redteam = False
+
+            self.config["net_discovery_redteam"] = bool(wants_redteam)
+            self.config["net_discovery_active_l2"] = False
+            self.config["net_discovery_kerberos_realm"] = None
+            self.config["net_discovery_kerberos_userlist"] = None
+
+            if self.config["net_discovery_redteam"]:
+                self.config["net_discovery_active_l2"] = self.ask_yes_no(
+                    self.t("redteam_active_l2_q"),
+                    default="no",
+                )
+
+                # Kerberos user enumeration via kerbrute (requires userlist + authorization).
+                enable_kerberos_userenum = self.ask_yes_no(
+                    self.t("redteam_kerberos_userenum_q"),
+                    default="no",
+                )
+                if enable_kerberos_userenum:
+                    realm_hint = input(
+                        f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_realm_q')}: "
+                    ).strip()
+                    self.config["net_discovery_kerberos_realm"] = realm_hint or None
+
+                    userlist = input(
+                        f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_userlist_q')}: "
+                    ).strip()
+                    self.config["net_discovery_kerberos_userlist"] = (
+                        expand_user_path(userlist) if userlist else None
+                    )
 
         self.setup_encryption()
 

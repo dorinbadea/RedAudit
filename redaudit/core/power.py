@@ -16,6 +16,19 @@ import subprocess
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from redaudit.core.command_runner import CommandRunner
+from redaudit.utils.dry_run import is_dry_run
+
+
+def _make_runner(*, logger: Any = None, dry_run: bool = False, timeout: Optional[float] = None):
+    return CommandRunner(
+        logger=logger,
+        dry_run=bool(dry_run),
+        default_timeout=timeout,
+        default_retries=0,
+        backoff_base_s=0.0,
+    )
+
 
 @dataclass
 class _XsetState:
@@ -37,13 +50,23 @@ class SleepInhibitor:
     - Linux/X11: uses `xset` to disable DPMS/screen saver while running
     """
 
-    def __init__(self, *, reason: str = "RedAudit scan", logger: Any = None):
+    def __init__(
+        self,
+        *,
+        reason: str = "RedAudit scan",
+        logger: Any = None,
+        dry_run: Optional[bool] = None,
+    ):
         self._reason = reason
         self._logger = logger
+        self._dry_run = is_dry_run(dry_run)
         self._proc: Optional[subprocess.Popen] = None
         self._xset_state: Optional[_XsetState] = None
 
     def start(self) -> None:
+        if self._dry_run:
+            self._log("INFO", "[dry-run] skipping sleep inhibition")
+            return
         if self._proc is not None:
             return
 
@@ -57,6 +80,10 @@ class SleepInhibitor:
             return
 
     def stop(self) -> None:
+        if self._dry_run:
+            self._proc = None
+            self._xset_state = None
+            return
         self._restore_x11_state()
         proc = self._proc
         self._proc = None
@@ -143,13 +170,36 @@ class SleepInhibitor:
         if not xset:
             return
         try:
+            runner = _make_runner(logger=self._logger, dry_run=self._dry_run, timeout=2.0)
             state = self._capture_xset_state(xset)
             self._xset_state = state
-            subprocess.run([xset, "s", "off"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(
-                [xset, "s", "noblank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            runner.run(
+                [xset, "s", "off"],
+                capture_output=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=2.0,
+                check=False,
             )
-            subprocess.run([xset, "-dpms"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            runner.run(
+                [xset, "s", "noblank"],
+                capture_output=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=2.0,
+                check=False,
+            )
+            runner.run(
+                [xset, "-dpms"],
+                capture_output=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=2.0,
+                check=False,
+            )
             self._log("DEBUG", "Display sleep inhibited via xset")
         except Exception:
             self._xset_state = None
@@ -169,8 +219,9 @@ class SleepInhibitor:
 
     def _capture_xset_state(self, xset: str) -> _XsetState:
         state = _XsetState()
-        res = subprocess.run([xset, "q"], capture_output=True, text=True, timeout=2)
-        out = (res.stdout or "") + "\n" + (res.stderr or "")
+        runner = _make_runner(logger=self._logger, dry_run=self._dry_run, timeout=2.0)
+        res = runner.run([xset, "q"], capture_output=True, text=True, timeout=2.0, check=False)
+        out = (str(res.stdout or "") or "") + "\n" + (str(res.stderr or "") or "")
 
         # Screen Saver: prefer parsing "timeout:" and "cycle:"
         m = re.search(r"timeout:\s*(\d+)\s+cycle:\s*(\d+)", out, re.IGNORECASE)
@@ -193,33 +244,46 @@ class SleepInhibitor:
         return state
 
     def _restore_xset_state(self, xset: str, state: _XsetState) -> None:
+        runner = _make_runner(logger=self._logger, dry_run=self._dry_run, timeout=2.0)
         # Restore screen saver
         if state.screensaver_enabled is not None:
-            subprocess.run(
+            runner.run(
                 [xset, "s", "on" if state.screensaver_enabled else "off"],
+                capture_output=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=2.0,
+                check=False,
             )
         if state.screensaver_timeout is not None and state.screensaver_cycle is not None:
-            subprocess.run(
+            runner.run(
                 [xset, "s", str(state.screensaver_timeout), str(state.screensaver_cycle)],
+                capture_output=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=2.0,
+                check=False,
             )
 
         # Restore DPMS
         if state.dpms_enabled is not None:
-            subprocess.run(
+            runner.run(
                 [xset, "+dpms" if state.dpms_enabled else "-dpms"],
+                capture_output=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=2.0,
+                check=False,
             )
         if (
             state.dpms_standby is not None
             and state.dpms_suspend is not None
             and state.dpms_off is not None
         ):
-            subprocess.run(
+            runner.run(
                 [
                     xset,
                     "dpms",
@@ -227,6 +291,10 @@ class SleepInhibitor:
                     str(state.dpms_suspend),
                     str(state.dpms_off),
                 ],
+                capture_output=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=2.0,
+                check=False,
             )
