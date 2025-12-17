@@ -9,4 +9,3 @@ RedAudit v3.5.1 es una hotfix centrada en completar el comportamiento de `--dry-
 - **Soporte completo de `--dry-run`**: `--dry-run` ahora se propaga por los módulos para que **no se ejecute ningún comando externo**, mostrando igualmente los comandos planificados.
 - **Fiabilidad del updater**: Si el system install se actualiza pero `~/RedAudit` tiene cambios locales git, RedAudit ahora omite actualizar la copia en home en vez de fallar toda la actualización.
 - **Nota post-actualización**: Tras actualizar, RedAudit recuerda reiniciar el terminal o ejecutar `hash -r` si el banner/versión no se refresca.
-

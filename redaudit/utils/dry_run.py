@@ -24,4 +24,3 @@ def is_dry_run(dry_run: Optional[bool] = None) -> bool:
         return bool(dry_run)
     token = os.environ.get("REDAUDIT_DRY_RUN", "")
     return token.strip().lower() in {"1", "true", "yes", "y", "on"}
-
