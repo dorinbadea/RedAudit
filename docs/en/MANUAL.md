@@ -431,19 +431,19 @@ After a run, RedAudit creates a timestamped output directory (v2.8+) such as:
 └── RedAudit_2025-01-15_21-30-45/
     ├── redaudit_20250115_213045.json
     ├── redaudit_20250115_213045.txt
-    ├── redaudit_20250115_213045.html # v3.3 Interactive Dashboard
-    ├── findings.jsonl                # v3.1 flat findings export (SIEM/AI)
-    ├── assets.jsonl                  # v3.1 flat assets export (SIEM/AI)
-    ├── summary.json                  # v3.1 compact dashboard summary
-    ├── evidence/                     # optional raw tool output (large)
-    ├── traffic_192_168_1_*.pcap     # optional packet captures
-    └── *.log                        # auxiliary logs, if enabled
+    ├── report.html                   # v3.3 Interactive Dashboard (fixed name)
+    ├── findings.jsonl                # Flat findings export (SIEM/AI)
+    ├── assets.jsonl                  # Flat assets export (SIEM/AI)
+    ├── summary.json                  # Compact dashboard summary
+    ├── run_manifest.json             # Output folder manifest (files + counts)
+    ├── playbooks/                    # Remediation playbooks (Markdown)
+    └── traffic_192_168_1_*.pcap      # Optional packet captures
 ```
 
 Each scan session gets its own subfolder for organization.
 
 If encryption is enabled, the JSON and TXT files will instead use `.enc` suffixes and have associated `.salt` files.
-For safety, flat JSONL/JSON export views are generated only when encryption is disabled (to avoid plaintext artifacts).
+For safety, plaintext artifacts (HTML/JSONL/playbooks/manifests) are generated only when encryption is disabled.
 
 ---
 
@@ -481,24 +481,30 @@ The schema is stable and versioned to ease integration with SIEM, dashboards, or
 
 #### 6.2.1 SIEM Integration (v3.1)
 
-When encryption is disabled, RedAudit generates three flat-file exports optimized for SIEM/AI ingestion:
+When encryption is disabled, RedAudit generates flat-file exports optimized for SIEM/AI ingestion:
 
 **findings.jsonl** - One vulnerability per line:
 
 ```json
-{"finding_id":"a3f5...","asset_id":"192.168.1.10","scanner":"nikto","port":80,"title":"Apache mod_status enabled","category":"info-leak","severity":"medium","normalized_severity":5.0}
+{"finding_id":"...","asset_ip":"192.168.1.10","port":80,"url":"http://192.168.1.10/","severity":"low","normalized_severity":1.0,"category":"surface","title":"Missing HTTP Strict Transport Security Header","timestamp":"...","session_id":"...","schema_version":"...","scanner":"RedAudit","scanner_version":"..."}
 ```
 
 **assets.jsonl** - One host per line:
 
 ```json
-{"asset_id":"192.168.1.10","ip":"192.168.1.10","hostname":"webserver.local","os":"Linux","open_ports":3,"risk_score":62}
+{"asset_id":"...","ip":"192.168.1.10","hostname":"webserver.local","status":"up","risk_score":62,"total_ports":3,"web_ports":1,"finding_count":7,"tags":["web"],"timestamp":"...","session_id":"...","schema_version":"...","scanner":"RedAudit","scanner_version":"..."}
 ```
 
 **summary.json** - Dashboard-ready metrics:
 
 ```json
-{"total_hosts":15,"total_findings":47,"critical":2,"high":8,"medium":21,"low":16,"scan_duration_seconds":342}
+{"schema_version":"...","generated_at":"...","session_id":"...","scan_duration":"0:05:42","total_assets":15,"total_findings":47,"severity_breakdown":{"critical":2,"high":8,"medium":21,"low":16,"info":0},"targets":["..."],"scanner_versions":{"redaudit":"..."},"redaudit_version":"..."}
+```
+
+**run_manifest.json** - Folder manifest with counts and file list:
+
+```json
+{"session_id":"...","redaudit_version":"...","counts":{"hosts":15,"findings":47,"pcaps":3},"artifacts":[{"path":"report.html","size_bytes":12345}]}
 ```
 
 **Ingestion examples:**
@@ -515,7 +521,7 @@ cat findings.jsonl | while read line; do
 done
 
 # Custom processing
-jq -r 'select(.normalized_severity >= 7.0) | "\(.ip) - \(.title)"' findings.jsonl
+jq -r 'select(.normalized_severity >= 7.0) | "\(.asset_ip) - \(.title)"' findings.jsonl
 ```
 
 ---

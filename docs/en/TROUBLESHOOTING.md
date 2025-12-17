@@ -204,7 +204,7 @@ touch ~/Documents/RedAuditReports/test_write
 **Symptom**: No playbooks appear in `<output_dir>/playbooks/`, or the count is 0.
 **Common causes**:
 
-- **Encryption enabled**: plaintext artifacts (HTML/JSONL/playbooks) are skipped when `--encrypt` is used.
+- **Encryption enabled**: plaintext artifacts (HTML/JSONL/playbooks/manifests) are skipped when `--encrypt` is used.
 - **No matched categories**: playbooks are generated only when findings match the built-in categories (TLS, headers, CVE, web, ports).
 - **Expected deduplication**: only one playbook per host + category is generated (you may have many findings but few playbooks).
 - **Permissions**: the output directory is not writable by the current user.
