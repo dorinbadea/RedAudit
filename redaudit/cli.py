@@ -170,6 +170,13 @@ Examples:
         action="store_true",
         help="Generate interactive HTML report with charts and tables",
     )
+    # v3.3: Webhook alerting
+    parser.add_argument(
+        "--webhook",
+        type=str,
+        metavar="URL",
+        help="Webhook URL for real-time alerts on high/critical findings",
+    )
     parser.add_argument("--version", "-V", action="version", version=f"RedAudit v{VERSION}")
 
     # Pre-scan options (v2.7)
@@ -442,6 +449,9 @@ def configure_from_args(app, args) -> bool:
 
     # v3.3: HTML report generation
     app.config["html_report"] = getattr(args, "html_report", False)
+
+    # v3.3: Webhook alerting
+    app.config["webhook_url"] = getattr(args, "webhook", None)
 
     # Set deep scan
     app.config["deep_id_scan"] = not args.no_deep_scan

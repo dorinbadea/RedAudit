@@ -511,6 +511,19 @@ def save_results(
             if logger:
                 logger.info("HTML report skipped (report encryption enabled)")
 
+        # v3.3: Send webhook alerts for high-severity findings
+        webhook_url = config.get("webhook_url")
+        if webhook_url:
+            try:
+                from redaudit.utils.webhook import process_findings_for_alerts
+
+                alerts_sent = process_findings_for_alerts(results, webhook_url, config)
+                if alerts_sent > 0 and print_fn and t_fn:
+                    print_fn(f"Webhook alerts sent: {alerts_sent}", "OKGREEN")
+            except Exception as webhook_err:
+                if logger:
+                    logger.warning("Webhook alerting failed: %s", webhook_err)
+
         return True
 
     except Exception as exc:
