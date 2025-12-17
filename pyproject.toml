@@ -66,6 +66,9 @@ redaudit = "redaudit.cli:main"
 [tool.setuptools]
 packages = ["redaudit", "redaudit.core", "redaudit.utils", "redaudit.templates"]
 
+[tool.setuptools.package-data]
+"redaudit" = ["templates/*.j2"]
+
 [tool.black]
 line-length = 100
 target-version = ['py39', 'py310', 'py311', 'py312']

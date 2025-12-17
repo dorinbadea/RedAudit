@@ -84,7 +84,7 @@ echo "$MSG_INSTALL"
 # 2) Dependencies
 # -------------------------------------------
 
-EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-jinja2 exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient masscan ldap-utils bettercap python3-scapy proxychains4"
+EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient masscan ldap-utils bettercap python3-scapy proxychains4"
 
 echo ""
 echo "$MSG_PKGS"
@@ -175,18 +175,18 @@ fi
 if [[ -d "$PACKAGE_SRC" ]]; then
     # Remove old package installation
     rm -rf /usr/local/lib/redaudit
-    
+
     # Copy the package
     cp -r "$PACKAGE_SRC" /usr/local/lib/redaudit
     chmod -R 755 /usr/local/lib/redaudit
-    
+
     # Inject selected language into constants.py
     CONSTANTS_FILE="/usr/local/lib/redaudit/utils/constants.py"
     if [[ -f "$CONSTANTS_FILE" ]]; then
         sed -i "s/^DEFAULT_LANG = .*/DEFAULT_LANG = \"$LANG_CODE\"/" "$CONSTANTS_FILE"
         echo "Language set to: $LANG_CODE"
     fi
-    
+
     echo "Package installed at /usr/local/lib/redaudit"
 fi
 
