@@ -31,6 +31,29 @@ from redaudit.utils.constants import (
 from redaudit.core.command_runner import CommandRunner
 
 
+_REDAUDIT_REDACT_ENV_KEYS = {"NVD_API_KEY", "GITHUB_TOKEN"}
+
+
+def _is_dry_run(dry_run: Optional[bool] = None) -> bool:
+    if dry_run is not None:
+        return bool(dry_run)
+    token = os.environ.get("REDAUDIT_DRY_RUN", "")
+    return token.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _make_runner(
+    *, logger=None, dry_run: Optional[bool] = None, timeout: Optional[float] = None
+) -> CommandRunner:
+    return CommandRunner(
+        logger=logger,
+        dry_run=_is_dry_run(dry_run),
+        default_timeout=timeout,
+        default_retries=0,
+        backoff_base_s=0.0,
+        redact_env_keys=_REDAUDIT_REDACT_ENV_KEYS,
+    )
+
+
 def sanitize_ip(ip_str) -> Optional[str]:
     """
     Sanitize and validate IP address (supports both IPv4 and IPv6).
@@ -344,14 +367,7 @@ def run_nmap_command(
     start = time.time()
     record: Dict[str, Any] = {"command": " ".join(cmd)}
 
-    runner = CommandRunner(
-        logger=logger,
-        dry_run=bool(dry_run),
-        default_timeout=float(timeout),
-        default_retries=0,
-        backoff_base_s=0.0,
-        redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
-    )
+    runner = _make_runner(logger=logger, dry_run=dry_run, timeout=float(timeout))
     res = runner.run(cmd, timeout=float(timeout), capture_output=True, check=False, text=True)
 
     duration = time.time() - start
@@ -373,6 +389,7 @@ def capture_traffic_snippet(
     extra_tools: Dict,
     duration: int = TRAFFIC_CAPTURE_DEFAULT_DURATION,
     logger=None,
+    dry_run: Optional[bool] = None,
 ) -> Optional[Dict]:
     """
     Capture small PCAP snippet with tcpdump + optional tshark summary.
@@ -389,6 +406,11 @@ def capture_traffic_snippet(
         Capture info dictionary or None
     """
     if not extra_tools.get("tcpdump"):
+        return None
+
+    if _is_dry_run(dry_run):
+        if logger:
+            logger.info("[dry-run] skipping traffic capture snippet")
         return None
 
     safe_ip = sanitize_ip(host_ip)
@@ -452,27 +474,36 @@ def capture_traffic_snippet(
     info = {"pcap_file": pcap_filename, "pcap_file_abs": pcap_file, "iface": iface}
 
     try:
-        subprocess.run(
+        runner = _make_runner(logger=logger, dry_run=dry_run, timeout=float(duration) + 5.0)
+        res = runner.run(
             cmd,
+            capture_output=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            timeout=duration + 5,
+            check=False,
+            text=True,
+            timeout=float(duration) + 5.0,
         )
-    except subprocess.TimeoutExpired as exc:
-        info["tcpdump_error"] = f"Timeout after {exc.timeout}s"
+        if res.timed_out:
+            info["tcpdump_error"] = f"Timeout after {int(duration) + 5}s"
     except Exception as exc:
         info["tcpdump_error"] = str(exc)
 
     # Optional tshark summary
     if extra_tools.get("tshark"):
         try:
-            res = subprocess.run(
+            runner = _make_runner(logger=logger, dry_run=dry_run, timeout=10.0)
+            res = runner.run(
                 [extra_tools["tshark"], "-r", pcap_file, "-q", "-z", "io,phs"],
                 capture_output=True,
+                check=False,
                 text=True,
-                timeout=10,
+                timeout=10.0,
             )
-            info["tshark_summary"] = (res.stdout or res.stderr or "")[:2000]
+            if res.timed_out:
+                info["tshark_error"] = "Timeout after 10s"
+            else:
+                info["tshark_summary"] = (str(res.stdout or "") or str(res.stderr or ""))[:2000]
         except Exception as exc:
             info["tshark_error"] = str(exc)
 
@@ -492,14 +523,17 @@ def enrich_host_with_dns(host_record: Dict, extra_tools: Dict) -> None:
 
     if extra_tools.get("dig"):
         try:
-            res = subprocess.run(
+            runner = _make_runner(timeout=5.0)
+            res = runner.run(
                 [extra_tools["dig"], "+short", "-x", ip_str],
                 capture_output=True,
+                check=False,
                 text=True,
-                timeout=5,
+                timeout=5.0,
             )
-            if res.stdout.strip():
-                host_record["dns"]["reverse"] = res.stdout.strip().splitlines()
+            output = str(res.stdout or "").strip()
+            if output:
+                host_record["dns"]["reverse"] = output.splitlines()
         except Exception:
             pass
 
@@ -518,21 +552,25 @@ def enrich_host_with_whois(host_record: Dict, extra_tools: Dict) -> None:
     try:
         ip_obj = ipaddress.ip_address(ip_str)
         if not ip_obj.is_private and extra_tools.get("whois"):
-            res = subprocess.run(
+            runner = _make_runner(timeout=15.0)
+            res = runner.run(
                 [extra_tools["whois"], ip_str],
                 capture_output=True,
+                check=False,
                 text=True,
-                timeout=15,
+                timeout=15.0,
             )
-            text = res.stdout or res.stderr
-            if text:
-                lines = [line for line in text.splitlines() if line.strip()][:25]
+            combined = str(res.stdout or "") or str(res.stderr or "")
+            if combined:
+                lines = [line for line in combined.splitlines() if line.strip()][:25]
                 host_record["dns"]["whois_summary"] = "\n".join(lines)
     except Exception:
         pass
 
 
-def http_enrichment(url: str, extra_tools: Dict) -> Dict:
+def http_enrichment(
+    url: str, extra_tools: Dict, *, dry_run: Optional[bool] = None, logger=None
+) -> Dict:
     """
     Enrich with HTTP headers using curl/wget.
 
@@ -547,34 +585,47 @@ def http_enrichment(url: str, extra_tools: Dict) -> Dict:
 
     if extra_tools.get("curl"):
         try:
-            res = subprocess.run(
+            runner = _make_runner(logger=logger, dry_run=dry_run, timeout=15.0)
+            res = runner.run(
                 [extra_tools["curl"], "-I", "--max-time", "10", url],
                 capture_output=True,
+                check=False,
                 text=True,
-                timeout=15,
+                timeout=15.0,
             )
-            if res.stdout:
-                data["curl_headers"] = res.stdout.strip()[:2000]
+            output = str(res.stdout or "").strip()
+            if output:
+                data["curl_headers"] = output[:2000]
         except Exception:
             pass
 
     if extra_tools.get("wget"):
         try:
-            res = subprocess.run(
+            runner = _make_runner(logger=logger, dry_run=dry_run, timeout=15.0)
+            res = runner.run(
                 [extra_tools["wget"], "--spider", "-S", "--timeout=10", url],
                 capture_output=True,
+                check=False,
                 text=True,
-                timeout=15,
+                timeout=15.0,
             )
-            if res.stderr:
-                data["wget_headers"] = res.stderr.strip()[:2000]
+            err = str(res.stderr or "").strip()
+            if err:
+                data["wget_headers"] = err[:2000]
         except Exception:
             pass
 
     return data
 
 
-def tls_enrichment(host_ip: str, port: int, extra_tools: Dict) -> Dict:
+def tls_enrichment(
+    host_ip: str,
+    port: int,
+    extra_tools: Dict,
+    *,
+    dry_run: Optional[bool] = None,
+    logger=None,
+) -> Dict:
     """
     Enrich with TLS certificate information.
 
@@ -590,7 +641,8 @@ def tls_enrichment(host_ip: str, port: int, extra_tools: Dict) -> Dict:
 
     if extra_tools.get("openssl"):
         try:
-            res = subprocess.run(
+            runner = _make_runner(logger=logger, dry_run=dry_run, timeout=10.0)
+            res = runner.run(
                 [
                     extra_tools["openssl"],
                     "s_client",
@@ -601,12 +653,14 @@ def tls_enrichment(host_ip: str, port: int, extra_tools: Dict) -> Dict:
                     "-brief",
                 ],
                 capture_output=True,
+                check=False,
                 text=True,
-                timeout=10,
-                input="",
+                timeout=10.0,
+                input_text="",
             )
-            if res.stdout:
-                data["tls_info"] = res.stdout.strip()[:2000]
+            output = str(res.stdout or "").strip()
+            if output:
+                data["tls_info"] = output[:2000]
         except Exception:
             pass
 
@@ -646,17 +700,19 @@ def exploit_lookup(service_name: str, version: str, extra_tools: Dict, logger=No
     query = f"{service_name} {version}"
 
     try:
-        res = subprocess.run(
+        runner = _make_runner(logger=logger, timeout=10.0)
+        res = runner.run(
             [extra_tools["searchsploit"], "--colour", "--nmap", query],
             capture_output=True,
+            check=False,
             text=True,
-            timeout=10,
+            timeout=10.0,
         )
 
         if res.returncode != 0:
             return []
 
-        output = res.stdout or ""
+        output = str(res.stdout or "")
         if not output.strip():
             return []
 
@@ -725,14 +781,15 @@ def ssl_deep_analysis(
             f"{safe_ip}:{port}",
         ]
 
-        res = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
+        runner = _make_runner(logger=logger, timeout=float(timeout))
+        res = runner.run(cmd, capture_output=True, check=False, text=True, timeout=float(timeout))
 
-        output = res.stdout or res.stderr or ""
+        if res.timed_out:
+            if logger:
+                logger.warning("TestSSL timeout for %s:%d after %ds", safe_ip, port, timeout)
+            return {"error": f"Analysis timeout after {timeout}s", "target": f"{safe_ip}:{port}"}
+
+        output = str(res.stdout or "") or str(res.stderr or "")
         if not output.strip():
             return None
 
@@ -790,10 +847,6 @@ def ssl_deep_analysis(
 
         return None
 
-    except subprocess.TimeoutExpired:
-        if logger:
-            logger.warning("TestSSL timeout for %s:%d after %ds", safe_ip, port, timeout)
-        return {"error": f"Analysis timeout after {timeout}s", "target": f"{safe_ip}:{port}"}
     except Exception as exc:
         if logger:
             logger.debug("TestSSL error for %s:%d: %s", safe_ip, port, exc)
@@ -801,7 +854,12 @@ def ssl_deep_analysis(
 
 
 def start_background_capture(
-    host_ip: str, output_dir: str, networks: List[Dict], extra_tools: Dict, logger=None
+    host_ip: str,
+    output_dir: str,
+    networks: List[Dict],
+    extra_tools: Dict,
+    logger=None,
+    dry_run: Optional[bool] = None,
 ) -> Optional[Dict]:
     """
     Start background traffic capture for concurrent scanning (v2.8.0).
@@ -820,6 +878,11 @@ def start_background_capture(
         Dict with 'process', 'pcap_file', 'pcap_file_abs', 'iface' or None
     """
     if not extra_tools.get("tcpdump"):
+        return None
+
+    if _is_dry_run(dry_run):
+        if logger:
+            logger.info("[dry-run] skipping background traffic capture")
         return None
 
     safe_ip = sanitize_ip(host_ip)
@@ -886,7 +949,12 @@ def start_background_capture(
         return None
 
 
-def stop_background_capture(capture_info: Dict, extra_tools: Dict, logger=None) -> Optional[Dict]:
+def stop_background_capture(
+    capture_info: Dict,
+    extra_tools: Dict,
+    logger=None,
+    dry_run: Optional[bool] = None,
+) -> Optional[Dict]:
     """
     Stop background traffic capture and collect results (v2.8.0).
 
@@ -934,15 +1002,22 @@ def stop_background_capture(capture_info: Dict, extra_tools: Dict, logger=None) 
 
     if extra_tools.get("tshark") and pcap_file_abs and os.path.exists(pcap_file_abs):
         try:
-            res = subprocess.run(
+            if _is_dry_run(dry_run):
+                return result
+            runner = _make_runner(logger=logger, timeout=10.0)
+            res = runner.run(
                 [extra_tools["tshark"], "-r", pcap_file_abs, "-q", "-z", "io,phs"],
                 capture_output=True,
+                check=False,
                 text=True,
-                timeout=10,
+                timeout=10.0,
             )
-            summary = (res.stdout or res.stderr or "")[:2000]
-            if summary.strip():
-                result["tshark_summary"] = summary
+            if res.timed_out:
+                result["tshark_error"] = "Timeout after 10s"
+            else:
+                summary = (str(res.stdout or "") or str(res.stderr or ""))[:2000]
+                if summary.strip():
+                    result["tshark_summary"] = summary
         except Exception as exc:
             result["tshark_error"] = str(exc)
 
@@ -997,14 +1072,13 @@ def banner_grab_fallback(
     results: Dict[int, Dict] = {}
 
     try:
-        res = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-
-        output = res.stdout or ""
+        runner = _make_runner(logger=logger, timeout=float(timeout))
+        res = runner.run(cmd, capture_output=True, check=False, text=True, timeout=float(timeout))
+        if res.timed_out:
+            if logger:
+                logger.warning("Banner grab timeout for %s ports %s", safe_ip, port_str)
+            return results
+        output = str(res.stdout or "")
 
         # Parse output for port info
         current_port = None
@@ -1025,9 +1099,6 @@ def banner_grab_fallback(
             if current_port and "ssl-cert:" in line.lower():
                 results.setdefault(current_port, {})["ssl_cert"] = line.strip()[:500]
 
-    except subprocess.TimeoutExpired:
-        if logger:
-            logger.warning("Banner grab timeout for %s ports %s", safe_ip, port_str)
     except Exception as exc:
         if logger:
             logger.debug("Banner grab error for %s: %s", safe_ip, exc)
