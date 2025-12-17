@@ -519,6 +519,18 @@ def save_results(
             if logger:
                 logger.info("HTML report skipped (report encryption enabled)")
 
+        # v3.4: Generate remediation playbooks
+        if not encryption_enabled:
+            try:
+                from redaudit.core.playbook_generator import save_playbooks
+
+                playbook_count = save_playbooks(results, output_dir)
+                if playbook_count > 0 and print_fn and t_fn:
+                    print_fn(t_fn("playbooks_generated", playbook_count), "OKGREEN")
+            except Exception as pb_err:
+                if logger:
+                    logger.debug("Playbook generation failed: %s", pb_err)
+
         # v3.3: Send webhook alerts for high-severity findings
         webhook_url = config.get("webhook_url")
         if webhook_url:

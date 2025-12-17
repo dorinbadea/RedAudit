@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.4.0] - 2025-12-17 (Playbook Export)
+
+### Added
+
+- **Remediation Playbooks**: Automatic generation of actionable remediation guides per finding.
+  - New module: `redaudit/core/playbook_generator.py`
+  - Categories: TLS hardening, HTTP headers, CVE remediation, web hardening, port hardening
+  - Output: Markdown files in `<output_dir>/playbooks/` directory
+  - Includes: step-by-step instructions, shell commands, and reference links
+  - Deduplication: one playbook per category per host
+
+### Changed
+
+- **reporter.py**: Now generates playbooks automatically after scan completion.
+- **i18n.py**: Added `playbooks_generated` translation key.
+
 ## [3.3.0] - 2025-12-17 (DX Improvements)
 
 ### Added

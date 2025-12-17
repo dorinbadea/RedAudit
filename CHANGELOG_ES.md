@@ -7,9 +7,25 @@ Todos los cambios relevantes de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Sin Publicar]
 
-- (pendiente)
+- (nada aún)
+
+## [3.4.0] - 2025-12-17 (Playbook Export)
+
+### Añadido
+
+- **Playbooks de Remediación**: Generación automática de guías de remediación accionables por hallazgo.
+  - Nuevo módulo: `redaudit/core/playbook_generator.py`
+  - Categorías: hardening TLS, cabeceras HTTP, remediación CVE, hardening web, hardening puertos
+  - Salida: archivos Markdown en el directorio `<output_dir>/playbooks/`
+  - Incluye: instrucciones paso a paso, comandos shell y enlaces de referencia
+  - Deduplicación: un playbook por categoría por host
+
+### Cambiado
+
+- **reporter.py**: Ahora genera playbooks automáticamente después de finalizar el escaneo.
+- **i18n.py**: Añadida clave de traducción `playbooks_generated`.
 
 ## [3.3.0] - 2025-12-17 (Mejoras DX)
 
