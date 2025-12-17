@@ -72,7 +72,7 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
     count = 0
 
     # Build finding count per host
-    finding_counts = {}
+    finding_counts: Dict[str, int] = {}
     for vuln_entry in results.get("vulnerabilities", []):
         host = vuln_entry.get("host", "")
         finding_counts[host] = finding_counts.get(host, 0) + len(
@@ -129,7 +129,7 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
     """
     # Count severities
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
-    category_counts = {}
+    category_counts: Dict[str, int] = {}
 
     for vuln_entry in results.get("vulnerabilities", []):
         for vuln in vuln_entry.get("vulnerabilities", []):
@@ -199,26 +199,28 @@ def export_all(results: Dict, output_dir: str) -> Dict[str, Any]:
 def _extract_title(vuln: Dict) -> str:
     """
     Extract a descriptive title from vulnerability record.
-    
+
     v3.1.4: Generate human-readable titles based on finding type
     instead of generic "Finding on URL" messages.
     """
     import re
-    
+
     obs = vuln.get("parsed_observations", [])
-    
+
     # Generate descriptive title based on observations
     for observation in obs:
         obs_lower = observation.lower()
-        
+
         # Security headers
         if "missing hsts" in obs_lower or "strict-transport-security" in obs_lower:
             return "Missing HTTP Strict Transport Security Header"
-        if "x-frame-options" in obs_lower and ("missing" in obs_lower or "not present" in obs_lower):
+        if "x-frame-options" in obs_lower and (
+            "missing" in obs_lower or "not present" in obs_lower
+        ):
             return "Missing X-Frame-Options Header (Clickjacking Risk)"
         if "x-content-type" in obs_lower and ("missing" in obs_lower or "not set" in obs_lower):
             return "Missing X-Content-Type-Options Header"
-        
+
         # SSL/TLS issues
         if "ssl hostname mismatch" in obs_lower or "does not match certificate" in obs_lower:
             return "SSL Certificate Hostname Mismatch"
@@ -226,24 +228,24 @@ def _extract_title(vuln: Dict) -> str:
             return "SSL Certificate Expired"
         if "self-signed" in obs_lower or "self signed" in obs_lower:
             return "Self-Signed SSL Certificate"
-        
+
         # CVE references
         if "cve-" in obs_lower:
-            match = re.search(r'(cve-\d{4}-\d+)', obs_lower)
+            match = re.search(r"(cve-\d{4}-\d+)", obs_lower)
             if match:
                 return f"Known Vulnerability: {match.group(1).upper()}"
-        
+
         # Information disclosure
         if "rfc-1918" in obs_lower or "private ip" in obs_lower:
             return "Internal IP Address Disclosed in Headers"
         if "server banner" in obs_lower and "no banner" not in obs_lower:
             return "Server Version Disclosed in Banner"
-    
+
     # Fallback to URL-based title with port
     url = vuln.get("url", "")
     port = vuln.get("port", 0)
-    
+
     if url:
         return f"Web Service Finding on Port {port}"
-    
+
     return f"Service Finding on Port {port}"

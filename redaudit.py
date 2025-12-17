@@ -27,27 +27,27 @@ elif os.path.isdir(os.path.join(_script_dir, "redaudit")):
     sys.path.insert(0, _script_dir)
 
 # Re-export everything from the package for backward compatibility
-from redaudit import InteractiveNetworkAuditor, VERSION
-from redaudit.utils.constants import (
+from redaudit import InteractiveNetworkAuditor, VERSION  # noqa: E402
+from redaudit.utils.constants import (  # noqa: E402
     MAX_INPUT_LENGTH,
     MAX_CIDR_LENGTH,
     MAX_SUBPROCESS_RETRIES,
     DEFAULT_LANG,
 )
-from redaudit.utils.i18n import TRANSLATIONS
-from redaudit.cli import main, parse_arguments, configure_from_args
+from redaudit.utils.i18n import TRANSLATIONS  # noqa: E402
+from redaudit.cli import main, parse_arguments, configure_from_args  # noqa: E402
 
 __all__ = [
-    'InteractiveNetworkAuditor',
-    'VERSION',
-    'MAX_INPUT_LENGTH',
-    'MAX_CIDR_LENGTH',
-    'MAX_SUBPROCESS_RETRIES',
-    'DEFAULT_LANG',
-    'TRANSLATIONS',
-    'main',
-    'parse_arguments',
-    'configure_from_args',
+    "InteractiveNetworkAuditor",
+    "VERSION",
+    "MAX_INPUT_LENGTH",
+    "MAX_CIDR_LENGTH",
+    "MAX_SUBPROCESS_RETRIES",
+    "DEFAULT_LANG",
+    "TRANSLATIONS",
+    "main",
+    "parse_arguments",
+    "configure_from_args",
 ]
 
 if __name__ == "__main__":

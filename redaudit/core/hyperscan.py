@@ -13,7 +13,7 @@ import ipaddress
 import socket
 import struct
 import time
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 from datetime import datetime
 
 
@@ -50,31 +50,31 @@ UDP_DISCOVERY_PORTS = {
     5060: "sip",
     5061: "sip-tls",
     # Discovery protocols
-    1900: "ssdp",           # UPNP/SSDP
-    5353: "mdns",           # mDNS/Bonjour
-    5355: "llmnr",          # Link-Local Multicast
+    1900: "ssdp",  # UPNP/SSDP
+    5353: "mdns",  # mDNS/Bonjour
+    5355: "llmnr",  # Link-Local Multicast
     # IoT and smart devices
-    38899: "wiz",           # WiZ smart bulbs
-    1982: "yeelight",       # Yeelight bulbs
-    56700: "lifx",          # LIFX bulbs
-    10001: "ubiquiti",      # Ubiquiti discovery
-    8008: "chromecast",     # Chromecast
-    8009: "chromecast-ctrl", # Chromecast control
+    38899: "wiz",  # WiZ smart bulbs
+    1982: "yeelight",  # Yeelight bulbs
+    56700: "lifx",  # LIFX bulbs
+    10001: "ubiquiti",  # Ubiquiti discovery
+    8008: "chromecast",  # Chromecast
+    8009: "chromecast-ctrl",  # Chromecast control
     # Gaming and media
-    3478: "stun",           # STUN/TURN
+    3478: "stun",  # STUN/TURN
     3479: "stun-alt",
-    27015: "steam",         # Steam
+    27015: "steam",  # Steam
     # Database and services
     1434: "mssql-browser",  # SQL Server Browser
-    11211: "memcached",     # Memcached
-    6379: "redis",          # Redis (also UDP)
+    11211: "memcached",  # Memcached
+    6379: "redis",  # Redis (also UDP)
     # VPN and tunnels
     1723: "pptp",
     4789: "vxlan",
     # Potential backdoors / unusual
-    31337: "elite",         # Classic backdoor port
-    4444: "metasploit",     # Metasploit default
-    5555: "freeciv",        # Also Android debug
+    31337: "elite",  # Classic backdoor port
+    4444: "metasploit",  # Metasploit default
+    5555: "freeciv",  # Also Android debug
 }
 
 # Priority UDP ports for quick scan
@@ -85,10 +85,10 @@ DEFAULT_ARP_RETRIES = 3
 DEFAULT_ARP_TIMEOUT = 2.0
 
 
-
 # ============================================================================
 # TCP Parallel Sweep
 # ============================================================================
+
 
 async def _tcp_connect(
     semaphore: asyncio.Semaphore,
@@ -98,15 +98,12 @@ async def _tcp_connect(
 ) -> Optional[Tuple[str, int]]:
     """
     Attempt single TCP connection with semaphore limit.
-    
+
     Returns (ip, port) if open, None otherwise.
     """
     async with semaphore:
         try:
-            _, writer = await asyncio.wait_for(
-                asyncio.open_connection(ip, port),
-                timeout=timeout
-            )
+            _, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout=timeout)
             writer.close()
             await writer.wait_closed()
             return (ip, port)
@@ -124,9 +121,9 @@ async def hyperscan_tcp_sweep(
 ) -> Dict[str, List[int]]:
     """
     Parallel TCP port sweep using asyncio batch scanning.
-    
+
     Scans thousands of ports simultaneously for ultra-fast discovery.
-    
+
     Args:
         targets: List of IP addresses to scan
         ports: List of ports to check
@@ -134,51 +131,55 @@ async def hyperscan_tcp_sweep(
         timeout: Connection timeout in seconds
         logger: Optional logger
         progress_callback: Optional callback(completed, total, desc) for progress
-        
+
     Returns:
         Dict mapping IP -> list of open ports
     """
     if not targets or not ports:
         return {}
-    
+
     start_time = time.time()
     semaphore = asyncio.Semaphore(batch_size)
     results: Dict[str, List[int]] = {ip: [] for ip in targets}
-    
+
     # Create all connection tasks
     total_probes = len(targets) * len(ports)
     tasks = []
     for ip in targets:
         for port in ports:
             tasks.append(_tcp_connect(semaphore, ip, port, timeout))
-    
+
     if logger:
-        logger.info("HyperScan TCP: %d targets x %d ports = %d probes", 
-                    len(targets), len(ports), total_probes)
-    
+        logger.info(
+            "HyperScan TCP: %d targets x %d ports = %d probes",
+            len(targets),
+            len(ports),
+            total_probes,
+        )
+
     # Execute in chunks for progress tracking
     chunk_size = max(1, total_probes // 20)  # ~20 progress updates
     completed = 0
-    
+
     for i in range(0, len(tasks), chunk_size):
-        chunk = tasks[i:i + chunk_size]
+        chunk = tasks[i : i + chunk_size]
         chunk_results = await asyncio.gather(*chunk, return_exceptions=True)
-        
+
         for result in chunk_results:
             if isinstance(result, tuple):
                 ip, port = result
                 results[ip].append(port)
-        
+
         completed += len(chunk)
         if progress_callback:
             progress_callback(completed, total_probes, "TCP sweep")
-    
+
     duration = time.time() - start_time
     open_count = sum(len(ports) for ports in results.values())
-    
+
     if logger:
         logger.info("HyperScan TCP: Found %d open ports in %.2fs", open_count, duration)
-    
+
     return results
 
 
@@ -199,6 +200,7 @@ def hyperscan_tcp_sweep_sync(
 # UDP Parallel Sweep (Full Protocol Coverage)
 # ============================================================================
 
+
 async def _udp_probe(
     semaphore: asyncio.Semaphore,
     ip: str,
@@ -208,7 +210,7 @@ async def _udp_probe(
 ) -> Optional[Tuple[str, int, bytes]]:
     """
     Attempt single UDP probe with semaphore limit.
-    
+
     Returns (ip, port, response) if response received, None otherwise.
     """
     async with semaphore:
@@ -217,14 +219,11 @@ async def _udp_probe(
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setblocking(False)
             sock.settimeout(timeout)
-            
+
             await loop.sock_sendto(sock, payload, (ip, port))
-            
+
             try:
-                data = await asyncio.wait_for(
-                    loop.sock_recv(sock, 1024),
-                    timeout=timeout
-                )
+                data = await asyncio.wait_for(loop.sock_recv(sock, 1024), timeout=timeout)
                 sock.close()
                 return (ip, port, data)
             except asyncio.TimeoutError:
@@ -243,29 +242,29 @@ async def hyperscan_udp_sweep(
 ) -> Dict[str, List[Dict]]:
     """
     Parallel UDP port sweep using asyncio.
-    
+
     Probes all specified UDP ports across all targets for complete coverage.
-    
+
     Args:
         targets: List of IP addresses to scan
         ports: List of UDP ports (default: UDP_DISCOVERY_PORTS keys)
         batch_size: Max concurrent probes
         timeout: Response timeout per probe
         logger: Optional logger
-        
+
     Returns:
         Dict mapping IP -> list of responsive port info
     """
     if ports is None:
         ports = list(UDP_DISCOVERY_PORTS.keys())
-    
+
     if not targets or not ports:
         return {}
-    
+
     start_time = time.time()
     semaphore = asyncio.Semaphore(batch_size)
     results: Dict[str, List[Dict]] = {ip: [] for ip in targets}
-    
+
     # Create all probe tasks
     tasks = []
     for ip in targets:
@@ -280,34 +279,37 @@ async def hyperscan_udp_sweep(
                 payload = b"\x30\x26\x02\x01\x01\x04\x06public\xa0\x19\x02\x04\x00\x00\x00\x00\x02\x01\x00\x02\x01\x00\x30\x0b\x30\x09\x06\x05\x2b\x06\x01\x02\x01\x05\x00"
             elif port == 137:  # NetBIOS
                 payload = b"\x80\x94\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x20CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\x00\x00\x21\x00\x01"
-            
+
             tasks.append(_udp_probe(semaphore, ip, port, timeout, payload))
-    
+
     if logger:
-        logger.info("HyperScan UDP: %d targets x %d ports = %d probes", 
-                    len(targets), len(ports), len(tasks))
-    
+        logger.info(
+            "HyperScan UDP: %d targets x %d ports = %d probes", len(targets), len(ports), len(tasks)
+        )
+
     # Execute all tasks concurrently
     completed = await asyncio.gather(*tasks, return_exceptions=True)
-    
+
     # Collect results
     for result in completed:
         if isinstance(result, tuple) and len(result) == 3:
             ip, port, data = result
             protocol = UDP_DISCOVERY_PORTS.get(port, "unknown")
-            results[ip].append({
-                "port": port,
-                "protocol": protocol,
-                "response_size": len(data),
-                "response_preview": data[:50].hex() if data else "",
-            })
-    
+            results[ip].append(
+                {
+                    "port": port,
+                    "protocol": protocol,
+                    "response_size": len(data),
+                    "response_preview": data[:50].hex() if data else "",
+                }
+            )
+
     duration = time.time() - start_time
     responsive_count = sum(len(ports_list) for ports_list in results.values())
-    
+
     if logger:
         logger.info("HyperScan UDP: Found %d responsive ports in %.2fs", responsive_count, duration)
-    
+
     return results
 
 
@@ -328,12 +330,13 @@ def hyperscan_udp_sweep_sync(
 # UDP Broadcast Probes (Discovery Protocols)
 # ============================================================================
 
+
 def _build_ssdp_msearch() -> bytes:
     """Build SSDP M-SEARCH discovery packet."""
     return (
         b"M-SEARCH * HTTP/1.1\r\n"
         b"HOST: 239.255.255.250:1900\r\n"
-        b"MAN: \"ssdp:discover\"\r\n"
+        b'MAN: "ssdp:discover"\r\n'
         b"MX: 3\r\n"
         b"ST: ssdp:all\r\n"
         b"\r\n"
@@ -356,9 +359,13 @@ def _build_mdns_query() -> bytes:
 def _build_wiz_discovery() -> bytes:
     """Build WiZ smart bulb discovery packet (UDP 38899)."""
     import json
+
     # WiZ bulbs respond to registration and getPilot queries
     # Using registration method for broader compatibility
-    payload = {"method": "registration", "params": {"phoneMac": "AABBCCDDEEFF", "register": False, "phoneIp": "1.2.3.4"}}
+    payload = {
+        "method": "registration",
+        "params": {"phoneMac": "AABBCCDDEEFF", "register": False, "phoneIp": "1.2.3.4"},
+    }
     return json.dumps(payload).encode()
 
 
@@ -369,46 +376,46 @@ def hyperscan_udp_broadcast(
 ) -> List[Dict]:
     """
     Send UDP broadcast probes to discover IoT devices.
-    
+
     Probes common IoT protocols: WiZ, SSDP, mDNS, etc.
-    
+
     Args:
         network: Network CIDR (e.g., "192.168.1.0/24")
         timeout: Response timeout in seconds
         logger: Optional logger
-        
+
     Returns:
         List of discovered devices with protocol info
     """
-    discovered = []
-    
+    discovered: List[Dict[str, Any]] = []
+
     try:
         net = ipaddress.ip_network(network, strict=False)
         broadcast = str(net.broadcast_address)
     except ValueError:
         return discovered
-    
+
     # Protocol-specific probes for IoT discovery
     probes = [
-        (1900, _build_ssdp_msearch(), "ssdp"),        # UPNP/SSDP (Chromecast, routers)
-        (38899, _build_wiz_discovery(), "wiz"),       # WiZ smart bulbs
+        (1900, _build_ssdp_msearch(), "ssdp"),  # UPNP/SSDP (Chromecast, routers)
+        (38899, _build_wiz_discovery(), "wiz"),  # WiZ smart bulbs
         (55443, b'{"id":1,"method":"get_prop","params":["power"]}', "yeelight"),  # Yeelight bulbs
-        (20002, b'\\x02\\x00\\x00\\x01', "tapo"),      # TP-Link Tapo/Kasa devices
-        (5353, _build_mdns_query(), "mdns"),          # mDNS (Apple devices, Chromecasts)
+        (20002, b"\\x02\\x00\\x00\\x01", "tapo"),  # TP-Link Tapo/Kasa devices
+        (5353, _build_mdns_query(), "mdns"),  # mDNS (Apple devices, Chromecasts)
     ]
-    
+
     for port, packet, protocol in probes:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             sock.settimeout(timeout)
-            
+
             # Send to broadcast address
             sock.sendto(packet, (broadcast, port))
-            
+
             if logger:
                 logger.debug("HyperScan UDP: Sent %s probe to %s:%d", protocol, broadcast, port)
-            
+
             # Collect responses
             end_time = time.time() + timeout
             while time.time() < end_time:
@@ -416,24 +423,26 @@ def hyperscan_udp_broadcast(
                     sock.settimeout(max(0.1, end_time - time.time()))
                     data, addr = sock.recvfrom(2048)
                     if data:
-                        discovered.append({
-                            "ip": addr[0],
-                            "port": addr[1],
-                            "protocol": protocol,
-                            "response_size": len(data),
-                            "response_preview": data[:100].decode("utf-8", errors="ignore"),
-                        })
+                        discovered.append(
+                            {
+                                "ip": addr[0],
+                                "port": addr[1],
+                                "protocol": protocol,
+                                "response_size": len(data),
+                                "response_preview": data[:100].decode("utf-8", errors="ignore"),
+                            }
+                        )
                 except socket.timeout:
                     break
                 except Exception:
                     break
-            
+
             sock.close()
-            
+
         except Exception as exc:
             if logger:
                 logger.debug("HyperScan UDP %s probe failed: %s", protocol, exc)
-    
+
     # Also try unicast to common IoT IPs in subnet
     # Some devices don't respond to broadcast
     try:
@@ -445,7 +454,7 @@ def hyperscan_udp_broadcast(
             hosts_to_probe = all_hosts
         else:
             hosts_to_probe = all_hosts[:50] + all_hosts[-50:]
-        
+
         for host in hosts_to_probe:
             ip = str(host)
             for port, packet, protocol in probes:
@@ -458,13 +467,15 @@ def hyperscan_udp_broadcast(
                     try:
                         data, addr = sock.recvfrom(1024)
                         if data:
-                            discovered.append({
-                                "ip": addr[0],
-                                "port": port,
-                                "protocol": protocol,
-                                "response_size": len(data),
-                                "source": "unicast",
-                            })
+                            discovered.append(
+                                {
+                                    "ip": addr[0],
+                                    "port": port,
+                                    "protocol": protocol,
+                                    "response_size": len(data),
+                                    "source": "unicast",
+                                }
+                            )
                     except socket.timeout:
                         pass
                     sock.close()
@@ -472,7 +483,7 @@ def hyperscan_udp_broadcast(
                     pass
     except Exception:
         pass
-    
+
     # Deduplicate by IP
     seen_ips = set()
     unique = []
@@ -480,16 +491,17 @@ def hyperscan_udp_broadcast(
         if dev["ip"] not in seen_ips:
             seen_ips.add(dev["ip"])
             unique.append(dev)
-    
+
     if logger and unique:
         logger.info("HyperScan UDP: Discovered %d IoT devices", len(unique))
-    
+
     return unique
 
 
 # ============================================================================
 # ARP Aggressive Sweep
 # ============================================================================
+
 
 def hyperscan_arp_aggressive(
     network: str,
@@ -499,25 +511,25 @@ def hyperscan_arp_aggressive(
 ) -> List[Dict]:
     """
     Aggressive ARP sweep with multiple retries.
-    
+
     Uses arping or arp-scan with increased attempts to find
     hidden/slow-responding devices.
-    
+
     Args:
         network: Network CIDR
         retries: Number of ARP attempts per host
         timeout: Timeout per sweep
         logger: Optional logger
-        
+
     Returns:
         List of discovered hosts with MAC addresses
     """
     import subprocess
     import shutil
-    
+
     discovered = []
     seen_ips: Set[str] = set()
-    
+
     # Try arp-scan first (more reliable)
     arp_scan = shutil.which("arp-scan")
     if arp_scan:
@@ -530,15 +542,12 @@ def hyperscan_arp_aggressive(
                     "--timeout=500",
                     network,
                 ]
-                
+
                 # Try to detect interface for network
                 try:
-                    net = ipaddress.ip_network(network, strict=False)
                     # Simple heuristic for interface detection
-                    import os
                     route_output = subprocess.run(
-                        ["ip", "route", "show", network],
-                        capture_output=True, text=True, timeout=5
+                        ["ip", "route", "show", network], capture_output=True, text=True, timeout=5
                     )
                     if "dev" in route_output.stdout:
                         parts = route_output.stdout.split("dev")
@@ -547,14 +556,14 @@ def hyperscan_arp_aggressive(
                             cmd[1] = f"--interface={iface}"
                 except Exception:
                     pass
-                
+
                 result = subprocess.run(
                     cmd,
                     capture_output=True,
                     text=True,
                     timeout=timeout * 2,
                 )
-                
+
                 # Parse arp-scan output
                 for line in result.stdout.splitlines():
                     parts = line.split()
@@ -562,29 +571,31 @@ def hyperscan_arp_aggressive(
                         ip = parts[0]
                         mac = parts[1] if len(parts) > 1 else ""
                         vendor = " ".join(parts[2:]) if len(parts) > 2 else ""
-                        
+
                         # Validate IP
                         try:
                             ipaddress.ip_address(ip)
                             if ip not in seen_ips:
                                 seen_ips.add(ip)
-                                discovered.append({
-                                    "ip": ip,
-                                    "mac": mac,
-                                    "vendor": vendor,
-                                    "method": "arp-scan",
-                                    "attempt": attempt + 1,
-                                })
+                                discovered.append(
+                                    {
+                                        "ip": ip,
+                                        "mac": mac,
+                                        "vendor": vendor,
+                                        "method": "arp-scan",
+                                        "attempt": attempt + 1,
+                                    }
+                                )
                         except ValueError:
                             pass
-                
+
             except subprocess.TimeoutExpired:
                 if logger:
                     logger.warning("HyperScan ARP attempt %d timeout", attempt + 1)
             except Exception as exc:
                 if logger:
                     logger.debug("HyperScan ARP attempt %d error: %s", attempt + 1, exc)
-    
+
     # Fallback to arping for hosts not found
     arping = shutil.which("arping")
     if arping and len(discovered) < 5:
@@ -595,7 +606,7 @@ def hyperscan_arp_aggressive(
                 ip = str(host)
                 if ip in seen_ips:
                     continue
-                    
+
                 try:
                     result = subprocess.run(
                         [arping, "-c", "1", "-w", "1", ip],
@@ -605,25 +616,28 @@ def hyperscan_arp_aggressive(
                     )
                     if "reply from" in result.stdout.lower():
                         seen_ips.add(ip)
-                        discovered.append({
-                            "ip": ip,
-                            "mac": "",
-                            "method": "arping",
-                        })
+                        discovered.append(
+                            {
+                                "ip": ip,
+                                "mac": "",
+                                "method": "arping",
+                            }
+                        )
                 except Exception:
                     pass
         except Exception:
             pass
-    
+
     if logger:
         logger.info("HyperScan ARP: Found %d hosts in %s", len(discovered), network)
-    
+
     return discovered
 
 
 # ============================================================================
 # Full Discovery Orchestrator
 # ============================================================================
+
 
 def hyperscan_full_discovery(
     networks: List[str],
@@ -636,7 +650,7 @@ def hyperscan_full_discovery(
 ) -> Dict:
     """
     Full parallel discovery combining TCP/UDP/ARP scans.
-    
+
     Args:
         networks: List of network CIDRs to scan
         quick_ports: Ports for quick TCP scan (default: common IoT/backdoor ports)
@@ -645,21 +659,51 @@ def hyperscan_full_discovery(
         include_arp: Enable ARP sweep
         tcp_batch_size: Concurrent TCP connections
         logger: Optional logger
-        
+
     Returns:
         Discovery results dictionary
     """
     if quick_ports is None:
         # Common IoT and potential backdoor ports
         quick_ports = [
-            21, 22, 23, 25, 53, 80, 81, 110, 139, 143, 443, 445,
-            554, 1080, 1433, 1521, 1883, 3306, 3389, 5000, 5432,
-            5900, 6379, 8000, 8080, 8443, 8888, 9000, 9090,
+            21,
+            22,
+            23,
+            25,
+            53,
+            80,
+            81,
+            110,
+            139,
+            143,
+            443,
+            445,
+            554,
+            1080,
+            1433,
+            1521,
+            1883,
+            3306,
+            3389,
+            5000,
+            5432,
+            5900,
+            6379,
+            8000,
+            8080,
+            8443,
+            8888,
+            9000,
+            9090,
             # IoT specific
-            38899, 1982, 56700, 10001, 49152,
+            38899,
+            1982,
+            56700,
+            10001,
+            49152,
         ]
-    
-    results = {
+
+    results: Dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),
         "networks": networks,
         "tcp_hosts": {},
@@ -667,26 +711,26 @@ def hyperscan_full_discovery(
         "arp_hosts": [],
         "total_hosts_found": 0,
     }
-    
+
     start_time = time.time()
-    
+
     for network in networks:
         try:
             net = ipaddress.ip_network(network, strict=False)
             all_ips = [str(h) for h in net.hosts()]
         except ValueError:
             continue
-        
+
         # 1. ARP sweep first (fastest for L2)
         if include_arp:
             arp_results = hyperscan_arp_aggressive(network, logger=logger)
             results["arp_hosts"].extend(arp_results)
-        
+
         # 2. UDP IoT probes
         if include_udp:
             udp_results = hyperscan_udp_broadcast(network, logger=logger)
             results["udp_devices"].extend(udp_results)
-        
+
         # 3. TCP batch scan (on discovered hosts or full subnet)
         if include_tcp:
             # Prioritize hosts found via ARP/UDP
@@ -695,7 +739,7 @@ def hyperscan_full_discovery(
                 priority_ips.add(h["ip"])
             for d in results["udp_devices"]:
                 priority_ips.add(d["ip"])
-            
+
             # If we found hosts, scan those; otherwise sample the network
             if priority_ips:
                 targets = list(priority_ips)
@@ -703,18 +747,23 @@ def hyperscan_full_discovery(
                 # Sample: first 50 + last 50 + random 50
                 if len(all_ips) > 150:
                     import random
-                    targets = all_ips[:50] + all_ips[-50:] + random.sample(all_ips[50:-50], min(50, len(all_ips) - 100))
+
+                    targets = (
+                        all_ips[:50]
+                        + all_ips[-50:]
+                        + random.sample(all_ips[50:-50], min(50, len(all_ips) - 100))
+                    )
                 else:
                     targets = all_ips
-            
+
             tcp_results = hyperscan_tcp_sweep_sync(
                 targets, quick_ports, tcp_batch_size, logger=logger
             )
-            
+
             for ip, ports in tcp_results.items():
                 if ports:
                     results["tcp_hosts"][ip] = ports
-    
+
     # Calculate totals
     all_found = set()
     for h in results["arp_hosts"]:
@@ -723,23 +772,24 @@ def hyperscan_full_discovery(
         all_found.add(d["ip"])
     for ip in results["tcp_hosts"]:
         all_found.add(ip)
-    
+
     results["total_hosts_found"] = len(all_found)
     results["duration_seconds"] = round(time.time() - start_time, 2)
-    
+
     if logger:
         logger.info(
             "HyperScan complete: %d hosts found in %.2fs",
             results["total_hosts_found"],
-            results["duration_seconds"]
+            results["duration_seconds"],
         )
-    
+
     return results
 
 
 # ============================================================================
 # Backdoor Detection Helper
 # ============================================================================
+
 
 def detect_potential_backdoors(
     tcp_results: Dict[str, List[int]],
@@ -748,27 +798,28 @@ def detect_potential_backdoors(
 ) -> List[Dict]:
     """
     Analyze TCP results to identify potential backdoors.
-    
+
     Looks for:
     - Unusual high ports with services
     - Standard ports with unexpected services
     - Known backdoor port patterns
-    
+
     Args:
         tcp_results: Dict mapping IP -> list of open ports
         service_info: Optional dict mapping IP -> {port: service_name}
         logger: Optional logger
-        
+
     Returns:
         List of suspicious findings
     """
     # Import is_port_anomaly from scanner if available
     try:
         from redaudit.core.scanner import is_port_anomaly, is_suspicious_service
+
         has_scanner_integration = True
     except ImportError:
         has_scanner_integration = False
-    
+
     # Known suspicious port patterns
     SUSPICIOUS_RANGES = [
         (31337, 31337, "elite backdoor"),
@@ -782,29 +833,29 @@ def detect_potential_backdoors(
         (666, 666, "doom/backdoor"),
         (65535, 65535, "unusual max port"),
     ]
-    
+
     # Unusual high ports (above 49152 = dynamic range)
     DYNAMIC_PORT_START = 49152
-    
+
     suspicious = []
-    
+
     for ip, ports in tcp_results.items():
         for port in ports:
             reason = None
             severity = "low"
-            
+
             # Check known backdoor ports
             for start, end, name in SUSPICIOUS_RANGES:
                 if start <= port <= end:
                     reason = f"Known backdoor port pattern: {name}"
                     severity = "high"
                     break
-            
+
             # Check unusual high ports
             if not reason and port >= DYNAMIC_PORT_START:
                 reason = "Unusual high port in dynamic range"
                 severity = "medium"
-            
+
             # Check service anomalies if we have service info
             if not reason and has_scanner_integration and service_info:
                 ip_services = service_info.get(ip, {})
@@ -818,24 +869,27 @@ def detect_potential_backdoors(
                     elif is_port_anomaly(port, service_name):
                         reason = f"Port/service anomaly: {service_name} on port {port}"
                         severity = "high"
-            
+
             if reason:
-                suspicious.append({
-                    "ip": ip,
-                    "port": port,
-                    "reason": reason,
-                    "severity": severity,
-                })
-    
+                suspicious.append(
+                    {
+                        "ip": ip,
+                        "port": port,
+                        "reason": reason,
+                        "severity": severity,
+                    }
+                )
+
     if logger and suspicious:
         logger.warning("HyperScan: Found %d potential backdoor indicators", len(suspicious))
-    
+
     return suspicious
 
 
 # ============================================================================
 # Deep Scan - Full 65535 Port Coverage
 # ============================================================================
+
 
 def hyperscan_deep_scan(
     target_ips: List[str],
@@ -846,29 +900,29 @@ def hyperscan_deep_scan(
 ) -> Dict[str, List[int]]:
     """
     Deep scan ALL 65535 ports on suspicious hosts.
-    
+
     This is the "sniffer dog" mode - scans absolutely everything.
     Use on hosts flagged as suspicious for comprehensive backdoor detection.
-    
+
     Args:
         target_ips: List of IPs to deep scan
         batch_size: Concurrent connections (higher = faster but more aggressive)
         timeout: Connection timeout (lower = faster)
         logger: Optional logger
         progress_callback: Optional callback(completed, total, desc)
-        
+
     Returns:
         Dict mapping IP -> list of ALL open ports
     """
     if not target_ips:
         return {}
-    
+
     # Generate all 65535 ports
     all_ports = list(range(1, 65536))
-    
+
     if logger:
         logger.info("HyperScan DEEP: Scanning ALL 65535 ports on %d hosts", len(target_ips))
-    
+
     return hyperscan_tcp_sweep_sync(
         target_ips,
         all_ports,
@@ -882,6 +936,7 @@ def hyperscan_deep_scan(
 # Rich Progress Bar Wrapper
 # ============================================================================
 
+
 def hyperscan_with_progress(
     networks: List[str],
     print_fn=None,
@@ -889,12 +944,12 @@ def hyperscan_with_progress(
 ) -> Dict:
     """
     Run HyperScan with rich progress bars (for CLI integration).
-    
+
     Args:
         networks: List of network CIDRs to scan
         print_fn: Optional print function for status messages
         logger: Optional logger
-        
+
     Returns:
         Full discovery results
     """
@@ -906,10 +961,11 @@ def hyperscan_with_progress(
             TextColumn,
             TimeElapsedColumn,
         )
+
         use_rich = True
     except ImportError:
         use_rich = False
-    
+
     if use_rich:
         with Progress(
             SpinnerColumn(),
@@ -919,19 +975,19 @@ def hyperscan_with_progress(
             TimeElapsedColumn(),
         ) as progress:
             task_id = progress.add_task("[cyan]HyperScan Discovery...", total=100)
-            
+
             def progress_cb(completed, total, desc):
                 pct = (completed / total * 100) if total > 0 else 0
                 progress.update(task_id, completed=pct, description=f"[cyan]{desc}")
-            
+
             # Run discovery with progress
             results = hyperscan_full_discovery(
                 networks,
                 logger=logger,
             )
-            
+
             progress.update(task_id, completed=100)
-            
+
             return results
     else:
         # Fallback without rich
@@ -942,6 +998,7 @@ def hyperscan_with_progress(
 # Integration Helper - Use All Available Tools
 # ============================================================================
 
+
 def hyperscan_with_nmap_enrichment(
     discovery_results: Dict,
     extra_tools: Dict = None,
@@ -949,39 +1006,39 @@ def hyperscan_with_nmap_enrichment(
 ) -> Dict:
     """
     Enrich HyperScan results with nmap service detection.
-    
+
     For hosts with open ports, runs nmap -sV to identify services,
     then applies backdoor detection with service info.
-    
+
     Args:
         discovery_results: Results from hyperscan_full_discovery
         extra_tools: Dict of tool paths (e.g., {'nmap': '/usr/bin/nmap'})
         logger: Optional logger
-        
+
     Returns:
         Enriched results with service info and backdoor analysis
     """
     import subprocess
     import shutil
-    
+
     nmap_path = (extra_tools or {}).get("nmap") or shutil.which("nmap")
     if not nmap_path:
         return discovery_results
-    
+
     tcp_hosts = discovery_results.get("tcp_hosts", {})
     if not tcp_hosts:
         return discovery_results
-    
+
     service_info: Dict[str, Dict[int, str]] = {}
-    
+
     for ip, ports in tcp_hosts.items():
         if not ports:
             continue
-        
+
         # Run nmap service detection on found ports
         port_list = ",".join(str(p) for p in ports[:50])  # Limit to 50 ports
         cmd = [nmap_path, "-sV", "--version-light", "-p", port_list, ip]
-        
+
         try:
             result = subprocess.run(
                 cmd,
@@ -989,29 +1046,30 @@ def hyperscan_with_nmap_enrichment(
                 text=True,
                 timeout=60,
             )
-            
+
             # Parse nmap output for service names
             ip_services: Dict[int, str] = {}
             for line in result.stdout.splitlines():
                 # Match lines like: 22/tcp   open  ssh     OpenSSH 8.9
                 import re
+
                 match = re.match(r"(\d+)/tcp\s+open\s+(\S+)", line)
                 if match:
                     port = int(match.group(1))
                     service = match.group(2)
                     ip_services[port] = service
-            
+
             if ip_services:
                 service_info[ip] = ip_services
-                
+
         except Exception as exc:
             if logger:
                 logger.debug("Nmap enrichment failed for %s: %s", ip, exc)
-    
+
     # Add service info to results
     if service_info:
         discovery_results["service_info"] = service_info
-        
+
         # Run backdoor detection with service info
         backdoors = detect_potential_backdoors(
             tcp_hosts,
@@ -1020,6 +1078,5 @@ def hyperscan_with_nmap_enrichment(
         )
         if backdoors:
             discovery_results["potential_backdoors"] = backdoors
-    
-    return discovery_results
 
+    return discovery_results

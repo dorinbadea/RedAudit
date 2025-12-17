@@ -18,9 +18,15 @@ from redaudit.utils.constants import SECURE_FILE_MODE
 
 # Patterns to extract meaningful observations from tool output
 NIKTO_OBSERVATION_PATTERNS = [
-    (r"The anti-clickjacking X-Frame-Options header is not present", "Missing X-Frame-Options header"),
+    (
+        r"The anti-clickjacking X-Frame-Options header is not present",
+        "Missing X-Frame-Options header",
+    ),
     (r"The X-Content-Type-Options header is not set", "Missing X-Content-Type-Options header"),
-    (r"The site uses TLS and the Strict-Transport-Security HTTP header is not defined", "Missing HSTS header"),
+    (
+        r"The site uses TLS and the Strict-Transport-Security HTTP header is not defined",
+        "Missing HSTS header",
+    ),
     (r"Directory indexing found", "Directory listing enabled"),
     (r"Server leaks inodes via ETags", "ETag inode leak"),
     (r"Retrieved x-powered-by header: (.+)", "X-Powered-By disclosure: {0}"),
@@ -58,25 +64,33 @@ MAX_INLINE_OUTPUT_SIZE = 4096
 def parse_nikto_findings(findings: List[str]) -> List[str]:
     """
     Extract structured observations from Nikto output lines.
-    
+
     Args:
         findings: List of Nikto output lines
-        
+
     Returns:
         List of structured observation strings
     """
     observations = []
     seen = set()
-    
+
     for line in findings:
         # Skip metadata lines
-        if any(x in line.lower() for x in [
-            "target ip:", "target hostname:", "target port:",
-            "start time:", "end time:", "host(s) tested",
-            "scan terminated:", "no cgi directories"
-        ]):
+        if any(
+            x in line.lower()
+            for x in [
+                "target ip:",
+                "target hostname:",
+                "target port:",
+                "start time:",
+                "end time:",
+                "host(s) tested",
+                "scan terminated:",
+                "no cgi directories",
+            ]
+        ):
             continue
-        
+
         # Try to match known patterns
         matched = False
         for pattern, template in NIKTO_OBSERVATION_PATTERNS:
@@ -86,13 +100,13 @@ def parse_nikto_findings(findings: List[str]) -> List[str]:
                     obs = template.format(*match.groups())
                 else:
                     obs = template
-                
+
                 if obs not in seen:
                     observations.append(obs)
                     seen.add(obs)
                 matched = True
                 break
-        
+
         # If no pattern matched, use cleaned line if meaningful
         if not matched and line.strip().startswith("+"):
             cleaned = line.strip().lstrip("+ ").strip()
@@ -102,22 +116,22 @@ def parse_nikto_findings(findings: List[str]) -> List[str]:
                     cleaned = cleaned[:97] + "..."
                 observations.append(cleaned)
                 seen.add(cleaned)
-    
+
     return observations[:20]  # Limit to 20 observations
 
 
 def parse_testssl_output(testssl_data: Dict) -> List[str]:
     """
     Extract structured observations from TestSSL analysis.
-    
+
     Args:
         testssl_data: TestSSL analysis dictionary
-        
+
     Returns:
         List of structured observation strings
     """
     observations = []
-    
+
     # Check vulnerabilities list
     for vuln in testssl_data.get("vulnerabilities", []):
         vuln_str = str(vuln)
@@ -126,11 +140,11 @@ def parse_testssl_output(testssl_data: Dict) -> List[str]:
                 if template not in observations:
                     observations.append(template)
                 break
-    
+
     # Check weak ciphers
     if testssl_data.get("weak_ciphers"):
         observations.append("Weak ciphers detected")
-    
+
     # Check protocol issues
     if testssl_data.get("protocols"):
         protocols = testssl_data["protocols"]
@@ -143,69 +157,69 @@ def parse_testssl_output(testssl_data: Dict) -> List[str]:
                 observations.append("TLS 1.0 enabled")
             if protocols.get("TLS1.1"):
                 observations.append("TLS 1.1 enabled")
-    
+
     return observations[:15]
 
 
 def extract_observations(vuln_record: Dict) -> Tuple[List[str], str]:
     """
     Extract parsed observations from a vulnerability record.
-    
+
     Args:
         vuln_record: Vulnerability dictionary with nikto_findings, testssl_analysis, etc.
-        
+
     Returns:
         Tuple of (observations list, raw output string)
     """
     observations = []
     raw_parts = []
-    
+
     # Parse Nikto findings
     nikto_findings = vuln_record.get("nikto_findings", [])
     if nikto_findings:
         observations.extend(parse_nikto_findings(nikto_findings))
         raw_parts.append("=== NIKTO ===\n" + "\n".join(nikto_findings))
-    
+
     # Parse TestSSL
     testssl = vuln_record.get("testssl_analysis", {})
     if testssl:
         observations.extend(parse_testssl_output(testssl))
         if testssl.get("raw_output"):
             raw_parts.append("=== TESTSSL ===\n" + testssl["raw_output"])
-    
+
     # Parse WhatWeb
     whatweb = vuln_record.get("whatweb")
     if whatweb and isinstance(whatweb, str):
         # Extract technology detections
-        for tech in re.findall(r'\[([^\]]+)\]', whatweb):
+        for tech in re.findall(r"\[([^\]]+)\]", whatweb):
             if len(tech) < 50 and tech not in observations:
                 observations.append(f"Technology: {tech}")
-    
+
     raw_output = "\n\n".join(raw_parts)
-    
+
     return observations[:25], raw_output
 
 
 def should_externalize_output(raw_output: str) -> bool:
     """Check if raw output should be saved to external file."""
-    return len(raw_output.encode('utf-8')) > MAX_INLINE_OUTPUT_SIZE
+    return len(raw_output.encode("utf-8")) > MAX_INLINE_OUTPUT_SIZE
 
 
 def compute_output_hash(raw_output: str) -> str:
     """Compute SHA256 hash of raw output."""
-    return hashlib.sha256(raw_output.encode('utf-8')).hexdigest()
+    return hashlib.sha256(raw_output.encode("utf-8")).hexdigest()
 
 
 def save_raw_output(raw_output: str, output_dir: str, host: str, port: int) -> str:
     """
     Save raw output to external file.
-    
+
     Args:
         raw_output: Raw tool output string
         output_dir: Directory to save evidence files
         host: Target host IP
         port: Target port
-        
+
     Returns:
         Relative path to saved file
     """
@@ -215,50 +229,54 @@ def save_raw_output(raw_output: str, output_dir: str, host: str, port: int) -> s
         os.chmod(evidence_dir, 0o700)
     except Exception:
         pass
-    
+
     # Sanitize filename
     safe_host = host.replace(".", "_").replace(":", "_")
     filename = f"raw_{safe_host}_{port}.txt"
     filepath = os.path.join(evidence_dir, filename)
-    
+
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(raw_output)
     try:
         os.chmod(filepath, SECURE_FILE_MODE)
     except Exception:
         pass
-    
+
     return f"evidence/{filename}"
 
 
 def enrich_with_observations(vuln_record: Dict, output_dir: Optional[str] = None) -> Dict:
     """
     Enrich vulnerability record with parsed observations.
-    
+
     v3.1: Adds parsed_observations, raw_tool_output_sha256, and optionally raw_tool_output_ref.
-    
+
     Args:
         vuln_record: Vulnerability dictionary
         output_dir: Optional directory for external evidence files
-        
+
     Returns:
         Enriched vulnerability record
     """
     enriched = vuln_record.copy()
-    
+
     observations, raw_output = extract_observations(vuln_record)
-    
+
     if observations:
         enriched["parsed_observations"] = observations
-    
+
     if raw_output:
         enriched["raw_tool_output_sha256"] = compute_output_hash(raw_output)
-        
+
         # Externalize if too large
         if should_externalize_output(raw_output) and output_dir:
-            host = vuln_record.get("url", "").split("/")[2] if "://" in vuln_record.get("url", "") else "unknown"
+            host = (
+                vuln_record.get("url", "").split("/")[2]
+                if "://" in vuln_record.get("url", "")
+                else "unknown"
+            )
             port = vuln_record.get("port", 0)
             ref = save_raw_output(raw_output, output_dir, host, port)
             enriched["raw_tool_output_ref"] = ref
-    
+
     return enriched

@@ -15,7 +15,6 @@ Goals:
 
 from __future__ import annotations
 
-import json
 import ipaddress
 import os
 import re
@@ -82,6 +81,7 @@ def _check_tools() -> Dict[str, bool]:
 # DHCP Discovery
 # =============================================================================
 
+
 def dhcp_discover(
     interface: Optional[str] = None,
     timeout_s: int = 10,
@@ -89,7 +89,7 @@ def dhcp_discover(
 ) -> Dict[str, Any]:
     """
     Discover DHCP servers using nmap broadcast-dhcp-discover script.
-    
+
     Returns:
         {
             "servers": [{"ip": "...", "subnet": "...", "gateway": "...", "dns": [...]}],
@@ -97,21 +97,21 @@ def dhcp_discover(
         }
     """
     result: Dict[str, Any] = {"servers": [], "error": None}
-    
+
     if not shutil.which("nmap"):
         result["error"] = "nmap not available"
         return result
-    
+
     cmd = ["nmap", "--script", "broadcast-dhcp-discover"]
     if interface:
         cmd.extend(["-e", interface])
-    
+
     rc, out, err = _run_cmd(cmd, timeout_s, logger)
-    
+
     if rc != 0 and not out.strip():
         result["error"] = err.strip() or "nmap dhcp-discover failed"
         return result
-    
+
     # Parse DHCP responses
     # Example output:
     # | DHCPOFFER:
@@ -120,31 +120,31 @@ def dhcp_discover(
     # |   Subnet Mask: 255.255.255.0
     # |   Router: 192.168.178.1
     # |   Domain Name Server: 8.8.8.8
-    
+
     current_server: Dict[str, Any] = {}
     for line in out.splitlines():
         line = line.strip()
-        
+
         if "DHCPOFFER" in line or "DHCPACK" in line:
             if current_server.get("ip"):
                 result["servers"].append(current_server)
             current_server = {"dns": []}
-        
+
         if "Server Identifier:" in line:
             match = re.search(r"Server Identifier:\s*(\S+)", line)
             if match:
                 current_server["ip"] = match.group(1)
-        
+
         if "Subnet Mask:" in line:
             match = re.search(r"Subnet Mask:\s*(\S+)", line)
             if match:
                 current_server["subnet"] = match.group(1)
-        
+
         if "Router:" in line:
             match = re.search(r"Router:\s*(\S+)", line)
             if match:
                 current_server["gateway"] = match.group(1)
-        
+
         if "Domain Name Server:" in line:
             match = re.search(r"Domain Name Server:\s*(\S+)", line)
             if match:
@@ -164,16 +164,17 @@ def dhcp_discover(
                 search = match.group(1).strip().strip('"')
                 if search:
                     current_server["domain_search"] = search[:200]
-    
+
     if current_server.get("ip"):
         result["servers"].append(current_server)
-    
+
     return result
 
 
 # =============================================================================
 # Fping Sweep
 # =============================================================================
+
 
 def fping_sweep(
     target: str,
@@ -182,10 +183,10 @@ def fping_sweep(
 ) -> Dict[str, Any]:
     """
     Fast ICMP host discovery using fping.
-    
+
     Args:
         target: Network range (e.g., "192.168.178.0/24")
-    
+
     Returns:
         {
             "alive_hosts": ["192.168.178.1", "192.168.178.2", ...],
@@ -193,33 +194,34 @@ def fping_sweep(
         }
     """
     result: Dict[str, Any] = {"alive_hosts": [], "error": None}
-    
+
     if not shutil.which("fping"):
         result["error"] = "fping not available"
         return result
-    
+
     cmd = ["fping", "-a", "-g", target, "-q"]
     rc, out, err = _run_cmd(cmd, timeout_s, logger)
-    
+
     # fping returns non-zero if some hosts are unreachable, but stdout still has alive hosts
     for line in out.splitlines():
         ip = line.strip()
         if ip and re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", ip):
             result["alive_hosts"].append(ip)
-    
+
     # Also check stderr for alive hosts (some versions output there)
     for line in err.splitlines():
         if "is alive" in line:
             match = re.match(r"^(\d{1,3}(?:\.\d{1,3}){3})", line)
             if match and match.group(1) not in result["alive_hosts"]:
                 result["alive_hosts"].append(match.group(1))
-    
+
     return result
 
 
 # =============================================================================
 # NetBIOS Discovery
 # =============================================================================
+
 
 def netbios_discover(
     target: str,
@@ -228,10 +230,10 @@ def netbios_discover(
 ) -> Dict[str, Any]:
     """
     Discover Windows hosts via NetBIOS name queries.
-    
+
     Args:
         target: Network range (e.g., "192.168.178.0/24")
-    
+
     Returns:
         {
             "hosts": [{"ip": "...", "name": "...", "workgroup": "...", "mac": "..."}],
@@ -239,12 +241,12 @@ def netbios_discover(
         }
     """
     result: Dict[str, Any] = {"hosts": [], "error": None}
-    
+
     # Try nbtscan first (faster), fall back to nmap
     if shutil.which("nbtscan"):
         cmd = ["nbtscan", "-r", target]
         rc, out, err = _run_cmd(cmd, timeout_s, logger)
-        
+
         if rc == 0 or out.strip():
             # Parse nbtscan output
             # IP             NetBIOS Name     Server    User              MAC
@@ -257,12 +259,12 @@ def netbios_discover(
                         host["mac"] = parts[-1] if ":" in parts[-1] else None
                     result["hosts"].append(host)
             return result
-    
+
     # Fallback to nmap
     if shutil.which("nmap"):
         cmd = ["nmap", "-sU", "-p", "137", "--script", "nbstat", target]
         rc, out, err = _run_cmd(cmd, timeout_s, logger)
-        
+
         if rc == 0 or out.strip():
             # Parse nmap nbstat output
             current_ip = None
@@ -270,15 +272,17 @@ def netbios_discover(
                 ip_match = re.search(r"Nmap scan report for (\S+)", line)
                 if ip_match:
                     current_ip = ip_match.group(1)
-                
+
                 name_match = re.search(r"NetBIOS name:\s*(\S+)", line, re.IGNORECASE)
                 if name_match and current_ip:
-                    result["hosts"].append({
-                        "ip": current_ip,
-                        "name": name_match.group(1),
-                    })
+                    result["hosts"].append(
+                        {
+                            "ip": current_ip,
+                            "name": name_match.group(1),
+                        }
+                    )
             return result
-    
+
     result["error"] = "Neither nbtscan nor nmap available"
     return result
 
@@ -286,6 +290,7 @@ def netbios_discover(
 # =============================================================================
 # Netdiscover (ARP)
 # =============================================================================
+
 
 def netdiscover_scan(
     target: str,
@@ -296,16 +301,16 @@ def netdiscover_scan(
 ) -> Dict[str, Any]:
     """
     L2 ARP discovery using netdiscover.
-    
+
     v3.2.2b: Added active mode (default), increased timeout, interface support.
     Active mode sends ARP requests vs passive just sniffing.
-    
+
     Args:
         target: Network range (e.g., "192.168.178.0/24")
         timeout_s: Timeout in seconds (default 20s)
         active: If True, use active ARP scanning (no -P flag)
         interface: Network interface to use (optional)
-    
+
     Returns:
         {
             "hosts": [{"ip": "...", "mac": "...", "vendor": "..."}],
@@ -313,27 +318,27 @@ def netdiscover_scan(
         }
     """
     result: Dict[str, Any] = {"hosts": [], "error": None}
-    
+
     if not shutil.which("netdiscover"):
         result["error"] = "netdiscover not available"
         return result
-    
+
     # Build command
     # -r = range, -N = no headers, -P = passive (only if not active)
     cmd = ["netdiscover", "-r", target, "-N"]
-    
+
     if interface:
         safe_iface = _sanitize_iface(interface)
         if safe_iface:
             cmd.extend(["-i", safe_iface])
-    
+
     if not active:
         cmd.append("-P")  # Passive mode (just sniff)
     else:
         cmd.append("-f")  # Fast mode (active ARP)
-    
+
     rc, out, err = _run_cmd(cmd, timeout_s, logger)
-    
+
     # Parse netdiscover output
     # IP               At MAC Address     Count     Len  MAC Vendor
     # 192.168.178.1    d4:24:dd:07:7c:c5      1      60  Unknown vendor
@@ -348,7 +353,7 @@ def netdiscover_scan(
             if len(parts) > 4:
                 host["vendor"] = " ".join(parts[4:])
             result["hosts"].append(host)
-    
+
     return result
 
 
@@ -360,16 +365,16 @@ def arp_scan_active(
 ) -> Dict[str, Any]:
     """
     Active ARP scanning using arp-scan.
-    
+
     v3.2.2b: New function for more reliable IoT discovery.
     arp-scan is more reliable than netdiscover for discovering devices
     behind client isolation or in power-save mode.
-    
+
     Args:
         target: Network range (e.g., "192.168.178.0/24") or None for localnet
         interface: Network interface (-I option)
         timeout_s: Command timeout
-    
+
     Returns:
         {
             "hosts": [{"ip": "...", "mac": "...", "vendor": "..."}],
@@ -377,29 +382,29 @@ def arp_scan_active(
         }
     """
     result: Dict[str, Any] = {"hosts": [], "error": None}
-    
+
     if not shutil.which("arp-scan"):
         result["error"] = "arp-scan not available"
         return result
-    
+
     # Build command
     cmd = ["arp-scan"]
-    
+
     if interface:
         safe_iface = _sanitize_iface(interface)
         if safe_iface:
             cmd.extend(["-I", safe_iface])
-    
+
     if target:
         cmd.append(target)
     else:
         cmd.append("-l")  # Scan local network
-    
+
     # Add retry for better IoT discovery
     cmd.extend(["--retry", "2"])
-    
+
     rc, out, err = _run_cmd(cmd, timeout_s, logger)
-    
+
     # Parse arp-scan output
     # 192.168.178.1	d4:24:dd:07:7c:c5	AVM GmbH
     for line in out.splitlines():
@@ -414,13 +419,14 @@ def arp_scan_active(
                 if len(parts) > 2:
                     host["vendor"] = parts[2].strip()
                 result["hosts"].append(host)
-    
+
     return result
 
 
 # =============================================================================
 # mDNS Discovery
 # =============================================================================
+
 
 def mdns_discover(
     timeout_s: int = 15,
@@ -429,9 +435,9 @@ def mdns_discover(
 ) -> Dict[str, Any]:
     """
     Discover services via mDNS/Bonjour.
-    
+
     v3.2.2b: Increased timeout (5s -> 15s), added IoT-specific service queries.
-    
+
     Returns:
         {
             "services": [{"ip": "...", "name": "...", "type": "..."}],
@@ -439,27 +445,27 @@ def mdns_discover(
         }
     """
     result: Dict[str, Any] = {"services": [], "error": None}
-    
+
     # IoT-specific service types to query
     iot_service_types = [
-        "_hap._tcp",           # HomeKit
-        "_airplay._tcp",       # AirPlay / Apple TV
-        "_raop._tcp",          # AirPlay audio
-        "_googlecast._tcp",    # Chromecast / Google Home
+        "_hap._tcp",  # HomeKit
+        "_airplay._tcp",  # AirPlay / Apple TV
+        "_raop._tcp",  # AirPlay audio
+        "_googlecast._tcp",  # Chromecast / Google Home
         "_spotify-connect._tcp",  # Spotify Connect
-        "_amzn-wplay._tcp",    # Amazon Alexa
-        "_http._tcp",          # Generic HTTP (many IoT)
-        "_https._tcp",         # Generic HTTPS
-        "_smb._tcp",           # SMB shares
-        "_printer._tcp",       # Printers
-        "_ipp._tcp",           # IPP printing
+        "_amzn-wplay._tcp",  # Amazon Alexa
+        "_http._tcp",  # Generic HTTP (many IoT)
+        "_https._tcp",  # Generic HTTPS
+        "_smb._tcp",  # SMB shares
+        "_printer._tcp",  # Printers
+        "_ipp._tcp",  # IPP printing
     ]
-    
+
     if shutil.which("avahi-browse"):
         # First: browse all services
         cmd = ["avahi-browse", "-apt", "--resolve"]
         rc, out, err = _run_cmd(cmd, timeout_s, logger)
-        
+
         # Parse avahi-browse output
         # =;eth0;IPv4;hostname;_http._tcp;local
         for line in out.splitlines():
@@ -475,7 +481,7 @@ def mdns_discover(
                     if len(parts) >= 8:
                         service["ip"] = parts[7]
                     result["services"].append(service)
-        
+
         # Second: query specific IoT service types if first pass found nothing
         if not result["services"]:
             for svc_type in iot_service_types[:5]:  # Top 5 most common
@@ -494,7 +500,7 @@ def mdns_discover(
                                 service["ip"] = parts[7]
                             result["services"].append(service)
         return result
-    
+
     # Fallback to nmap dns-service-discovery
     if shutil.which("nmap"):
         cmd = ["nmap", "--script", "dns-service-discovery", "-p", "5353", "224.0.0.251"]
@@ -503,7 +509,7 @@ def mdns_discover(
         if "_tcp" in out or "_udp" in out:
             result["services"].append({"raw": out[:500], "type": "nmap_raw"})
         return result
-    
+
     result["error"] = "Neither avahi-browse nor nmap available"
     return result
 
@@ -512,6 +518,7 @@ def mdns_discover(
 # UPNP Discovery
 # =============================================================================
 
+
 def upnp_discover(
     timeout_s: int = 25,
     retries: int = 2,
@@ -519,9 +526,9 @@ def upnp_discover(
 ) -> Dict[str, Any]:
     """
     Discover UPNP devices (routers, NAS, media servers, IoT).
-    
+
     v3.2.2b: Increased timeout (10s -> 25s), added retry mechanism and SSDP fallback.
-    
+
     Returns:
         {
             "devices": [{"ip": "...", "device": "...", "services": [...]}],
@@ -529,14 +536,14 @@ def upnp_discover(
         }
     """
     result: Dict[str, Any] = {"devices": [], "error": None}
-    
+
     def _parse_upnp_output(out: str) -> List[Dict[str, Any]]:
         """Parse nmap UPNP output into device list."""
         devices = []
         current_device: Dict[str, Any] = {}
         for line in out.splitlines():
             line = line.strip()
-            
+
             if "Server:" in line:
                 if current_device.get("ip") or current_device.get("device"):
                     devices.append(current_device)
@@ -544,21 +551,21 @@ def upnp_discover(
                 match = re.search(r"Server:\s*(.+)", line)
                 if match:
                     current_device["device"] = match.group(1)
-            
+
             if re.match(r"^\d{1,3}(?:\.\d{1,3}){3}:", line):
                 current_device["ip"] = line.split(":")[0]
-            
+
             if "urn:" in line:
                 current_device.setdefault("services", []).append(line.strip())
-        
+
         if current_device.get("ip") or current_device.get("device"):
             devices.append(current_device)
         return devices
-    
+
     if not shutil.which("nmap"):
         result["error"] = "nmap not available"
         return result
-    
+
     # Try nmap broadcast-upnp-info with retries
     for attempt in range(retries):
         cmd = ["nmap", "--script", "broadcast-upnp-info"]
@@ -570,8 +577,9 @@ def upnp_discover(
         # Wait briefly before retry
         if attempt < retries - 1:
             import time
+
             time.sleep(1)
-    
+
     # SSDP M-SEARCH fallback using raw socket simulation via nmap
     # This uses a different discovery method that may catch more devices
     cmd_ssdp = ["nmap", "--script", "upnp-info", "-sU", "-p", "1900", "--open", "239.255.255.250"]
@@ -579,13 +587,14 @@ def upnp_discover(
     devices = _parse_upnp_output(out)
     if devices:
         result["devices"] = devices
-    
+
     return result
 
 
 # =============================================================================
 # Main Discovery Function
 # =============================================================================
+
 
 def discover_networks(
     target_networks: List[str],
@@ -598,7 +607,7 @@ def discover_networks(
 ) -> Dict[str, Any]:
     """
     Main entry point for enhanced network discovery.
-    
+
     Args:
         target_networks: List of network ranges to scan
         interface: Network interface to use (optional)
@@ -607,16 +616,16 @@ def discover_networks(
         redteam: Enable Red Team techniques (slower, noisier)
         extra_tools: Override tool paths
         logger: Logger instance
-    
+
     Returns:
         Complete net_discovery result object for JSON report
     """
     if protocols is None:
         protocols = ["dhcp", "fping", "netbios", "mdns", "upnp", "arp", "hyperscan"]
-    
+
     tools = _check_tools()
     errors: List[str] = []
-    
+
     result: Dict[str, Any] = {
         "enabled": True,
         "generated_at": datetime.now().isoformat(),
@@ -632,7 +641,7 @@ def discover_networks(
         "candidate_vlans": [],
         "errors": errors,
     }
-    
+
     # DHCP Discovery
     if "dhcp" in protocols:
         dhcp_result = dhcp_discover(interface=interface, logger=logger)
@@ -640,7 +649,7 @@ def discover_networks(
             result["dhcp_servers"] = dhcp_result["servers"]
         if dhcp_result.get("error"):
             errors.append(f"dhcp: {dhcp_result['error']}")
-    
+
     # Fping sweep (for each target network)
     if "fping" in protocols:
         all_alive = []
@@ -650,7 +659,7 @@ def discover_networks(
             if fping_result.get("error"):
                 errors.append(f"fping ({target}): {fping_result['error']}")
         result["alive_hosts"] = list(set(all_alive))
-    
+
     # NetBIOS discovery
     if "netbios" in protocols:
         all_netbios = []
@@ -660,13 +669,13 @@ def discover_networks(
             if netbios_result.get("error"):
                 errors.append(f"netbios ({target}): {netbios_result['error']}")
         result["netbios_hosts"] = all_netbios
-    
+
     # ARP discovery via netdiscover (active mode) + arp-scan
     # v3.2.2b: Use multiple tools for better IoT coverage
     if "arp" in protocols:
         all_arp = []
         seen_ips = set()
-        
+
         # Method 1: arp-scan per interface (more reliable for IoT)
         if tools.get("arp-scan") or shutil.which("arp-scan"):
             for target in target_networks:
@@ -678,12 +687,10 @@ def discover_networks(
                         all_arp.append(host)
                 if arp_result.get("error"):
                     errors.append(f"arp-scan ({target}): {arp_result['error']}")
-        
+
         # Method 2: netdiscover (active mode)
         for target in target_networks:
-            arp_result = netdiscover_scan(
-                target, active=True, interface=interface, logger=logger
-            )
+            arp_result = netdiscover_scan(target, active=True, interface=interface, logger=logger)
             for host in arp_result.get("hosts", []):
                 ip = host.get("ip")
                 if ip and ip not in seen_ips:
@@ -691,10 +698,9 @@ def discover_networks(
                     all_arp.append(host)
             if arp_result.get("error"):
                 errors.append(f"netdiscover ({target}): {arp_result['error']}")
-        
+
         result["arp_hosts"] = all_arp
 
-    
     # mDNS discovery
     if "mdns" in protocols:
         mdns_result = mdns_discover(logger=logger)
@@ -702,7 +708,7 @@ def discover_networks(
             result["mdns_services"] = mdns_result["services"]
         if mdns_result.get("error"):
             errors.append(f"mdns: {mdns_result['error']}")
-    
+
     # UPNP discovery
     if "upnp" in protocols:
         upnp_result = upnp_discover(logger=logger)
@@ -710,64 +716,65 @@ def discover_networks(
             result["upnp_devices"] = upnp_result["devices"]
         if upnp_result.get("error"):
             errors.append(f"upnp: {upnp_result['error']}")
-    
+
     # v3.2.3: HyperScan parallel discovery (optional, adds IoT and hidden hosts)
     if "hyperscan" in protocols:
         try:
-            from redaudit.core.hyperscan import (
-                hyperscan_full_discovery,
-                hyperscan_with_nmap_enrichment,
-            )
-            
+            from redaudit.core.hyperscan import hyperscan_full_discovery
+
             if logger:
                 logger.info("Running HyperScan parallel discovery...")
-            
+
             hyperscan_result = hyperscan_full_discovery(
                 target_networks,
                 logger=logger,
             )
-            
+
             # Merge HyperScan ARP hosts with existing
             existing_ips = {h.get("ip") for h in result.get("arp_hosts", [])}
             for host in hyperscan_result.get("arp_hosts", []):
                 if host.get("ip") not in existing_ips:
                     result["arp_hosts"].append(host)
                     existing_ips.add(host.get("ip"))
-            
+
             # Merge HyperScan UDP devices (IoT)
             for device in hyperscan_result.get("udp_devices", []):
-                result["upnp_devices"].append({
-                    "ip": device.get("ip"),
-                    "device": f"IoT ({device.get('protocol', 'unknown')})",
-                    "source": "hyperscan_udp",
-                })
-            
+                result["upnp_devices"].append(
+                    {
+                        "ip": device.get("ip"),
+                        "device": f"IoT ({device.get('protocol', 'unknown')})",
+                        "source": "hyperscan_udp",
+                    }
+                )
+
             # Store HyperScan TCP hosts for port analysis
             if hyperscan_result.get("tcp_hosts"):
                 result["hyperscan_tcp_hosts"] = hyperscan_result["tcp_hosts"]
-            
+
             # Store backdoor candidates
             if hyperscan_result.get("potential_backdoors"):
                 result["potential_backdoors"] = hyperscan_result["potential_backdoors"]
-            
+
             result["hyperscan_duration"] = hyperscan_result.get("duration_seconds", 0)
-            
+
             # v3.2.3: Visible CLI logging for HyperScan results
             if logger:
                 arp_count = len(hyperscan_result.get("arp_hosts", []))
                 udp_count = len(hyperscan_result.get("udp_devices", []))
                 tcp_count = len(hyperscan_result.get("tcp_hosts", {}))
                 duration = hyperscan_result.get("duration_seconds", 0)
-                logger.info(f"HyperScan complete: {arp_count} ARP, {udp_count} UDP, {tcp_count} TCP hosts in {duration:.1f}s")
-            
+                logger.info(
+                    f"HyperScan complete: {arp_count} ARP, {udp_count} UDP, {tcp_count} TCP hosts in {duration:.1f}s"
+                )
+
         except ImportError as exc:
             errors.append(f"hyperscan: module not available ({exc})")
         except Exception as exc:
             errors.append(f"hyperscan: {exc}")
-    
+
     # Analyze for candidate VLANs
     result["candidate_vlans"] = _analyze_vlans(result)
-    
+
     # Red Team techniques (optional)
     if redteam:
         _run_redteam_discovery(
@@ -777,7 +784,7 @@ def discover_networks(
             redteam_options=redteam_options,
             logger=logger,
         )
-    
+
     return result
 
 
@@ -786,11 +793,11 @@ def _analyze_vlans(discovery_result: Dict[str, Any]) -> List[Dict[str, Any]]:
     Analyze discovery results to identify potential VLANs/guest networks.
     """
     candidates = []
-    
+
     # If multiple DHCP servers found with different subnets, likely different VLANs
     dhcp_servers = discovery_result.get("dhcp_servers", [])
     seen_subnets = set()
-    
+
     for server in dhcp_servers:
         subnet = server.get("subnet")
         gateway = server.get("gateway")
@@ -799,13 +806,15 @@ def _analyze_vlans(discovery_result: Dict[str, Any]) -> List[Dict[str, Any]]:
             if network_key not in seen_subnets:
                 seen_subnets.add(network_key)
                 if len(seen_subnets) > 1:
-                    candidates.append({
-                        "source": "dhcp_server",
-                        "gateway": gateway,
-                        "subnet": subnet,
-                        "description": "Additional DHCP server detected (possible guest/VLAN)",
-                    })
-    
+                    candidates.append(
+                        {
+                            "source": "dhcp_server",
+                            "gateway": gateway,
+                            "subnet": subnet,
+                            "description": "Additional DHCP server detected (possible guest/VLAN)",
+                        }
+                    )
+
     return candidates
 
 
@@ -849,8 +858,12 @@ def _run_redteam_discovery(
     open_tcp = _index_open_tcp_ports(masscan)
 
     smb_targets = _filter_targets_by_port(target_ips, open_tcp, port=445, fallback_max=15)
-    rpc_targets = _filter_targets_by_any_port(target_ips, open_tcp, ports=[445, 135], fallback_max=15)
-    ldap_targets = _filter_targets_by_any_port(target_ips, open_tcp, ports=[389, 636], fallback_max=10)
+    rpc_targets = _filter_targets_by_any_port(
+        target_ips, open_tcp, ports=[445, 135], fallback_max=15
+    )
+    ldap_targets = _filter_targets_by_any_port(
+        target_ips, open_tcp, ports=[389, 636], fallback_max=10
+    )
     kerberos_targets = _filter_targets_by_port(target_ips, open_tcp, port=88, fallback_max=10)
 
     redteam: Dict[str, Any] = {
@@ -1010,9 +1023,7 @@ def _filter_targets_by_any_port(
     safe_ports = [p for p in ports if isinstance(p, int) and (1 <= p <= 65535)]
     if not safe_ports:
         return target_ips[:fallback_max]
-    filtered = [
-        ip for ip in target_ips if any(p in open_tcp.get(ip, set()) for p in safe_ports)
-    ]
+    filtered = [ip for ip in target_ips if any(p in open_tcp.get(ip, set()) for p in safe_ports)]
     return filtered[:fallback_max] if filtered else target_ips[:fallback_max]
 
 
@@ -1348,7 +1359,9 @@ def _redteam_rpc_enum(
             if parsed:
                 results.append({"ip": ip_str, "tool": "rpcclient", **parsed})
             else:
-                results.append({"ip": ip_str, "tool": "rpcclient", "raw": _safe_truncate(snippet, 1200)})
+                results.append(
+                    {"ip": ip_str, "tool": "rpcclient", "raw": _safe_truncate(snippet, 1200)}
+                )
         else:
             cmd = ["nmap", "-p", "135", "--script", "msrpc-enum", ip_str]
             rc, out, err = _run_cmd(cmd, timeout_s=20, logger=logger)
@@ -1376,7 +1389,12 @@ def _parse_ldap_rootdse(text: str) -> Dict[str, Any]:
         if not key or not val:
             continue
 
-        if key in ("defaultNamingContext", "rootDomainNamingContext", "dnsHostName", "ldapServiceName"):
+        if key in (
+            "defaultNamingContext",
+            "rootDomainNamingContext",
+            "dnsHostName",
+            "ldapServiceName",
+        ):
             parsed[key] = val[:250]
         elif key == "namingContexts":
             naming_contexts.append(val[:250])
@@ -1442,7 +1460,9 @@ def _redteam_ldap_enum(
             else:
                 snippet = text.strip()
                 if snippet:
-                    results.append({"ip": ip_str, "tool": "ldapsearch", "raw": _safe_truncate(snippet, 1200)})
+                    results.append(
+                        {"ip": ip_str, "tool": "ldapsearch", "raw": _safe_truncate(snippet, 1200)}
+                    )
         else:
             cmd = ["nmap", "-p", "389,636", "--script", "ldap-rootdse", ip_str]
             rc, out, err = _run_cmd(cmd, timeout_s=18, logger=logger)
@@ -1453,7 +1473,9 @@ def _redteam_ldap_enum(
             else:
                 snippet = text.strip()
                 if snippet:
-                    results.append({"ip": ip_str, "tool": "nmap", "raw": _safe_truncate(snippet, 1200)})
+                    results.append(
+                        {"ip": ip_str, "tool": "nmap", "raw": _safe_truncate(snippet, 1200)}
+                    )
 
     return {"status": "ok" if results else "no_data", "tool": tool, "hosts": results}
 
@@ -1502,7 +1524,9 @@ def _redteam_kerberos_enum(
             else:
                 snippet = text.strip()
                 if snippet:
-                    results.append({"ip": ip_str, "tool": "nmap", "raw": _safe_truncate(snippet, 800)})
+                    results.append(
+                        {"ip": ip_str, "tool": "nmap", "raw": _safe_truncate(snippet, 800)}
+                    )
 
     userenum: Dict[str, Any] = {"status": "skipped_no_userlist"}
     if userlist_path:
@@ -1541,7 +1565,9 @@ def _redteam_kerberos_enum(
                     userenum["error"] = _safe_truncate(err.strip(), 200)
 
     payload: Dict[str, Any] = {
-        "status": "ok" if results else ("no_data" if has_nmap else userenum.get("status", "no_data")),
+        "status": (
+            "ok" if results else ("no_data" if has_nmap else userenum.get("status", "no_data"))
+        ),
         "detected_realms": detected_realms[:10],
         "hosts": results,
         "userenum": userenum,
@@ -1662,9 +1688,7 @@ def _redteam_vlan_enum(
             continue
         if 1 <= vid <= 4094 and vid not in vlan_ids:
             vlan_ids.append(vid)
-    dtp_observed = bool(
-        re.search(r"(?i)\bDTP\b|01:00:0c:cc:cc:cc", raw)
-    )
+    dtp_observed = bool(re.search(r"(?i)\bDTP\b|01:00:0c:cc:cc:cc", raw))
 
     payload: Dict[str, Any] = {
         "status": "ok" if vlan_ids or dtp_observed else "no_data",
@@ -1784,17 +1808,17 @@ def _redteam_llmnr_nbtns_capture(
     nbns: List[str] = []
 
     for line in raw.splitlines():
-        l = line.strip()
-        if not l:
+        line_stripped = line.strip()
+        if not line_stripped:
             continue
-        if ".5355" in l or " 5355" in l:
-            m = re.search(r"\?\s*([A-Za-z0-9._-]+)", l)
+        if ".5355" in line_stripped or " 5355" in line_stripped:
+            m = re.search(r"\?\s*([A-Za-z0-9._-]+)", line_stripped)
             if m:
                 q = m.group(1).strip()
                 if q and q not in llmnr:
                     llmnr.append(q[:200])
-        if ".137" in l or " 137" in l:
-            m = re.search(r"\?\s*([A-Za-z0-9._-]+)", l)
+        if ".137" in line_stripped or " 137" in line_stripped:
+            m = re.search(r"\?\s*([A-Za-z0-9._-]+)", line_stripped)
             if m:
                 q = m.group(1).strip()
                 if q and q not in nbns:
@@ -1929,7 +1953,9 @@ def _redteam_ipv6_discovery(
 
     neigh: List[Dict[str, Any]] = []
     if tools.get("ip") and shutil.which("ip"):
-        rc, out, err = _run_cmd(["ip", "-6", "neigh", "show", "dev", safe_iface], timeout_s=4, logger=logger)
+        rc, out, err = _run_cmd(
+            ["ip", "-6", "neigh", "show", "dev", safe_iface], timeout_s=4, logger=logger
+        )
         neigh = _parse_ip6_neighbors((out or "") + "\n" + (err or ""))
     else:
         # macOS fallback
@@ -1999,7 +2025,7 @@ def _redteam_scapy_custom(
 
     try:
         import scapy  # type: ignore
-        from scapy.all import Dot1Q, Ether, sniff  # type: ignore
+        from scapy.all import Dot1Q, sniff  # type: ignore
     except Exception:
         return {"status": "tool_missing", "tool": "scapy"}
 

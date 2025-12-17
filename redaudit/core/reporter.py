@@ -91,7 +91,7 @@ def generate_summary(
     if hidden_network_leaks:
         results["hidden_networks"] = hidden_network_leaks
         summary["leaked_networks_detected"] = len(hidden_network_leaks)
-    
+
     # v3.2.2b: Also extract scannable CIDRs for auto-pivot
     leaked_cidrs = extract_leaked_networks(results, config)
     if leaked_cidrs:
@@ -108,11 +108,11 @@ def generate_summary(
 def _detect_network_leaks(results: Dict, config: Dict) -> list:
     """
     Detect potential hidden networks by analyzing finding leaks (redirects, headers).
-    
+
     Args:
         results: Results dictionary containing vulnerabilities
         config: Configuration dictionary with target networks
-        
+
     Returns:
         List of strings describing detected leaks
     """
@@ -126,7 +126,7 @@ def _detect_network_leaks(results: Dict, config: Dict) -> list:
 
     # Regex for IPv4
     ip_regex = re.compile(r"\b((?:10|172\.(?:1[6-9]|2[0-9]|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3})\b")
-    
+
     # helper to check if IP is interesting (private + not in targets)
     def is_cand(ip_str):
         try:
@@ -145,21 +145,21 @@ def _detect_network_leaks(results: Dict, config: Dict) -> list:
         host_ip = host_vuln.get("host")
         for finding in host_vuln.get("vulnerabilities", []):
             content_to_check = []
-            
+
             # Check headers
             if finding.get("curl_headers"):
                 content_to_check.append(finding["curl_headers"])
             if finding.get("wget_headers"):
                 content_to_check.append(finding["wget_headers"])
-                
+
             # Check redirects
             if finding.get("redirect_url"):
                 content_to_check.append(finding["redirect_url"])
-                
+
             # Check tool output
             if finding.get("nikto_findings"):
                 content_to_check.extend(finding["nikto_findings"])
-                
+
             for text in content_to_check:
                 if not isinstance(text, str):
                     continue
@@ -169,25 +169,27 @@ def _detect_network_leaks(results: Dict, config: Dict) -> list:
                         # Infer subnet
                         try:
                             # Guess /24 for reporting context
-                            pip = ipaddress.ip_address(m)
+                            ipaddress.ip_address(m)
                             net = ipaddress.ip_network(f"{m}/24", strict=False)
-                            leaks.add(f"Host {host_ip} leaks internal IP {m} (Potential Network: {net})")
+                            leaks.add(
+                                f"Host {host_ip} leaks internal IP {m} (Potential Network: {net})"
+                            )
                         except ValueError:
                             leaks.add(f"Host {host_ip} leaks internal IP {m}")
-                            
+
     return sorted(list(leaks))
 
 
 def extract_leaked_networks(results: Dict, config: Dict) -> list:
     """
     Extract potential hidden networks as scannable CIDR ranges.
-    
+
     v3.2.2b: For automatic pivot - returns /24 networks discovered via leaks.
-    
+
     Args:
         results: Results dictionary containing vulnerabilities
         config: Configuration dictionary with target networks
-        
+
     Returns:
         List of unique network CIDRs (e.g., ["192.168.10.0/24", "10.0.1.0/24"])
     """
@@ -201,7 +203,7 @@ def extract_leaked_networks(results: Dict, config: Dict) -> list:
 
     # Regex for private IPv4
     ip_regex = re.compile(r"\b((?:10|172\.(?:1[6-9]|2[0-9]|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3})\b")
-    
+
     def is_new_network(ip_str):
         """Check if IP is in a network not already being scanned."""
         try:
@@ -227,7 +229,7 @@ def extract_leaked_networks(results: Dict, config: Dict) -> list:
                 content_to_check.append(finding["redirect_url"])
             if finding.get("nikto_findings"):
                 content_to_check.extend(finding["nikto_findings"])
-                
+
             for text in content_to_check:
                 if not isinstance(text, str):
                     continue
@@ -278,7 +280,9 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
     network_leaks = _detect_network_leaks(results, results.get("config", {}))
     if network_leaks:
         lines.append("⚠️  POTENTIAL HIDDEN NETWORKS (LEAKS DETECTED):\n")
-        lines.append("   (Professional Pivot / Discovery Tip: These networks are referenced in headers/redirects but were not scanned)\n")
+        lines.append(
+            "   (Professional Pivot / Discovery Tip: These networks are referenced in headers/redirects but were not scanned)\n"
+        )
         for leak in network_leaks:
             lines.append(f"   - {leak}\n")
         lines.append("\n")

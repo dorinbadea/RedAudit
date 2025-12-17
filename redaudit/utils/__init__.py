@@ -11,11 +11,11 @@ from redaudit.utils.constants import (
 from redaudit.utils.i18n import TRANSLATIONS, get_text
 
 __all__ = [
-    'VERSION',
-    'DEFAULT_LANG',
-    'MAX_INPUT_LENGTH',
-    'MAX_CIDR_LENGTH',
-    'MAX_SUBPROCESS_RETRIES',
-    'TRANSLATIONS',
-    'get_text',
+    "VERSION",
+    "DEFAULT_LANG",
+    "MAX_INPUT_LENGTH",
+    "MAX_CIDR_LENGTH",
+    "MAX_SUBPROCESS_RETRIES",
+    "TRANSLATIONS",
+    "get_text",
 ]

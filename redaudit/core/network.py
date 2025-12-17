@@ -34,7 +34,9 @@ def detect_interface_type(iface: str) -> str:
     return "Other"
 
 
-def detect_networks_netifaces(lang: str = "en", print_fn=None, include_ipv6: bool = True) -> List[Dict]:
+def detect_networks_netifaces(
+    lang: str = "en", print_fn=None, include_ipv6: bool = True
+) -> List[Dict]:
     """
     Detect local networks using netifaces library.
 
@@ -55,25 +57,25 @@ def detect_networks_netifaces(lang: str = "en", print_fn=None, include_ipv6: boo
                 continue
             try:
                 addrs = netifaces.ifaddresses(iface)
-                
+
                 # IPv4 detection
                 if netifaces.AF_INET in addrs:
                     for info in addrs[netifaces.AF_INET]:
                         ip_addr = info.get("addr")
                         mask = info.get("netmask")
                         if ip_addr and mask and ip_addr != "127.0.0.1":
-                            net = ipaddress.ip_network(
-                                f"{ip_addr}/{mask}", strict=False
+                            net = ipaddress.ip_network(f"{ip_addr}/{mask}", strict=False)
+                            nets.append(
+                                {
+                                    "interface": iface,
+                                    "ip": ip_addr,
+                                    "network": f"{net.network_address}/{net.prefixlen}",
+                                    "hosts_estimated": max(net.num_addresses - 2, 0),
+                                    "type": detect_interface_type(iface),
+                                    "ip_version": 4,
+                                }
                             )
-                            nets.append({
-                                "interface": iface,
-                                "ip": ip_addr,
-                                "network": f"{net.network_address}/{net.prefixlen}",
-                                "hosts_estimated": max(net.num_addresses - 2, 0),
-                                "type": detect_interface_type(iface),
-                                "ip_version": 4,
-                            })
-                
+
                 # IPv6 detection (v3.0)
                 if include_ipv6 and netifaces.AF_INET6 in addrs:
                     for info in addrs[netifaces.AF_INET6]:
@@ -93,18 +95,22 @@ def detect_networks_netifaces(lang: str = "en", print_fn=None, include_ipv6: boo
                                     prefix = prefix.split("/")[1]
                                 elif prefix.count(":") > 0:
                                     # Convert netmask to prefix length
-                                    prefix = sum(bin(int(x, 16)).count("1") for x in prefix.split(":") if x)
-                                net = ipaddress.ip_network(
-                                    f"{ip_addr}/{prefix}", strict=False
+                                    prefix = sum(
+                                        bin(int(x, 16)).count("1") for x in prefix.split(":") if x
+                                    )
+                                net = ipaddress.ip_network(f"{ip_addr}/{prefix}", strict=False)
+                                nets.append(
+                                    {
+                                        "interface": iface,
+                                        "ip": ip_addr,
+                                        "network": f"{net.network_address}/{net.prefixlen}",
+                                        "hosts_estimated": min(
+                                            net.num_addresses, 1000000
+                                        ),  # Cap for display
+                                        "type": detect_interface_type(iface),
+                                        "ip_version": 6,
+                                    }
                                 )
-                                nets.append({
-                                    "interface": iface,
-                                    "ip": ip_addr,
-                                    "network": f"{net.network_address}/{net.prefixlen}",
-                                    "hosts_estimated": min(net.num_addresses, 1000000),  # Cap for display
-                                    "type": detect_interface_type(iface),
-                                    "ip_version": 6,
-                                })
                             except (ValueError, TypeError):
                                 continue
             except Exception:
@@ -128,7 +134,7 @@ def detect_networks_fallback(lang: str = "en", include_ipv6: bool = True) -> Lis
         List of network dictionaries
     """
     nets = []
-    
+
     # IPv4 detection
     try:
         res = subprocess.run(
@@ -146,14 +152,16 @@ def detect_networks_fallback(lang: str = "en", include_ipv6: bool = True) -> Lis
                 continue
             try:
                 ipi = ipaddress.ip_interface(parts[3])
-                nets.append({
-                    "interface": iface,
-                    "ip": str(ipi.ip),
-                    "network": str(ipi.network),
-                    "hosts_estimated": max(ipi.network.num_addresses - 2, 0),
-                    "type": detect_interface_type(iface),
-                    "ip_version": 4,
-                })
+                nets.append(
+                    {
+                        "interface": iface,
+                        "ip": str(ipi.ip),
+                        "network": str(ipi.network),
+                        "hosts_estimated": max(ipi.network.num_addresses - 2, 0),
+                        "type": detect_interface_type(iface),
+                        "ip_version": 4,
+                    }
+                )
             except ValueError:
                 continue
     except Exception:
@@ -177,14 +185,16 @@ def detect_networks_fallback(lang: str = "en", include_ipv6: bool = True) -> Lis
                     continue
                 try:
                     ipi = ipaddress.ip_interface(parts[3])
-                    nets.append({
-                        "interface": iface,
-                        "ip": str(ipi.ip),
-                        "network": str(ipi.network),
-                        "hosts_estimated": min(ipi.network.num_addresses, 1000000),
-                        "type": detect_interface_type(iface),
-                        "ip_version": 6,
-                    })
+                    nets.append(
+                        {
+                            "interface": iface,
+                            "ip": str(ipi.ip),
+                            "network": str(ipi.network),
+                            "hosts_estimated": min(ipi.network.num_addresses, 1000000),
+                            "type": detect_interface_type(iface),
+                            "ip_version": 6,
+                        }
+                    )
                 except ValueError:
                     continue
         except Exception:

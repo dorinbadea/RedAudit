@@ -248,19 +248,19 @@
                 const col = parseInt(th.dataset.col);
                 const asc = th.dataset.asc !== 'true';
                 th.dataset.asc = asc;
-                
+
                 rows.sort((a, b) => {
                     const aVal = a.children[col].textContent.trim();
                     const bVal = b.children[col].textContent.trim();
                     const aNum = parseFloat(aVal);
                     const bNum = parseFloat(bVal);
-                    
+
                     if (!isNaN(aNum) && !isNaN(bNum)) {
                         return asc ? aNum - bNum : bNum - aNum;
                     }
                     return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
                 });
-                
+
                 rows.forEach(row => tbody.appendChild(row));
             });
         });

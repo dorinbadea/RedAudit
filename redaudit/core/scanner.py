@@ -13,7 +13,7 @@ import time
 import subprocess
 import ipaddress
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from redaudit.utils.constants import (
     MAX_INPUT_LENGTH,
@@ -27,7 +27,6 @@ from redaudit.utils.constants import (
     STATUS_DOWN,
     STATUS_FILTERED,
     STATUS_NO_RESPONSE,
-    UDP_PRIORITY_PORTS,
 )
 
 
@@ -60,10 +59,10 @@ def sanitize_ip(ip_str) -> Optional[str]:
 def is_ipv6(ip_str: str) -> bool:
     """
     Check if an IP address string is IPv6.
-    
+
     Args:
         ip_str: IP address string
-        
+
     Returns:
         True if IPv6, False if IPv4 or invalid
     """
@@ -76,10 +75,10 @@ def is_ipv6(ip_str: str) -> bool:
 def is_ipv6_network(network_str: str) -> bool:
     """
     Check if a network CIDR string is IPv6.
-    
+
     Args:
         network_str: Network CIDR string (e.g., '2001:db8::/32')
-        
+
     Returns:
         True if IPv6 network, False otherwise
     """
@@ -150,35 +149,34 @@ def is_suspicious_service(name: str) -> bool:
 def is_port_anomaly(port: int, service_name: str) -> bool:
     """
     v3.2.2b: Detect anomalous services on standard ports.
-    
+
     A standard port with an unexpected service may indicate a backdoor,
     hijacked service, or misconfiguration worth investigating.
-    
+
     Args:
         port: Port number
         service_name: Service name detected by nmap
-        
+
     Returns:
         True if service doesn't match expected for this port
     """
     from redaudit.utils.constants import STANDARD_PORT_SERVICES
-    
+
     if not service_name or port not in STANDARD_PORT_SERVICES:
         return False
-    
+
     expected = STANDARD_PORT_SERVICES.get(port, [])
     if not expected:
         return False
-    
+
     svc_lower = service_name.lower()
     # Check if any expected keyword appears in the service name
     for exp in expected:
         if exp in svc_lower:
             return False
-    
+
     # Service doesn't match any expected - anomaly!
     return True
-
 
 
 def get_nmap_arguments(mode: str, config: Optional[Dict] = None) -> str:
@@ -206,7 +204,7 @@ def get_nmap_arguments(mode: str, config: Optional[Dict] = None) -> str:
 def get_nmap_arguments_for_target(mode: str, target: str) -> str:
     """
     Get nmap arguments for a specific target, adding -6 flag for IPv6.
-    
+
     v3.0: Automatically detects if target is IPv6 and adds appropriate flags.
 
     Args:
@@ -217,12 +215,12 @@ def get_nmap_arguments_for_target(mode: str, target: str) -> str:
         Nmap argument string with -6 flag if IPv6
     """
     base_args = get_nmap_arguments(mode)
-    
+
     # Check if target is IPv6
     target_ip = target.split("/")[0] if "/" in target else target
     if is_ipv6(target_ip):
         return f"-6 {base_args}"
-    
+
     return base_args
 
 
@@ -248,7 +246,7 @@ def extract_vendor_mac(text: str) -> tuple:
 def extract_os_detection(text: str) -> Optional[str]:
     """
     Extract OS detection information from Nmap output.
-    
+
     v3.1.4: New function to capture OS fingerprint data.
 
     Args:
@@ -259,19 +257,19 @@ def extract_os_detection(text: str) -> Optional[str]:
     """
     if not text:
         return None
-    
+
     patterns = [
         r"OS details: (.+)",
         r"Running: (.+)",
         r"OS CPE: cpe:/o:([^\s]+)",
         r"Aggressive OS guesses: ([^,]+)",
     ]
-    
+
     for pattern in patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             return match.group(1).strip()[:100]
-    
+
     return None
 
 
@@ -318,12 +316,7 @@ def output_has_identity(records: List[Dict]) -> bool:
 
 
 def run_nmap_command(
-    cmd: List[str],
-    timeout: int,
-    host_ip: str,
-    deep_obj: Dict,
-    print_fn=None,
-    t_fn=None
+    cmd: List[str], timeout: int, host_ip: str, deep_obj: Dict, print_fn=None, t_fn=None
 ) -> Dict:
     """
     Run a single nmap command and collect output.
@@ -340,7 +333,7 @@ def run_nmap_command(
         Command record dictionary
     """
     start = time.time()
-    record = {"command": " ".join(cmd)}
+    record: Dict[str, Any] = {"command": " ".join(cmd)}
 
     try:
         res = subprocess.run(
@@ -373,7 +366,7 @@ def capture_traffic_snippet(
     networks: List[Dict],
     extra_tools: Dict,
     duration: int = TRAFFIC_CAPTURE_DEFAULT_DURATION,
-    logger=None
+    logger=None,
 ) -> Optional[Dict]:
     """
     Capture small PCAP snippet with tcpdump + optional tshark summary.
@@ -396,7 +389,11 @@ def capture_traffic_snippet(
     if not safe_ip:
         return None
 
-    if not isinstance(duration, (int, float)) or duration <= 0 or duration > TRAFFIC_CAPTURE_MAX_DURATION:
+    if (
+        not isinstance(duration, (int, float))
+        or duration <= 0
+        or duration > TRAFFIC_CAPTURE_MAX_DURATION
+    ):
         if logger:
             logger.warning("Invalid capture duration %s, using default", duration)
         duration = TRAFFIC_CAPTURE_DEFAULT_DURATION
@@ -430,12 +427,18 @@ def capture_traffic_snippet(
 
     cmd = [
         extra_tools["tcpdump"],
-        "-i", iface,
-        "host", safe_ip,
-        "-c", str(TRAFFIC_CAPTURE_PACKETS),
-        "-G", str(int(duration)),
-        "-W", "1",
-        "-w", pcap_file,
+        "-i",
+        iface,
+        "host",
+        safe_ip,
+        "-c",
+        str(TRAFFIC_CAPTURE_PACKETS),
+        "-G",
+        str(int(duration)),
+        "-W",
+        "1",
+        "-w",
+        pcap_file,
     ]
 
     # v3.1.4: Use relative path for portability, keep absolute for internal use
@@ -583,9 +586,12 @@ def tls_enrichment(host_ip: str, port: int, extra_tools: Dict) -> Dict:
         try:
             res = subprocess.run(
                 [
-                    extra_tools["openssl"], "s_client",
-                    "-connect", f"{host_ip}:{port}",
-                    "-servername", host_ip,
+                    extra_tools["openssl"],
+                    "s_client",
+                    "-connect",
+                    f"{host_ip}:{port}",
+                    "-servername",
+                    host_ip,
                     "-brief",
                 ],
                 capture_output=True,
@@ -616,23 +622,23 @@ def exploit_lookup(service_name: str, version: str, extra_tools: Dict, logger=No
     """
     if not extra_tools.get("searchsploit"):
         return []
-    
+
     if not service_name or not version:
         return []
-    
+
     # Sanitize inputs
     if not isinstance(service_name, str) or not isinstance(version, str):
         return []
-    
+
     service_name = service_name.strip()[:50]
     version = version.strip()[:20]
-    
+
     if not service_name or not version:
         return []
-    
+
     # Build search query
     query = f"{service_name} {version}"
-    
+
     try:
         res = subprocess.run(
             [extra_tools["searchsploit"], "--colour", "--nmap", query],
@@ -640,14 +646,14 @@ def exploit_lookup(service_name: str, version: str, extra_tools: Dict, logger=No
             text=True,
             timeout=10,
         )
-        
+
         if res.returncode != 0:
             return []
-        
+
         output = res.stdout or ""
         if not output.strip():
             return []
-        
+
         # Parse output - each exploit is on a line
         exploits = []
         for line in output.splitlines():
@@ -660,10 +666,10 @@ def exploit_lookup(service_name: str, version: str, extra_tools: Dict, logger=No
                     exploit_title = parts[0].strip()
                     if exploit_title and len(exploit_title) > 10:
                         exploits.append(exploit_title[:150])
-        
+
         # Return max 10 exploits
         return exploits[:10]
-    
+
     except subprocess.TimeoutExpired:
         if logger:
             logger.warning("Searchsploit timeout for %s %s", service_name, version)
@@ -674,10 +680,12 @@ def exploit_lookup(service_name: str, version: str, extra_tools: Dict, logger=No
         return []
 
 
-def ssl_deep_analysis(host_ip: str, port: int, extra_tools: Dict, logger=None, timeout: int = 90) -> Optional[Dict]:
+def ssl_deep_analysis(
+    host_ip: str, port: int, extra_tools: Dict, logger=None, timeout: int = 90
+) -> Optional[Dict]:
     """
     Perform comprehensive SSL/TLS security analysis using testssl.sh.
-    
+
     v3.1.4: Increased default timeout to 90s and made it configurable.
 
     Args:
@@ -692,73 +700,80 @@ def ssl_deep_analysis(host_ip: str, port: int, extra_tools: Dict, logger=None, t
     """
     if not extra_tools.get("testssl.sh"):
         return None
-    
+
     safe_ip = sanitize_ip(host_ip)
     if not safe_ip:
         return None
-    
+
     if not isinstance(port, int) or port < 1 or port > 65535:
         return None
-    
+
     try:
         # Run testssl.sh with JSON output if supported
         cmd = [
             extra_tools["testssl.sh"],
             "--quiet",
             "--fast",
-            "--severity", "HIGH",
-            f"{safe_ip}:{port}"
+            "--severity",
+            "HIGH",
+            f"{safe_ip}:{port}",
         ]
-        
+
         res = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=timeout,
         )
-        
+
         output = res.stdout or res.stderr or ""
         if not output.strip():
             return None
-        
+
         # Parse output for key findings
-        findings = {
+        findings: Dict[str, Any] = {
             "target": f"{safe_ip}:{port}",
             "summary": "",
             "vulnerabilities": [],
             "weak_ciphers": [],
-            "protocols": []
+            "protocols": [],
         }
-        
+
         lines = output.splitlines()
         for line in lines:
             line_lower = line.lower()
-            
+
             # Detect vulnerabilities
-            if any(vuln in line_lower for vuln in ["vulnerable", "heartbleed", "poodle", "beast", "crime", "breach"]):
+            if any(
+                vuln in line_lower
+                for vuln in ["vulnerable", "heartbleed", "poodle", "beast", "crime", "breach"]
+            ):
                 if "not vulnerable" not in line_lower and "ok" not in line_lower:
                     findings["vulnerabilities"].append(line.strip()[:200])
-            
+
             # Detect weak ciphers
             if "weak" in line_lower or "insecure" in line_lower:
                 if "cipher" in line_lower or "encryption" in line_lower:
                     findings["weak_ciphers"].append(line.strip()[:150])
-            
+
             # Detect protocols
-            if any(proto in line_lower for proto in ["sslv2", "sslv3", "tls 1.0", "tls 1.1", "tls 1.2", "tls 1.3"]):
+            if any(
+                proto in line_lower
+                for proto in ["sslv2", "sslv3", "tls 1.0", "tls 1.1", "tls 1.2", "tls 1.3"]
+            ):
                 findings["protocols"].append(line.strip()[:100])
-        
+
         # Generate summary
         vuln_count = len(findings["vulnerabilities"])
         weak_count = len(findings["weak_ciphers"])
-        
+
         if vuln_count > 0:
             findings["summary"] = f"CRITICAL: {vuln_count} vulnerabilities detected"
         elif weak_count > 0:
             findings["summary"] = f"WARNING: {weak_count} weak ciphers found"
         else:
             findings["summary"] = "No major issues detected"
-        
+
         # Only return if we found something useful
         if vuln_count > 0 or weak_count > 0 or len(findings["protocols"]) > 0:
             # Truncate lists
@@ -766,9 +781,9 @@ def ssl_deep_analysis(host_ip: str, port: int, extra_tools: Dict, logger=None, t
             findings["weak_ciphers"] = findings["weak_ciphers"][:5]
             findings["protocols"] = findings["protocols"][:8]
             return findings
-        
+
         return None
-    
+
     except subprocess.TimeoutExpired:
         if logger:
             logger.warning("TestSSL timeout for %s:%d after %ds", safe_ip, port, timeout)
@@ -780,25 +795,21 @@ def ssl_deep_analysis(host_ip: str, port: int, extra_tools: Dict, logger=None, t
 
 
 def start_background_capture(
-    host_ip: str,
-    output_dir: str,
-    networks: List[Dict],
-    extra_tools: Dict,
-    logger=None
+    host_ip: str, output_dir: str, networks: List[Dict], extra_tools: Dict, logger=None
 ) -> Optional[Dict]:
     """
     Start background traffic capture for concurrent scanning (v2.8.0).
-    
+
     Returns capture info dict with 'process' key for the tcpdump subprocess,
     or None if capture couldn't be started.
-    
+
     Args:
         host_ip: Target IP
         output_dir: Directory for pcap files
         networks: Network info list
         extra_tools: Dict of available tool paths
         logger: Optional logger
-    
+
     Returns:
         Dict with 'process', 'pcap_file', 'pcap_file_abs', 'iface' or None
     """
@@ -839,10 +850,14 @@ def start_background_capture(
     # v2.8.1: Limit capture to 200 packets for smaller PCAP files (~50-150KB)
     cmd = [
         extra_tools["tcpdump"],
-        "-i", iface,
-        "-c", "200",  # Capture max 200 packets
-        "host", safe_ip,
-        "-w", pcap_file,
+        "-i",
+        iface,
+        "-c",
+        "200",  # Capture max 200 packets
+        "host",
+        safe_ip,
+        "-w",
+        pcap_file,
     ]
 
     try:
@@ -853,36 +868,37 @@ def start_background_capture(
         )
         # v3.1.4: Keep reports portable by storing relative filename; keep absolute for internal use.
         pcap_filename = os.path.basename(pcap_file)
-        return {"process": proc, "pcap_file": pcap_filename, "pcap_file_abs": pcap_file, "iface": iface}
+        return {
+            "process": proc,
+            "pcap_file": pcap_filename,
+            "pcap_file_abs": pcap_file,
+            "iface": iface,
+        }
     except Exception as exc:
         if logger:
             logger.debug("Failed to start background capture for %s: %s", safe_ip, exc)
         return None
 
 
-def stop_background_capture(
-    capture_info: Dict,
-    extra_tools: Dict,
-    logger=None
-) -> Optional[Dict]:
+def stop_background_capture(capture_info: Dict, extra_tools: Dict, logger=None) -> Optional[Dict]:
     """
     Stop background traffic capture and collect results (v2.8.0).
-    
+
     Args:
         capture_info: Dict from start_background_capture with 'process', 'pcap_file', 'iface'
         extra_tools: Dict of available tool paths
         logger: Optional logger
-    
+
     Returns:
         PCAP info dict with tshark summary, or None
     """
     if not capture_info or "process" not in capture_info:
         return None
-    
+
     proc = capture_info["process"]
     pcap_file_abs = capture_info.get("pcap_file_abs") or capture_info.get("pcap_file", "")
     iface = capture_info.get("iface", "")
-    
+
     pcap_file = capture_info.get("pcap_file")
     if not pcap_file:
         pcap_file = os.path.basename(pcap_file_abs) if pcap_file_abs else ""
@@ -891,7 +907,7 @@ def stop_background_capture(
         pcap_file = os.path.basename(pcap_file)
 
     result = {"pcap_file": pcap_file, "pcap_file_abs": pcap_file_abs, "iface": iface}
-    
+
     # Terminate the capture process
     try:
         proc.terminate()
@@ -901,7 +917,7 @@ def stop_background_capture(
         result["tcpdump_error"] = "Process killed after timeout"
     except Exception as exc:
         result["tcpdump_error"] = str(exc)
-    
+
     # Generate tshark summary if available
     if pcap_file_abs and os.path.exists(pcap_file_abs):
         # Ensure PCAP is stored with secure permissions (best-effort).
@@ -923,56 +939,57 @@ def stop_background_capture(
                 result["tshark_summary"] = summary
         except Exception as exc:
             result["tshark_error"] = str(exc)
-    
+
     return result
 
 
 def banner_grab_fallback(
-    host_ip: str,
-    ports: List[int],
-    extra_tools: Dict = None,
-    timeout: int = 30,
-    logger=None
+    host_ip: str, ports: List[int], extra_tools: Dict = None, timeout: int = 30, logger=None
 ) -> Dict[int, Dict]:
     """
     Fallback banner grabbing for unidentified services (v2.8.0).
-    
+
     Uses nmap --script banner,ssl-cert for additional service info.
-    
+
     Args:
         host_ip: Target IP
         ports: List of port numbers to scan (max 20)
         extra_tools: Dict of available tool paths (unused, kept for consistency)
         timeout: Subprocess timeout
         logger: Optional logger
-    
+
     Returns:
         Dict mapping port -> {"banner": str, "ssl_cert": str}
     """
     safe_ip = sanitize_ip(host_ip)
     if not safe_ip:
         return {}
-    
+
     if not ports:
         return {}
-    
+
     # Limit to 20 ports max
     ports = [p for p in ports if isinstance(p, int) and 1 <= p <= 65535][:20]
     if not ports:
         return {}
-    
+
     port_str = ",".join(str(p) for p in ports)
-    
+
     cmd = [
-        "nmap", "-sV", "--script", "banner,ssl-cert",
-        "-p", port_str,
+        "nmap",
+        "-sV",
+        "--script",
+        "banner,ssl-cert",
+        "-p",
+        port_str,
         "-Pn",
-        "--host-timeout", "60s",
-        safe_ip
+        "--host-timeout",
+        "60s",
+        safe_ip,
     ]
-    
+
     results: Dict[int, Dict] = {}
-    
+
     try:
         res = subprocess.run(
             cmd,
@@ -980,9 +997,9 @@ def banner_grab_fallback(
             text=True,
             timeout=timeout,
         )
-        
+
         output = res.stdout or ""
-        
+
         # Parse output for port info
         current_port = None
         for line in output.splitlines():
@@ -992,78 +1009,78 @@ def banner_grab_fallback(
                 current_port = int(port_match.group(1))
                 results.setdefault(current_port, {})
                 results[current_port]["service"] = port_match.group(2)
-            
+
             # Match banner lines
             if current_port and "banner:" in line.lower():
                 banner = line.split(":", 1)[-1].strip()
                 results[current_port]["banner"] = banner[:500]
-            
+
             # Match SSL cert info
             if current_port and "ssl-cert:" in line.lower():
                 results.setdefault(current_port, {})["ssl_cert"] = line.strip()[:500]
-                
+
     except subprocess.TimeoutExpired:
         if logger:
             logger.warning("Banner grab timeout for %s ports %s", safe_ip, port_str)
     except Exception as exc:
         if logger:
             logger.debug("Banner grab error for %s: %s", safe_ip, exc)
-    
+
     return results
 
 
 def finalize_host_status(host_record: Dict) -> str:
     """
     Determine the final host status based on all available data (v2.8.0).
-    
+
     Improves accuracy by considering deep scan results, not just initial ping response.
-    
+
     Args:
         host_record: Host record dictionary
-    
+
     Returns:
         Final status string (STATUS_UP, STATUS_FILTERED, STATUS_NO_RESPONSE, STATUS_DOWN)
     """
     current_status = host_record.get("status", STATUS_DOWN)
-    
+
     # If already up, keep it
     if current_status == STATUS_UP:
         return STATUS_UP
-    
+
     # Check if we have meaningful data from deep scan
     deep_scan = host_record.get("deep_scan", {})
     if not deep_scan:
         return current_status
-    
+
     # Check for MAC/vendor (definite proof of host presence)
     if deep_scan.get("mac_address") or deep_scan.get("vendor"):
         return STATUS_FILTERED  # Host exists but filtered initial probes
-    
+
     # Check command outputs for any response indicators
     commands = deep_scan.get("commands", [])
     for cmd_record in commands:
         stdout = cmd_record.get("stdout", "") or ""
-        
+
         # Host responded in some way
         if "Host is up" in stdout:
             return STATUS_FILTERED
-        
+
         # Found open ports
         if re.search(r"\d+/tcp\s+open", stdout):
             return STATUS_UP
-        
+
         # OS detected
         if "OS details:" in stdout or "Running:" in stdout:
             return STATUS_FILTERED
-    
+
     # Check for ports found
     if host_record.get("ports") and len(host_record.get("ports", [])) > 0:
         return STATUS_UP
-    
+
     # No meaningful response at all
     if current_status in ("down", STATUS_DOWN):
         # But we tried deep scan, so it's at least no-response rather than definitively down
         if commands:
             return STATUS_NO_RESPONSE
-    
+
     return current_status

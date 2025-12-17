@@ -573,14 +573,26 @@ def main():
 
         # Save markdown version
         md_path = f"diff_report_{diff['generated_at'][:10]}.md"
-        with open(md_path, "w") as f:
+        with open(md_path, "w", encoding="utf-8") as f:
             f.write(format_diff_markdown(diff))
+        try:
+            from redaudit.utils.constants import SECURE_FILE_MODE
+
+            os.chmod(md_path, SECURE_FILE_MODE)
+        except Exception:
+            pass
         print(f"\nMarkdown report saved: {md_path}")
 
         # v3.3: Save HTML version for visual diff
         html_path = f"diff_report_{diff['generated_at'][:10]}.html"
-        with open(html_path, "w") as f:
+        with open(html_path, "w", encoding="utf-8") as f:
             f.write(format_diff_html(diff))
+        try:
+            from redaudit.utils.constants import SECURE_FILE_MODE
+
+            os.chmod(html_path, SECURE_FILE_MODE)
+        except Exception:
+            pass
         print(f"HTML report saved: {html_path}")
 
         sys.exit(0)
@@ -691,7 +703,11 @@ def main():
                     )
 
             elif choice == 3:  # Diff reports
-                from redaudit.core.diff import generate_diff_report, format_diff_text, format_diff_markdown
+                from redaudit.core.diff import (
+                    generate_diff_report,
+                    format_diff_text,
+                    format_diff_markdown,
+                )
 
                 try:
                     old_path = input(

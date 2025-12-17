@@ -39,10 +39,10 @@ DOWNLOAD_TIMEOUT = 30  # seconds
 def parse_version(version_str: str) -> Tuple[int, int, int]:
     """
     Parse semantic version string into tuple.
-    
+
     Args:
         version_str: Version string like "2.8.0"
-    
+
     Returns:
         Tuple of (major, minor, patch)
     """
@@ -55,11 +55,11 @@ def parse_version(version_str: str) -> Tuple[int, int, int]:
 def compare_versions(current: str, remote: str) -> int:
     """
     Compare two version strings.
-    
+
     Args:
         current: Current version string
         remote: Remote version string
-    
+
     Returns:
         -1 if current < remote (update available)
          0 if current == remote
@@ -67,7 +67,7 @@ def compare_versions(current: str, remote: str) -> int:
     """
     cur = parse_version(current)
     rem = parse_version(remote)
-    
+
     if cur < rem:
         return -1
     elif cur > rem:
@@ -78,20 +78,20 @@ def compare_versions(current: str, remote: str) -> int:
 def fetch_latest_version(logger=None) -> Optional[Dict]:
     """
     Fetch latest release information from GitHub API.
-    
+
     Args:
         logger: Optional logger
-    
+
     Returns:
         Dict with 'tag_name', 'name', 'body', 'published_at' or None
     """
     url = f"{GITHUB_API_BASE}/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
-    
+
     try:
         req = Request(url)
         req.add_header("Accept", "application/vnd.github+json")
         req.add_header("User-Agent", f"RedAudit/{VERSION}")
-        
+
         with urlopen(req, timeout=API_TIMEOUT) as response:
             if response.status == 200:
                 data = json.loads(response.read().decode("utf-8"))
@@ -111,7 +111,7 @@ def fetch_latest_version(logger=None) -> Optional[Dict]:
     except Exception as e:
         if logger:
             logger.debug("Update check failed: %s", e)
-    
+
     return None
 
 
@@ -120,13 +120,13 @@ def fetch_changelog_snippet(
 ) -> Optional[Tuple[str, str]]:
     """
     Fetch changelog snippet for a specific version from GitHub.
-    
+
     Args:
         version: Version to fetch changelog for
         max_lines: Maximum lines to return
         logger: Optional logger
         lang: Preferred language ('en' or 'es')
-    
+
     Returns:
         Changelog snippet string or None
     """
@@ -136,7 +136,7 @@ def fetch_changelog_snippet(
     ]
     if filename != "CHANGELOG.md":
         urls.append((f"{GITHUB_RAW_BASE}/{GITHUB_OWNER}/{GITHUB_REPO}/main/CHANGELOG.md", "en"))
-    
+
     try:
         for url, used_lang in urls:
             req = Request(url)
@@ -157,7 +157,7 @@ def fetch_changelog_snippet(
     except Exception as e:
         if logger:
             logger.debug("Failed to fetch changelog: %s", e)
-    
+
     return None
 
 
@@ -166,28 +166,28 @@ def check_for_updates(
 ) -> Tuple[bool, Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
     """
     Check if updates are available.
-    
+
     Args:
         logger: Optional logger
         lang: Preferred language ('en' or 'es')
-    
+
     Returns:
         Tuple of (update_available, latest_version, release_notes, release_url, published_at, notes_lang)
     """
     release_info = fetch_latest_version(logger)
-    
+
     if not release_info:
         return (False, None, None, None, None, None)
-    
+
     latest_version = release_info.get("tag_name", "")
     release_url = release_info.get("html_url", "") or None
     published_at = release_info.get("published_at", "") or None
-    
+
     if not latest_version:
         return (False, None, None, None, published_at, None)
-    
+
     comparison = compare_versions(VERSION, latest_version)
-    
+
     if comparison < 0:  # Update available
         # Prefer changelog section (compact + language-specific), then fall back to release body.
         notes_lang = None
@@ -200,7 +200,7 @@ def check_for_updates(
             notes_lang = notes_lang or None
 
         return (True, latest_version, release_notes or None, release_url, published_at, notes_lang)
-    
+
     return (False, VERSION, None, None, published_at, None)
 
 
@@ -481,7 +481,14 @@ def format_release_notes_for_cli(notes: str, width: int = 100, max_lines: int = 
                 normalized = heading.lower().strip(":")
                 if normalized in {"added", "changed", "fixed", "security", "removed", "deprecated"}:
                     heading = heading.rstrip(":") + ":"
-                if normalized in {"añadido", "cambiado", "corregido", "seguridad", "eliminado", "obsoleto"}:
+                if normalized in {
+                    "añadido",
+                    "cambiado",
+                    "corregido",
+                    "seguridad",
+                    "eliminado",
+                    "obsoleto",
+                }:
                     heading = heading.rstrip(":") + ":"
                 cleaned_lines.append(heading)
             continue
@@ -586,20 +593,20 @@ def restart_self(logger=None) -> bool:
 def compute_file_hash(filepath: str, algorithm: str = "sha256") -> str:
     """
     Compute hash of a file for integrity verification.
-    
+
     Args:
         filepath: Path to file
         algorithm: Hash algorithm (sha256, sha512)
-    
+
     Returns:
         Hex digest string
     """
     hasher = hashlib.new(algorithm)
-    
+
     with open(filepath, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             hasher.update(chunk)
-    
+
     return hasher.hexdigest()
 
 
@@ -698,26 +705,28 @@ def perform_git_update(
 ) -> Tuple[bool, str]:
     """
     v3.0: Perform update using git clone approach for reliability.
-    
+
     This method addresses issues with git pull failures by:
     1. Cloning fresh to a temp folder
     2. Running the install script with user's language
     3. Copying to user's home folder with all documentation
     4. Verifying installation
-    
+
     Args:
         repo_path: Original repo path (used for reference, not modified)
         lang: User's language preference ('en' or 'es')
         logger: Optional logger
-    
+
     Returns:
         Tuple of (success, message)
     """
     import shutil
 
     if print_fn is None:
+
         def print_fn(msg, _status=None):  # type: ignore[no-redef]
             print(msg, flush=True)
+
     if t_fn is None:
         t_fn = lambda key, *args: key.format(*args) if args else key  # noqa: E731
 
@@ -741,7 +750,7 @@ def perform_git_update(
 
     home_redaudit_path = os.path.join(target_home_dir, "RedAudit")
     install_path = "/usr/local/lib/redaudit"
-    
+
     try:
         # Step 1: Determine target commit for the current version tag
         try:
@@ -756,7 +765,7 @@ def perform_git_update(
                 timeout=15,
                 env=git_env,
             ).strip()
-            
+
             if ls_remote_deref:
                 # Got the dereferenced commit (annotated tag)
                 expected_commit = ls_remote_deref.split()[0]
@@ -780,17 +789,17 @@ def perform_git_update(
         clone_path = os.path.join(temp_dir, "RedAudit")
         print_fn(f"  → Temp directory: {temp_dir}", "INFO")
         print_fn(f"  → Clone path: {clone_path}", "INFO")
-        
+
         if logger:
             logger.info("Cloning RedAudit to temp folder: %s", temp_dir)
-        
+
         print_fn("  → Cloning from GitHub...", "INFO")
-        
+
         # Ensure git doesn't prompt for credentials or any interaction
         git_env = os.environ.copy()
         git_env["GIT_TERMINAL_PROMPT"] = "0"
         git_env["GIT_ASKPASS"] = "echo"
-        
+
         # Use Popen for real-time output instead of blocking run
         process = subprocess.Popen(
             [
@@ -810,19 +819,20 @@ def perform_git_update(
             env=git_env,
             stdin=subprocess.DEVNULL,
         )
-        
+
         # Read output with timeout monitoring
         import time
+
         start_time = time.time()
         output_lines = []
-        
+
         while True:
             # Check timeout
             if time.time() - start_time > 120:
                 process.kill()
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 return (False, "Git clone timed out after 120 seconds")
-            
+
             line = process.stdout.readline()
             if line:
                 output_lines.append(line)
@@ -831,18 +841,16 @@ def perform_git_update(
                     print(f"  → {line.strip()}", flush=True)
             elif process.poll() is not None:
                 break
-        
+
         returncode = process.wait()
-        
+
         if returncode != 0:
             shutil.rmtree(temp_dir, ignore_errors=True)
             return (False, f"Git clone failed: {''.join(output_lines[-5:])}")
-        
+
         # Verify pinned commit
         cloned_commit = (
-            subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], cwd=clone_path, text=True
-            ).strip()
+            subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=clone_path, text=True).strip()
             if os.path.isdir(clone_path)
             else "unknown"
         )
@@ -855,23 +863,23 @@ def perform_git_update(
             )
 
         print_fn("  → Clone complete and verified!", "OKGREEN")
-        
+
         # Step 2: Run install script with user's language
         install_script = os.path.join(clone_path, "redaudit_install.sh")
-        
+
         if os.path.isfile(install_script) and os.geteuid() == 0:
             if logger:
                 logger.info("Running install script with language: %s", lang)
             print_fn(f"  → Running installer script (lang={lang}, auto-update=1)", "INFO")
-            
+
             # Make script executable
             os.chmod(install_script, 0o755)
-            
+
             # Run install script
             env = os.environ.copy()
             env["REDAUDIT_LANG"] = lang
             env["REDAUDIT_AUTO_UPDATE"] = "1"  # Flag to skip prompts
-            
+
             result = subprocess.run(
                 ["bash", install_script],
                 cwd=clone_path,
@@ -880,20 +888,23 @@ def perform_git_update(
                 text=True,
                 timeout=300,  # 5 minutes max
             )
-            
+
             if result.returncode != 0:
-                print_fn("  → Installer script returned non-zero; continuing with manual install", "WARNING")
+                print_fn(
+                    "  → Installer script returned non-zero; continuing with manual install",
+                    "WARNING",
+                )
                 if logger:
                     logger.warning("Install script returned non-zero: %s", result.stderr)
                 # Continue anyway, we'll do manual installation
             else:
                 print_fn("  → Installer script completed", "OKGREEN")
-        
+
         # Step 3: Manual installation to /usr/local/lib/redaudit (STAGED/ATOMIC)
         source_module = os.path.join(clone_path, "redaudit")
         staged_install_path = f"{install_path}.new"
         old_install_path = f"{install_path}.old"
-        
+
         if os.path.isdir(source_module) and os.geteuid() == 0:
             if logger:
                 logger.info("Installing to %s (staged)", install_path)
@@ -919,67 +930,74 @@ def perform_git_update(
                             print(f"      ... ({len(items) - len(preview)} more)")
                 except Exception:
                     pass
-            
+
             # STAGED INSTALL: Copy to .new first (non-destructive)
             if os.path.exists(staged_install_path):
                 shutil.rmtree(staged_install_path)  # Clean previous failed attempt
-            
+
             print_fn(f"  → Staging new files: {staged_install_path}", "INFO")
             shutil.copytree(source_module, staged_install_path)
-            
+
             # Inject language preference into staged copy
             staged_constants = os.path.join(staged_install_path, "utils", "constants.py")
             _inject_default_lang(staged_constants, lang)
-            
+
             # Set permissions on staged copy
             for root, dirs, files in os.walk(staged_install_path):
                 for d in dirs:
                     os.chmod(os.path.join(root, d), 0o755)
                 for f in files:
                     os.chmod(os.path.join(root, f), 0o644)
-            
+
             # Validate staged copy before swapping
             key_files = ["__init__.py", "cli.py", "core/auditor.py"]
             for key_file in key_files:
                 if not os.path.isfile(os.path.join(staged_install_path, key_file)):
                     shutil.rmtree(staged_install_path, ignore_errors=True)
                     return (False, f"Staged install missing key file: {key_file}")
-            
+
             # ATOMIC SWAP: rename old → .old, rename .new → final
             try:
                 # Clean up any previous .old backup
                 if os.path.exists(old_install_path):
                     shutil.rmtree(old_install_path)
-                
+
                 # Move current install to .old (if exists)
                 if os.path.exists(install_path):
-                    print_fn(f"  → Backing up current install: {install_path} → {old_install_path}", "INFO")
+                    print_fn(
+                        f"  → Backing up current install: {install_path} → {old_install_path}",
+                        "INFO",
+                    )
                     os.rename(install_path, old_install_path)
-                
+
                 # Move staged install to final location
-                print_fn(f"  → Activating new install: {staged_install_path} → {install_path}", "INFO")
+                print_fn(
+                    f"  → Activating new install: {staged_install_path} → {install_path}", "INFO"
+                )
                 os.rename(staged_install_path, install_path)
-                
+
                 print_fn(f"  → Default language preserved: {lang}", "OKGREEN")
-                
+
                 # Cleanup .old on success (keep for now, cleaned at end)
-                
+
             except Exception as e:
                 # ROLLBACK: restore .old if swap failed
                 if os.path.exists(old_install_path) and not os.path.exists(install_path):
-                    print_fn(f"  → ROLLBACK: Restoring previous install", "WARNING")
+                    print_fn("  → ROLLBACK: Restoring previous install", "WARNING")
                     try:
                         os.rename(old_install_path, install_path)
                     except Exception:
                         pass
                 shutil.rmtree(staged_install_path, ignore_errors=True)
                 return (False, f"System install swap failed: {e}")
-                
+
         elif os.geteuid() != 0:
             print_fn("  → Skipping system install (not running as root)", "WARNING")
 
         # Step 4: Refuse to overwrite local changes in home repo (if present)
-        if os.path.isdir(home_redaudit_path) and os.path.isdir(os.path.join(home_redaudit_path, ".git")):
+        if os.path.isdir(home_redaudit_path) and os.path.isdir(
+            os.path.join(home_redaudit_path, ".git")
+        ):
             try:
                 status = subprocess.check_output(
                     ["git", "status", "--porcelain"],
@@ -1004,48 +1022,56 @@ def perform_git_update(
         # Step 5: Copy to user's home folder with documentation (STAGED/ATOMIC)
         staged_home_path = f"{home_redaudit_path}.new"
         backup_path = None
-        
+
         if logger:
             logger.info("Copying to home folder: %s (staged)", home_redaudit_path)
         print_fn(f"  → Updating home folder copy: {home_redaudit_path}", "INFO")
-        
+
         # Clean previous failed staged attempt
         if os.path.exists(staged_home_path):
             shutil.rmtree(staged_home_path, ignore_errors=True)
-        
+
         # Stage: copy to .new first
         print_fn(f"  → Staging home folder: {staged_home_path}", "INFO")
         shutil.copytree(clone_path, staged_home_path)
-        
+
         # Inject language preference into staged copy
         staged_home_constants = os.path.join(staged_home_path, "redaudit", "utils", "constants.py")
         _inject_default_lang(staged_home_constants, lang)
-        
+
         # Validate staged home copy
         staged_key_file = os.path.join(staged_home_path, "redaudit", "__init__.py")
         if not os.path.isfile(staged_key_file):
             shutil.rmtree(staged_home_path, ignore_errors=True)
             shutil.rmtree(temp_dir, ignore_errors=True)
             return (False, "Staged home copy missing key files")
-        
+
         # ATOMIC SWAP for home folder
         try:
             # Backup existing if present
             if os.path.exists(home_redaudit_path):
                 backup_path = f"{home_redaudit_path}_backup_{int(__import__('time').time())}"
-                print_fn(f"  → Backing up home folder: {home_redaudit_path} → {backup_path}", "INFO")
+                print_fn(
+                    f"  → Backing up home folder: {home_redaudit_path} → {backup_path}", "INFO"
+                )
                 os.rename(home_redaudit_path, backup_path)
                 if logger:
                     logger.info("Backed up existing to: %s", backup_path)
-            
+
             # Activate staged home folder
-            print_fn(f"  → Activating home folder: {staged_home_path} → {home_redaudit_path}", "INFO")
+            print_fn(
+                f"  → Activating home folder: {staged_home_path} → {home_redaudit_path}", "INFO"
+            )
             os.rename(staged_home_path, home_redaudit_path)
-            
+
         except Exception as e:
             # ROLLBACK: restore backup if swap failed
-            if backup_path and os.path.exists(backup_path) and not os.path.exists(home_redaudit_path):
-                print_fn(f"  → ROLLBACK: Restoring home folder from backup", "WARNING")
+            if (
+                backup_path
+                and os.path.exists(backup_path)
+                and not os.path.exists(home_redaudit_path)
+            ):
+                print_fn("  → ROLLBACK: Restoring home folder from backup", "WARNING")
                 try:
                     os.rename(backup_path, home_redaudit_path)
                 except Exception:
@@ -1066,11 +1092,11 @@ def perform_git_update(
             except Exception as e:
                 if logger:
                     logger.warning("Could not fix ownership: %s", e)
-        
+
         # Step 6: Post-install verification with ROLLBACK
         verification_passed = True
         verification_errors = []
-        
+
         # Check that main module exists (only if running as root)
         if os.geteuid() == 0:
             if not os.path.isdir(install_path):
@@ -1083,48 +1109,51 @@ def perform_git_update(
                     if not os.path.isfile(os.path.join(install_path, key_file)):
                         verification_passed = False
                         verification_errors.append(f"Missing file: {key_file}")
-        
+
         # Check home copy
         if not os.path.isdir(home_redaudit_path):
             verification_passed = False
             verification_errors.append("Home copy not created")
-        
+
         # Cleanup temp directory
         shutil.rmtree(temp_dir, ignore_errors=True)
-        
+
         if not verification_passed:
             # ROLLBACK on verification failure
-            print_fn(f"  → Post-install verification failed, attempting rollback", "WARNING")
-            
+            print_fn("  → Post-install verification failed, attempting rollback", "WARNING")
+
             # Restore system install from .old
             if os.geteuid() == 0 and os.path.exists(old_install_path):
                 try:
                     if os.path.exists(install_path):
                         shutil.rmtree(install_path, ignore_errors=True)
                     os.rename(old_install_path, install_path)
-                    print_fn(f"  → System install rolled back", "INFO")
+                    print_fn("  → System install rolled back", "INFO")
                 except Exception:
                     pass
-            
+
             # Restore home from backup
             if backup_path and os.path.exists(backup_path):
                 try:
                     if os.path.exists(home_redaudit_path):
                         shutil.rmtree(home_redaudit_path, ignore_errors=True)
                     os.rename(backup_path, home_redaudit_path)
-                    print_fn(f"  → Home folder rolled back", "INFO")
+                    print_fn("  → Home folder rolled back", "INFO")
                 except Exception:
                     pass
-            
-            return (False, f"Installation verification failed (rolled back): {'; '.join(verification_errors)}")
-        
+
+            return (
+                False,
+                f"Installation verification failed (rolled back): {'; '.join(verification_errors)}",
+            )
+
         # Cleanup .old system install on success
         if os.geteuid() == 0 and os.path.exists(old_install_path):
             shutil.rmtree(old_install_path, ignore_errors=True)
-        
+
         # Success!
         return (True, "UPDATE_SUCCESS_RESTART")
-        
+
     except subprocess.TimeoutExpired:
         return (False, "Update timed out. Check network connection.")
     except FileNotFoundError:
@@ -1138,7 +1167,7 @@ def perform_git_update(
 def get_repo_path() -> str:
     """
     Get the path to the RedAudit repository.
-    
+
     Returns:
         Absolute path to the repo root
     """
@@ -1149,33 +1178,37 @@ def get_repo_path() -> str:
     return repo_root
 
 
-def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None, lang: str = "en") -> bool:
+def interactive_update_check(
+    print_fn=None, ask_fn=None, t_fn=None, logger=None, lang: str = "en"
+) -> bool:
     """
     Interactive update check workflow for CLI.
-    
+
     v3.0: Now accepts lang parameter for install script.
-    
+
     Args:
         print_fn: Function to print messages (print_status)
         ask_fn: Function to ask yes/no questions (ask_yes_no)
         t_fn: Translation function
         logger: Optional logger
         lang: User's language preference ('en' or 'es')
-    
+
     Returns:
         True if update was performed, False otherwise
     """
     if not print_fn:
         print_fn = print
     if not ask_fn:
-        def ask_fn(q, default="yes"): 
+
+        def ask_fn(q, default="yes"):
             return input(f"{q} [y/n]: ").strip().lower() in ("y", "yes", "s", "si")
+
     if not t_fn:
         t_fn = lambda key, *args: key.format(*args) if args else key  # noqa: E731
-    
+
     # Check for updates
     print_fn(t_fn("update_checking"), "INFO")
-    
+
     (
         update_available,
         latest_version,
@@ -1183,18 +1216,16 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None,
         release_url,
         published_at,
         notes_lang,
-    ) = check_for_updates(
-        logger=logger, lang=lang
-    )
-    
+    ) = check_for_updates(logger=logger, lang=lang)
+
     if not latest_version:
         print_fn(t_fn("update_check_failed"), "WARNING")
         return False
-    
+
     if not update_available:
         print_fn(t_fn("update_current", VERSION), "OKGREEN")
         return False
-    
+
     # Update available
     print_fn(t_fn("update_available", latest_version, VERSION), "WARNING")
 
@@ -1225,11 +1256,11 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None,
             print(summary)
             print("-" * sep_width)
             print("")
-    
+
     # Ask user
     if ask_fn(t_fn("update_prompt"), default="yes"):
         print_fn(t_fn("update_starting"), "INFO")
-        
+
         repo_path = get_repo_path()
         # v3.0: Pass language and target version to perform_git_update
         success, message = perform_git_update(
@@ -1240,12 +1271,13 @@ def interactive_update_check(print_fn=None, ask_fn=None, t_fn=None, logger=None,
             print_fn=print_fn,
             t_fn=t_fn,
         )
-        
+
         if success:
             # v2.8.1: Auto-restart if update was installed to system
             if message == "UPDATE_SUCCESS_RESTART":
                 print_fn(t_fn("update_restarting"), "OKGREEN")
                 import time
+
                 time.sleep(1)  # Brief pause before restart
                 if not restart_self(logger=logger):
                     print_fn(

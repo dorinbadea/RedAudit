@@ -39,7 +39,6 @@ from redaudit.utils.constants import (
     HEARTBEAT_FAIL_THRESHOLD,
     MAX_PORTS_DISPLAY,
     DEEP_SCAN_TIMEOUT,
-    UDP_QUICK_TIMEOUT,
     UDP_PRIORITY_PORTS,
     UDP_SCAN_MODE_QUICK,
     UDP_SCAN_MODE_FULL,
@@ -47,9 +46,7 @@ from redaudit.utils.constants import (
     UDP_TOP_PORTS,
     UDP_HOST_TIMEOUT_STRICT,
     UDP_MAX_RETRIES_LAN,
-    STATUS_UP,
     STATUS_DOWN,
-    STATUS_FILTERED,
     STATUS_NO_RESPONSE,
 )
 from redaudit.utils.i18n import TRANSLATIONS, get_text
@@ -66,15 +63,11 @@ from redaudit.core.scanner import (
     sanitize_hostname,
     is_web_service,
     is_suspicious_service,
-    is_ipv6,
-    is_ipv6_network,
     get_nmap_arguments,
-    get_nmap_arguments_for_target,
     extract_vendor_mac,
     extract_os_detection,
     output_has_identity,
     run_nmap_command,
-    capture_traffic_snippet,
     enrich_host_with_dns,
     enrich_host_with_whois,
     http_enrichment,
@@ -92,7 +85,6 @@ from redaudit.core.reporter import (
     show_config_summary,
     show_results_summary,
 )
-from redaudit.core.prescan import run_prescan, parse_port_range
 
 # Try to import nmap
 nmap = None
@@ -400,7 +392,6 @@ class InteractiveNetworkAuditor:
                 get_nvd_api_key,
                 set_nvd_api_key,
                 validate_nvd_api_key,
-                is_nvd_api_key_configured,
             )
         except ImportError:
             self.print_status(self.t("config_module_missing"), "WARNING")
@@ -1512,7 +1503,6 @@ class InteractiveNetworkAuditor:
                 print("")
                 return 0
 
-
     def interactive_setup(self):
         """Run interactive configuration setup."""
         # Apply persisted defaults early (language affects the banner/prompt text).
@@ -1566,16 +1556,18 @@ class InteractiveNetworkAuditor:
                 if choice == 2:
                     defaults_for_run = {}
                     self.print_status(self.t("defaults_ignore_confirm"), "INFO")
-                elif choice == 1 and self.ask_yes_no(self.t("defaults_show_summary_q"), default="no"):
+                elif choice == 1 and self.ask_yes_no(
+                    self.t("defaults_show_summary_q"), default="no"
+                ):
                     # v3.2.3: Display ALL saved defaults (not just 6)
                     self.print_status(self.t("defaults_summary_title"), "INFO")
-                    
+
                     # Helper to format boolean values
                     def fmt_bool(val):
                         if val is None:
                             return "-"
                         return self.t("enabled") if val else self.t("disabled")
-                    
+
                     # Display all saved defaults
                     fields = [
                         ("defaults_summary_scan_mode", persisted_defaults.get("scan_mode")),
@@ -1584,12 +1576,24 @@ class InteractiveNetworkAuditor:
                         ("defaults_summary_rate_limit", persisted_defaults.get("rate_limit")),
                         ("defaults_summary_udp_mode", persisted_defaults.get("udp_mode")),
                         ("defaults_summary_udp_ports", persisted_defaults.get("udp_top_ports")),
-                        ("defaults_summary_topology", fmt_bool(persisted_defaults.get("topology_enabled"))),
-                        ("defaults_summary_web_vulns", fmt_bool(persisted_defaults.get("scan_vulnerabilities"))),
-                        ("defaults_summary_cve_lookup", fmt_bool(persisted_defaults.get("cve_lookup_enabled"))),
-                        ("defaults_summary_txt_report", fmt_bool(persisted_defaults.get("generate_txt"))),
+                        (
+                            "defaults_summary_topology",
+                            fmt_bool(persisted_defaults.get("topology_enabled")),
+                        ),
+                        (
+                            "defaults_summary_web_vulns",
+                            fmt_bool(persisted_defaults.get("scan_vulnerabilities")),
+                        ),
+                        (
+                            "defaults_summary_cve_lookup",
+                            fmt_bool(persisted_defaults.get("cve_lookup_enabled")),
+                        ),
+                        (
+                            "defaults_summary_txt_report",
+                            fmt_bool(persisted_defaults.get("generate_txt")),
+                        ),
                     ]
-                    
+
                     for key, val in fields:
                         display_val = val if val is not None else "-"
                         self.print_status(f"- {self.t(key)}: {display_val}", "INFO")
@@ -1722,10 +1726,11 @@ class InteractiveNetworkAuditor:
         else:
             topo_default_idx = 0
 
-        topo_choice = self.ask_choice(self.t("topology_discovery_q"), topo_options, topo_default_idx)
+        topo_choice = self.ask_choice(
+            self.t("topology_discovery_q"), topo_options, topo_default_idx
+        )
         self.config["topology_enabled"] = topo_choice != 0
         self.config["topology_only"] = topo_choice == 2
-
 
         self.setup_encryption()
 
@@ -1790,11 +1795,17 @@ class InteractiveNetworkAuditor:
 
                     self.current_phase = "topology"
                     self.print_status(self.t("topology_start"), "INFO")
-                    
+
                     # v3.2.3: Add spinner progress for topology phase
                     try:
-                        from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+                        from rich.progress import (
+                            Progress,
+                            SpinnerColumn,
+                            TextColumn,
+                            TimeElapsedColumn,
+                        )
                         from rich.console import Console
+
                         with Progress(
                             SpinnerColumn(),
                             TextColumn("[bold cyan]Topology[/bold cyan] {task.description}"),
@@ -1835,7 +1846,9 @@ class InteractiveNetworkAuditor:
             net_discovery_auto = self.config.get("scan_mode") == "completo"
             topology_enabled = self.config.get("topology_enabled")
             net_discovery_explicit = self.config.get("net_discovery_enabled")
-            if (net_discovery_explicit or net_discovery_auto or topology_enabled) and not self.interrupted:
+            if (
+                net_discovery_explicit or net_discovery_auto or topology_enabled
+            ) and not self.interrupted:
                 try:
                     from redaudit.core.net_discovery import discover_networks
 
@@ -1851,11 +1864,17 @@ class InteractiveNetworkAuditor:
                         "kerberos_userlist": self.config.get("net_discovery_kerberos_userlist"),
                         "active_l2": bool(self.config.get("net_discovery_active_l2", False)),
                     }
-                    
+
                     # v3.2.3: Add spinner progress for net_discovery phase
                     try:
-                        from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+                        from rich.progress import (
+                            Progress,
+                            SpinnerColumn,
+                            TextColumn,
+                            TimeElapsedColumn,
+                        )
                         from rich.console import Console
+
                         with Progress(
                             SpinnerColumn(),
                             TextColumn("[bold blue]Net Discovery[/bold blue] {task.description}"),
@@ -1885,7 +1904,7 @@ class InteractiveNetworkAuditor:
                             extra_tools=self.extra_tools,
                             logger=self.logger,
                         )
-                    
+
                     # Log discovered DHCP servers
                     dhcp_servers = self.results["net_discovery"].get("dhcp_servers", [])
                     if dhcp_servers:
@@ -1899,7 +1918,7 @@ class InteractiveNetworkAuditor:
                             self.t("net_discovery_vlans_found", len(candidate_vlans)),
                             "WARNING",
                         )
-                    
+
                     # v3.2.3: Visible CLI logging for HyperScan results
                     hyperscan_dur = self.results["net_discovery"].get("hyperscan_duration", 0)
                     if hyperscan_dur > 0:

@@ -15,6 +15,7 @@ try:
     from cryptography.fernet import Fernet
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
     CRYPTO_AVAILABLE = True
 except ImportError:  # pragma: no cover
     Fernet = None
@@ -128,19 +129,19 @@ def validate_password_strength(password: str, lang: str = "en") -> tuple:
             msg = f"La contraseña debe tener al menos {MIN_PASSWORD_LENGTH} caracteres"
         return False, msg
 
-    if not re.search(r'[A-Z]', password):
+    if not re.search(r"[A-Z]", password):
         msg = "Password must contain at least one uppercase letter"
         if lang == "es":
             msg = "La contraseña debe contener al menos una mayúscula"
         return False, msg
 
-    if not re.search(r'[a-z]', password):
+    if not re.search(r"[a-z]", password):
         msg = "Password must contain at least one lowercase letter"
         if lang == "es":
             msg = "La contraseña debe contener al menos una minúscula"
         return False, msg
 
-    if not re.search(r'[0-9]', password):
+    if not re.search(r"[0-9]", password):
         msg = "Password must contain at least one digit"
         if lang == "es":
             msg = "La contraseña debe contener al menos un número"
@@ -167,7 +168,9 @@ def ask_password_twice(prompt: str = "Password", lang: str = "en") -> str:
         if not is_valid:
             # NOTE: error_msg contains validation hints (e.g., "must be 12+ chars"),
             # NOT the password itself. This is standard UX. CodeQL flags incorrectly.
-            print(f"{COLORS['WARNING']}[WARNING]{COLORS['ENDC']} {error_msg}")  # lgtm[py/clear-text-logging-sensitive-data]
+            print(
+                f"{COLORS['WARNING']}[WARNING]{COLORS['ENDC']} {error_msg}"
+            )  # lgtm[py/clear-text-logging-sensitive-data]
             continue
 
         p2 = getpass.getpass(f"{COLORS['CYAN']}?{COLORS['ENDC']} Confirm: ")
@@ -193,5 +196,6 @@ def generate_random_password(length: int = 32) -> str:
     """
     import secrets
     import string
+
     alphabet = string.ascii_letters + string.digits + string.punctuation
-    return ''.join(secrets.choice(alphabet) for _ in range(length))
+    return "".join(secrets.choice(alphabet) for _ in range(length))

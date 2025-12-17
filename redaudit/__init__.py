@@ -14,5 +14,5 @@ RedAudit package initialization.
 from redaudit.core.auditor import InteractiveNetworkAuditor
 from redaudit.utils.constants import VERSION
 
-__all__ = ['InteractiveNetworkAuditor', 'VERSION', '__version__']
+__all__ = ["InteractiveNetworkAuditor", "VERSION", "__version__"]
 __version__ = VERSION

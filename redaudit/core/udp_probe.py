@@ -86,7 +86,12 @@ async def udp_probe_port(
         try:
             await loop.sock_sendall(sock, payload)
         except (OSError, asyncio.CancelledError):
-            return {"port": port, "state": "no_response", "response_bytes": 0, "response_sample_hex": ""}
+            return {
+                "port": port,
+                "state": "no_response",
+                "response_bytes": 0,
+                "response_sample_hex": "",
+            }
 
         try:
             data = await asyncio.wait_for(loop.sock_recv(sock, 4096), timeout=timeout)
@@ -100,9 +105,19 @@ async def udp_probe_port(
             # Some stacks surface ICMP Port Unreachable as ECONNREFUSED on recv() for connected UDP.
             return {"port": port, "state": "closed", "response_bytes": 0, "response_sample_hex": ""}
         except asyncio.TimeoutError:
-            return {"port": port, "state": "no_response", "response_bytes": 0, "response_sample_hex": ""}
+            return {
+                "port": port,
+                "state": "no_response",
+                "response_bytes": 0,
+                "response_sample_hex": "",
+            }
         except OSError:
-            return {"port": port, "state": "no_response", "response_bytes": 0, "response_sample_hex": ""}
+            return {
+                "port": port,
+                "state": "no_response",
+                "response_bytes": 0,
+                "response_sample_hex": "",
+            }
     finally:
         try:
             sock.close()
@@ -135,9 +150,14 @@ async def udp_probe_host(
 
     out: List[Dict[str, Any]] = []
     for port, res in zip(ports_list, results):
-        if isinstance(res, Exception):
+        if isinstance(res, BaseException):
             out.append(
-                {"port": port, "state": "no_response", "response_bytes": 0, "response_sample_hex": ""}
+                {
+                    "port": port,
+                    "state": "no_response",
+                    "response_bytes": 0,
+                    "response_sample_hex": "",
+                }
             )
         else:
             out.append(res)

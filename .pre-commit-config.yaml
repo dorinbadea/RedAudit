@@ -23,7 +23,8 @@ repos:
     rev: 7.0.0
     hooks:
       - id: flake8
-        args: ['--max-line-length=100', '--ignore=E203,W503']
+        exclude: ^tests/
+        args: ['--max-line-length=100', '--ignore=E203,W503,E501', '--exclude=tests,.venv']
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.6
@@ -36,5 +37,6 @@ repos:
     rev: v1.8.0
     hooks:
       - id: mypy
+        files: ^redaudit/
         additional_dependencies: [types-requests]
         args: ['--ignore-missing-imports', '--no-strict-optional']

@@ -26,7 +26,7 @@ CONFIG_VERSION = "3.2.3"
 ENV_NVD_API_KEY = "NVD_API_KEY"
 
 # Default config structure
-DEFAULT_CONFIG = {
+DEFAULT_CONFIG: Dict[str, Any] = {
     "version": CONFIG_VERSION,
     "nvd_api_key": None,
     "nvd_api_key_storage": None,  # "config", "env", or None

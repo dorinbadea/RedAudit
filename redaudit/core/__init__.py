@@ -3,4 +3,4 @@
 
 from redaudit.core.auditor import InteractiveNetworkAuditor
 
-__all__ = ['InteractiveNetworkAuditor']
+__all__ = ["InteractiveNetworkAuditor"]

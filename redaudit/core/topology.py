@@ -42,7 +42,7 @@ def _run_cmd(
         err = exc.stderr or ""
         if logger:
             logger.info("Topology command timed out: %s", args)
-        return 124, out, err
+        return 124, out if isinstance(out, str) else "", err if isinstance(err, str) else ""
     except Exception as exc:
         if logger:
             logger.warning("Topology command failed: %s (%s)", args, exc)
@@ -338,10 +338,14 @@ async def _discover_topology_async(
     route_task = None
     lldp_task = None
     if has_ip:
-        route_task = asyncio.create_task(_run_cmd_async(["ip", "route", "show"], timeout_s=3, logger=logger))
+        route_task = asyncio.create_task(
+            _run_cmd_async(["ip", "route", "show"], timeout_s=3, logger=logger)
+        )
         tasks.append(route_task)
     if has_lldpctl:
-        lldp_task = asyncio.create_task(_run_cmd_async(["lldpctl", "-f", "json"], timeout_s=3, logger=logger))
+        lldp_task = asyncio.create_task(
+            _run_cmd_async(["lldpctl", "-f", "json"], timeout_s=3, logger=logger)
+        )
         tasks.append(lldp_task)
 
     if tasks:
@@ -421,8 +425,14 @@ async def _discover_topology_async(
             selected_ifaces = list(iface_map.keys())
 
     # Deduplicate preserving order
-    seen = set()
-    selected_ifaces = [i for i in selected_ifaces if not (i in seen or seen.add(i))]
+    deduped_ifaces: List[str] = []
+    seen: set[str] = set()
+    for iface in selected_ifaces:
+        if iface in seen:
+            continue
+        seen.add(iface)
+        deduped_ifaces.append(iface)
+    selected_ifaces = deduped_ifaces
 
     async def _collect_iface(iface: str) -> Tuple[Dict[str, Any], List[str]]:
         iface_errors: List[str] = []
@@ -461,7 +471,9 @@ async def _discover_topology_async(
         vlan_result = None
         if has_tcpdump:
             vlan_result = await _run_cmd_async(
-                ["tcpdump", "-nn", "-e", "-i", iface, "-c", "20", "vlan"], timeout_s=3, logger=logger
+                ["tcpdump", "-nn", "-e", "-i", iface, "-c", "20", "vlan"],
+                timeout_s=3,
+                logger=logger,
             )
 
         cdp_result = None
@@ -552,7 +564,7 @@ async def _discover_topology_async(
     iface_results = await asyncio.gather(*iface_tasks, return_exceptions=True)
 
     for res in iface_results:
-        if isinstance(res, Exception):
+        if isinstance(res, BaseException):
             continue
         iface_entry, iface_errors = res
         topology["interfaces"].append(iface_entry)
@@ -672,8 +684,14 @@ def _discover_topology_sync(
             selected_ifaces = list(iface_map.keys())
 
     # Deduplicate preserving order
-    seen = set()
-    selected_ifaces = [i for i in selected_ifaces if not (i in seen or seen.add(i))]
+    deduped_ifaces: List[str] = []
+    seen: set[str] = set()
+    for iface in selected_ifaces:
+        if iface in seen:
+            continue
+        seen.add(iface)
+        deduped_ifaces.append(iface)
+    selected_ifaces = deduped_ifaces
 
     # LLDP neighbors (if lldpctl available)
     lldp_json: Dict[str, Any] = {}
@@ -690,7 +708,6 @@ def _discover_topology_sync(
             if "socket" in lldp_err.lower() or "unable to connect" in lldp_err.lower():
                 lldp_err += " (Hint: try 'sudo systemctl start lldpd')"
             errors.append(f"lldpctl failed: {lldp_err}")
-
 
     for iface in selected_ifaces:
         iface_entry: Dict[str, Any] = iface_map.get(
