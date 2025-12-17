@@ -11,6 +11,18 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 - (nada aún)
 
+## [3.5.0] - 2025-12-17 (Fiabilidad y Ejecución)
+
+### Añadido
+
+- **Evitar reposo durante escaneos**: Inhibición best-effort del reposo del sistema/pantalla mientras se ejecuta un escaneo (activado por defecto; opt-out con `--no-prevent-sleep`).
+- **CommandRunner centralizado**: Nuevo `redaudit/core/command_runner.py` como punto único para comandos externos (timeouts, reintentos, redacción de secretos, despliegue incremental de `--dry-run`).
+
+### Cambiado
+
+- **Ejecución de comandos externos**: Más módulos ejecutan herramientas externas mediante CommandRunner (scanner/auditor/topology/net discovery), mejorando seguridad y haciendo `--dry-run` efectivo en más sitios (el despliegue sigue siendo incremental).
+- **Documentación**: Manuales, uso, troubleshooting y roadmap actualizados para reflejar v3.5.0 y sus flags.
+
 ## [3.4.4] - 2025-12-17 (Hotfix)
 
 ### Corregido

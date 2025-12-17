@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.5.0] - 2025-12-17 (Reliability & Execution)
+
+### Added
+
+- **Prevent sleep during scans**: Best-effort system/display sleep inhibition while a scan is running (enabled by default; opt-out with `--no-prevent-sleep`).
+- **Centralized CommandRunner**: New `redaudit/core/command_runner.py` as a single entry point for external commands (timeouts, retries, secret redaction, incremental `--dry-run` rollout).
+
+### Changed
+
+- **External command execution**: More modules now execute external tools via CommandRunner (scanner/auditor/topology/net discovery), improving safety and making `--dry-run` effective in more places (rollout remains incremental).
+- **Documentation**: Updated manuals, usage, troubleshooting, and roadmap to reflect v3.5.0 behavior and flags.
+
 ## [3.4.4] - 2025-12-17 (Hotfix)
 
 ### Fixed

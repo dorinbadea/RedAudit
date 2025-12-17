@@ -25,7 +25,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_version(self):
         """Test that version is set."""
-        self.assertEqual(VERSION, "3.4.4")
+        self.assertEqual(VERSION, "3.5.0")
 
     def test_constants(self):
         """Test security constants."""
