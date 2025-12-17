@@ -120,7 +120,7 @@ def verify_content_type(
             capture_output=True,
             text=True,
             timeout=timeout + 5,
-        )
+        )  # nosec B603
 
         headers = res.stdout or ""
         content_type = None
@@ -237,7 +237,7 @@ def verify_magic_bytes(
             [curl_path, "-s", "-r", "0-511", "--max-time", str(timeout), "-k", url],
             capture_output=True,
             timeout=timeout + 5,
-        )
+        )  # nosec B603
 
         data = res.stdout
         if not data or len(data) < offset + len(expected_magic):
