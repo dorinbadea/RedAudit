@@ -1530,6 +1530,7 @@ class InteractiveNetworkAuditor:
 
         # v3.2.1+: Give explicit control over persisted defaults.
         defaults_for_run = persisted_defaults
+        should_skip_config = False
         scan_default_keys = (
             "threads",
             "output_dir",
@@ -1556,183 +1557,23 @@ class InteractiveNetworkAuditor:
                 if choice == 2:
                     defaults_for_run = {}
                     self.print_status(self.t("defaults_ignore_confirm"), "INFO")
-                elif choice == 1 and self.ask_yes_no(
-                    self.t("defaults_show_summary_q"), default="no"
-                ):
-                    # v3.2.3: Display ALL saved defaults (not just 6)
-                    self.print_status(self.t("defaults_summary_title"), "INFO")
+                elif choice == 1:
+                    if self.ask_yes_no(self.t("defaults_show_summary_q"), default="no"):
+                        self._show_defaults_summary(persisted_defaults)
 
-                    # Helper to format boolean values
-                    def fmt_bool(val):
-                        if val is None:
-                            return "-"
-                        return self.t("enabled") if val else self.t("disabled")
-
-                    # Display all saved defaults
-                    fields = [
-                        ("defaults_summary_scan_mode", persisted_defaults.get("scan_mode")),
-                        ("defaults_summary_threads", persisted_defaults.get("threads")),
-                        ("defaults_summary_output", persisted_defaults.get("output_dir")),
-                        ("defaults_summary_rate_limit", persisted_defaults.get("rate_limit")),
-                        ("defaults_summary_udp_mode", persisted_defaults.get("udp_mode")),
-                        ("defaults_summary_udp_ports", persisted_defaults.get("udp_top_ports")),
-                        (
-                            "defaults_summary_topology",
-                            fmt_bool(persisted_defaults.get("topology_enabled")),
-                        ),
-                        (
-                            "defaults_summary_web_vulns",
-                            fmt_bool(persisted_defaults.get("scan_vulnerabilities")),
-                        ),
-                        (
-                            "defaults_summary_cve_lookup",
-                            fmt_bool(persisted_defaults.get("cve_lookup_enabled")),
-                        ),
-                        (
-                            "defaults_summary_txt_report",
-                            fmt_bool(persisted_defaults.get("generate_txt")),
-                        ),
-                    ]
-
-                    for key, val in fields:
-                        display_val = val if val is not None else "-"
-                        self.print_status(f"- {self.t(key)}: {display_val}", "INFO")
+                    if self.ask_yes_no(self.t("defaults_use_immediately_q"), default="yes"):
+                        should_skip_config = True
 
         print(f"\n{self.COLORS['HEADER']}{self.t('scan_config')}{self.COLORS['ENDC']}")
         print("=" * 60)
 
         self.config["target_networks"] = self.ask_network_range()
 
-        scan_modes = [
-            self.t("mode_fast"),
-            self.t("mode_normal"),
-            self.t("mode_full"),
-        ]
-        modes_map = {0: "rapido", 1: "normal", 2: "completo"}
-        self.config["scan_mode"] = modes_map[self.ask_choice(self.t("scan_mode"), scan_modes, 1)]
-
-        if self.config["scan_mode"] != "rapido":
-            limit = self.ask_number(self.t("ask_num_limit"), default="all")
-            self.config["max_hosts_value"] = limit
+        if should_skip_config:
+            self._apply_run_defaults(defaults_for_run)
+            self.encryption_enabled = False
         else:
-            self.config["max_hosts_value"] = "all"
-
-        self.config["threads"] = self.ask_number(
-            self.t("threads"),
-            default=(
-                defaults_for_run.get("threads")
-                if isinstance(defaults_for_run.get("threads"), int)
-                and MIN_THREADS <= defaults_for_run.get("threads") <= MAX_THREADS
-                else DEFAULT_THREADS
-            ),
-            min_val=MIN_THREADS,
-            max_val=MAX_THREADS,
-        )
-
-        default_rate = defaults_for_run.get("rate_limit")
-        if not isinstance(default_rate, (int, float)) or default_rate < 0:
-            default_rate = 0.0
-        if self.ask_yes_no(self.t("rate_limiting"), default="yes" if default_rate > 0 else "no"):
-            delay_default = int(default_rate) if default_rate > 0 else 1
-            delay_default = min(max(delay_default, 0), 60)
-            delay = self.ask_number(
-                self.t("rate_delay"), default=delay_default, min_val=0, max_val=60
-            )
-            self.rate_limit_delay = float(delay)
-
-        self.config["scan_vulnerabilities"] = self.ask_yes_no(self.t("vuln_scan_q"), default="yes")
-
-        # v3.0.1: Ask about CVE correlation
-        if self.ask_yes_no(self.t("cve_lookup_q"), default="no"):
-            self.config["cve_lookup_enabled"] = True
-            # Trigger API key setup if not configured
-            self.setup_nvd_api_key()
-        else:
-            self.config["cve_lookup_enabled"] = False
-
-        default_reports = os.path.expanduser(DEFAULT_OUTPUT_DIR)
-        persisted_output = defaults_for_run.get("output_dir")
-        if isinstance(persisted_output, str) and persisted_output.strip():
-            default_reports = os.path.expanduser(persisted_output.strip())
-        out_dir = input(
-            f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('output_dir')} [{default_reports}]: "
-        ).strip()
-        if not out_dir:
-            out_dir = default_reports
-        self.config["output_dir"] = out_dir
-
-        self.config["save_txt_report"] = self.ask_yes_no(self.t("gen_txt"), default="yes")
-
-        # v3.1+: UDP coverage configuration (affects adaptive deep scan)
-        if self.config["scan_mode"] != "rapido" and self.config.get("deep_id_scan"):
-            udp_modes = [self.t("udp_mode_quick"), self.t("udp_mode_full")]
-            udp_map = {0: UDP_SCAN_MODE_QUICK, 1: UDP_SCAN_MODE_FULL}
-
-            persisted_udp_mode = defaults_for_run.get("udp_mode")
-            udp_default_idx = 0 if persisted_udp_mode != UDP_SCAN_MODE_FULL else 1
-            self.config["udp_mode"] = udp_map[
-                self.ask_choice(self.t("udp_mode_q"), udp_modes, udp_default_idx)
-            ]
-
-            persisted_udp_ports = defaults_for_run.get("udp_top_ports")
-            udp_ports_default = (
-                persisted_udp_ports if isinstance(persisted_udp_ports, int) else UDP_TOP_PORTS
-            )
-            udp_ports_default = min(max(udp_ports_default, 50), 500)
-            # Store a sensible default even if UDP mode is QUICK (value is used only in FULL mode).
-            self.config["udp_top_ports"] = udp_ports_default
-            if self.config["udp_mode"] == UDP_SCAN_MODE_FULL:
-                udp_profiles = [
-                    (50, self.t("udp_ports_profile_fast")),
-                    (100, self.t("udp_ports_profile_balanced")),
-                    (200, self.t("udp_ports_profile_thorough")),
-                    (500, self.t("udp_ports_profile_aggressive")),
-                    ("custom", self.t("udp_ports_profile_custom")),
-                ]
-                options = [label for _, label in udp_profiles]
-                default_idx = next(
-                    (
-                        idx
-                        for idx, (value, _) in enumerate(udp_profiles)
-                        if value == udp_ports_default
-                    ),
-                    len(udp_profiles) - 1,
-                )
-                selected_idx = self.ask_choice(self.t("udp_ports_profile_q"), options, default_idx)
-                selected = udp_profiles[selected_idx][0]
-                if selected == "custom":
-                    self.config["udp_top_ports"] = self.ask_number(
-                        self.t("udp_ports_q"),
-                        default=udp_ports_default,
-                        min_val=50,
-                        max_val=500,
-                    )
-                else:
-                    self.config["udp_top_ports"] = selected
-
-        # v3.1+: Optional topology discovery (simplified v3.2.2+)
-        topo_options = [
-            self.t("topology_disabled"),
-            self.t("topology_enabled_scan"),
-            self.t("topology_only_mode"),
-        ]
-        # Determine default based on persisted values
-        persisted_topo = defaults_for_run.get("topology_enabled")
-        persisted_only = defaults_for_run.get("topology_only")
-        if persisted_only:
-            topo_default_idx = 2
-        elif persisted_topo:
-            topo_default_idx = 1
-        else:
-            topo_default_idx = 0
-
-        topo_choice = self.ask_choice(
-            self.t("topology_discovery_q"), topo_options, topo_default_idx
-        )
-        self.config["topology_enabled"] = topo_choice != 0
-        self.config["topology_only"] = topo_choice == 2
-
-        self.setup_encryption()
+            self._configure_scan_interactive(defaults_for_run)
 
         self.show_config_summary()
 
@@ -1751,6 +1592,12 @@ class InteractiveNetworkAuditor:
                     udp_top_ports=self.config.get("udp_top_ports"),
                     topology_enabled=self.config.get("topology_enabled"),
                     topology_only=self.config.get("topology_only"),
+                    # v3.2.3+: New defaults
+                    scan_mode=self.config.get("scan_mode"),
+                    scan_vulnerabilities=self.config.get("scan_vulnerabilities"),
+                    cve_lookup_enabled=self.config.get("cve_lookup_enabled"),
+                    generate_txt=self.config.get("save_txt_report"),
+                    generate_html=self.config.get("save_html_report"),
                     lang=self.lang,
                 )
                 self.print_status(
@@ -2040,3 +1887,227 @@ class InteractiveNetworkAuditor:
         # v2.8.1: If scan hasn't started yet, exit immediately
         if self.scan_start_time is None:
             sys.exit(0)
+
+    def _apply_run_defaults(self, defaults_for_run: Dict) -> None:
+        """Apply persisted defaults to self.config without prompts."""
+        # 1. Scan Mode
+        self.config["scan_mode"] = defaults_for_run.get("scan_mode", "normal")
+
+        # 2. Max Hosts
+        self.config["max_hosts_value"] = "all"
+
+        # 3. Threads
+        threads = defaults_for_run.get("threads")
+        if isinstance(threads, int) and MIN_THREADS <= threads <= MAX_THREADS:
+            self.config["threads"] = threads
+        else:
+            self.config["threads"] = DEFAULT_THREADS
+
+        # 4. Rate Limit
+        rate_limit = defaults_for_run.get("rate_limit")
+        if isinstance(rate_limit, (int, float)) and rate_limit > 0:
+            self.rate_limit_delay = float(min(max(rate_limit, 0), 60))
+        else:
+            self.rate_limit_delay = 0.0
+
+        # 5. Vulnerabilities
+        self.config["scan_vulnerabilities"] = defaults_for_run.get("scan_vulnerabilities", True)
+        self.config["cve_lookup_enabled"] = defaults_for_run.get("cve_lookup_enabled", False)
+
+        # 6. Output Dir
+        out_dir = defaults_for_run.get("output_dir")
+        if isinstance(out_dir, str) and out_dir.strip():
+            self.config["output_dir"] = os.path.expanduser(out_dir.strip())
+        else:
+            self.config["output_dir"] = os.path.expanduser(DEFAULT_OUTPUT_DIR)
+
+        self.config["save_txt_report"] = defaults_for_run.get("generate_txt", True)
+        self.config["save_html_report"] = defaults_for_run.get("generate_html", True)
+
+        # 7. UDP Configuration
+        self.config["udp_mode"] = defaults_for_run.get("udp_mode", UDP_SCAN_MODE_QUICK)
+        self.config["udp_top_ports"] = defaults_for_run.get("udp_top_ports", UDP_TOP_PORTS)
+
+        # 8. Topology
+        self.config["topology_enabled"] = defaults_for_run.get("topology_enabled", False)
+        self.config["topology_only"] = defaults_for_run.get("topology_only", False)
+
+    def _configure_scan_interactive(self, defaults_for_run: Dict) -> None:
+        """Interactive prompt sequence for scan configuration."""
+        scan_modes = [
+            self.t("mode_fast"),
+            self.t("mode_normal"),
+            self.t("mode_full"),
+        ]
+        modes_map = {0: "rapido", 1: "normal", 2: "completo"}
+        self.config["scan_mode"] = modes_map[self.ask_choice(self.t("scan_mode"), scan_modes, 1)]
+
+        if self.config["scan_mode"] != "rapido":
+            limit = self.ask_number(self.t("ask_num_limit"), default="all")
+            self.config["max_hosts_value"] = limit
+        else:
+            self.config["max_hosts_value"] = "all"
+
+        self.config["threads"] = self.ask_number(
+            self.t("threads"),
+            default=(
+                defaults_for_run.get("threads")
+                if isinstance(defaults_for_run.get("threads"), int)
+                and MIN_THREADS <= defaults_for_run.get("threads") <= MAX_THREADS
+                else DEFAULT_THREADS
+            ),
+            min_val=MIN_THREADS,
+            max_val=MAX_THREADS,
+        )
+
+        default_rate = defaults_for_run.get("rate_limit")
+        if not isinstance(default_rate, (int, float)) or default_rate < 0:
+            default_rate = 0.0
+        if self.ask_yes_no(self.t("rate_limiting"), default="yes" if default_rate > 0 else "no"):
+            delay_default = int(default_rate) if default_rate > 0 else 1
+            delay_default = min(max(delay_default, 0), 60)
+            delay = self.ask_number(
+                self.t("rate_delay"), default=delay_default, min_val=0, max_val=60
+            )
+            self.rate_limit_delay = float(delay)
+
+        self.config["scan_vulnerabilities"] = self.ask_yes_no(self.t("vuln_scan_q"), default="yes")
+
+        # v3.0.1: Ask about CVE correlation
+        if self.ask_yes_no(self.t("cve_lookup_q"), default="no"):
+            self.config["cve_lookup_enabled"] = True
+            # Trigger API key setup if not configured
+            self.setup_nvd_api_key()
+        else:
+            self.config["cve_lookup_enabled"] = False
+
+        default_reports = os.path.expanduser(DEFAULT_OUTPUT_DIR)
+        persisted_output = defaults_for_run.get("output_dir")
+        if isinstance(persisted_output, str) and persisted_output.strip():
+            default_reports = os.path.expanduser(persisted_output.strip())
+        out_dir = input(
+            f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('output_dir')} [{default_reports}]: "
+        ).strip()
+        if not out_dir:
+            out_dir = default_reports
+        self.config["output_dir"] = out_dir
+
+        # v3.3.1: TXT and HTML reports are always generated (no prompt)
+        self.config["save_txt_report"] = True
+        self.config["save_html_report"] = True
+
+        # v3.1+: UDP coverage configuration (affects adaptive deep scan)
+        if self.config["scan_mode"] != "rapido" and self.config.get("deep_id_scan"):
+            udp_modes = [self.t("udp_mode_quick"), self.t("udp_mode_full")]
+            udp_map = {0: UDP_SCAN_MODE_QUICK, 1: UDP_SCAN_MODE_FULL}
+
+            persisted_udp_mode = defaults_for_run.get("udp_mode")
+            udp_default_idx = 0 if persisted_udp_mode != UDP_SCAN_MODE_FULL else 1
+            self.config["udp_mode"] = udp_map[
+                self.ask_choice(self.t("udp_mode_q"), udp_modes, udp_default_idx)
+            ]
+
+            persisted_udp_ports = defaults_for_run.get("udp_top_ports")
+            udp_ports_default = (
+                persisted_udp_ports if isinstance(persisted_udp_ports, int) else UDP_TOP_PORTS
+            )
+            udp_ports_default = min(max(udp_ports_default, 50), 500)
+            # Store a sensible default even if UDP mode is QUICK (value is used only in FULL mode).
+            self.config["udp_top_ports"] = udp_ports_default
+            if self.config["udp_mode"] == UDP_SCAN_MODE_FULL:
+                udp_profiles = [
+                    (50, self.t("udp_ports_profile_fast")),
+                    (100, self.t("udp_ports_profile_balanced")),
+                    (200, self.t("udp_ports_profile_thorough")),
+                    (500, self.t("udp_ports_profile_aggressive")),
+                    ("custom", self.t("udp_ports_profile_custom")),
+                ]
+                options = [label for _, label in udp_profiles]
+                default_idx = next(
+                    (
+                        idx
+                        for idx, (value, _) in enumerate(udp_profiles)
+                        if value == udp_ports_default
+                    ),
+                    len(udp_profiles) - 1,
+                )
+                selected_idx = self.ask_choice(self.t("udp_ports_profile_q"), options, default_idx)
+                selected = udp_profiles[selected_idx][0]
+                if selected == "custom":
+                    self.config["udp_top_ports"] = self.ask_number(
+                        self.t("udp_ports_q"),
+                        default=udp_ports_default,
+                        min_val=50,
+                        max_val=500,
+                    )
+                else:
+                    self.config["udp_top_ports"] = selected
+
+        # v3.1+: Optional topology discovery (simplified v3.2.2+)
+        topo_options = [
+            self.t("topology_disabled"),
+            self.t("topology_enabled_scan"),
+            self.t("topology_only_mode"),
+        ]
+        # Determine default based on persisted values
+        persisted_topo = defaults_for_run.get("topology_enabled")
+        persisted_only = defaults_for_run.get("topology_only")
+        if persisted_only:
+            topo_default_idx = 2
+        elif persisted_topo:
+            topo_default_idx = 1
+        else:
+            topo_default_idx = 0
+
+        topo_choice = self.ask_choice(
+            self.t("topology_discovery_q"), topo_options, topo_default_idx
+        )
+        self.config["topology_enabled"] = topo_choice != 0
+        self.config["topology_only"] = topo_choice == 2
+
+        self.setup_encryption()
+
+    def _show_defaults_summary(self, persisted_defaults: Dict) -> None:
+        """Display summary of persisted defaults."""
+        # v3.2.3: Display ALL saved defaults
+        self.print_status(self.t("defaults_summary_title"), "INFO")
+
+        # Helper to format boolean values
+        def fmt_bool(val):
+            if val is None:
+                return "-"
+            return self.t("enabled") if val else self.t("disabled")
+
+        # Display all saved defaults
+        fields = [
+            ("defaults_summary_scan_mode", persisted_defaults.get("scan_mode")),
+            ("defaults_summary_threads", persisted_defaults.get("threads")),
+            ("defaults_summary_output", persisted_defaults.get("output_dir")),
+            ("defaults_summary_rate_limit", persisted_defaults.get("rate_limit")),
+            ("defaults_summary_udp_mode", persisted_defaults.get("udp_mode")),
+            ("defaults_summary_udp_ports", persisted_defaults.get("udp_top_ports")),
+            (
+                "defaults_summary_topology",
+                fmt_bool(persisted_defaults.get("topology_enabled")),
+            ),
+            (
+                "defaults_summary_web_vulns",
+                fmt_bool(persisted_defaults.get("scan_vulnerabilities")),
+            ),
+            (
+                "defaults_summary_cve_lookup",
+                fmt_bool(persisted_defaults.get("cve_lookup_enabled")),
+            ),
+            (
+                "defaults_summary_txt_report",
+                fmt_bool(persisted_defaults.get("generate_txt")),
+            ),
+            (
+                "defaults_summary_html_report",
+                fmt_bool(persisted_defaults.get("generate_html")),
+            ),
+        ]
+
+        for key, val in fields:
+            display_val = val if val is not None else "-"
+            self.print_status(f"- {self.t(key)}: {display_val}", "INFO")

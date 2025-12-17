@@ -46,6 +46,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "scan_vulnerabilities": None,  # True/False
         "cve_lookup_enabled": None,  # True/False
         "generate_txt": None,  # True/False
+        "generate_html": None,  # True/False
     },
 }
 
