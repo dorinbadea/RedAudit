@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Finding titles**: Web findings now get a short `descriptive_title` derived from parsed observations (improves HTML table titles, webhooks, and playbook headings).
+- **Wizard output directory default**: When the wizard would default to `/root/...`, RedAudit now prefers the invoking user’s `Documents` folder (and, when running as root without `sudo`, will use a single detected user under `/home/<user>` when unambiguous).
+- **Wizard menu marker**: Replaced the Unicode selector marker with an ASCII marker for consistent rendering across terminals/fonts.
 
 ## [3.4.2] - 2025-12-17 (Hotfix)
 

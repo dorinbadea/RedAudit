@@ -16,6 +16,8 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Corregido
 
 - **Títulos de hallazgos**: Los hallazgos web ahora tienen un `descriptive_title` corto derivado de observaciones parseadas (mejora títulos en HTML, webhooks y encabezados de playbooks).
+- **Directorio de salida por defecto (wizard)**: Cuando el wizard iba a proponer `/root/...`, RedAudit ahora prefiere `Documentos` del usuario invocador (y, si se ejecuta como root sin `sudo`, usa un único usuario detectado bajo `/home/<usuario>` cuando no hay ambigüedad).
+- **Marcador del menú (wizard)**: Se reemplaza el marcador Unicode por uno ASCII para que se renderice bien en cualquier terminal/fuente.
 
 ## [3.4.2] - 2025-12-17 (Hotfix)
 
