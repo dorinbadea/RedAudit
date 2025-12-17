@@ -165,4 +165,3 @@ Rules:
 - Any “user-facing” output path (reports, defaults) should resolve to the **invoking user** when under `sudo`.
 - Be careful with persisted defaults: older versions may have stored `/root/...` and must be migrated or corrected.
 - Best-effort ownership (`chown`) may be required to avoid root-owned artifacts under a user’s home.
-

@@ -61,6 +61,69 @@ TESTSSL_OBSERVATION_PATTERNS = [
 MAX_INLINE_OUTPUT_SIZE = 4096
 
 
+_CVE_PATTERN = re.compile(r"\bCVE-\d{4}-\d{4,7}\b", re.IGNORECASE)
+
+
+def _derive_descriptive_title(observations: List[str]) -> Optional[str]:
+    """
+    Derive a short human-readable title from parsed observations.
+
+    The goal is to avoid generic "Finding on URL" titles for web findings that
+    are represented as a single record per URL/port.
+    """
+
+    if not observations:
+        return None
+
+    # Prefer explicit CVE signal.
+    for obs in observations:
+        match = _CVE_PATTERN.search(obs)
+        if match:
+            return match.group(0).upper()
+
+    # Prefer "Missing ..." (headers, hardening, etc.).
+    for obs in observations:
+        if isinstance(obs, str) and obs.strip().lower().startswith("missing "):
+            return obs.strip()[:80]
+
+    # Prefer obviously security-relevant observations.
+    for obs in observations:
+        if not isinstance(obs, str):
+            continue
+        text = obs.strip()
+        lower = text.lower()
+        if lower.startswith(("server banner:", "technology:", "http methods:")):
+            continue
+        if any(
+            token in lower
+            for token in (
+                "vulnerability",
+                "expired",
+                "mismatch",
+                "directory listing",
+                "leak",
+                "disclosure",
+                "weak ciphers",
+                "enabled",
+            )
+        ):
+            return text[:80]
+
+    # Fallback: first non-metadata observation.
+    for obs in observations:
+        if not isinstance(obs, str):
+            continue
+        text = obs.strip()
+        if not text:
+            continue
+        lower = text.lower()
+        if lower.startswith(("server banner:", "technology:", "http methods:")):
+            continue
+        return text[:80]
+
+    return None
+
+
 def parse_nikto_findings(findings: List[str]) -> List[str]:
     """
     Extract structured observations from Nikto output lines.
@@ -264,6 +327,10 @@ def enrich_with_observations(vuln_record: Dict, output_dir: Optional[str] = None
 
     if observations:
         enriched["parsed_observations"] = observations
+        if not enriched.get("descriptive_title"):
+            title = _derive_descriptive_title(observations)
+            if title:
+                enriched["descriptive_title"] = title
 
     if raw_output:
         enriched["raw_tool_output_sha256"] = compute_output_hash(raw_output)
