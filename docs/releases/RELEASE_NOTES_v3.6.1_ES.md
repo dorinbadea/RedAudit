@@ -1,5 +1,7 @@
 # RedAudit v3.6.1 - Calidad de Escaneo y UX
 
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.6.1.md)
+
 Fecha de Lanzamiento: 2025-12-18
 
 ## Puntos Destacados
