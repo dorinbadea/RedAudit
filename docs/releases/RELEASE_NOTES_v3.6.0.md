@@ -19,4 +19,3 @@ Nuclei support is now consistent with the UX and the docs:
 
 - Host and vulnerability phases reduce noisy status lines while progress bars are active.
 - The progress line now shows what’s happening (tool/technique) using the suppressed status as detail.
-

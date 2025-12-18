@@ -19,4 +19,3 @@ El soporte de Nuclei ahora es coherente con el UX y la documentación:
 
 - Las fases de hosts y vulnerabilidades reducen líneas ruidosas mientras hay barras de progreso activas.
 - La propia línea de progreso muestra “qué está haciendo” (herramienta/técnica) usando el detalle suprimido.
-
