@@ -117,10 +117,10 @@ redaudit/
 │   ├── report.html.j2  # Template dashboard HTML (v3.3)
 │   └── diff.html.j2    # Template diff HTML (v3.3)
 └── utils/              # Utilidades
-	    ├── constants.py    # Constantes de configuración
-	    ├── i18n.py         # Internacionalización
-	    ├── config.py       # Configuración persistente
-	    └── webhook.py      # Alertas webhook (v3.3)
+    ├── constants.py    # Constantes de configuración
+    ├── i18n.py         # Internacionalización
+    ├── config.py       # Configuración persistente
+    └── webhook.py      # Alertas webhook (v3.3)
 ```
 
 ## Instalación
