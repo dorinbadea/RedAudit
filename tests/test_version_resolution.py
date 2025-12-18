@@ -7,7 +7,7 @@ def _read_pyproject_version() -> str:
     pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
     content = pyproject.read_text(encoding="utf-8", errors="ignore")
     match = re.search(r'(?m)^version\s*=\s*"([^"]+)"\s*$', content)
-    assert match, "Failed to find `version = \"...\"` in pyproject.toml"
+    assert match, 'Failed to find `version = "..."` in pyproject.toml'
     return match.group(1).strip()
 
 
@@ -19,9 +19,11 @@ def test_packaged_version_file_matches_pyproject() -> None:
 
 
 def test_constants_version_fallback_uses_packaged_version_file(monkeypatch) -> None:
-    expected = (Path(__file__).resolve().parents[1] / "redaudit" / "VERSION").read_text(
-        encoding="utf-8"
-    ).strip()
+    expected = (
+        (Path(__file__).resolve().parents[1] / "redaudit" / "VERSION")
+        .read_text(encoding="utf-8")
+        .strip()
+    )
 
     import importlib.metadata
 
