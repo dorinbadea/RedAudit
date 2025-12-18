@@ -6,7 +6,7 @@ This file is a reusable “initial context” for contributors working on RedAud
 
 - Work on a branch (`feature/*`, `hotfix/*`, `docs/*`). Avoid committing directly to `main`.
 - Never merge/push to `main` without explicit approval from the repo owner.
-- Fix root causes, keep changes minimal, avoid unrelated refactors.
+- Fix root causes, keep changes focused and coherent, avoid unrelated refactors.
 - Keep `git status` clean before handing off.
 - Keep code/docs/tests consistent (no version drift, no “docs say X but CLI does Y”).
 - Do **not** retag/rewrite published tags/releases. If something was released, publish a new version.
@@ -42,7 +42,7 @@ E) Operational checklist (exact sequence)
 **Rules:**
 
 - **CRITICAL:** ALWAYS create a new branch (e.g., `docs/vX.Y-updates`). **NEVER commit directly to `main`.**
-- Do not redesign docs. Preserve tone/structure; make minimal insertions in the right place.
+- Do not redesign docs. Preserve tone/structure; make the necessary insertions in the right place.
 - Keep EN/ES consistent: update both when behavior/UX changes.
 - Examples must match real flags, defaults, paths, and menus.
 
@@ -51,7 +51,7 @@ E) Operational checklist (exact sequence)
 1. Create branch `docs/<topic>`.
 2. Extract “truth from code”: real CLI flags/defaults + recent features (with file references).
 3. Audit docs vs inventory: mark missing/outdated/correct; do not touch what’s correct.
-4. Apply minimal edits directly to files.
+4. Apply the necessary edits directly to files.
 5. Run quality gate, then commit with intent (`docs(...)`).
 6. Merge via Pull Request (or merge command if authorized), ensuring CI passes.
 
@@ -66,7 +66,7 @@ E) Operational checklist (exact sequence)
 - Confirm version coherence across version sources, changelog, and release notes.
 - Run gates: `pre-commit run --all-files` and `pytest tests/ -v`.
 
-If drift is found: apply minimal fixes, commit by intent, and re-run gates until green.
+If drift is found: apply the necessary fixes, commit by intent, and re-run gates until green.
 
 ### 4) Release Execution (Conservative)
 
@@ -88,8 +88,30 @@ If drift is found: apply minimal fixes, commit by intent, and re-run gates until
 
 - Inspect the workflow:
   - `sed -n '1,200p' .github/workflows/codeql.yml`
-- If it references an unsupported action version (example: `github/codeql-action/*@v4`), pin to a supported major (example: `@v3`) for `init` and `analyze`.
-- Keep the change limited to `.github/workflows/codeql.yml`.
+- Confirm action majors:
+  - `actions/checkout@v4`
+  - `github/codeql-action/init@v3` and `github/codeql-action/analyze@v3`
+- For Python repos, avoid fragile “autobuild” behavior by explicitly disabling build:
+  - In the `Initialize CodeQL` step: `with: build-mode: none`
+- Keep the change limited to `.github/workflows/codeql.yml` unless there is explicit approval to do more.
+
+**Standard recovery procedure (when CodeQL fails):**
+
+1. Create a dedicated hotfix branch from `main`:
+   - `git fetch origin`
+   - `git switch main`
+   - `git pull --ff-only origin main`
+   - `git switch -c hotfix/<topic>`
+2. Apply only the workflow fix (no version bumps, no feature/code changes).
+3. Run local gates:
+   - `pre-commit run --all-files`
+   - `pytest tests/ -v`
+4. Commit and push:
+   - `git status -sb` (must be clean except the workflow change)
+   - `git commit -am "fix(ci): <short description>"`
+   - `git push -u origin hotfix/<topic>`
+5. Open a PR to `main` and wait for CodeQL to go green.
+6. If CodeQL still fails: stop and report exact evidence (workflow/job/step + error text) before attempting additional changes.
 
 **Gates (always):**
 
