@@ -9,4 +9,3 @@ RedAudit v3.5.2 es una hotfix centrada en la experiencia del operador (progreso/
 - **Reinicio obligatorio tras actualizar**: Tras instalar una actualización, RedAudit muestra un aviso grande de "reinicia el terminal", espera confirmación y sale para asegurar que la siguiente ejecución cargue la nueva versión limpiamente.
 - **Feedback en Net Discovery**: Las fases de descubrimiento de red muestran actividad visible para que el terminal no parezca bloqueado durante pasos largos.
 - **Progreso más limpio**: La UI de progreso reduce el ruido de logs mientras está activa y muestra una cota superior conservadora (`ETA≤ …`) que considera los timeouts configurados.
-

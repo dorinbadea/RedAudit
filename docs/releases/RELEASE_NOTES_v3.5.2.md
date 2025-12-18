@@ -9,4 +9,3 @@ RedAudit v3.5.2 is a hotfix release focused on operator experience (clear progre
 - **Restart required after update**: After installing an update, RedAudit displays a large "restart the terminal" notice, waits for confirmation, and exits to ensure the next run loads the new version cleanly.
 - **Net Discovery feedback**: Network discovery phases now show visible activity so the terminal doesn't look stuck during long discovery steps.
 - **Cleaner progress output**: Progress UI reduces noisy logs while active and displays a conservative upper bound (`ETA≤ …`) that accounts for configured timeouts.
-
