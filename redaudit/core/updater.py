@@ -1313,25 +1313,70 @@ def interactive_update_check(
         )
 
         if success:
-            # v2.8.1: Auto-restart if update was installed to system
-            if message == "UPDATE_SUCCESS_RESTART":
-                print_fn(t_fn("update_restarting"), "OKGREEN")
-                import time
-
-                time.sleep(1)  # Brief pause before restart
-                if not restart_self(logger=logger):
-                    print_fn(
-                        t_fn("update_restart_failed", _suggest_restart_command()),
-                        "WARNING",
-                    )
-                    print_fn(t_fn("update_refresh_hint"), "INFO")
-            else:
-                print_fn(message, "OKGREEN")
-                print_fn(t_fn("update_refresh_hint"), "INFO")
-            return True
+            # After an update, keep the process from continuing with stale imports/aliases.
+            # Require an explicit terminal restart for a clean re-load of the new version.
+            _show_restart_terminal_notice(t_fn=t_fn, lang=lang)
+            _pause_for_restart_terminal(t_fn=t_fn)
+            sys.exit(0)
         else:
             print_fn(message, "FAIL")
             return False
     else:
         print_fn(t_fn("update_skipped"), "INFO")
         return False
+
+
+def _show_restart_terminal_notice(*, t_fn, lang: str = "en") -> None:
+    """
+    Show a large, high-visibility notice after a successful update.
+
+    Rationale: after swapping the system install + updating shell aliases, continuing the
+    current process can yield mismatched imports / PATH hashing (old banner/version).
+    """
+    try:
+        import shutil
+
+        width = shutil.get_terminal_size((80, 24)).columns if sys.stdout.isatty() else 80
+        width = max(60, min(int(width), 120))
+    except Exception:
+        width = 80
+
+    title = t_fn("update_restart_terminal_title")
+    body = t_fn("update_restart_terminal_body")
+    prompt = t_fn("update_restart_terminal_prompt")
+
+    cmd_hint = _suggest_restart_command()
+    hint = t_fn("update_restart_terminal_hint", cmd_hint)
+
+    lines = [
+        "",
+        "=" * width,
+        title.center(width),
+        "-" * width,
+        body,
+        "",
+        hint,
+        "",
+        prompt,
+        "=" * width,
+        "",
+    ]
+    try:
+        print("\n".join(lines), flush=True)
+    except Exception:
+        pass
+
+
+def _pause_for_restart_terminal(*, t_fn) -> None:
+    """
+    Block briefly so the user sees the restart notice before the process exits.
+    """
+    try:
+        if sys.stdin is not None and sys.stdin.isatty():
+            input(t_fn("update_restart_terminal_press_enter"))
+        else:
+            import time
+
+            time.sleep(1.0)
+    except Exception:
+        return
