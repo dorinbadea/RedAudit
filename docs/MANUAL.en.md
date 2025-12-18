@@ -88,7 +88,7 @@ RedAudit checks for updates on startup (interactive mode). To skip: `--skip-upda
 |:---|:---|:---|
 | `fast` | `-sn` (host discovery only) | None |
 | `normal` | Top 1000 ports, version detection | whatweb, searchsploit |
-| `full` | All 65535 ports, scripts, OS detection | whatweb, nikto, testssl.sh, nuclei (if available), searchsploit |
+| `full` | All 65535 ports, scripts, OS detection | whatweb, nikto, testssl.sh, nuclei (if installed and enabled), searchsploit |
 
 ### Adaptive Deep Scan
 
@@ -307,7 +307,7 @@ RedAudit orchestrates (does not modify or install):
 | `whatweb` | HTTP/HTTPS detected | `vulnerabilities[].whatweb` |
 | `nikto` | HTTP/HTTPS + full mode | `vulnerabilities[].nikto_findings` |
 | `testssl.sh` | HTTPS + full mode | `vulnerabilities[].testssl_analysis` |
-| `nuclei` | HTTP/HTTPS + full mode (if installed) | `vulnerabilities[].nuclei_findings` |
+| `nuclei` | HTTP/HTTPS + full mode (if installed and enabled) | `vulnerabilities[].nuclei_findings` |
 | `searchsploit` | Services with version detected | `ports[].known_exploits` |
 | `tcpdump` | Deep scan triggers | `deep_scan.pcap_capture` |
 | `tshark` | After tcpdump capture | `deep_scan.tshark_summary` |

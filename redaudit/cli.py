@@ -86,6 +86,10 @@ Examples:
     if not isinstance(default_topology_enabled, bool):
         default_topology_enabled = False
 
+    default_nuclei_enabled = persisted_defaults.get("nuclei_enabled")
+    if not isinstance(default_nuclei_enabled, bool):
+        default_nuclei_enabled = False
+
     parser.add_argument(
         "--target",
         "-t",
@@ -182,6 +186,21 @@ Examples:
         type=str,
         metavar="URL",
         help="Webhook URL for real-time alerts on high/critical findings",
+    )
+    # v3.5.5: Nuclei template scanning (optional; requires nuclei installed)
+    nuclei_group = parser.add_mutually_exclusive_group()
+    nuclei_group.add_argument(
+        "--nuclei",
+        dest="nuclei",
+        action="store_true",
+        default=default_nuclei_enabled,
+        help="Enable Nuclei template scanner (requires nuclei; runs in full mode only)",
+    )
+    nuclei_group.add_argument(
+        "--no-nuclei",
+        dest="nuclei",
+        action="store_false",
+        help="Disable Nuclei template scanner (override persisted defaults)",
     )
     parser.add_argument("--version", "-V", action="version", version=f"RedAudit v{VERSION}")
 
@@ -525,6 +544,7 @@ def configure_from_args(app, args) -> bool:
     app.config["net_discovery_kerberos_realm"] = args.kerberos_realm
     app.config["net_discovery_kerberos_userlist"] = args.kerberos_userlist
     app.config["net_discovery_active_l2"] = bool(args.redteam_active_l2)
+    app.config["nuclei_enabled"] = bool(getattr(args, "nuclei", False))
 
     # Setup encryption if requested
     if args.encrypt:
@@ -542,6 +562,7 @@ def configure_from_args(app, args) -> bool:
                 udp_mode=app.config.get("udp_mode"),
                 udp_top_ports=app.config.get("udp_top_ports"),
                 topology_enabled=app.config.get("topology_enabled"),
+                nuclei_enabled=app.config.get("nuclei_enabled"),
                 lang=app.lang,
             )
             app.print_status(app.t("defaults_saved"), "OKGREEN")

@@ -24,7 +24,7 @@ import textwrap
 import re
 from contextlib import contextmanager
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed, wait
 from logging.handlers import RotatingFileHandler
 from typing import Any, Callable, Dict, Optional
 
@@ -267,6 +267,8 @@ class InteractiveNetworkAuditor(WizardMixin):
         self.activity_lock = threading.Lock()
         self._print_lock = threading.Lock()
         self._ui_progress_active = False
+        self._ui_detail_lock = threading.Lock()
+        self._ui_detail = ""
         self.heartbeat_stop = False
         self.heartbeat_thread = None
         self.current_phase = "init"
@@ -318,6 +320,14 @@ class InteractiveNetworkAuditor(WizardMixin):
         msg = "" if message is None else str(message)
         if self._ui_progress_active and is_tty and not force:
             if not self._should_emit_during_progress(msg, status_display):
+                # Store last suppressed line so progress UIs can surface "what's happening"
+                # without flooding the terminal with logs.
+                try:
+                    condensed = (msg.splitlines()[0] if msg else "").strip()
+                    if condensed:
+                        self._set_ui_detail(condensed)
+                except Exception:
+                    pass
                 if self.logger:
                     self.logger.debug("UI suppressed [%s]: %s", status_display, msg)
                 return
@@ -343,6 +353,19 @@ class InteractiveNetworkAuditor(WizardMixin):
             for line in lines[1:]:
                 print(f"  {line}")  # lgtm[py/clear-text-logging-sensitive-data]
             sys.stdout.flush()
+
+    def _set_ui_detail(self, text: str) -> None:
+        cleaned = (text or "").replace("\r", " ").replace("\t", " ").strip()
+        if not cleaned:
+            return
+        cleaned = " ".join(cleaned.split())
+        cleaned = cleaned[:120]
+        with self._ui_detail_lock:
+            self._ui_detail = cleaned
+
+    def _get_ui_detail(self) -> str:
+        with self._ui_detail_lock:
+            return self._ui_detail
 
     def _touch_activity(self) -> None:
         with self.activity_lock:
@@ -734,6 +757,7 @@ class InteractiveNetworkAuditor(WizardMixin):
             "dig",
             "searchsploit",
             "testssl.sh",
+            "nuclei",
             # v3.1+: Topology discovery (optional)
             "arp-scan",
             "lldpctl",
@@ -1319,23 +1343,24 @@ class InteractiveNetworkAuditor(WizardMixin):
         except ImportError:
             use_rich = False
 
-        with ThreadPoolExecutor(max_workers=self.config["threads"]) as executor:
-            futures = {}
-            for h in unique_hosts:
-                if self.interrupted:
-                    break
-                fut = executor.submit(self.scan_host_ports, h)
-                futures[fut] = h
-                if self.rate_limit_delay > 0:
-                    # A3: Jitter ±30% for IDS evasion
-                    jitter = random.uniform(-0.3, 0.3) * self.rate_limit_delay
-                    actual_delay = max(0.1, self.rate_limit_delay + jitter)
-                    time.sleep(actual_delay)
+        # Keep output quiet from the moment worker threads start.
+        with self._progress_ui():
+            with ThreadPoolExecutor(max_workers=self.config["threads"]) as executor:
+                futures = {}
+                for h in unique_hosts:
+                    if self.interrupted:
+                        break
+                    fut = executor.submit(self.scan_host_ports, h)
+                    futures[fut] = h
+                    if self.rate_limit_delay > 0:
+                        # A3: Jitter ±30% for IDS evasion
+                        jitter = random.uniform(-0.3, 0.3) * self.rate_limit_delay
+                        actual_delay = max(0.1, self.rate_limit_delay + jitter)
+                        time.sleep(actual_delay)
 
-            total = len(futures)
-            done = 0
+                total = len(futures)
+                done = 0
 
-            with self._progress_ui():
                 if use_rich and total > 0:
                     # Rich progress bar (quiet UI + timeout-aware upper bound ETA)
                     with Progress(
@@ -1345,6 +1370,7 @@ class InteractiveNetworkAuditor(WizardMixin):
                         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
                         TextColumn("({task.completed}/{task.total})"),
                         TimeElapsedColumn(),
+                        TextColumn("{task.fields[detail]}", justify="left"),
                         TextColumn("ETA≤ {task.fields[eta_upper]}"),
                         TimeRemainingColumn(),
                         console=Console(stderr=True),
@@ -1352,37 +1378,53 @@ class InteractiveNetworkAuditor(WizardMixin):
                         eta_upper_init = self._format_eta(
                             host_timeout_s * math.ceil(max(0, total) / threads)
                         )
+                        initial_detail = self._get_ui_detail()
                         task = progress.add_task(
                             f"[cyan]{self.t('scanning_hosts')}",
                             total=total,
                             eta_upper=eta_upper_init,
+                            detail=initial_detail,
                         )
-                        for fut in as_completed(futures):
+                        pending = set(futures)
+                        last_detail = initial_detail
+                        while pending:
                             if self.interrupted:
-                                # C2 fix: Cancel pending futures
-                                for pending_fut in futures:
+                                for pending_fut in pending:
                                     pending_fut.cancel()
                                 break
-                            host_ip = futures[fut]
-                            try:
-                                res = fut.result()
-                                results.append(res)
-                            except Exception as exc:
-                                self.logger.error("Worker error for %s: %s", host_ip, exc)
-                                self.logger.debug(
-                                    "Worker exception details for %s", host_ip, exc_info=True
+
+                            completed, pending = wait(
+                                pending, timeout=0.25, return_when=FIRST_COMPLETED
+                            )
+                            detail = self._get_ui_detail()
+                            if detail != last_detail:
+                                progress.update(task, detail=detail)
+                                last_detail = detail
+
+                            for fut in completed:
+                                host_ip = futures.get(fut)
+                                try:
+                                    res = fut.result()
+                                    results.append(res)
+                                except Exception as exc:
+                                    self.logger.error("Worker error for %s: %s", host_ip, exc)
+                                    self.logger.debug(
+                                        "Worker exception details for %s", host_ip, exc_info=True
+                                    )
+                                done += 1
+                                remaining = max(0, total - done)
+                                eta_upper = self._format_eta(
+                                    host_timeout_s * math.ceil(remaining / threads)
+                                    if remaining
+                                    else 0
                                 )
-                            done += 1
-                            remaining = max(0, total - done)
-                            eta_upper = self._format_eta(
-                                host_timeout_s * math.ceil(remaining / threads) if remaining else 0
-                            )
-                            progress.update(
-                                task,
-                                advance=1,
-                                description=f"[cyan]{self.t('scanned_host', host_ip)}",
-                                eta_upper=eta_upper,
-                            )
+                                progress.update(
+                                    task,
+                                    advance=1,
+                                    description=f"[cyan]{self.t('scanned_host', host_ip)}",
+                                    eta_upper=eta_upper,
+                                    detail=last_detail,
+                                )
                 else:
                     # Fallback to basic progress (throttled, includes timeout-aware upper bound ETA)
                     for fut in as_completed(futures):
@@ -1578,15 +1620,16 @@ class InteractiveNetworkAuditor(WizardMixin):
         except ImportError:
             use_rich = False
 
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = {
-                executor.submit(self.scan_vulnerabilities_web, h): h["ip"] for h in web_hosts
-            }
+        # Keep output quiet from the moment worker threads start.
+        with self._progress_ui():
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = {
+                    executor.submit(self.scan_vulnerabilities_web, h): h["ip"] for h in web_hosts
+                }
 
-            total = len(futures)
-            done = 0
+                total = len(futures)
+                done = 0
 
-            with self._progress_ui():
                 if use_rich and total > 0:
                     # Rich progress bar for vulnerability scanning (quiet UI + timeout-aware upper bound ETA)
                     with Progress(
@@ -1596,46 +1639,64 @@ class InteractiveNetworkAuditor(WizardMixin):
                         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
                         TextColumn("({task.completed}/{task.total})"),
                         TimeElapsedColumn(),
+                        TextColumn("{task.fields[detail]}", justify="left"),
                         TextColumn("ETA≤ {task.fields[eta_upper]}"),
                         TimeRemainingColumn(),
                         console=Console(stderr=True),
                     ) as progress:
                         eta_upper_init = self._format_eta(remaining_budget_s / workers)
+                        initial_detail = self._get_ui_detail()
                         task = progress.add_task(
                             f"[cyan]Vuln scan ({total_ports} ports)",
                             total=total,
                             eta_upper=eta_upper_init,
+                            detail=initial_detail,
                         )
-                        for fut in as_completed(futures):
+                        pending = set(futures)
+                        last_detail = initial_detail
+                        while pending:
                             if self.interrupted:
-                                for pending_fut in futures:
+                                for pending_fut in pending:
                                     pending_fut.cancel()
                                 break
-                            host_ip = futures[fut]
-                            try:
-                                res = fut.result()
-                                if res:
-                                    self.results["vulnerabilities"].append(res)
-                                    vuln_count = len(res.get("vulnerabilities", []))
-                                    if vuln_count > 0 and self.logger:
-                                        self.logger.info(
-                                            "Vulnerabilities recorded on %s", res["host"]
-                                        )
-                            except Exception as exc:
-                                self.logger.error("Vuln worker error for %s: %s", host_ip, exc)
-                                self.logger.debug(
-                                    "Vuln worker exception details for %s", host_ip, exc_info=True
+
+                            completed, pending = wait(
+                                pending, timeout=0.25, return_when=FIRST_COMPLETED
+                            )
+                            detail = self._get_ui_detail()
+                            if detail != last_detail:
+                                progress.update(task, detail=detail)
+                                last_detail = detail
+
+                            for fut in completed:
+                                host_ip = futures[fut]
+                                try:
+                                    res = fut.result()
+                                    if res:
+                                        self.results["vulnerabilities"].append(res)
+                                        vuln_count = len(res.get("vulnerabilities", []))
+                                        if vuln_count > 0 and self.logger:
+                                            self.logger.info(
+                                                "Vulnerabilities recorded on %s", res["host"]
+                                            )
+                                except Exception as exc:
+                                    self.logger.error("Vuln worker error for %s: %s", host_ip, exc)
+                                    self.logger.debug(
+                                        "Vuln worker exception details for %s",
+                                        host_ip,
+                                        exc_info=True,
+                                    )
+                                done += 1
+                                remaining_budget_s = max(
+                                    0.0, remaining_budget_s - budgets.get(host_ip, 0.0)
                                 )
-                            done += 1
-                            remaining_budget_s = max(
-                                0.0, remaining_budget_s - budgets.get(host_ip, 0.0)
-                            )
-                            progress.update(
-                                task,
-                                advance=1,
-                                description=f"[cyan]{self.t('scanned_host', host_ip)}",
-                                eta_upper=self._format_eta(remaining_budget_s / workers),
-                            )
+                                progress.update(
+                                    task,
+                                    advance=1,
+                                    description=f"[cyan]{self.t('scanned_host', host_ip)}",
+                                    eta_upper=self._format_eta(remaining_budget_s / workers),
+                                    detail=last_detail,
+                                )
                 else:
                     # Fallback without rich (throttled)
                     for fut in as_completed(futures):
@@ -1734,6 +1795,19 @@ class InteractiveNetworkAuditor(WizardMixin):
             "udp_mode",
             "udp_top_ports",
             "topology_enabled",
+            "topology_only",
+            "scan_mode",
+            "scan_vulnerabilities",
+            "nuclei_enabled",
+            "cve_lookup_enabled",
+            "generate_txt",
+            "generate_html",
+            "net_discovery_enabled",
+            "net_discovery_redteam",
+            "net_discovery_active_l2",
+            "net_discovery_kerberos_userenum",
+            "net_discovery_kerberos_realm",
+            "net_discovery_kerberos_userlist",
         )
         has_scan_defaults = any(persisted_defaults.get(k) is not None for k in scan_default_keys)
 
@@ -1815,9 +1889,21 @@ class InteractiveNetworkAuditor(WizardMixin):
                     # v3.2.3+: New defaults
                     scan_mode=self.config.get("scan_mode"),
                     scan_vulnerabilities=self.config.get("scan_vulnerabilities"),
+                    nuclei_enabled=self.config.get("nuclei_enabled"),
                     cve_lookup_enabled=self.config.get("cve_lookup_enabled"),
                     generate_txt=self.config.get("save_txt_report"),
                     generate_html=self.config.get("save_html_report"),
+                    # v3.6.0+: Net discovery / red team
+                    net_discovery_enabled=self.config.get("net_discovery_enabled"),
+                    net_discovery_redteam=self.config.get("net_discovery_redteam"),
+                    net_discovery_active_l2=self.config.get("net_discovery_active_l2"),
+                    net_discovery_kerberos_userenum=self.config.get(
+                        "net_discovery_kerberos_userenum"
+                    ),
+                    net_discovery_kerberos_realm=self.config.get("net_discovery_kerberos_realm"),
+                    net_discovery_kerberos_userlist=self.config.get(
+                        "net_discovery_kerberos_userlist"
+                    ),
                     lang=self.lang,
                 )
                 self.print_status(
@@ -2083,9 +2169,11 @@ class InteractiveNetworkAuditor(WizardMixin):
             if self.config.get("scan_vulnerabilities") and not self.interrupted:
                 self.scan_vulnerabilities_concurrent(results)
 
-            # v3.6: Nuclei template scanning (if available and enabled)
+            # Nuclei template scanning (optional; full mode only, if installed and enabled)
             if (
-                self.config.get("nuclei_enabled", False)
+                self.config.get("scan_vulnerabilities")
+                and self.config.get("scan_mode") == "completo"
+                and self.config.get("nuclei_enabled", False)
                 and is_nuclei_available()
                 and not self.interrupted
             ):
@@ -2095,7 +2183,9 @@ class InteractiveNetworkAuditor(WizardMixin):
                     if nuclei_targets:
                         nuclei_result = run_nuclei_scan(
                             targets=nuclei_targets,
-                            output_dir=self.config["output_dir"],
+                            output_dir=self.config.get("_actual_output_dir")
+                            or self.config.get("output_dir")
+                            or get_default_reports_base_dir(),
                             severity="medium,high,critical",
                             timeout=300,
                             logger=self.logger,
@@ -2214,6 +2304,7 @@ class InteractiveNetworkAuditor(WizardMixin):
 
         # 5. Vulnerabilities
         self.config["scan_vulnerabilities"] = defaults_for_run.get("scan_vulnerabilities", True)
+        self.config["nuclei_enabled"] = bool(defaults_for_run.get("nuclei_enabled", False))
         self.config["cve_lookup_enabled"] = defaults_for_run.get("cve_lookup_enabled", False)
 
         # 6. Output Dir
@@ -2234,6 +2325,27 @@ class InteractiveNetworkAuditor(WizardMixin):
         self.config["topology_enabled"] = defaults_for_run.get("topology_enabled", False)
         self.config["topology_only"] = defaults_for_run.get("topology_only", False)
 
+        # 9. Net discovery / Red team (wizard)
+        self.config["net_discovery_enabled"] = bool(
+            defaults_for_run.get("net_discovery_enabled", False)
+        )
+        self.config["net_discovery_redteam"] = bool(
+            defaults_for_run.get("net_discovery_redteam", False)
+        )
+        self.config["net_discovery_active_l2"] = bool(
+            defaults_for_run.get("net_discovery_active_l2", False)
+        )
+        self.config["net_discovery_kerberos_userenum"] = bool(
+            defaults_for_run.get("net_discovery_kerberos_userenum", False)
+        )
+        self.config["net_discovery_kerberos_realm"] = defaults_for_run.get(
+            "net_discovery_kerberos_realm"
+        )
+        userlist = defaults_for_run.get("net_discovery_kerberos_userlist")
+        self.config["net_discovery_kerberos_userlist"] = (
+            expand_user_path(userlist) if userlist else None
+        )
+
     def _configure_scan_interactive(self, defaults_for_run: Dict) -> None:
         """Interactive prompt sequence for scan configuration."""
         scan_modes = [
@@ -2242,7 +2354,13 @@ class InteractiveNetworkAuditor(WizardMixin):
             self.t("mode_full"),
         ]
         modes_map = {0: "rapido", 1: "normal", 2: "completo"}
-        self.config["scan_mode"] = modes_map[self.ask_choice(self.t("scan_mode"), scan_modes, 1)]
+        persisted_scan_mode = defaults_for_run.get("scan_mode")
+        scan_mode_default_idx = {"rapido": 0, "normal": 1, "completo": 2}.get(
+            persisted_scan_mode, 1
+        )
+        self.config["scan_mode"] = modes_map[
+            self.ask_choice(self.t("scan_mode"), scan_modes, scan_mode_default_idx)
+        ]
 
         if self.config["scan_mode"] != "rapido":
             limit = self.ask_number(self.t("ask_num_limit"), default="all")
@@ -2273,10 +2391,25 @@ class InteractiveNetworkAuditor(WizardMixin):
             )
             self.rate_limit_delay = float(delay)
 
-        self.config["scan_vulnerabilities"] = self.ask_yes_no(self.t("vuln_scan_q"), default="yes")
+        persisted_web_vulns = defaults_for_run.get("scan_vulnerabilities")
+        web_vulns_default = "no" if persisted_web_vulns is False else "yes"
+        self.config["scan_vulnerabilities"] = self.ask_yes_no(
+            self.t("vuln_scan_q"), default=web_vulns_default
+        )
+        self.config["nuclei_enabled"] = False
+        if (
+            self.config.get("scan_vulnerabilities")
+            and self.config.get("scan_mode") == "completo"
+            and is_nuclei_available()
+        ):
+            persisted_nuclei = defaults_for_run.get("nuclei_enabled")
+            default = "yes" if persisted_nuclei is True else "no"
+            self.config["nuclei_enabled"] = self.ask_yes_no(self.t("nuclei_q"), default=default)
 
         # v3.0.1: Ask about CVE correlation
-        if self.ask_yes_no(self.t("cve_lookup_q"), default="no"):
+        persisted_cve_lookup = defaults_for_run.get("cve_lookup_enabled")
+        cve_lookup_default = "yes" if persisted_cve_lookup is True else "no"
+        if self.ask_yes_no(self.t("cve_lookup_q"), default=cve_lookup_default):
             self.config["cve_lookup_enabled"] = True
             # Trigger API key setup if not configured
             self.setup_nvd_api_key()
@@ -2384,10 +2517,12 @@ class InteractiveNetworkAuditor(WizardMixin):
 
         if enable_net_discovery:
             # Red Team recon requires explicit opt-in; default is NO.
+            persisted_rt = defaults_for_run.get("net_discovery_redteam")
+            rt_default_idx = 1 if persisted_rt is True else 0
             redteam_choice = self.ask_choice(
                 self.t("redteam_mode_q"),
                 [self.t("redteam_mode_a"), self.t("redteam_mode_b")],
-                default=0,
+                default=rt_default_idx,
             )
 
             wants_redteam = redteam_choice == 1
@@ -2400,31 +2535,45 @@ class InteractiveNetworkAuditor(WizardMixin):
 
             self.config["net_discovery_redteam"] = bool(wants_redteam)
             self.config["net_discovery_active_l2"] = False
+            self.config["net_discovery_kerberos_userenum"] = False
             self.config["net_discovery_kerberos_realm"] = None
             self.config["net_discovery_kerberos_userlist"] = None
 
             if self.config["net_discovery_redteam"]:
+                persisted_l2 = defaults_for_run.get("net_discovery_active_l2")
                 self.config["net_discovery_active_l2"] = self.ask_yes_no(
                     self.t("redteam_active_l2_q"),
-                    default="no",
+                    default="yes" if persisted_l2 is True else "no",
                 )
 
                 # Kerberos user enumeration via kerbrute (requires userlist + authorization).
+                persisted_krb = defaults_for_run.get("net_discovery_kerberos_userenum")
                 enable_kerberos_userenum = self.ask_yes_no(
                     self.t("redteam_kerberos_userenum_q"),
-                    default="no",
+                    default="yes" if persisted_krb is True else "no",
                 )
+                self.config["net_discovery_kerberos_userenum"] = bool(enable_kerberos_userenum)
                 if enable_kerberos_userenum:
+                    persisted_realm = defaults_for_run.get("net_discovery_kerberos_realm") or ""
                     realm_hint = input(
-                        f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_realm_q')}: "
+                        f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_realm_q')} "
+                        f"[{persisted_realm}]: "
                     ).strip()
-                    self.config["net_discovery_kerberos_realm"] = realm_hint or None
+                    self.config["net_discovery_kerberos_realm"] = (
+                        realm_hint or persisted_realm or None
+                    )
 
+                    persisted_userlist = (
+                        defaults_for_run.get("net_discovery_kerberos_userlist") or ""
+                    )
                     userlist = input(
-                        f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_userlist_q')}: "
+                        f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_userlist_q')} "
+                        f"[{persisted_userlist}]: "
                     ).strip()
                     self.config["net_discovery_kerberos_userlist"] = (
-                        expand_user_path(userlist) if userlist else None
+                        expand_user_path(userlist)
+                        if userlist
+                        else (expand_user_path(persisted_userlist) if persisted_userlist else None)
                     )
 
         self.setup_encryption()
@@ -2460,8 +2609,28 @@ class InteractiveNetworkAuditor(WizardMixin):
                 fmt_bool(persisted_defaults.get("topology_enabled")),
             ),
             (
+                "defaults_summary_net_discovery",
+                fmt_bool(persisted_defaults.get("net_discovery_enabled")),
+            ),
+            (
+                "defaults_summary_redteam",
+                fmt_bool(persisted_defaults.get("net_discovery_redteam")),
+            ),
+            (
+                "defaults_summary_active_l2",
+                fmt_bool(persisted_defaults.get("net_discovery_active_l2")),
+            ),
+            (
+                "defaults_summary_kerbrute",
+                fmt_bool(persisted_defaults.get("net_discovery_kerberos_userenum")),
+            ),
+            (
                 "defaults_summary_web_vulns",
                 fmt_bool(persisted_defaults.get("scan_vulnerabilities")),
+            ),
+            (
+                "defaults_summary_nuclei",
+                fmt_bool(persisted_defaults.get("nuclei_enabled")),
             ),
             (
                 "defaults_summary_cve_lookup",

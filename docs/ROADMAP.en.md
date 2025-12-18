@@ -21,6 +21,7 @@ These features are approved but **not yet implemented** in the codebase.
 | **Native SIEM Pipeline** | 🎯 Planned | Bundled configuration for Filebeat/Logstash to ingest RedAudit ECS JSON directly. Creation of Sigma rules for common findings. |
 | **Osquery Verification** | 🎯 Planned | Post-scan module to execute Osquery queries on live hosts (via fleet/SSH) to validate configs (firewall, running services). |
 | **Interactive Webhooks** | 🎯 Planned | Add webhook URL configuration to the interactive wizard (currently CLI-only via `--webhook`). |
+| **Wizard: Advanced Net Discovery options** | 🎯 Planned | Expose safe, explicit opt-ins (SNMP community, DNS zone, max targets) and persist them as defaults for repeatable runs. |
 
 ### Red Team Extensions (Priority: Medium)
 
@@ -50,7 +51,7 @@ Features currently present using `redaudit --version` >= v3.6.0.
 
 | Feature | Version | Verification |
 | :--- | :--- | :--- |
-| **Nuclei Integration** | v3.6.0 | Module `redaudit/core/nuclei.py`. Executes Nuclei templates if tool is found. |
+| **Nuclei Integration** | v3.6.0 | Module `redaudit/core/nuclei.py`. Runs templates when Nuclei is installed and explicitly enabled (wizard or `--nuclei`). |
 | **Playbook Generation** | v3.4.0 | Module `redaudit/core/playbook_generator.py`. Creates MD remediation guides in `playbooks/`. |
 | **Red Team: Kerberos** | v3.2.0 | Module `redaudit/core/net_discovery.py`. Uses `kerbrute` for user enumeration if approved. |
 | **Red Team: SNMP/SMB** | v3.2.0 | Module `redaudit/core/net_discovery.py`. Uses `snmpwalk` and `enum4linux`. |
@@ -65,6 +66,7 @@ Features currently present using `redaudit --version` >= v3.6.0.
 | **Centralized CommandRunner** | v3.5.0 | `redaudit/core/command_runner.py` handles all subprocesses safely. |
 | **Persistent Config** | v3.1.1 | `~/.redaudit/config.json` stores user defaults. |
 | **Async Discovery** | v3.1.3 | `redaudit/core/hyperscan.py` uses `asyncio` for fast port probing. |
+| **Quiet Progress UI (with detail)** | v3.6.0 | `redaudit/core/auditor.py` reduces terminal noise while progress bars are active and surfaces “what’s happening” inside the progress line. |
 
 ---
 

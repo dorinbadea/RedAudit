@@ -134,6 +134,11 @@ TRANSLATIONS = {
         # v3.2.3: Additional defaults display
         "defaults_summary_scan_mode": "Scan mode",
         "defaults_summary_web_vulns": "Web vulns scan",
+        "defaults_summary_nuclei": "Nuclei templates",
+        "defaults_summary_net_discovery": "Net Discovery",
+        "defaults_summary_redteam": "Red Team modules",
+        "defaults_summary_active_l2": "Active L2 probing",
+        "defaults_summary_kerbrute": "Kerberos user enum (kerbrute)",
         "defaults_summary_cve_lookup": "CVE correlation",
         "defaults_summary_txt_report": "TXT report",
         "defaults_summary_html_report": "HTML report",
@@ -405,6 +410,11 @@ TRANSLATIONS = {
         # v3.2.3: Nuevos campos de defaults
         "defaults_summary_scan_mode": "Modo de escaneo",
         "defaults_summary_web_vulns": "Escaneo vulns web",
+        "defaults_summary_nuclei": "Templates Nuclei",
+        "defaults_summary_net_discovery": "Net Discovery",
+        "defaults_summary_redteam": "Módulos Red Team",
+        "defaults_summary_active_l2": "L2 activo",
+        "defaults_summary_kerbrute": "Enum usuarios Kerberos (kerbrute)",
         "defaults_summary_cve_lookup": "Correlación CVE",
         "defaults_summary_txt_report": "Reporte TXT",
         "defaults_summary_html_report": "Reporte HTML",

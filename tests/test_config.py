@@ -107,6 +107,13 @@ class TestDefaultConfig(unittest.TestCase):
             "udp_top_ports",
             "topology_enabled",
             "lang",
+            "nuclei_enabled",
+            "net_discovery_enabled",
+            "net_discovery_redteam",
+            "net_discovery_active_l2",
+            "net_discovery_kerberos_userenum",
+            "net_discovery_kerberos_realm",
+            "net_discovery_kerberos_userlist",
         ]:
             self.assertIn(k, DEFAULT_CONFIG["defaults"])
 
@@ -216,6 +223,12 @@ class TestPersistentDefaults(unittest.TestCase):
                         udp_top_ports=150,
                         topology_enabled=True,
                         lang="es",
+                        net_discovery_enabled=True,
+                        net_discovery_redteam=True,
+                        net_discovery_active_l2=False,
+                        net_discovery_kerberos_userenum=True,
+                        net_discovery_kerberos_realm="EXAMPLE.LOCAL",
+                        net_discovery_kerberos_userlist="~/users.txt",
                         bogus_key="ignored",
                     )
                     self.assertTrue(ok)
@@ -230,6 +243,12 @@ class TestPersistentDefaults(unittest.TestCase):
         self.assertEqual(defaults["udp_top_ports"], 150)
         self.assertEqual(defaults["topology_enabled"], True)
         self.assertEqual(defaults["lang"], "es")
+        self.assertEqual(defaults["net_discovery_enabled"], True)
+        self.assertEqual(defaults["net_discovery_redteam"], True)
+        self.assertEqual(defaults["net_discovery_active_l2"], False)
+        self.assertEqual(defaults["net_discovery_kerberos_userenum"], True)
+        self.assertEqual(defaults["net_discovery_kerberos_realm"], "EXAMPLE.LOCAL")
+        self.assertEqual(defaults["net_discovery_kerberos_userlist"], "~/users.txt")
         self.assertNotIn("bogus_key", defaults)
 
 

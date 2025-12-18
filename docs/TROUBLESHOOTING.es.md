@@ -166,6 +166,16 @@ curl --socks5 pivot-host:1080 http://example.com
 sudo apt update && sudo apt install nbtscan netdiscover fping avahi-utils snmp ldap-utils samba-common-bin
 ```
 
+### 12b. Nuclei no encontrado / templates deshabilitados (v3.5.5+)
+
+**Síntoma**: Se omite el escaneo Nuclei o no aparece nunca el prompt para habilitar templates.
+**Causa**: `nuclei` no está instalado, o el escaneo está deshabilitado (`--no-nuclei` / defaults guardados).
+**Solución**:
+
+```bash
+sudo apt update && sudo apt install nuclei
+```
+
 ### 13. Net Discovery: "Permission denied" / Fallos L2 (v3.2)
 
 **Síntoma**: Módulos de `scapy`, `bettercap` o `netdiscover` fallan o no devuelven nada.

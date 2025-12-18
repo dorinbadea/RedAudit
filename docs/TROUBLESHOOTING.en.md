@@ -166,6 +166,16 @@ curl --socks5 pivot-host:1080 http://example.com
 sudo apt update && sudo apt install nbtscan netdiscover fping avahi-utils snmp ldap-utils samba-common-bin
 ```
 
+### 12b. Nuclei not found / templates disabled (v3.5.5+)
+
+**Symptom**: Nuclei scanning is skipped or you never see a prompt to enable templates.
+**Cause**: `nuclei` is not installed, or template scanning is disabled (`--no-nuclei` / saved defaults).
+**Resolution**:
+
+```bash
+sudo apt update && sudo apt install nuclei
+```
+
 ### 13. Net Discovery: "Permission denied" / L2 failures (v3.2)
 
 **Symptom**: `scapy`, `bettercap`, or `netdiscover` modules fail or show no results.

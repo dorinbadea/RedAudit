@@ -105,7 +105,7 @@ redaudit --diff reports/report_v1.json reports/report_v2.json
 
 ## 3. Referencia de Flags CLI
 
-Agrupadas por función operativa. Verificadas contra v3.6.0.
+Agrupadas por función operativa. Verificadas contra el estado actual del código.
 
 ### Alcance e Intensidad
 
@@ -143,6 +143,8 @@ Agrupadas por función operativa. Verificadas contra v3.6.0.
 | `-o, --output DIR` | Directorio de salida personalizado |
 | `--html-report` | Generar dashboard interactivo (HTML) |
 | `--webhook URL` | Enviar hallazgos a Slack/Teams/Discord |
+| `--nuclei` | Habilitar escaneo de templates con Nuclei (requiere `nuclei`; solo en modo full) |
+| `--no-nuclei` | Deshabilitar Nuclei (sobrescribe defaults persistentes) |
 | `--no-vuln-scan` | Omitir escaneo de vulnerabilidades Web/Nikto |
 | `--cve-lookup` | Correlar servicios con datos CVE NVD |
 

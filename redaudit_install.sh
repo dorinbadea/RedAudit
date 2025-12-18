@@ -1,10 +1,13 @@
 #!/bin/bash
-# RedAudit Installer v3.3.0 (Clean install + Language injection + Alias setup)
+# RedAudit Installer (Clean install + Language injection + Alias setup)
 # GPLv3 - 2025 © Dorin Badea
 
 # -------------------------------------------
 # 0) Pre-checks
 # -------------------------------------------
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REDAUDIT_VERSION="$(cat "$SCRIPT_DIR/redaudit/VERSION" 2>/dev/null || echo "unknown")"
 
 if ! command -v apt >/dev/null 2>&1; then
     echo "❌ Error: This installer requires Debian/Kali with apt."
@@ -58,7 +61,7 @@ fi
 
 if [[ "$LANG_OPT" == "2" ]]; then
     LANG_CODE="es"
-    MSG_INSTALL="[INFO] Instalando/actualizando RedAudit v3.3.0..."
+    MSG_INSTALL="[INFO] Instalando/actualizando RedAudit v${REDAUDIT_VERSION}..."
     MSG_DONE="[OK] Instalación completada."
     MSG_USAGE="-> Ejecuta 'redaudit' para iniciar."
     MSG_ALIAS_ADDED="[INFO] Alias 'redaudit' añadido en"
@@ -68,7 +71,7 @@ if [[ "$LANG_OPT" == "2" ]]; then
     MSG_APT_ERR="[ERROR] Error con apt."
 else
     LANG_CODE="en"
-    MSG_INSTALL="[INFO] Installing/updating RedAudit v3.3.0..."
+    MSG_INSTALL="[INFO] Installing/updating RedAudit v${REDAUDIT_VERSION}..."
     MSG_DONE="[OK] Installation completed."
     MSG_USAGE="-> Run 'redaudit' to start."
     MSG_ALIAS_ADDED="ℹ️ Alias 'redaudit' added to"
@@ -84,7 +87,7 @@ echo "$MSG_INSTALL"
 # 2) Dependencies
 # -------------------------------------------
 
-EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4"
+EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4 nuclei"
 
 echo ""
 echo "$MSG_PKGS"
@@ -161,7 +164,6 @@ fi
 # 3) Install redaudit package --> /usr/local/lib/redaudit
 # -------------------------------------------
 
-SCRIPT_DIR="$(dirname "$0")"
 SCRIPT_SRC="$SCRIPT_DIR/redaudit.py"
 PACKAGE_SRC="$SCRIPT_DIR/redaudit"
 
@@ -249,7 +251,7 @@ if [[ -n "$NVD_KEY" ]]; then
         CONFIG_FILE="$CONFIG_DIR/config.json"
         mkdir -p "$CONFIG_DIR"
         chmod 700 "$CONFIG_DIR"
-        echo "{\"version\": \"3.3.0\", \"nvd_api_key\": \"$NVD_KEY\", \"nvd_api_key_storage\": \"config\"}" > "$CONFIG_FILE"
+        echo "{\"version\": \"${REDAUDIT_VERSION}\", \"nvd_api_key\": \"$NVD_KEY\", \"nvd_api_key_storage\": \"config\"}" > "$CONFIG_FILE"
         chmod 600 "$CONFIG_FILE"
         chown "$REAL_USER:$REAL_USER" "$CONFIG_DIR" "$CONFIG_FILE"
         echo "$MSG_NVD_SAVED $CONFIG_FILE"
