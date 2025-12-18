@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.6.0] - 2025-12-18 (Nuclei Enablement & UX)
+
+### Added
+
+- **Nuclei opt-in**: Nuclei templates can be enabled via the wizard or CLI (`--nuclei` / `--no-nuclei`) and saved as a persistent default.
+- **More informative progress**: Host/vuln progress bars now surface “what’s happening” inside the progress line (without flooding the terminal).
+- **Persistent Net Discovery defaults**: Net Discovery / Red Team choices (including L2 active and Kerberos user enum prompts) can be saved and reused.
+
+### Changed
+
+- **Installer UX**: The installer now displays the real RedAudit version (read from `redaudit/VERSION`) instead of a hard-coded value.
+
+### Fixed
+
+- **Quieter host scan phase**: Reduced noisy `[nmap]` / `[banner]` status spam while progress UI is active.
+
 ## [3.5.4] - 2025-12-18 (Hotfix)
 
 ### Fixed
