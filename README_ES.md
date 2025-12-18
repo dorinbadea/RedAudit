@@ -101,7 +101,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 
 RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa heurísticas en tiempo de ejecución para decidir la escalación:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    FASE 1: TCP Agresivo                     │
 │              Todos los hosts: -A -p- -sV -Pn                │
@@ -410,4 +410,4 @@ RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**. Cons
 
 ---
 
-[Documentación Completa](docs/README.md) | [Esquema de Reporte](docs/REPORT_SCHEMA.es.md) | [Especificaciones de Seguridad](docs/SECURITY.es.md)
+[Documentación Completa](docs/INDEX.md) | [Esquema de Reporte](docs/REPORT_SCHEMA.es.md) | [Especificaciones de Seguridad](docs/SECURITY.es.md)

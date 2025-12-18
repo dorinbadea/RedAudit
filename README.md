@@ -101,7 +101,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 
 RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runtime heuristics to decide escalation:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    PHASE 1: TCP Aggressive                  │
 │              All hosts: -A -p- -sV -Pn                      │
@@ -410,4 +410,4 @@ RedAudit is released under the **GNU General Public License v3.0 (GPLv3)**. See 
 
 ---
 
-[Full Documentation](docs/README.md) | [Report Schema](docs/REPORT_SCHEMA.en.md) | [Security Specs](docs/SECURITY.en.md)
+[Full Documentation](docs/INDEX.md) | [Report Schema](docs/REPORT_SCHEMA.en.md) | [Security Specs](docs/SECURITY.en.md)
