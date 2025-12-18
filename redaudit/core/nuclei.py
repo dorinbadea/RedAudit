@@ -138,7 +138,34 @@ def run_nuclei_scan(
             default_timeout=float(timeout),
             dry_run=dry_run,
         )
-        res = runner.run(cmd, capture_output=True, text=True, timeout=float(timeout))
+
+        # v3.7: Add spinner progress for Nuclei scan
+        try:
+            from rich.progress import (
+                Progress,
+                SpinnerColumn,
+                TextColumn,
+                TimeElapsedColumn,
+            )
+            from rich.console import Console
+
+            console = Console()
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                TimeElapsedColumn(),
+                console=console,
+                transient=True,
+            ) as progress:
+                task = progress.add_task(
+                    f"[cyan]Nuclei scanning {len(targets)} targets...", total=None
+                )
+                res = runner.run(cmd, capture_output=True, text=True, timeout=float(timeout))
+                progress.update(task, completed=True)
+
+        except ImportError:
+            # Fallback if rich not available
+            res = runner.run(cmd, capture_output=True, text=True, timeout=float(timeout))
 
         result["success"] = res.returncode == 0 or os.path.exists(output_file)
         result["raw_output_file"] = output_file if os.path.exists(output_file) else None

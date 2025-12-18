@@ -90,7 +90,10 @@ class SessionLogger:
         except Exception as e:
             # Don't fail the scan if logging fails
             if self.original_stdout:
-                print(f"[session_log] Warning: Could not start session logging: {e}", file=self.original_stdout)
+                print(
+                    f"[session_log] Warning: Could not start session logging: {e}",
+                    file=self.original_stdout,
+                )
             return False
 
     def stop(self) -> Optional[str]:
