@@ -220,6 +220,7 @@ Ruta de salida por defecto: `~/Documents/RedAuditReports/RedAudit_YYYY-MM-DD_HH-
 | `run_manifest.json` | Si cifrado deshabilitado | Metadatos de sesión |
 | `playbooks/*.md` | Si cifrado deshabilitado | Guías de remediación |
 | `traffic_*.pcap` | Si se dispara deep scan y tcpdump disponible | Capturas de paquetes |
+| `session_logs/*` | Siempre | Logs de sesión (`.log` raw, `.txt` limpio) |
 
 ### Comportamiento del Cifrado
 
@@ -262,6 +263,8 @@ python3 redaudit_decrypt.py /ruta/a/reporte.json.enc
 ## 8. Integración
 
 ### Ingesta SIEM
+
+Ver [SIEM_INTEGRATION.en.md](SIEM_INTEGRATION.en.md) para guías completas (Elastic Stack / Splunk).
 
 Cuando el cifrado está deshabilitado, `findings.jsonl` proporciona eventos compatibles con ECS v8.11:
 

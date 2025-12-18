@@ -220,6 +220,7 @@ Default output path: `~/Documents/RedAuditReports/RedAudit_YYYY-MM-DD_HH-MM-SS/`
 | `run_manifest.json` | If encryption disabled | Session metadata |
 | `playbooks/*.md` | If encryption disabled | Remediation guides |
 | `traffic_*.pcap` | If deep scan triggers and tcpdump available | Packet captures |
+| `session_logs/*` | Always | Session logs (`.log` raw, `.txt` clean) |
 
 ### Encryption Behavior
 
@@ -262,6 +263,8 @@ python3 redaudit_decrypt.py /path/to/report.json.enc
 ## 8. Integration
 
 ### SIEM Ingestion
+
+See [SIEM_INTEGRATION.en.md](SIEM_INTEGRATION.en.md) for full setup guides (Elastic Stack / Splunk).
 
 When encryption is disabled, `findings.jsonl` provides ECS v8.11 compliant events:
 
