@@ -31,7 +31,13 @@ class SessionLogger:
         logger.stop()
     """
 
-    def __init__(self, output_dir: str, session_name: Optional[str] = None):
+    def __init__(
+        self,
+        output_dir: str,
+        session_name: Optional[str] = None,
+        *,
+        mode: Optional[str] = None,
+    ):
         """
         Initialize session logger.
 
@@ -50,6 +56,7 @@ class SessionLogger:
         self.tee_stderr: Optional["TeeStream"] = None
         self.active = False
         self._encoding = "utf-8"
+        self._mode = (mode or os.environ.get("REDAUDIT_SESSION_LOG_MODE") or "lines").strip().lower()
 
     def start(self) -> bool:
         """
@@ -77,8 +84,13 @@ class SessionLogger:
             self.original_stderr = sys.stderr
 
             # Create tee streams
-            self.tee_stdout = TeeStream(self.original_stdout, self.log_file)
-            self.tee_stderr = TeeStream(self.original_stderr, self.log_file, prefix="[stderr] ")
+            self.tee_stdout = TeeStream(self.original_stdout, self.log_file, mode=self._mode)
+            self.tee_stderr = TeeStream(
+                self.original_stderr,
+                self.log_file,
+                prefix="[stderr] ",
+                mode=self._mode,
+            )
 
             # Replace sys streams
             sys.stdout = self.tee_stdout  # type: ignore[assignment]
@@ -190,7 +202,7 @@ class TeeStream(io.TextIOBase):
     Stream that writes to both terminal and log file.
     """
 
-    def __init__(self, terminal: TextIO, log_file: TextIO, prefix: str = ""):
+    def __init__(self, terminal: TextIO, log_file: TextIO, prefix: str = "", *, mode: str = "lines"):
         """
         Initialize tee stream.
 
@@ -202,6 +214,9 @@ class TeeStream(io.TextIOBase):
         self.terminal = terminal
         self.log_file = log_file
         self.prefix = prefix
+        self.mode = (mode or "lines").strip().lower()
+        self._log_buf = ""
+        self._max_buf = 4096
 
     def write(self, data: str) -> int:
         """Write to both streams."""
@@ -211,14 +226,59 @@ class TeeStream(io.TextIOBase):
 
         # Write to log file
         try:
-            if self.prefix and data.strip():
-                self.log_file.write(self.prefix)
-            self.log_file.write(data)
-            self.log_file.flush()
+            if self.mode == "raw":
+                if self.prefix and data.strip():
+                    self.log_file.write(self.prefix)
+                self.log_file.write(data)
+                self.log_file.flush()
+            else:
+                self._write_lines(data)
         except Exception:
             pass  # Don't fail if log write fails
 
         return len(data)
+
+    def _write_lines(self, data: str) -> None:
+        """
+        Log only stable newline-terminated output.
+
+        Rich progress bars typically redraw using carriage returns and ANSI control codes
+        without emitting newlines; logging those frames makes session logs extremely noisy.
+
+        This mode keeps the terminal output intact, but only writes complete lines to the
+        log file (plus best-effort buffering for partial lines).
+        """
+        if not data:
+            return
+
+        self._log_buf += data
+
+        # Drop overwritten frames (common in progress redraws)
+        if "\n" not in self._log_buf and "\r" in self._log_buf:
+            self._log_buf = self._log_buf.split("\r")[-1]
+
+        # Keep memory bounded if a tool writes without newlines
+        if len(self._log_buf) > self._max_buf and "\n" not in self._log_buf:
+            self._log_buf = self._log_buf[-self._max_buf :]
+
+        if "\n" not in self._log_buf:
+            return
+
+        lines = self._log_buf.splitlines(keepends=True)
+        if not lines:
+            return
+
+        # Preserve trailing partial line (no newline yet)
+        if not lines[-1].endswith("\n"):
+            self._log_buf = lines.pop()
+        else:
+            self._log_buf = ""
+
+        for line in lines:
+            if self.prefix and line.strip():
+                self.log_file.write(self.prefix)
+            self.log_file.write(line)
+        self.log_file.flush()
 
     def flush(self) -> None:
         """Flush both streams."""
@@ -243,7 +303,9 @@ class TeeStream(io.TextIOBase):
 _session_logger: Optional[SessionLogger] = None
 
 
-def start_session_log(output_dir: str, session_name: Optional[str] = None) -> bool:
+def start_session_log(
+    output_dir: str, session_name: Optional[str] = None, *, mode: Optional[str] = None
+) -> bool:
     """
     Start session logging (convenience function).
 
@@ -255,7 +317,7 @@ def start_session_log(output_dir: str, session_name: Optional[str] = None) -> bo
         True if started successfully
     """
     global _session_logger
-    _session_logger = SessionLogger(output_dir, session_name)
+    _session_logger = SessionLogger(output_dir, session_name, mode=mode)
     return _session_logger.start()
 
 
