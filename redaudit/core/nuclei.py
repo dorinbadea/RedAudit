@@ -188,9 +188,10 @@ def run_nuclei_scan(
 
                 # Append JSONL output to the consolidated file, if present.
                 if os.path.exists(batch_output_file):
-                    with open(batch_output_file, "r", encoding="utf-8", errors="ignore") as fin, open(
-                        output_file, "a", encoding="utf-8"
-                    ) as fout:
+                    with (
+                        open(batch_output_file, "r", encoding="utf-8", errors="ignore") as fin,
+                        open(output_file, "a", encoding="utf-8") as fout,
+                    ):
                         for line in fin:
                             if line.strip():
                                 fout.write(line if line.endswith("\n") else line + "\n")
@@ -202,7 +203,13 @@ def run_nuclei_scan(
 
         # Rich progress UI (best-effort)
         try:
-            from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+            from rich.progress import (
+                Progress,
+                SpinnerColumn,
+                BarColumn,
+                TextColumn,
+                TimeElapsedColumn,
+            )
             from rich.console import Console
 
             console = Console()
@@ -236,7 +243,9 @@ def run_nuclei_scan(
             # Fallback: batch-by-batch status
             for idx, batch in enumerate(batches, start=1):
                 if print_status:
-                    print_status(f"[nuclei] batch {idx}/{total_batches} ({len(batch)} targets)", "INFO")
+                    print_status(
+                        f"[nuclei] batch {idx}/{total_batches} ({len(batch)} targets)", "INFO"
+                    )
                 _run_one_batch(idx, batch)
 
         result["success"] = os.path.exists(output_file)
