@@ -284,6 +284,8 @@ When launched without arguments, RedAudit presents an **Interactive Main Menu**:
 3. **Diff Two Reports**: Compares 2 JSON reports to show changes.
 0. **Exit**: Quits the application.
 
+After a successful update, RedAudit displays a "restart the terminal" notice and exits to ensure a clean load of the new version.
+
 If you choose to scan, you will be guided through:
 
 - Target selection (IP/CIDR).

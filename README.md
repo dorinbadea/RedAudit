@@ -4,7 +4,7 @@
 
 RedAudit is a CLI tool for structured network auditing and hardening on Kali/Debian systems.
 
-![Version](https://img.shields.io/badge/version-3.5.0-blue?style=flat-square)
+![Version](https://img.shields.io/github/v/tag/dorinbadea/RedAudit?sort=semver&style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square)
 ![License](https://img.shields.io/badge/license-GPLv3-green?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-linux-lightgrey?style=flat-square)
@@ -16,7 +16,7 @@ RedAudit is a CLI tool for structured network auditing and hardening on Kali/Deb
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.5.0
+                                      v3.5.1
         Interactive Network Audit Tool
 ```
 
@@ -158,7 +158,7 @@ Verify installation integrity:
 which redaudit  # Should return: /usr/local/bin/redaudit
 
 # 2. Verify version
-redaudit --version  # Should show: RedAudit v3.5.0
+redaudit --version  # Should show: RedAudit v3.5.1
 
 # 3. Check core dependencies
 command -v nmap && command -v tcpdump && command -v python3  # All should succeed
@@ -279,10 +279,10 @@ RedAudit can check for and install updates automatically:
 - **Startup Check**: Prompts to check for updates when launching in interactive mode
 - **Staged Installation**: Updates use atomic staging with automatic rollback on failure (v3.2.2+)
 - **Auto-Install**: Downloads and installs updates via `git clone`
-- **Auto-Restart**: Automatically restarts with new code using `os.execv()`
+- **Post-update restart**: After installing an update, RedAudit displays a restart notice and exits. Start a new terminal session to load the new version.
 - **Skip Flag**: Use `--skip-update-check` to disable update checking
 
-> **Note (version not refreshed)**: If the banner/version does not refresh after an update, restart your terminal or run `hash -r` (zsh/bash) to clear the command cache.
+> **Note (version not refreshed)**: If you still see the old version after updating, restart your terminal (recommended) or run `hash -r` (zsh/bash) to clear the command cache.
 
 > **Note**: The updater verifies git commit hashes for integrity but does not perform cryptographic signature verification. See [SECURITY.md](docs/en/SECURITY.md#7-reliable-auto-update) for details.
 

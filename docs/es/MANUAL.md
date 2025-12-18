@@ -288,6 +288,8 @@ Cuando se inicia sin argumentos, RedAudit presenta un **Menú Principal Interact
 3. **Comparar reportes (JSON)**: Compara 2 reportes JSON para ver diferencias.
 0. **Salir**: Salir.
 
+Tras una actualización exitosa, RedAudit muestra un aviso de "reiniciar el terminal" y sale para asegurar una carga limpia de la nueva versión.
+
 Si eliges escanear, el asistente te guiará por:
 
 - Selección de objetivo (IP/CIDR).

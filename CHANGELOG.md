@@ -11,6 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.5.2] - 2025-12-18 (Hotfix)
+
+### Added
+
+- **Net Discovery activity indicator**: Network discovery phases now provide visible activity feedback so the terminal doesn't look "stuck".
+- **Timeout-aware ETA**: Progress bars now display a conservative upper bound (`ETA≤ …`) that accounts for configured timeouts.
+
+### Changed
+
+- **Cleaner terminal output**: Progress UI reduces noisy status logs while active to keep the operator experience readable.
+
+### Fixed
+
+- **Post-update flow**: After installing an update, RedAudit now shows a large "restart the terminal" notice, waits for confirmation, and exits to prevent mixed-version execution.
+
 ## [3.5.1] - 2025-12-17 (Hotfix)
 
 ### Added

@@ -4,7 +4,7 @@
 
 RedAudit es una herramienta CLI para auditoría de red estructurada y hardening en sistemas Kali/Debian.
 
-![Versión](https://img.shields.io/badge/versión-3.5.0-blue?style=flat-square)
+![Versión](https://img.shields.io/github/v/tag/dorinbadea/RedAudit?sort=semver&style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square)
 ![Licencia](https://img.shields.io/badge/licencia-GPLv3-green?style=flat-square)
 
@@ -16,7 +16,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.5.0
+                                      v3.5.1
       Herramienta Interactiva de Auditoría de Red
 ```
 
@@ -158,7 +158,7 @@ Verifica la integridad de la instalación:
 which redaudit  # Debe devolver: /usr/local/bin/redaudit
 
 # 2. Verificar versión
-redaudit --version  # Debe mostrar: RedAudit v3.5.0
+redaudit --version  # Debe mostrar: RedAudit v3.5.1
 
 # 3. Verificar dependencias core
 command -v nmap && command -v tcpdump && command -v python3  # Todos deben existir
@@ -283,7 +283,7 @@ RedAudit puede verificar e instalar actualizaciones automáticamente:
 - **Verificación al Inicio**: Pregunta si deseas buscar actualizaciones en modo interactivo
 - **Instalación Staged**: Las actualizaciones usan staging atómico con rollback automático en caso de fallo (v3.2.2+)
 - **Auto-Instalación**: Descarga e instala actualizaciones vía `git clone`
-- **Auto-Reinicio**: Se reinicia automáticamente con el nuevo código usando `os.execv()`
+- **Reinicio post-actualización**: Tras instalar una actualización, RedAudit muestra un aviso de reinicio y sale. Inicia un nuevo terminal para cargar la nueva versión.
 - **Flag de Omisión**: Usa `--skip-update-check` para desactivar la verificación
 
 > **Nota**: El actualizador verifica hashes de commit de git para integridad pero no realiza verificación de firmas criptográficas. Ver [SECURITY.md](docs/es/SECURITY.md#7-auto-actualización-fiable) para detalles.

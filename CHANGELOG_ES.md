@@ -11,6 +11,21 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 - (nada aún)
 
+## [3.5.2] - 2025-12-18 (Hotfix)
+
+### Añadido
+
+- **Indicador de actividad en Net Discovery**: Las fases de descubrimiento de red ahora muestran feedback visible para que el terminal no parezca "bloqueado".
+- **ETA consciente de timeouts**: Las barras de progreso muestran una cota superior conservadora (`ETA≤ …`) que tiene en cuenta los timeouts configurados.
+
+### Cambiado
+
+- **Salida más limpia**: La UI de progreso reduce el ruido de logs mientras está activa para mantener la experiencia legible.
+
+### Corregido
+
+- **Flujo post-actualización**: Tras instalar una actualización, RedAudit muestra un aviso grande de "reinicia el terminal", espera confirmación y sale para evitar ejecutar mezcla de versiones.
+
 ## [3.5.1] - 2025-12-17 (Hotfix)
 
 ### Añadido

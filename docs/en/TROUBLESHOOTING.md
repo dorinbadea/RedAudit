@@ -108,10 +108,12 @@ sudo bash redaudit_install.sh -y
 ### 8b. Version/banner not refreshed after update
 
 **Symptom**: You updated RedAudit but the banner still shows the old version.
-**Cause**: Your shell may be caching the executable path.
+**Cause**: Your shell may be caching the executable path (or you're still in the same terminal session).
 **Resolution**:
 
-- Restart the terminal, or run `hash -r` (zsh/bash).
+- Restart the terminal (recommended).
+- If you must stay in the same shell session, run `hash -r` (zsh/bash) to clear the command cache.
+- Verify which binary is being executed: `command -v redaudit`.
 
 ### 9. IPv6 scanning not working (v3.0)
 

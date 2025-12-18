@@ -190,6 +190,11 @@ TRANSLATIONS = {
             "Note: If the banner/version does not refresh after an update, restart your terminal "
             "or run `hash -r` (zsh/bash)."
         ),
+        "update_restart_terminal_title": "RESTART REQUIRED",
+        "update_restart_terminal_body": "Please restart the terminal to apply the changes.",
+        "update_restart_terminal_hint": "Recommended: close and reopen this terminal. Alternative: run `{}`.",
+        "update_restart_terminal_prompt": "RedAudit will exit now to prevent running mixed versions.",
+        "update_restart_terminal_press_enter": "Press Enter to exit...",
         "update_home_changes_detected_skip": "Local changes detected in {}. Skipping home folder update.",
         "update_home_changes_detected_abort": (
             "Local changes detected in {}. Commit/stash or remove the folder before updating."
@@ -449,6 +454,15 @@ TRANSLATIONS = {
             "Nota: Si el banner/versión no se refresca tras actualizar, reinicia el terminal "
             "o ejecuta `hash -r` (zsh/bash)."
         ),
+        "update_restart_terminal_title": "REINICIO REQUERIDO",
+        "update_restart_terminal_body": "Por favor, reinicie la terminal para aplicar los cambios.",
+        "update_restart_terminal_hint": (
+            "Recomendado: cierra y vuelve a abrir esta terminal. Alternativa: ejecuta `{}`."
+        ),
+        "update_restart_terminal_prompt": (
+            "RedAudit se cerrará ahora para evitar ejecutar versiones mezcladas."
+        ),
+        "update_restart_terminal_press_enter": "Pulsa Enter para salir...",
         "update_home_changes_detected_skip": (
             "Detectados cambios locales en {}. Omitiendo la actualización de la carpeta en home."
         ),
