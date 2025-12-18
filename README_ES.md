@@ -4,7 +4,7 @@
 
 RedAudit es una herramienta CLI para auditoría de red estructurada y hardening en sistemas Kali/Debian.
 
-![Versión](https://img.shields.io/badge/versión-3.5.0-blue?style=flat-square)
+![Versión](https://img.shields.io/github/v/tag/dorinbadea/RedAudit?sort=semver&style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square)
 ![Licencia](https://img.shields.io/badge/licencia-GPLv3-green?style=flat-square)
 
@@ -16,7 +16,7 @@ RedAudit es una herramienta CLI para auditoría de red estructurada y hardening 
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_
 |_| \_\___|\__,_/_/   \_\__,_|\__,_|_|\__|
-                                      v3.5.0
+                                      v3.5.1
       Herramienta Interactiva de Auditoría de Red
 ```
 
@@ -158,7 +158,7 @@ Verifica la integridad de la instalación:
 which redaudit  # Debe devolver: /usr/local/bin/redaudit
 
 # 2. Verificar versión
-redaudit --version  # Debe mostrar: RedAudit v3.5.0
+redaudit --version  # Debe mostrar: RedAudit v3.5.1
 
 # 3. Verificar dependencias core
 command -v nmap && command -v tcpdump && command -v python3  # Todos deben existir
