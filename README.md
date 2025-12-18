@@ -82,10 +82,13 @@ sudo redaudit
 | Capability | Description |
 |:---|:---|
 | **Persistent Defaults** | User preferences stored in `~/.redaudit/config.json` |
+| **Interactive Webhooks** | Real-time alerts via Slack, Teams, or PagerDuty (wizard-configurable) |
+| **Session Logging** | Dual-format terminal output capture (`.log` raw + `.txt` clean) for audit trails |
 | **IPv6 + Proxy Support** | Full dual-stack scanning with SOCKS5 pivoting |
 | **Rate Limiting** | Configurable inter-host delay with ±30% jitter for IDS evasion |
 | **Bilingual Interface** | Complete English/Spanish localization |
 | **Auto-Update** | Atomic staged updates with automatic rollback on failure |
+| **Osquery Verification** | Post-scan host configuration validation via SSH (new in v3.7) |
 
 ---
 
