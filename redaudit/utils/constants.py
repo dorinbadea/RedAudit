@@ -5,14 +5,78 @@ Copyright (C) 2025  Dorin Badea
 GPLv3 License
 """
 
-# Version - dynamically read from pyproject.toml (v3.6+)
-try:
-    from importlib.metadata import version as _get_version
+from __future__ import annotations
 
-    VERSION = _get_version("redaudit")
-except Exception:
-    # Fallback for editable installs or development environments
-    VERSION = "0.0.0-dev"
+import re
+from pathlib import Path
+from typing import Optional
+
+
+def _read_packaged_version_file() -> Optional[str]:
+    """
+    Read the version from the packaged VERSION file.
+
+    This supports "script-based" installs where RedAudit is copied into
+    `/usr/local/lib/redaudit` (no Python package metadata available), which would
+    otherwise fall back to `0.0.0-dev` and break updater comparisons.
+    """
+
+    try:
+        version_path = Path(__file__).resolve().parents[1] / "VERSION"
+        if not version_path.is_file():
+            return None
+        raw = version_path.read_text(encoding="utf-8").strip()
+        if not raw:
+            return None
+        if not re.match(r"^\d+\.\d+\.\d+([.-][0-9A-Za-z.+-]+)?$", raw):
+            return None
+        return raw
+    except Exception:
+        return None
+
+
+def _read_pyproject_version() -> Optional[str]:
+    """
+    Best-effort read of `pyproject.toml` version for dev/source runs.
+    """
+
+    try:
+        pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+        if not pyproject.is_file():
+            return None
+        content = pyproject.read_text(encoding="utf-8", errors="ignore")
+        match = re.search(r'(?m)^version\s*=\s*"([^"]+)"\s*$', content)
+        if not match:
+            return None
+        return match.group(1).strip()
+    except Exception:
+        return None
+
+
+def _resolve_version() -> str:
+    # 1) Preferred: installed package metadata (pip/venv/CI).
+    try:
+        from importlib.metadata import version as _get_version
+
+        return _get_version("redaudit")
+    except Exception:
+        pass
+
+    # 2) Script-based install fallback: packaged VERSION file.
+    file_version = _read_packaged_version_file()
+    if file_version:
+        return file_version
+
+    # 3) Dev/source fallback: parse pyproject if available.
+    pyproject_version = _read_pyproject_version()
+    if pyproject_version:
+        return pyproject_version
+
+    # 4) Final fallback.
+    return "0.0.0-dev"
+
+
+VERSION = _resolve_version()
 
 SCHEMA_VERSION = "3.3"  # Report schema version (may differ from app version)
 
