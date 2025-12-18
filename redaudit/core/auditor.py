@@ -1897,9 +1897,13 @@ class InteractiveNetworkAuditor(WizardMixin):
                     net_discovery_enabled=self.config.get("net_discovery_enabled"),
                     net_discovery_redteam=self.config.get("net_discovery_redteam"),
                     net_discovery_active_l2=self.config.get("net_discovery_active_l2"),
-                    net_discovery_kerberos_userenum=self.config.get("net_discovery_kerberos_userenum"),
+                    net_discovery_kerberos_userenum=self.config.get(
+                        "net_discovery_kerberos_userenum"
+                    ),
                     net_discovery_kerberos_realm=self.config.get("net_discovery_kerberos_realm"),
-                    net_discovery_kerberos_userlist=self.config.get("net_discovery_kerberos_userlist"),
+                    net_discovery_kerberos_userlist=self.config.get(
+                        "net_discovery_kerberos_userlist"
+                    ),
                     lang=self.lang,
                 )
                 self.print_status(
@@ -2322,15 +2326,25 @@ class InteractiveNetworkAuditor(WizardMixin):
         self.config["topology_only"] = defaults_for_run.get("topology_only", False)
 
         # 9. Net discovery / Red team (wizard)
-        self.config["net_discovery_enabled"] = bool(defaults_for_run.get("net_discovery_enabled", False))
-        self.config["net_discovery_redteam"] = bool(defaults_for_run.get("net_discovery_redteam", False))
-        self.config["net_discovery_active_l2"] = bool(defaults_for_run.get("net_discovery_active_l2", False))
+        self.config["net_discovery_enabled"] = bool(
+            defaults_for_run.get("net_discovery_enabled", False)
+        )
+        self.config["net_discovery_redteam"] = bool(
+            defaults_for_run.get("net_discovery_redteam", False)
+        )
+        self.config["net_discovery_active_l2"] = bool(
+            defaults_for_run.get("net_discovery_active_l2", False)
+        )
         self.config["net_discovery_kerberos_userenum"] = bool(
             defaults_for_run.get("net_discovery_kerberos_userenum", False)
         )
-        self.config["net_discovery_kerberos_realm"] = defaults_for_run.get("net_discovery_kerberos_realm")
+        self.config["net_discovery_kerberos_realm"] = defaults_for_run.get(
+            "net_discovery_kerberos_realm"
+        )
         userlist = defaults_for_run.get("net_discovery_kerberos_userlist")
-        self.config["net_discovery_kerberos_userlist"] = expand_user_path(userlist) if userlist else None
+        self.config["net_discovery_kerberos_userlist"] = (
+            expand_user_path(userlist) if userlist else None
+        )
 
     def _configure_scan_interactive(self, defaults_for_run: Dict) -> None:
         """Interactive prompt sequence for scan configuration."""
@@ -2545,9 +2559,13 @@ class InteractiveNetworkAuditor(WizardMixin):
                         f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_realm_q')} "
                         f"[{persisted_realm}]: "
                     ).strip()
-                    self.config["net_discovery_kerberos_realm"] = realm_hint or persisted_realm or None
+                    self.config["net_discovery_kerberos_realm"] = (
+                        realm_hint or persisted_realm or None
+                    )
 
-                    persisted_userlist = defaults_for_run.get("net_discovery_kerberos_userlist") or ""
+                    persisted_userlist = (
+                        defaults_for_run.get("net_discovery_kerberos_userlist") or ""
+                    )
                     userlist = input(
                         f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_userlist_q')} "
                         f"[{persisted_userlist}]: "
