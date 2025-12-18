@@ -15,15 +15,18 @@ import subprocess
 import threading
 import time
 import random
+import math
 import importlib
 import ipaddress
 import logging
 import base64
 import textwrap
+import re
+from contextlib import contextmanager
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging.handlers import RotatingFileHandler
-from typing import Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from redaudit.utils.constants import (
     VERSION,
@@ -94,6 +97,97 @@ from redaudit.core.reporter import (
 
 # Try to import nmap
 nmap = None
+
+
+class _ActivityIndicator:
+    def __init__(
+        self,
+        *,
+        label: str,
+        initial: str = "running...",
+        refresh_s: float = 0.25,
+        stream=None,
+        touch_activity: Optional[Callable[[], None]] = None,
+    ):
+        self._label = str(label)[:50]
+        self._message = str(initial)[:200]
+        self._refresh_s = float(refresh_s) if refresh_s and refresh_s > 0 else 0.25
+        self._stream = stream if stream is not None else sys.stderr
+        self._touch_activity = touch_activity
+        self._stop = threading.Event()
+        self._lock = threading.Lock()
+        self._thread: Optional[threading.Thread] = None
+        self._frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
+    def update(self, message: str) -> None:
+        with self._lock:
+            self._message = str(message)[:200]
+
+    def __enter__(self) -> "_ActivityIndicator":
+        if self._thread:
+            return self
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self._stop.set()
+        if self._thread:
+            try:
+                self._thread.join(timeout=1.0)
+            except Exception:
+                pass
+        self._thread = None
+        self._clear_line()
+
+    def _clear_line(self) -> None:
+        try:
+            if getattr(self._stream, "isatty", lambda: False)():
+                self._stream.write("\r" + (" " * 120) + "\r")
+                self._stream.flush()
+        except Exception:
+            pass
+
+    def _run(self) -> None:
+        start = time.monotonic()
+        tick = 0
+        last_line = ""
+        while not self._stop.is_set():
+            tick += 1
+            try:
+                if self._touch_activity:
+                    self._touch_activity()
+            except Exception:
+                pass
+
+            elapsed = time.monotonic() - start
+            with self._lock:
+                msg = self._message
+
+            if getattr(self._stream, "isatty", lambda: False)():
+                frame = self._frames[tick % len(self._frames)]
+                line = f"{frame} {self._label}: {msg}  (elapsed {elapsed:0.0f}s)"
+                # Avoid excessive writes if the line didn't change.
+                if line != last_line:
+                    try:
+                        self._stream.write("\r" + line[:120].ljust(120))
+                        self._stream.flush()
+                    except Exception:
+                        pass
+                last_line = line
+            else:
+                # Non-TTY: emit a bounded heartbeat every ~10 seconds.
+                if int(elapsed) % 10 == 0 and int(elapsed) != int(elapsed - self._refresh_s):
+                    try:
+                        self._stream.write(
+                            f"[INFO] {self._label}: {msg} (elapsed {int(elapsed)}s)\n"
+                        )
+                        self._stream.flush()
+                    except Exception:
+                        pass
+
+            time.sleep(self._refresh_s)
 
 
 class InteractiveNetworkAuditor:
@@ -167,6 +261,7 @@ class InteractiveNetworkAuditor:
         self.last_activity = datetime.now()
         self.activity_lock = threading.Lock()
         self._print_lock = threading.Lock()
+        self._ui_progress_active = False
         self.heartbeat_stop = False
         self.heartbeat_thread = None
         self.current_phase = "init"
@@ -189,7 +284,7 @@ class InteractiveNetworkAuditor:
         """Get translated text."""
         return get_text(key, self.lang, *args)
 
-    def print_status(self, message, status="INFO", update_activity=True):
+    def print_status(self, message, status="INFO", update_activity=True, *, force: bool = False):
         """Print status message with timestamp and color."""
         if update_activity:
             with self.activity_lock:
@@ -216,6 +311,11 @@ class InteractiveNetworkAuditor:
 
         # Wrap long messages on word boundaries to avoid splitting words mid-line.
         msg = "" if message is None else str(message)
+        if self._ui_progress_active and is_tty and not force:
+            if not self._should_emit_during_progress(msg, status_display):
+                if self.logger:
+                    self.logger.debug("UI suppressed [%s]: %s", status_display, msg)
+                return
         lines = []
         for raw_line in msg.splitlines() or [""]:
             if not raw_line:
@@ -238,6 +338,118 @@ class InteractiveNetworkAuditor:
             for line in lines[1:]:
                 print(f"  {line}")  # lgtm[py/clear-text-logging-sensitive-data]
             sys.stdout.flush()
+
+    def _touch_activity(self) -> None:
+        with self.activity_lock:
+            self.last_activity = datetime.now()
+
+    def _should_emit_during_progress(self, msg: str, status_display: str) -> bool:
+        """
+        Reduce terminal noise while progress UIs are active.
+
+        Keep FAIL always; keep WARN only for "signal" messages; suppress routine INFO/OK.
+        """
+        if status_display in ("FAIL",):
+            return True
+        if status_display in ("INFO", "OK"):
+            return False
+        text = (msg or "").lower()
+        if "⚠" in msg:
+            return True
+        signal_terms = (
+            "vulnerab",
+            "exploit",
+            "cve",
+            "backdoor",
+            "error",
+            "failed",
+            "timeout",
+        )
+        return any(term in text for term in signal_terms)
+
+    @staticmethod
+    def _format_eta(seconds: float) -> str:
+        try:
+            sec = int(max(0, round(float(seconds))))
+        except Exception:
+            return "--:--"
+        h = sec // 3600
+        m = (sec % 3600) // 60
+        s = sec % 60
+        return f"{h:d}:{m:02d}:{s:02d}" if h else f"{m:d}:{s:02d}"
+
+    @staticmethod
+    def _parse_host_timeout_s(nmap_args: str) -> Optional[float]:
+        if not isinstance(nmap_args, str):
+            return None
+        m = re.search(r"--host-timeout\\s+(\\d+)(ms|s|m|h)\\b", nmap_args)
+        if not m:
+            return None
+        val = int(m.group(1))
+        unit = m.group(2)
+        if unit == "ms":
+            return val / 1000.0
+        if unit == "s":
+            return float(val)
+        if unit == "m":
+            return float(val) * 60.0
+        if unit == "h":
+            return float(val) * 3600.0
+        return None
+
+    def _estimate_vuln_budget_s(self, host_info: Dict[str, Any]) -> float:
+        """
+        Timeout-aware upper bound for vulnerability scanning on a host.
+
+        Uses tool timeouts configured in code paths (curl/wget/openssl/whatweb/nikto/testssl).
+        """
+        ports = [p for p in host_info.get("ports", []) if p.get("is_web_service")]
+        if not ports:
+            count = host_info.get("web_ports_count", 0)
+            try:
+                count_int = int(count)
+            except Exception:
+                count_int = 0
+            ports = [{"port": 80, "service": "http"}] * max(0, count_int)
+
+        has_http = bool(self.extra_tools.get("curl") or self.extra_tools.get("wget"))
+        has_tls = bool(self.extra_tools.get("openssl"))
+        has_whatweb = bool(self.extra_tools.get("whatweb"))
+        has_nikto = bool(self.extra_tools.get("nikto"))
+        has_testssl = bool(self.extra_tools.get("testssl.sh"))
+        is_full = self.config.get("scan_mode") == "completo"
+
+        budget = 0.0
+        for p in ports:
+            try:
+                port = int(p.get("port", 0) or 0)
+            except Exception:
+                port = 0
+            service = str(p.get("service", "") or "")
+            service_l = service.lower()
+            is_https = ("https" in service_l) or ("ssl" in service_l) or port == 443
+
+            if has_http:
+                budget += 15.0
+            if has_tls and is_https:
+                budget += 10.0
+            if has_whatweb:
+                budget += 30.0
+            if is_full and has_nikto:
+                budget += 150.0
+            if is_full and has_testssl and is_https:
+                budget += 90.0
+
+        return max(5.0, budget)
+
+    @contextmanager
+    def _progress_ui(self):
+        prev = self._ui_progress_active
+        self._ui_progress_active = True
+        try:
+            yield
+        finally:
+            self._ui_progress_active = prev
 
     @staticmethod
     def sanitize_ip(ip_str):
@@ -1187,6 +1399,13 @@ class InteractiveNetworkAuditor:
         self.print_status(self.t("scan_start", len(hosts)), "HEADER")
         unique_hosts = sorted(set(hosts))
         results = []
+        threads = max(1, int(self.config.get("threads", 1)))
+        host_timeout_s = (
+            self._parse_host_timeout_s(
+                get_nmap_arguments(self.config.get("scan_mode"), self.config)
+            )
+            or 60.0
+        )
 
         # Try to use rich for better progress visualization
         try:
@@ -1220,19 +1439,56 @@ class InteractiveNetworkAuditor:
             total = len(futures)
             done = 0
 
-            if use_rich and total > 0:
-                # Rich progress bar
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    BarColumn(),
-                    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                    TextColumn("({task.completed}/{task.total})"),
-                    TimeElapsedColumn(),
-                    TimeRemainingColumn(),
-                    console=Console(stderr=True),
-                ) as progress:
-                    task = progress.add_task(f"[cyan]{self.t('scanning_hosts')}", total=total)
+            with self._progress_ui():
+                if use_rich and total > 0:
+                    # Rich progress bar (quiet UI + timeout-aware upper bound ETA)
+                    with Progress(
+                        SpinnerColumn(),
+                        TextColumn("[progress.description]{task.description}"),
+                        BarColumn(),
+                        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                        TextColumn("({task.completed}/{task.total})"),
+                        TimeElapsedColumn(),
+                        TextColumn("ETA≤ {task.fields[eta_upper]}"),
+                        TimeRemainingColumn(),
+                        console=Console(stderr=True),
+                    ) as progress:
+                        eta_upper_init = self._format_eta(
+                            host_timeout_s * math.ceil(max(0, total) / threads)
+                        )
+                        task = progress.add_task(
+                            f"[cyan]{self.t('scanning_hosts')}",
+                            total=total,
+                            eta_upper=eta_upper_init,
+                        )
+                        for fut in as_completed(futures):
+                            if self.interrupted:
+                                # C2 fix: Cancel pending futures
+                                for pending_fut in futures:
+                                    pending_fut.cancel()
+                                break
+                            host_ip = futures[fut]
+                            try:
+                                res = fut.result()
+                                results.append(res)
+                            except Exception as exc:
+                                self.logger.error("Worker error for %s: %s", host_ip, exc)
+                                self.logger.debug(
+                                    "Worker exception details for %s", host_ip, exc_info=True
+                                )
+                            done += 1
+                            remaining = max(0, total - done)
+                            eta_upper = self._format_eta(
+                                host_timeout_s * math.ceil(remaining / threads) if remaining else 0
+                            )
+                            progress.update(
+                                task,
+                                advance=1,
+                                description=f"[cyan]{self.t('scanned_host', host_ip)}",
+                                eta_upper=eta_upper,
+                            )
+                else:
+                    # Fallback to basic progress (throttled, includes timeout-aware upper bound ETA)
                     for fut in as_completed(futures):
                         if self.interrupted:
                             # C2 fix: Cancel pending futures
@@ -1249,31 +1505,17 @@ class InteractiveNetworkAuditor:
                                 "Worker exception details for %s", host_ip, exc_info=True
                             )
                         done += 1
-                        progress.update(
-                            task,
-                            advance=1,
-                            description=f"[cyan]{self.t('scanned_host', host_ip)}",
-                        )
-            else:
-                # Fallback to basic progress
-                for fut in as_completed(futures):
-                    if self.interrupted:
-                        # C2 fix: Cancel pending futures
-                        for pending_fut in futures:
-                            pending_fut.cancel()
-                        break
-                    host_ip = futures[fut]
-                    try:
-                        res = fut.result()
-                        results.append(res)
-                    except Exception as exc:
-                        self.logger.error("Worker error for %s: %s", host_ip, exc)
-                        self.logger.debug("Worker exception details for %s", host_ip, exc_info=True)
-                    done += 1
-                    if total and done % max(1, total // 10) == 0:
-                        self.print_status(
-                            self.t("progress", done, total), "INFO", update_activity=False
-                        )
+                        if total and done % max(1, total // 10) == 0:
+                            remaining = max(0, total - done)
+                            eta_upper = self._format_eta(
+                                host_timeout_s * math.ceil(remaining / threads) if remaining else 0
+                            )
+                            self.print_status(
+                                f"{self.t('progress', done, total)} | ETA≤ {eta_upper}",
+                                "INFO",
+                                update_activity=False,
+                                force=True,
+                            )
 
         self.results["hosts"] = results
         return results
@@ -1416,10 +1658,13 @@ class InteractiveNetworkAuditor:
 
         # Count total web ports for info
         total_ports = sum(h.get("web_ports_count", 0) for h in web_hosts)
+        budgets = {h["ip"]: self._estimate_vuln_budget_s(h) for h in web_hosts if h.get("ip")}
+        remaining_budget_s = float(sum(budgets.values()))
 
         self.current_phase = "vulns"
         self.print_status(self.t("vuln_analysis", len(web_hosts)), "HEADER")
         workers = min(3, self.config["threads"])
+        workers = max(1, int(workers))
 
         # Try to use rich for progress visualization
         try:
@@ -1445,19 +1690,58 @@ class InteractiveNetworkAuditor:
             total = len(futures)
             done = 0
 
-            if use_rich and total > 0:
-                # Rich progress bar for vulnerability scanning
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    BarColumn(),
-                    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                    TextColumn("({task.completed}/{task.total})"),
-                    TimeElapsedColumn(),
-                    TimeRemainingColumn(),
-                    console=Console(stderr=True),
-                ) as progress:
-                    task = progress.add_task(f"[cyan]Vuln scan ({total_ports} ports)", total=total)
+            with self._progress_ui():
+                if use_rich and total > 0:
+                    # Rich progress bar for vulnerability scanning (quiet UI + timeout-aware upper bound ETA)
+                    with Progress(
+                        SpinnerColumn(),
+                        TextColumn("[progress.description]{task.description}"),
+                        BarColumn(),
+                        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                        TextColumn("({task.completed}/{task.total})"),
+                        TimeElapsedColumn(),
+                        TextColumn("ETA≤ {task.fields[eta_upper]}"),
+                        TimeRemainingColumn(),
+                        console=Console(stderr=True),
+                    ) as progress:
+                        eta_upper_init = self._format_eta(remaining_budget_s / workers)
+                        task = progress.add_task(
+                            f"[cyan]Vuln scan ({total_ports} ports)",
+                            total=total,
+                            eta_upper=eta_upper_init,
+                        )
+                        for fut in as_completed(futures):
+                            if self.interrupted:
+                                for pending_fut in futures:
+                                    pending_fut.cancel()
+                                break
+                            host_ip = futures[fut]
+                            try:
+                                res = fut.result()
+                                if res:
+                                    self.results["vulnerabilities"].append(res)
+                                    vuln_count = len(res.get("vulnerabilities", []))
+                                    if vuln_count > 0 and self.logger:
+                                        self.logger.info(
+                                            "Vulnerabilities recorded on %s", res["host"]
+                                        )
+                            except Exception as exc:
+                                self.logger.error("Vuln worker error for %s: %s", host_ip, exc)
+                                self.logger.debug(
+                                    "Vuln worker exception details for %s", host_ip, exc_info=True
+                                )
+                            done += 1
+                            remaining_budget_s = max(
+                                0.0, remaining_budget_s - budgets.get(host_ip, 0.0)
+                            )
+                            progress.update(
+                                task,
+                                advance=1,
+                                description=f"[cyan]{self.t('scanned_host', host_ip)}",
+                                eta_upper=self._format_eta(remaining_budget_s / workers),
+                            )
+                else:
+                    # Fallback without rich (throttled)
                     for fut in as_completed(futures):
                         if self.interrupted:
                             for pending_fut in futures:
@@ -1468,44 +1752,23 @@ class InteractiveNetworkAuditor:
                             res = fut.result()
                             if res:
                                 self.results["vulnerabilities"].append(res)
-                                vuln_count = len(res.get("vulnerabilities", []))
-                                if vuln_count > 0:
-                                    # Avoid noisy per-host warnings; progress + final summary is enough.
-                                    if self.logger:
-                                        self.logger.info(
-                                            "Vulnerabilities recorded on %s", res["host"]
-                                        )
                         except Exception as exc:
-                            self.logger.error("Vuln worker error for %s: %s", host_ip, exc)
-                            self.logger.debug(
-                                "Vuln worker exception details for %s", host_ip, exc_info=True
-                            )
+                            self.print_status(self.t("worker_error", exc), "WARNING", force=True)
+                            if self.logger:
+                                self.logger.debug(
+                                    "Vuln worker exception details for %s", host_ip, exc_info=True
+                                )
                         done += 1
-                        progress.update(
-                            task,
-                            advance=1,
-                            description=f"[cyan]{self.t('scanned_host', host_ip)}",
+                        remaining_budget_s = max(
+                            0.0, remaining_budget_s - budgets.get(host_ip, 0.0)
                         )
-            else:
-                # Fallback without rich
-                for fut in as_completed(futures):
-                    if self.interrupted:
-                        for pending_fut in futures:
-                            pending_fut.cancel()
-                        break
-                    host_ip = futures[fut]
-                    try:
-                        res = fut.result()
-                        if res:
-                            self.results["vulnerabilities"].append(res)
-                            self.print_status(self.t("vulns_found", res["host"]), "WARNING")
-                    except Exception as exc:
-                        self.print_status(self.t("worker_error", exc), "WARNING")
-                        if self.logger:
-                            self.logger.debug(
-                                "Vuln worker exception details for %s", host_ip, exc_info=True
+                        if total and done % max(1, total // 10) == 0:
+                            self.print_status(
+                                f"{self.t('progress', done, total)} | ETA≤ {self._format_eta(remaining_budget_s / workers)}",
+                                "INFO",
+                                update_activity=False,
+                                force=True,
                             )
-                    done += 1
 
     # ---------- Reporting ----------
 
@@ -1853,6 +2116,16 @@ class InteractiveNetworkAuditor:
                             transient=True,
                         ) as progress:
                             task = progress.add_task("running...", total=None)
+
+                            def _nd_progress(label: str, step_index: int, step_total: int) -> None:
+                                try:
+                                    progress.update(
+                                        task,
+                                        description=f"{label} ({step_index}/{step_total})",
+                                    )
+                                except Exception:
+                                    pass
+
                             self.results["net_discovery"] = discover_networks(
                                 target_networks=self.config.get("target_networks", []),
                                 interface=iface,
@@ -1860,20 +2133,30 @@ class InteractiveNetworkAuditor:
                                 redteam=self.config.get("net_discovery_redteam", False),
                                 redteam_options=redteam_options,
                                 extra_tools=self.extra_tools,
+                                progress_callback=_nd_progress,
                                 logger=self.logger,
                             )
                             progress.update(task, description="complete")
                     except ImportError:
                         # Fallback without progress bar
-                        self.results["net_discovery"] = discover_networks(
-                            target_networks=self.config.get("target_networks", []),
-                            interface=iface,
-                            protocols=self.config.get("net_discovery_protocols"),
-                            redteam=self.config.get("net_discovery_redteam", False),
-                            redteam_options=redteam_options,
-                            extra_tools=self.extra_tools,
-                            logger=self.logger,
-                        )
+                        with _ActivityIndicator(
+                            label="Net Discovery",
+                            touch_activity=self._touch_activity,
+                        ) as indicator:
+
+                            def _nd_progress(label: str, step_index: int, step_total: int) -> None:
+                                indicator.update(f"{label} ({step_index}/{step_total})")
+
+                            self.results["net_discovery"] = discover_networks(
+                                target_networks=self.config.get("target_networks", []),
+                                interface=iface,
+                                protocols=self.config.get("net_discovery_protocols"),
+                                redteam=self.config.get("net_discovery_redteam", False),
+                                redteam_options=redteam_options,
+                                extra_tools=self.extra_tools,
+                                progress_callback=_nd_progress,
+                                logger=self.logger,
+                            )
 
                     # Log discovered DHCP servers
                     dhcp_servers = self.results["net_discovery"].get("dhcp_servers", [])

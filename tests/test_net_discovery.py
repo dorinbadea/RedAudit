@@ -204,6 +204,30 @@ class TestDiscoverNetworks(unittest.TestCase):
         self.assertIn("dhcp", result["protocols_used"])
         self.assertEqual(len(result["alive_hosts"]), 1)
 
+    @patch("redaudit.core.net_discovery._check_tools")
+    @patch("redaudit.core.net_discovery.dhcp_discover")
+    @patch("redaudit.core.net_discovery.fping_sweep")
+    def test_discover_networks_progress_callback(self, mock_fping, mock_dhcp, mock_tools):
+        mock_tools.return_value = {"nmap": True, "fping": True, "nbtscan": False}
+        mock_dhcp.return_value = {"servers": [], "error": None}
+        mock_fping.return_value = {"alive_hosts": ["192.168.1.1"], "error": None}
+
+        calls = []
+
+        def cb(label: str, step_index: int, step_total: int):
+            calls.append((label, step_index, step_total))
+
+        discover_networks(
+            target_networks=["192.168.1.0/24"],
+            protocols=["dhcp", "fping"],
+            progress_callback=cb,
+        )
+
+        self.assertTrue(calls, "progress_callback should be called at least once")
+        self.assertTrue(any("DHCP" in c[0] for c in calls))
+        self.assertTrue(any("ICMP" in c[0] for c in calls))
+        self.assertTrue(all(c[2] == 2 for c in calls), "step_total should be 2 for 2 protocols")
+
 
 class TestRedTeamDiscovery(unittest.TestCase):
     """Test Red Team net discovery helpers (best-effort)."""

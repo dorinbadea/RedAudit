@@ -20,10 +20,12 @@ import os
 import re
 import shutil
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from redaudit.core.command_runner import CommandRunner
 from redaudit.utils.dry_run import is_dry_run
+
+ProgressCallback = Callable[[str, int, int], None]
 
 
 def _run_cmd(
@@ -599,6 +601,7 @@ def discover_networks(
     redteam: bool = False,
     redteam_options: Optional[Dict[str, Any]] = None,
     extra_tools: Optional[Dict[str, str]] = None,
+    progress_callback: Optional[ProgressCallback] = None,
     logger=None,
 ) -> Dict[str, Any]:
     """
@@ -619,13 +622,25 @@ def discover_networks(
     if protocols is None:
         protocols = ["dhcp", "fping", "netbios", "mdns", "upnp", "arp", "hyperscan"]
 
+    protocols_norm = [p.strip().lower() for p in protocols if isinstance(p, str) and p.strip()]
+    step_total = len(protocols_norm)
+
+    def _progress(label: str, step_index: int) -> None:
+        if not progress_callback:
+            return
+        try:
+            progress_callback(str(label)[:200], int(step_index), int(step_total))
+        except Exception:
+            # Best-effort UX only; never fail discovery due to UI callback.
+            return
+
     tools = _check_tools()
     errors: List[str] = []
 
     result: Dict[str, Any] = {
         "enabled": True,
         "generated_at": datetime.now().isoformat(),
-        "protocols_used": protocols,
+        "protocols_used": protocols_norm,
         "redteam_enabled": redteam,
         "tools": tools,
         "dhcp_servers": [],
@@ -638,135 +653,146 @@ def discover_networks(
         "errors": errors,
     }
 
-    # DHCP Discovery
-    if "dhcp" in protocols:
-        dhcp_result = dhcp_discover(interface=interface, logger=logger)
-        if dhcp_result.get("servers"):
-            result["dhcp_servers"] = dhcp_result["servers"]
-        if dhcp_result.get("error"):
-            errors.append(f"dhcp: {dhcp_result['error']}")
+    for step_index, protocol in enumerate(protocols_norm, start=1):
+        if protocol == "dhcp":
+            _progress("DHCP discovery", step_index)
+            dhcp_result = dhcp_discover(interface=interface, logger=logger)
+            if dhcp_result.get("servers"):
+                result["dhcp_servers"] = dhcp_result["servers"]
+            if dhcp_result.get("error"):
+                errors.append(f"dhcp: {dhcp_result['error']}")
 
-    # Fping sweep (for each target network)
-    if "fping" in protocols:
-        all_alive = []
-        for target in target_networks:
-            fping_result = fping_sweep(target, logger=logger)
-            all_alive.extend(fping_result.get("alive_hosts", []))
-            if fping_result.get("error"):
-                errors.append(f"fping ({target}): {fping_result['error']}")
-        result["alive_hosts"] = list(set(all_alive))
+        elif protocol == "fping":
+            _progress("ICMP sweep (fping)", step_index)
+            all_alive = []
+            for idx, target in enumerate(target_networks, start=1):
+                if len(target_networks) > 1:
+                    _progress(f"ICMP sweep (fping) {idx}/{len(target_networks)}", step_index)
+                fping_result = fping_sweep(target, logger=logger)
+                all_alive.extend(fping_result.get("alive_hosts", []))
+                if fping_result.get("error"):
+                    errors.append(f"fping ({target}): {fping_result['error']}")
+            result["alive_hosts"] = list(set(all_alive))
 
-    # NetBIOS discovery
-    if "netbios" in protocols:
-        all_netbios = []
-        for target in target_networks:
-            netbios_result = netbios_discover(target, logger=logger)
-            all_netbios.extend(netbios_result.get("hosts", []))
-            if netbios_result.get("error"):
-                errors.append(f"netbios ({target}): {netbios_result['error']}")
-        result["netbios_hosts"] = all_netbios
+        elif protocol == "netbios":
+            _progress("NetBIOS discovery", step_index)
+            all_netbios = []
+            for idx, target in enumerate(target_networks, start=1):
+                if len(target_networks) > 1:
+                    _progress(f"NetBIOS discovery {idx}/{len(target_networks)}", step_index)
+                netbios_result = netbios_discover(target, logger=logger)
+                all_netbios.extend(netbios_result.get("hosts", []))
+                if netbios_result.get("error"):
+                    errors.append(f"netbios ({target}): {netbios_result['error']}")
+            result["netbios_hosts"] = all_netbios
 
-    # ARP discovery via netdiscover (active mode) + arp-scan
-    # v3.2.2b: Use multiple tools for better IoT coverage
-    if "arp" in protocols:
-        all_arp = []
-        seen_ips = set()
+        elif protocol == "arp":
+            _progress("ARP discovery", step_index)
+            all_arp = []
+            seen_ips = set()
 
-        # Method 1: arp-scan per interface (more reliable for IoT)
-        if tools.get("arp-scan") or shutil.which("arp-scan"):
-            for target in target_networks:
-                arp_result = arp_scan_active(target=target, interface=interface, logger=logger)
+            if tools.get("arp-scan") or shutil.which("arp-scan"):
+                for idx, target in enumerate(target_networks, start=1):
+                    if len(target_networks) > 1:
+                        _progress(
+                            f"ARP discovery (arp-scan) {idx}/{len(target_networks)}", step_index
+                        )
+                    arp_result = arp_scan_active(target=target, interface=interface, logger=logger)
+                    for host in arp_result.get("hosts", []):
+                        ip = host.get("ip")
+                        if ip and ip not in seen_ips:
+                            seen_ips.add(ip)
+                            all_arp.append(host)
+                    if arp_result.get("error"):
+                        errors.append(f"arp-scan ({target}): {arp_result['error']}")
+
+            for idx, target in enumerate(target_networks, start=1):
+                if len(target_networks) > 1:
+                    _progress(
+                        f"ARP discovery (netdiscover) {idx}/{len(target_networks)}", step_index
+                    )
+                arp_result = netdiscover_scan(
+                    target, active=True, interface=interface, logger=logger
+                )
                 for host in arp_result.get("hosts", []):
                     ip = host.get("ip")
                     if ip and ip not in seen_ips:
                         seen_ips.add(ip)
                         all_arp.append(host)
                 if arp_result.get("error"):
-                    errors.append(f"arp-scan ({target}): {arp_result['error']}")
+                    errors.append(f"netdiscover ({target}): {arp_result['error']}")
 
-        # Method 2: netdiscover (active mode)
-        for target in target_networks:
-            arp_result = netdiscover_scan(target, active=True, interface=interface, logger=logger)
-            for host in arp_result.get("hosts", []):
-                ip = host.get("ip")
-                if ip and ip not in seen_ips:
-                    seen_ips.add(ip)
-                    all_arp.append(host)
-            if arp_result.get("error"):
-                errors.append(f"netdiscover ({target}): {arp_result['error']}")
+            result["arp_hosts"] = all_arp
 
-        result["arp_hosts"] = all_arp
+        elif protocol == "mdns":
+            _progress("mDNS discovery", step_index)
+            mdns_result = mdns_discover(logger=logger)
+            if mdns_result.get("services"):
+                result["mdns_services"] = mdns_result["services"]
+            if mdns_result.get("error"):
+                errors.append(f"mdns: {mdns_result['error']}")
 
-    # mDNS discovery
-    if "mdns" in protocols:
-        mdns_result = mdns_discover(logger=logger)
-        if mdns_result.get("services"):
-            result["mdns_services"] = mdns_result["services"]
-        if mdns_result.get("error"):
-            errors.append(f"mdns: {mdns_result['error']}")
+        elif protocol == "upnp":
+            _progress("UPnP discovery", step_index)
+            upnp_result = upnp_discover(logger=logger)
+            if upnp_result.get("devices"):
+                result["upnp_devices"] = upnp_result["devices"]
+            if upnp_result.get("error"):
+                errors.append(f"upnp: {upnp_result['error']}")
 
-    # UPNP discovery
-    if "upnp" in protocols:
-        upnp_result = upnp_discover(logger=logger)
-        if upnp_result.get("devices"):
-            result["upnp_devices"] = upnp_result["devices"]
-        if upnp_result.get("error"):
-            errors.append(f"upnp: {upnp_result['error']}")
+        elif protocol == "hyperscan":
+            _progress("HyperScan (parallel discovery)", step_index)
+            try:
+                from redaudit.core.hyperscan import hyperscan_full_discovery
 
-    # v3.2.3: HyperScan parallel discovery (optional, adds IoT and hidden hosts)
-    if "hyperscan" in protocols:
-        try:
-            from redaudit.core.hyperscan import hyperscan_full_discovery
+                if logger:
+                    logger.info("Running HyperScan parallel discovery...")
 
-            if logger:
-                logger.info("Running HyperScan parallel discovery...")
-
-            hyperscan_result = hyperscan_full_discovery(
-                target_networks,
-                logger=logger,
-            )
-
-            # Merge HyperScan ARP hosts with existing
-            existing_ips = {h.get("ip") for h in result.get("arp_hosts", [])}
-            for host in hyperscan_result.get("arp_hosts", []):
-                if host.get("ip") not in existing_ips:
-                    result["arp_hosts"].append(host)
-                    existing_ips.add(host.get("ip"))
-
-            # Merge HyperScan UDP devices (IoT)
-            for device in hyperscan_result.get("udp_devices", []):
-                result["upnp_devices"].append(
-                    {
-                        "ip": device.get("ip"),
-                        "device": f"IoT ({device.get('protocol', 'unknown')})",
-                        "source": "hyperscan_udp",
-                    }
+                hyperscan_result = hyperscan_full_discovery(
+                    target_networks,
+                    logger=logger,
                 )
 
-            # Store HyperScan TCP hosts for port analysis
-            if hyperscan_result.get("tcp_hosts"):
-                result["hyperscan_tcp_hosts"] = hyperscan_result["tcp_hosts"]
+                existing_ips = {h.get("ip") for h in result.get("arp_hosts", [])}
+                for host in hyperscan_result.get("arp_hosts", []):
+                    if host.get("ip") not in existing_ips:
+                        result["arp_hosts"].append(host)
+                        existing_ips.add(host.get("ip"))
 
-            # Store backdoor candidates
-            if hyperscan_result.get("potential_backdoors"):
-                result["potential_backdoors"] = hyperscan_result["potential_backdoors"]
+                for device in hyperscan_result.get("udp_devices", []):
+                    result["upnp_devices"].append(
+                        {
+                            "ip": device.get("ip"),
+                            "device": f"IoT ({device.get('protocol', 'unknown')})",
+                            "source": "hyperscan_udp",
+                        }
+                    )
 
-            result["hyperscan_duration"] = hyperscan_result.get("duration_seconds", 0)
+                if hyperscan_result.get("tcp_hosts"):
+                    result["hyperscan_tcp_hosts"] = hyperscan_result["tcp_hosts"]
 
-            # v3.2.3: Visible CLI logging for HyperScan results
-            if logger:
-                arp_count = len(hyperscan_result.get("arp_hosts", []))
-                udp_count = len(hyperscan_result.get("udp_devices", []))
-                tcp_count = len(hyperscan_result.get("tcp_hosts", {}))
-                duration = hyperscan_result.get("duration_seconds", 0)
-                logger.info(
-                    f"HyperScan complete: {arp_count} ARP, {udp_count} UDP, {tcp_count} TCP hosts in {duration:.1f}s"
-                )
+                if hyperscan_result.get("potential_backdoors"):
+                    result["potential_backdoors"] = hyperscan_result["potential_backdoors"]
 
-        except ImportError as exc:
-            errors.append(f"hyperscan: module not available ({exc})")
-        except Exception as exc:
-            errors.append(f"hyperscan: {exc}")
+                result["hyperscan_duration"] = hyperscan_result.get("duration_seconds", 0)
+
+                if logger:
+                    arp_count = len(hyperscan_result.get("arp_hosts", []))
+                    udp_count = len(hyperscan_result.get("udp_devices", []))
+                    tcp_count = len(hyperscan_result.get("tcp_hosts", {}))
+                    duration = hyperscan_result.get("duration_seconds", 0)
+                    logger.info(
+                        "HyperScan complete: %s ARP, %s UDP, %s TCP hosts in %.1fs",
+                        arp_count,
+                        udp_count,
+                        tcp_count,
+                        float(duration),
+                    )
+
+            except ImportError as exc:
+                errors.append(f"hyperscan: module not available ({exc})")
+            except Exception as exc:
+                errors.append(f"hyperscan: {exc}")
 
     # Analyze for candidate VLANs
     result["candidate_vlans"] = _analyze_vlans(result)
