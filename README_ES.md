@@ -314,7 +314,7 @@ RedAudit orquesta estas herramientas:
 |:---|:---|:---|
 | **Escáner Core** | `nmap`, `python3-nmap` | Escaneo TCP/UDP, detección de servicios/versión, fingerprinting SO |
 | **Reconocimiento Web** | `whatweb`, `curl`, `wget`, `nikto` | Cabeceras HTTP, tecnologías, vulnerabilidades |
-| **Escáner Templates** | `nuclei` | Templates de vulnerabilidades community |
+| **Escáner Templates** | `nuclei` | Escáner de templates opcional (habilitar en wizard o con `--nuclei`) |
 | **Inteligencia Exploits** | `searchsploit` | Búsqueda ExploitDB para servicios detectados |
 | **Inteligencia CVE** | NVD API | Correlación CVE para versiones de servicios |
 | **Análisis SSL/TLS** | `testssl.sh` | Escaneo profundo de vulnerabilidades SSL/TLS |

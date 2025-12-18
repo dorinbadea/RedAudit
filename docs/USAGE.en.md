@@ -105,7 +105,7 @@ redaudit --diff reports/report_v1.json reports/report_v2.json
 
 ## 3. CLI Flags Reference
 
-Grouped by operational function. Verified against v3.6.0.
+Grouped by operational function. Verified against the current codebase.
 
 ### Scan Scope & Intensity
 
@@ -143,6 +143,8 @@ Grouped by operational function. Verified against v3.6.0.
 | `-o, --output DIR` | Custom output directory |
 | `--html-report` | Generate interactive dashboard (HTML) |
 | `--webhook URL` | Send findings to Slack/Teams/Discord |
+| `--nuclei` | Enable Nuclei template scanning (requires `nuclei`; runs in full mode only) |
+| `--no-nuclei` | Disable Nuclei template scanning (overrides persisted defaults) |
 | `--no-vuln-scan` | Skip Nikto/Web vulnerability scanning |
 | `--cve-lookup` | Correlate services with NVD CVE data |
 

@@ -88,7 +88,7 @@ RedAudit verifica actualizaciones al iniciar (modo interactivo). Para omitir: `-
 |:---|:---|:---|
 | `fast` | `-sn` (solo descubrimiento de hosts) | Ninguna |
 | `normal` | Top 1000 puertos, detección de versiones | whatweb, searchsploit |
-| `full` | Los 65535 puertos, scripts, detección de SO | whatweb, nikto, testssl.sh, nuclei (si está disponible), searchsploit |
+| `full` | Los 65535 puertos, scripts, detección de SO | whatweb, nikto, testssl.sh, nuclei (si está instalado y habilitado), searchsploit |
 
 ### Deep Scan Adaptativo
 
@@ -307,7 +307,7 @@ RedAudit orquesta (no modifica ni instala):
 | `whatweb` | HTTP/HTTPS detectado | `vulnerabilities[].whatweb` |
 | `nikto` | HTTP/HTTPS + modo full | `vulnerabilities[].nikto_findings` |
 | `testssl.sh` | HTTPS + modo full | `vulnerabilities[].testssl_analysis` |
-| `nuclei` | HTTP/HTTPS + modo full (si instalado) | `vulnerabilities[].nuclei_findings` |
+| `nuclei` | HTTP/HTTPS + modo full (si está instalado y habilitado) | `vulnerabilities[].nuclei_findings` |
 | `searchsploit` | Servicios con versión detectada | `ports[].known_exploits` |
 | `tcpdump` | Se dispara deep scan | `deep_scan.pcap_capture` |
 | `tshark` | Tras captura tcpdump | `deep_scan.tshark_summary` |
