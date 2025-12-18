@@ -1383,10 +1383,9 @@ class InteractiveNetworkAuditor(WizardMixin):
                 TimeElapsedColumn,
                 TimeRemainingColumn,
             )
-            from rich.console import Console
 
             use_rich = True
-        except ImportError:
+        except Exception:
             use_rich = False
 
         # Keep output quiet from the moment worker threads start.
@@ -1419,7 +1418,6 @@ class InteractiveNetworkAuditor(WizardMixin):
                         TextColumn("{task.fields[detail]}", justify="left"),
                         TextColumn("ETA≤ {task.fields[eta_upper]}"),
                         TimeRemainingColumn(),
-                        console=Console(stderr=True),
                     ) as progress:
                         eta_upper_init = self._format_eta(
                             host_timeout_s * math.ceil(max(0, total) / threads)
@@ -1663,10 +1661,9 @@ class InteractiveNetworkAuditor(WizardMixin):
                 TimeElapsedColumn,
                 TimeRemainingColumn,
             )
-            from rich.console import Console
 
             use_rich = True
-        except ImportError:
+        except Exception:
             use_rich = False
 
         # Keep output quiet from the moment worker threads start.
@@ -1691,7 +1688,6 @@ class InteractiveNetworkAuditor(WizardMixin):
                         TextColumn("{task.fields[detail]}", justify="left"),
                         TextColumn("ETA≤ {task.fields[eta_upper]}"),
                         TimeRemainingColumn(),
-                        console=Console(stderr=True),
                     ) as progress:
                         eta_upper_init = self._format_eta(remaining_budget_s / workers)
                         initial_detail = self._get_ui_detail()
@@ -2020,24 +2016,23 @@ class InteractiveNetworkAuditor(WizardMixin):
                             TextColumn,
                             TimeElapsedColumn,
                         )
-                        from rich.console import Console
 
-                        with Progress(
-                            SpinnerColumn(),
-                            TextColumn("[bold cyan]Topology[/bold cyan] {task.description}"),
-                            TimeElapsedColumn(),
-                            console=Console(stderr=True),
-                            transient=True,
-                        ) as progress:
-                            task = progress.add_task("discovering...", total=None)
-                            self.results["topology"] = discover_topology(
-                                target_networks=self.config.get("target_networks", []),
-                                network_info=self.results.get("network_info", []),
-                                extra_tools=self.extra_tools,
-                                logger=self.logger,
-                            )
-                            progress.update(task, description="complete")
-                    except ImportError:
+                        with self._progress_ui():
+                            with Progress(
+                                SpinnerColumn(),
+                                TextColumn("[bold cyan]Topology[/bold cyan] {task.description}"),
+                                TimeElapsedColumn(),
+                                transient=True,
+                            ) as progress:
+                                task = progress.add_task("discovering...", total=None)
+                                self.results["topology"] = discover_topology(
+                                    target_networks=self.config.get("target_networks", []),
+                                    network_info=self.results.get("network_info", []),
+                                    extra_tools=self.extra_tools,
+                                    logger=self.logger,
+                                )
+                                progress.update(task, description="complete")
+                    except Exception:
                         self.results["topology"] = discover_topology(
                             target_networks=self.config.get("target_networks", []),
                             network_info=self.results.get("network_info", []),
@@ -2092,57 +2087,64 @@ class InteractiveNetworkAuditor(WizardMixin):
                             TextColumn,
                             TimeElapsedColumn,
                         )
-                        from rich.console import Console
 
-                        with Progress(
-                            SpinnerColumn(),
-                            TextColumn("[bold blue]Net Discovery[/bold blue] {task.description}"),
-                            TimeElapsedColumn(),
-                            console=Console(stderr=True),
-                            transient=True,
-                        ) as progress:
-                            task = progress.add_task("running...", total=None)
+                        with self._progress_ui():
+                            with Progress(
+                                SpinnerColumn(),
+                                TextColumn(
+                                    "[bold blue]Net Discovery[/bold blue] {task.description}"
+                                ),
+                                TimeElapsedColumn(),
+                                transient=True,
+                            ) as progress:
+                                task = progress.add_task("running...", total=None)
 
-                            def _nd_progress(label: str, step_index: int, step_total: int) -> None:
-                                try:
-                                    progress.update(
-                                        task,
-                                        description=f"{label} ({step_index}/{step_total})",
-                                    )
-                                except Exception:
-                                    pass
+                                def _nd_progress(
+                                    label: str, step_index: int, step_total: int
+                                ) -> None:
+                                    try:
+                                        progress.update(
+                                            task,
+                                            description=f"{label} ({step_index}/{step_total})",
+                                        )
+                                    except Exception:
+                                        pass
 
-                            self.results["net_discovery"] = discover_networks(
-                                target_networks=self.config.get("target_networks", []),
-                                interface=iface,
-                                protocols=self.config.get("net_discovery_protocols"),
-                                redteam=self.config.get("net_discovery_redteam", False),
-                                redteam_options=redteam_options,
-                                extra_tools=self.extra_tools,
-                                progress_callback=_nd_progress,
-                                logger=self.logger,
-                            )
-                            progress.update(task, description="complete")
-                    except ImportError:
+                                self.results["net_discovery"] = discover_networks(
+                                    target_networks=self.config.get("target_networks", []),
+                                    interface=iface,
+                                    protocols=self.config.get("net_discovery_protocols"),
+                                    redteam=self.config.get("net_discovery_redteam", False),
+                                    redteam_options=redteam_options,
+                                    extra_tools=self.extra_tools,
+                                    progress_callback=_nd_progress,
+                                    logger=self.logger,
+                                )
+                                progress.update(task, description="complete")
+                    except Exception:
                         # Fallback without progress bar
-                        with _ActivityIndicator(
-                            label="Net Discovery",
-                            touch_activity=self._touch_activity,
-                        ) as indicator:
+                        with self._progress_ui():
+                            with _ActivityIndicator(
+                                label="Net Discovery",
+                                stream=sys.stdout,
+                                touch_activity=self._touch_activity,
+                            ) as indicator:
 
-                            def _nd_progress(label: str, step_index: int, step_total: int) -> None:
-                                indicator.update(f"{label} ({step_index}/{step_total})")
+                                def _nd_progress(
+                                    label: str, step_index: int, step_total: int
+                                ) -> None:
+                                    indicator.update(f"{label} ({step_index}/{step_total})")
 
-                            self.results["net_discovery"] = discover_networks(
-                                target_networks=self.config.get("target_networks", []),
-                                interface=iface,
-                                protocols=self.config.get("net_discovery_protocols"),
-                                redteam=self.config.get("net_discovery_redteam", False),
-                                redteam_options=redteam_options,
-                                extra_tools=self.extra_tools,
-                                progress_callback=_nd_progress,
-                                logger=self.logger,
-                            )
+                                self.results["net_discovery"] = discover_networks(
+                                    target_networks=self.config.get("target_networks", []),
+                                    interface=iface,
+                                    protocols=self.config.get("net_discovery_protocols"),
+                                    redteam=self.config.get("net_discovery_redteam", False),
+                                    redteam_options=redteam_options,
+                                    extra_tools=self.extra_tools,
+                                    progress_callback=_nd_progress,
+                                    logger=self.logger,
+                                )
 
                     # Log discovered DHCP servers
                     dhcp_servers = self.results["net_discovery"].get("dhcp_servers", [])
