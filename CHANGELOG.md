@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.5.3] - 2025-12-18 (Documentation & Quality)
+
+### Highlights
+
+- **Documentation Integrity**: "Smoke-free" documentation that matches the codebase structure and features.
+- **Roadmap Truth**: Strict separation of Planned vs Implemented features (verified against code).
+- **Instructor Resources**: New pedagogical `DIDACTIC_GUIDE` (EN/ES) focused on teaching methodology.
+
+### Fixed
+
+- **Broken Links**: Fixed `pyproject.toml` pointing to non-existent `docs/en/MANUAL.md`.
+- **Structure**: Removed legacy `docs/en/` and `docs/es/` references; normalized to `docs/*.en.md` and `docs/*.es.md`.
+- **Linting**: Fixed various Markdown linting issues in READMEs (headers, code blocks).
+
 ## [3.5.2] - 2025-12-18 (Hotfix)
 
 ### Added
