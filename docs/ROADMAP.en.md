@@ -16,12 +16,7 @@ These features are approved but **not yet implemented** in the codebase.
 
 ### Security & Integrations (Priority: High)
 
-| Feature | Status | Description |
-| :--- | :--- | :--- |
-| **Native SIEM Pipeline** | 🎯 Planned | Bundled configuration for Filebeat/Logstash to ingest RedAudit ECS JSON directly. Creation of Sigma rules for common findings. |
-| **Osquery Verification** | 🎯 Planned | Post-scan module to execute Osquery queries on live hosts (via fleet/SSH) to validate configs (firewall, running services). |
-| **Interactive Webhooks** | 🎯 Planned | Add webhook URL configuration to the interactive wizard (currently CLI-only via `--webhook`). |
-| **Wizard: Advanced Net Discovery options** | 🎯 Planned | Expose safe, explicit opt-ins (SNMP community, DNS zone, max targets) and persist them as defaults for repeatable runs. |
+*(No high priority items currently pending)*
 
 ### Red Team Extensions (Priority: Medium)
 
@@ -46,6 +41,16 @@ These features are approved but **not yet implemented** in the codebase.
 ## 2. Implemented Capabilities (Verified)
 
 Features currently present using `redaudit --version` >= v3.6.0.
+
+### UX & Integrations (v3.7.0)
+
+| Feature | Version | Verification |
+| :--- | :--- | :--- |
+| **Interactive Webhooks** | v3.7.0 | `redaudit/core/wizard.py`. Configure Slack/Teams directly in wizard. |
+| **Advanced Net Discovery Wizard** | v3.7.0 | `redaudit/core/wizard.py`. Configure SNMP/DNS/Targets interactively. |
+| **Native SIEM Pipeline** | v3.7.0 | `siem/`. Configs for Filebeat/Logstash + Sigma rules. |
+| **Osquery Verification** | v3.7.0 | `redaudit/core/osquery.py`. Post-scan SSH host verification. |
+| **Session Logging** | v3.7.0 | `redaudit/utils/session_log.py`. Captures terminal output to `.log` and `.txt`. |
 
 ### Advanced Scanning & Automation
 

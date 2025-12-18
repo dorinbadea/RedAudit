@@ -16,12 +16,7 @@ Estas características están aprobadas pero **aún no implementadas** en el có
 
 ### Seguridad e Integraciones (Prioridad: Alta)
 
-| Característica | Estado | Descripción |
-| :--- | :--- | :--- |
-| **Pipeline SIEM Nativo** | 🎯 Planificado | Configuración empaquetada para Filebeat/Logstash para ingestar JSON ECS de RedAudit. Creación de reglas Sigma. |
-| **Verificación Osquery** | 🎯 Planificado | Módulo post-scan para ejecutar queries Osquery en hosts vivos (vía fleet/SSH) para validar configs (firewall, servicios activos). |
-| **Webhooks Interactivos** | 🎯 Planificado | Añadir configuración de URL de webhook al asistente interactivo (actualmente solo CLI vía `--webhook`). |
-| **Wizard: Opciones avanzadas de Net Discovery** | 🎯 Planificado | Exponer opt-ins seguros (comunidad SNMP, zona DNS, max targets) y persistirlos como defaults para ejecuciones repetibles. |
+*(No hay ítems de prioridad alta pendientes actualmente)*
 
 ### Extensiones Red Team (Prioridad: Media)
 
@@ -46,6 +41,16 @@ Estas características están aprobadas pero **aún no implementadas** en el có
 ## 2. Capacidades Implementadas (Verificado)
 
 Funcionalidades presentes actualmente en `redaudit --version` >= v3.6.0.
+
+### UX e Integraciones (v3.7.0)
+
+| Característica | Versión | Verificación |
+| :--- | :--- | :--- |
+| **Webhooks Interactivos** | v3.7.0 | `redaudit/core/wizard.py`. Configura Slack/Teams directamente en el wizard. |
+| **Wizard: Net Discovery Avanzado** | v3.7.0 | `redaudit/core/wizard.py`. Configura SNMP/DNS/Targets interactivamente. |
+| **Pipeline SIEM Nativo** | v3.7.0 | `siem/`. Configs para Filebeat/Logstash + reglas Sigma. |
+| **Verificación Osquery** | v3.7.0 | `redaudit/core/osquery.py`. Verificación de host post-scan vía SSH. |
+| **Logging de Sesión** | v3.7.0 | `redaudit/utils/session_log.py`. Captura salida de terminal a `.log` y `.txt`. |
 
 ### Escaneo Avanzado y Automatización
 
