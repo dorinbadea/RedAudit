@@ -5,8 +5,15 @@ Copyright (C) 2025  Dorin Badea
 GPLv3 License
 """
 
-# Version
-VERSION = "3.5.2"
+# Version - dynamically read from pyproject.toml (v3.6+)
+try:
+    from importlib.metadata import version as _get_version
+
+    VERSION = _get_version("redaudit")
+except Exception:
+    # Fallback for editable installs or development environments
+    VERSION = "0.0.0-dev"
+
 SCHEMA_VERSION = "3.3"  # Report schema version (may differ from app version)
 
 # Default language (installer may override)

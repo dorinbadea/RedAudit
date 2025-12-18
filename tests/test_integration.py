@@ -24,8 +24,13 @@ class TestIntegration(unittest.TestCase):
         self.app = InteractiveNetworkAuditor()
 
     def test_version(self):
-        """Test that version is set."""
-        self.assertEqual(VERSION, "3.5.2")
+        """Test that version is set and valid."""
+        # Version may be from pyproject.toml or fallback
+        self.assertIsInstance(VERSION, str)
+        self.assertTrue(
+            VERSION.startswith("3.") or VERSION == "0.0.0-dev",
+            f"Unexpected version format: {VERSION}",
+        )
 
     def test_constants(self):
         """Test security constants."""
