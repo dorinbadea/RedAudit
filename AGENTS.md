@@ -69,6 +69,30 @@ If drift is found: apply minimal fixes, commit by intent, and re-run gates until
 
 **Goal:** Execute merge/tag/release without surprises. Stop before tagging if anything is inconsistent.
 
+### 5) CI Triage (CodeQL / Workflow Breakages)
+
+**Goal:** Restore CI health with the smallest possible change, without mixing unrelated work.
+
+**Order of operations:**
+
+1. Confirm whether the failure is a workflow/config problem or a real finding.
+2. Apply the minimum fix on the minimum branch:
+   - If the team is not ready to touch `main`, apply the fix in the active feature branch so work can continue.
+   - If `main` must stay green, merge a small `hotfix/*` that only fixes CI config, then port it to the feature branch (merge or cherry-pick).
+3. Do not silence security findings without explicit approval; fix the code or document the accepted risk.
+
+**CodeQL workflow quick check (typical failure mode):**
+
+- Inspect the workflow:
+  - `sed -n '1,200p' .github/workflows/codeql.yml`
+- If it references an unsupported action version (example: `github/codeql-action/*@v4`), pin to a supported major (example: `@v3`) for `init` and `analyze`.
+- Keep the change limited to `.github/workflows/codeql.yml`.
+
+**Gates (always):**
+
+- `pre-commit run --all-files`
+- `pytest tests/ -v`
+
 ## Branching & Commits (Clean Timeline)
 
 - **Branch names**
