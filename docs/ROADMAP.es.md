@@ -61,7 +61,7 @@ Funcionalidades presentes actualmente en `redaudit --version` >= v3.6.0.
 
 | Característica | Versión | Verificación |
 | :--- | :--- | :--- |
-| **Versión Única** | v3.6.0 | `__init__.py` usa `importlib.metadata` desde pyproject.toml. |
+| **Versión Única** | v3.5.4 | La versión ahora se resuelve de forma fiable en todos los modos: `importlib.metadata` cuando existe, más un fallback `redaudit/VERSION` para instalaciones vía script en `/usr/local/lib/redaudit`. |
 | **CommandRunner Central** | v3.5.0 | `redaudit/core/command_runner.py` maneja todos los subprocesos de forma segura. |
 | **Config Persistente** | v3.1.1 | `~/.redaudit/config.json` almacena defaults del usuario. |
 | **Descubrimiento Async** | v3.1.3 | `redaudit/core/hyperscan.py` usa `asyncio` para sondeo rápido de puertos. |

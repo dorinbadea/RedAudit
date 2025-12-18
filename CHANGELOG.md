@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.5.4] - 2025-12-18 (Hotfix)
+
+### Fixed
+
+- **Version detection in system installs**: Script-based installs under `/usr/local/lib/redaudit` now report the correct semantic version (no more `v0.0.0-dev` loops in the updater).
+
 ## [3.5.3] - 2025-12-18 (Documentation & Quality)
 
 ### Highlights
