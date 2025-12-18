@@ -263,6 +263,10 @@ def extract_vendor_mac(text: str) -> tuple:
     """
     if not text:
         return None, None
+    if isinstance(text, bytes):
+        text = text.decode("utf-8", errors="replace")
+    if not isinstance(text, str):
+        text = str(text)
     # Standard Nmap MAC line: MAC Address: 00:11:22:33:44:55 (Vendor Name)
     match = re.search(r"MAC Address: ([0-9A-Fa-f:]+) \((.*?)\)", text)
     if match:

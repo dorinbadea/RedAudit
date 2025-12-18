@@ -10,6 +10,8 @@ v3.6: Nuclei template scanner integration for enhanced vulnerability detection.
 import os
 import json
 import shutil
+import tempfile
+import time
 from typing import Any, Dict, List, Optional
 
 from redaudit.core.command_runner import CommandRunner
@@ -52,6 +54,7 @@ def run_nuclei_scan(
     templates: Optional[str] = None,
     rate_limit: int = 150,
     timeout: int = 300,
+    batch_size: int = 25,
     logger=None,
     dry_run: bool = False,
     print_status=None,
@@ -111,27 +114,6 @@ def run_nuclei_scan(
         return result
 
     # Build nuclei command
-    cmd = [
-        "nuclei",
-        "-l",
-        targets_file,
-        "-o",
-        output_file,
-        "-jsonl",  # JSON Lines format
-        "-severity",
-        severity,
-        "-rate-limit",
-        str(rate_limit),
-        "-silent",  # Reduce noise
-        "-nc",  # No color
-    ]
-
-    if templates:
-        cmd.extend(["-t", templates])
-
-    if print_status:
-        print_status(f"Running nuclei scan on {len(targets)} targets...", "INFO")
-
     try:
         runner = CommandRunner(
             logger=logger,
@@ -139,43 +121,129 @@ def run_nuclei_scan(
             dry_run=dry_run,
         )
 
-        # v3.7: Add spinner progress for Nuclei scan
-        try:
-            from rich.progress import (
-                Progress,
-                SpinnerColumn,
-                TextColumn,
-                TimeElapsedColumn,
+        # Run in batches to provide real progress/ETA on long scans.
+        size = int(batch_size) if isinstance(batch_size, int) else 25
+        if size < 1:
+            size = 25
+        batches = [targets[i : i + size] for i in range(0, len(targets), size)]
+        total_batches = len(batches)
+
+        def _build_cmd(targets_path: str, out_path: str) -> List[str]:
+            cmd = [
+                "nuclei",
+                "-l",
+                targets_path,
+                "-o",
+                out_path,
+                "-jsonl",  # JSON Lines format
+                "-severity",
+                severity,
+                "-rate-limit",
+                str(rate_limit),
+                "-silent",  # Reduce noise
+                "-nc",  # No color
+            ]
+            if templates:
+                cmd.extend(["-t", templates])
+            return cmd
+
+        def _format_eta(seconds: float) -> str:
+            try:
+                sec = int(max(0, round(float(seconds))))
+            except Exception:
+                return "--:--"
+            h = sec // 3600
+            m = (sec % 3600) // 60
+            s = sec % 60
+            return f"{h:d}:{m:02d}:{s:02d}" if h else f"{m:d}:{s:02d}"
+
+        if print_status:
+            print_status(
+                f"[nuclei] scanning {len(targets)} targets in {total_batches} batch(es)...",
+                "INFO",
             )
+
+        # Ensure output_file exists and is empty before appending batch outputs.
+        try:
+            with open(output_file, "w", encoding="utf-8") as f_out:
+                f_out.write("")
+        except Exception as e:
+            result["error"] = f"Failed to create nuclei output file: {e}"
+            return result
+
+        batch_durations: List[float] = []
+
+        def _run_one_batch(batch_idx: int, batch_targets: List[str]) -> None:
+            batch_start = time.time()
+            with tempfile.TemporaryDirectory(prefix="nuclei_tmp_", dir=output_dir) as tmpdir:
+                batch_targets_file = os.path.join(tmpdir, f"targets_{batch_idx}.txt")
+                batch_output_file = os.path.join(tmpdir, f"output_{batch_idx}.json")
+
+                with open(batch_targets_file, "w", encoding="utf-8") as f_targets:
+                    for t in batch_targets:
+                        f_targets.write(f"{t}\n")
+
+                cmd = _build_cmd(batch_targets_file, batch_output_file)
+                res = runner.run(cmd, capture_output=True, text=True, timeout=float(timeout))
+
+                # Append JSONL output to the consolidated file, if present.
+                if os.path.exists(batch_output_file):
+                    with open(batch_output_file, "r", encoding="utf-8", errors="ignore") as fin, open(
+                        output_file, "a", encoding="utf-8"
+                    ) as fout:
+                        for line in fin:
+                            if line.strip():
+                                fout.write(line if line.endswith("\n") else line + "\n")
+
+                if res.stderr and "error" in str(res.stderr).lower() and not result["error"]:
+                    result["error"] = str(res.stderr)[:500]
+
+            batch_durations.append(time.time() - batch_start)
+
+        # Rich progress UI (best-effort)
+        try:
+            from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
             from rich.console import Console
 
             console = Console()
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
                 TimeElapsedColumn(),
+                TextColumn("{task.fields[eta]}", justify="right"),
                 console=console,
                 transient=True,
             ) as progress:
                 task = progress.add_task(
-                    f"[cyan]Nuclei scanning {len(targets)} targets...", total=None
+                    f"[cyan]Nuclei (0/{total_batches})",
+                    total=total_batches,
+                    eta="ETA≈ --:--",
                 )
-                res = runner.run(cmd, capture_output=True, text=True, timeout=float(timeout))
-                progress.update(task, completed=True)
+                for idx, batch in enumerate(batches, start=1):
+                    _run_one_batch(idx, batch)
+                    avg = (sum(batch_durations) / len(batch_durations)) if batch_durations else 0.0
+                    remaining = max(0, total_batches - idx)
+                    eta = _format_eta(avg * remaining) if avg > 0 else "--:--"
+                    progress.update(
+                        task,
+                        advance=1,
+                        description=f"[cyan]Nuclei ({idx}/{total_batches})",
+                        eta=f"ETA≈ {eta}",
+                    )
+        except Exception:
+            # Fallback: batch-by-batch status
+            for idx, batch in enumerate(batches, start=1):
+                if print_status:
+                    print_status(f"[nuclei] batch {idx}/{total_batches} ({len(batch)} targets)", "INFO")
+                _run_one_batch(idx, batch)
 
-        except ImportError:
-            # Fallback if rich not available
-            res = runner.run(cmd, capture_output=True, text=True, timeout=float(timeout))
-
-        result["success"] = res.returncode == 0 or os.path.exists(output_file)
+        result["success"] = os.path.exists(output_file)
         result["raw_output_file"] = output_file if os.path.exists(output_file) else None
 
-        # Parse JSONL output
         if os.path.exists(output_file):
             result["findings"] = _parse_nuclei_output(output_file, logger)
-
-        if res.stderr and "error" in res.stderr.lower():
-            result["error"] = res.stderr[:500]
 
     except Exception as e:
         result["error"] = str(e)

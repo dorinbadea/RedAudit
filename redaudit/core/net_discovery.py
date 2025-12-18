@@ -802,18 +802,25 @@ def discover_networks(
             except Exception as exc:
                 errors.append(f"hyperscan: {exc}")
 
+    _progress("Finalizing discovery", step_total)
+
     # Analyze for candidate VLANs
     result["candidate_vlans"] = _analyze_vlans(result)
 
     # Red Team techniques (optional)
     if redteam:
+        _progress("Red Team discovery", step_total)
         _run_redteam_discovery(
             result,
             target_networks,
             interface=interface,
             redteam_options=redteam_options,
             logger=logger,
+            progress_callback=progress_callback,
         )
+        _progress("Red Team discovery complete", step_total)
+
+    _progress("Discovery complete", step_total)
 
     return result
 
@@ -854,6 +861,7 @@ def _run_redteam_discovery(
     interface: Optional[str] = None,
     redteam_options: Optional[Dict[str, Any]] = None,
     logger=None,
+    progress_callback: Optional[ProgressCallback] = None,
 ) -> None:
     """
     Run optional Red Team discovery techniques.
@@ -866,6 +874,8 @@ def _run_redteam_discovery(
     max_targets = options.get("max_targets", 50)
     if not isinstance(max_targets, int) or max_targets < 1 or max_targets > 500:
         max_targets = 50
+
+    # Best-effort: fine-grained red team progress can be surfaced by callers.
 
     iface = _sanitize_iface(interface)
 
