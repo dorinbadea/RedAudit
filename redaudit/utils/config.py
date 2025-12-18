@@ -22,7 +22,7 @@ from typing import Dict, Optional, Any
 from redaudit.utils.paths import get_default_reports_base_dir, get_invoking_user
 
 # Config version
-CONFIG_VERSION = "3.2.3"
+CONFIG_VERSION = "3.6.0"
 
 # Environment variable names
 ENV_NVD_API_KEY = "NVD_API_KEY"
@@ -51,8 +51,15 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "cve_lookup_enabled": None,  # True/False
         "generate_txt": None,  # True/False
         "generate_html": None,  # True/False
-        # v3.5.5+: Optional template scanner toggle (if nuclei is installed)
+        # v3.6.0+: Optional template scanner toggle (if nuclei is installed)
         "nuclei_enabled": None,  # True/False
+        # v3.6.0+: Net Discovery / Red Team defaults (wizard)
+        "net_discovery_enabled": None,  # True/False
+        "net_discovery_redteam": None,  # True/False
+        "net_discovery_active_l2": None,  # True/False
+        "net_discovery_kerberos_userenum": None,  # True/False
+        "net_discovery_kerberos_realm": None,  # str | None
+        "net_discovery_kerberos_userlist": None,  # str | None
     },
 }
 

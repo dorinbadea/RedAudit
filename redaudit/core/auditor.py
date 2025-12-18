@@ -1802,6 +1802,12 @@ class InteractiveNetworkAuditor(WizardMixin):
             "cve_lookup_enabled",
             "generate_txt",
             "generate_html",
+            "net_discovery_enabled",
+            "net_discovery_redteam",
+            "net_discovery_active_l2",
+            "net_discovery_kerberos_userenum",
+            "net_discovery_kerberos_realm",
+            "net_discovery_kerberos_userlist",
         )
         has_scan_defaults = any(persisted_defaults.get(k) is not None for k in scan_default_keys)
 
@@ -1887,6 +1893,13 @@ class InteractiveNetworkAuditor(WizardMixin):
                     cve_lookup_enabled=self.config.get("cve_lookup_enabled"),
                     generate_txt=self.config.get("save_txt_report"),
                     generate_html=self.config.get("save_html_report"),
+                    # v3.6.0+: Net discovery / red team
+                    net_discovery_enabled=self.config.get("net_discovery_enabled"),
+                    net_discovery_redteam=self.config.get("net_discovery_redteam"),
+                    net_discovery_active_l2=self.config.get("net_discovery_active_l2"),
+                    net_discovery_kerberos_userenum=self.config.get("net_discovery_kerberos_userenum"),
+                    net_discovery_kerberos_realm=self.config.get("net_discovery_kerberos_realm"),
+                    net_discovery_kerberos_userlist=self.config.get("net_discovery_kerberos_userlist"),
                     lang=self.lang,
                 )
                 self.print_status(
@@ -2308,6 +2321,17 @@ class InteractiveNetworkAuditor(WizardMixin):
         self.config["topology_enabled"] = defaults_for_run.get("topology_enabled", False)
         self.config["topology_only"] = defaults_for_run.get("topology_only", False)
 
+        # 9. Net discovery / Red team (wizard)
+        self.config["net_discovery_enabled"] = bool(defaults_for_run.get("net_discovery_enabled", False))
+        self.config["net_discovery_redteam"] = bool(defaults_for_run.get("net_discovery_redteam", False))
+        self.config["net_discovery_active_l2"] = bool(defaults_for_run.get("net_discovery_active_l2", False))
+        self.config["net_discovery_kerberos_userenum"] = bool(
+            defaults_for_run.get("net_discovery_kerberos_userenum", False)
+        )
+        self.config["net_discovery_kerberos_realm"] = defaults_for_run.get("net_discovery_kerberos_realm")
+        userlist = defaults_for_run.get("net_discovery_kerberos_userlist")
+        self.config["net_discovery_kerberos_userlist"] = expand_user_path(userlist) if userlist else None
+
     def _configure_scan_interactive(self, defaults_for_run: Dict) -> None:
         """Interactive prompt sequence for scan configuration."""
         scan_modes = [
@@ -2479,10 +2503,12 @@ class InteractiveNetworkAuditor(WizardMixin):
 
         if enable_net_discovery:
             # Red Team recon requires explicit opt-in; default is NO.
+            persisted_rt = defaults_for_run.get("net_discovery_redteam")
+            rt_default_idx = 1 if persisted_rt is True else 0
             redteam_choice = self.ask_choice(
                 self.t("redteam_mode_q"),
                 [self.t("redteam_mode_a"), self.t("redteam_mode_b")],
-                default=0,
+                default=rt_default_idx,
             )
 
             wants_redteam = redteam_choice == 1
@@ -2495,31 +2521,41 @@ class InteractiveNetworkAuditor(WizardMixin):
 
             self.config["net_discovery_redteam"] = bool(wants_redteam)
             self.config["net_discovery_active_l2"] = False
+            self.config["net_discovery_kerberos_userenum"] = False
             self.config["net_discovery_kerberos_realm"] = None
             self.config["net_discovery_kerberos_userlist"] = None
 
             if self.config["net_discovery_redteam"]:
+                persisted_l2 = defaults_for_run.get("net_discovery_active_l2")
                 self.config["net_discovery_active_l2"] = self.ask_yes_no(
                     self.t("redteam_active_l2_q"),
-                    default="no",
+                    default="yes" if persisted_l2 is True else "no",
                 )
 
                 # Kerberos user enumeration via kerbrute (requires userlist + authorization).
+                persisted_krb = defaults_for_run.get("net_discovery_kerberos_userenum")
                 enable_kerberos_userenum = self.ask_yes_no(
                     self.t("redteam_kerberos_userenum_q"),
-                    default="no",
+                    default="yes" if persisted_krb is True else "no",
                 )
+                self.config["net_discovery_kerberos_userenum"] = bool(enable_kerberos_userenum)
                 if enable_kerberos_userenum:
+                    persisted_realm = defaults_for_run.get("net_discovery_kerberos_realm") or ""
                     realm_hint = input(
-                        f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_realm_q')}: "
+                        f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_realm_q')} "
+                        f"[{persisted_realm}]: "
                     ).strip()
-                    self.config["net_discovery_kerberos_realm"] = realm_hint or None
+                    self.config["net_discovery_kerberos_realm"] = realm_hint or persisted_realm or None
 
+                    persisted_userlist = defaults_for_run.get("net_discovery_kerberos_userlist") or ""
                     userlist = input(
-                        f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_userlist_q')}: "
+                        f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_userlist_q')} "
+                        f"[{persisted_userlist}]: "
                     ).strip()
                     self.config["net_discovery_kerberos_userlist"] = (
-                        expand_user_path(userlist) if userlist else None
+                        expand_user_path(userlist)
+                        if userlist
+                        else (expand_user_path(persisted_userlist) if persisted_userlist else None)
                     )
 
         self.setup_encryption()
@@ -2553,6 +2589,22 @@ class InteractiveNetworkAuditor(WizardMixin):
             (
                 "defaults_summary_topology",
                 fmt_bool(persisted_defaults.get("topology_enabled")),
+            ),
+            (
+                "defaults_summary_net_discovery",
+                fmt_bool(persisted_defaults.get("net_discovery_enabled")),
+            ),
+            (
+                "defaults_summary_redteam",
+                fmt_bool(persisted_defaults.get("net_discovery_redteam")),
+            ),
+            (
+                "defaults_summary_active_l2",
+                fmt_bool(persisted_defaults.get("net_discovery_active_l2")),
+            ),
+            (
+                "defaults_summary_kerbrute",
+                fmt_bool(persisted_defaults.get("net_discovery_kerberos_userenum")),
             ),
             (
                 "defaults_summary_web_vulns",
