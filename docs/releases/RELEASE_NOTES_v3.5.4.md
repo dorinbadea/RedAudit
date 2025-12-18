@@ -13,4 +13,3 @@ This release fixes an updater loop where RedAudit could show `v0.0.0-dev` after 
 
 - RedAudit now ships an internal `redaudit/VERSION` file and uses it as a fallback when `importlib.metadata` is unavailable.
 - Result: the banner shows the correct version, and update checks stop repeating the same update.
-

@@ -13,4 +13,3 @@ Esta versión corrige un bucle del actualizador donde RedAudit podía mostrar `v
 
 - RedAudit ahora incluye un fichero interno `redaudit/VERSION` y lo usa como fallback cuando `importlib.metadata` no está disponible.
 - Resultado: el banner muestra la versión correcta y las comprobaciones de actualización dejan de repetirse.
-
