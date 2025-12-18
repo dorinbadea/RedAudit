@@ -86,7 +86,7 @@ Cada ejecución crea una carpeta con sello temporal (por defecto: `~/Documents/R
 ## Arquitectura
 
 ```mermaid
-%%{init: {'theme':'base','flowchart': {'curve':'linear','nodeSpacing': 14,'rankSpacing': 22},'themeVariables': {'fontFamily': 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial','fontSize': '13px','primaryColor': '#F6F8FA','primaryTextColor': '#0B0F14','primaryBorderColor': '#D0D7DE','lineColor': '#57606A','tertiaryColor': '#FFFFFF'}}}%%
+%%{init: {"theme":"base","flowchart":{"curve":"linear","nodeSpacing":14,"rankSpacing":22},"themeVariables":{"fontFamily":"Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial","fontSize":"13px","primaryColor":"#F6F8FA","primaryTextColor":"#0B0F14","primaryBorderColor":"#D0D7DE","lineColor":"#57606A","tertiaryColor":"#FFFFFF"}}}%%
 flowchart TB
 
   classDef entry fill:#E7F3FF,stroke:#0969DA,stroke-width:1px,color:#0B0F14;
@@ -111,7 +111,7 @@ flowchart TB
   orchestrator["Orchestrator\n(auditor.py)"]:::orch
   user_cli <--> orchestrator
 
-  subgraph PIPE[""]
+  subgraph PIPE["Core pipeline"]
     direction LR
 
     subgraph SCANNING["Scanning & Enumeration"]
