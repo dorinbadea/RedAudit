@@ -65,7 +65,7 @@ In addition to `--net-discovery` and `--redteam`, v3.2 adds tuning flags:
 - `net_discovery.dhcp_servers[].domain` / `domain_search`: Best-effort DHCP domain hints
 - `net_discovery.redteam`: Extended recon output when `--redteam` is enabled
 
-See `docs/en/REPORT_SCHEMA.md` for the detailed schema.
+See `docs/en/REPORT_SCHEMA.en.md` for the detailed schema.
 
 ---
 

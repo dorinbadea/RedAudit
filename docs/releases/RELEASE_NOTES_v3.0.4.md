@@ -31,5 +31,5 @@ This release is backward compatible with v3.0.3 and requires no migration steps.
 
 - **Changelog**: [CHANGELOG.md](../../CHANGELOG.md)
 - **GitHub Release Notes**: [GitHub Release Draft](DRAFT_TEMPLATE.md)
-- **User Manual (EN)**: [docs/en/MANUAL.md](../en/MANUAL.md)
-- **Manual (ES)**: [docs/es/MANUAL.md](../es/MANUAL.md)
+- **User Manual (EN)**: [docs/en/MANUAL.en.md](../MANUAL.en.md)
+- **Manual (ES)**: [docs/es/MANUAL.en.md](../MANUAL.en.md)

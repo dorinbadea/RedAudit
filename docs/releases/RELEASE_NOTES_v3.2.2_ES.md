@@ -43,7 +43,7 @@ Los tokens de estado internos (`OKGREEN`, `OKBLUE`, `WARNING`) ahora se mapean a
 ### 3. Documentación de Seguridad Honesta
 
 - Renombrado "Secure Update Module" → "Reliable Update Module"
-- SECURITY.md Sección 7 clarifica verificación de integridad (hashes git) vs. autenticidad (firmas criptográficas)
+- SECURITY.es.md Sección 7 clarifica verificación de integridad (hashes git) vs. autenticidad (firmas criptográficas)
 - Nota explícita: **no se realiza verificación de firmas GPG**
 
 ---
@@ -63,4 +63,4 @@ curl -sL https://raw.githubusercontent.com/dorinbadea/RedAudit/v3.2.2/redaudit_i
 ## Enlaces útiles
 
 - **Changelog**: [CHANGELOG.md](../../CHANGELOG.md) / [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
-- **Documentación de seguridad**: [docs/en/SECURITY.md](../en/SECURITY.md) / [docs/es/SECURITY.md](../es/SECURITY.md)
+- **Documentación de seguridad**: [docs/en/SECURITY.es.md](../SECURITY.es.md) / [docs/es/SECURITY.es.md](../SECURITY.es.md)

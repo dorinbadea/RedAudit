@@ -1,10 +1,10 @@
 # Manual de Usuario de RedAudit
 
-[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](../en/MANUAL.md)
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](MANUAL.en.md)
 
-**Audiencia Objetivo:** Analistas de Seguridad, Pentesters, Administradores de Sistemas
-**Versión:** 3.6.0
-**Licencia:** GPLv3
+**Audiencia:** Analistas de Seguridad, Arquitectos
+**Alcance:** Arquitectura, capacidades, lógica de flujo, referencia de herramientas.
+**Fuente de verdad:** `redaudit/core/orchestrator.py`
 
 ---
 
@@ -243,7 +243,7 @@ Cuando el cifrado está desactivado, `findings.jsonl` proporciona un flujo plano
 
 ### Solución de Problemas
 
-Consulta [TROUBLESHOOTING.md](../es/TROUBLESHOOTING.md) para códigos de error detallados.
+Consulta [TROUBLESHOOTING.md](TROUBLESHOOTING.es.md) para códigos de error detallados.
 
 **Problemas Comunes:**
 
@@ -253,4 +253,4 @@ Consulta [TROUBLESHOOTING.md](../es/TROUBLESHOOTING.md) para códigos de error d
 
 ---
 
-[Volver al README](../../README_ES.md)
+[Volver al README](../README_ES.md)

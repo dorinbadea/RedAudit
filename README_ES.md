@@ -261,7 +261,7 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | `--stealth` | Activar timing paranoid para evasión IDS |
 | `-y, --yes` | Omitir confirmaciones (modo automatización) |
 
-Consulta `redaudit --help` o [USAGE.md](docs/es/USAGE.md) para la lista completa de más de 40 opciones.
+Consulta `redaudit --help` o [USAGE.md](docs/USAGE.es.md) para la lista completa de más de 40 opciones.
 
 ---
 
@@ -375,14 +375,14 @@ redaudit/
 
 ### Solución de Problemas
 
-Para solución de problemas completa, consulta: 📖 **[Guía Completa de Solución de Problemas](docs/es/TROUBLESHOOTING.md)**
+Para solución de problemas completa, consulta: 📖 **[Guía Completa de Solución de Problemas](docs/TROUBLESHOOTING.es.md)**
 
 **Enlaces Rápidos**:
 
-- [Problemas de Instalación](docs/es/TROUBLESHOOTING.md#1-permission-denied--root-privileges-required)
-- [Problemas de Escaneo](docs/es/TROUBLESHOOTING.md#5-scan-appears-frozen--long-pauses)
-- [Problemas de Network Discovery](docs/es/TROUBLESHOOTING.md#12-net-discovery-missing-tools--tool_missing-v32)
-- [Cifrado/Descifrado](docs/es/TROUBLESHOOTING.md#8-decryption-failed-invalid-token)
+- [Problemas de Instalación](docs/TROUBLESHOOTING.es.md#1-permission-denied--root-privileges-required)
+- [Problemas de Escaneo](docs/TROUBLESHOOTING.es.md#5-scan-appears-frozen--long-pauses)
+- [Problemas de Network Discovery](docs/TROUBLESHOOTING.es.md#12-net-discovery-missing-tools--tool_missing-v32)
+- [Cifrado/Descifrado](docs/TROUBLESHOOTING.es.md#8-decryption-failed-invalid-token)
 
 ### Logging
 
@@ -410,4 +410,4 @@ RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**. Cons
 
 ---
 
-[Documentación Completa](docs/README.md) | [Esquema de Reporte](docs/es/REPORT_SCHEMA.md) | [Especificaciones de Seguridad](docs/es/SECURITY.md)
+[Documentación Completa](docs/README.md) | [Esquema de Reporte](docs/REPORT_SCHEMA.es.md) | [Especificaciones de Seguridad](docs/SECURITY.es.md)

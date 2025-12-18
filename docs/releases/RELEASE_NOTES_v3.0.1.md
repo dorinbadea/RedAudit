@@ -49,7 +49,7 @@ RedAudit now stores configuration persistently in `~/.redaudit/config.json`, eli
 - Config file is created with `0o600` permissions (read/write for owner only)
 - Config directory is created with `0o700` permissions
 - API keys are never logged in plain text
-- See [SECURITY.md](../en/SECURITY.md#8-nvd-api-key-storage-v301) for full security specification
+- See [SECURITY.en.md](../SECURITY.en.md#8-nvd-api-key-storage-v301) for full security specification
 
 ---
 
@@ -127,8 +127,8 @@ All 25+ documentation files synchronized to v3.0.1:
 
 **New Documentation Sections**:
 
-- `USAGE.md` / `USAGE_ES.md`: "CVE Correlation Setup" section
-- `SECURITY.md` / `SECURITY_ES.md`: "NVD API Key Storage (v3.0.1)" section
+- `USAGE.en.md` / `USAGE_ES.md`: "CVE Correlation Setup" section
+- `SECURITY.en.md` / `SECURITY_ES.md`: "NVD API Key Storage (v3.0.1)" section
 - `CONTRIBUTING.md` / `CONTRIBUTING_ES.md`: Updated package structure with `config.py`
 
 **Didactic Guide Enhancements**:
@@ -177,8 +177,8 @@ RedAudit still recommends `sudo`/root for full functionality, but now supports a
 - Core: `README.md`, `README_ES.md`, `CHANGELOG.md`, `GITHUB_RELEASE.md`
 - Manuals: `MANUAL_EN.md`, `MANUAL_ES.md`
 - Guides: `DIDACTIC_GUIDE.md`, `GUIA_DIDACTICA.md`
-- Usage: `USAGE.md`, `USAGE_ES.md`
-- Security: `SECURITY.md`, `SECURITY_ES.md`
+- Usage: `USAGE.en.md`, `USAGE_ES.md`
+- Security: `SECURITY.en.md`, `SECURITY_ES.md`
 - Contributing: `CONTRIBUTING.md`, `CONTRIBUTING_ES.md`
 - Release: `RELEASE_NOTES_v3.0.1.md` (THIS FILE)
 
@@ -229,7 +229,7 @@ Existing workflows using `--nvd-key KEY` will continue to work without modificat
 
 None specific to v3.0.1.
 
-For general troubleshooting, see [TROUBLESHOOTING.md](../en/TROUBLESHOOTING.md).
+For general troubleshooting, see [TROUBLESHOOTING.en.md](../TROUBLESHOOTING.en.md).
 
 ---
 
@@ -245,13 +245,13 @@ For general troubleshooting, see [TROUBLESHOOTING.md](../en/TROUBLESHOOTING.md).
 - **Full Changelog**: [CHANGELOG.md](../../CHANGELOG.md)
 - **Previous Release**: [RELEASE_NOTES_v3.0.0.md](RELEASE_NOTES_v3.0.0.md)
 - **Installation Guide**: [README.md#installation](../../README.md#installation)
-- **Security Policy**: [docs/en/SECURITY.md](../en/SECURITY.md)
+- **Security Policy**: [docs/en/SECURITY.en.md](../SECURITY.en.md)
 
 ---
 
 ## What's Next?
 
-See [IMPROVEMENTS.md](../ROADMAP.md) for our roadmap and planned features for v3.1.x and beyond.
+See [IMPROVEMENTS.md](../ROADMAP.en.md) for our roadmap and planned features for v3.1.x and beyond.
 
 **Stay Updated**:
 

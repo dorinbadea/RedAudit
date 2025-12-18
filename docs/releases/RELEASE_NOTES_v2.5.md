@@ -61,10 +61,10 @@ source ~/.bashrc  # or ~/.zshrc
 All documentation has been updated:
 - README.md / README_ES.md
 - MANUAL_EN.md / MANUAL_ES.md
-- USAGE.md / USAGE_ES.md
-- SECURITY.md
-- TROUBLESHOOTING.md
-- REPORT_SCHEMA.md
+- USAGE.en.md / USAGE_ES.md
+- SECURITY.en.md
+- TROUBLESHOOTING.en.md
+- REPORT_SCHEMA.en.md
 - CHANGELOG.md
 
 ## Bug Fixes

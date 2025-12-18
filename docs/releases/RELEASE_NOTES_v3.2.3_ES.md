@@ -91,5 +91,5 @@ curl -sL https://raw.githubusercontent.com/dorinbadea/RedAudit/v3.2.3/redaudit_i
 ## Enlaces Útiles
 
 - **Changelog**: [CHANGELOG.md](../../CHANGELOG.md) / [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
-- **Guía de Uso**: [docs/en/USAGE.md](../en/USAGE.md) / [docs/es/USAGE.md](../es/USAGE.md)
-- **Manual**: [docs/en/MANUAL.md](../en/MANUAL.md) / [docs/es/MANUAL.md](../es/MANUAL.md)
+- **Guía de Uso**: [docs/en/USAGE.es.md](../USAGE.es.md) / [docs/es/USAGE.es.md](../USAGE.es.md)
+- **Manual**: [docs/en/MANUAL.es.md](../MANUAL.es.md) / [docs/es/MANUAL.es.md](../MANUAL.es.md)

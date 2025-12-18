@@ -1,10 +1,10 @@
 # RedAudit User Manual
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](../es/MANUAL.md)
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](MANUAL.es.md)
 
-**Target Audience:** Security Analysts, Pentesters, System Administrators
-**Version:** 3.6.0
-**License:** GPLv3
+**Audience:** Security Analysts, Architects
+**Scope:** Architecture, capabilities, workflow logic, toolchain reference.
+**Source of Truth:** `redaudit/core/orchestrator.py`
 
 ---
 
@@ -243,7 +243,7 @@ When encryption is disabled, `findings.jsonl` provides a flat event stream compa
 
 ### Troubleshooting
 
-See [TROUBLESHOOTING.md](../en/TROUBLESHOOTING.md) for detailed error codes.
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.en.md) for detailed error codes.
 
 **Common Issues:**
 
@@ -253,4 +253,4 @@ See [TROUBLESHOOTING.md](../en/TROUBLESHOOTING.md) for detailed error codes.
 
 ---
 
-[Back to README](../../README.md)
+[Back to README](../README.md)

@@ -43,7 +43,7 @@ Este release es compatible hacia atrás con v3.1.1 y no requiere pasos de migrac
 
 - **Changelog**: [CHANGELOG.md](../../CHANGELOG.md) / [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
 - **Notas para GitHub Release**: [GitHub Release Draft](DRAFT_TEMPLATE.md)
-- **Manual (EN)**: [docs/en/MANUAL.md](../en/MANUAL.md)
-- **Manual (ES)**: [docs/es/MANUAL.md](../es/MANUAL.md)
-- **Esquema de reporte (EN)**: [docs/en/REPORT_SCHEMA.md](../en/REPORT_SCHEMA.md)
-- **Esquema de reporte (ES)**: [docs/es/REPORT_SCHEMA.md](../es/REPORT_SCHEMA.md)
+- **Manual (EN)**: [docs/en/MANUAL.es.md](../MANUAL.es.md)
+- **Manual (ES)**: [docs/es/MANUAL.es.md](../MANUAL.es.md)
+- **Esquema de reporte (EN)**: [docs/en/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
+- **Esquema de reporte (ES)**: [docs/es/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)

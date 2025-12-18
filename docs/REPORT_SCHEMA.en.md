@@ -1,6 +1,14 @@
 # RedAudit Report Schema
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](../es/REPORT_SCHEMA.md)
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](REPORT_SCHEMA.es.md)
+
+**Audience:** Developers, SIEM Engineers
+**Scope:** JSON structure, field definitions, data types.
+**Source of Truth:** `redaudit/reporting/json_reporter.py`
+
+---
+
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](REPORT_SCHEMA.es.md)
 
 ## Overview
 

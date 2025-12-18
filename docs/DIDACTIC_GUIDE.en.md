@@ -1,5 +1,13 @@
 # RedAudit Didactic Guide: Professional
 
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](DIDACTIC_GUIDE.es.md)
+
+**Audience:** Students, Juniors
+**Scope:** Educational concepts, network theory as applied by RedAudit.
+**Source of Truth:** N/A (Educational)
+
+---
+
 ## Manual for Professors and Instructors
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](../es/DIDACTIC_GUIDE.md)

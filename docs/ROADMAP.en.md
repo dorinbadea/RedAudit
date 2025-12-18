@@ -1,5 +1,13 @@
 # Roadmap & Architecture Proposals
 
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](ROADMAP.es.md)
+
+**Audience:** Contributors, Stakeholders
+**Scope:** Planned features, authorized proposals.
+**Source of Truth:** Project Management
+
+---
+
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](ROADMAP_ES.md)
 
 This document outlines the technical roadmap, planned architectural improvements, and discarded approaches for RedAudit.

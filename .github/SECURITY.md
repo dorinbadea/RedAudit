@@ -1,6 +1,6 @@
 # Security Policy
 
-[![English Docs](https://img.shields.io/badge/Docs-EN-blue?style=flat-square)](../docs/en/SECURITY.md) [![Docs Español](https://img.shields.io/badge/Docs-ES-red?style=flat-square)](../docs/es/SECURITY.md)
+[![English Docs](https://img.shields.io/badge/Docs-EN-blue?style=flat-square)](../docs/SECURITY.en.md) [![Docs Español](https://img.shields.io/badge/Docs-ES-red?style=flat-square)](../docs/SECURITY.es.md)
 
 ## Reporting a Vulnerability
 
@@ -19,5 +19,5 @@ If you discover a security vulnerability in RedAudit, please report it responsib
 
 ## Full Security Documentation
 
-- English: [`docs/en/SECURITY.md`](../docs/en/SECURITY.md)
-- Español: [`docs/es/SECURITY.md`](../docs/es/SECURITY.md)
+- English: [`docs/SECURITY.en.md`](../docs/SECURITY.en.md)
+- Español: [`docs/SECURITY.es.md`](../docs/SECURITY.es.md)

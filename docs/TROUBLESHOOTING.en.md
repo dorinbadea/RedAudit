@@ -1,6 +1,10 @@
 # RedAudit Troubleshooting Guide
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](../es/TROUBLESHOOTING.md)
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](TROUBLESHOOTING.es.md)
+
+**Audience:** All Users
+**Scope:** Common errors, exit codes, dependency issues.
+**Source of Truth:** `redaudit/utils/constants.py` (Exit Codes)
 
 ---
 

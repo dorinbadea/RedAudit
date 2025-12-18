@@ -1,5 +1,13 @@
 # Roadmap y Propuestas Arquitectónicas
 
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](ROADMAP.en.md)
+
+**Audiencia:** Colaboradores, Stakeholders
+**Alcance:** Funcionalidades planeadas, propuestas autorizadas.
+**Fuente de verdad:** Gestión de Proyecto
+
+---
+
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](ROADMAP.md)
 
 Este documento describe el roadmap técnico, las mejoras arquitectónicas planificadas y los enfoques descartados para RedAudit.

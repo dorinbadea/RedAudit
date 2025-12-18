@@ -1,10 +1,10 @@
 # Guía Didáctica de RedAudit: Manual Profesional para Profesores e Instructores
 
-[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](../en/DIDACTIC_GUIDE.md)
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](DIDACTIC_GUIDE.en.md)
 
-Esta guía está diseñada para ayudar a profesores, instructores y mentores a explicar el funcionamiento completo de **RedAudit v3.5.0**. El documento desglosa la herramienta desde una perspectiva pedagógica, combinando teoría, diagramas visuales, ejercicios prácticos y referencias al código.
-
-> **Resumen Ejecutivo para Instructores**: RedAudit es una herramienta de orquestación de auditoría de red ideal para enseñar flujos de seguridad estructurados. Puntos clave de enseñanza: (1) Orquestación automatizada vs escaneo manual, (2) Heurística adaptativa (activadores de Deep Scan), (3) Reportes profesionales (JSON listo para SIEM). Para una clase de 60 minutos, enfocarse en Secciones 1-3. Para laboratorios prácticos, usar ejercicios de la Sección 8. Para estudiantes de investigación, la Sección 5 provee referencia de internals en Python.
+**Audiencia:** Estudiantes, Juniors
+**Alcance:** Conceptos educativos, teoría de redes aplicada por RedAudit.
+**Fuente de verdad:** N/A (Educativo)
 
 ---
 

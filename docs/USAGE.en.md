@@ -1,6 +1,14 @@
 # RedAudit Usage Guide
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](../es/USAGE.md)
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](USAGE.es.md)
+
+**Audience:** Pentesters, Operators
+**Scope:** CLI flags, usage examples, configuration, runtime options.
+**Source of Truth:** `redaudit/cli.py`, `redaudit/utils/config.py`
+
+---
+
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](USAGE.es.md)
 
 ## CLI Reference
 

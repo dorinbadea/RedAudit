@@ -1,6 +1,10 @@
 # Guía de Solución de Problemas RedAudit
 
-[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](../en/TROUBLESHOOTING.md)
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](TROUBLESHOOTING.en.md)
+
+**Audiencia:** Todos los usuarios
+**Alcance:** Errores comunes, códigos de salida, problemas de dependencias.
+**Fuente de verdad:** `redaudit/utils/constants.py` (Códigos de Salida)
 
 ---
 

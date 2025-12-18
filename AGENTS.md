@@ -89,9 +89,9 @@ Do not merge if CI is red unless the failure is understood and explicitly accept
 When changing behavior/UX, update the relevant docs **in both EN/ES**:
 
 - `README.md`, `README_ES.md`
-- `docs/en/USAGE.md`, `docs/es/USAGE.md`
-- `docs/en/MANUAL.md`, `docs/es/MANUAL.md`
-- `docs/en/DIDACTIC_GUIDE.md`, `docs/es/DIDACTIC_GUIDE.md` (if user-facing flow changed)
+- `docs/USAGE.en.md`, `docs/USAGE.es.md`
+- `docs/MANUAL.en.md`, `docs/MANUAL.es.md`
+- `docs/DIDACTIC_GUIDE.en.md`, `docs/DIDACTIC_GUIDE.es.md` (if user-facing flow changed)
 - `CHANGELOG.md`, `CHANGELOG_ES.md`
 - `docs/ROADMAP.md`, `docs/ROADMAP_ES.md`
 - release notes: `docs/releases/RELEASE_NOTES_vX.Y.Z*.md`

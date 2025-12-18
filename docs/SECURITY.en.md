@@ -1,6 +1,14 @@
 # Security Architecture & Hardening
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](../es/SECURITY.md)
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](SECURITY.es.md)
+
+**Audience:** Compliance, SecOps
+**Scope:** Privilege model, encryption specs, input validation.
+**Source of Truth:** `redaudit/core/crypto.py`, `redaudit/utils/validators.py`
+
+---
+
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](SECURITY.es.md)
 
 ## Security Policy
 

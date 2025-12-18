@@ -43,7 +43,7 @@ Internal status tokens (`OKGREEN`, `OKBLUE`, `WARNING`) are now mapped to user-f
 ### 3. Honest Security Documentation
 
 - Renamed "Secure Update Module" → "Reliable Update Module"
-- SECURITY.md Section 7 clarifies integrity verification (git hashes) vs. authenticity (cryptographic signatures)
+- SECURITY.en.md Section 7 clarifies integrity verification (git hashes) vs. authenticity (cryptographic signatures)
 - Explicit note: **no GPG signature verification is performed**
 
 ---
@@ -63,4 +63,4 @@ curl -sL https://raw.githubusercontent.com/dorinbadea/RedAudit/v3.2.2/redaudit_i
 ## Useful Links
 
 - **Changelog**: [CHANGELOG.md](../../CHANGELOG.md) / [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
-- **Security Documentation**: [docs/en/SECURITY.md](../en/SECURITY.md) / [docs/es/SECURITY.md](../es/SECURITY.md)
+- **Security Documentation**: [docs/en/SECURITY.en.md](../SECURITY.en.md) / [docs/es/SECURITY.en.md](../SECURITY.en.md)
