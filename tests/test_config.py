@@ -107,6 +107,7 @@ class TestDefaultConfig(unittest.TestCase):
             "udp_top_ports",
             "topology_enabled",
             "lang",
+            "nuclei_enabled",
         ]:
             self.assertIn(k, DEFAULT_CONFIG["defaults"])
 
