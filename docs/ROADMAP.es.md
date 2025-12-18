@@ -21,6 +21,7 @@ Estas características están aprobadas pero **aún no implementadas** en el có
 | **Pipeline SIEM Nativo** | 🎯 Planificado | Configuración empaquetada para Filebeat/Logstash para ingestar JSON ECS de RedAudit. Creación de reglas Sigma. |
 | **Verificación Osquery** | 🎯 Planificado | Módulo post-scan para ejecutar queries Osquery en hosts vivos (vía fleet/SSH) para validar configs (firewall, servicios activos). |
 | **Webhooks Interactivos** | 🎯 Planificado | Añadir configuración de URL de webhook al asistente interactivo (actualmente solo CLI vía `--webhook`). |
+| **Wizard: Opciones avanzadas de Net Discovery** | 🎯 Planificado | Exponer opt-ins seguros (comunidad SNMP, zona DNS, max targets) y persistirlos como defaults para ejecuciones repetibles. |
 
 ### Extensiones Red Team (Prioridad: Media)
 
@@ -50,7 +51,7 @@ Funcionalidades presentes actualmente en `redaudit --version` >= v3.6.0.
 
 | Característica | Versión | Verificación |
 | :--- | :--- | :--- |
-| **Integración Nuclei** | v3.6.0 | Módulo `redaudit/core/nuclei.py`. Ejecuta templates Nuclei si la herramienta se encuentra. |
+| **Integración Nuclei** | v3.6.0 | Módulo `redaudit/core/nuclei.py`. Ejecuta templates cuando Nuclei está instalado y se habilita explícitamente (wizard o `--nuclei`). |
 | **Generación Playbooks** | v3.4.0 | Módulo `redaudit/core/playbook_generator.py`. Crea guías de remediación MD en `playbooks/`. |
 | **Red Team: Kerberos** | v3.2.0 | Módulo `redaudit/core/net_discovery.py`. Usa `kerbrute` para enumeración si está autorizado. |
 | **Red Team: SNMP/SMB** | v3.2.0 | Módulo `redaudit/core/net_discovery.py`. Usa `snmpwalk` y `enum4linux`. |
@@ -65,6 +66,7 @@ Funcionalidades presentes actualmente en `redaudit --version` >= v3.6.0.
 | **CommandRunner Central** | v3.5.0 | `redaudit/core/command_runner.py` maneja todos los subprocesos de forma segura. |
 | **Config Persistente** | v3.1.1 | `~/.redaudit/config.json` almacena defaults del usuario. |
 | **Descubrimiento Async** | v3.1.3 | `redaudit/core/hyperscan.py` usa `asyncio` para sondeo rápido de puertos. |
+| **UI de Progreso Silenciosa (con detalle)** | v3.6.0 | `redaudit/core/auditor.py` reduce el ruido del terminal mientras hay barras de progreso y muestra “qué está haciendo” dentro de la propia línea de progreso. |
 
 ---
 
