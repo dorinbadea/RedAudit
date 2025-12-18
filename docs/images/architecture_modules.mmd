@@ -1,164 +1,181 @@
-%%{init: {'theme':'base','flowchart': {'curve':'linear','nodeSpacing': 30,'rankSpacing': 40},'themeVariables': {'fontFamily': 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial','fontSize': '14px','primaryColor': '#F6F8FA','primaryTextColor': '#0B0F14','primaryBorderColor': '#D0D7DE','lineColor': '#57606A','tertiaryColor': '#FFFFFF'}}}%%
+%%{init: {'theme':'base','flowchart': {'curve':'linear','nodeSpacing': 26,'rankSpacing': 42},'themeVariables': {'fontFamily': 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial','fontSize': '14px','primaryColor': '#F6F8FA','primaryTextColor': '#0B0F14','primaryBorderColor': '#D0D7DE','lineColor': '#57606A','tertiaryColor': '#FFFFFF'}}}%%
 flowchart LR
 
   %% ──────────────────────────────────────────────
-  %% RedAudit architecture (module-level map)
-  %% Source of truth: Python modules under `redaudit/` + entry wrappers.
+  %% RedAudit architecture (functional view with module mapping)
+  %% Goal: match the System Overview PNG structure while keeping module-level traceability.
   %% Render to SVG:
   %%   npx -p @mermaid-js/mermaid-cli mmdc -i docs/images/architecture_modules.mmd -o docs/images/architecture_modules.svg
   %% ──────────────────────────────────────────────
 
   classDef entry fill:#E7F3FF,stroke:#0969DA,stroke-width:1px,color:#0B0F14;
-  classDef core fill:#FFF8E7,stroke:#9A6700,stroke-width:1px,color:#0B0F14;
-  classDef util fill:#F6F8FA,stroke:#57606A,stroke-width:1px,color:#0B0F14;
-  classDef io fill:#EAF9EA,stroke:#1A7F37,stroke-width:1px,color:#0B0F14;
-  classDef ext fill:#FBEAEA,stroke:#CF222E,stroke-width:1px,color:#0B0F14;
-  classDef pkg fill:#FFFFFF,stroke:#D0D7DE,stroke-width:1px,stroke-dasharray: 3 3,color:#0B0F14;
-
-  %% Entry points / wrappers
-  subgraph EP["Entry points"]
-    direction TB
-    bin["/usr/local/bin/redaudit\n(installer wrapper)"]:::entry
-    legacy["redaudit.py\n(legacy wrapper)"]:::entry
-    decrypt["redaudit_decrypt.py\n(report decrypt tool)"]:::entry
-    verify["redaudit_verify.sh\n(install verification)"]:::entry
-    pkg_main["redaudit/__main__.py\npython -m redaudit"]:::entry
-    cli["redaudit/cli.py\nCLI + interactive wizard"]:::entry
-  end
-
-  %% Core package
-  subgraph CORE["Core (`redaudit/core/`)"]
-    direction TB
-    auditor["auditor.py\nInteractiveNetworkAuditor"]:::core
-    prescan["prescan.py\nasync port pre-scan"]:::core
-    scanner["scanner.py\nscan pipeline + capture"]:::core
-    udp_probe["udp_probe.py\nasync UDP probing"]:::core
-    network["network.py\nnet detection helpers"]:::core
-    topology["topology.py\n(topology discovery)"]:::core
-    net_discovery["net_discovery.py\n(discovery + redteam hooks)"]:::core
-    hyperscan["hyperscan.py\n(L2/ARP/UDP discovery)"]:::core
-
-    verify_vuln["verify_vuln.py\n(tool output hygiene)"]:::core
-    nvd["nvd.py\n(CVE enrichment)"]:::core
-    proxy["proxy.py\n(proxy manager)"]:::core
-    power["power.py\nSleepInhibitor"]:::core
-
-    reporter["reporter.py\nsave + exports orchestrator"]:::core
-    html_reporter["html_reporter.py\nHTML dashboard"]:::core
-    jsonl["jsonl_exporter.py\nJSONL exports"]:::core
-    playbooks["playbook_generator.py\nremediation playbooks"]:::core
-    siem["siem.py\nECS/CEF enrichment"]:::core
-    entity["entity_resolver.py\nasset reconciliation"]:::core
-    evidence["evidence_parser.py\nobservations/evidence"]:::core
-    versions["scanner_versions.py\nprovenance"]:::core
-
-    crypto["crypto.py\nencryption helpers"]:::core
-    cmd["command_runner.py\ncentral exec (dry-run-aware)"]:::core
-    updater["updater.py\nself-update"]:::core
-    diff["diff.py\nreport compare"]:::core
-  end
-
-  %% Utils package
-  subgraph UTILS["Utils (`redaudit/utils/`)"]
-    direction TB
-    constants["constants.py\nVERSION + defaults"]:::util
-    i18n["i18n.py\ntranslations"]:::util
-    paths["paths.py\nreport paths + sudo-safe HOME"]:::util
-    config["config.py\npersisted defaults"]:::util
-    dryrun["dry_run.py\nREDAUDIT_DRY_RUN"]:::util
-    webhook["webhook.py\nalerts/webhooks"]:::util
-  end
-
-  %% Templates package
-  subgraph TPL["Templates (`redaudit/templates/`)"]
-    direction TB
-    templates["templates/\nHTML + playbook assets"]:::pkg
-  end
-
-  %% External I/O
-  subgraph IO["Artifacts & I/O"]
-    direction TB
-    reports["Reports folder\n(JSON/TXT/HTML/JSONL/PCAP/Playbooks)"]:::io
-    fs["Filesystem\n(ownership, permissions)"]:::io
-  end
-
-  tools["External tools\n(nmap, tcpdump, nikto, testssl.sh, ...)\n(shell = false)"]:::ext
-  net["Network\n(target hosts/services)"]:::ext
+  classDef orch fill:#111827,stroke:#0B0F14,stroke-width:1px,color:#FFFFFF;
+  classDef scan fill:#FDE7E7,stroke:#CF222E,stroke-width:1px,color:#0B0F14;
+  classDef analysis fill:#FFF3D6,stroke:#9A6700,stroke-width:1px,color:#0B0F14;
+  classDef report fill:#EAF9EA,stroke:#1A7F37,stroke-width:1px,color:#0B0F14;
+  classDef aux fill:#EEF2FF,stroke:#4F46E5,stroke-width:1px,color:#0B0F14;
+  classDef io fill:#F6F8FA,stroke:#57606A,stroke-width:1px,color:#0B0F14;
+  classDef ext fill:#FFFFFF,stroke:#D0D7DE,stroke-width:1px,stroke-dasharray: 3 3,color:#0B0F14;
 
   %% ──────────────────────────────────────────────
-  %% Primary control flow
+  %% Update & entry
   %% ──────────────────────────────────────────────
-  bin --> pkg_main
-  legacy --> pkg_main
-  pkg_main --> cli
+  subgraph ENTRY["Update & Entry"]
+    direction TB
+    user_cli["User / CLI (Wizard)\n`redaudit/cli.py`"]:::orch
+    updater["Updater Module\n`redaudit/core/updater.py`"]:::orch
+    entrypoints["Launch scripts (wrappers)\n`/usr/local/bin/redaudit`, `python -m redaudit`, `redaudit.py`"]:::entry
+  end
 
-  cli <--> auditor
-  cli <--> updater
-  cli -. compare reports .-> diff
+  updater <--> |checks / prompts| user_cli
+  user_cli <--> |feedback / updates| updater
+  entrypoints --> user_cli
 
-  %% Orchestration
-  auditor <--> scanner
-  auditor <--> net_discovery
-  auditor <--> topology
-  auditor <--> udp_probe
-  auditor --> network
-  auditor -. optional .-> prescan
-  auditor -. optional .-> nvd
-  auditor -. hygiene .-> verify_vuln
-  auditor <--> reporter
-  auditor --> proxy
-  auditor --> power
-  auditor <--> cmd
+  %% ──────────────────────────────────────────────
+  %% Orchestrator
+  %% ──────────────────────────────────────────────
+  orchestrator["Orchestrator (Scan Controller)\n`redaudit/core/auditor.py`"]:::orch
+  user_cli <--> orchestrator
 
-  %% Discovery stack
-  net_discovery <--> hyperscan
-  net_discovery <--> cmd
-  topology <--> cmd
-  network <--> cmd
-  proxy <--> cmd
-  power <--> cmd
-  versions <--> cmd
-  verify_vuln <--> cmd
-  updater <--> cmd
-  scanner <--> cmd
+  %% ──────────────────────────────────────────────
+  %% Scanning & enumeration (left block in PNG)
+  %% ──────────────────────────────────────────────
+  subgraph SCANNING["Scanning & Enumeration"]
+    direction TB
+    prescan["Pre-scan (async TCP connect)\n`redaudit/core/prescan.py`"]:::scan
+    net_detect["Network Detection (IPv4/IPv6)\n`redaudit/core/network.py`"]:::scan
 
-  %% Reporting stack
-  reporter <--> html_reporter
+    subgraph SCANNER_ENGINE["Scanner Engine (Nmap + capture)\n`redaudit/core/scanner.py`"]
+      direction TB
+      nmap_engine["Nmap engine\n(scan + OS detection)"]:::scan
+      proxy_wrap["Proxy wrapper (optional)\n`redaudit/core/proxy.py`"]:::scan
+      udp_timing["UDP timing / probe\n`redaudit/core/udp_probe.py`"]:::scan
+      pcap_capture["PCAP micro-capture (best-effort)\n(scanner.py)"]:::scan
+    end
+  end
+
+  %% ──────────────────────────────────────────────
+  %% Discovery & topology (center below orchestrator in PNG)
+  %% ──────────────────────────────────────────────
+  subgraph DISCOVERY["Discovery & Topology"]
+    direction TB
+    net_discovery["Network Discovery\n(protocol/L2 discovery + opt-in redteam)\n`redaudit/core/net_discovery.py`"]:::scan
+    hyperscan["Active L2 / ARP discovery (optional)\n`redaudit/core/hyperscan.py`"]:::scan
+    topology["Topology mapping (optional)\n`redaudit/core/topology.py`"]:::scan
+  end
+
+  %% ──────────────────────────────────────────────
+  %% Analysis (center block in PNG)
+  %% ──────────────────────────────────────────────
+  subgraph ANALYSIS["Analysis"]
+    direction TB
+    vuln_scans["Vulnerability scanners\n(Nikto, testssl.sh)\n`redaudit/core/scanner.py`"]:::analysis
+    smart_checks["Smart-check + fingerprints\n(magic bytes / heuristics)\n`redaudit/core/scanner.py`"]:::analysis
+    http_enrich["HTTP enrichment\n(headers, redirects, metadata)\n`redaudit/core/scanner.py`"]:::analysis
+    tls_analysis["SSL/TLS deep analysis\n`redaudit/core/scanner.py`"]:::analysis
+    exploit_lookup["Exploit lookup\n(searchsploit)\n`redaudit/core/scanner.py`"]:::analysis
+    cve_corr["CVE correlation (NVD)\n`redaudit/core/nvd.py`"]:::analysis
+    fp_filter["False-positive filter / hygiene\n`redaudit/core/verify_vuln.py`"]:::analysis
+  end
+
+  %% ──────────────────────────────────────────────
+  %% Reporting & output (right block in PNG)
+  %% ──────────────────────────────────────────────
+  subgraph OUTPUT["Reporting & Output"]
+    direction TB
+    entity["Entity resolution\n(unify multi-interface assets)\n`redaudit/core/entity_resolver.py`"]:::report
+    siem["SIEM formatter (ECS/CEF)\n`redaudit/core/siem.py`"]:::report
+    reporter["Reporter (JSON/TXT)\n`redaudit/core/reporter.py`"]:::report
+    encryption["Encryption (AES)\n`redaudit/core/crypto.py`"]:::report
+
+    subgraph EXPORTS["Exports (encryption disabled)"]
+      direction TB
+      html["HTML dashboard\n`redaudit/core/html_reporter.py`"]:::report
+      jsonl["JSONL exports\n`redaudit/core/jsonl_exporter.py`"]:::report
+      playbooks["Remediation playbooks\n`redaudit/core/playbook_generator.py`"]:::report
+    end
+  end
+
+  %% ──────────────────────────────────────────────
+  %% Auxiliary / shared services (right dotted aux in PNG)
+  %% ──────────────────────────────────────────────
+  subgraph AUX["Auxiliary & Shared Services"]
+    direction TB
+    cmd["Command execution layer\n(dry-run aware)\n`redaudit/core/command_runner.py`"]:::aux
+    dryrun["Dry-run policy\n`redaudit/utils/dry_run.py`"]:::aux
+    power["Sleep inhibition (best-effort)\n`redaudit/core/power.py`"]:::aux
+    cfg["Persisted defaults\n`redaudit/utils/config.py`"]:::aux
+    i18n["i18n translations\n`redaudit/utils/i18n.py`"]:::aux
+    paths["Paths & sudo-safe HOME\n`redaudit/utils/paths.py`"]:::aux
+    constants["Version & constants\n`redaudit/utils/constants.py`"]:::aux
+    diff["Report diff / compare\n`redaudit/core/diff.py`"]:::aux
+  end
+
+  %% ──────────────────────────────────────────────
+  %% External boundaries
+  %% ──────────────────────────────────────────────
+  ext_tools["External tools\n(nmap, tcpdump, nikto, testssl.sh, searchsploit, ...)\n(shell=false)"]:::ext
+  targets["Target network\n(hosts/services)"]:::ext
+  nvd_api["NVD API"]:::ext
+  exploitdb["ExploitDB / searchsploit DB"]:::ext
+
+  artifacts["Reports folder\n(JSON/TXT/HTML/JSONL/PCAP/Playbooks)"]:::io
+  filesystem["Filesystem\n(ownership/permissions)"]:::io
+
+  %% ──────────────────────────────────────────────
+  %% Control flow (two-way where results flow back)
+  %% ──────────────────────────────────────────────
+  orchestrator <--> prescan
+  orchestrator <--> net_detect
+  orchestrator <--> nmap_engine
+  orchestrator <--> pcap_capture
+  orchestrator -. "--net-discovery | full mode" .-> net_discovery
+  orchestrator -. "user accepts prompt" .-> topology
+  net_discovery -. "active L2 (opt-in)" .-> hyperscan
+
+  %% Service data and analysis flow
+  nmap_engine <--> vuln_scans
+  nmap_engine <--> smart_checks
+  vuln_scans <--> fp_filter
+  http_enrich <--> fp_filter
+  tls_analysis <--> fp_filter
+  smart_checks <--> fp_filter
+
+  nmap_engine <--> http_enrich
+  nmap_engine <--> tls_analysis
+  nmap_engine <--> exploit_lookup
+  nmap_engine <--> cve_corr
+
+  %% Reporting flow
+  fp_filter <--> entity
+  entity <--> siem
+  siem <--> reporter
+  reporter <--> encryption
+  reporter <--> html
   reporter <--> jsonl
   reporter <--> playbooks
-  reporter <--> siem
-  reporter <--> entity
-  reporter -. optional .-> webhook
-  reporter <--> versions
-  reporter <--> crypto
 
-  html_reporter --> templates
-  playbooks --> templates
+  %% Dotted aux (shared services)
+  user_cli <-.-> cfg
+  user_cli <-.-> i18n
+  user_cli <-.-> constants
+  orchestrator <-.-> cfg
+  orchestrator <-.-> paths
+  orchestrator <-.-> power
+  orchestrator <-.-> dryrun
+  orchestrator <-.-> cmd
+  reporter <-.-> paths
+  reporter <-.-> cmd
+  user_cli -. "compare reports" .-> diff
 
-  %% Utilities (cross-cutting)
-  cli --> constants
-  cli --> i18n
-  cli --> paths
-  cli --> config
-  cli --> dryrun
+  %% External interactions (request/response)
+  cmd <--> ext_tools
+  nmap_engine <--> targets
+  net_discovery <--> targets
+  cve_corr <--> nvd_api
+  exploit_lookup <--> exploitdb
 
-  auditor --> constants
-  auditor --> i18n
-  auditor --> paths
-  auditor --> config
-
-  updater --> constants
-  updater --> dryrun
-
-  cmd --> dryrun
-  reporter --> constants
-  reporter --> paths
-
-  %% External boundaries
-  cmd <--> tools
-  scanner <--> net
-  net_discovery <--> net
-  reporter <--> reports
-  paths <--> fs
-  reports <--> fs
-
+  %% Artifacts
+  reporter --> artifacts
+  artifacts <--> filesystem
+  paths <--> filesystem
