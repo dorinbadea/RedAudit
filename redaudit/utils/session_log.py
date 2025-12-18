@@ -69,6 +69,8 @@ class SessionLogger:
         """
         if self.active:
             return True
+        if self._mode in {"off", "disabled", "false", "0", "none"}:
+            return False
 
         try:
             # Create session_logs directory
