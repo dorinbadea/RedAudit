@@ -74,6 +74,14 @@
         .sortable { cursor: pointer; user-select: none; }
         .sortable:hover { color: var(--text-primary); }
         .sortable::after { content: ' ⇅'; opacity: 0.5; }
+        .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+        .meta-item { background: var(--bg-card); border-radius: 8px; padding: 1rem; border: 1px solid var(--border-color); }
+        .meta-item h4 { font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--text-secondary); }
+        .meta-item ul { list-style: none; margin: 0; padding: 0; }
+        .meta-item li { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.85rem; padding: 0.2rem 0; color: var(--text-secondary); }
+        .meta-item li span { color: var(--text-primary); }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .tag { background: rgba(52,152,219,0.15); color: var(--accent-blue); padding: 0.15rem 0.45rem; border-radius: 12px; font-size: 0.7rem; }
     </style>
 </head>
 <body>
@@ -89,11 +97,27 @@
         <div class="cards">
             <div class="card">
                 <div class="card-title">Hosts Discovered</div>
-                <div class="card-value">{{ host_count }}</div>
+                <div class="card-value">{{ summary.hosts_found or host_count }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Hosts Scanned</div>
+                <div class="card-value">{{ summary.hosts_scanned or host_count }}</div>
             </div>
             <div class="card">
                 <div class="card-title">Total Findings</div>
                 <div class="card-value">{{ finding_count }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Deep Scans</div>
+                <div class="card-value">{{ smart_scan.deep_scan_executed or 0 }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Agentless Verified</div>
+                <div class="card-value">{{ pipeline.agentless_verify.completed or 0 }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Nuclei Findings</div>
+                <div class="card-value">{{ pipeline.nuclei.findings or 0 }}</div>
             </div>
             <div class="card">
                 <div class="card-title">Critical</div>
@@ -125,16 +149,82 @@
         </div>
 
         <div class="section">
+            <div class="section-title">Pipeline Overview</div>
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <h4>Host Scan</h4>
+                    <ul>
+                        <li>Targets <span>{{ pipeline.host_scan.targets or 0 }}</span></li>
+                        <li>Scanned <span>{{ pipeline.host_scan.scanned or 0 }}</span></li>
+                        <li>Threads <span>{{ pipeline.host_scan.threads or 0 }}</span></li>
+                        <li>Mode <span>{{ config_snapshot.scan_mode or scan_mode }}</span></li>
+                    </ul>
+                </div>
+                <div class="meta-item">
+                    <h4>Net Discovery</h4>
+                    <ul>
+                        <li>Enabled <span>{{ 'Yes' if pipeline.net_discovery.enabled else 'No' }}</span></li>
+                        <li>Protocols <span>{{ (pipeline.net_discovery.protocols_used or [])|join(', ') }}</span></li>
+                        <li>ARP Hosts <span>{{ pipeline.net_discovery.counts.arp_hosts or 0 }}</span></li>
+                        <li>HyperScan TCP <span>{{ pipeline.net_discovery.counts.hyperscan_tcp_hosts or 0 }}</span></li>
+                        <li>Red Team <span>{{ 'On' if pipeline.net_discovery.redteam_enabled else 'Off' }}</span></li>
+                    </ul>
+                </div>
+                <div class="meta-item">
+                    <h4>Agentless Verify</h4>
+                    <ul>
+                        <li>Targets <span>{{ pipeline.agentless_verify.targets or 0 }}</span></li>
+                        <li>Completed <span>{{ pipeline.agentless_verify.completed or 0 }}</span></li>
+                        <li>SMB <span>{{ pipeline.agentless_verify.signals.smb or 0 }}</span></li>
+                        <li>RDP <span>{{ pipeline.agentless_verify.signals.rdp or 0 }}</span></li>
+                        <li>HTTP <span>{{ pipeline.agentless_verify.signals.http or 0 }}</span></li>
+                    </ul>
+                </div>
+                <div class="meta-item">
+                    <h4>Nuclei</h4>
+                    <ul>
+                        <li>Targets <span>{{ pipeline.nuclei.targets or 0 }}</span></li>
+                        <li>Findings <span>{{ pipeline.nuclei.findings or 0 }}</span></li>
+                        <li>Status <span>{{ 'OK' if pipeline.nuclei.success else 'N/A' }}</span></li>
+                    </ul>
+                </div>
+                <div class="meta-item">
+                    <h4>Smart Scan</h4>
+                    <ul>
+                        <li>Hosts <span>{{ smart_scan.hosts or 0 }}</span></li>
+                        <li>Identity Avg <span>{{ smart_scan.identity_score_avg or 0 }}</span></li>
+                        <li>Deep Triggered <span>{{ smart_scan.deep_scan_triggered or 0 }}</span></li>
+                        <li>Deep Executed <span>{{ smart_scan.deep_scan_executed or 0 }}</span></li>
+                    </ul>
+                </div>
+                <div class="meta-item">
+                    <h4>Vulnerabilities</h4>
+                    <ul>
+                        <li>Total <span>{{ pipeline.vulnerability_scan.total or 0 }}</span></li>
+                        <li>Sources <span>{{ (pipeline.vulnerability_scan.sources or {})|length }}</span></li>
+                        <li>Critical <span>{{ severity_counts.critical }}</span></li>
+                        <li>High <span>{{ severity_counts.high }}</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
             <div class="section-title">Hosts ({{ host_count }})</div>
             <table id="hostsTable">
                 <thead>
                     <tr>
                         <th class="sortable" data-col="0">IP</th>
                         <th class="sortable" data-col="1">Hostname</th>
-                        <th class="sortable" data-col="2">Ports</th>
-                        <th class="sortable" data-col="3">Risk Score</th>
+                        <th class="sortable" data-col="2">Status</th>
+                        <th class="sortable" data-col="3">Ports</th>
+                        <th class="sortable" data-col="4">Risk Score</th>
+                        <th class="sortable" data-col="5">Asset Type</th>
+                        <th class="sortable" data-col="6">OS</th>
                         <th>MAC</th>
                         <th>Vendor</th>
+                        <th>Tags</th>
+                        <th>Agentless</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -142,6 +232,7 @@
                     <tr>
                         <td><code>{{ host.ip }}</code></td>
                         <td>{{ host.hostname }}</td>
+                        <td>{{ host.status }}</td>
                         <td>{{ host.ports_count }}</td>
                         <td>
                             {% if host.risk_score >= 70 %}
@@ -152,8 +243,18 @@
                             <span class="risk-low">{{ host.risk_score }}</span>
                             {% endif %}
                         </td>
+                        <td>{{ host.asset_type }}</td>
+                        <td>{{ host.os }}</td>
                         <td><code>{{ host.mac }}</code></td>
                         <td>{{ host.vendor }}</td>
+                        <td>
+                            <div class="tag-list">
+                                {% for tag in host.tags.split(',') if tag %}
+                                <span class="tag">{{ tag.strip() }}</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td>{{ host.agentless }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>
@@ -167,9 +268,12 @@
                     <tr>
                         <th class="sortable" data-col="0">Host</th>
                         <th class="sortable" data-col="1">Severity</th>
-                        <th class="sortable" data-col="2">Category</th>
-                        <th>Title</th>
-                        <th>Port</th>
+                        <th class="sortable" data-col="2">Source</th>
+                        <th class="sortable" data-col="3">Category</th>
+                        <th class="sortable" data-col="4">Title</th>
+                        <th class="sortable" data-col="5">Port</th>
+                        <th>URL</th>
+                        <th>CVE</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -177,9 +281,12 @@
                     <tr>
                         <td><code>{{ finding.host }}</code></td>
                         <td><span class="badge badge-{{ finding.severity }}">{{ finding.severity|upper }}</span></td>
+                        <td>{{ finding.source }}</td>
                         <td>{{ finding.category }}</td>
                         <td>{{ finding.title }}</td>
                         <td>{{ finding.port }}</td>
+                        <td><code>{{ finding.url }}</code></td>
+                        <td>{{ finding.cve }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>

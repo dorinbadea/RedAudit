@@ -11,7 +11,7 @@ Implements ECS (Elastic Common Schema), severity scoring, and CEF format.
 import hashlib
 import json
 import re
-from typing import Dict, List, Optional, TypedDict
+from typing import Dict, List, Optional, Tuple, TypedDict
 
 
 # ECS Version for Elastic integration
@@ -34,6 +34,14 @@ SEVERITY_LEVELS: Dict[str, SeverityInfo] = {
     "low": {"score": 30, "color": "blue"},
     "info": {"score": 10, "color": "gray"},
 }
+
+
+def _severity_from_label(label: str) -> Tuple[str, int]:
+    value = (label or "").strip().lower()
+    if value not in SEVERITY_LEVELS:
+        value = "info"
+    return value, SEVERITY_LEVELS[value]["score"]
+
 
 # Keywords to detect severity from findings
 SEVERITY_KEYWORDS = {
@@ -523,6 +531,27 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
     all_categories = set()
     primary_finding = ""
     has_rfc1918_finding = False
+    source = str(vuln_record.get("source") or "").strip().lower()
+    explicit_severity = str(vuln_record.get("severity") or "").strip()
+    has_tool_findings = bool(vuln_record.get("nikto_findings")) or bool(
+        vuln_record.get("testssl_analysis")
+    )
+
+    if explicit_severity and not has_tool_findings:
+        max_severity, max_score = _severity_from_label(explicit_severity)
+        primary_finding = (
+            vuln_record.get("name")
+            or vuln_record.get("descriptive_title")
+            or vuln_record.get("description")
+            or vuln_record.get("url")
+            or ""
+        )
+        if primary_finding:
+            cat = classify_finding_category(primary_finding)
+            if cat != "surface":
+                all_categories.add(cat)
+        if source == "nuclei":
+            all_categories.add("vuln")
 
     # Check Nikto findings
     for finding in vuln_record.get("nikto_findings", []):
@@ -587,7 +616,7 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
     enriched["normalized_severity"] = round(max_score / 10, 1)
 
     # v3.1: Preserve original tool severity for traceability
-    tool_name = (
+    tool_name = source or (
         "nikto" if vuln_record.get("nikto_findings") else "testssl" if testssl else "unknown"
     )
     enriched["original_severity"] = {
@@ -632,8 +661,14 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
     # v3.1: Generate finding_id for deduplication
     port = vuln_record.get("port", 0)
 
-    # Extract signature from CVE, Nikto plugin ID, or URL
+    # Extract signature from CVE, template ID, Nikto plugin ID, or URL
     signature = ""
+    cve_ids = vuln_record.get("cve_ids") or []
+    if isinstance(cve_ids, list) and cve_ids:
+        signature = str(cve_ids[0]).upper()
+    template_id = vuln_record.get("template_id")
+    if not signature and template_id:
+        signature = str(template_id)
     if "cve-" in primary_finding.lower():
         match = re.search(r"(cve-\d{4}-\d+)", primary_finding.lower())
         if match:
@@ -748,6 +783,14 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
         # Add tags
         host["tags"] = generate_host_tags(host)
 
+        # Best-effort asset type classification (useful for SIEM/JSONL)
+        try:
+            from redaudit.core.entity_resolver import guess_asset_type
+
+            host["asset_type"] = guess_asset_type(host)
+        except Exception:
+            pass
+
     # Enrich vulnerabilities with severity, finding_id, category, and observations
     # Build host IP to observable_hash mapping for finding_id generation
     host_hash_map = {h.get("ip"): h.get("observable_hash", "") for h in enriched.get("hosts", [])}
@@ -811,7 +854,7 @@ def consolidate_findings(vulnerabilities: List[Dict]) -> List[Dict]:
         return []
 
     # Group by (host, title)
-    grouped: Dict[tuple, List[Dict]] = {}
+    grouped: Dict[Tuple[str, str, str], List[Dict]] = {}
     host_order: List[str] = []  # Preserve original order
 
     for entry in vulnerabilities:
@@ -821,12 +864,14 @@ def consolidate_findings(vulnerabilities: List[Dict]) -> List[Dict]:
 
         for vuln in entry.get("vulnerabilities", []):
             title = vuln.get("descriptive_title") or vuln.get("url", "")
-            key = (host, title)
+            key = (host, title, "")
+            if str(vuln.get("source") or "").lower() == "nuclei":
+                key = (host, title, vuln.get("matched_at") or vuln.get("url") or "")
             grouped.setdefault(key, []).append(vuln)
 
     # Rebuild consolidated list
     consolidated: Dict[str, List[Dict]] = {}
-    for (host, _title), vulns in grouped.items():
+    for (host, _title, _match), vulns in grouped.items():
         if host not in consolidated:
             consolidated[host] = []
 

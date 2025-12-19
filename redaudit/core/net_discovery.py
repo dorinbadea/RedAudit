@@ -19,6 +19,7 @@ import ipaddress
 import os
 import re
 import shutil
+import threading
 import time
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -915,6 +916,33 @@ def _run_redteam_discovery(
         except Exception:
             return
 
+    def _run_step(label: str, func):
+        start = time.monotonic()
+        stop_event = threading.Event()
+        ticker = None
+
+        if progress_callback:
+
+            def _tick():
+                while not stop_event.wait(3.0):
+                    elapsed = int(time.monotonic() - start)
+                    _progress_redteam(f"{label} ({elapsed}s)")
+
+            ticker = threading.Thread(target=_tick, daemon=True)
+            ticker.start()
+
+        try:
+            _progress_redteam(label)
+            return func()
+        finally:
+            stop_event.set()
+            if ticker:
+                try:
+                    ticker.join(timeout=0.5)
+                except Exception:
+                    pass
+            _progress_redteam(f"{label} done")
+
     iface = _sanitize_iface(interface)
 
     snmp_community = options.get("snmp_community", "public")
@@ -932,8 +960,10 @@ def _run_redteam_discovery(
 
     target_ips = _gather_redteam_targets(result, max_targets=max_targets)
 
-    _progress_redteam("masscan sweep")
-    masscan = _redteam_masscan_sweep(target_networks, tools=tools, logger=logger)
+    masscan = _run_step(
+        "masscan sweep",
+        lambda: _redteam_masscan_sweep(target_networks, tools=tools, logger=logger),
+    )
     open_tcp = _index_open_tcp_ports(masscan)
 
     smb_targets = _filter_targets_by_port(target_ips, open_tcp, port=445, fallback_max=15)
@@ -945,56 +975,71 @@ def _run_redteam_discovery(
     )
     kerberos_targets = _filter_targets_by_port(target_ips, open_tcp, port=88, fallback_max=10)
 
-    _progress_redteam("SNMP walk")
-    snmp = _redteam_snmp_walk(
-        target_ips,
-        tools=tools,
-        community=snmp_community,
-        logger=logger,
+    snmp = _run_step(
+        "SNMP walk",
+        lambda: _redteam_snmp_walk(
+            target_ips,
+            tools=tools,
+            community=snmp_community,
+            logger=logger,
+        ),
     )
-    _progress_redteam("SMB enum")
-    smb = _redteam_smb_enum(smb_targets, tools=tools, logger=logger)
-    _progress_redteam("RPC enum")
-    rpc = _redteam_rpc_enum(rpc_targets, tools=tools, logger=logger)
-    _progress_redteam("LDAP enum")
-    ldap = _redteam_ldap_enum(ldap_targets, tools=tools, logger=logger)
-    _progress_redteam("Kerberos enum")
-    kerberos = _redteam_kerberos_enum(
-        kerberos_targets,
-        tools=tools,
-        realm=kerberos_realm,
-        userlist_path=kerberos_userlist,
-        logger=logger,
+    smb = _run_step("SMB enum", lambda: _redteam_smb_enum(smb_targets, tools=tools, logger=logger))
+    rpc = _run_step("RPC enum", lambda: _redteam_rpc_enum(rpc_targets, tools=tools, logger=logger))
+    ldap = _run_step(
+        "LDAP enum", lambda: _redteam_ldap_enum(ldap_targets, tools=tools, logger=logger)
     )
-    _progress_redteam("DNS zone transfer")
-    dns_zone_transfer = _redteam_dns_zone_transfer(
-        result,
-        tools=tools,
-        zone=dns_zone,
-        logger=logger,
+    kerberos = _run_step(
+        "Kerberos enum",
+        lambda: _redteam_kerberos_enum(
+            kerberos_targets,
+            tools=tools,
+            realm=kerberos_realm,
+            userlist_path=kerberos_userlist,
+            logger=logger,
+        ),
     )
-    _progress_redteam("VLAN enum")
-    vlan_enum = _redteam_vlan_enum(iface, tools=tools, logger=logger)
-    _progress_redteam("STP topology")
-    stp_topology = _redteam_stp_topology(iface, tools=tools, logger=logger)
-    _progress_redteam("HSRP/VRRP")
-    hsrp_vrrp = _redteam_hsrp_vrrp_discovery(iface, tools=tools, logger=logger)
-    _progress_redteam("LLMNR/NBT-NS")
-    llmnr_nbtns = _redteam_llmnr_nbtns_capture(iface, tools=tools, logger=logger)
-    _progress_redteam("Router discovery")
-    router_discovery = _redteam_router_discovery(iface, tools=tools, logger=logger)
-    _progress_redteam("IPv6 discovery")
-    ipv6_discovery = _redteam_ipv6_discovery(iface, tools=tools, logger=logger)
-    _progress_redteam("Bettercap recon")
-    bettercap_recon = _redteam_bettercap_recon(
-        iface, tools=tools, active_l2=active_l2, logger=logger
+    dns_zone_transfer = _run_step(
+        "DNS zone transfer",
+        lambda: _redteam_dns_zone_transfer(
+            result,
+            tools=tools,
+            zone=dns_zone,
+            logger=logger,
+        ),
     )
-    _progress_redteam("Scapy probes")
-    scapy_custom = _redteam_scapy_custom(
-        iface,
-        tools=tools,
-        active_l2=active_l2,
-        logger=logger,
+    vlan_enum = _run_step(
+        "VLAN enum", lambda: _redteam_vlan_enum(iface, tools=tools, logger=logger)
+    )
+    stp_topology = _run_step(
+        "STP topology", lambda: _redteam_stp_topology(iface, tools=tools, logger=logger)
+    )
+    hsrp_vrrp = _run_step(
+        "HSRP/VRRP", lambda: _redteam_hsrp_vrrp_discovery(iface, tools=tools, logger=logger)
+    )
+    llmnr_nbtns = _run_step(
+        "LLMNR/NBT-NS", lambda: _redteam_llmnr_nbtns_capture(iface, tools=tools, logger=logger)
+    )
+    router_discovery = _run_step(
+        "Router discovery",
+        lambda: _redteam_router_discovery(iface, tools=tools, logger=logger),
+    )
+    ipv6_discovery = _run_step(
+        "IPv6 discovery",
+        lambda: _redteam_ipv6_discovery(iface, tools=tools, logger=logger),
+    )
+    bettercap_recon = _run_step(
+        "Bettercap recon",
+        lambda: _redteam_bettercap_recon(iface, tools=tools, active_l2=active_l2, logger=logger),
+    )
+    scapy_custom = _run_step(
+        "Scapy probes",
+        lambda: _redteam_scapy_custom(
+            iface,
+            tools=tools,
+            active_l2=active_l2,
+            logger=logger,
+        ),
     )
 
     redteam: Dict[str, Any] = {

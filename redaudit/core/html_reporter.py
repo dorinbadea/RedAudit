@@ -46,6 +46,9 @@ def prepare_report_data(results: Dict, config: Dict) -> Dict:
     hosts = results.get("hosts", [])
     vulnerabilities = results.get("vulnerabilities", [])
     summary = results.get("summary", {})
+    pipeline = results.get("pipeline", {}) or {}
+    smart_scan_summary = results.get("smart_scan_summary", {}) or {}
+    config_snapshot = results.get("config_snapshot", {}) or {}
 
     # Severity distribution for chart
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
@@ -68,6 +71,14 @@ def prepare_report_data(results: Dict, config: Dict) -> Dict:
     # Host table data
     host_table = []
     for host in hosts:
+        agentless = host.get("agentless_fingerprint", {}) or {}
+        agentless_summary = (
+            agentless.get("computer_name")
+            or agentless.get("dns_computer_name")
+            or agentless.get("http_title")
+            or agentless.get("domain")
+            or "-"
+        )
         host_table.append(
             {
                 "ip": host.get("ip", ""),
@@ -77,6 +88,12 @@ def prepare_report_data(results: Dict, config: Dict) -> Dict:
                 "risk_score": host.get("risk_score", 0),
                 "mac": host.get("deep_scan", {}).get("mac_address", "-"),
                 "vendor": host.get("deep_scan", {}).get("vendor", "-"),
+                "os": host.get("os_detected")
+                or host.get("deep_scan", {}).get("os_detected")
+                or agentless.get("os", "-"),
+                "asset_type": host.get("asset_type", "-"),
+                "tags": ", ".join(host.get("tags", [])),
+                "agentless": agentless_summary,
             }
         )
 
@@ -85,14 +102,21 @@ def prepare_report_data(results: Dict, config: Dict) -> Dict:
     for vuln_entry in vulnerabilities:
         host_ip = vuln_entry.get("host", "")
         for vuln in vuln_entry.get("vulnerabilities", []):
+            source = (
+                vuln.get("source") or (vuln.get("original_severity") or {}).get("tool") or "unknown"
+            )
+            cve_ids = vuln.get("cve_ids") or []
+            cve_txt = ", ".join(cve_ids[:3]) if isinstance(cve_ids, list) else ""
             finding_table.append(
                 {
                     "host": host_ip,
-                    "url": vuln.get("url", "-"),
+                    "url": vuln.get("matched_at") or vuln.get("url", "-"),
                     "severity": vuln.get("severity", "info"),
                     "category": vuln.get("category", "-"),
                     "title": _extract_finding_title(vuln),
                     "port": vuln.get("port", "-"),
+                    "source": source,
+                    "cve": cve_txt,
                 }
             )
 
@@ -109,6 +133,9 @@ def prepare_report_data(results: Dict, config: Dict) -> Dict:
         "top_ports": top_ports,
         "host_table": host_table,
         "finding_table": finding_table,
+        "pipeline": pipeline,
+        "smart_scan": smart_scan_summary,
+        "config_snapshot": config_snapshot,
     }
 
 

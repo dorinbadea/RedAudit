@@ -33,23 +33,60 @@ def export_findings_jsonl(results: Dict, output_path: str) -> int:
     schema_version = results.get("schema_version", "")
     scanner_versions = results.get("scanner_versions", {}) or {}
     redaudit_version = results.get("version") or scanner_versions.get("redaudit", "")
+    scanner_info = results.get("scanner", {}) or {}
+    scan_mode = scanner_info.get("mode") or scanner_info.get("mode_cli") or ""
+    host_index = {
+        h.get("ip"): h for h in results.get("hosts", []) if isinstance(h, dict) and h.get("ip")
+    }
 
     with open(output_path, "w", encoding="utf-8") as f:
         for vuln_entry in results.get("vulnerabilities", []):
             host = vuln_entry.get("host", "")
+            vulns = vuln_entry.get("vulnerabilities", [])
+            if not isinstance(vulns, list):
+                continue
+            host_info = host_index.get(host, {}) if host else {}
+            asset_id = host_info.get("observable_hash", "")
+            hostname = host_info.get("hostname", "")
+            tags = host_info.get("tags", []) or []
+            risk_score = host_info.get("risk_score", 0)
+            status = host_info.get("status", "")
 
-            for vuln in vuln_entry.get("vulnerabilities", []):
+            for vuln in vulns:
+                source = (
+                    vuln.get("source") or (vuln.get("original_severity") or {}).get("tool") or ""
+                )
+                sources = []
+                for candidate in (
+                    source,
+                    "nikto" if vuln.get("nikto_findings") else "",
+                    "testssl" if vuln.get("testssl_analysis") else "",
+                    "whatweb" if vuln.get("whatweb") else "",
+                ):
+                    if candidate and candidate not in sources:
+                        sources.append(candidate)
                 finding = {
                     "finding_id": vuln.get("finding_id", ""),
+                    "asset_id": asset_id,
                     "asset_ip": host,
+                    "asset_hostname": hostname,
+                    "asset_tags": tags,
+                    "asset_risk_score": risk_score,
+                    "asset_status": status,
                     "port": vuln.get("port", 0),
                     "url": vuln.get("url", ""),
                     "severity": vuln.get("severity", "info"),
                     "normalized_severity": vuln.get("normalized_severity", 0.0),
                     "category": vuln.get("category", "surface"),
                     "title": _extract_title(vuln),
+                    "source": source,
+                    "sources": sources,
+                    "template_id": vuln.get("template_id", ""),
+                    "cve_ids": vuln.get("cve_ids", []),
+                    "matched_at": vuln.get("matched_at", ""),
                     "parsed_observations": vuln.get("parsed_observations", [])[:5],
                     "timestamp": results.get("timestamp_end", ""),
+                    "scan_mode": scan_mode,
                     # Provenance: makes JSONL ingestion self-contained
                     "session_id": session_id,
                     "schema_version": schema_version,
@@ -84,6 +121,8 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
     schema_version = results.get("schema_version", "")
     scanner_versions = results.get("scanner_versions", {}) or {}
     redaudit_version = results.get("version") or scanner_versions.get("redaudit", "")
+    scanner_info = results.get("scanner", {}) or {}
+    scan_mode = scanner_info.get("mode") or scanner_info.get("mode_cli") or ""
 
     # Build finding count per host
     finding_counts: Dict[str, int] = {}
@@ -96,6 +135,8 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
     with open(output_path, "w", encoding="utf-8") as f:
         for host in results.get("hosts", []):
             ip = host.get("ip", "")
+            deep = host.get("deep_scan", {}) or {}
+            agentless = host.get("agentless_fingerprint", {}) or {}
 
             asset = {
                 "asset_id": host.get("observable_hash", ""),
@@ -103,11 +144,14 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
                 "hostname": host.get("hostname", ""),
                 "status": host.get("status", "unknown"),
                 "risk_score": host.get("risk_score", 0),
+                "asset_type": host.get("asset_type", ""),
+                "os_detected": host.get("os_detected") or deep.get("os_detected") or "",
                 "total_ports": host.get("total_ports_found", 0),
                 "web_ports": host.get("web_ports_count", 0),
                 "finding_count": finding_counts.get(ip, 0),
                 "tags": host.get("tags", []),
                 "timestamp": results.get("timestamp_end", ""),
+                "scan_mode": scan_mode,
                 # Provenance: makes JSONL ingestion self-contained
                 "session_id": session_id,
                 "schema_version": schema_version,
@@ -123,6 +167,24 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
                 )
             if ecs_host.get("vendor"):
                 asset["vendor"] = ecs_host["vendor"]
+            if agentless:
+                filtered = {}
+                for key in (
+                    "domain",
+                    "dns_domain_name",
+                    "dns_computer_name",
+                    "computer_name",
+                    "os",
+                    "http_title",
+                    "http_server",
+                    "smb_signing_required",
+                    "smbv1_detected",
+                    "product_version",
+                ):
+                    if agentless.get(key) not in (None, ""):
+                        filtered[key] = agentless.get(key)
+                if filtered:
+                    asset["agentless"] = filtered
 
             f.write(json.dumps(asset, ensure_ascii=False) + "\n")
             count += 1
@@ -174,6 +236,9 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "high_risk_assets": results.get("summary", {}).get("high_risk_hosts", 0),
         "targets": results.get("targets", []),
         "scanner_versions": results.get("scanner_versions", {}),
+        "scan_mode": (results.get("scanner") or {}).get("mode"),
+        "pipeline": results.get("pipeline", {}),
+        "smart_scan_summary": results.get("smart_scan_summary", {}),
         # Convenience: summary consumers frequently need RedAudit version
         "redaudit_version": results.get("version")
         or (results.get("scanner_versions", {}) or {}).get("redaudit", ""),

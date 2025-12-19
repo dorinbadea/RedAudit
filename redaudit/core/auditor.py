@@ -26,7 +26,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed, wait
 from logging.handlers import RotatingFileHandler
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from redaudit.utils.constants import (
     VERSION,
@@ -436,6 +436,92 @@ class InteractiveNetworkAuditor(WizardMixin):
         if isinstance(value, str):
             return value
         return str(value)
+
+    @staticmethod
+    def _parse_url_target(value: object) -> Tuple[str, int, str]:
+        if not isinstance(value, str):
+            return "", 0, ""
+        raw = value.strip()
+        if not raw:
+            return "", 0, ""
+        if "://" not in raw:
+            host = raw
+            port = 0
+            scheme = ""
+            if raw.count(":") == 1:
+                host_part, port_part = raw.split(":", 1)
+                host = host_part.strip()
+                try:
+                    port = int(port_part)
+                except Exception:
+                    port = 0
+            return host, port, scheme
+        try:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(raw)
+            host = parsed.hostname or ""
+            port = parsed.port or 0
+            scheme = parsed.scheme or ""
+            if not port:
+                if scheme == "https":
+                    port = 443
+                elif scheme == "http":
+                    port = 80
+            return host, port, scheme
+        except Exception:
+            return "", 0, ""
+
+    def _merge_nuclei_findings(self, findings: List[Dict[str, Any]]) -> int:
+        if not findings:
+            return 0
+        host_map: Dict[str, Dict[str, Any]] = {}
+        for entry in self.results.get("vulnerabilities", []):
+            if not isinstance(entry, dict):
+                continue
+            host = entry.get("host")
+            if host and isinstance(entry.get("vulnerabilities"), list):
+                host_map[str(host)] = entry
+
+        merged = 0
+        for finding in findings:
+            if not isinstance(finding, dict):
+                continue
+            matched_at = finding.get("matched_at") or finding.get("host") or ""
+            host, port, scheme = self._parse_url_target(str(matched_at))
+            if not host:
+                host, port, scheme = self._parse_url_target(str(finding.get("host") or ""))
+            if not host:
+                continue
+
+            name = finding.get("name") or finding.get("template_id") or "nuclei"
+            vuln = {
+                "url": matched_at or "",
+                "port": port or 0,
+                "severity": finding.get("severity", "info"),
+                "category": "vuln",
+                "source": "nuclei",
+                "template_id": finding.get("template_id"),
+                "name": name,
+                "description": finding.get("description", ""),
+                "matched_at": matched_at or "",
+                "matcher_name": finding.get("matcher_name", ""),
+                "reference": finding.get("reference", []),
+                "tags": finding.get("tags", []),
+                "cve_ids": finding.get("cve_ids", []),
+                "descriptive_title": f"Nuclei: {name}",
+            }
+            if scheme:
+                vuln["scheme"] = scheme
+
+            entry = host_map.get(host)
+            if not entry:
+                entry = {"host": host, "vulnerabilities": []}
+                self.results.setdefault("vulnerabilities", []).append(entry)
+                host_map[host] = entry
+            entry["vulnerabilities"].append(vuln)
+            merged += 1
+        return merged
 
     def _phase_detail(self) -> str:
         phase = (self.current_phase or "").strip()
@@ -1342,12 +1428,31 @@ class InteractiveNetworkAuditor(WizardMixin):
         try:
             # Nmap host discovery can look "stuck" on larger subnets; keep a visible activity
             # indicator while the scan is running.
-            with _ActivityIndicator(
-                label=f"Discovery {network}",
-                initial="nmap host discovery...",
-                touch_activity=self._touch_activity,
-            ):
-                nm.scan(hosts=network, arguments=args)
+            try:
+                from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
+
+                with self._progress_ui():
+                    with Progress(
+                        SpinnerColumn(),
+                        self._safe_text_column(
+                            f"[cyan]Discovery {network}[/cyan] {{task.description}}",
+                            overflow="ellipsis",
+                            no_wrap=True,
+                        ),
+                        TimeElapsedColumn(),
+                        console=self._progress_console(),
+                        transient=True,
+                    ) as progress:
+                        task = progress.add_task("nmap host discovery...", total=None)
+                        nm.scan(hosts=network, arguments=args)
+                        progress.update(task, description="complete")
+            except Exception:
+                with _ActivityIndicator(
+                    label=f"Discovery {network}",
+                    initial="nmap host discovery...",
+                    touch_activity=self._touch_activity,
+                ):
+                    nm.scan(hosts=network, arguments=args)
         except Exception as exc:
             self.logger.error("Discovery failed on %s: %s", network, exc)
             self.logger.debug("Discovery exception details for %s", network, exc_info=True)
@@ -2208,7 +2313,34 @@ class InteractiveNetworkAuditor(WizardMixin):
                 continue
             host = host_index[ip]
             host["agentless_probe"] = res
-            host["agentless_fingerprint"] = summarize_agentless_fingerprint(res)
+            agentless_fp = summarize_agentless_fingerprint(res)
+            host["agentless_fingerprint"] = agentless_fp
+            smart = host.get("smart_scan")
+            if isinstance(smart, dict) and isinstance(agentless_fp, dict) and agentless_fp:
+                signals = list(smart.get("signals") or [])
+                if "agentless" not in signals:
+                    signals.append("agentless")
+                    try:
+                        smart["identity_score"] = int(smart.get("identity_score", 0)) + 1
+                    except Exception:
+                        smart["identity_score"] = smart.get("identity_score", 0)
+                hint_keys = []
+                for key in (
+                    "domain",
+                    "dns_domain_name",
+                    "dns_computer_name",
+                    "computer_name",
+                    "os",
+                    "http_title",
+                    "http_server",
+                    "smb_signing_required",
+                    "smbv1_detected",
+                ):
+                    if agentless_fp.get(key) not in (None, ""):
+                        hint_keys.append(key)
+                if hint_keys:
+                    smart["agentless_hints"] = hint_keys
+                smart["signals"] = signals
 
         self.results["agentless_verify"] = {
             "targets": len(targets),
@@ -2493,6 +2625,7 @@ class InteractiveNetworkAuditor(WizardMixin):
                     self.results["topology"] = {"enabled": True, "error": str(exc)}
 
                 if self.config.get("topology_only"):
+                    self.config["rate_limit_delay"] = self.rate_limit_delay
                     generate_summary(self.results, self.config, [], [], self.scan_start_time)
                     self.save_results(partial=self.interrupted)
                     self.show_results()
@@ -2534,59 +2667,65 @@ class InteractiveNetworkAuditor(WizardMixin):
                             TimeElapsedColumn,
                         )
 
-                        with Progress(
-                            SpinnerColumn(),
-                            self._safe_text_column(
-                                "[bold blue]Net Discovery[/bold blue] {task.description}",
-                                overflow="ellipsis",
-                                no_wrap=True,
-                            ),
-                            TimeElapsedColumn(),
-                            console=self._progress_console(),
-                            transient=True,
-                        ) as progress:
-                            task = progress.add_task("running...", total=None)
+                        with self._progress_ui():
+                            with Progress(
+                                SpinnerColumn(),
+                                self._safe_text_column(
+                                    "[bold blue]Net Discovery[/bold blue] {task.description}",
+                                    overflow="ellipsis",
+                                    no_wrap=True,
+                                ),
+                                TimeElapsedColumn(),
+                                console=self._progress_console(),
+                                transient=True,
+                            ) as progress:
+                                task = progress.add_task("running...", total=None)
 
-                            def _nd_progress(label: str, step_index: int, step_total: int) -> None:
-                                try:
-                                    progress.update(
-                                        task,
-                                        description=f"{label} ({step_index}/{step_total})",
-                                    )
-                                except Exception:
-                                    pass
+                                def _nd_progress(
+                                    label: str, step_index: int, step_total: int
+                                ) -> None:
+                                    try:
+                                        progress.update(
+                                            task,
+                                            description=f"{label} ({step_index}/{step_total})",
+                                        )
+                                    except Exception:
+                                        pass
 
-                            self.results["net_discovery"] = discover_networks(
-                                target_networks=self.config.get("target_networks", []),
-                                interface=iface,
-                                protocols=self.config.get("net_discovery_protocols"),
-                                redteam=self.config.get("net_discovery_redteam", False),
-                                redteam_options=redteam_options,
-                                extra_tools=self.extra_tools,
-                                progress_callback=_nd_progress,
-                                logger=self.logger,
-                            )
-                            progress.update(task, description="complete")
+                                self.results["net_discovery"] = discover_networks(
+                                    target_networks=self.config.get("target_networks", []),
+                                    interface=iface,
+                                    protocols=self.config.get("net_discovery_protocols"),
+                                    redteam=self.config.get("net_discovery_redteam", False),
+                                    redteam_options=redteam_options,
+                                    extra_tools=self.extra_tools,
+                                    progress_callback=_nd_progress,
+                                    logger=self.logger,
+                                )
+                                progress.update(task, description="complete")
                     except ImportError:
                         # Fallback without progress bar
-                        with _ActivityIndicator(
-                            label="Net Discovery",
-                            touch_activity=self._touch_activity,
-                        ) as indicator:
+                        with self._progress_ui():
+                            with _ActivityIndicator(
+                                label="Net Discovery",
+                                touch_activity=self._touch_activity,
+                            ) as indicator:
 
-                            def _nd_progress(label: str, step_index: int, step_total: int) -> None:
-                                indicator.update(f"{label} ({step_index}/{step_total})")
+                                def _nd_progress(
+                                    label: str, step_index: int, step_total: int
+                                ) -> None:
+                                    indicator.update(f"{label} ({step_index}/{step_total})")
 
-                            self.results["net_discovery"] = discover_networks(
-                                target_networks=self.config.get("target_networks", []),
-                                interface=iface,
-                                protocols=self.config.get("net_discovery_protocols"),
-                                redteam=self.config.get("net_discovery_redteam", False),
-                                redteam_options=redteam_options,
-                                extra_tools=self.extra_tools,
-                                progress_callback=_nd_progress,
-                                logger=self.logger,
-                            )
+                                self.results["net_discovery"] = discover_networks(
+                                    target_networks=self.config.get("target_networks", []),
+                                    interface=iface,
+                                    protocols=self.config.get("net_discovery_protocols"),
+                                    redteam=self.config.get("net_discovery_redteam", False),
+                                    redteam_options=redteam_options,
+                                    extra_tools=self.extra_tools,
+                                    progress_callback=_nd_progress,
+                                    logger=self.logger,
+                                )
 
                     # Log discovered DHCP servers
                     dhcp_servers = self.results["net_discovery"].get("dhcp_servers", [])
@@ -2788,25 +2927,27 @@ class InteractiveNetworkAuditor(WizardMixin):
                                 print_status=self.print_status,
                             )
 
-                        if nuclei_result.get("findings"):
-                            # Merge nuclei findings into vulnerabilities
-                            for finding in nuclei_result["findings"]:
-                                self.results["vulnerabilities"].append(
-                                    {
-                                        "host": finding.get("host", ""),
-                                        "source": "nuclei",
-                                        "template_id": finding.get("template_id"),
-                                        "name": finding.get("name"),
-                                        "severity": finding.get("severity"),
-                                        "matched_at": finding.get("matched_at"),
-                                        "cve_ids": finding.get("cve_ids", []),
-                                        "reference": finding.get("reference", []),
-                                    }
+                        findings = nuclei_result.get("findings") or []
+                        nuclei_summary = {
+                            "enabled": True,
+                            "targets": len(nuclei_targets),
+                            "findings": len(findings),
+                            "success": bool(nuclei_result.get("success")),
+                            "error": nuclei_result.get("error"),
+                        }
+                        raw_file = nuclei_result.get("raw_output_file")
+                        if raw_file and isinstance(raw_file, str):
+                            try:
+                                nuclei_summary["output_file"] = os.path.relpath(
+                                    raw_file, output_dir
                                 )
-                            self.print_status(
-                                self.t("nuclei_findings", len(nuclei_result["findings"])),
-                                "OK",
-                            )
+                            except Exception:
+                                nuclei_summary["output_file"] = raw_file
+                        self.results["nuclei"] = nuclei_summary
+
+                        merged = self._merge_nuclei_findings(findings)
+                        if merged > 0:
+                            self.print_status(self.t("nuclei_findings", merged), "OK")
                         else:
                             self.print_status(self.t("nuclei_no_findings"), "INFO")
                 except Exception as e:
@@ -2814,6 +2955,7 @@ class InteractiveNetworkAuditor(WizardMixin):
                         self.logger.warning("Nuclei scan failed: %s", e, exc_info=True)
                     self.print_status(f"Nuclei: {e}", "WARNING")
 
+            self.config["rate_limit_delay"] = self.rate_limit_delay
             generate_summary(self.results, self.config, all_hosts, results, self.scan_start_time)
             self.save_results(partial=self.interrupted)
             self.show_results()

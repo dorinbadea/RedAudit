@@ -14,7 +14,7 @@ import uuid
 import re
 import ipaddress
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from redaudit.utils.constants import SCHEMA_VERSION, VERSION, SECURE_FILE_MODE
 from redaudit.utils.paths import get_default_reports_base_dir, maybe_chown_tree_to_invoking_user
@@ -22,6 +22,161 @@ from redaudit.core.crypto import encrypt_data
 from redaudit.core.entity_resolver import reconcile_assets
 from redaudit.core.siem import enrich_report_for_siem
 from redaudit.core.scanner_versions import get_scanner_versions
+
+
+def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
+    """Create a safe, minimal snapshot of the run configuration."""
+    return {
+        "targets": config.get("target_networks", []),
+        "scan_mode": config.get("scan_mode"),
+        "scan_mode_cli": config.get("scan_mode_cli", config.get("scan_mode")),
+        "threads": config.get("threads"),
+        "rate_limit_delay": config.get("rate_limit_delay", config.get("rate_limit")),
+        "udp_mode": config.get("udp_mode"),
+        "udp_top_ports": config.get("udp_top_ports"),
+        "topology_enabled": config.get("topology_enabled"),
+        "topology_only": config.get("topology_only"),
+        "net_discovery_enabled": config.get("net_discovery_enabled"),
+        "net_discovery_redteam": config.get("net_discovery_redteam"),
+        "net_discovery_active_l2": config.get("net_discovery_active_l2"),
+        "net_discovery_kerberos_userenum": config.get("net_discovery_kerberos_userenum"),
+        "windows_verify_enabled": config.get("windows_verify_enabled"),
+        "windows_verify_max_targets": config.get("windows_verify_max_targets"),
+        "scan_vulnerabilities": config.get("scan_vulnerabilities"),
+        "nuclei_enabled": config.get("nuclei_enabled"),
+        "cve_lookup_enabled": config.get("cve_lookup_enabled"),
+        "dry_run": config.get("dry_run"),
+        "prevent_sleep": config.get("prevent_sleep"),
+    }
+
+
+def _summarize_net_discovery(net_discovery: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(net_discovery, dict) or not net_discovery:
+        return {"enabled": False}
+    summary: Dict[str, Any] = {
+        "enabled": bool(net_discovery.get("enabled", True)),
+        "protocols_used": net_discovery.get("protocols_used", []),
+        "redteam_enabled": bool(net_discovery.get("redteam_enabled", False)),
+        "hyperscan_duration": net_discovery.get("hyperscan_duration", 0),
+        "errors": (net_discovery.get("errors") or [])[:5],
+    }
+    summary["counts"] = {
+        "dhcp_servers": len(net_discovery.get("dhcp_servers", []) or []),
+        "alive_hosts": len(net_discovery.get("alive_hosts", []) or []),
+        "netbios_hosts": len(net_discovery.get("netbios_hosts", []) or []),
+        "arp_hosts": len(net_discovery.get("arp_hosts", []) or []),
+        "mdns_services": len(net_discovery.get("mdns_services", []) or []),
+        "upnp_devices": len(net_discovery.get("upnp_devices", []) or []),
+        "candidate_vlans": len(net_discovery.get("candidate_vlans", []) or []),
+        "hyperscan_tcp_hosts": len(net_discovery.get("hyperscan_tcp_hosts", {}) or {}),
+        "potential_backdoors": len(net_discovery.get("potential_backdoors", []) or []),
+    }
+
+    redteam = net_discovery.get("redteam") or {}
+    if isinstance(redteam, dict) and redteam:
+        summary["redteam"] = {
+            "targets_considered": redteam.get("targets_considered", 0),
+            "masscan_open_ports": len((redteam.get("masscan") or {}).get("open_ports", []) or []),
+            "snmp_hosts": len((redteam.get("snmp") or {}).get("hosts", []) or []),
+            "smb_hosts": len((redteam.get("smb") or {}).get("hosts", []) or []),
+            "rpc_hosts": len((redteam.get("rpc") or {}).get("hosts", []) or []),
+            "ldap_hosts": len((redteam.get("ldap") or {}).get("hosts", []) or []),
+            "kerberos_hosts": len((redteam.get("kerberos") or {}).get("hosts", []) or []),
+            "vlan_ids": len((redteam.get("vlan_enum") or {}).get("vlan_ids", []) or []),
+            "router_candidates": len(
+                (redteam.get("router_discovery") or {}).get("router_candidates", []) or []
+            ),
+            "ipv6_neighbors": len((redteam.get("ipv6_discovery") or {}).get("neighbors", []) or []),
+        }
+    return summary
+
+
+def _summarize_agentless(hosts: list, agentless_verify: Dict[str, Any]) -> Dict[str, Any]:
+    summary = {
+        "enabled": bool(agentless_verify),
+        "targets": agentless_verify.get("targets", 0) if isinstance(agentless_verify, dict) else 0,
+        "completed": (
+            agentless_verify.get("completed", 0) if isinstance(agentless_verify, dict) else 0
+        ),
+        "signals": {},
+        "domains": [],
+    }
+    if not hosts:
+        return summary
+
+    counts = {"smb": 0, "rdp": 0, "ldap": 0, "ssh": 0, "http": 0}
+    domains = set()
+    for host in hosts:
+        probe = host.get("agentless_probe") or {}
+        if probe.get("smb"):
+            counts["smb"] += 1
+        if probe.get("rdp"):
+            counts["rdp"] += 1
+        if probe.get("ldap"):
+            counts["ldap"] += 1
+        if probe.get("ssh"):
+            counts["ssh"] += 1
+        if probe.get("http"):
+            counts["http"] += 1
+
+        fp = host.get("agentless_fingerprint") or {}
+        for key in ("domain", "dns_domain_name", "dns_domain"):
+            val = fp.get(key)
+            if isinstance(val, str) and val.strip():
+                domains.add(val.strip())
+
+    summary["signals"] = counts
+    summary["domains"] = sorted(domains)[:10]
+    return summary
+
+
+def _summarize_smart_scan(hosts: list) -> Dict[str, Any]:
+    hosts_count = 0
+    deep_triggered = 0
+    deep_executed = 0
+    scores: List[int] = []
+    signals: Dict[str, int] = {}
+    reasons: Dict[str, int] = {}
+
+    for host in hosts or []:
+        smart = host.get("smart_scan")
+        if not isinstance(smart, dict):
+            continue
+        hosts_count += 1
+        try:
+            scores.append(int(smart.get("identity_score", 0)))
+        except Exception:
+            scores.append(0)
+        if smart.get("trigger_deep"):
+            deep_triggered += 1
+        if smart.get("deep_scan_executed"):
+            deep_executed += 1
+        for sig in smart.get("signals", []) or []:
+            signals[sig] = signals.get(sig, 0) + 1
+        for reason in smart.get("reasons", []) or []:
+            reasons[reason] = reasons.get(reason, 0) + 1
+
+    return {
+        "hosts": hosts_count,
+        "identity_score_avg": round(sum(scores) / len(scores), 2) if scores else 0,
+        "deep_scan_triggered": deep_triggered,
+        "deep_scan_executed": deep_executed,
+        "signals": signals,
+        "reasons": reasons,
+    }
+
+
+def _summarize_vulnerabilities(vuln_entries: list) -> Dict[str, Any]:
+    total = 0
+    sources: Dict[str, int] = {}
+    for entry in vuln_entries or []:
+        for vuln in entry.get("vulnerabilities", []) or []:
+            total += 1
+            source = (
+                vuln.get("source") or (vuln.get("original_severity") or {}).get("tool") or "unknown"
+            )
+            sources[source] = sources.get(source, 0) + 1
+    return {"total": total, "sources": sources}
 
 
 def generate_summary(
@@ -56,6 +211,24 @@ def generate_summary(
     }
 
     results["summary"] = summary
+
+    # Attach sanitized config snapshot + pipeline + smart scan summary for reporting.
+    results["config_snapshot"] = _build_config_snapshot(config)
+    results["smart_scan_summary"] = _summarize_smart_scan(results.get("hosts", []))
+    results["pipeline"] = {
+        "topology": results.get("topology") or {},
+        "net_discovery": _summarize_net_discovery(results.get("net_discovery") or {}),
+        "host_scan": {
+            "targets": len(all_hosts),
+            "scanned": len(scanned_results),
+            "threads": config.get("threads"),
+        },
+        "agentless_verify": _summarize_agentless(
+            results.get("hosts", []), results.get("agentless_verify") or {}
+        ),
+        "nuclei": results.get("nuclei") or {},
+        "vulnerability_scan": _summarize_vulnerabilities(results.get("vulnerabilities", [])),
+    }
 
     # v3.1+: Updated SIEM-compatible fields
     results["schema_version"] = SCHEMA_VERSION
@@ -276,6 +449,46 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
     lines.append(f"Hosts Scanned: {summ.get('hosts_scanned', 0)}\n")
     lines.append(f"Web Vulns:     {summ.get('vulns_found', 0)}\n\n")
 
+    pipeline = results.get("pipeline", {})
+    smart = results.get("smart_scan_summary", {})
+    if pipeline:
+        lines.append("PIPELINE SUMMARY:\n")
+        net_summary = pipeline.get("net_discovery") or {}
+        if net_summary:
+            counts = net_summary.get("counts") or {}
+            lines.append(
+                "  Net Discovery: enabled={enabled} (ARP {arp}, NetBIOS {nb}, UPNP {upnp})\n".format(
+                    enabled=bool(net_summary.get("enabled")),
+                    arp=counts.get("arp_hosts", 0),
+                    nb=counts.get("netbios_hosts", 0),
+                    upnp=counts.get("upnp_devices", 0),
+                )
+            )
+        agentless = pipeline.get("agentless_verify") or {}
+        if agentless:
+            lines.append(
+                "  Agentless verify: {completed}/{targets}\n".format(
+                    completed=agentless.get("completed", 0),
+                    targets=agentless.get("targets", 0),
+                )
+            )
+        nuclei = pipeline.get("nuclei") or {}
+        if nuclei:
+            lines.append(
+                "  Nuclei: {findings} finding(s) on {targets} targets\n".format(
+                    findings=nuclei.get("findings", 0),
+                    targets=nuclei.get("targets", 0),
+                )
+            )
+        if smart:
+            lines.append(
+                "  SmartScan: deep executed {executed}, avg identity {avg}\n".format(
+                    executed=smart.get("deep_scan_executed", 0),
+                    avg=smart.get("identity_score_avg", 0),
+                )
+            )
+        lines.append("\n")
+
     # v3.2.1: Check for network leaks (Guest Networks / Pivoting opportunities)
     # The user specifically requested techniques to discover "all networks here"
     network_leaks = _detect_network_leaks(results, results.get("config", {}))
@@ -377,13 +590,26 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
         for v in results["vulnerabilities"]:
             lines.append(f"\nHost: {v['host']}\n")
             for item in v.get("vulnerabilities", []):
-                lines.append(f"  URL: {item.get('url', '')}\n")
+                source = item.get("source")
+                if source:
+                    lines.append(f"  Source: {source}\n")
+                url = item.get("matched_at") or item.get("url", "")
+                lines.append(f"  URL: {url}\n")
                 if item.get("severity"):
                     score = item.get("severity_score")
                     if score is None:
                         lines.append(f"    Severity: {item['severity']}\n")
                     else:
                         lines.append(f"    Severity: {item['severity']} ({score})\n")
+                if item.get("template_id"):
+                    lines.append(f"    Template: {item['template_id']}\n")
+                if item.get("cve_ids"):
+                    try:
+                        cves = ", ".join(item.get("cve_ids")[:3])
+                    except Exception:
+                        cves = ""
+                    if cves:
+                        lines.append(f"    CVEs: {cves}\n")
                 if item.get("whatweb"):
                     lines.append(f"    WhatWeb: {item['whatweb'][:80]}...\n")
                 if item.get("nikto_findings"):
