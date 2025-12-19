@@ -306,8 +306,8 @@ TRANSLATIONS = {
         "webhook_test_failed": "⚠️  Test webhook failed: {}",
         # v3.7: Advanced Net Discovery wizard
         "net_discovery_advanced_q": "Configure advanced Net Discovery options?",
-        "net_discovery_snmp_prompt": "SNMP community string (ENTER = default)",
-        "net_discovery_dns_zone_prompt": "DNS zone for zone transfer attempts (optional; ENTER to skip):",
+        "net_discovery_snmp_prompt": "SNMP community string (ENTER = public)",
+        "net_discovery_dns_zone_prompt": "DNS zone for transfer attempts (optional; ENTER to skip):",
         "net_discovery_max_targets_prompt": "Max targets for Red Team modules (default: 50):",
         "net_discovery_options_saved": "✓ Net Discovery options saved",
     },
@@ -607,7 +607,7 @@ TRANSLATIONS = {
         "webhook_test_failed": "⚠️  Webhook de prueba fallido: {}",
         # v3.7: Opciones avanzadas Net Discovery
         "net_discovery_advanced_q": "¿Configurar opciones avanzadas de Net Discovery?",
-        "net_discovery_snmp_prompt": "Cadena de comunidad SNMP (ENTER = por defecto)",
+        "net_discovery_snmp_prompt": "Cadena de comunidad SNMP (ENTER = public)",
         "net_discovery_dns_zone_prompt": "Zona DNS para intentos de transferencia (opcional; ENTER para omitir):",
         "net_discovery_max_targets_prompt": "Máx. objetivos para módulos Red Team (por defecto: 50):",
         "net_discovery_options_saved": "✓ Opciones de Net Discovery guardadas",

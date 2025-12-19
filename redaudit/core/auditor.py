@@ -129,6 +129,13 @@ class _ActivityIndicator:
         self._thread: Optional[threading.Thread] = None
         self._frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
+    def _terminal_width(self) -> int:
+        try:
+            width = shutil.get_terminal_size((80, 24)).columns
+        except Exception:
+            width = 80
+        return max(40, int(width))
+
     def update(self, message: str) -> None:
         with self._lock:
             self._message = str(message)[:200]
@@ -154,7 +161,8 @@ class _ActivityIndicator:
     def _clear_line(self) -> None:
         try:
             if getattr(self._stream, "isatty", lambda: False)():
-                self._stream.write("\r" + (" " * 120) + "\r")
+                width = max(10, self._terminal_width() - 1)
+                self._stream.write("\r" + (" " * width) + "\r")
                 self._stream.flush()
         except Exception:
             pass
@@ -177,11 +185,15 @@ class _ActivityIndicator:
 
             if getattr(self._stream, "isatty", lambda: False)():
                 frame = self._frames[tick % len(self._frames)]
-                line = f"{frame} {self._label}: {msg}  (elapsed {elapsed:0.0f}s)"
+                width = max(10, self._terminal_width() - 1)
+                if width >= 70:
+                    line = f"{frame} {self._label}: {msg}  (elapsed {elapsed:0.0f}s)"
+                else:
+                    line = f"{frame} {self._label}: {msg}"
                 # Avoid excessive writes if the line didn't change.
                 if line != last_line:
                     try:
-                        self._stream.write("\r" + line[:120].ljust(120))
+                        self._stream.write("\r" + line[:width].ljust(width))
                         self._stream.flush()
                     except Exception:
                         pass
@@ -326,7 +338,7 @@ class InteractiveNetworkAuditor(WizardMixin):
 
         # Wrap long messages on word boundaries to avoid splitting words mid-line.
         msg = "" if message is None else str(message)
-        if self._ui_progress_active and is_tty and not force:
+        if self._ui_progress_active and not force:
             if not self._should_emit_during_progress(msg, status_display):
                 # Store last suppressed line so progress UIs can surface "what's happening"
                 # without flooding the terminal with logs.
@@ -451,6 +463,54 @@ class InteractiveNetworkAuditor(WizardMixin):
         m = (sec % 3600) // 60
         s = sec % 60
         return f"{h:d}:{m:02d}:{s:02d}" if h else f"{m:d}:{s:02d}"
+
+    def _terminal_width(self, fallback: int = 100) -> int:
+        try:
+            width = shutil.get_terminal_size((fallback, 24)).columns
+        except Exception:
+            width = fallback
+        return max(60, int(width))
+
+    def _progress_console(self):
+        try:
+            from rich.console import Console
+        except ImportError:
+            return None
+        return Console(
+            file=getattr(sys, "__stdout__", sys.stdout),
+            width=self._terminal_width(),
+        )
+
+    def _progress_columns(self, *, show_detail: bool, show_eta: bool, show_elapsed: bool):
+        try:
+            from rich.progress import SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+        except ImportError:
+            return []
+        width = self._terminal_width()
+        bar_width = max(8, min(28, width // 4))
+        columns = [
+            SpinnerColumn(),
+            TextColumn(
+                "[progress.description]{task.description}",
+                overflow="ellipsis",
+                no_wrap=True,
+            ),
+        ]
+        if width >= 70:
+            columns.append(BarColumn(bar_width=bar_width))
+            columns.append(TextColumn("[progress.percentage]{task.percentage:>3.0f}%"))
+        if width >= 90:
+            columns.append(TextColumn("({task.completed}/{task.total})"))
+        if show_elapsed and width >= 100:
+            columns.append(TimeElapsedColumn())
+        if show_detail and width >= 80:
+            columns.append(TextColumn("{task.fields[detail]}", overflow="ellipsis"))
+        if show_eta and width >= 110:
+            columns.append(TextColumn("ETA≤ {task.fields[eta_upper]}"))
+            columns.append(
+                TextColumn("{task.fields[eta_est]}", overflow="ellipsis", justify="right")
+            )
+        return columns
 
     @staticmethod
     def _parse_host_timeout_s(nmap_args: str) -> Optional[float]:
@@ -1343,6 +1403,36 @@ class InteractiveNetworkAuditor(WizardMixin):
                             if extra.get("ssl_cert"):
                                 port_info["ssl_cert"] = extra["ssl_cert"]
 
+            # Evidence-based identity signal scoring to avoid unnecessary deep scans.
+            identity_score = 0
+            identity_signals = []
+            if host_record.get("hostname"):
+                identity_score += 1
+                identity_signals.append("hostname")
+            if any_version:
+                identity_score += 1
+                identity_signals.append("service_version")
+            if any(p.get("cpe") for p in ports):
+                identity_score += 1
+                identity_signals.append("cpe")
+            deep_meta = host_record.get("deep_scan") or {}
+            if deep_meta.get("mac_address") or deep_meta.get("vendor"):
+                identity_score += 1
+                identity_signals.append("mac_vendor")
+            if host_record.get("os_detected"):
+                identity_score += 1
+                identity_signals.append("os_detected")
+            if any(p.get("banner") for p in ports):
+                identity_score += 1
+                identity_signals.append("banner")
+            if self.logger:
+                self.logger.debug(
+                    "Identity signals for %s: score=%s (%s)",
+                    safe_ip,
+                    identity_score,
+                    ",".join(identity_signals) or "none",
+                )
+
             # Heuristics for deep identity scan
             trigger_deep = False
             deep_enabled = self.config.get("deep_id_scan", True)
@@ -1359,6 +1449,9 @@ class InteractiveNetworkAuditor(WizardMixin):
                     trigger_deep = True
                 if total_ports > 0 and not any_version:
                     trigger_deep = True
+                # If identity signals are already strong, skip deep scan unless host is suspicious.
+                if identity_score >= 3 and not suspicious and total_ports <= 12 and any_version:
+                    trigger_deep = False
 
             # SearchSploit exploit lookup for services with version info
             if self.extra_tools.get("searchsploit"):
@@ -1421,14 +1514,7 @@ class InteractiveNetworkAuditor(WizardMixin):
 
         # Try to use rich for better progress visualization
         try:
-            from rich.progress import (
-                Progress,
-                SpinnerColumn,
-                BarColumn,
-                TextColumn,
-                TimeElapsedColumn,
-            )
-            from rich.console import Console
+            from rich.progress import Progress
 
             use_rich = True
         except ImportError:
@@ -1455,16 +1541,12 @@ class InteractiveNetworkAuditor(WizardMixin):
                 if use_rich and total > 0:
                     # Rich progress bar (quiet UI + timeout-aware upper bound ETA)
                     with Progress(
-                        SpinnerColumn(),
-                        TextColumn("[progress.description]{task.description}"),
-                        BarColumn(),
-                        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                        TextColumn("({task.completed}/{task.total})"),
-                        TimeElapsedColumn(),
-                        TextColumn("{task.fields[detail]}", justify="left"),
-                        TextColumn("ETA≤ {task.fields[eta_upper]}"),
-                        TextColumn("{task.fields[eta_est]}", justify="right"),
-                        console=Console(file=getattr(sys, "__stdout__", sys.stdout)),
+                        *self._progress_columns(
+                            show_detail=True,
+                            show_eta=True,
+                            show_elapsed=True,
+                        ),
+                        console=self._progress_console(),
                     ) as progress:
                         eta_upper_init = self._format_eta(
                             host_timeout_s * math.ceil(max(0, total) / threads)
@@ -1510,7 +1592,7 @@ class InteractiveNetworkAuditor(WizardMixin):
                                 eta_est_val = (
                                     self._format_eta(remaining / rate)
                                     if rate > 0.0 and remaining
-                                    else "--:--"
+                                    else ""
                                 )
                                 eta_upper = self._format_eta(
                                     host_timeout_s * math.ceil(remaining / threads)
@@ -1522,7 +1604,7 @@ class InteractiveNetworkAuditor(WizardMixin):
                                     advance=1,
                                     description=f"[cyan]{self.t('scanned_host', host_ip)}",
                                     eta_upper=eta_upper,
-                                    eta_est=f"ETA≈ {eta_est_val}",
+                                    eta_est=f"ETA≈ {eta_est_val}" if eta_est_val else "",
                                     detail=last_detail,
                                 )
                 else:
@@ -1709,14 +1791,7 @@ class InteractiveNetworkAuditor(WizardMixin):
 
         # Try to use rich for progress visualization
         try:
-            from rich.progress import (
-                Progress,
-                SpinnerColumn,
-                BarColumn,
-                TextColumn,
-                TimeElapsedColumn,
-            )
-            from rich.console import Console
+            from rich.progress import Progress
 
             use_rich = True
         except ImportError:
@@ -1736,16 +1811,12 @@ class InteractiveNetworkAuditor(WizardMixin):
                 if use_rich and total > 0:
                     # Rich progress bar for vulnerability scanning (quiet UI + timeout-aware upper bound ETA)
                     with Progress(
-                        SpinnerColumn(),
-                        TextColumn("[progress.description]{task.description}"),
-                        BarColumn(),
-                        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                        TextColumn("({task.completed}/{task.total})"),
-                        TimeElapsedColumn(),
-                        TextColumn("{task.fields[detail]}", justify="left"),
-                        TextColumn("ETA≤ {task.fields[eta_upper]}"),
-                        TextColumn("{task.fields[eta_est]}", justify="right"),
-                        console=Console(file=getattr(sys, "__stdout__", sys.stdout)),
+                        *self._progress_columns(
+                            show_detail=True,
+                            show_eta=True,
+                            show_elapsed=True,
+                        ),
+                        console=self._progress_console(),
                     ) as progress:
                         eta_upper_init = self._format_eta(remaining_budget_s / workers)
                         initial_detail = self._get_ui_detail()
@@ -1800,14 +1871,14 @@ class InteractiveNetworkAuditor(WizardMixin):
                                 eta_est_val = (
                                     self._format_eta(remaining / rate)
                                     if rate > 0.0 and remaining
-                                    else "--:--"
+                                    else ""
                                 )
                                 progress.update(
                                     task,
                                     advance=1,
                                     description=f"[cyan]{self.t('scanned_host', host_ip)}",
                                     eta_upper=self._format_eta(remaining_budget_s / workers),
-                                    eta_est=f"ETA≈ {eta_est_val}",
+                                    eta_est=f"ETA≈ {eta_est_val}" if eta_est_val else "",
                                     detail=last_detail,
                                 )
                 else:
@@ -1870,14 +1941,7 @@ class InteractiveNetworkAuditor(WizardMixin):
         start_t = time.time()
 
         try:
-            from rich.progress import (
-                Progress,
-                SpinnerColumn,
-                BarColumn,
-                TextColumn,
-                TimeElapsedColumn,
-            )
-            from rich.console import Console
+            from rich.progress import Progress
 
             use_rich = True
         except ImportError:
@@ -1899,22 +1963,23 @@ class InteractiveNetworkAuditor(WizardMixin):
                 done = 0
 
                 if use_rich and total > 0:
+                    upper_per_target_s = 60.0
                     with Progress(
-                        SpinnerColumn(),
-                        TextColumn("[progress.description]{task.description}"),
-                        BarColumn(),
-                        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                        TextColumn("({task.completed}/{task.total})"),
-                        TimeElapsedColumn(),
-                        TextColumn("{task.fields[detail]}", justify="left"),
-                        TextColumn("{task.fields[eta]}", justify="right"),
-                        console=Console(file=getattr(sys, "__stdout__", sys.stdout)),
+                        *self._progress_columns(
+                            show_detail=True,
+                            show_eta=True,
+                            show_elapsed=True,
+                        ),
+                        console=self._progress_console(),
                     ) as progress:
                         task = progress.add_task(
                             f"[cyan]{self.t('windows_verify_label')}",
                             total=total,
                             detail="",
-                            eta="ETA≈ --:--",
+                            eta_upper=self._format_eta(
+                                upper_per_target_s * math.ceil(total / workers)
+                            ),
+                            eta_est="",
                         )
                         pending = set(futures)
                         while pending:
@@ -1943,7 +2008,7 @@ class InteractiveNetworkAuditor(WizardMixin):
                                 eta_est_val = (
                                     self._format_eta(remaining / rate)
                                     if rate > 0.0 and remaining
-                                    else "--:--"
+                                    else ""
                                 )
                                 if ip:
                                     progress.update(task, detail=f"{ip}")
@@ -1951,7 +2016,12 @@ class InteractiveNetworkAuditor(WizardMixin):
                                     task,
                                     advance=1,
                                     description=f"[cyan]{self.t('windows_verify_label')} ({done}/{total})",
-                                    eta=f"ETA≈ {eta_est_val}",
+                                    eta_upper=self._format_eta(
+                                        upper_per_target_s * math.ceil(remaining / workers)
+                                        if remaining
+                                        else 0
+                                    ),
+                                    eta_est=f"ETA≈ {eta_est_val}" if eta_est_val else "",
                                 )
                 else:
                     for fut in as_completed(futures):
@@ -2106,11 +2176,6 @@ class InteractiveNetworkAuditor(WizardMixin):
                     show_summary = self.ask_yes_no(self.t("defaults_show_summary_q"), default="no")
                     if show_summary:
                         self._show_defaults_summary(persisted_defaults)
-                        # Only offer an "immediate start" path after the user has explicitly
-                        # reviewed the persisted defaults.
-                        if self.ask_yes_no(self.t("defaults_use_immediately_q"), default="no"):
-                            should_skip_config = True
-                            auto_start = True
 
         print(f"\n{self.COLORS['HEADER']}{self.t('scan_config')}{self.COLORS['ENDC']}")
         print("=" * 60)
@@ -2246,13 +2311,16 @@ class InteractiveNetworkAuditor(WizardMixin):
                             TextColumn,
                             TimeElapsedColumn,
                         )
-                        from rich.console import Console
 
                         with Progress(
                             SpinnerColumn(),
-                            TextColumn("[bold cyan]Topology[/bold cyan] {task.description}"),
+                            TextColumn(
+                                "[bold cyan]Topology[/bold cyan] {task.description}",
+                                overflow="ellipsis",
+                                no_wrap=True,
+                            ),
                             TimeElapsedColumn(),
-                            console=Console(file=getattr(sys, "__stdout__", sys.stdout)),
+                            console=self._progress_console(),
                             transient=True,
                         ) as progress:
                             task = progress.add_task("discovering...", total=None)
@@ -2318,13 +2386,16 @@ class InteractiveNetworkAuditor(WizardMixin):
                             TextColumn,
                             TimeElapsedColumn,
                         )
-                        from rich.console import Console
 
                         with Progress(
                             SpinnerColumn(),
-                            TextColumn("[bold blue]Net Discovery[/bold blue] {task.description}"),
+                            TextColumn(
+                                "[bold blue]Net Discovery[/bold blue] {task.description}",
+                                overflow="ellipsis",
+                                no_wrap=True,
+                            ),
                             TimeElapsedColumn(),
-                            console=Console(file=getattr(sys, "__stdout__", sys.stdout)),
+                            console=self._progress_console(),
                             transient=True,
                         ) as progress:
                             task = progress.add_task("running...", total=None)
@@ -2475,44 +2546,53 @@ class InteractiveNetworkAuditor(WizardMixin):
                         # competing Rich Live displays (which can cause flicker/no output).
                         nuclei_result = None
                         try:
-                            from rich.progress import (
-                                Progress,
-                                SpinnerColumn,
-                                BarColumn,
-                                TextColumn,
-                                TimeElapsedColumn,
-                            )
-                            from rich.console import Console
+                            from rich.progress import Progress
 
                             batch_size = 25
+                            nuclei_timeout_s = 300
                             total_batches = max(1, int(math.ceil(len(nuclei_targets) / batch_size)))
+                            progress_start_t = time.time()
                             with self._progress_ui():
                                 with Progress(
-                                    SpinnerColumn(),
-                                    TextColumn("[progress.description]{task.description}"),
-                                    BarColumn(),
-                                    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                                    TextColumn("({task.completed}/{task.total})"),
-                                    TimeElapsedColumn(),
-                                    TextColumn("{task.fields[eta]}", justify="right"),
-                                    console=Console(file=getattr(sys, "__stdout__", sys.stdout)),
+                                    *self._progress_columns(
+                                        show_detail=False,
+                                        show_eta=True,
+                                        show_elapsed=False,
+                                    ),
+                                    console=self._progress_console(),
                                     transient=False,
                                 ) as progress:
                                     task = progress.add_task(
                                         f"[cyan]Nuclei (0/{total_batches})",
                                         total=total_batches,
-                                        eta="ETA≈ --:--",
+                                        eta_upper=self._format_eta(
+                                            total_batches * nuclei_timeout_s
+                                        ),
+                                        eta_est="",
                                     )
 
                                     def _nuclei_progress(
                                         completed: int, total: int, eta: str
                                     ) -> None:
                                         try:
+                                            remaining = max(0, total - completed)
+                                            elapsed_s = max(0.001, time.time() - progress_start_t)
+                                            rate = completed / elapsed_s if completed else 0.0
+                                            eta_est_val = (
+                                                self._format_eta(remaining / rate)
+                                                if rate > 0.0 and remaining
+                                                else ""
+                                            )
                                             progress.update(
                                                 task,
                                                 completed=completed,
                                                 description=f"[cyan]Nuclei ({completed}/{total})",
-                                                eta=str(eta or "").strip() or "ETA≈ --:--",
+                                                eta_upper=self._format_eta(
+                                                    remaining * nuclei_timeout_s if remaining else 0
+                                                ),
+                                                eta_est=(
+                                                    f"ETA≈ {eta_est_val}" if eta_est_val else ""
+                                                ),
                                             )
                                         except Exception:
                                             pass
@@ -2521,7 +2601,7 @@ class InteractiveNetworkAuditor(WizardMixin):
                                         targets=nuclei_targets,
                                         output_dir=output_dir,
                                         severity="medium,high,critical",
-                                        timeout=300,
+                                        timeout=nuclei_timeout_s,
                                         batch_size=batch_size,
                                         progress_callback=_nuclei_progress,
                                         use_internal_progress=False,
