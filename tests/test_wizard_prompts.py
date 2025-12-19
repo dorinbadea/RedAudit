@@ -31,4 +31,3 @@ class TestWizardPrompts(unittest.TestCase):
             any("ENTER" in p.upper() for p in prompts),
             "Prompt should clarify ENTER behavior",
         )
-

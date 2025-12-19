@@ -46,4 +46,3 @@ class TestDefaultsFlow(unittest.TestCase):
             asked,
             "Should not ask to start immediately unless the summary was reviewed",
         )
-
