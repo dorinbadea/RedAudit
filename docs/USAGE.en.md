@@ -165,6 +165,8 @@ Grouped by operational function. Verified against the current codebase.
 | `--save-defaults` | Save current CLI args to `~/.redaudit/config.json` |
 | `--use-defaults` | Load args from config.json automatically |
 | `--ignore-defaults` | Force factory defaults |
+| `--no-color` | Disable colored output |
+| `--skip-update-check` | Skip startup update check |
 
 ---
 

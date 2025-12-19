@@ -164,7 +164,9 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 |:---|:---|
 | `--save-defaults` | Guardar argumentos CLI actuales en `~/.redaudit/config.json` |
 | `--use-defaults` | Cargar argumentos desde config.json automáticamente |
-| `--ignore-defaults` | Ignorar defaults guardados |
+| `--ignore-defaults` | Forzar valores de fábrica |
+| `--no-color` | Deshabilitar salida a color |
+| `--skip-update-check` | Saltar chequeo de actualizaciones al inicio |
 
 ---
 

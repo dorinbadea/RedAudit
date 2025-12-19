@@ -172,6 +172,8 @@ Flags verified against `redaudit --help` (v3.7.2):
 | `--webhook URL` | POST alerts for high/critical findings |
 | `--no-txt-report` | Skip TXT report generation |
 | `--no-vuln-scan` | Skip nikto/web vulnerability scanning |
+| `--nuclei` | Enable Nuclei template scanning (requires `nuclei`) |
+| `--no-nuclei` | Disable Nuclei (overrides defaults) |
 
 ### CVE Correlation
 
