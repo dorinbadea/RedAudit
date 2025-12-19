@@ -90,6 +90,16 @@ Examples:
     if not isinstance(default_nuclei_enabled, bool):
         default_nuclei_enabled = False
 
+    default_windows_verify_enabled = persisted_defaults.get("windows_verify_enabled")
+    if not isinstance(default_windows_verify_enabled, bool):
+        default_windows_verify_enabled = False
+
+    default_windows_verify_max_targets = persisted_defaults.get("windows_verify_max_targets")
+    if not isinstance(default_windows_verify_max_targets, int) or not (
+        1 <= default_windows_verify_max_targets <= 200
+    ):
+        default_windows_verify_max_targets = 20
+
     parser.add_argument(
         "--target",
         "-t",
@@ -201,6 +211,27 @@ Examples:
         dest="nuclei",
         action="store_false",
         help="Disable Nuclei template scanner (override persisted defaults)",
+    )
+    windows_verify_group = parser.add_mutually_exclusive_group()
+    windows_verify_group.add_argument(
+        "--agentless-verify",
+        dest="windows_verify",
+        action="store_true",
+        default=default_windows_verify_enabled,
+        help="Enable agentless verification (SMB/RDP/LDAP/SSH/HTTP) for compatible targets",
+    )
+    windows_verify_group.add_argument(
+        "--no-agentless-verify",
+        dest="windows_verify",
+        action="store_false",
+        help="Disable agentless verification (override persisted defaults)",
+    )
+    parser.add_argument(
+        "--agentless-verify-max-targets",
+        type=int,
+        default=default_windows_verify_max_targets,
+        metavar="N",
+        help="Max targets for agentless verification (1-200, default: 20)",
     )
     parser.add_argument("--version", "-V", action="version", version=f"RedAudit v{VERSION}")
 
@@ -545,6 +576,13 @@ def configure_from_args(app, args) -> bool:
     app.config["net_discovery_kerberos_userlist"] = args.kerberos_userlist
     app.config["net_discovery_active_l2"] = bool(args.redteam_active_l2)
     app.config["nuclei_enabled"] = bool(getattr(args, "nuclei", False))
+    if not isinstance(args.agentless_verify_max_targets, int) or not (
+        1 <= args.agentless_verify_max_targets <= 200
+    ):
+        app.print_status(app.t("val_out_of_range", 1, 200), "FAIL")
+        return False
+    app.config["windows_verify_enabled"] = bool(getattr(args, "windows_verify", False))
+    app.config["windows_verify_max_targets"] = args.agentless_verify_max_targets
 
     # Setup encryption if requested
     if args.encrypt:
@@ -563,6 +601,8 @@ def configure_from_args(app, args) -> bool:
                 udp_top_ports=app.config.get("udp_top_ports"),
                 topology_enabled=app.config.get("topology_enabled"),
                 nuclei_enabled=app.config.get("nuclei_enabled"),
+                windows_verify_enabled=app.config.get("windows_verify_enabled"),
+                windows_verify_max_targets=app.config.get("windows_verify_max_targets"),
                 lang=app.lang,
             )
             app.print_status(app.t("defaults_saved"), "OKGREEN")

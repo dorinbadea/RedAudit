@@ -60,6 +60,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "net_discovery_kerberos_userenum": None,  # True/False
         "net_discovery_kerberos_realm": None,  # str | None
         "net_discovery_kerberos_userlist": None,  # str | None
+        # v3.8: Agentless verification (SMB/RDP/LDAP)
+        "windows_verify_enabled": None,  # True/False
+        "windows_verify_max_targets": None,  # int | None
     },
 }
 

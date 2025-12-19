@@ -349,6 +349,27 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
             if pcap_file:
                 lines.append(f"    PCAP: {pcap_file}\n")
 
+        agentless_fp = h.get("agentless_fingerprint") or {}
+        if isinstance(agentless_fp, dict) and agentless_fp:
+            lines.append("  Agentless fingerprint:\n")
+            for label, key in (
+                ("Computer", "computer_name"),
+                ("Domain", "domain"),
+                ("OS", "os"),
+                ("SMB signing", "smb_signing_required"),
+                ("SMBv1", "smbv1_detected"),
+                ("RDP Version", "product_version"),
+                ("HTTP title", "http_title"),
+                ("HTTP server", "http_server"),
+            ):
+                if key in agentless_fp and agentless_fp.get(key) not in (None, ""):
+                    lines.append(f"    {label}: {agentless_fp.get(key)}\n")
+            ssh_keys = agentless_fp.get("ssh_hostkeys")
+            if isinstance(ssh_keys, list) and ssh_keys:
+                lines.append("    SSH hostkeys:\n")
+                for key in ssh_keys[:3]:
+                    lines.append(f"      - {key}\n")
+
         lines.append("\n")
 
     if results.get("vulnerabilities"):
@@ -680,6 +701,9 @@ def show_config_summary(config: Dict, t_fn, colors: Dict) -> None:
         t_fn("cve_lookup"): config.get("cve_lookup_enabled"),
         t_fn("output"): config["output_dir"],
     }
+    if config.get("windows_verify_enabled"):
+        max_targets = config.get("windows_verify_max_targets")
+        conf[t_fn("windows_verify")] = f"enabled (max {max_targets})" if max_targets else "enabled"
     for k, v in conf.items():
         label = str(k).rstrip(":")
         print(f"  {label}: {v}")

@@ -26,7 +26,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed, wait
 from logging.handlers import RotatingFileHandler
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from redaudit.utils.constants import (
     VERSION,
@@ -63,6 +63,11 @@ from redaudit.core.nuclei import (
     is_nuclei_available,
     run_nuclei_scan,
     get_http_targets_from_hosts,
+)
+from redaudit.core.agentless_verify import (
+    select_agentless_probe_targets,
+    probe_agentless_services,
+    summarize_agentless_fingerprint,
 )
 from redaudit.core.crypto import (
     is_crypto_available,
@@ -252,6 +257,9 @@ class InteractiveNetworkAuditor(WizardMixin):
             "net_discovery_kerberos_realm": None,
             "net_discovery_kerberos_userlist": None,
             "net_discovery_active_l2": False,
+            # v3.8: Agentless Windows verification (SMB/RDP/LDAP)
+            "windows_verify_enabled": False,
+            "windows_verify_max_targets": 20,
         }
 
         self.encryption_enabled = False
@@ -1832,6 +1840,164 @@ class InteractiveNetworkAuditor(WizardMixin):
                                 force=True,
                             )
 
+    def run_agentless_verification(self, host_results):
+        """
+        Agentless verification (SMB/RDP/LDAP/SSH/HTTP) using Nmap scripts.
+
+        This is opt-in and best-effort. It enriches host records with
+        fingerprint hints (domain/computer name/signing posture/title/server).
+        """
+        if self.interrupted or not self.config.get("windows_verify_enabled", False):
+            return
+
+        targets = select_agentless_probe_targets(host_results)
+        if not targets:
+            self.print_status(self.t("windows_verify_none"), "INFO")
+            return
+
+        max_targets = int(self.config.get("windows_verify_max_targets", 20) or 20)
+        max_targets = min(max(max_targets, 1), 200)
+        if len(targets) > max_targets:
+            targets = sorted(targets, key=lambda t: t.ip)[:max_targets]
+            self.print_status(self.t("windows_verify_limit", max_targets), "WARNING")
+
+        self.print_status(self.t("windows_verify_start", len(targets)), "HEADER")
+
+        host_index = {h.get("ip"): h for h in host_results if isinstance(h, dict)}
+        results: List[Dict[str, Any]] = []
+
+        workers = min(4, max(1, int(self.config.get("threads", 1))))
+        start_t = time.time()
+
+        try:
+            from rich.progress import (
+                Progress,
+                SpinnerColumn,
+                BarColumn,
+                TextColumn,
+                TimeElapsedColumn,
+            )
+            from rich.console import Console
+
+            use_rich = True
+        except ImportError:
+            use_rich = False
+
+        with self._progress_ui():
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = {
+                    executor.submit(
+                        probe_agentless_services,
+                        t,
+                        logger=self.logger,
+                        dry_run=bool(self.config.get("dry_run", False)),
+                    ): t.ip
+                    for t in targets
+                }
+
+                total = len(futures)
+                done = 0
+
+                if use_rich and total > 0:
+                    with Progress(
+                        SpinnerColumn(),
+                        TextColumn("[progress.description]{task.description}"),
+                        BarColumn(),
+                        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                        TextColumn("({task.completed}/{task.total})"),
+                        TimeElapsedColumn(),
+                        TextColumn("{task.fields[detail]}", justify="left"),
+                        TextColumn("{task.fields[eta]}", justify="right"),
+                        console=Console(file=getattr(sys, "__stdout__", sys.stdout)),
+                    ) as progress:
+                        task = progress.add_task(
+                            f"[cyan]{self.t('windows_verify_label')}",
+                            total=total,
+                            detail="",
+                            eta="ETA≈ --:--",
+                        )
+                        pending = set(futures)
+                        while pending:
+                            if self.interrupted:
+                                for pending_fut in pending:
+                                    pending_fut.cancel()
+                                break
+                            completed, pending = wait(
+                                pending, timeout=0.25, return_when=FIRST_COMPLETED
+                            )
+                            for fut in completed:
+                                ip = futures.get(fut)
+                                try:
+                                    res = fut.result()
+                                except Exception as exc:
+                                    res = {"ip": ip, "error": str(exc)}
+                                    if self.logger:
+                                        self.logger.debug(
+                                            "Windows verify failed for %s", ip, exc_info=True
+                                        )
+                                results.append(res)
+                                done += 1
+                                elapsed_s = max(0.001, time.time() - start_t)
+                                rate = done / elapsed_s if done else 0.0
+                                remaining = max(0, total - done)
+                                eta_est_val = (
+                                    self._format_eta(remaining / rate)
+                                    if rate > 0.0 and remaining
+                                    else "--:--"
+                                )
+                                if ip:
+                                    progress.update(task, detail=f"{ip}")
+                                progress.update(
+                                    task,
+                                    advance=1,
+                                    description=f"[cyan]{self.t('windows_verify_label')} ({done}/{total})",
+                                    eta=f"ETA≈ {eta_est_val}",
+                                )
+                else:
+                    for fut in as_completed(futures):
+                        if self.interrupted:
+                            for pending_fut in futures:
+                                pending_fut.cancel()
+                            break
+                        ip = futures.get(fut)
+                        try:
+                            res = fut.result()
+                        except Exception as exc:
+                            res = {"ip": ip, "error": str(exc)}
+                            if self.logger:
+                                self.logger.debug("Windows verify failed for %s", ip, exc_info=True)
+                        results.append(res)
+                        done += 1
+                        if total and done % max(1, total // 10) == 0:
+                            remaining = max(0, total - done)
+                            rate = done / max(0.001, (time.time() - start_t))
+                            eta_est_val = (
+                                self._format_eta(remaining / rate)
+                                if rate > 0.0 and remaining
+                                else "--:--"
+                            )
+                            self.print_status(
+                                f"{self.t('windows_verify_label')} {done}/{total} | ETA≈ {eta_est_val}",
+                                "INFO",
+                                update_activity=False,
+                                force=True,
+                            )
+
+        for res in results:
+            ip = res.get("ip")
+            if not ip or ip not in host_index:
+                continue
+            host = host_index[ip]
+            host["agentless_probe"] = res
+            host["agentless_fingerprint"] = summarize_agentless_fingerprint(res)
+
+        self.results["agentless_verify"] = {
+            "targets": len(targets),
+            "completed": len(results),
+        }
+        self.results["hosts"] = host_results
+        self.print_status(self.t("windows_verify_done", len(results)), "OKGREEN")
+
     # ---------- Reporting ----------
 
     def show_config_summary(self):
@@ -2011,6 +2177,8 @@ class InteractiveNetworkAuditor(WizardMixin):
                     net_discovery_kerberos_userlist=self.config.get(
                         "net_discovery_kerberos_userlist"
                     ),
+                    windows_verify_enabled=self.config.get("windows_verify_enabled"),
+                    windows_verify_max_targets=self.config.get("windows_verify_max_targets"),
                     lang=self.lang,
                 )
                 self.print_status(
@@ -2255,6 +2423,10 @@ class InteractiveNetworkAuditor(WizardMixin):
                 all_hosts = all_hosts[:max_val]
 
             results = self.scan_hosts_concurrent(all_hosts)
+
+            # v3.8: Agentless Windows verification (SMB/RDP/LDAP) - opt-in
+            if not self.interrupted:
+                self.run_agentless_verification(results)
 
             # v3.0.1: CVE correlation via NVD (optional; can be slow)
             if self.config.get("cve_lookup_enabled") and not self.interrupted:
@@ -2529,6 +2701,16 @@ class InteractiveNetworkAuditor(WizardMixin):
             expand_user_path(userlist) if userlist else None
         )
 
+        # 10. Agentless Windows verification
+        self.config["windows_verify_enabled"] = bool(
+            defaults_for_run.get("windows_verify_enabled", False)
+        )
+        max_targets = defaults_for_run.get("windows_verify_max_targets")
+        if isinstance(max_targets, int) and 1 <= max_targets <= 200:
+            self.config["windows_verify_max_targets"] = max_targets
+        else:
+            self.config["windows_verify_max_targets"] = 20
+
     def _configure_scan_interactive(self, defaults_for_run: Dict) -> None:
         """Interactive prompt sequence for scan configuration."""
         scan_modes = [
@@ -2767,6 +2949,26 @@ class InteractiveNetworkAuditor(WizardMixin):
                 self.config["net_discovery_dns_zone"] = nd_options.get("dns_zone", "")
                 self.config["net_discovery_max_targets"] = nd_options.get("redteam_max_targets", 50)
 
+        # v3.8: Agentless Windows verification (SMB/RDP/LDAP)
+        persisted_win_verify = defaults_for_run.get("windows_verify_enabled")
+        win_default = "yes" if persisted_win_verify is True else "no"
+        if self.ask_yes_no(self.t("windows_verify_q"), default=win_default):
+            self.config["windows_verify_enabled"] = True
+            persisted_max = defaults_for_run.get("windows_verify_max_targets")
+            max_default = (
+                persisted_max
+                if isinstance(persisted_max, int) and 1 <= persisted_max <= 200
+                else 20
+            )
+            self.config["windows_verify_max_targets"] = self.ask_number(
+                self.t("windows_verify_max_q"),
+                default=max_default,
+                min_val=1,
+                max_val=200,
+            )
+        else:
+            self.config["windows_verify_enabled"] = False
+
         # v3.7: Interactive webhook configuration
         webhook_url = self.ask_webhook_url()
         if webhook_url:
@@ -2839,6 +3041,10 @@ class InteractiveNetworkAuditor(WizardMixin):
             (
                 "defaults_summary_html_report",
                 fmt_bool(persisted_defaults.get("generate_html")),
+            ),
+            (
+                "defaults_summary_windows_verify",
+                fmt_bool(persisted_defaults.get("windows_verify_enabled")),
             ),
         ]
 
