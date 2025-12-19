@@ -31,4 +31,3 @@ feedback (especially during Net Discovery HyperScan and Nuclei template scans).
 
 - [Full Changelog](CHANGELOG.md)
 - [Roadmap](docs/ROADMAP.en.md)
-
