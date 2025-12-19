@@ -11,6 +11,17 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 - (nada aún)
 
+## [3.7.2] - 2025-12-19 (Hotfix UX y Progreso)
+
+### Corregido
+
+- **Net Discovery (HyperScan)**: Actualizaciones de progreso limitadas (throttling) para reducir flickering en terminal.
+- **UX Nuclei**: El escaneo de templates Nuclei ahora muestra progreso/ETA sin competir con otras UIs Rich (Live).
+- **UX Defaults (Wizard)**: Si eliges "Revisar/modificar" y omites el resumen de defaults, RedAudit ya no pregunta si deseas
+  iniciar inmediatamente con esos defaults.
+- **Prompts Net Discovery (Wizard)**: Aclarado "ENTER usa el valor por defecto / ENTER para omitir" para comunidad SNMP y
+  zona DNS.
+
 ## [3.7.1] - 2025-12-18 (Hotfix Crítico)
 
 ### Corregido

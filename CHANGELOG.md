@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (none yet)
 
+## [3.7.2] - 2025-12-19 (UX & Progress Hotfix)
+
+### Fixed
+
+- **Net Discovery (HyperScan)**: Throttled progress updates to reduce flicker in terminals.
+- **Nuclei UX**: Nuclei template scanning now reports progress/ETA without competing Rich Live displays.
+- **Wizard Defaults UX**: If you choose "Review/modify" and skip the defaults summary, RedAudit no longer asks to start
+  immediately with those defaults.
+- **Wizard Net Discovery Prompts**: Clarified "ENTER uses default / ENTER to skip" for SNMP community and DNS zone.
+
 ## [3.7.1] - 2025-12-18 (Critical Hotfix)
 
 ### Fixed

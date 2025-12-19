@@ -77,4 +77,3 @@ class TestNucleiProgress(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertEqual(calls[-1][0], calls[-1][1])
         self.assertTrue(str(calls[-1][2]).startswith("ETA≈ "))
-
