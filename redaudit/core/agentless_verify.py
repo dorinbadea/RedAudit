@@ -85,7 +85,9 @@ def select_agentless_probe_targets(
     return targets
 
 
-def _make_runner(*, logger=None, dry_run: Optional[bool] = None, timeout: float = 45.0) -> CommandRunner:
+def _make_runner(
+    *, logger=None, dry_run: Optional[bool] = None, timeout: float = 45.0
+) -> CommandRunner:
     return CommandRunner(
         logger=logger,
         dry_run=is_dry_run(dry_run),
@@ -411,7 +413,12 @@ def summarize_agentless_fingerprint(probe_result: Dict[str, Any]) -> Dict[str, A
 
     # Minimal AD signal from LDAP RootDSE
     if isinstance(ldap, dict):
-        for k in ("defaultNamingContext", "rootDomainNamingContext", "dnsHostName", "ldapServiceName"):
+        for k in (
+            "defaultNamingContext",
+            "rootDomainNamingContext",
+            "dnsHostName",
+            "ldapServiceName",
+        ):
             if ldap.get(k):
                 fp[k] = str(ldap.get(k))[:512]
 
