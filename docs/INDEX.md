@@ -13,6 +13,7 @@
 | **[Security Model](SECURITY.en.md)**<br>([Español](SECURITY.es.md)) | Details on privileges, encryption, and operational safety. | Compliance, SecOps | Before deploying in sensitive environments. |
 | **[Troubleshooting](TROUBLESHOOTING.en.md)**<br>([Español](TROUBLESHOOTING.es.md)) | Solutions for common errors (permissions, missing tools). | All Users | If something goes wrong. |
 | **[Roadmap](ROADMAP.en.md)**<br>([Español](ROADMAP.es.md)) | Future features, planned improvements, and direction. | Contributors, Users | To see what's coming next. |
+| **[SIEM Integration](SIEM_INTEGRATION.en.md)**<br>([Español](SIEM_INTEGRATION.es.md)) | Filebeat, Logstash, and Sigma rules for Elastic/Splunk. | SIEM Engineers, SOC | When integrating scan results into a SIEM. |
 
 ## Assets
 

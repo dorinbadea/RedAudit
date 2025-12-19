@@ -8,8 +8,6 @@
 
 ---
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](SECURITY.es.md)
-
 ## Security Policy
 
 ### Reporting a Vulnerability
@@ -138,7 +136,7 @@ Users should treat the config file as sensitive. The API key grants increased ra
 
 Users should only run RedAudit in authorized, controlled environments.
 
-## 11. Red Team & Active Recon Safety
+## 10. Red Team & Active Recon Safety
 
 RedAudit v3.2 introduces **Active Reconnaissance** capabilities (`--redteam`, `--net-discovery`) that differ from standard scanning:
 
@@ -169,7 +167,7 @@ RedAudit v3.2 introduces **Active Reconnaissance** capabilities (`--redteam`, `-
 4. **Monitor Impact**: Watch for network congestion or service degradation
 5. **Disable bettercap**: Unless absolutely necessary, avoid `--redteam-active-l2` (enables potentially destructive L2 attacks)
 
-## 12. HTML Dashboard & Webhook Security (v3.3+)
+## 11. HTML Dashboard & Webhook Security (v3.3+)
 
 ### HTML Reports (`--html-report`)
 
@@ -182,7 +180,7 @@ RedAudit v3.2 introduces **Active Reconnaissance** capabilities (`--redteam`, `-
 - **HTTPS Required**: Always use `https://` webhook URLs to protect this data in transit.
 - **Verification**: Ensure the webhook URL is correct and trusted (e.g., your internal Slack/Teams instance) to avoid leaking vulnerability data to third parties.
 
-## 13. License
+## 12. License
 
 This security model is part of the RedAudit project and is covered by the
 **GNU General Public License v3.0 (GPLv3)**. See [LICENSE](../../LICENSE) for the full text.

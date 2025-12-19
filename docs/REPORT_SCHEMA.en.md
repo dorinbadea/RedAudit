@@ -8,8 +8,6 @@
 
 ---
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](REPORT_SCHEMA.es.md)
-
 ## Overview
 
 RedAudit generates machine-readable reports in JSON format. This document describes the schema structure for `redaudit_<timestamp>.json` artifacts.
@@ -301,6 +299,7 @@ List of web vulnerability findings. Each entry contains:
 | `vulnerabilities[].nikto_filtered_count` | integer | Number of Nikto false positives filtered |
 | `vulnerabilities[].severity_note` | string | (Optional) Explanation when severity was adjusted **(v3.1.4)** |
 | `vulnerabilities[].potential_false_positives` | array | (Optional) Detected contradictions from cross-validation **(v3.1.4)** |
+| `vulnerabilities[].affected_ports` | array | (Optional) List of ports sharing this finding when consolidated **(v3.6.1)** |
 
 ### PCAP Capture Fields (v3.1.4)
 

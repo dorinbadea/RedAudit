@@ -8,8 +8,6 @@
 
 ---
 
-[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](REPORT_SCHEMA.en.md)
-
 ## Visión General
 
 RedAudit genera reportes legibles por máquina en formato JSON. Este documento describe la estructura del esquema para los artefactos `redaudit_<timestamp>.json`.
@@ -301,6 +299,7 @@ Lista de hallazgos de vulnerabilidades web. Cada entrada contiene:
 | `vulnerabilities[].nikto_filtered_count` | integer | Número de falsos positivos de Nikto filtrados |
 | `vulnerabilities[].severity_note` | string | (Opcional) Explicación cuando la severidad fue ajustada **(v3.1.4)** |
 | `vulnerabilities[].potential_false_positives` | array | (Opcional) Contradicciones detectadas en cross-validación **(v3.1.4)** |
+| `vulnerabilities[].affected_ports` | array | (Opcional) Lista de puertos compartiendo este hallazgo cuando está consolidado **(v3.6.1)** |
 
 ### Campos de Captura PCAP (v3.1.4)
 

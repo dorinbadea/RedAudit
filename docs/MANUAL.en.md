@@ -112,7 +112,7 @@ Disable with `--no-deep-scan`.
 
 ## 5. CLI Reference (Complete)
 
-Flags verified against `redaudit --help` (v3.5.2):
+Flags verified against `redaudit --help` (v3.7.2):
 
 ### Core
 

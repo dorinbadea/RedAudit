@@ -8,8 +8,6 @@
 
 ---
 
-[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](SECURITY.en.md)
-
 ## Visión General
 
 RedAudit implementa una filosofía de "seguro por diseño", asumiendo la ejecución en entornos hostiles o no confiables. Este documento describe los controles de seguridad relacionados con el manejo de entrada, criptografía y seguridad operacional.
@@ -114,7 +112,7 @@ Los usuarios deben tratar el archivo de configuración como sensible. La clave A
 - **Huella de red**: Los escaneos generan tráfico significativo
 - **Recon opcional**: `--net-discovery` / `--redteam` pueden invocar tooling broadcast/L2 adicional (best-effort; solo con autorización explícita)
 
-## 11. Seguridad en Red Team y Reconocimiento Activo
+## 10. Seguridad en Red Team y Reconocimiento Activo
 
 RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `--net-discovery`) que difieren del escaneo estándar:
 
@@ -143,7 +141,7 @@ RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `
 4. **Monitorear Impacto**: Vigilar congestión red o degradación servicios
 5. **Deshabilitar bettercap**: A menos que sea absolutamente necesario, evitar `--redteam-active-l2` (habilita ataques L2 potencialmente destructivos)
 
-## 12. Seguridad en Dashboard HTML y Webhooks (v3.3+)
+## 11. Seguridad en Dashboard HTML y Webhooks (v3.3+)
 
 ### Reportes HTML (`--html-report`)
 
@@ -156,7 +154,7 @@ RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `
 - **HTTPS Requerido**: Usa siempre URLs de webhook `https://` para proteger estos datos en tránsito.
 - **Verificación**: Asegúrate de que la URL del webhook es correcta y confiable (ej: tu instancia interna de Slack/Teams) para evitar filtrar datos de vulnerabilidades a terceros.
 
-## 13. Licencia
+## 12. Licencia
 
 Este modelo de seguridad es parte del proyecto RedAudit y está cubierto por la
 **GNU General Public License v3.0 (GPLv3)**. Consulta [LICENSE](../../LICENSE) para el texto completo.
