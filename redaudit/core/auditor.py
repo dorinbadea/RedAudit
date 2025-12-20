@@ -637,6 +637,7 @@ class InteractiveNetworkAuditor(WizardMixin):
             return TextColumn(*args, **kwargs)
 
     def _progress_columns(self, *, show_detail: bool, show_eta: bool, show_elapsed: bool):
+        """v3.8.1: Simplified progress columns - removed unreliable ETA."""
         try:
             from rich.progress import SpinnerColumn, BarColumn, TimeElapsedColumn
         except ImportError:
@@ -656,22 +657,11 @@ class InteractiveNetworkAuditor(WizardMixin):
             columns.append(self._safe_text_column("[progress.percentage]{task.percentage:>3.0f}%"))
         if width >= 90:
             columns.append(self._safe_text_column("({task.completed}/{task.total})"))
-        if show_elapsed and width >= 100:
-            columns.append(TimeElapsedColumn())
+        # v3.8.1: Always show elapsed time for visibility
+        columns.append(TimeElapsedColumn())
         if show_detail and width >= 70:
             columns.append(self._safe_text_column("{task.fields[detail]}", overflow="ellipsis"))
-        if show_eta:
-            if width >= 110:
-                columns.append(self._safe_text_column("ETA≤ {task.fields[eta_upper]}"))
-                columns.append(
-                    self._safe_text_column(
-                        "{task.fields[eta_est]}",
-                        overflow="ellipsis",
-                        justify="right",
-                    )
-                )
-            elif width >= 80:
-                columns.append(self._safe_text_column("ETA≤ {task.fields[eta_upper]}"))
+        # v3.8.1: Removed ETA columns - they were unreliable and caused truncation
         return [c for c in columns if c is not None]
 
     def _scan_mode_host_timeout_s(self) -> float:
@@ -1803,7 +1793,7 @@ class InteractiveNetworkAuditor(WizardMixin):
             if deep_meta.get("mac_address") or deep_meta.get("vendor"):
                 identity_score += 1
                 identity_signals.append("mac_vendor")
-                # v3.8: Device type from vendor (IoT, mobile, printer, etc.)
+                # v3.8.1: Device type from vendor (IoT, mobile, printer, router, etc.)
                 vendor_lower = str(deep_meta.get("vendor") or "").lower()
                 if any(x in vendor_lower for x in ("apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus")):
                     device_type_hints.append("mobile")
@@ -1811,10 +1801,19 @@ class InteractiveNetworkAuditor(WizardMixin):
                     device_type_hints.append("printer")
                 elif any(x in vendor_lower for x in ("philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo")):
                     device_type_hints.append("iot_lighting")
-                elif any(x in vendor_lower for x in ("cisco", "juniper", "mikrotik", "ubiquiti", "netgear", "dlink", "asus")):
-                    device_type_hints.append("network_device")
+                elif any(x in vendor_lower for x in ("avm", "fritz", "cisco", "juniper", "mikrotik", "ubiquiti", "netgear", "dlink", "asus", "linksys", "tp-link")):
+                    device_type_hints.append("router")
                 elif any(x in vendor_lower for x in ("google", "amazon", "roku", "lg", "sony", "vizio")):
                     device_type_hints.append("smart_tv")
+            
+            # v3.8.1: Hostname-based device detection (catches Apple devices without vendor)
+            hostname_lower = str(host_record.get("hostname") or "").lower()
+            if any(x in hostname_lower for x in ("iphone", "ipad", "ipod", "macbook", "imac")):
+                if "mobile" not in device_type_hints:
+                    device_type_hints.append("mobile")
+            elif any(x in hostname_lower for x in ("android", "galaxy", "pixel", "oneplus")):
+                if "mobile" not in device_type_hints:
+                    device_type_hints.append("mobile")
             if host_record.get("os_detected"):
                 identity_score += 1
                 identity_signals.append("os_detected")
@@ -2029,17 +2028,15 @@ class InteractiveNetworkAuditor(WizardMixin):
                             host_timeout_s * math.ceil(max(0, total) / threads)
                         )
                         initial_detail = self._get_ui_detail()
+                        # v3.8.1: Simplified task - no ETA fields
                         task = progress.add_task(
                             f"[cyan]{self.t('scanning_hosts')}",
                             total=total,
-                            eta_upper=eta_upper_init,
-                            eta_est="",
                             detail=initial_detail,
                         )
                         pending = set(futures)
                         last_detail = initial_detail
-                        last_eta_upper = eta_upper_init
-                        last_eta_est = ""
+                        last_heartbeat = start_t
                         while pending:
                             if self.interrupted:
                                 for pending_fut in pending:
@@ -2054,29 +2051,23 @@ class InteractiveNetworkAuditor(WizardMixin):
                                 progress.update(task, detail=detail)
                                 last_detail = detail
 
-                            # Keep ETA moving even when no hosts finish (long-running scans).
-                            if pending:
-                                remaining = max(0, total - done)
-                                elapsed_s = max(0.001, time.time() - start_t)
-                                rate = done / elapsed_s if done else 0.0
-                                eta_est_val = (
-                                    self._format_eta(remaining / rate)
-                                    if rate > 0.0 and remaining
-                                    else ""
+                            # v3.8.1: Heartbeat every 60s for visibility
+                            now = time.time()
+                            if now - last_heartbeat >= 60.0:
+                                elapsed = int(now - start_t)
+                                mins, secs = divmod(elapsed, 60)
+                                self.print_status(
+                                    f"Escaneando hosts... {done}/{total} ({mins}:{secs:02d} transcurrido)",
+                                    "INFO",
+                                    force=True,
                                 )
-                                eta_upper = self._format_eta(
-                                    host_timeout_s * math.ceil(remaining / threads)
-                                    if remaining
-                                    else 0
-                                )
-                                if eta_upper != last_eta_upper or eta_est_val != last_eta_est:
-                                    progress.update(
-                                        task,
-                                        eta_upper=eta_upper,
-                                        eta_est=f"ETA≈ {eta_est_val}" if eta_est_val else "",
-                                    )
-                                    last_eta_upper = eta_upper
-                                    last_eta_est = eta_est_val
+                                last_heartbeat = now
+                            detail = self._get_ui_detail()
+                            if detail != last_detail:
+                                progress.update(task, detail=detail)
+                                last_detail = detail
+
+
 
                             for fut in completed:
                                 host_ip = futures.get(fut)
@@ -2089,29 +2080,13 @@ class InteractiveNetworkAuditor(WizardMixin):
                                         "Worker exception details for %s", host_ip, exc_info=True
                                     )
                                 done += 1
-                                remaining = max(0, total - done)
-                                elapsed_s = max(0.001, time.time() - start_t)
-                                rate = done / elapsed_s if done else 0.0
-                                eta_est_val = (
-                                    self._format_eta(remaining / rate)
-                                    if rate > 0.0 and remaining
-                                    else ""
-                                )
-                                eta_upper = self._format_eta(
-                                    host_timeout_s * math.ceil(remaining / threads)
-                                    if remaining
-                                    else 0
-                                )
+                                # v3.8.1: Simplified progress update - no ETA
                                 progress.update(
                                     task,
                                     advance=1,
                                     description=f"[cyan]{self.t('scanned_host', host_ip)}",
-                                    eta_upper=eta_upper,
-                                    eta_est=f"ETA≈ {eta_est_val}" if eta_est_val else "",
                                     detail=last_detail,
                                 )
-                                last_eta_upper = eta_upper
-                                last_eta_est = eta_est_val
                 else:
                     # Fallback to basic progress (throttled, includes timeout-aware upper bound ETA)
                     for fut in as_completed(futures):
@@ -2130,13 +2105,12 @@ class InteractiveNetworkAuditor(WizardMixin):
                                 "Worker exception details for %s", host_ip, exc_info=True
                             )
                         done += 1
+                        # v3.8.1: Show elapsed instead of ETA
                         if total and done % max(1, total // 10) == 0:
-                            remaining = max(0, total - done)
-                            eta_upper = self._format_eta(
-                                host_timeout_s * math.ceil(remaining / threads) if remaining else 0
-                            )
+                            elapsed = int(time.time() - start_t)
+                            mins, secs = divmod(elapsed, 60)
                             self.print_status(
-                                f"{self.t('progress', done, total)} | ETA≤ {eta_upper}",
+                                f"{self.t('progress', done, total)} ({mins}:{secs:02d} transcurrido)",
                                 "INFO",
                                 update_activity=False,
                                 force=True,
@@ -2934,37 +2908,42 @@ class InteractiveNetworkAuditor(WizardMixin):
                                 ),
                                 BarColumn(bar_width=20),
                                 TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                                self._safe_text_column(
-                                    "ETA≤ {task.fields[eta_upper]}",
-                                    overflow="ellipsis",
-                                    no_wrap=True,
-                                ),
                                 TimeElapsedColumn(),
                                 console=self._progress_console(),
                                 transient=True,
                             ) as progress:
-                                # v3.8.0: Net Discovery now shows real percentage progress
-                                # Estimate ~120s per protocol step for ETA calculation
-                                est_per_step_s = 120.0
+                                # v3.8.1: Simplified progress - elapsed only, no ETA
                                 task = progress.add_task(
                                     "initializing...",
                                     total=100,
-                                    eta_upper=self._format_eta(est_per_step_s * 7),
                                 )
+                                nd_start_time = time.time()
+                                last_heartbeat = nd_start_time
 
                                 def _nd_progress(
                                     label: str, step_index: int, step_total: int
                                 ) -> None:
+                                    nonlocal last_heartbeat
                                     try:
                                         pct = int((step_index / step_total) * 100) if step_total else 0
-                                        remaining_steps = max(0, step_total - step_index)
-                                        eta_s = remaining_steps * est_per_step_s
+                                        # v3.8.1: Truncate label to 35 chars for clean display
+                                        label_short = label[:35] + "…" if len(label) > 35 else label
                                         progress.update(
                                             task,
                                             completed=pct,
-                                            description=f"{label}",
-                                            eta_upper=self._format_eta(eta_s),
+                                            description=f"{label_short}",
                                         )
+                                        # v3.8.1: Heartbeat every 30s for long phases
+                                        now = time.time()
+                                        if now - last_heartbeat >= 30.0:
+                                            elapsed = int(now - nd_start_time)
+                                            mins, secs = divmod(elapsed, 60)
+                                            self.print_status(
+                                                f"Net Discovery en progreso... ({mins}:{secs:02d} transcurrido)",
+                                                "INFO",
+                                                force=True,
+                                            )
+                                            last_heartbeat = now
                                     except Exception:
                                         pass
 
@@ -2978,7 +2957,7 @@ class InteractiveNetworkAuditor(WizardMixin):
                                     progress_callback=_nd_progress,
                                     logger=self.logger,
                                 )
-                                progress.update(task, completed=100, description="complete", eta_upper="0:00")
+                                progress.update(task, completed=100, description="complete")
                     except ImportError:
                         # Fallback without progress bar
                         with self._progress_ui():

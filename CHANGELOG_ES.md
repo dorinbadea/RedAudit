@@ -14,6 +14,20 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **Verificación sin agente**: Etapa opcional de fingerprinting SMB/RDP/LDAP/SSH/HTTP (wizard o `--agentless-verify`), con límite configurable de objetivos.
 - **Flags CLI**: `--agentless-verify`, `--no-agentless-verify` y `--agentless-verify-max-targets`.
 
+## [3.8.1] - 2025-12-20 (Corrección Feedback Visual)
+
+### Corregido
+
+- **ETA Eliminado**: Eliminadas estimaciones ETA poco fiables de barras de progreso (se congelaban o mostraban valores incorrectos); ahora solo muestra tiempo transcurrido.
+- **Texto Truncado**: Corregido problema de truncamiento donde descripciones largas hacían ilegible la barra de progreso (`Escaneado 192.168.178… ETA≤ …`).
+- **Mensajes Heartbeat**: Añadidos mensajes periódicos cada 30-60s durante fases largas (Net Discovery, Host Scan) para indicar actividad.
+- **Detección Tipo Dispositivo**: Mejorada detección `device_type_hints`—añadido AVM/Fritz a patrones router, detección móvil basada en hostname (iPhone, iPad, Android).
+
+### Cambiado
+
+- **Display de Progreso**: Columnas de progreso simplificadas a: spinner + descripción + barra + porcentaje + tiempo transcurrido.
+- **Labels Net Discovery**: Etiquetas de fase truncadas a 35 caracteres para evitar desbordamiento.
+
 ## [3.8.0] - 2025-12-20 (UX Net Discovery)
 
 ### Añadido

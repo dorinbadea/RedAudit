@@ -14,6 +14,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Agentless verification**: Optional SMB/RDP/LDAP/SSH/HTTP fingerprinting stage (wizard or `--agentless-verify`), with a configurable target cap.
 - **CLI flags**: `--agentless-verify`, `--no-agentless-verify`, and `--agentless-verify-max-targets`.
 
+## [3.8.1] - 2025-12-20 (Visual Feedback Fix)
+
+### Fixed
+
+- **ETA Removed**: Eliminated unreliable ETA estimates from progress bars (were freezing or showing incorrect values); now displays elapsed time only.
+- **Progress Bar Truncation**: Fixed text truncation issue where long descriptions made progress bars unreadable (`Escaneado 192.168.178… ETA≤ …`).
+- **Heartbeat Messages**: Added periodic heartbeat messages every 30-60s during long phases (Net Discovery, Host Scan) to indicate activity.
+- **Device Type Detection**: Improved `device_type_hints` detection—added AVM/Fritz to router patterns, hostname-based mobile detection (iPhone, iPad, Android).
+
+### Changed
+
+- **Progress Display**: Simplified progress columns to: spinner + description + bar + percentage + elapsed time.
+- **Net Discovery Labels**: Truncated phase labels to 35 characters to prevent overflow.
+
 ## [3.8.0] - 2025-12-20 (Net Discovery UX)
 
 ### Added
