@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Agentless verification**: Optional SMB/RDP/LDAP/SSH/HTTP fingerprinting stage (wizard or `--agentless-verify`), with a configurable target cap.
 - **CLI flags**: `--agentless-verify`, `--no-agentless-verify`, and `--agentless-verify-max-targets`.
 
+## [3.8.2] - 2025-12-20 (UX Polish)
+
+### Added
+
+- **HTML Watermark**: Professional footer in HTML reports with GPLv3 license, author (Dorin Badea), and GitHub link.
+
+### Fixed
+
+- **Spinner Removed**: Eliminated spinner from progress bars (was causing display freezes during long phases); now shows clean bar + percentage + elapsed time.
+
 ## [3.8.1] - 2025-12-20 (Visual Feedback Fix)
 
 ### Added

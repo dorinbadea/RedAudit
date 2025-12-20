@@ -637,15 +637,14 @@ class InteractiveNetworkAuditor(WizardMixin):
             return TextColumn(*args, **kwargs)
 
     def _progress_columns(self, *, show_detail: bool, show_eta: bool, show_elapsed: bool):
-        """v3.8.1: Simplified progress columns - removed unreliable ETA."""
+        """v3.8.2: Simplified progress columns - removed spinner (caused display issues)."""
         try:
-            from rich.progress import SpinnerColumn, BarColumn, TimeElapsedColumn
+            from rich.progress import BarColumn, TimeElapsedColumn
         except ImportError:
             return []
         width = self._terminal_width()
         bar_width = max(8, min(28, width // 4))
         columns = [
-            SpinnerColumn(),
             self._safe_text_column(
                 "[progress.description]{task.description}",
                 overflow="ellipsis",
@@ -661,7 +660,7 @@ class InteractiveNetworkAuditor(WizardMixin):
         columns.append(TimeElapsedColumn())
         if show_detail and width >= 70:
             columns.append(self._safe_text_column("{task.fields[detail]}", overflow="ellipsis"))
-        # v3.8.1: Removed ETA columns - they were unreliable and caused truncation
+        # v3.8.2: Removed SpinnerColumn - caused display issues during long phases
         return [c for c in columns if c is not None]
 
     def _scan_mode_host_timeout_s(self) -> float:
