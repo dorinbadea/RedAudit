@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Agentless verification**: Optional SMB/RDP/LDAP/SSH/HTTP fingerprinting stage (wizard or `--agentless-verify`), with a configurable target cap.
 - **CLI flags**: `--agentless-verify`, `--no-agentless-verify`, and `--agentless-verify-max-targets`.
 
+## [3.7.3] - 2025-12-20 (Scan Reliability & Reporting Accuracy)
+
+### Fixed
+
+- **Nmap XML parsing**: Preserve full XML output and extract the `<nmaprun>` block to prevent parse errors that masked
+  host identities.
+- **Timeout fallback**: When no host timeout is specified, fallback now respects scan mode (full/completo = 300s) to
+  avoid premature timeouts.
+- **Topology identity fallback**: If Nmap fails, MAC/vendor data from topology/neighbor cache is used to keep host
+  identity in reports.
+- **Report counts**: "Hosts Discovered" now deduplicates targets so it matches the unique host set.
+
 ## [3.7.2] - 2025-12-19 (UX & Progress Hotfix)
 
 ### Fixed
