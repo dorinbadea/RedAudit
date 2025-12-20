@@ -131,7 +131,7 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
                                        │
                                        ▼
                     ┌──────────────────────────────────────┐
-                    │  FASE 2a: UDP Prioritario (rápido/normal) │
+                    │  FASE 2a: UDP Prioritario                 │
                     │  17 puertos comunes (DNS, DHCP, SNMP)     │
                     └──────────────────┬───────────────────┘
                                        │
@@ -344,18 +344,29 @@ redaudit/
 │   ├── auditor.py          # Orquestador principal
 │   ├── wizard.py           # UI interactiva (WizardMixin)
 │   ├── scanner.py          # Lógica de escaneo Nmap + IPv6
-│   ├── nuclei.py           # Integración escáner templates Nuclei
+│   ├── network.py          # Detección de interfaces/red
 │   ├── prescan.py          # Descubrimiento rápido asyncio
 │   ├── hyperscan.py        # Descubrimiento paralelo ultrarrápido
-│   ├── topology.py         # Descubrimiento de topología de red
 │   ├── net_discovery.py    # Descubrimiento L2/broadcast mejorado
-│   ├── reporter.py         # Salida JSON/TXT/HTML/JSONL
+│   ├── topology.py         # Descubrimiento de topología de red
+│   ├── udp_probe.py        # Helpers de sondeo UDP
+│   ├── agentless_verify.py # Verificación sin agente SMB/RDP/LDAP/SSH/HTTP
+│   ├── nuclei.py           # Integración escáner templates Nuclei
 │   ├── playbook_generator.py # Generador de playbooks remediación
 │   ├── nvd.py              # Correlación CVE via NVD API
+│   ├── osquery.py          # Helpers de verificación Osquery (opcional)
+│   ├── entity_resolver.py  # Consolidación de activos / resolución de entidades
+│   ├── evidence_parser.py  # Helpers de parsing de evidencias
+│   ├── reporter.py         # Salida JSON/TXT/HTML/JSONL
+│   ├── html_reporter.py    # Renderizado de reportes HTML
+│   ├── jsonl_exporter.py   # Exportación JSONL para SIEM
 │   ├── siem.py             # Integración SIEM (ECS v8.11)
 │   ├── diff.py             # Análisis diferencial
 │   ├── crypto.py           # Cifrado/descifrado AES-128
 │   ├── command_runner.py   # Ejecución segura comandos externos
+│   ├── power.py            # Inhibición de reposo
+│   ├── proxy.py            # Manejo de proxy
+│   ├── scanner_versions.py # Detección de versiones de herramientas
 │   ├── verify_vuln.py      # Filtro Smart-Check falsos positivos
 │   └── updater.py          # Sistema de auto-actualización
 ├── templates/              # Templates reportes HTML

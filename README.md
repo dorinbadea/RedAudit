@@ -131,7 +131,7 @@ RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runt
                                        │
                                        ▼
                     ┌──────────────────────────────────────┐
-                    │   PHASE 2a: Priority UDP (fast/normal)│
+                    │   PHASE 2a: Priority UDP             │
                     │   17 common ports (DNS, DHCP, SNMP)  │
                     └──────────────────┬───────────────────┘
                                        │
@@ -343,18 +343,29 @@ redaudit/
 │   ├── auditor.py          # Main orchestrator
 │   ├── wizard.py           # Interactive UI (WizardMixin)
 │   ├── scanner.py          # Nmap scanning logic + IPv6
-│   ├── nuclei.py           # Nuclei template scanner integration
+│   ├── network.py          # Network interface detection
 │   ├── prescan.py          # Asyncio fast port discovery
 │   ├── hyperscan.py        # Ultra-fast parallel discovery
-│   ├── topology.py         # Network topology discovery
 │   ├── net_discovery.py    # Enhanced L2/broadcast discovery
-│   ├── reporter.py         # JSON/TXT/HTML/JSONL output
+│   ├── topology.py         # Network topology discovery
+│   ├── udp_probe.py        # UDP probing helpers
+│   ├── agentless_verify.py # Agentless SMB/RDP/LDAP/SSH/HTTP checks
+│   ├── nuclei.py           # Nuclei template scanner integration
 │   ├── playbook_generator.py # Remediation playbook generator
 │   ├── nvd.py              # CVE correlation via NVD API
+│   ├── osquery.py          # Osquery verification helpers (optional)
+│   ├── entity_resolver.py  # Asset consolidation / entity resolution
+│   ├── evidence_parser.py  # Evidence parsing helpers
+│   ├── reporter.py         # JSON/TXT/HTML/JSONL output
+│   ├── html_reporter.py    # HTML report renderer
+│   ├── jsonl_exporter.py   # JSONL export for SIEM
 │   ├── siem.py             # SIEM integration (ECS v8.11)
 │   ├── diff.py             # Differential analysis
 │   ├── crypto.py           # AES-128 encryption/decryption
 │   ├── command_runner.py   # Safe external command execution
+│   ├── power.py            # Sleep inhibition helpers
+│   ├── proxy.py            # Proxy handling
+│   ├── scanner_versions.py # External tool version detection
 │   ├── verify_vuln.py      # Smart-Check false positive filter
 │   └── updater.py          # Auto-update system
 ├── templates/              # HTML report templates
