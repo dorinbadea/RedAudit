@@ -131,8 +131,8 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
                                        │
                                        ▼
                     ┌──────────────────────────────────────┐
-                    │  FASE 2a: UDP Prioritario                 │
-                    │  17 puertos comunes (DNS, DHCP, SNMP)     │
+                    │  FASE 2a: UDP Prioritario            │
+                    │  17 puertos comunes (DNS/DHCP/SNMP)  │
                     └──────────────────┬───────────────────┘
                                        │
                           ┌────────────┴────────────┐
