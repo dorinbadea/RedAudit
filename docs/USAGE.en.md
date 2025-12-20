@@ -15,7 +15,7 @@ Run these commands to get started immediately.
 
 **Interactive Wizard (Best for first time)**
 
-New in v3.7: Configures Webhooks, SIEM, and Advanced Network Discovery interactively.
+New in v3.8: Step-by-step navigation with "< Go Back" option. Configures Webhooks, SIEM, and Advanced Network Discovery interactively.
 
 ```bash
 sudo redaudit

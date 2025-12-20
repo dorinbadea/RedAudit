@@ -36,10 +36,12 @@ These features are approved but **not yet implemented** in the codebase.
 
 Features currently present using `redaudit --version` >= v3.6.0.
 
-### UX & Integrations (v3.7.0)
+### UX & Integrations (v3.7.0+)
 
 | Feature | Version | Verification |
 | :--- | :--- | :--- |
+| **Wizard Navigation** | v3.8.1 | `redaudit/core/wizard.py`. "< Go Back" option in wizard menus for step-by-step navigation. |
+| **HTML Report Watermark** | v3.8.2 | `redaudit/templates/report.html.j2`. Professional footer with GPLv3, author, and GitHub link. |
 | **Interactive Webhooks** | v3.7.0 | `redaudit/core/wizard.py`. Configure Slack/Teams directly in wizard. |
 | **Advanced Net Discovery Wizard** | v3.7.0 | `redaudit/core/wizard.py`. Configure SNMP/DNS/Targets interactively. |
 | **Native SIEM Pipeline** | v3.7.0 | `siem/`. Configs for Filebeat/Logstash + Sigma rules. |

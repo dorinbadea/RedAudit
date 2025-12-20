@@ -15,7 +15,7 @@ Ejecuta estos comandos para comenzar de inmediato.
 
 **Asistente Interactivo (Recomendado para primera vez)**
 
-Nuevo en v3.7: Configura Webhooks, SIEM y Descubrimiento Avanzado interactivamente.
+Nuevo en v3.8: Navegación paso a paso con opción "< Volver". Configura Webhooks, SIEM y Descubrimiento Avanzado interactivamente.
 
 ```bash
 sudo redaudit
