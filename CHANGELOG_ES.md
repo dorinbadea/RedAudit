@@ -14,6 +14,21 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **Verificación sin agente**: Etapa opcional de fingerprinting SMB/RDP/LDAP/SSH/HTTP (wizard o `--agentless-verify`), con límite configurable de objetivos.
 - **Flags CLI**: `--agentless-verify`, `--no-agentless-verify` y `--agentless-verify-max-targets`.
 
+## [3.8.0] - 2025-12-20 (UX Net Discovery)
+
+### Añadido
+
+- **Barra de Progreso Net Discovery**: Spinner genérico reemplazado por barra Rich con porcentaje, descripción de fase y ETA durante el descubrimiento de red (~10 min de fase ahora muestra progreso real).
+- **SmartScan Detección de Dispositivos**: Clasificación automática de tipo de dispositivo desde firmas vendor/UPNP/mDNS/servicio (móvil, impresora, router, IoT, smart_tv, hypervisor).
+- **SmartScan Señales Topología**: El scoring de identidad ahora incluye resultados net_discovery (ARP, UPNP, mDNS) para mejores decisiones de deep scan.
+- **Wizard UX Hints**: Añadidos ejemplos a prompts de SNMP community, DNS zone y webhook URL.
+
+### Cambiado
+
+- **Throttling HyperScan**: Umbral de actualización reducido de 3% a 1% e intervalo de 0.35s a 0.25s para feedback más suave y responsive durante el descubrimiento paralelo.
+- **SmartScan Modo Completo**: El modo escaneo completo ya no desactiva heurísticas de deep scan; usa threshold de identidad más alto (4 vs 3) para descubrimiento más exhaustivo.
+- **SmartScan Infraestructura de Red**: Routers y dispositivos de red ahora siempre activan deep scan para mapeo completo de infraestructura.
+
 ## [3.7.3] - 2025-12-20 (Confiabilidad del escaneo y precisión de reportes)
 
 ### Corregido

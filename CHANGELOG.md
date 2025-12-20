@@ -19,10 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Net Discovery Progress Bar**: Replaced generic spinner with full Rich progress bar showing percentage, phase description, and ETA during network discovery (~10 min phase now shows real progress).
+- **SmartScan Device Detection**: Automatic device type classification from vendor/UPNP/mDNS/service signatures (mobile, printer, router, IoT, smart_tv, hypervisor).
+- **SmartScan Topology Signals**: Identity scoring now includes net_discovery results (ARP, UPNP, mDNS) for better deep scan decisions.
+- **Wizard UX Hints**: Added examples to SNMP community, DNS zone, and webhook URL prompts.
 
 ### Changed
 
 - **HyperScan Throttling**: Reduced progress update threshold from 3% to 1% and interval from 0.35s to 0.25s for smoother, more responsive feedback during parallel discovery.
+- **SmartScan Full Mode**: Full scan mode no longer disables deep scan heuristics; instead uses higher identity threshold (4 vs 3) for more thorough discovery.
+- **SmartScan Network Infrastructure**: Routers and network devices now always trigger deep scan for complete infrastructure mapping.
 
 ## [3.7.3] - 2025-12-20 (Scan Reliability & Reporting Accuracy)
 

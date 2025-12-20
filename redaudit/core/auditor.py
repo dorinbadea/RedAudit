@@ -1784,9 +1784,12 @@ class InteractiveNetworkAuditor(WizardMixin):
                             if extra.get("ssl_cert"):
                                 port_info["ssl_cert"] = extra["ssl_cert"]
 
-            # Evidence-based identity signal scoring to avoid unnecessary deep scans.
+            # v3.8.0: Enhanced evidence-based identity scoring with topology/net_discovery signals
             identity_score = 0
             identity_signals = []
+            device_type_hints = []  # v3.8: Collect device type indicators
+
+            # --- Standard signals ---
             if host_record.get("hostname"):
                 identity_score += 1
                 identity_signals.append("hostname")
@@ -1800,43 +1803,120 @@ class InteractiveNetworkAuditor(WizardMixin):
             if deep_meta.get("mac_address") or deep_meta.get("vendor"):
                 identity_score += 1
                 identity_signals.append("mac_vendor")
+                # v3.8: Device type from vendor (IoT, mobile, printer, etc.)
+                vendor_lower = str(deep_meta.get("vendor") or "").lower()
+                if any(x in vendor_lower for x in ("apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus")):
+                    device_type_hints.append("mobile")
+                elif any(x in vendor_lower for x in ("hp", "canon", "epson", "brother", "lexmark", "xerox")):
+                    device_type_hints.append("printer")
+                elif any(x in vendor_lower for x in ("philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo")):
+                    device_type_hints.append("iot_lighting")
+                elif any(x in vendor_lower for x in ("cisco", "juniper", "mikrotik", "ubiquiti", "netgear", "dlink", "asus")):
+                    device_type_hints.append("network_device")
+                elif any(x in vendor_lower for x in ("google", "amazon", "roku", "lg", "sony", "vizio")):
+                    device_type_hints.append("smart_tv")
             if host_record.get("os_detected"):
                 identity_score += 1
                 identity_signals.append("os_detected")
             if any(p.get("banner") for p in ports):
                 identity_score += 1
                 identity_signals.append("banner")
+
+            # --- v3.8: New topology/net_discovery signals ---
+            # Check if this host appeared in net_discovery results (UPNP, mDNS, ARP, etc.)
+            nd_results = self.results.get("net_discovery") or {}
+            nd_hosts_ips = set()
+            for h in nd_results.get("arp_hosts", []):
+                nd_hosts_ips.add(h.get("ip"))
+            for h in nd_results.get("upnp_devices", []):
+                nd_hosts_ips.add(h.get("ip"))
+            for svc in nd_results.get("mdns_services", []):
+                for addr in svc.get("addresses", []):
+                    nd_hosts_ips.add(addr)
+
+            if safe_ip in nd_hosts_ips:
+                identity_score += 1
+                identity_signals.append("net_discovery")
+
+            # UPNP device type enrichment
+            for upnp in nd_results.get("upnp_devices", []):
+                if upnp.get("ip") == safe_ip:
+                    upnp_type = str(upnp.get("device_type") or upnp.get("st") or "").lower()
+                    if "router" in upnp_type or "gateway" in upnp_type:
+                        device_type_hints.append("router")
+                        identity_score += 1
+                        identity_signals.append("upnp_router")
+                    elif "printer" in upnp_type:
+                        device_type_hints.append("printer")
+                    elif "mediarenderer" in upnp_type or "mediaplayer" in upnp_type:
+                        device_type_hints.append("smart_tv")
+                    break
+
+            # mDNS service type enrichment
+            for svc in nd_results.get("mdns_services", []):
+                if safe_ip in svc.get("addresses", []):
+                    svc_type = str(svc.get("type") or "").lower()
+                    if "_ipp" in svc_type or "_printer" in svc_type:
+                        device_type_hints.append("printer")
+                    elif "_airplay" in svc_type or "_raop" in svc_type:
+                        device_type_hints.append("apple_device")
+                    elif "_googlecast" in svc_type:
+                        device_type_hints.append("chromecast")
+                    elif "_hap" in svc_type or "_homekit" in svc_type:
+                        device_type_hints.append("homekit")
+
+            # Service-based device detection
+            for p in ports:
+                svc = str(p.get("service") or "").lower()
+                prod = str(p.get("product") or "").lower()
+                if any(x in svc or x in prod for x in ("ipp", "printer", "cups")):
+                    device_type_hints.append("printer")
+                elif any(x in svc or x in prod for x in ("router", "mikrotik", "routeros")):
+                    device_type_hints.append("router")
+                elif "esxi" in prod or "vmware" in prod or "vcenter" in prod:
+                    device_type_hints.append("hypervisor")
+
+            # Store device type hints (deduplicated)
+            host_record["device_type_hints"] = list(set(device_type_hints))
+
+            # v3.8: Visible logging of SmartScan decision
             if self.logger:
                 self.logger.debug(
-                    "Identity signals for %s: score=%s (%s)",
+                    "Identity signals for %s: score=%s (%s), device_hints=%s",
                     safe_ip,
                     identity_score,
                     ",".join(identity_signals) or "none",
+                    ",".join(device_type_hints) or "none",
                 )
 
             # Heuristics for deep identity scan
             trigger_deep = False
             deep_enabled = self.config.get("deep_id_scan", True)
-            # In full scan mode we already run aggressive nmap; avoid redundant deep scans.
-            allow_deep_heuristic = self.config.get("scan_mode") != "completo"
+            # v3.8: In full scan mode still allow deep heuristic, but with higher threshold
+            is_full_mode = self.config.get("scan_mode") in ("completo", "full")
             deep_reasons = []
-            if deep_enabled and allow_deep_heuristic:
+            if deep_enabled:
+                # v3.8: More triggers for thorough discovery
                 if total_ports > 8:
                     trigger_deep = True
                     deep_reasons.append("many_ports")
                 if suspicious:
                     trigger_deep = True
                     deep_reasons.append("suspicious_service")
-                # Skip deep scan for completely quiet hosts (0 open ports); it tends to add a lot of time
-                # and usually yields little beyond MAC/vendor (which we already capture when available).
+                # Low visibility hosts need deep scan to identify
                 if 0 < total_ports <= 3:
                     trigger_deep = True
                     deep_reasons.append("low_visibility")
                 if total_ports > 0 and not any_version:
                     trigger_deep = True
                     deep_reasons.append("no_version_info")
-                # If identity signals are already strong, skip deep scan unless host is suspicious.
-                if identity_score >= 3 and not suspicious and total_ports <= 12 and any_version:
+                # v3.8: Network devices (routers/switches) always get deep treatment
+                if "router" in device_type_hints or "network_device" in device_type_hints:
+                    trigger_deep = True
+                    deep_reasons.append("network_infrastructure")
+                # v3.8: Adjust threshold based on scan mode (full mode is more lenient)
+                identity_threshold = 4 if is_full_mode else 3
+                if identity_score >= identity_threshold and not suspicious and total_ports <= 12 and any_version:
                     trigger_deep = False
                     deep_reasons.append("identity_strong")
 

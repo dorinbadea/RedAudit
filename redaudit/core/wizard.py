@@ -515,6 +515,9 @@ class WizardMixin:
         while True:
             try:
                 print(f"\n{self.COLORS['OKBLUE']}{'—' * 60}{self.COLORS['ENDC']}")
+                # v3.8.0: Added hint with example URL formats
+                hint = self.COLORS['OKBLUE'] + "(e.g. https://hooks.slack.com/services/... or https://outlook.office.com/webhook/...)" + self.COLORS['ENDC']
+                print(f"  {hint}")
                 url = input(
                     f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('webhook_url_prompt')} "
                 ).strip()
@@ -580,6 +583,9 @@ class WizardMixin:
         try:
             # SNMP Community
             print(f"\n{self.COLORS['OKBLUE']}{'—' * 60}{self.COLORS['ENDC']}")
+            # v3.8.0: Added hint for SNMP community string
+            hint = self.COLORS['OKBLUE'] + "(ENTER = 'public', or try 'private', 'community', etc.)" + self.COLORS['ENDC']
+            print(f"  {hint}")
             snmp = input(
                 f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('net_discovery_snmp_prompt')} "
                 f"[{options['snmp_community']}]: "
@@ -589,6 +595,9 @@ class WizardMixin:
 
             # DNS Zone
             print(f"\n{self.COLORS['OKBLUE']}{'—' * 60}{self.COLORS['ENDC']}")
+            # v3.8.0: Added hint for DNS zone with examples
+            hint_dns = self.COLORS['OKBLUE'] + "(e.g. corp.local, example.com, internal.lan — ENTER to skip)" + self.COLORS['ENDC']
+            print(f"  {hint_dns}")
             dns_zone = input(
                 f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('net_discovery_dns_zone_prompt')} "
             ).strip()
