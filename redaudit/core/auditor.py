@@ -334,7 +334,16 @@ class InteractiveNetworkAuditor(WizardMixin):
         is_tty = sys.stdout.isatty()
         status_display = status_map.get(status, status)
 
-        color = self.COLORS.get(status, self.COLORS["OKBLUE"]) if is_tty else ""
+        color_key = status
+        if status_display == "OK":
+            color_key = "OKGREEN"
+        elif status_display in ("WARN", "WARNING"):
+            color_key = "WARNING"
+        elif status_display in ("FAIL", "ERROR"):
+            color_key = "FAIL"
+        elif status_display == "INFO":
+            color_key = "OKBLUE"
+        color = self.COLORS.get(color_key, self.COLORS["OKBLUE"]) if is_tty else ""
         endc = self.COLORS["ENDC"] if is_tty else ""
 
         # Wrap long messages on word boundaries to avoid splitting words mid-line.
@@ -665,6 +674,28 @@ class InteractiveNetworkAuditor(WizardMixin):
                 columns.append(self._safe_text_column("ETA≤ {task.fields[eta_upper]}"))
         return [c for c in columns if c is not None]
 
+    def _scan_mode_host_timeout_s(self) -> float:
+        mode = str(self.config.get("scan_mode") or "").strip().lower()
+        if mode in ("fast", "rapido"):
+            return 10.0
+        if mode in ("full", "completo"):
+            return 300.0
+        return 60.0
+
+    @staticmethod
+    def _extract_nmap_xml(raw: str) -> str:
+        if not raw:
+            return ""
+        start = raw.find("<nmaprun")
+        if start < 0:
+            start = raw.find("<?xml")
+        if start > 0:
+            raw = raw[start:]
+        end = raw.rfind("</nmaprun>")
+        if end >= 0:
+            raw = raw[: end + len("</nmaprun>")]
+        return raw.strip()
+
     def _run_nmap_xml_scan(self, target: str, args: str) -> Tuple[Optional[Any], str]:
         """
         Run an nmap scan with XML output and enforce a hard timeout.
@@ -679,7 +710,9 @@ class InteractiveNetworkAuditor(WizardMixin):
         if nmap is None:
             return None, "python_nmap_missing"
 
-        host_timeout_s = self._parse_host_timeout_s(args) or 60.0
+        host_timeout_s = self._parse_host_timeout_s(args)
+        if host_timeout_s is None:
+            host_timeout_s = self._scan_mode_host_timeout_s()
         timeout_s = max(30.0, host_timeout_s + 30.0)
         cmd = ["nmap"] + shlex.split(args) + ["-oX", "-", target]
 
@@ -696,9 +729,15 @@ class InteractiveNetworkAuditor(WizardMixin):
         if rec.get("error"):
             return None, str(rec["error"])
 
-        xml_output = self._coerce_text(rec.get("stdout", ""))
-        if not xml_output.strip():
+        raw_stdout = self._coerce_text(rec.get("stdout", ""))
+        xml_output = self._extract_nmap_xml(raw_stdout)
+        if not xml_output:
+            raw_stderr = self._coerce_text(rec.get("stderr", ""))
+            xml_output = self._extract_nmap_xml(raw_stderr)
+        if not xml_output:
             stderr = self._coerce_text(rec.get("stderr", "")).strip()
+            if len(stderr) > 200:
+                stderr = f"{stderr[:200].rstrip()}..."
             return None, stderr or "empty_nmap_output"
 
         nm = nmap.PortScanner()
@@ -714,7 +753,10 @@ class InteractiveNetworkAuditor(WizardMixin):
                     nmap_warn_keep_trace="",
                 )
             except Exception as exc:
-                return None, f"nmap_xml_parse_error: {exc}"
+                msg = str(exc).strip().replace("\n", " ")
+                if len(msg) > 200:
+                    msg = f"{msg[:200].rstrip()}..."
+                return None, f"nmap_xml_parse_error: {msg or 'invalid_xml'}"
         else:
             # Fallback for stubs or older python-nmap builds without XML parser.
             try:
@@ -1830,12 +1872,11 @@ class InteractiveNetworkAuditor(WizardMixin):
         results = []
         threads = max(1, int(self.config.get("threads", 1)))
         start_t = time.time()
-        host_timeout_s = (
-            self._parse_host_timeout_s(
-                get_nmap_arguments(self.config.get("scan_mode"), self.config)
-            )
-            or 60.0
+        host_timeout_s = self._parse_host_timeout_s(
+            get_nmap_arguments(self.config.get("scan_mode"), self.config)
         )
+        if host_timeout_s is None:
+            host_timeout_s = self._scan_mode_host_timeout_s()
 
         # Try to use rich for better progress visualization
         try:
