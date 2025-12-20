@@ -696,6 +696,21 @@ class InteractiveNetworkAuditor(WizardMixin):
             raw = raw[: end + len("</nmaprun>")]
         return raw.strip()
 
+    def _lookup_topology_identity(self, ip: str) -> Tuple[Optional[str], Optional[str]]:
+        topo = self.results.get("topology") if isinstance(self.results, dict) else None
+        if not isinstance(topo, dict):
+            return None, None
+        for iface in topo.get("interfaces", []) or []:
+            arp = (iface or {}).get("arp") or {}
+            for host in arp.get("hosts", []) or []:
+                if host.get("ip") == ip:
+                    mac = host.get("mac")
+                    vendor = host.get("vendor")
+                    if isinstance(vendor, str) and "unknown" in vendor.lower():
+                        vendor = None
+                    return mac, vendor
+        return None, None
+
     def _run_nmap_xml_scan(self, target: str, args: str) -> Tuple[Optional[Any], str]:
         """
         Run an nmap scan with XML output and enforce a hard timeout.
@@ -724,15 +739,18 @@ class InteractiveNetworkAuditor(WizardMixin):
             record_sink,
             logger=self.logger,
             dry_run=False,
+            max_stdout=0,
+            max_stderr=2000,
+            include_full_output=True,
         )
 
         if rec.get("error"):
             return None, str(rec["error"])
 
-        raw_stdout = self._coerce_text(rec.get("stdout", ""))
+        raw_stdout = self._coerce_text(rec.get("stdout_full") or rec.get("stdout") or "")
         xml_output = self._extract_nmap_xml(raw_stdout)
         if not xml_output:
-            raw_stderr = self._coerce_text(rec.get("stderr", ""))
+            raw_stderr = self._coerce_text(rec.get("stderr_full") or rec.get("stderr") or "")
             xml_output = self._extract_nmap_xml(raw_stderr)
         if not xml_output:
             stderr = self._coerce_text(rec.get("stderr", "")).strip()
@@ -1606,6 +1624,16 @@ class InteractiveNetworkAuditor(WizardMixin):
                     "FAIL",
                     force=True,
                 )
+                mac, vendor = self._lookup_topology_identity(safe_ip)
+                if not mac:
+                    mac = get_neighbor_mac(safe_ip)
+                deep_meta = None
+                if mac or vendor:
+                    deep_meta = {"strategy": "topology", "commands": []}
+                    if mac:
+                        deep_meta["mac_address"] = mac
+                    if vendor:
+                        deep_meta["vendor"] = vendor
                 return {
                     "ip": safe_ip,
                     "hostname": "",
@@ -1614,7 +1642,10 @@ class InteractiveNetworkAuditor(WizardMixin):
                     "total_ports_found": 0,
                     "status": STATUS_NO_RESPONSE,
                     "error": scan_error,
-                    "scan_timeout_s": self._parse_host_timeout_s(args) or 60.0,
+                    "scan_timeout_s": (
+                        self._parse_host_timeout_s(args) or self._scan_mode_host_timeout_s()
+                    ),
+                    "deep_scan": deep_meta,
                 }
             if safe_ip not in nm.all_hosts():
                 # Host didn't respond to initial scan - do deep scan

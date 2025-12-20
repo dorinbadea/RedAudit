@@ -361,6 +361,9 @@ def run_nmap_command(
     *,
     logger=None,
     dry_run: bool = False,
+    max_stdout: Optional[int] = 8000,
+    max_stderr: Optional[int] = 2000,
+    include_full_output: bool = False,
 ) -> Dict:
     """
     Run a single nmap command and collect output.
@@ -390,8 +393,23 @@ def run_nmap_command(
         stdout = stdout.decode("utf-8", errors="replace")
     if isinstance(stderr, bytes):
         stderr = stderr.decode("utf-8", errors="replace")
-    record["stdout"] = str(stdout)[:8000]
-    record["stderr"] = str(stderr)[:2000]
+    stdout_text = str(stdout)
+    stderr_text = str(stderr)
+    if include_full_output:
+        record["stdout_full"] = stdout_text
+        record["stderr_full"] = stderr_text
+    if max_stdout is None:
+        record["stdout"] = stdout_text
+    elif max_stdout <= 0:
+        record["stdout"] = ""
+    else:
+        record["stdout"] = stdout_text[:max_stdout]
+    if max_stderr is None:
+        record["stderr"] = stderr_text
+    elif max_stderr <= 0:
+        record["stderr"] = ""
+    else:
+        record["stderr"] = stderr_text[:max_stderr]
     record["duration_seconds"] = round(duration, 2)
     if res.timed_out:
         record["error"] = f"Timeout after {timeout}s"
