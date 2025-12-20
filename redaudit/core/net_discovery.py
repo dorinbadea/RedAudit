@@ -761,6 +761,7 @@ def discover_networks(
                         now = time.monotonic()
                         desc_norm = str(desc or "")[:120]
 
+                        # v3.8.0: Reduced throttling for smoother progress (1% instead of 3%)
                         # Avoid flooding Rich with redraw updates (can cause flicker). Only update
                         # when progress changes meaningfully, the stage label changes, or enough
                         # time has elapsed.
@@ -769,9 +770,9 @@ def discover_networks(
                             should_update = True
                         elif desc_norm and desc_norm != last_desc:
                             should_update = True
-                        elif pct >= 0 and pct != last_pct and (pct - last_pct) >= 3:
+                        elif pct >= 0 and pct != last_pct and (pct - last_pct) >= 1:
                             should_update = True
-                        elif now - last_t >= 0.35:
+                        elif now - last_t >= 0.25:
                             should_update = True
 
                         if should_update:

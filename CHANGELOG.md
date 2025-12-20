@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Agentless verification**: Optional SMB/RDP/LDAP/SSH/HTTP fingerprinting stage (wizard or `--agentless-verify`), with a configurable target cap.
 - **CLI flags**: `--agentless-verify`, `--no-agentless-verify`, and `--agentless-verify-max-targets`.
 
+## [3.8.0] - 2025-12-20 (Net Discovery UX)
+
+### Added
+
+- **Net Discovery Progress Bar**: Replaced generic spinner with full Rich progress bar showing percentage, phase description, and ETA during network discovery (~10 min phase now shows real progress).
+
+### Changed
+
+- **HyperScan Throttling**: Reduced progress update threshold from 3% to 1% and interval from 0.35s to 0.25s for smoother, more responsive feedback during parallel discovery.
+
 ## [3.7.3] - 2025-12-20 (Scan Reliability & Reporting Accuracy)
 
 ### Fixed

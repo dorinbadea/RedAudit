@@ -2837,8 +2837,10 @@ class InteractiveNetworkAuditor(WizardMixin):
                     # v3.2.3: Add spinner progress for net_discovery phase
                     try:
                         from rich.progress import (
+                            BarColumn,
                             Progress,
                             SpinnerColumn,
+                            TextColumn,
                             TimeElapsedColumn,
                         )
 
@@ -2850,19 +2852,38 @@ class InteractiveNetworkAuditor(WizardMixin):
                                     overflow="ellipsis",
                                     no_wrap=True,
                                 ),
+                                BarColumn(bar_width=20),
+                                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                                self._safe_text_column(
+                                    "ETA≤ {task.fields[eta_upper]}",
+                                    overflow="ellipsis",
+                                    no_wrap=True,
+                                ),
                                 TimeElapsedColumn(),
                                 console=self._progress_console(),
                                 transient=True,
                             ) as progress:
-                                task = progress.add_task("running...", total=None)
+                                # v3.8.0: Net Discovery now shows real percentage progress
+                                # Estimate ~120s per protocol step for ETA calculation
+                                est_per_step_s = 120.0
+                                task = progress.add_task(
+                                    "initializing...",
+                                    total=100,
+                                    eta_upper=self._format_eta(est_per_step_s * 7),
+                                )
 
                                 def _nd_progress(
                                     label: str, step_index: int, step_total: int
                                 ) -> None:
                                     try:
+                                        pct = int((step_index / step_total) * 100) if step_total else 0
+                                        remaining_steps = max(0, step_total - step_index)
+                                        eta_s = remaining_steps * est_per_step_s
                                         progress.update(
                                             task,
-                                            description=f"{label} ({step_index}/{step_total})",
+                                            completed=pct,
+                                            description=f"{label}",
+                                            eta_upper=self._format_eta(eta_s),
                                         )
                                     except Exception:
                                         pass
@@ -2877,7 +2898,7 @@ class InteractiveNetworkAuditor(WizardMixin):
                                     progress_callback=_nd_progress,
                                     logger=self.logger,
                                 )
-                                progress.update(task, description="complete")
+                                progress.update(task, completed=100, description="complete", eta_upper="0:00")
                     except ImportError:
                         # Fallback without progress bar
                         with self._progress_ui():
