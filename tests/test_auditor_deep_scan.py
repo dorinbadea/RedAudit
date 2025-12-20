@@ -65,17 +65,23 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
         self.assertEqual(deep.get("os_detected"), "Linux 5.4 - 5.11")
 
     def test_full_mode_skips_deep_scan_for_quiet_host(self):
+        """v3.8: Deep scan is skipped for quiet hosts with no interesting signals.
+
+        Note: Routers (AVM, Cisco, etc.) now ALWAYS trigger deep scan.
+        This test uses a generic vendor to verify quiet host behavior.
+        """
         app = InteractiveNetworkAuditor()
         app.print_status = lambda *_args, **_kwargs: None
         app.config["scan_mode"] = "completo"
         app.config["deep_id_scan"] = True
 
         ip = "192.168.1.201"
+        # Use a generic vendor (not AVM/Cisco/router) to test quiet host logic
         fake_host = _FakeHost(
             {
-                "tcp": {},
-                "addresses": {"mac": "AA:BB:CC:DD:EE:FF"},
-                "vendor": {"AA:BB:CC:DD:EE:FF": "AVM"},
+                "tcp": {},  # No open ports = quiet host
+                "addresses": {"mac": "00:11:22:33:44:55"},
+                "vendor": {"00:11:22:33:44:55": "Generic Corp"},
             }
         )
         nm = _FakePortScanner(ip=ip, host=fake_host)
@@ -86,10 +92,11 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
 
             result = app.scan_host_ports(ip)
 
+        # v3.8: Quiet hosts (0 ports, generic vendor, no signals) skip deep scan
         self.assertFalse(app.deep_scan_host.called)
         self.assertEqual(result.get("total_ports_found"), 0)
-        self.assertEqual(result.get("deep_scan", {}).get("mac_address"), "AA:BB:CC:DD:EE:FF")
-        self.assertEqual(result.get("deep_scan", {}).get("vendor"), "AVM")
+        self.assertEqual(result.get("deep_scan", {}).get("mac_address"), "00:11:22:33:44:55")
+        self.assertEqual(result.get("deep_scan", {}).get("vendor"), "Generic Corp")
 
     def test_normal_mode_still_triggers_deep_scan_for_small_port_hosts(self):
         app = InteractiveNetworkAuditor()

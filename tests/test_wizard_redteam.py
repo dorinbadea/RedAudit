@@ -21,13 +21,17 @@ class TestWizardRedTeam(unittest.TestCase):
         app.print_status = lambda *_args, **_kwargs: None
         app.setup_encryption = lambda *args, **kwargs: None
 
-        app.ask_choice = Mock(side_effect=[1, 0, 0, 1])  # normal, udp quick, topo off, Red Team (B)
+        # v3.8.1: Now uses ask_choice_with_back for all wizard steps (8 steps)
+        # Step 1: scan mode (1=normal), Step 2: max hosts (skipped, uses ask_number)
+        # Step 3: vuln scan (0=Yes), Step 4: CVE lookup (1=No)
+        # Step 5: threads (skipped), Step 6: rate limit (skipped)
+        # Step 7: output (skipped), Step 8: reports (0=both)
+        app.ask_choice_with_back = Mock(side_effect=[1, 0, 1, 0])  # normal, vuln=yes, cve=no, reports
+        app.ask_choice = Mock(side_effect=[0, 1])  # udp quick, topo off, Red Team (B)
         app.ask_number = Mock(side_effect=["all", 6, 50])  # max_hosts, threads, max_targets
         app.ask_yes_no = Mock(
             side_effect=[
                 False,  # rate limiting
-                True,  # vuln scan
-                False,  # cve lookup
                 True,  # net discovery
                 True,  # active L2
                 True,  # kerbrute userenum
@@ -38,7 +42,7 @@ class TestWizardRedTeam(unittest.TestCase):
         )
 
         with (
-            patch("builtins.input", side_effect=["", "", "/tmp/users.txt"]),
+            patch("builtins.input", side_effect=["", "", "/tmp/users.txt", "", ""]),
             patch("redaudit.core.auditor.os.geteuid", return_value=0),
         ):
             app._configure_scan_interactive(defaults_for_run={})
@@ -54,13 +58,13 @@ class TestWizardRedTeam(unittest.TestCase):
         app.print_status = lambda *_args, **_kwargs: None
         app.setup_encryption = lambda *args, **kwargs: None
 
-        app.ask_choice = Mock(side_effect=[1, 0, 0, 1])  # normal, udp quick, topo off, Red Team (B)
+        # v3.8.1: Now uses ask_choice_with_back for wizard steps
+        app.ask_choice_with_back = Mock(side_effect=[1, 0, 1, 0])  # normal, vuln=yes, cve=no, reports
+        app.ask_choice = Mock(side_effect=[0, 0])  # udp quick, topo off
         app.ask_number = Mock(side_effect=["all", 6])  # max_hosts, threads
         app.ask_yes_no = Mock(
             side_effect=[
                 False,  # rate limiting
-                True,  # vuln scan
-                False,  # cve lookup
                 True,  # net discovery
                 False,  # v3.8: agentless verification
                 False,  # v3.7: webhook prompt
@@ -68,7 +72,7 @@ class TestWizardRedTeam(unittest.TestCase):
         )
 
         with (
-            patch("builtins.input", side_effect=[""]),
+            patch("builtins.input", side_effect=["", "", ""]),
             patch("redaudit.core.auditor.os.geteuid", return_value=1000),
         ):
             app._configure_scan_interactive(defaults_for_run={})
@@ -81,3 +85,4 @@ class TestWizardRedTeam(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
