@@ -2,7 +2,7 @@
 
 **Release Date:** 2025-12-20
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v3.8.2_ES.md)
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/main/docs/releases/RELEASE_NOTES_v3.8.2_ES.md)
 
 ## Overview
 
