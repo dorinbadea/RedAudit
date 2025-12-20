@@ -1794,17 +1794,43 @@ class InteractiveNetworkAuditor(WizardMixin):
                 identity_signals.append("mac_vendor")
                 # v3.8.1: Device type from vendor (IoT, mobile, printer, router, etc.)
                 vendor_lower = str(deep_meta.get("vendor") or "").lower()
-                if any(x in vendor_lower for x in ("apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus")):
+                if any(
+                    x in vendor_lower
+                    for x in ("apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus")
+                ):
                     device_type_hints.append("mobile")
-                elif any(x in vendor_lower for x in ("hp", "canon", "epson", "brother", "lexmark", "xerox")):
+                elif any(
+                    x in vendor_lower
+                    for x in ("hp", "canon", "epson", "brother", "lexmark", "xerox")
+                ):
                     device_type_hints.append("printer")
-                elif any(x in vendor_lower for x in ("philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo")):
+                elif any(
+                    x in vendor_lower
+                    for x in ("philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo")
+                ):
                     device_type_hints.append("iot_lighting")
-                elif any(x in vendor_lower for x in ("avm", "fritz", "cisco", "juniper", "mikrotik", "ubiquiti", "netgear", "dlink", "asus", "linksys", "tp-link")):
+                elif any(
+                    x in vendor_lower
+                    for x in (
+                        "avm",
+                        "fritz",
+                        "cisco",
+                        "juniper",
+                        "mikrotik",
+                        "ubiquiti",
+                        "netgear",
+                        "dlink",
+                        "asus",
+                        "linksys",
+                        "tp-link",
+                    )
+                ):
                     device_type_hints.append("router")
-                elif any(x in vendor_lower for x in ("google", "amazon", "roku", "lg", "sony", "vizio")):
+                elif any(
+                    x in vendor_lower for x in ("google", "amazon", "roku", "lg", "sony", "vizio")
+                ):
                     device_type_hints.append("smart_tv")
-            
+
             # v3.8.1: Hostname-based device detection (catches Apple devices without vendor)
             hostname_lower = str(host_record.get("hostname") or "").lower()
             if any(x in hostname_lower for x in ("iphone", "ipad", "ipod", "macbook", "imac")):
@@ -1914,7 +1940,12 @@ class InteractiveNetworkAuditor(WizardMixin):
                     deep_reasons.append("network_infrastructure")
                 # v3.8: Adjust threshold based on scan mode (full mode is more lenient)
                 identity_threshold = 4 if is_full_mode else 3
-                if identity_score >= identity_threshold and not suspicious and total_ports <= 12 and any_version:
+                if (
+                    identity_score >= identity_threshold
+                    and not suspicious
+                    and total_ports <= 12
+                    and any_version
+                ):
                     trigger_deep = False
                     deep_reasons.append("identity_strong")
 
@@ -1997,7 +2028,7 @@ class InteractiveNetworkAuditor(WizardMixin):
 
         # Keep output quiet from the moment worker threads start.
         with self._progress_ui():
-            with ThreadPoolExecutor(max_workers=self.config["threads"]) as executor:
+            with ThreadPoolExecutor(max_workers=threads) as executor:
                 futures = {}
                 for h in unique_hosts:
                     if self.interrupted:
@@ -2023,9 +2054,6 @@ class InteractiveNetworkAuditor(WizardMixin):
                         ),
                         console=self._progress_console(),
                     ) as progress:
-                        eta_upper_init = self._format_eta(
-                            host_timeout_s * math.ceil(max(0, total) / threads)
-                        )
                         initial_detail = self._get_ui_detail()
                         # v3.8.1: Simplified task - no ETA fields
                         task = progress.add_task(
@@ -2065,8 +2093,6 @@ class InteractiveNetworkAuditor(WizardMixin):
                             if detail != last_detail:
                                 progress.update(task, detail=detail)
                                 last_detail = detail
-
-
 
                             for fut in completed:
                                 host_ip = futures.get(fut)
@@ -2924,7 +2950,11 @@ class InteractiveNetworkAuditor(WizardMixin):
                                 ) -> None:
                                     nonlocal last_heartbeat
                                     try:
-                                        pct = int((step_index / step_total) * 100) if step_total else 0
+                                        pct = (
+                                            int((step_index / step_total) * 100)
+                                            if step_total
+                                            else 0
+                                        )
                                         # v3.8.1: Truncate label to 35 chars for clean display
                                         label_short = label[:35] + "…" if len(label) > 35 else label
                                         progress.update(
@@ -3358,17 +3388,17 @@ class InteractiveNetworkAuditor(WizardMixin):
     def _configure_scan_interactive(self, defaults_for_run: Dict) -> None:
         """
         v3.8.1: Interactive prompt sequence with step-by-step navigation.
-        
+
         Uses a state machine pattern allowing users to go back to previous steps
         without restarting the entire wizard.
         """
         # v3.8.1: Wizard step machine for "< Volver" / "< Go Back" navigation
         TOTAL_STEPS = 8
         step = 1
-        
+
         # Store choices for navigation (allows going back and reusing previous values)
         wizard_state: Dict = {}
-        
+
         while step <= TOTAL_STEPS:
             # ═══════════════════════════════════════════════════════════════════
             # STEP 1: Scan Mode
@@ -3381,41 +3411,48 @@ class InteractiveNetworkAuditor(WizardMixin):
                 ]
                 modes_map = {0: "rapido", 1: "normal", 2: "completo"}
                 persisted = defaults_for_run.get("scan_mode")
-                default_idx = wizard_state.get("scan_mode_idx", 
-                    {"rapido": 0, "normal": 1, "completo": 2}.get(persisted, 1)
+                default_idx = wizard_state.get(
+                    "scan_mode_idx", {"rapido": 0, "normal": 1, "completo": 2}.get(persisted, 1)
                 )
-                
+
                 choice = self.ask_choice_with_back(
-                    self.t("scan_mode"), scan_modes, default_idx,
-                    step_num=step, total_steps=TOTAL_STEPS
+                    self.t("scan_mode"),
+                    scan_modes,
+                    default_idx,
+                    step_num=step,
+                    total_steps=TOTAL_STEPS,
                 )
                 if choice == self.WIZARD_BACK:
                     continue  # Can't go back from step 1
-                
+
                 wizard_state["scan_mode_idx"] = choice
                 self.config["scan_mode"] = modes_map[choice]
-                
+
                 # Set max_hosts based on mode
                 if self.config["scan_mode"] != "rapido":
                     limit = self.ask_number(self.t("ask_num_limit"), default="all")
                     self.config["max_hosts_value"] = limit
                 else:
                     self.config["max_hosts_value"] = "all"
-                
+
                 step += 1
                 continue
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # STEP 2: Threads & Rate Limiting
             # ═══════════════════════════════════════════════════════════════════
             elif step == 2:
                 # Show step header for UX
                 self.print_status(f"[{step}/{TOTAL_STEPS}] " + self.t("threads"), "INFO")
-                
-                default_threads = wizard_state.get("threads",
-                    defaults_for_run.get("threads") if isinstance(defaults_for_run.get("threads"), int)
-                    and MIN_THREADS <= defaults_for_run.get("threads") <= MAX_THREADS
-                    else DEFAULT_THREADS
+
+                default_threads = wizard_state.get(
+                    "threads",
+                    (
+                        defaults_for_run.get("threads")
+                        if isinstance(defaults_for_run.get("threads"), int)
+                        and MIN_THREADS <= defaults_for_run.get("threads") <= MAX_THREADS
+                        else DEFAULT_THREADS
+                    ),
                 )
                 self.config["threads"] = self.ask_number(
                     self.t("threads"),
@@ -3424,21 +3461,25 @@ class InteractiveNetworkAuditor(WizardMixin):
                     max_val=MAX_THREADS,
                 )
                 wizard_state["threads"] = self.config["threads"]
-                
+
                 # Rate limiting
                 default_rate = defaults_for_run.get("rate_limit")
                 if not isinstance(default_rate, (int, float)) or default_rate < 0:
                     default_rate = 0.0
-                if self.ask_yes_no(self.t("rate_limiting"), default="yes" if default_rate > 0 else "no"):
+                if self.ask_yes_no(
+                    self.t("rate_limiting"), default="yes" if default_rate > 0 else "no"
+                ):
                     delay_default = int(default_rate) if default_rate > 0 else 1
                     delay_default = min(max(delay_default, 0), 60)
-                    self.rate_limit_delay = float(self.ask_number(
-                        self.t("rate_delay"), default=delay_default, min_val=0, max_val=60
-                    ))
-                
+                    self.rate_limit_delay = float(
+                        self.ask_number(
+                            self.t("rate_delay"), default=delay_default, min_val=0, max_val=60
+                        )
+                    )
+
                 step += 1
                 continue
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # STEP 3: Vulnerability Scanning
             # ═══════════════════════════════════════════════════════════════════
@@ -3449,31 +3490,36 @@ class InteractiveNetworkAuditor(WizardMixin):
                 ]
                 default_idx = 0 if defaults_for_run.get("scan_vulnerabilities") is not False else 1
                 default_idx = wizard_state.get("vuln_idx", default_idx)
-                
+
                 choice = self.ask_choice_with_back(
-                    self.t("vuln_scan_q"), vuln_options, default_idx,
-                    step_num=step, total_steps=TOTAL_STEPS
+                    self.t("vuln_scan_q"),
+                    vuln_options,
+                    default_idx,
+                    step_num=step,
+                    total_steps=TOTAL_STEPS,
                 )
                 if choice == self.WIZARD_BACK:
                     step -= 1
                     continue
-                
+
                 wizard_state["vuln_idx"] = choice
-                self.config["scan_vulnerabilities"] = (choice == 0)
-                
+                self.config["scan_vulnerabilities"] = choice == 0
+
                 # Nuclei (conditional)
                 self.config["nuclei_enabled"] = False
-                if (self.config.get("scan_vulnerabilities") and 
-                    self.config.get("scan_mode") == "completo" and
-                    is_nuclei_available()):
+                if (
+                    self.config.get("scan_vulnerabilities")
+                    and self.config.get("scan_mode") == "completo"
+                    and is_nuclei_available()
+                ):
                     self.config["nuclei_enabled"] = self.ask_yes_no(
-                        self.t("nuclei_q"), 
-                        default="yes" if defaults_for_run.get("nuclei_enabled") else "no"
+                        self.t("nuclei_q"),
+                        default="yes" if defaults_for_run.get("nuclei_enabled") else "no",
                     )
-                
+
                 step += 1
                 continue
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # STEP 4: CVE Correlation
             # ═══════════════════════════════════════════════════════════════════
@@ -3484,36 +3530,39 @@ class InteractiveNetworkAuditor(WizardMixin):
                 ]
                 default_idx = 0 if defaults_for_run.get("cve_lookup_enabled") else 1
                 default_idx = wizard_state.get("cve_idx", default_idx)
-                
+
                 choice = self.ask_choice_with_back(
-                    self.t("cve_lookup_q"), cve_options, default_idx,
-                    step_num=step, total_steps=TOTAL_STEPS
+                    self.t("cve_lookup_q"),
+                    cve_options,
+                    default_idx,
+                    step_num=step,
+                    total_steps=TOTAL_STEPS,
                 )
                 if choice == self.WIZARD_BACK:
                     step -= 1
                     continue
-                
+
                 wizard_state["cve_idx"] = choice
                 if choice == 0:
                     self.config["cve_lookup_enabled"] = True
                     self.setup_nvd_api_key()
                 else:
                     self.config["cve_lookup_enabled"] = False
-                
+
                 step += 1
                 continue
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # STEP 5: Output Directory
             # ═══════════════════════════════════════════════════════════════════
             elif step == 5:
                 self.print_status(f"[{step}/{TOTAL_STEPS}] " + self.t("output_dir"), "INFO")
-                
+
                 default_reports = get_default_reports_base_dir()
                 persisted_output = defaults_for_run.get("output_dir")
                 if isinstance(persisted_output, str) and persisted_output.strip():
                     default_reports = expand_user_path(persisted_output.strip())
-                
+
                 out_dir = input(
                     f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('output_dir')} "
                     f"[{default_reports}]: "
@@ -3521,14 +3570,14 @@ class InteractiveNetworkAuditor(WizardMixin):
                 if not out_dir:
                     out_dir = default_reports
                 self.config["output_dir"] = expand_user_path(out_dir)
-                
+
                 # TXT and HTML always on
                 self.config["save_txt_report"] = True
                 self.config["save_html_report"] = True
-                
+
                 step += 1
                 continue
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # STEP 6: UDP & Topology
             # ═══════════════════════════════════════════════════════════════════
@@ -3538,24 +3587,35 @@ class InteractiveNetworkAuditor(WizardMixin):
                     udp_modes = [self.t("udp_mode_quick"), self.t("udp_mode_full")]
                     udp_map = {0: UDP_SCAN_MODE_QUICK, 1: UDP_SCAN_MODE_FULL}
                     persisted_udp = defaults_for_run.get("udp_mode")
-                    default_idx = wizard_state.get("udp_idx", 1 if persisted_udp == UDP_SCAN_MODE_FULL else 0)
-                    
+                    default_idx = wizard_state.get(
+                        "udp_idx", 1 if persisted_udp == UDP_SCAN_MODE_FULL else 0
+                    )
+
                     choice = self.ask_choice_with_back(
-                        self.t("udp_mode_q"), udp_modes, default_idx,
-                        step_num=step, total_steps=TOTAL_STEPS
+                        self.t("udp_mode_q"),
+                        udp_modes,
+                        default_idx,
+                        step_num=step,
+                        total_steps=TOTAL_STEPS,
                     )
                     if choice == self.WIZARD_BACK:
                         step -= 1
                         continue
-                    
+
                     wizard_state["udp_idx"] = choice
                     self.config["udp_mode"] = udp_map[choice]
-                    
+
                     # UDP ports profile
                     persisted_ports = defaults_for_run.get("udp_top_ports")
-                    udp_ports_default = min(max(persisted_ports if isinstance(persisted_ports, int) else UDP_TOP_PORTS, 50), 500)
+                    udp_ports_default = min(
+                        max(
+                            persisted_ports if isinstance(persisted_ports, int) else UDP_TOP_PORTS,
+                            50,
+                        ),
+                        500,
+                    )
                     self.config["udp_top_ports"] = udp_ports_default
-                    
+
                     if self.config["udp_mode"] == UDP_SCAN_MODE_FULL:
                         udp_profiles = [
                             (50, self.t("udp_ports_profile_fast")),
@@ -3565,16 +3625,24 @@ class InteractiveNetworkAuditor(WizardMixin):
                             ("custom", self.t("udp_ports_profile_custom")),
                         ]
                         options = [label for _, label in udp_profiles]
-                        profile_default = next((i for i, (v, _) in enumerate(udp_profiles) if v == udp_ports_default), len(udp_profiles) - 1)
-                        selected_idx = self.ask_choice(self.t("udp_ports_profile_q"), options, profile_default)
+                        profile_default = next(
+                            (i for i, (v, _) in enumerate(udp_profiles) if v == udp_ports_default),
+                            len(udp_profiles) - 1,
+                        )
+                        selected_idx = self.ask_choice(
+                            self.t("udp_ports_profile_q"), options, profile_default
+                        )
                         selected = udp_profiles[selected_idx][0]
                         if selected == "custom":
                             self.config["udp_top_ports"] = self.ask_number(
-                                self.t("udp_ports_q"), default=udp_ports_default, min_val=50, max_val=500
+                                self.t("udp_ports_q"),
+                                default=udp_ports_default,
+                                min_val=50,
+                                max_val=500,
                             )
                         else:
                             self.config["udp_top_ports"] = selected
-                
+
                 # Topology discovery
                 topo_options = [
                     self.t("topology_disabled"),
@@ -3585,22 +3653,25 @@ class InteractiveNetworkAuditor(WizardMixin):
                 persisted_only = defaults_for_run.get("topology_only")
                 default_idx = 2 if persisted_only else (1 if persisted_topo else 0)
                 default_idx = wizard_state.get("topo_idx", default_idx)
-                
+
                 topo_choice = self.ask_choice_with_back(
-                    self.t("topology_discovery_q"), topo_options, default_idx,
-                    step_num=step, total_steps=TOTAL_STEPS
+                    self.t("topology_discovery_q"),
+                    topo_options,
+                    default_idx,
+                    step_num=step,
+                    total_steps=TOTAL_STEPS,
                 )
                 if topo_choice == self.WIZARD_BACK:
                     step -= 1
                     continue
-                
+
                 wizard_state["topo_idx"] = topo_choice
                 self.config["topology_enabled"] = topo_choice != 0
                 self.config["topology_only"] = topo_choice == 2
-                
+
                 step += 1
                 continue
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # STEP 7: Net Discovery & Red Team
             # ═══════════════════════════════════════════════════════════════════
@@ -3610,85 +3681,109 @@ class InteractiveNetworkAuditor(WizardMixin):
                     self.t("no_option"),
                 ]
                 persisted_nd = defaults_for_run.get("net_discovery_enabled")
-                nd_default = bool(persisted_nd) if isinstance(persisted_nd, bool) else bool(
-                    self.config.get("topology_enabled") or self.config.get("scan_mode") == "completo"
+                nd_default = (
+                    bool(persisted_nd)
+                    if isinstance(persisted_nd, bool)
+                    else bool(
+                        self.config.get("topology_enabled")
+                        or self.config.get("scan_mode") == "completo"
+                    )
                 )
                 default_idx = 0 if nd_default else 1
                 default_idx = wizard_state.get("nd_idx", default_idx)
-                
+
                 choice = self.ask_choice_with_back(
-                    self.t("net_discovery_q"), nd_options, default_idx,
-                    step_num=step, total_steps=TOTAL_STEPS
+                    self.t("net_discovery_q"),
+                    nd_options,
+                    default_idx,
+                    step_num=step,
+                    total_steps=TOTAL_STEPS,
                 )
                 if choice == self.WIZARD_BACK:
                     step -= 1
                     continue
-                
+
                 wizard_state["nd_idx"] = choice
-                enable_net_discovery = (choice == 0)
+                enable_net_discovery = choice == 0
                 self.config["net_discovery_enabled"] = enable_net_discovery
-                
+
                 if enable_net_discovery:
                     # Red Team options
                     rt_options = [self.t("redteam_mode_a"), self.t("redteam_mode_b")]
                     rt_default = 1 if defaults_for_run.get("net_discovery_redteam") else 0
-                    redteam_choice = self.ask_choice(self.t("redteam_mode_q"), rt_options, rt_default)
-                    
+                    redteam_choice = self.ask_choice(
+                        self.t("redteam_mode_q"), rt_options, rt_default
+                    )
+
                     wants_redteam = redteam_choice == 1
                     is_root = hasattr(os, "geteuid") and os.geteuid() == 0
                     if wants_redteam and not is_root:
                         self.print_status(self.t("redteam_requires_root"), "WARNING")
                         wants_redteam = False
-                    
+
                     self.config["net_discovery_redteam"] = bool(wants_redteam)
                     self.config["net_discovery_active_l2"] = False
                     self.config["net_discovery_kerberos_userenum"] = False
                     self.config["net_discovery_kerberos_realm"] = None
                     self.config["net_discovery_kerberos_userlist"] = None
-                    
+
                     if self.config["net_discovery_redteam"]:
                         # L2 Active probing
                         persisted_l2 = defaults_for_run.get("net_discovery_active_l2")
                         self.config["net_discovery_active_l2"] = self.ask_yes_no(
-                            self.t("redteam_active_l2_q"),
-                            default="yes" if persisted_l2 else "no"
+                            self.t("redteam_active_l2_q"), default="yes" if persisted_l2 else "no"
                         )
-                        
+
                         # Kerberos enumeration
                         persisted_krb = defaults_for_run.get("net_discovery_kerberos_userenum")
                         enable_kerberos = self.ask_yes_no(
                             self.t("redteam_kerberos_userenum_q"),
-                            default="yes" if persisted_krb else "no"
+                            default="yes" if persisted_krb else "no",
                         )
                         self.config["net_discovery_kerberos_userenum"] = enable_kerberos
-                        
+
                         if enable_kerberos:
-                            persisted_realm = defaults_for_run.get("net_discovery_kerberos_realm") or ""
+                            persisted_realm = (
+                                defaults_for_run.get("net_discovery_kerberos_realm") or ""
+                            )
                             realm = input(
                                 f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_realm_q')} "
                                 f"[{persisted_realm}]: "
                             ).strip()
-                            self.config["net_discovery_kerberos_realm"] = realm or persisted_realm or None
-                            
-                            persisted_userlist = defaults_for_run.get("net_discovery_kerberos_userlist") or ""
+                            self.config["net_discovery_kerberos_realm"] = (
+                                realm or persisted_realm or None
+                            )
+
+                            persisted_userlist = (
+                                defaults_for_run.get("net_discovery_kerberos_userlist") or ""
+                            )
                             userlist = input(
                                 f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('kerberos_userlist_q')} "
                                 f"[{persisted_userlist}]: "
                             ).strip()
                             self.config["net_discovery_kerberos_userlist"] = (
-                                expand_user_path(userlist) if userlist else
-                                (expand_user_path(persisted_userlist) if persisted_userlist else None)
+                                expand_user_path(userlist)
+                                if userlist
+                                else (
+                                    expand_user_path(persisted_userlist)
+                                    if persisted_userlist
+                                    else None
+                                )
                             )
-                        
+
                         # Advanced Net Discovery options
-                        nd_options = self.ask_net_discovery_options()
-                        self.config["net_discovery_snmp_community"] = nd_options.get("snmp_community", "public")
-                        self.config["net_discovery_dns_zone"] = nd_options.get("dns_zone", "")
-                        self.config["net_discovery_max_targets"] = nd_options.get("redteam_max_targets", 50)
-                
+                        nd_settings = self.ask_net_discovery_options()
+                        self.config["net_discovery_snmp_community"] = nd_settings.get(
+                            "snmp_community", "public"
+                        )
+                        self.config["net_discovery_dns_zone"] = nd_settings.get("dns_zone", "")
+                        self.config["net_discovery_max_targets"] = nd_settings.get(
+                            "redteam_max_targets", 50
+                        )
+
                 step += 1
                 continue
-            
+
             # ═══════════════════════════════════════════════════════════════════
             # STEP 8: Windows Verification & Webhook
             # ═══════════════════════════════════════════════════════════════════
@@ -3699,34 +3794,41 @@ class InteractiveNetworkAuditor(WizardMixin):
                 ]
                 default_idx = 0 if defaults_for_run.get("windows_verify_enabled") else 1
                 default_idx = wizard_state.get("win_idx", default_idx)
-                
+
                 choice = self.ask_choice_with_back(
-                    self.t("windows_verify_q"), win_options, default_idx,
-                    step_num=step, total_steps=TOTAL_STEPS
+                    self.t("windows_verify_q"),
+                    win_options,
+                    default_idx,
+                    step_num=step,
+                    total_steps=TOTAL_STEPS,
                 )
                 if choice == self.WIZARD_BACK:
                     step -= 1
                     continue
-                
+
                 wizard_state["win_idx"] = choice
                 if choice == 0:
                     self.config["windows_verify_enabled"] = True
                     persisted_max = defaults_for_run.get("windows_verify_max_targets")
-                    max_default = persisted_max if isinstance(persisted_max, int) and 1 <= persisted_max <= 200 else 20
+                    max_default = (
+                        persisted_max
+                        if isinstance(persisted_max, int) and 1 <= persisted_max <= 200
+                        else 20
+                    )
                     self.config["windows_verify_max_targets"] = self.ask_number(
                         self.t("windows_verify_max_q"), default=max_default, min_val=1, max_val=200
                     )
                 else:
                     self.config["windows_verify_enabled"] = False
-                
+
                 # Webhook configuration
                 webhook_url = self.ask_webhook_url()
                 if webhook_url:
                     self.config["webhook_url"] = webhook_url
-                
+
                 step += 1
                 continue
-        
+
         # Final step: Encryption setup
         self.setup_encryption()
 

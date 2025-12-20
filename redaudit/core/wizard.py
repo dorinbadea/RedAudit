@@ -401,11 +401,17 @@ class WizardMixin:
     WIZARD_BACK = -1  # Sentinel value for "go back"
 
     def ask_choice_with_back(
-        self, question: str, options: List[str], default: int = 0, *, step_num: int = 0, total_steps: int = 0
+        self,
+        question: str,
+        options: List[str],
+        default: int = 0,
+        *,
+        step_num: int = 0,
+        total_steps: int = 0,
     ) -> int:
         """
         Ask to choose from a list of options with a "< Volver" (Go Back) option.
-        
+
         Returns:
             int: Selected index (0 to len(options)-1), or WIZARD_BACK (-1) if user chose to go back.
         """
@@ -413,12 +419,12 @@ class WizardMixin:
         step_header = ""
         if step_num > 0 and total_steps > 0:
             step_header = f"[{step_num}/{total_steps}] "
-        
+
         # Add "< Volver" / "< Go Back" as the last option (only if not first step)
         back_label = f"{self.COLORS['OKBLUE']}{self.t('wizard_go_back')}{self.COLORS['ENDC']}"
         show_back = step_num > 1  # Don't show back on first step
         display_options = list(options) + ([back_label] if show_back else [])
-        
+
         if self._use_arrow_menu():
             try:
                 result = self._arrow_menu(f"{step_header}{question}", display_options, default)
@@ -427,14 +433,14 @@ class WizardMixin:
                 return result
             except Exception:
                 pass
-        
+
         # Fallback text-based menu
         print(f"\n{self.COLORS['OKBLUE']}{'—' * 60}{self.COLORS['ENDC']}")
         print(f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {step_header}{question}")
         for i, opt in enumerate(display_options):
             marker = f"{self.COLORS['BOLD']}>{self.COLORS['ENDC']}" if i == default else " "
             print(f"  {marker} {i + 1}. {opt}")
-        
+
         while True:
             try:
                 prompt_range = f"1-{len(display_options)}"
@@ -576,7 +582,11 @@ class WizardMixin:
             try:
                 print(f"\n{self.COLORS['OKBLUE']}{'—' * 60}{self.COLORS['ENDC']}")
                 # v3.8.0: Added hint with example URL formats
-                hint = self.COLORS['OKBLUE'] + "(e.g. https://hooks.slack.com/services/... or https://outlook.office.com/webhook/...)" + self.COLORS['ENDC']
+                hint = (
+                    self.COLORS["OKBLUE"]
+                    + "(e.g. https://hooks.slack.com/services/... or https://outlook.office.com/webhook/...)"
+                    + self.COLORS["ENDC"]
+                )
                 print(f"  {hint}")
                 url = input(
                     f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('webhook_url_prompt')} "
@@ -644,7 +654,11 @@ class WizardMixin:
             # SNMP Community
             print(f"\n{self.COLORS['OKBLUE']}{'—' * 60}{self.COLORS['ENDC']}")
             # v3.8.0: Added hint for SNMP community string
-            hint = self.COLORS['OKBLUE'] + "(ENTER = 'public', or try 'private', 'community', etc.)" + self.COLORS['ENDC']
+            hint = (
+                self.COLORS["OKBLUE"]
+                + "(ENTER = 'public', or try 'private', 'community', etc.)"
+                + self.COLORS["ENDC"]
+            )
             print(f"  {hint}")
             snmp = input(
                 f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('net_discovery_snmp_prompt')} "
@@ -656,7 +670,11 @@ class WizardMixin:
             # DNS Zone
             print(f"\n{self.COLORS['OKBLUE']}{'—' * 60}{self.COLORS['ENDC']}")
             # v3.8.0: Added hint for DNS zone with examples
-            hint_dns = self.COLORS['OKBLUE'] + "(e.g. corp.local, example.com, internal.lan — ENTER to skip)" + self.COLORS['ENDC']
+            hint_dns = (
+                self.COLORS["OKBLUE"]
+                + "(e.g. corp.local, example.com, internal.lan — ENTER to skip)"
+                + self.COLORS["ENDC"]
+            )
             print(f"  {hint_dns}")
             dns_zone = input(
                 f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {self.t('net_discovery_dns_zone_prompt')} "
