@@ -228,6 +228,7 @@ Based on real classroom observations:
 | Comparing old/new reports fails | `--diff` returns "No scan performed" | Explain `--diff` is comparison-only, not a scan |
 | Editing constants.py without restarting | Changes don't apply | Python caches imports; restart is required |
 | Confusing scan mode with UDP mode | Wrong ports scanned | `--mode` ≠ `--udp-mode`. One is intensity, other is protocol scope. |
+| Treating ETA as exact | ETA feels “stuck” or overly large | Explain `ETA≤` is timeout-based upper bound; `ETA≈` is a dynamic estimate |
 
 ---
 
@@ -240,11 +241,13 @@ These are the most pedagogically useful code locations. Use them for advanced st
 | Main orchestration | `core/auditor.py` | `run_complete_scan()` |
 | Deep Scan triggers | `core/auditor.py` | `scan_host_ports()` (look for `trigger_deep`) |
 | Parallel execution | `core/auditor.py` | `scan_hosts_concurrent()` with `ThreadPoolExecutor` |
+| Progress UI + ETA | `core/auditor.py` | `_progress_columns()` and `scan_hosts_concurrent()` |
+| Timeout-safe host scans | `core/auditor.py` | `_run_nmap_xml_scan()` |
 | Async port probing | `core/prescan.py` | `check_port()` using `asyncio` |
 | ECS schema mapping | `core/siem.py` | `build_ecs_event()` |
 | Encryption | `core/crypto.py` | `encrypt_file()`, `derive_key_from_password()` |
 | Playbook generation | `core/playbook_generator.py` | `generate_playbook()`, `save_playbooks()` |
-| Session logging (v3.7) | `utils/session_log.py` | `SessionLogger`, `start_session_log()` |
+| Session logging (v3.7) | `utils/session_log.py` | `SessionLogger`, `start_session_log()` (`session_logs/session_*.log/.txt`) |
 
 > **Note:** Avoid referencing specific line numbers as they change between versions. Reference function names instead.
 
