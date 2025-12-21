@@ -373,14 +373,48 @@ class InteractiveNetworkAuditor(WizardMixin):
             )
             lines.extend(wrapped if wrapped else [""])
 
+
         # NOTE: These print statements output status messages (e.g., "Scanning host X"),
         # NOT passwords or sensitive data. CodeQL incorrectly flags these.
+        # v3.8.4: Use Rich console.print when progress is active to handle colors correctly
         with self._print_lock:
-            print(
-                f"{color}[{ts}] [{status_display}]{endc} {lines[0]}"
-            )  # lgtm[py/clear-text-logging-sensitive-data]
-            for line in lines[1:]:
-                print(f"  {line}")  # lgtm[py/clear-text-logging-sensitive-data]
+            if self._ui_progress_active:
+                # Rich Progress is active - use Rich markup instead of ANSI codes
+                # This ensures colors display correctly even when Progress bar is updating
+                rich_color_map = {
+                    "OKBLUE": "bright_blue",
+                    "OKGREEN": "green",
+                    "WARNING": "yellow",
+                    "FAIL": "red",
+                    "HEADER": "magenta",
+                }
+                rich_style = rich_color_map.get(color_key, "bright_blue")
+                try:
+                    from rich.console import Console
+
+                    console = Console(
+                        file=getattr(sys, "__stdout__", sys.stdout),
+                        width=self._terminal_width(),
+                    )
+                    console.print(
+                        f"[{rich_style}][{ts}] [{status_display}][/{rich_style}] {lines[0]}"
+                    )
+                    for line in lines[1:]:
+                        console.print(f"  {line}")
+                except ImportError:
+                    # Fallback to ANSI if Rich not available
+                    print(
+                        f"{color}[{ts}] [{status_display}]{endc} {lines[0]}"
+                    )  # lgtm[py/clear-text-logging-sensitive-data]
+                    for line in lines[1:]:
+                        print(f"  {line}")  # lgtm[py/clear-text-logging-sensitive-data]
+            else:
+                # No progress active - use standard ANSI codes
+                print(
+                    f"{color}[{ts}] [{status_display}]{endc} {lines[0]}"
+                )  # lgtm[py/clear-text-logging-sensitive-data]
+                for line in lines[1:]:
+                    print(f"  {line}")  # lgtm[py/clear-text-logging-sensitive-data]
             sys.stdout.flush()
 
     def _condense_for_ui(self, text: str) -> str:

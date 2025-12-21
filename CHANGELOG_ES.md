@@ -14,6 +14,12 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **Verificación sin agente**: Etapa opcional de fingerprinting SMB/RDP/LDAP/SSH/HTTP (wizard o `--agentless-verify`), con límite configurable de objetivos.
 - **Flags CLI**: `--agentless-verify`, `--no-agentless-verify` y `--agentless-verify-max-targets`.
 
+## [3.8.4] - 2025-12-21 (Corrección de Colores)
+
+### Corregido
+
+- **Colores de estado durante progreso**: Corregido el problema donde los mensajes `[INFO]` aparecían sin color cuando la barra de progreso Rich estaba activa. Ahora usa Rich console.print con markup adecuado (`bright_blue` para INFO, `green` para OK, `yellow` para WARN, `red` para FAIL) asegurando colores consistentes en todo momento.
+
 ## [3.8.3] - 2025-12-21 (Wizard y UX de reportes)
 
 ### Añadido
