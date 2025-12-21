@@ -38,7 +38,7 @@ class TestWizardRedTeam(unittest.TestCase):
         )
 
         with (
-            patch("builtins.input", side_effect=["", "", "/tmp/users.txt"]),
+            patch("builtins.input", side_effect=["", "", "", "/tmp/users.txt"]),
             patch("redaudit.core.auditor.os.geteuid", return_value=0),
         ):
             app._configure_scan_interactive(defaults_for_run={})
@@ -66,7 +66,7 @@ class TestWizardRedTeam(unittest.TestCase):
         )
 
         with (
-            patch("builtins.input", side_effect=[""]),
+            patch("builtins.input", side_effect=["", ""]),
             patch("redaudit.core.auditor.os.geteuid", return_value=1000),
         ):
             app._configure_scan_interactive(defaults_for_run={})
