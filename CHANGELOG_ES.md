@@ -7,14 +7,12 @@ Todos los cambios relevantes de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Sin Publicar]
+## [3.8.4] - 2025-12-21 (Verificación sin Agente y Corrección de Colores)
 
 ### Añadido
 
 - **Verificación sin agente**: Etapa opcional de fingerprinting SMB/RDP/LDAP/SSH/HTTP (wizard o `--agentless-verify`), con límite configurable de objetivos.
 - **Flags CLI**: `--agentless-verify`, `--no-agentless-verify` y `--agentless-verify-max-targets`.
-
-## [3.8.4] - 2025-12-21 (Corrección de Colores)
 
 ### Corregido
 

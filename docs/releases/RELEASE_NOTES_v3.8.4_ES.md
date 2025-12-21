@@ -1,10 +1,22 @@
-# Notas de Versión v3.8.4 — Corrección de Consistencia de Colores
+# Notas de Versión v3.8.4 — Verificación sin Agente y Corrección de Colores
 
 **Fecha de lanzamiento:** 2025-12-21
 
 ## Resumen
 
-Esta versión de parche corrige un error visual donde los mensajes de estado `[INFO]` aparecían sin su color azul previsto cuando la barra de progreso Rich estaba activa.
+Esta versión introduce **Verificación sin agente**, una nueva etapa de fingerprinting para el enriquecimiento de identidad, junto con correcciones visuales para la barra de progreso CLI.
+
+---
+
+## Añadido
+
+### Verificación sin agente
+
+Una nueva etapa opcional que ejecuta scripts Nmap seguros y no intrusivos contra servicios descubiertos (SMB, RDP, LDAP, SSH, HTTP) para recopilar información de identidad más detallada sin credenciales.
+
+- **Habilitar:** Seleccione "Sí" en el asistente cuando se le solicite "Verificación sin agente", o use `--agentless-verify`.
+- **Control:** Limite el número de objetivos con `--agentless-verify-max-targets` (predeterminado: 20).
+- **Beneficio:** Proporciona pistas sobre el SO, nombres de dominio y encabezados de servicio que ayudan a aclarar la "identidad" de un host.
 
 ---
 

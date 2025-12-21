@@ -1,10 +1,22 @@
-# Release Notes v3.8.4 — Color Consistency Fix
+# Release Notes v3.8.4 — Agentless Verification & Color Fixes
 
 **Release Date:** 2025-12-21
 
 ## Summary
 
-This patch release fixes a visual bug where `[INFO]` status messages appeared without their intended blue color when the Rich progress bar was active.
+This release introduces **Agentless Verification**, a new fingerprinting stage for identity enrichment, along with visual fixes for the CLI progress bar.
+
+---
+
+## Added
+
+### Agentless Verification
+
+A new optional stage that runs safe, non-intrusive Nmap scripts against discovered services (SMB, RDP, LDAP, SSH, HTTP) to gather more detailed identity information without credentials.
+
+- **Enable:** Select "Yes" in the wizard when prompted for "Agentless Verification", or use `--agentless-verify`.
+- **Control:** Limit the number of targets with `--agentless-verify-max-targets` (default: 20).
+- **Benefit:** Provides OS hints, domain names, and service headers that helps clarify the "identity" of a host.
 
 ---
 
