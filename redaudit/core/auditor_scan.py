@@ -404,7 +404,7 @@ class AuditorScanMixin:
     def _parse_host_timeout_s(nmap_args: str) -> Optional[float]:
         if not isinstance(nmap_args, str):
             return None
-        m = re.search(r"--host-timeout\\s+(\\d+)(ms|s|m|h)\\b", nmap_args)
+        m = re.search(r"--host-timeout\s+(\d+)(ms|s|m|h)\b", nmap_args)
         if not m:
             return None
         val = int(m.group(1))
