@@ -92,9 +92,14 @@ def _summarize_net_discovery(net_discovery: Dict[str, Any]) -> Dict[str, Any]:
     return summary
 
 
-def _summarize_agentless(hosts: list, agentless_verify: Dict[str, Any]) -> Dict[str, Any]:
+def _summarize_agentless(
+    hosts: list, agentless_verify: Dict[str, Any], config: Dict[str, Any]
+) -> Dict[str, Any]:
+    # v3.8.5: Use config to determine if user enabled the feature,
+    # not just whether results exist (fixes false "enabled: false" when no targets found)
+    user_enabled = config.get("windows_verify_enabled", False)
     summary = {
-        "enabled": bool(agentless_verify),
+        "enabled": bool(user_enabled),
         "targets": agentless_verify.get("targets", 0) if isinstance(agentless_verify, dict) else 0,
         "completed": (
             agentless_verify.get("completed", 0) if isinstance(agentless_verify, dict) else 0
@@ -226,7 +231,7 @@ def generate_summary(
             "threads": config.get("threads"),
         },
         "agentless_verify": _summarize_agentless(
-            results.get("hosts", []), results.get("agentless_verify") or {}
+            results.get("hosts", []), results.get("agentless_verify") or {}, config
         ),
         "nuclei": results.get("nuclei") or {},
         "vulnerability_scan": _summarize_vulnerabilities(results.get("vulnerabilities", [])),
