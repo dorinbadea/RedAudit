@@ -16,11 +16,13 @@
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_
 |_| \_\___|__,_/_/   \_\__,_|\__,_|_|\__|
+
+        INTERACTIVE NETWORK AUDIT
 ```
 
-**INTERACTIVE NETWORK AUDIT**
-
 </div>
+
+## What is RedAudit?
 
 ## What is RedAudit?
 

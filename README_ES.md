@@ -16,11 +16,13 @@
 | |_) / _ \/ _` | / _ \| | | |/ _` | | __|
 |  _ <  __/ (_| |/ ___ \ |_| | (_| | | |_
 |_| \_\___|__,_/_/   \_\__,_|\__,_|_|\__|
+
+      AUDITORÍA DE RED INTERACTIVA
 ```
 
-**AUDITORÍA DE RED INTERACTIVA**
-
 </div>
+
+## ¿Qué es RedAudit?
 
 ## ¿Qué es RedAudit?
 
