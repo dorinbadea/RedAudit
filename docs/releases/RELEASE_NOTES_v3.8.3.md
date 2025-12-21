@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v3.8.3_ES.md)
 
-**Release Date:** 2025-12-21  
+**Release Date:** 2025-12-21
 **Focus:** Wizard & Reporting UX
 
 ---
