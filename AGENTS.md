@@ -1,130 +1,24 @@
-# RedAudit: Engineering Workflow
+# RedAudit: Engineering Workflow (Agent Prompt)
 
-This file is a reusable “initial context” for contributors working on RedAudit (and can be copied to other repos). The goal is a clean timeline, consistent docs, reliable releases, and zero surprises in CI.
+This file is a reusable "initial context" for contributors working on RedAudit. The goal is a clean timeline, consistent docs, reliable releases, and zero surprises in CI.
 
-## Non‑Negotiables
+## Non-Negotiables
 
 - Work on a branch (`feature/*`, `hotfix/*`, `docs/*`). Avoid committing directly to `main`.
 - Never merge/push to `main` without explicit approval from the repo owner.
-- Fix root causes, keep changes focused and coherent, avoid unrelated refactors.
+- Fix root causes, keep changes minimal, avoid unrelated refactors.
 - Keep `git status` clean before handing off.
-- Keep code/docs/tests consistent (no version drift, no “docs say X but CLI does Y”).
-- Do **not** retag/rewrite published tags/releases. If something was released, publish a new version.
+- Keep code/docs/tests consistent (no version drift, no "docs say X but CLI does Y").
+- Do not retag/rewrite published tags/releases. If something was released, publish a new version.
 - Do not commit private data. `scan_results_private/` must never be pushed.
-
-## Roles & Work Modes (Reusable Playbooks)
-
-Use these modes to keep work predictable and auditable. If a task does not require code changes, do not implement “just in case”.
-
-### 1) Diagnosis / Next‑Step Proposal (No Implementation)
-
-**Goal:** Produce an evidence‑backed snapshot and a rational next step (impact/risk/cost).
-
-**Strict method (in order):**
-
-1. Start with reproducible inspection (repo structure, docs files, git status).
-2. Use concrete commands as evidence (e.g., `rg`, `ls`, `sed -n`, `python -m redaudit --help`).
-3. Do not invent features. If something can’t be confirmed, state it explicitly and note how to confirm.
-4. Do not change designs/structure; this is analysis and recommendation only.
-
-**Deliverable format (fixed):**
-
-A) Current state (5–12 bullets) with evidence (file path or command)
-B) Roadmap: top 5 items now (ordered) + why
-C) Recommendation: next step (what/why/risks/effort OOM)
-D) Alternative 1 and 2 (when to choose)
-E) Operational checklist (exact sequence)
-
-### 2) Documentation Sync (Code/CLI Is Source of Truth)
-
-**Goal:** Update docs to reflect behavior already present in code/CLI.
-
-**Rules:**
-
-- **CRITICAL:** ALWAYS create a new branch (e.g., `docs/vX.Y-updates`). **NEVER commit directly to `main`.**
-- Do not redesign docs. Preserve tone/structure; make the necessary insertions in the right place.
-- Keep EN/ES consistent: update both when behavior/UX changes.
-- Examples must match real flags, defaults, paths, and menus.
-
-**Method (in order):**
-
-1. Create branch `docs/<topic>`.
-2. Extract “truth from code”: real CLI flags/defaults + recent features (with file references).
-3. Audit docs vs inventory: mark missing/outdated/correct; do not touch what’s correct.
-4. Apply the necessary edits directly to files.
-5. Run quality gate, then commit with intent (`docs(...)`).
-6. Merge via Pull Request (or merge command if authorized), ensuring CI passes.
-
-### 3) Release Audit (Gatekeeper)
-
-**Goal:** Detect drift between code and documentation before a release.
-
-**Checklist (must pass):**
-
-- Validate links/paths and remove legacy references as needed (use `rg` for evidence).
-- Confirm flags/defaults match code/CLI.
-- Confirm version coherence across version sources, changelog, and release notes.
-- Run gates: `pre-commit run --all-files` and `pytest tests/ -v`.
-
-If drift is found: apply the necessary fixes, commit by intent, and re-run gates until green.
-
-### 4) Release Execution (Conservative)
-
-**Goal:** Execute merge/tag/release without surprises. Stop before tagging if anything is inconsistent.
-
-### 5) CI Triage (CodeQL / Workflow Breakages)
-
-**Goal:** Restore CI health with the smallest possible change, without mixing unrelated work.
-
-**Order of operations:**
-
-1. Confirm whether the failure is a workflow/config problem or a real finding.
-2. Apply the minimum fix on the minimum branch:
-   - If the team is not ready to touch `main`, apply the fix in the active feature branch so work can continue.
-   - If `main` must stay green, merge a small `hotfix/*` that only fixes CI config, then port it to the feature branch (merge or cherry-pick).
-3. Do not silence security findings without explicit approval; fix the code or document the accepted risk.
-
-**CodeQL workflow quick check (typical failure mode):**
-
-- Inspect the workflow:
-  - `sed -n '1,200p' .github/workflows/codeql.yml`
-- Confirm action majors:
-  - `actions/checkout@v4`
-  - `github/codeql-action/init@v3` and `github/codeql-action/analyze@v3`
-- For Python repos, avoid fragile “autobuild” behavior by explicitly disabling build:
-  - In the `Initialize CodeQL` step: `with: build-mode: none`
-- Keep the change limited to `.github/workflows/codeql.yml` unless there is explicit approval to do more.
-
-**Standard recovery procedure (when CodeQL fails):**
-
-1. Create a dedicated hotfix branch from `main`:
-   - `git fetch origin`
-   - `git switch main`
-   - `git pull --ff-only origin main`
-   - `git switch -c hotfix/<topic>`
-2. Apply only the workflow fix (no version bumps, no feature/code changes).
-3. Run local gates:
-   - `pre-commit run --all-files`
-   - `pytest tests/ -v`
-4. Commit and push:
-   - `git status -sb` (must be clean except the workflow change)
-   - `git commit -am "fix(ci): <short description>"`
-   - `git push -u origin hotfix/<topic>`
-5. Open a PR to `main` and wait for CodeQL to go green.
-6. If CodeQL still fails: stop and report exact evidence (workflow/job/step + error text) before attempting additional changes.
-
-**Gates (always):**
-
-- `pre-commit run --all-files`
-- `pytest tests/ -v`
 
 ## Branching & Commits (Clean Timeline)
 
-- **Branch names**
+- Branch names:
   - `feature/<short-desc>`
   - `hotfix/<version>-<short-desc>`
   - `docs/<topic>`
-- **Commit messages**: use conventional/semantic style:
+- Commit messages: use conventional/semantic style:
   - `feat(scope): ...`
   - `fix(scope): ...`
   - `docs(scope): ...`
@@ -144,7 +38,7 @@ Run:
 pre-commit run --all-files
 ```
 
-This repo’s `.pre-commit-config.yaml` includes:
+This repo's `.pre-commit-config.yaml` includes:
 
 - `pre-commit-hooks`
   - `trailing-whitespace`
@@ -183,26 +77,84 @@ python3 -m unittest discover -s tests
 
 Workflow: `.github/workflows/tests.yml`
 
-- **Tests job**: Python `3.9`–`3.12`, installs `nmap`, runs:
+- Tests job: Python `3.9`-`3.12`, installs `nmap`, runs:
   - `pytest tests/ -v --cov=redaudit --cov-report=xml --cov-report=term-missing`
   - coverage threshold: `coverage report --fail-under=25`
-- **Lint job**: runs `pre-commit` via `pre-commit/action`
-- **ShellCheck job**: runs ShellCheck (currently `continue-on-error: true`)
-- **update-badge** job: updates a dynamic badge via Gist (repo secrets)
+- Lint job: runs `pre-commit` via `pre-commit/action`
+- ShellCheck job: runs ShellCheck (currently `continue-on-error: true`)
+- `update-badge` job: updates a dynamic badge via Gist (repo secrets)
 
 Do not merge if CI is red unless the failure is understood and explicitly accepted.
 
+## When CI Fails (Process)
+
+Use this process when CI fails (especially tests), aligned with how RedAudit is maintained:
+
+### Process (when CI fails)
+
+1. Review CI logs first to locate the exact failure (job, failing test name, stacktrace, assertion).
+2. Reproduce locally by running only the failing test (or the related test file).
+3. Confirm whether the failure is:
+   - "Expected" due to intentional new behavior (then update the test), or
+   - A real bug/regression (then fix code and keep the test).
+4. Adjust tests/mocks minimally to reflect real behavior (no unrelated refactors).
+5. Run the full local gate (pre-commit + pytest) before pushing.
+
+### How to identify which tests to update
+
+- Use CI output to get the exact test name and failure.
+- Re-run locally to validate the diagnosis.
+- Update only the tests directly linked to the changed logic/flow.
+
+### Test vs code: when to change each
+
+- If the new behavior is intentional (feature/UX), update the test to match.
+- If the failure shows regression or inconsistency with the intended change, fix code and keep the test.
+- If the change breaks documented contracts (CLI/UX), update docs and tests together.
+
+### How to determine new mock/input values (wizard-heavy changes)
+
+- Walk the real flow and count each prompt in order (do not guess).
+- If you introduced a new `ask_choice_with_back` or a new prompt:
+  - add one input per new prompt.
+- If defaults exist, include explicit ENTER inputs where defaults are accepted.
+- If you added new flags/branches, add minimal cases per branch (positive/negative) only where necessary.
+
+### Pattern to keep tests "alive"
+
+If you touched wizard flow or heuristics, review tests that depend on:
+
+- prompt count,
+- default values,
+- execution order,
+- i18n messages.
+
+Always update i18n + tests in the same commit if the real flow changed.
+
+### Mental checklist before commit
+
+- Flow of prompts changed? -> update wizard tests.
+- Heuristic/score changed? -> update scanner mocks/fixtures.
+- Output structure changed? -> update reporter/JSON/HTML tests.
+- Run:
+  - `pre-commit run --all-files`
+  - `pytest tests/ -v`
+
 ## Documentation Consistency Rules
 
-When changing behavior/UX, update the relevant docs **in both EN/ES**:
+When changing behavior/UX, update the relevant docs in both EN/ES (flat docs structure):
 
 - `README.md`, `README_ES.md`
+- `docs/INDEX.md`
 - `docs/USAGE.en.md`, `docs/USAGE.es.md`
 - `docs/MANUAL.en.md`, `docs/MANUAL.es.md`
-- `docs/TROUBLESHOOTING.en.md`, `docs/TROUBLESHOOTING.es.md` (if user-facing flow changed)
 - `docs/DIDACTIC_GUIDE.en.md`, `docs/DIDACTIC_GUIDE.es.md` (if user-facing flow changed)
-- `CHANGELOG.md`, `CHANGELOG_ES.md`
+- `docs/REPORT_SCHEMA.en.md`, `docs/REPORT_SCHEMA.es.md`
 - `docs/ROADMAP.en.md`, `docs/ROADMAP.es.md`
+- `docs/SECURITY.en.md`, `docs/SECURITY.es.md`
+- `docs/TROUBLESHOOTING.en.md`, `docs/TROUBLESHOOTING.es.md`
+- `docs/SIEM_INTEGRATION.en.md`, `docs/SIEM_INTEGRATION.es.md` (if impacted)
+- `CHANGELOG.md`, `CHANGELOG_ES.md`
 - release notes: `docs/releases/RELEASE_NOTES_vX.Y.Z*.md`
 
 Make sure menu text, flags, defaults, and examples match the code.
@@ -217,14 +169,13 @@ Make sure menu text, flags, defaults, and examples match the code.
 
 ### 2) Update version sources
 
-This repo currently keeps version in:
+Keep version consistent across the repo. Version may be stored/used in one or more of these places (keep them in sync as applicable):
 
 - `pyproject.toml`
-- `redaudit/VERSION` (must match `pyproject.toml`)
+- `redaudit/VERSION`
+- `redaudit/utils/constants.py` (if still referenced by code/tests)
 
-`redaudit/utils/constants.py` resolves runtime version and must remain compatible with both package installs and script-based system installs.
-
-Update tests that assert version behavior (e.g., `tests/test_version_resolution.py`).
+Also update any tests that assert version output (e.g., integration tests).
 
 ### 3) Update release documentation
 
@@ -244,7 +195,6 @@ Update tests that assert version behavior (e.g., `tests/test_version_resolution.
 From `main`:
 
 ```bash
-git fetch origin
 git checkout main
 git pull --ff-only origin main
 git merge --no-ff <branch> -m "Merge <branch> into main"
@@ -262,7 +212,7 @@ Prefer `gh` (GitHub CLI):
 gh release create vX.Y.Z -t "vX.Y.Z - <title>" -F docs/releases/RELEASE_NOTES_vX.Y.Z.md
 ```
 
-When the release notes include an EN→ES badge/link, point it at the tagged file, e.g.:
+When the release notes include an EN->ES badge/link, point it at the tagged file, e.g.:
 
 ```text
 https://github.com/dorinbadea/RedAudit/blob/vX.Y.Z/docs/releases/RELEASE_NOTES_vX.Y.Z_ES.md
@@ -274,6 +224,19 @@ RedAudit is often run with `sudo`, which can cause `~` and `$HOME` to resolve to
 
 Rules:
 
-- Any “user-facing” output path (reports, defaults) should resolve to the **invoking user** when under `sudo`.
+- Any user-facing output path (reports, defaults) should resolve to the invoking user when under `sudo`.
 - Be careful with persisted defaults: older versions may have stored `/root/...` and must be migrated or corrected.
-- Best-effort ownership (`chown`) may be required to avoid root-owned artifacts under a user’s home.
+- Best-effort ownership (`chown`) may be required to avoid root-owned artifacts under a user's home.
+
+## Quick verification commands (examples)
+
+```bash
+# Show which user invoked sudo and what $HOME resolves to in this shell
+whoami
+echo "$HOME"
+sudo -n true && echo "sudo: OK" || echo "sudo: needs password / not permitted"
+
+# If artifacts were created as root under a user home, fix ownership (best-effort)
+# Replace <user>:<group> appropriately.
+sudo chown -R <user>:<group> /home/<user>/Documents/RedAuditReports 2>/dev/null || true
+```
