@@ -50,15 +50,15 @@ class WizardMixin:
         subtitle = self.t("banner_subtitle")
         banner = f"""
 {self.COLORS['FAIL']}
-    ____          __     {self.COLORS['BOLD']}{self.COLORS['HEADER']}___            __ _ __{self.COLORS['ENDC']}{self.COLORS['FAIL']}
-   / __ \\ ___  __/ /    {self.COLORS['BOLD']}{self.COLORS['HEADER']}/   | __  __ __/ (_) /_{self.COLORS['ENDC']}{self.COLORS['FAIL']}
-  / /_/ // _ \\/ _  /   {self.COLORS['BOLD']}{self.COLORS['HEADER']}/ /| |/ / / // _  / / __/{self.COLORS['ENDC']}{self.COLORS['FAIL']}
- / _, _//  __/ /_/ /   {self.COLORS['BOLD']}{self.COLORS['HEADER']}/ ___ / /_/ // /_/ / / /_{self.COLORS['ENDC']}{self.COLORS['FAIL']}
-/_/ |_| \\___/\\____/   {self.COLORS['BOLD']}{self.COLORS['HEADER']}/_/  |_\\__,_/\\__,_/_/\\__/{self.COLORS['ENDC']}
-                                         {self.COLORS['CYAN']}v{VERSION}{self.COLORS['ENDC']}
-{self.COLORS['OKBLUE']}══════════════════════════════════════════════════════════{self.COLORS['ENDC']}
+ ____          _    {self.COLORS['BOLD']}{self.COLORS['HEADER']}_             _ _ _{self.COLORS['ENDC']}{self.COLORS['FAIL']}
+|  _ \\ ___  __| |  {self.COLORS['BOLD']}{self.COLORS['HEADER']}/ \\  _   _  __| (_) |_{self.COLORS['ENDC']}{self.COLORS['FAIL']}
+| |_) / _ \\/ _` | {self.COLORS['BOLD']}{self.COLORS['HEADER']}/ _ \\| | | |/ _` | | __|{self.COLORS['ENDC']}{self.COLORS['FAIL']}
+|  _ <  __/ (_| |{self.COLORS['BOLD']}{self.COLORS['HEADER']}/ ___ \\ |_| | (_| | | |_{self.COLORS['ENDC']}{self.COLORS['FAIL']}
+|_| \\_\\___|\\__,_|{self.COLORS['BOLD']}{self.COLORS['HEADER']}/_/   \\_\\__,_|\\__,_|_|\\__|{self.COLORS['ENDC']}
+                                     {self.COLORS['CYAN']}v{VERSION}{self.COLORS['ENDC']}
+{self.COLORS['OKBLUE']}══════════════════════════════════════════════════════{self.COLORS['ENDC']}
 {self.COLORS['BOLD']}{subtitle}{self.COLORS['ENDC']}
-{self.COLORS['OKBLUE']}══════════════════════════════════════════════════════════{self.COLORS['ENDC']}
+{self.COLORS['OKBLUE']}══════════════════════════════════════════════════════{self.COLORS['ENDC']}
 """
         print(banner)
 
