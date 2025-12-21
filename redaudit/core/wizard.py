@@ -50,12 +50,12 @@ class WizardMixin:
         subtitle = self.t("banner_subtitle")
         banner = f"""
 {self.COLORS['FAIL']}
- ____           _      {self.COLORS['BOLD']}{self.COLORS['HEADER']}_             _  _  _{self.COLORS['ENDC']}{self.COLORS['FAIL']}
-|  _ \\  ___  __| |    {self.COLORS['BOLD']}{self.COLORS['HEADER']}/ \\  _   _  __| |(_)| |_{self.COLORS['ENDC']}{self.COLORS['FAIL']}
-| |_) |/ _ \\/ _` |   {self.COLORS['BOLD']}{self.COLORS['HEADER']}/ _ \\| | | |/ _` || || __|{self.COLORS['ENDC']}{self.COLORS['FAIL']}
-|  _ <|  __| (_| |  {self.COLORS['BOLD']}{self.COLORS['HEADER']}/ ___ | |_| | (_| || || |_{self.COLORS['ENDC']}{self.COLORS['FAIL']}
-|_| \\_\\___|\\__,_| {self.COLORS['BOLD']}{self.COLORS['HEADER']}/_/   \\_\\__,_|\\__,_|_| \\__|{self.COLORS['ENDC']}
-                                       {self.COLORS['CYAN']}v{VERSION}{self.COLORS['ENDC']}
+ ____          _    {self.COLORS['BOLD']}{self.COLORS['HEADER']}_             _ _ _{self.COLORS['ENDC']}{self.COLORS['FAIL']}
+|  _ \\ ___  __| |  {self.COLORS['BOLD']}{self.COLORS['HEADER']}/ \\  _   _  __| (_) |_{self.COLORS['ENDC']}{self.COLORS['FAIL']}
+| |_) / _ \\/ _` | {self.COLORS['BOLD']}{self.COLORS['HEADER']}/ _ \\| | | |/ _` | | __|{self.COLORS['ENDC']}{self.COLORS['FAIL']}
+|  _ <  __/ (_| |{self.COLORS['BOLD']}{self.COLORS['HEADER']}/ ___ \\ |_| | (_| | | |_{self.COLORS['ENDC']}{self.COLORS['FAIL']}
+|_| \\_\\___|\\__,_|{self.COLORS['BOLD']}{self.COLORS['HEADER']}/_/   \\_\\__,_|\\__,_|_|\\__|{self.COLORS['ENDC']}
+                                     {self.COLORS['CYAN']}v{VERSION}{self.COLORS['ENDC']}
 {self.COLORS['OKBLUE']}══════════════════════════════════════════════════════{self.COLORS['ENDC']}
 {self.COLORS['BOLD']}{subtitle}{self.COLORS['ENDC']}
 {self.COLORS['OKBLUE']}══════════════════════════════════════════════════════{self.COLORS['ENDC']}
