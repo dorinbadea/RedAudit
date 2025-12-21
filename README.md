@@ -24,8 +24,6 @@
 
 ## What is RedAudit?
 
-## What is RedAudit?
-
 RedAudit is a network auditing framework that orchestrates industry-standard security tools (nmap, nikto, testssl, nuclei) into a concurrent pipeline. It automates discovery-to-report workflows, producing structured JSON/HTML/JSONL artifacts suitable for SIEM ingestion or compliance reporting.
 
 **Use cases**: Defensive hardening, penetration test scoping, change tracking between assessments.
