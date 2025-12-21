@@ -12,23 +12,23 @@ This file is a reusable "initial context" for contributors working on RedAudit. 
 - Do not retag/rewrite published tags/releases. If something was released, publish a new version.
 - Do not commit private data. `scan_results_private/` must never be pushed.
 
-## Assistant Operating Guidelines (Internal Workflow)
+## Contributor Workflow Guidelines
 
 - Use `rg` for searching and `rg --files` for file discovery (fallback only if unavailable).
 - Default to ASCII in edits/creates; only add non-ASCII when the file already uses it and there is clear justification.
-- Use `apply_patch` for single-file edits; avoid it for auto-generated changes or large scripted replacements.
+- Prefer patch-style edits for single-file changes; avoid it for auto-generated changes or large scripted replacements.
 - Avoid destructive git commands (never use `git reset --hard` or `git checkout --` unless explicitly requested).
 - Do not amend commits unless explicitly requested.
 - Never revert unrelated changes; if unexpected changes appear, stop and ask how to proceed.
 - Keep comments minimal and only when they clarify non-obvious logic.
-- Respect sandbox/approval constraints; request escalation only when required by the environment.
+- Respect execution constraints; request approval only when elevated actions are required by the environment.
 
-### Planning
+### Planning and Scoping
 
 - Use a short multi-step plan for complex tasks; avoid single-step plans.
 - Update the plan after completing a step.
 
-### Code Review Responses
+### Review Responses
 
 - Prioritize bugs, risks, regressions, and missing tests.
 - List findings by severity with file/line references before any summary.
