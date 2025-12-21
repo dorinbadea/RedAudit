@@ -14,6 +14,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Agentless verification**: Optional SMB/RDP/LDAP/SSH/HTTP fingerprinting stage (wizard or `--agentless-verify`), with a configurable target cap.
 - **CLI flags**: `--agentless-verify`, `--no-agentless-verify`, and `--agentless-verify-max-targets`.
 
+## [3.8.3] - 2025-12-21 (Wizard & Reporting UX)
+
+### Added
+
+- **Auditor identity**: Wizard prompt for auditor name, surfaced in TXT/HTML reports.
+- **Bilingual HTML**: When language is ES, `report_es.html` is generated alongside the default HTML report.
+
+### Fixed
+
+- **Wizard duplication**: Removed duplicate wording in vulnerability scan options (yes/no prompt).
+- **Progress detail colors**: Status detail now respects INFO/WARN/FAIL colors while progress is active.
+- **Net Discovery progress**: Prevents long phases from showing a stuck 100% before the final step completes.
+
+### Changed
+
+- **HTML footer**: Neutralized footer branding (license + GitHub) without personal author credit.
+
 ## [3.8.2] - 2025-12-20 (UX Polish)
 
 ### Added
