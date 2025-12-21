@@ -1365,9 +1365,7 @@ class AuditorScanMixin:
                         except Exception as exc:
                             res = {"ip": ip, "error": str(exc)}
                             if self.logger:
-                                self.logger.debug(
-                                    "Windows verify failed for %s", ip, exc_info=True
-                                )
+                                self.logger.debug("Windows verify failed for %s", ip, exc_info=True)
                         results.append(res)
                         done += 1
                         if total and done % max(1, total // 10) == 0:

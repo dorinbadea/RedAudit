@@ -57,7 +57,8 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
                 with patch("redaudit.core.auditor_scan.run_nmap_command", return_value=rec1):
                     with patch("redaudit.core.auditor_scan.output_has_identity", return_value=True):
                         with patch(
-                            "redaudit.core.auditor_scan.extract_vendor_mac", return_value=(None, None)
+                            "redaudit.core.auditor_scan.extract_vendor_mac",
+                            return_value=(None, None),
                         ):
                             deep = app.deep_scan_host(ip)
 
@@ -138,10 +139,16 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
         with patch("redaudit.core.auditor_scan.start_background_capture", return_value=None):
             with patch("redaudit.core.auditor_scan.stop_background_capture", return_value=None):
                 with patch("redaudit.core.auditor_scan.output_has_identity", return_value=False):
-                    with patch("redaudit.core.auditor_scan.extract_vendor_mac", return_value=(None, None)):
+                    with patch(
+                        "redaudit.core.auditor_scan.extract_vendor_mac", return_value=(None, None)
+                    ):
                         with patch("redaudit.core.auditor_scan.run_udp_probe", return_value=[]):
-                            with patch("redaudit.core.auditor_scan.get_neighbor_mac", return_value=None):
-                                with patch("redaudit.core.auditor_scan.run_nmap_command") as mock_run:
+                            with patch(
+                                "redaudit.core.auditor_scan.get_neighbor_mac", return_value=None
+                            ):
+                                with patch(
+                                    "redaudit.core.auditor_scan.run_nmap_command"
+                                ) as mock_run:
                                     mock_run.return_value = {
                                         "stdout": "",
                                         "stderr": "",
