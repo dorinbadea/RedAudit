@@ -190,3 +190,41 @@ def test_run_agentless_verification_updates_hosts(monkeypatch):
     host = host_results[0]
     assert host["agentless_probe"]["ip"] == "10.0.0.3"
     assert host["agentless_fingerprint"]["smb_signing_required"] is True
+
+
+def test_run_agentless_verification_merges_existing_http_fingerprint(monkeypatch):
+    app = InteractiveNetworkAuditor()
+    app.config["windows_verify_enabled"] = True
+    host_results = [
+        {"ip": "10.0.0.3", "ports": [], "agentless_fingerprint": {"http_title": "Zyxel"}}
+    ]
+
+    target = AgentlessProbeTarget(ip="10.0.0.3", smb=True)
+
+    monkeypatch.setattr(
+        auditor_scan, "select_agentless_probe_targets", lambda *_args, **_kwargs: [target]
+    )
+    monkeypatch.setattr(
+        auditor_scan,
+        "probe_agentless_services",
+        lambda *_args, **_kwargs: {"ip": "10.0.0.3", "smb_signing_required": True},
+    )
+    monkeypatch.setattr(
+        auditor_scan,
+        "summarize_agentless_fingerprint",
+        lambda *_args, **_kwargs: {"smb_signing_required": True},
+    )
+
+    real_import = builtins.__import__
+
+    def _blocked_import(name, *args, **kwargs):
+        if name.startswith("rich"):
+            raise ImportError("blocked")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _blocked_import)
+
+    app.run_agentless_verification(host_results)
+    host = host_results[0]
+    assert host["agentless_fingerprint"]["http_title"] == "Zyxel"
+    assert host["agentless_fingerprint"]["smb_signing_required"] is True

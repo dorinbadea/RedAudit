@@ -65,6 +65,33 @@ class _FakeHost:
         return default
 
 
+class _QuietHost:
+    def __init__(self):
+        self._hostnames = []
+        self._state = STATUS_UP
+        self._addresses = {"mac": "AA:BB:CC:DD:EE:FF"}
+        self._vendor = {"AA:BB:CC:DD:EE:FF": "Zyxel"}
+
+    def hostnames(self):
+        return self._hostnames
+
+    def all_protocols(self):
+        return []
+
+    def __getitem__(self, proto):
+        raise KeyError(proto)
+
+    def state(self):
+        return self._state
+
+    def get(self, key, default=None):
+        if key == "addresses":
+            return self._addresses
+        if key == "vendor":
+            return self._vendor
+        return default
+
+
 class _FakeNmap:
     def __init__(self, host):
         self._host = host
@@ -114,3 +141,35 @@ def test_scan_host_ports_success_flow():
     assert result["total_ports_found"] == 2
     assert result["status"] == STATUS_UP
     assert result["deep_scan"]["vendor"] == "Acme"
+
+
+def test_scan_host_ports_http_probe_on_quiet_host():
+    app = InteractiveNetworkAuditor()
+    app.logger = _Logger()
+    app.config["scan_mode"] = "normal"
+    app.config["deep_id_scan"] = True
+
+    fake_host = _QuietHost()
+    fake_nm = _FakeNmap(fake_host)
+
+    with patch("redaudit.core.auditor_scan.get_nmap_arguments", return_value="-sV"):
+        with patch(
+            "redaudit.core.auditor_scan.http_identity_probe",
+            return_value={"http_title": "Zyxel GS1200-5"},
+        ):
+            with patch(
+                "redaudit.core.auditor_scan.enrich_host_with_dns", lambda *_args, **_kwargs: None
+            ):
+                with patch(
+                    "redaudit.core.auditor_scan.enrich_host_with_whois",
+                    lambda *_args, **_kwargs: None,
+                ):
+                    with patch(
+                        "redaudit.core.auditor_scan.finalize_host_status",
+                        lambda host: host.get("status", STATUS_UP),
+                    ):
+                        with patch.object(app, "_run_nmap_xml_scan", return_value=(fake_nm, "")):
+                            result = app.scan_host_ports("10.0.0.1")
+
+    assert result["agentless_fingerprint"]["http_title"] == "Zyxel GS1200-5"
+    assert "http_probe" in result["smart_scan"]["signals"]

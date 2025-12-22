@@ -115,6 +115,41 @@ def test_configure_from_args_sets_stealth_and_encryption():
     assert app.config["encrypt"] is True
 
 
+def test_configure_from_args_requires_target_non_interactive():
+    app = _DummyApp()
+    args = _base_args(target=None)
+    assert cli.configure_from_args(app, args) is False
+    assert "target_required_non_interactive" in app._statuses[-1]
+
+
+def test_configure_from_args_net_discovery_all_and_windows_verify():
+    app = _DummyApp()
+    args = _base_args(net_discovery="all", windows_verify=True, agentless_verify_max_targets=10)
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["net_discovery_enabled"] is True
+    assert app.config["net_discovery_protocols"] is None
+    assert app.config["windows_verify_enabled"] is True
+    assert app.config["windows_verify_max_targets"] == 10
+
+
+def test_configure_from_args_rejects_agentless_verify_max_targets():
+    app = _DummyApp()
+    args = _base_args(agentless_verify_max_targets=0)
+    assert cli.configure_from_args(app, args) is False
+
+
+def test_configure_from_args_save_defaults_error(monkeypatch):
+    app = _DummyApp()
+    args = _base_args(save_defaults=True)
+
+    def _raise(**_kwargs):
+        raise RuntimeError("fail")
+
+    monkeypatch.setattr("redaudit.utils.config.update_persistent_defaults", _raise)
+    assert cli.configure_from_args(app, args) is True
+    assert "defaults_save_error" in app._statuses[-1]
+
+
 def test_main_diff_mode_generates_reports(tmp_path, monkeypatch):
     old_path = tmp_path / "old.json"
     new_path = tmp_path / "new.json"

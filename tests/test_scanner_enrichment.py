@@ -87,6 +87,22 @@ def test_http_tls_and_exploit_enrichment(monkeypatch):
     assert exploits == ["OpenSSH 7.9 - Sample Exploit"]
 
 
+def test_http_identity_probe_extracts_title_and_server(monkeypatch):
+    def _fake_make_runner(**_kwargs):
+        def _run(args, **_run_kwargs):
+            if "-I" in args:
+                return _result(stdout="HTTP/1.1 200 OK\nServer: ZyxelHTTP\n")
+            return _result(stdout="<html><title>Zyxel GS1200-5</title></html>")
+
+        return SimpleNamespace(run=_run)
+
+    monkeypatch.setattr(scanner, "_make_runner", _fake_make_runner)
+
+    result = scanner.http_identity_probe("10.0.0.1", {"curl": "curl"}, ports=[80])
+    assert result["http_title"] == "Zyxel GS1200-5"
+    assert result["http_server"] == "ZyxelHTTP"
+
+
 def test_ssl_deep_analysis_parses_findings(monkeypatch):
     output = """
 TLS 1.0 offered
