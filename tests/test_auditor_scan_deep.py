@@ -29,7 +29,9 @@ def test_deep_scan_host_identity_skip(monkeypatch, tmp_path):
 
     monkeypatch.setattr(auditor_scan, "run_nmap_command", _fake_nmap_run)
     monkeypatch.setattr(auditor_scan, "output_has_identity", lambda *_args, **_kwargs: True)
-    monkeypatch.setattr(auditor_scan, "extract_vendor_mac", lambda *_args, **_kwargs: ("aa", "Acme"))
+    monkeypatch.setattr(
+        auditor_scan, "extract_vendor_mac", lambda *_args, **_kwargs: ("aa", "Acme")
+    )
     monkeypatch.setattr(auditor_scan, "extract_os_detection", lambda *_args, **_kwargs: "TestOS")
     monkeypatch.setattr(
         auditor_scan,
