@@ -103,7 +103,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 
 ### Lógica de Escaneo Adaptativo
 
-RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa heurísticas en tiempo de ejecución para decidir la escalación:
+RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa heurísticas en tiempo de ejecución para decidir la escalación, incluyendo probes HTTP breves de titulo/encabezado en rutas de login comunes para hosts silenciosos:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -118,6 +118,7 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
               │  • ¿Hostname/DNS?     │
               │  • ¿Versión servicio? │
               │  • ¿CPE/banner?       │
+              │  • HTTP titulo/encab.?│
               │  • ¿Hints sin agente? │
               └───────────┬───────────┘
                           │

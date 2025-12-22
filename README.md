@@ -103,7 +103,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 
 ### Adaptive Scanning Logic
 
-RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runtime heuristics to decide escalation:
+RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runtime heuristics to decide escalation, including short HTTP title/heading probes on common login paths for quiet hosts:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -118,6 +118,7 @@ RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runt
               │  • Hostname/DNS?      │
               │  • Service version?   │
               │  • CPE/banner?        │
+              │  • HTTP title/heading?│
               │  • Agentless hints?   │
               └───────────┬───────────┘
                           │
