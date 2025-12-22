@@ -16,7 +16,7 @@
 
 - Estado: revision interna best-effort.
 - No se identificaron vulnerabilidades criticas conocidas en esta revision.
-- Coverage por debajo del objetivo (global ~52.8% en esta corrida); limita la confianza en edge cases.
+- Coverage por debajo del objetivo (global ~53.7% en esta corrida); limita la confianza en edge cases.
 
 ## Controles Observados
 
