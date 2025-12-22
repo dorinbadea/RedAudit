@@ -657,6 +657,7 @@ def http_enrichment(
 
 HTTP_IDENTITY_PORTS = (80, 443, 8080, 8443, 8000, 8888)
 HTTP_IDENTITY_HTTPS_PORTS = {443, 8443, 9443, 4443}
+HTTP_IDENTITY_PATHS = ("/", "/login", "/login.html", "/index.html")
 
 
 def _format_http_host(host_ip: str) -> str:
@@ -835,11 +836,20 @@ def http_identity_probe(
     for port in ports_to_check:
         schemes = ("https", "http") if port in HTTP_IDENTITY_HTTPS_PORTS else ("http", "https")
         for scheme in schemes:
-            url = f"{scheme}://{host}:{port}/"
-            headers = _fetch_http_headers(url, extra_tools, dry_run=dry_run, logger=logger)
-            server = _extract_http_server(headers)
-            body = _fetch_http_body(url, extra_tools, dry_run=dry_run, logger=logger)
-            title = _extract_http_title(body[:40000])
+            server = ""
+            title = ""
+            for path in HTTP_IDENTITY_PATHS:
+                url = f"{scheme}://{host}:{port}{path}"
+                if not server:
+                    headers = _fetch_http_headers(
+                        url, extra_tools, dry_run=dry_run, logger=logger
+                    )
+                    server = _extract_http_server(headers)
+                if not title:
+                    body = _fetch_http_body(url, extra_tools, dry_run=dry_run, logger=logger)
+                    title = _extract_http_title(body[:40000])
+                if title and server:
+                    break
             if title or server:
                 result = {}
                 if title:

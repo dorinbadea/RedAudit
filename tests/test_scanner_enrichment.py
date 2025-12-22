@@ -117,6 +117,27 @@ def test_http_identity_probe_falls_back_to_heading(monkeypatch):
     result = scanner.http_identity_probe("10.0.0.1", {"curl": "curl"}, ports=[80])
     assert result["http_title"] == "ZYXEL GS1200-5"
 
+
+def test_http_identity_probe_tries_login_paths(monkeypatch):
+    seen = []
+
+    def _fake_fetch_headers(url, *_args, **_kwargs):
+        seen.append(("head", url))
+        return ""
+
+    def _fake_fetch_body(url, *_args, **_kwargs):
+        seen.append(("body", url))
+        if url.endswith("/login.html"):
+            return "<h1>Vodafone</h1>"
+        return ""
+
+    monkeypatch.setattr(scanner, "_fetch_http_headers", _fake_fetch_headers)
+    monkeypatch.setattr(scanner, "_fetch_http_body", _fake_fetch_body)
+
+    result = scanner.http_identity_probe("10.0.0.2", {"curl": "curl"}, ports=[80])
+    assert result["http_title"] == "Vodafone"
+    assert any(url.endswith("/login.html") for _, url in seen)
+
 def test_ssl_deep_analysis_parses_findings(monkeypatch):
     output = """
 TLS 1.0 offered
