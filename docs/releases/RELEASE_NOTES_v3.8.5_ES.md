@@ -1,5 +1,7 @@
 # Release Notes v3.8.5 — Identidad en Hosts Silenciosos
 
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.8.5.md)
+
 **Fecha de lanzamiento:** 2025-12-22
 
 ## Resumen

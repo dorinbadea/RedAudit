@@ -56,6 +56,7 @@ Criterio de salida:
 Objetivo: mejorar despliegue y extensibilidad.
 
 - [x] Dockerfile oficial + workflow para build/push.
+- [x] Corregir build de Docker (instalar dependencias de compilacion para `netifaces`).
 - [x] Evaluar sistema de plugins (sin casos urgentes; se mantiene diferido en ROADMAP).
 
 Criterio de salida:

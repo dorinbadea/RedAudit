@@ -1,5 +1,7 @@
 # Release Notes v3.8.4 — Agentless Verification & Color Fixes
 
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Espa%C3%B1ol-red?style=flat-square)](RELEASE_NOTES_v3.8.4_ES.md)
+
 **Release Date:** 2025-12-21
 
 ## Summary

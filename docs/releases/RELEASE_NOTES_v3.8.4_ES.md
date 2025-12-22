@@ -1,5 +1,7 @@
 # Notas de Versión v3.8.4 — Verificación sin Agente y Corrección de Colores
 
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.8.4.md)
+
 **Fecha de lanzamiento:** 2025-12-21
 
 ## Resumen

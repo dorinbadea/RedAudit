@@ -1,5 +1,7 @@
 # Release Notes v3.8.5 — Quiet-Host Identity Improvements
 
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Espa%C3%B1ol-red?style=flat-square)](RELEASE_NOTES_v3.8.5_ES.md)
+
 **Release Date:** 2025-12-22
 
 ## Summary

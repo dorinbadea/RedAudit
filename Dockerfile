@@ -4,7 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends nmap \
+    && apt-get install -y --no-install-recommends nmap build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

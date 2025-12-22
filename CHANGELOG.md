@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.6] - 2025-12-22 (Docker Build Fix)
+
+### Fixed
+
+- **Docker build**: Install build tools in the image so `netifaces` compiles during `pip install`.
+
+### Documentation
+
+- Added EN/ES language badges to release notes for v3.8.4 and v3.8.5.
+
 ## [3.8.5] - 2025-12-22 (Quiet-Host Identity)
 
 ### Added
