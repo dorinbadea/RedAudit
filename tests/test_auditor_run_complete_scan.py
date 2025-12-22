@@ -42,7 +42,9 @@ def test_run_complete_scan_orchestration(tmp_path, monkeypatch):
     monkeypatch.setattr(app, "_progress_ui", _noop_cm)
     monkeypatch.setattr(app, "scan_network_discovery", lambda *_args, **_kwargs: ["10.0.0.1"])
     monkeypatch.setattr(app, "_collect_discovery_hosts", lambda *_args, **_kwargs: ["10.0.0.2"])
-    monkeypatch.setattr(app, "scan_hosts_concurrent", lambda *_args, **_kwargs: [{"ip": "10.0.0.1"}])
+    monkeypatch.setattr(
+        app, "scan_hosts_concurrent", lambda *_args, **_kwargs: [{"ip": "10.0.0.1"}]
+    )
     monkeypatch.setattr(app, "run_agentless_verification", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(app, "scan_vulnerabilities_concurrent", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(app, "save_results", lambda *_args, **_kwargs: None)

@@ -125,7 +125,12 @@ def test_main_diff_mode_generates_reports(tmp_path, monkeypatch):
         "generated_at": "2025-01-01",
         "old_report": {"path": "old.json", "timestamp": "t1", "total_hosts": 0},
         "new_report": {"path": "new.json", "timestamp": "t2", "total_hosts": 0},
-        "changes": {"new_hosts": [], "removed_hosts": [], "changed_hosts": [], "web_vuln_changes": []},
+        "changes": {
+            "new_hosts": [],
+            "removed_hosts": [],
+            "changed_hosts": [],
+            "web_vuln_changes": [],
+        },
         "summary": {
             "new_hosts_count": 0,
             "removed_hosts_count": 0,

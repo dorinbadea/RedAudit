@@ -92,20 +92,21 @@ def test_scan_host_ports_success_flow():
     fake_nm = _FakeNmap(fake_host)
 
     with patch("redaudit.core.auditor_scan.get_nmap_arguments", return_value="-sV"):
-        with patch("redaudit.core.auditor_scan.banner_grab_fallback", return_value={2222: {"banner": "x"}}):
+        with patch(
+            "redaudit.core.auditor_scan.banner_grab_fallback", return_value={2222: {"banner": "x"}}
+        ):
             with patch(
                 "redaudit.core.auditor_scan.enrich_host_with_dns", lambda *_args, **_kwargs: None
             ):
                 with patch(
-                    "redaudit.core.auditor_scan.enrich_host_with_whois", lambda *_args, **_kwargs: None
+                    "redaudit.core.auditor_scan.enrich_host_with_whois",
+                    lambda *_args, **_kwargs: None,
                 ):
                     with patch(
                         "redaudit.core.auditor_scan.finalize_host_status",
                         lambda host: host.get("status", STATUS_UP),
                     ):
-                        with patch.object(
-                            app, "_run_nmap_xml_scan", return_value=(fake_nm, "")
-                        ):
+                        with patch.object(app, "_run_nmap_xml_scan", return_value=(fake_nm, "")):
                             result = app.scan_host_ports("10.0.0.1")
 
     assert result["ip"] == "10.0.0.1"

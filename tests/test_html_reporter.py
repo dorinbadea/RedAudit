@@ -12,9 +12,7 @@ from redaudit.core import html_reporter
 def test_extract_finding_title_variants():
     assert html_reporter._extract_finding_title({"descriptive_title": "Custom"}) == "Custom"
     assert (
-        html_reporter._extract_finding_title(
-            {"nikto_findings": ["Interesting finding here"]}
-        )
+        html_reporter._extract_finding_title({"nikto_findings": ["Interesting finding here"]})
         == "Interesting finding here"
     )
     assert (

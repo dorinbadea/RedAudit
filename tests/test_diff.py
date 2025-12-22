@@ -39,9 +39,7 @@ def test_generate_diff_report_and_formatters(tmp_path):
                 "known_exploits": [],
             }
         ],
-        "vulnerabilities": [
-            {"host": "10.0.0.1", "vulnerabilities": [{"nikto_findings": ["x"]}]}
-        ],
+        "vulnerabilities": [{"host": "10.0.0.1", "vulnerabilities": [{"nikto_findings": ["x"]}]}],
     }
     new_report = {
         "version": "3.6.0",
@@ -89,7 +87,12 @@ def test_format_diff_html_fallbacks():
         "generated_at": "2025-01-01",
         "old_report": {"path": "old.json", "timestamp": "t1", "total_hosts": 1},
         "new_report": {"path": "new.json", "timestamp": "t2", "total_hosts": 1},
-        "changes": {"new_hosts": [], "removed_hosts": [], "changed_hosts": [], "web_vuln_changes": []},
+        "changes": {
+            "new_hosts": [],
+            "removed_hosts": [],
+            "changed_hosts": [],
+            "web_vuln_changes": [],
+        },
         "summary": {
             "new_hosts_count": 0,
             "removed_hosts_count": 0,

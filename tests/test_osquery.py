@@ -17,9 +17,7 @@ def test_is_osquery_available_true():
 
 
 def test_is_osquery_available_false_on_missing():
-    with patch(
-        "redaudit.core.osquery.subprocess.run", side_effect=FileNotFoundError("nope")
-    ):
+    with patch("redaudit.core.osquery.subprocess.run", side_effect=FileNotFoundError("nope")):
         assert osquery.is_osquery_available() is False
 
 
