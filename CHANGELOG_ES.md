@@ -9,6 +9,10 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Corregido
+
+- **Identidad en hosts silenciosos**: El probe HTTP ahora prueba rutas de login comunes cuando el root no tiene titulo/encabezado.
+
 ## [3.8.6] - 2025-12-22 (Fix de Build Docker)
 
 ### Corregido

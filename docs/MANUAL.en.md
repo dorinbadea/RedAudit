@@ -123,7 +123,7 @@ When enabled (default), RedAudit performs additional scanning on hosts where ini
 1. Phase 1: Aggressive TCP (`-A -p- -sV -Pn`)
 2. Phase 2a: Priority UDP scan (17 common ports: DNS, DHCP, SNMP, etc.)
 3. Phase 2b: Extended UDP (if `--udp-mode full` and identity still unclear)
-4. Quiet hosts with vendor hints and zero open ports may get a short HTTP/HTTPS title/heading probe on common ports
+4. Quiet hosts with vendor hints and zero open ports may get a short HTTP/HTTPS title/heading probe on common ports and login paths
 
 Disable with `--no-deep-scan`.
 

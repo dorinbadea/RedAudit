@@ -41,7 +41,7 @@ Objetivo: elevar confianza con metricas y documentacion clara.
 - [ ] Subir cobertura real en redaudit/ > 90% (actual: ~74.34%).
 - [x] Agregar SECURITY_AUDIT.md con alcance y riesgos conocidos.
 - [x] Implementar rotacion de logs (RotatingFileHandler) con tests minimos.
-- [x] Probe HTTP/HTTPS breve en hosts silenciosos con vendor para enriquecer modelo/activo (fallback a H1/H2 si falta `<title>`).
+- [x] Probe HTTP/HTTPS breve en hosts silenciosos con vendor para enriquecer modelo/activo (fallback a H1/H2 si falta `<title>` y rutas de login comunes).
 - [x] Ajustar heurística de `asset_type` para priorizar dispositivos (iphone/msi/etc.) sobre sufijos `fritz`.
 - [x] Usar `http_title` como identidad auxiliar para nombrar activos y clasificar switches cuando no hay hostname.
 

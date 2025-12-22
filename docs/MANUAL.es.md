@@ -123,7 +123,7 @@ Cuando está habilitado (por defecto), RedAudit realiza escaneos adicionales en 
 1. Fase 1: TCP Agresivo (`-A -p- -sV -Pn`)
 2. Fase 2a: Escaneo UDP prioritario (17 puertos comunes: DNS, DHCP, SNMP, etc.)
 3. Fase 2b: UDP extendido (si `--udp-mode full` y la identidad sigue siendo poco clara)
-4. Hosts silenciosos con vendor detectado y cero puertos abiertos pueden recibir un probe HTTP/HTTPS breve de titulo/encabezado en puertos comunes
+4. Hosts silenciosos con vendor detectado y cero puertos abiertos pueden recibir un probe HTTP/HTTPS breve de titulo/encabezado en puertos comunes y rutas de login
 
 Deshabilitar con `--no-deep-scan`.
 

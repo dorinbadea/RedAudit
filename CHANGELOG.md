@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Quiet-host identity**: HTTP identity probe now tries common login paths when root lacks a title/heading.
+
 ## [3.8.6] - 2025-12-22 (Docker Build Fix)
 
 ### Fixed
