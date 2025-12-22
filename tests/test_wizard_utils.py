@@ -3,6 +3,8 @@
 RedAudit - Tests for wizard UI helpers.
 """
 
+import os
+
 from unittest.mock import patch
 
 from redaudit.core.wizard import WizardMixin
@@ -69,6 +71,35 @@ def test_strip_and_truncate_menu_text():
     assert wiz._strip_ansi(text) == "Hello World"
     truncated = wiz._truncate_menu_text(text, 5)
     assert truncated.endswith("...")
+
+
+def test_menu_width_fallbacks(monkeypatch):
+    wiz = _DummyWizard()
+    monkeypatch.setattr(
+        "shutil.get_terminal_size", lambda _fallback: os.terminal_size((1, 20))
+    )
+    assert wiz._menu_width() == 1
+
+    def _boom(_fallback):
+        raise OSError("no tty")
+
+    monkeypatch.setattr("shutil.get_terminal_size", _boom)
+    assert wiz._menu_width() == 79
+
+
+def test_truncate_menu_text_zero_width():
+    wiz = _DummyWizard()
+    assert wiz._truncate_menu_text("Hello", 0) == ""
+
+
+def test_format_menu_option_colors():
+    wiz = _DummyWizard()
+    wiz.COLORS["OKGREEN"] = "<G>"
+    wiz.COLORS["ENDC"] = "<E>"
+    assert wiz._format_menu_option(wiz.t("yes_default")) == "<G>yes_default<E>"
+
+    colored = "\x1b[31mAlready colored\x1b[0m"
+    assert wiz._format_menu_option(colored) == colored
 
 
 def test_show_main_menu_text(monkeypatch):
