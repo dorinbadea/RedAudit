@@ -34,6 +34,13 @@ This file is a reusable "initial context" for contributors working on RedAudit. 
 - List findings by severity with file/line references before any summary.
 - If no findings, state that explicitly and call out residual risks or testing gaps.
 
+### Scan Result Review & Enrichment
+
+- Review CLI output, session logs, and HTML/JSON reports for inconsistencies or weak identification.
+- When a host only has vendor data and zero open ports, consider a light HTTP/HTTPS probe on common ports
+  (short timeouts, opt-in config) to capture a title or server header for model identification.
+- Log improvement ideas in the roadmap or issues and document behavior changes in EN/ES docs.
+
 ### Frontend/UI Work
 
 - Preserve the existing design system when it exists.
