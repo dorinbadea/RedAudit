@@ -3,6 +3,10 @@
 RedAudit - Tests for updater helper functions.
 """
 
+import hashlib
+import os
+import time
+
 from redaudit.core import updater
 
 
@@ -67,3 +71,71 @@ def test_format_release_notes_for_cli_and_summary():
     assert "update_release_date:2025-01-02" in summary
     assert "update_release_type:Minor" in summary
     assert "update_release_url:https://example.com" in summary
+
+
+def test_compute_file_hash_and_iter_files(tmp_path):
+    target = tmp_path / "sample.txt"
+    target.write_text("hello", encoding="utf-8")
+    expected = hashlib.sha256(b"hello").hexdigest()
+
+    assert updater.compute_file_hash(str(target)) == expected
+
+    cache_dir = tmp_path / "__pycache__"
+    cache_dir.mkdir()
+    (cache_dir / "skip.pyc").write_bytes(b"")
+
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    (nested / "file.txt").write_text("data", encoding="utf-8")
+
+    rel_paths = updater._iter_files(str(tmp_path))
+    assert "sample.txt" in rel_paths
+    assert os.path.join("nested", "file.txt") in rel_paths
+    assert os.path.join("__pycache__", "skip.pyc") not in rel_paths
+
+
+def test_inject_default_lang_updates_and_appends(tmp_path):
+    constants = tmp_path / "constants.py"
+    constants.write_text('DEFAULT_LANG = "en"\n', encoding="utf-8")
+
+    assert updater._inject_default_lang(str(constants), "es") is True
+    assert 'DEFAULT_LANG = "es"' in constants.read_text(encoding="utf-8")
+
+    constants.write_text("OTHER = 1\n", encoding="utf-8")
+    assert updater._inject_default_lang(str(constants), "en") is True
+    assert 'DEFAULT_LANG = "en"' in constants.read_text(encoding="utf-8")
+
+
+def test_restart_terminal_notice_and_pause(monkeypatch, capsys):
+    def _t(key, *args):
+        return f"{key}:{','.join(str(a) for a in args)}" if args else key
+
+    monkeypatch.setattr(updater, "_suggest_restart_command", lambda: "exec $SHELL -l")
+    monkeypatch.setattr(updater.sys.stdout, "isatty", lambda: True)
+    updater._show_restart_terminal_notice(t_fn=_t, lang="en")
+    output = capsys.readouterr().out
+    assert "update_restart_terminal_title" in output
+    assert "exec $SHELL -l" in output
+
+    monkeypatch.setattr(updater.sys.stdin, "isatty", lambda: False)
+    called = {}
+
+    def _fake_sleep(value):
+        called["sleep"] = value
+
+    monkeypatch.setattr(time, "sleep", _fake_sleep)
+    updater._pause_for_restart_terminal(t_fn=_t)
+    assert called["sleep"] == 1.0
+
+
+def test_pause_for_restart_terminal_tty(monkeypatch):
+    monkeypatch.setattr(updater.sys.stdin, "isatty", lambda: True)
+    called = {}
+
+    def _fake_input(_prompt):
+        called["input"] = True
+        return ""
+
+    monkeypatch.setattr("builtins.input", _fake_input)
+    updater._pause_for_restart_terminal(t_fn=lambda key: key)
+    assert called["input"] is True
