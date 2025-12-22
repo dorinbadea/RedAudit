@@ -13,7 +13,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from redaudit.core.jsonl_exporter import export_all
+from redaudit.core.jsonl_exporter import export_all, _extract_title
 
 
 class TestJsonlExporter(unittest.TestCase):
@@ -88,6 +88,25 @@ class TestJsonlExporter(unittest.TestCase):
                 summary = json.load(f)
             self.assertEqual(summary.get("session_id"), "session-123")
             self.assertEqual(summary.get("redaudit_version"), "3.5.0")
+
+    def test_extract_title_from_observations(self):
+        vuln = {"parsed_observations": ["Missing HSTS on endpoint"]}
+        self.assertEqual(
+            _extract_title(vuln), "Missing HTTP Strict Transport Security Header"
+        )
+
+        vuln = {"parsed_observations": ["Server banner reveals version"], "port": 80}
+        self.assertEqual(_extract_title(vuln), "Server Version Disclosed in Banner")
+
+        vuln = {"parsed_observations": ["Detected cve-2024-1234 issue"], "port": 443}
+        self.assertEqual(_extract_title(vuln), "Known Vulnerability: CVE-2024-1234")
+
+    def test_extract_title_fallbacks(self):
+        vuln = {"port": 443, "url": "https://example.com"}
+        self.assertEqual(_extract_title(vuln), "Web Service Finding on Port 443")
+
+        vuln = {"port": 22}
+        self.assertEqual(_extract_title(vuln), "Service Finding on Port 22")
 
 
 if __name__ == "__main__":

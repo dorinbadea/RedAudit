@@ -6,6 +6,7 @@ RedAudit - Path Helpers Tests
 import os
 import sys
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch, mock_open, call
 
 # Add parent directory to path for CI compatibility
@@ -110,6 +111,53 @@ class TestChownTree(unittest.TestCase):
                 ],
                 any_order=True,
             )
+
+
+class TestInvokingUser(unittest.TestCase):
+    def test_get_invoking_user_returns_none_when_not_root(self):
+        with (
+            patch("redaudit.utils.paths.os.geteuid", return_value=1000),
+            patch.dict(os.environ, {"SUDO_USER": "alice"}, clear=False),
+        ):
+            self.assertIsNone(paths.get_invoking_user())
+
+    def test_get_invoking_user_returns_sudo_user(self):
+        with (
+            patch("redaudit.utils.paths.os.geteuid", return_value=0),
+            patch.dict(os.environ, {"SUDO_USER": "alice"}, clear=False),
+        ):
+            self.assertEqual(paths.get_invoking_user(), "alice")
+
+    def test_get_invoking_user_ignores_root(self):
+        with (
+            patch("redaudit.utils.paths.os.geteuid", return_value=0),
+            patch.dict(os.environ, {"SUDO_USER": "root"}, clear=False),
+        ):
+            self.assertIsNone(paths.get_invoking_user())
+
+    def test_resolve_invoking_user_owner_uses_sudo_ids(self):
+        with (
+            patch("redaudit.utils.paths.os.geteuid", return_value=0),
+            patch.dict(os.environ, {"SUDO_UID": "1001", "SUDO_GID": "1002"}, clear=False),
+        ):
+            self.assertEqual(paths.resolve_invoking_user_owner(), (1001, 1002))
+
+    @unittest.skipIf(paths.pwd is None, "pwd not available on this platform")
+    def test_resolve_invoking_user_owner_uses_pwd(self):
+        with (
+            patch("redaudit.utils.paths.os.geteuid", return_value=0),
+            patch.dict(os.environ, {"SUDO_UID": "", "SUDO_GID": ""}, clear=False),
+            patch("redaudit.utils.paths.get_invoking_user", return_value="alice"),
+            patch(
+                "redaudit.utils.paths.pwd.getpwnam",
+                return_value=SimpleNamespace(pw_uid=2000, pw_gid=2001),
+            ),
+        ):
+            self.assertEqual(paths.resolve_invoking_user_owner(), (2000, 2001))
+
+    def test_resolve_invoking_user_owner_non_root(self):
+        with patch("redaudit.utils.paths.os.geteuid", return_value=1000):
+            self.assertIsNone(paths.resolve_invoking_user_owner())
 
 
 if __name__ == "__main__":

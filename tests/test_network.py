@@ -7,6 +7,7 @@ Tests for network detection functionality.
 import sys
 import os
 import unittest
+from types import SimpleNamespace
 from unittest.mock import Mock, patch, MagicMock
 
 # Add parent directory to path
@@ -18,6 +19,7 @@ from redaudit.core.network import (
     detect_networks_netifaces,
     detect_all_networks,
     find_interface_for_ip,
+    get_neighbor_mac,
 )
 
 
@@ -204,6 +206,23 @@ class TestNetworkDetection(unittest.TestCase):
 
         result = find_interface_for_ip("not-an-ip", networks)
         self.assertIsNone(result)
+
+    def test_get_neighbor_mac_parses_output(self):
+        output = "10.0.0.1 dev eth0 lladdr aa:bb:cc:dd:ee:ff REACHABLE"
+        with patch("redaudit.core.network.CommandRunner") as mock_runner:
+            mock_runner.return_value.run.return_value = SimpleNamespace(
+                stdout=output, stderr=""
+            )
+            self.assertEqual(get_neighbor_mac("10.0.0.1"), "aa:bb:cc:dd:ee:ff")
+
+    def test_get_neighbor_mac_returns_none_on_empty(self):
+        with patch("redaudit.core.network.CommandRunner") as mock_runner:
+            mock_runner.return_value.run.return_value = SimpleNamespace(stdout="", stderr="")
+            self.assertIsNone(get_neighbor_mac("10.0.0.1"))
+
+    def test_get_neighbor_mac_invalid_input(self):
+        self.assertIsNone(get_neighbor_mac(""))
+        self.assertIsNone(get_neighbor_mac(None))
 
 
 if __name__ == "__main__":
