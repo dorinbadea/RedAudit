@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Quiet-host HTTP probe**: Short HTTP/HTTPS title+server probe on common ports when a host has vendor hints but zero open ports, to improve model identification.
 
+### Fixed
+
+- **Asset classification**: Prefer device-specific hostname matches (e.g., `iphone`, `msi`) before router suffixes like `fritz` to reduce misclassification.
+
 ### Documentation
 
 - Updated manuals and report schema to describe the HTTP probe hints.

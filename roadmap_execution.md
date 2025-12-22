@@ -42,6 +42,7 @@ Objetivo: elevar confianza con metricas y documentacion clara.
 - [x] Agregar SECURITY_AUDIT.md con alcance y riesgos conocidos.
 - [x] Implementar rotacion de logs (RotatingFileHandler) con tests minimos.
 - [x] Probe HTTP/HTTPS breve en hosts silenciosos con vendor para enriquecer modelo/activo.
+- [x] Ajustar heurística de `asset_type` para priorizar dispositivos (iphone/msi/etc.) sobre sufijos `fritz`.
 
 Criterio de salida:
 

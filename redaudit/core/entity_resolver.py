@@ -262,19 +262,19 @@ def guess_asset_type(host: Dict) -> str:
     deep = host.get("deep_scan", {})
     vendor = (deep.get("vendor") or "").lower()
 
-    # Check hostname patterns
-    if any(x in hostname for x in ["fritz", "router", "gateway"]):
-        return "router"
-    if any(x in hostname for x in ["printer", "hp", "canon", "epson"]):
-        return "printer"
-    if any(x in hostname for x in ["tv", "samsung", "lg", "sony", "chromecast"]):
-        return "media"
+    # Check hostname patterns (specific devices first to avoid router suffix matches).
     if any(x in hostname for x in ["iphone", "ipad", "android"]):
         return "mobile"
     if any(x in hostname for x in ["macbook", "imac", "mac"]):
         return "workstation"
     if any(x in hostname for x in ["msi", "dell", "lenovo", "hp", "asus"]):
         return "workstation"
+    if any(x in hostname for x in ["printer", "hp", "canon", "epson"]):
+        return "printer"
+    if any(x in hostname for x in ["tv", "samsung", "lg", "sony", "chromecast"]):
+        return "media"
+    if any(x in hostname for x in ["fritz", "router", "gateway"]):
+        return "router"
 
     # Check vendor
     if any(x in vendor for x in ["apple", "microsoft"]):

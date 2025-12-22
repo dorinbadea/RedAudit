@@ -13,6 +13,10 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 - **Probe HTTP en hosts silenciosos**: Probe HTTP/HTTPS breve en puertos comunes cuando el host tiene vendor pero cero puertos abiertos, para mejorar la identificación de modelo.
 
+### Corregido
+
+- **Clasificación de activos**: Se priorizan coincidencias específicas del hostname (p. ej. `iphone`, `msi`) antes de sufijos de router como `fritz` para evitar falsos positivos.
+
 ### Documentación
 
 - Manuales y esquema de reportes actualizados para incluir las pistas del probe HTTP.
