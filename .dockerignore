@@ -1,0 +1,11 @@
+.git
+.github
+.pytest_cache
+.venv
+__pycache__
+tests
+scan_results_private
+*.pyc
+*.pyo
+*.pyd
+*.swp
