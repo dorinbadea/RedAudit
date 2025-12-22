@@ -123,6 +123,26 @@ def test_password_validation():
     print("✅ Password validation structure test passed")
 
 
+def test_validate_password_strength_and_prompt(monkeypatch):
+    if not CRYPTO_AVAILABLE:
+        return
+
+    from redaudit.core.crypto import validate_password_strength, ask_password_twice
+
+    ok, msg = validate_password_strength("Short1", lang="en")
+    assert ok is False
+    assert "at least" in msg
+
+    inputs = iter(["short", "StrongPass123", "StrongPass123"])
+    monkeypatch.setattr("getpass.getpass", lambda *_args, **_kwargs: next(inputs))
+    assert ask_password_twice(prompt="Password", lang="en") == "StrongPass123"
+
+
+def test_generate_random_password_length():
+    pw = generate_random_password(24)
+    assert len(pw) == 24
+
+
 if __name__ == "__main__":
     print("Running encryption tests...\n")
 
