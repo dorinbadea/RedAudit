@@ -16,7 +16,7 @@
 
 - Estado: revision interna best-effort.
 - No se identificaron vulnerabilidades criticas conocidas en esta revision.
-- Coverage por debajo del objetivo (global ~61.0% en esta corrida); limita la confianza en edge cases.
+- Coverage por debajo del objetivo (global ~62.7% en esta corrida); limita la confianza en edge cases.
 
 ## Controles Observados
 
@@ -42,4 +42,4 @@
 ## Evidencia
 
 - pre-commit: OK.
-- pytest: 404 tests OK.
+- pytest: 420 tests OK.

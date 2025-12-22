@@ -16,7 +16,7 @@
 
 - Status: best-effort internal review.
 - No known critical vulnerabilities identified in the current review.
-- Coverage is below target (overall ~61.0% in this run); this limits confidence in edge cases.
+- Coverage is below target (overall ~62.7% in this run); this limits confidence in edge cases.
 
 ## Observed Controls
 
@@ -42,4 +42,4 @@
 ## Evidence
 
 - pre-commit: passed.
-- pytest: 404 passed.
+- pytest: 420 passed.

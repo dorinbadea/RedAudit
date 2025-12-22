@@ -38,7 +38,7 @@ Criterio de salida:
 
 Objetivo: elevar confianza con metricas y documentacion clara.
 
-- [ ] Subir cobertura real en redaudit/ > 90% (actual: ~61.0%).
+- [ ] Subir cobertura real en redaudit/ > 90% (actual: ~62.7%).
 - [x] Agregar SECURITY_AUDIT.md con alcance y riesgos conocidos.
 - [x] Implementar rotacion de logs (RotatingFileHandler) con tests minimos.
 
