@@ -233,6 +233,29 @@ class TestReporter(unittest.TestCase):
         self.assertIn("Nuclei", text)
         self.assertIn("SmartScan", text)
 
+    def test_generate_summary_vulnerability_sources(self):
+        results = {
+            "hosts": [{"ip": "192.168.1.10"}],
+            "vulnerabilities": [
+                {
+                    "host": "192.168.1.10",
+                    "vulnerabilities": [
+                        {"nikto_findings": ["+ test"]},
+                        {"testssl_analysis": {"summary": "ok"}},
+                        {"template_id": "http-test"},
+                    ],
+                }
+            ],
+        }
+        config = {"target_networks": ["192.168.1.0/24"], "threads": 1, "scan_mode": "normal"}
+
+        generate_summary(results, config, ["192.168.1.10"], results["hosts"], datetime.now())
+
+        sources = results.get("pipeline", {}).get("vulnerability_scan", {}).get("sources", {})
+        self.assertEqual(sources.get("nikto"), 1)
+        self.assertEqual(sources.get("testssl"), 1)
+        self.assertEqual(sources.get("nuclei"), 1)
+
     def test_build_config_snapshot_minimal(self):
         config = {
             "target_networks": ["10.0.0.0/24"],

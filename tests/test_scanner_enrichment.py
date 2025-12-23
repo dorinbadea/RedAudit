@@ -118,6 +118,25 @@ def test_http_identity_probe_falls_back_to_heading(monkeypatch):
     assert result["http_title"] == "ZYXEL GS1200-5"
 
 
+def test_http_identity_probe_falls_back_to_meta(monkeypatch):
+    def _fake_make_runner(**_kwargs):
+        def _run(args, **_run_kwargs):
+            if "-I" in args:
+                return _result(stdout="HTTP/1.1 200 OK\n")
+            return _result(
+                stdout=(
+                    "<html><meta property=\"og:title\" content=\"Vodafone H-500-s\"></html>"
+                )
+            )
+
+        return SimpleNamespace(run=_run)
+
+    monkeypatch.setattr(scanner, "_make_runner", _fake_make_runner)
+
+    result = scanner.http_identity_probe("10.0.0.1", {"curl": "curl"}, ports=[80])
+    assert result["http_title"] == "Vodafone H-500-s"
+
+
 def test_http_identity_probe_tries_login_paths(monkeypatch):
     seen = []
 
@@ -236,6 +255,15 @@ def test_banner_grab_and_finalize_status(monkeypatch):
         {
             "status": scanner.STATUS_DOWN,
             "deep_scan": {"commands": [{"stdout": "22/tcp open"}]},
+        }
+    )
+    assert status == scanner.STATUS_UP
+
+    status = scanner.finalize_host_status(
+        {
+            "status": scanner.STATUS_DOWN,
+            "ports": [{"port": 80, "protocol": "tcp"}],
+            "deep_scan": {"vendor": "Sagemcom Broadband SAS"},
         }
     )
     assert status == scanner.STATUS_UP
