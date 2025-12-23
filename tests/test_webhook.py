@@ -147,6 +147,7 @@ def test_send_webhook_request_exception(monkeypatch):
 
     assert webhook.send_webhook("https://example.com", {"a": 1}) is False
 
+
 def test_process_findings_for_alerts_counts_sent(monkeypatch):
     results = {
         "vulnerabilities": [

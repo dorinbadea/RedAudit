@@ -10,7 +10,12 @@ from unittest.mock import patch
 import pytest
 
 from redaudit import cli
-from redaudit.utils.constants import DEFAULT_THREADS, MAX_CIDR_LENGTH, DEFAULT_UDP_MODE, UDP_TOP_PORTS
+from redaudit.utils.constants import (
+    DEFAULT_THREADS,
+    MAX_CIDR_LENGTH,
+    DEFAULT_UDP_MODE,
+    UDP_TOP_PORTS,
+)
 
 
 class _DummyApp:

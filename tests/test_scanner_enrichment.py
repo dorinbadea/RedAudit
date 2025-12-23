@@ -124,9 +124,7 @@ def test_http_identity_probe_falls_back_to_meta(monkeypatch):
             if "-I" in args:
                 return _result(stdout="HTTP/1.1 200 OK\n")
             return _result(
-                stdout=(
-                    "<html><meta property=\"og:title\" content=\"Gateway Model X\"></html>"
-                )
+                stdout=('<html><meta property="og:title" content="Gateway Model X"></html>')
             )
 
         return SimpleNamespace(run=_run)
@@ -156,6 +154,7 @@ def test_http_identity_probe_tries_login_paths(monkeypatch):
     result = scanner.http_identity_probe("10.0.0.2", {"curl": "curl"}, ports=[80])
     assert result["http_title"] == "Vodafone"
     assert any(url.endswith("/login.html") for _, url in seen)
+
 
 def test_ssl_deep_analysis_parses_findings(monkeypatch):
     output = """

@@ -863,9 +863,7 @@ def http_identity_probe(
             for path in HTTP_IDENTITY_PATHS:
                 url = f"{scheme}://{host}:{port}{path}"
                 if not server:
-                    headers = _fetch_http_headers(
-                        url, extra_tools, dry_run=dry_run, logger=logger
-                    )
+                    headers = _fetch_http_headers(url, extra_tools, dry_run=dry_run, logger=logger)
                     server = _extract_http_server(headers)
                 if not title:
                     body = _fetch_http_body(url, extra_tools, dry_run=dry_run, logger=logger)
