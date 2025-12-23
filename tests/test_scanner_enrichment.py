@@ -125,7 +125,7 @@ def test_http_identity_probe_falls_back_to_meta(monkeypatch):
                 return _result(stdout="HTTP/1.1 200 OK\n")
             return _result(
                 stdout=(
-                    "<html><meta property=\"og:title\" content=\"Vodafone H-500-s\"></html>"
+                    "<html><meta property=\"og:title\" content=\"Gateway Model X\"></html>"
                 )
             )
 
@@ -134,7 +134,7 @@ def test_http_identity_probe_falls_back_to_meta(monkeypatch):
     monkeypatch.setattr(scanner, "_make_runner", _fake_make_runner)
 
     result = scanner.http_identity_probe("10.0.0.1", {"curl": "curl"}, ports=[80])
-    assert result["http_title"] == "Vodafone H-500-s"
+    assert result["http_title"] == "Gateway Model X"
 
 
 def test_http_identity_probe_tries_login_paths(monkeypatch):

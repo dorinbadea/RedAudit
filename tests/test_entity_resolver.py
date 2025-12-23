@@ -81,13 +81,18 @@ class TestEntityResolver(unittest.TestCase):
         }
         self.assertEqual(guess_asset_type(host), "switch")
 
-    def test_guess_asset_type_router_from_http_title(self):
-        """Test router detection from HTTP title hints."""
+    def test_guess_asset_type_router_from_http_title_keywords(self):
+        """Test router detection from generic HTTP title keywords."""
         host = {
             "hostname": "",
             "ports": [],
-            "agentless_fingerprint": {"http_title": "Vodafone H-500-s"},
+            "agentless_fingerprint": {"http_title": "Home Gateway Login"},
         }
+        self.assertEqual(guess_asset_type(host), "router")
+
+    def test_guess_asset_type_router_from_default_gateway_flag(self):
+        """Test router detection from default gateway flag."""
+        host = {"hostname": "", "ports": [], "is_default_gateway": True}
         self.assertEqual(guess_asset_type(host), "router")
 
     def test_guess_asset_type_media_from_cast(self):

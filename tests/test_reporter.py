@@ -100,6 +100,21 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(summary["vulns_found"], 1)
         self.assertIn("duration", summary)
 
+    def test_generate_summary_tags_default_gateway(self):
+        results = {
+            "hosts": [{"ip": "192.168.1.1", "hostname": "", "ports": []}],
+            "vulnerabilities": [],
+            "topology": {"default_gateway": {"ip": "192.168.1.1"}},
+        }
+        config = {"target_networks": ["192.168.1.0/24"], "threads": 1, "scan_mode": "normal"}
+
+        generate_summary(results, config, ["192.168.1.1"], results["hosts"], datetime.now())
+
+        host = results["hosts"][0]
+        self.assertTrue(host.get("is_default_gateway"))
+        hints = [str(h).lower() for h in (host.get("device_type_hints") or [])]
+        self.assertIn("router", hints)
+
     def test_generate_summary_detects_leaks_and_pipeline(self):
         results = {
             "hosts": [
