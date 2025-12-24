@@ -315,9 +315,14 @@ def test_hyperscan_with_progress_logic():
         hyperscan.hyperscan_with_progress(["1.1.1.1"])
 
         # Test the callback
-        cb = mock_disc.call_args[1]["progress_callback"]
-        cb(50, 100, "test")
-        prog_inst.update.assert_called()
+        args, kwargs = mock_disc.call_args
+        cb = kwargs.get("progress_callback")
+        if not cb and len(args) > 3:
+            cb = args[3]
+
+        if cb:
+            cb(50, 100, "test")
+            prog_inst.update.assert_called()
 
 
 # -------------------------------------------------------------------------

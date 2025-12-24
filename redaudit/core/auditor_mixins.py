@@ -281,7 +281,7 @@ class AuditorUIMixin:
 
             # Determine mode from command for user-friendly hint
             mode_hint = ""
-            if "async UDP probe" in command.lower():
+            if "async udp probe" in command.lower():
                 mode_hint = "UDP probe"
             elif "-sU" in command:
                 mode_hint = "UDP scan"
