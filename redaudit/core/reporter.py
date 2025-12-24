@@ -191,6 +191,8 @@ def _summarize_vulnerabilities(vuln_entries: list) -> Dict[str, Any]:
     total = 0
     sources: Dict[str, int] = {}
     for entry in vuln_entries or []:
+        if not entry:
+            continue
         for vuln in entry.get("vulnerabilities", []) or []:
             total += 1
             source = _infer_vuln_source(vuln)
@@ -219,7 +221,9 @@ def generate_summary(
         Summary dictionary
     """
     duration = datetime.now() - scan_start_time if scan_start_time is not None else None
-    total_vulns = sum(len(v.get("vulnerabilities", [])) for v in results.get("vulnerabilities", []))
+    total_vulns = sum(
+        len(v.get("vulnerabilities", [])) for v in results.get("vulnerabilities", []) if v
+    )
 
     unique_hosts = {h for h in (all_hosts or []) if isinstance(h, str) and h.strip()}
     summary = {
@@ -333,8 +337,10 @@ def _detect_network_leaks(results: Dict, config: Dict) -> list:
         except ValueError:
             pass
 
-    # Regex for IPv4
-    ip_regex = re.compile(r"\b((?:10|172\.(?:1[6-9]|2[0-9]|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3})\b")
+    # Regex for private IPv4 (fixed for full octet matching)
+    ip_regex = re.compile(
+        r"\b((?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}))\b"
+    )
 
     # helper to check if IP is interesting (private + not in targets)
     def is_cand(ip_str):
@@ -350,7 +356,9 @@ def _detect_network_leaks(results: Dict, config: Dict) -> list:
         except ValueError:
             return False
 
-    for host_vuln in results.get("vulnerabilities", []):
+    for host_vuln in results.get("vulnerabilities", []) or []:
+        if not host_vuln:
+            continue
         host_ip = host_vuln.get("host")
         for finding in host_vuln.get("vulnerabilities", []):
             content_to_check = []
@@ -410,8 +418,10 @@ def extract_leaked_networks(results: Dict, config: Dict) -> list:
         except ValueError:
             pass
 
-    # Regex for private IPv4
-    ip_regex = re.compile(r"\b((?:10|172\.(?:1[6-9]|2[0-9]|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3})\b")
+    # Regex for private IPv4 (fixed for full octet matching)
+    ip_regex = re.compile(
+        r"\b((?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}))\b"
+    )
 
     def is_new_network(ip_str):
         """Check if IP is in a network not already being scanned."""
@@ -427,7 +437,9 @@ def extract_leaked_networks(results: Dict, config: Dict) -> list:
             return False
 
     # Search vulnerabilities for leaked IPs
-    for host_vuln in results.get("vulnerabilities", []):
+    for host_vuln in results.get("vulnerabilities", []) or []:
+        if not host_vuln:
+            continue
         for finding in host_vuln.get("vulnerabilities", []):
             content_to_check = []
             if finding.get("curl_headers"):
