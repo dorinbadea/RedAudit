@@ -387,7 +387,7 @@ def enrich_port_with_cves(port_info: Dict, api_key: Optional[str] = None, logger
         if cpe_version in ("*", "-", ""):
             if not version:
                 return port_info
-            sanitized_version = re.sub(r"[^a-zA-Z0-9_\\-.]", "", str(version))[:20]
+            sanitized_version = re.sub(r"[^a-zA-Z0-9_\-.]", "", str(version))[:20]
             if not sanitized_version:
                 return port_info
             if len(parts) > 5:
