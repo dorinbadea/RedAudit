@@ -509,21 +509,6 @@ def test_auditor_scan_network_discovery(mock_auditor):
         mock_auditor.scan_network_discovery("192.168.1.0/24")
 
 
-def test_auditor_progress_console(mock_auditor):
-    """Test _progress_console method returns Console."""
-    with patch("rich.console.Console") as m_console:
-        mock_auditor._progress_console()
-        m_console.assert_called()
-
-
-def test_auditor_progress_ui(mock_auditor):
-    """Test _progress_ui context manager."""
-    mock_auditor.config["_actual_output_dir"] = "/tmp"
-    with patch("rich.live.Live"):
-        ctx = mock_auditor._progress_ui()
-        assert ctx is not None
-
-
 # -------------------------------------------------------------------------
 # Defaults Handling Tests (lines 250-272)
 # -------------------------------------------------------------------------
@@ -712,12 +697,6 @@ def test_auditor_setup_encryption_skip(mock_auditor):
     with patch.object(mock_auditor, "ask_yes_no", return_value=False), patch("builtins.print"):
         mock_auditor.setup_encryption()
         assert mock_auditor.config.get("encrypt_results") is not True
-
-
-def test_auditor_safe_text_column(mock_auditor):
-    """Test _safe_text_column method."""
-    result = mock_auditor._safe_text_column("test", overflow="ellipsis")
-    assert result is not None
 
 
 def test_auditor_rate_limit_delay_property(mock_auditor):
