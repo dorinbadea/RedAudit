@@ -16,13 +16,12 @@ RedAudit implementa una filosofía de "seguro por diseño", asumiendo la ejecuci
 
 | Versión | Soportada | Estado |
 | ------- | --------- | ------ |
-| 3.5.x   | Sí        | Estable actual |
-| 3.4.x   | Sí        | Soportada |
-| 3.3.x   | Sí        | Soportada |
-| 3.2.x   | Solo fixes de seguridad | Mantenimiento |
-| 2.9.x   | Solo fixes de seguridad | EOL: Marzo 2026 |
-| 2.8.x   | No        | EOL |
-| < 2.8   | No        | EOL |
+| 3.8.x   | Sí        | Estable actual |
+| 3.7.x   | Sí        | Soportada |
+| 3.6.x   | Sí        | Soportada |
+| 3.5.x   | Solo fixes de seguridad | Mantenimiento |
+| 3.4.x   | Solo fixes de seguridad | EOL: Junio 2026 |
+| < 3.4   | No        | EOL |
 
 ## 1. Sanitización de Entrada
 

@@ -141,7 +141,7 @@ predictable.
 
 ## 5. CLI Reference (Complete)
 
-Flags verified against `redaudit --help` (vNext, unreleased):
+Flags verified against `redaudit --help` (v3.8.9):
 
 ### Core
 

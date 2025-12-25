@@ -29,13 +29,12 @@ If you discover a security vulnerability in RedAudit, please report it responsib
 
 | Version | Supported          | Status |
 | ------- | ------------------ | ------ |
-| 3.5.x   | Yes                | Current stable |
-| 3.4.x   | Yes                | Supported |
-| 3.3.x   | Yes                | Supported |
-| 3.2.x   | Security fixes only | Maintenance |
-| 2.9.x   | Security fixes only | EOL: March 2026 |
-| 2.8.x   | No                 | EOL |
-| < 2.8   | No                 | EOL |
+| 3.8.x   | Yes                | Current stable |
+| 3.7.x   | Yes                | Supported |
+| 3.6.x   | Yes                | Supported |
+| 3.5.x   | Security fixes only | Maintenance |
+| 3.4.x   | Security fixes only | EOL: June 2026 |
+| < 3.4   | No                 | EOL |
 
 ---
 

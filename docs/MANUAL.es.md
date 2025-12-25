@@ -140,7 +140,7 @@ controlado.
 
 ## 5. Referencia CLI (Completa)
 
-Flags verificadas contra `redaudit --help` (vNext, sin publicar):
+Flags verificadas contra `redaudit --help` (v3.8.9):
 
 ### Core
 
