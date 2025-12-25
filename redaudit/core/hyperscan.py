@@ -1094,6 +1094,7 @@ def hyperscan_with_progress(
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TimeElapsedColumn(),
             console=Console(file=getattr(sys, "__stdout__", sys.stdout)),
+            refresh_per_second=4,
         ) as progress:
             task_id = progress.add_task("[cyan]HyperScan Discovery...", total=100)
 

@@ -324,6 +324,7 @@ class AuditorVulnMixin:
                             show_elapsed=True,
                         ),
                         console=self._progress_console(),
+                        refresh_per_second=4,
                     ) as progress:
                         eta_upper_init = self._format_eta(remaining_budget_s / workers)
                         initial_detail = self._get_ui_detail()

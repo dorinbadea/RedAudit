@@ -236,6 +236,7 @@ def run_nuclei_scan(
                     TextColumn("{task.fields[eta]}", justify="right"),
                     console=console,
                     transient=False,
+                    refresh_per_second=4,
                 ) as progress:
                     task = progress.add_task(
                         f"[cyan]Nuclei (0/{total_batches})",

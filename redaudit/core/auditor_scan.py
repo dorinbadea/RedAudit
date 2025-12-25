@@ -649,6 +649,7 @@ class AuditorScanMixin:
                         TimeElapsedColumn(),
                         console=self._progress_console(),
                         transient=True,
+                        refresh_per_second=4,
                     ) as progress:
                         task = progress.add_task("nmap host discovery...", total=None)
                         nm.scan(hosts=network, arguments=args)
@@ -1181,6 +1182,7 @@ class AuditorScanMixin:
                             show_elapsed=True,
                         ),
                         console=self._progress_console(),
+                        refresh_per_second=4,
                     ) as progress:
                         initial_detail = self._get_ui_detail()
                         # v3.8.1: Simplified task - no ETA fields
@@ -1332,6 +1334,7 @@ class AuditorScanMixin:
                             show_elapsed=True,
                         ),
                         console=self._progress_console(),
+                        refresh_per_second=4,
                     ) as progress:
                         task = progress.add_task(
                             f"[cyan]{self.t('windows_verify_label')}",

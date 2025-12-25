@@ -416,6 +416,7 @@ class InteractiveNetworkAuditor(
                             TimeElapsedColumn(),
                             console=self._progress_console(),
                             transient=True,
+                            refresh_per_second=4,
                         ) as progress:
                             task = progress.add_task("discovering...", total=None)
                             self.results["topology"] = discover_topology(
@@ -496,6 +497,7 @@ class InteractiveNetworkAuditor(
                                 TimeElapsedColumn(),
                                 console=self._progress_console(),
                                 transient=True,
+                                refresh_per_second=4,
                             ) as progress:
                                 # v3.8.1: Simplified progress - elapsed only, no ETA
                                 task = progress.add_task(
@@ -712,6 +714,7 @@ class InteractiveNetworkAuditor(
                                     ),
                                     console=self._progress_console(),
                                     transient=False,
+                                    refresh_per_second=4,
                                 ) as progress:
                                     task = progress.add_task(
                                         f"[cyan]Nuclei (0/{total_batches})",
