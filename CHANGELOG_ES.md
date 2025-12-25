@@ -9,6 +9,21 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [3.8.8] - 2025-12-25 (Fingerprinting de Dispositivos y UX)
+
+### Añadido
+
+- **Fingerprinting HTTP de Dispositivos**: Identificación automática de vendor/modelo desde títulos de interfaz web.
+  - 40+ patrones: Vodafone, FRITZ!Box, TP-Link, NETGEAR, ASUS, Linksys, D-Link, Ubiquiti, MikroTik, Cisco, Hikvision, Dahua, Axis, Philips Hue, Synology, QNAP, y más.
+  - Nuevos campos en fingerprint agentless: `device_vendor`, `device_model`, `device_type`.
+  - Mejora la identificación de activos cuando hostname/vendor MAC no está disponible.
+
+### Corregido
+
+- **Ruido en salida CLI**: Frecuencia de actualización del spinner reducida de 10Hz a 4Hz (`refresh_per_second=4`).
+  - Corrige archivos de log excesivamente grandes cuando el terminal se captura externamente (ej. comando `script`).
+  - Aplicado a las 9 barras de progreso en módulos auditor, hyperscan, nuclei.
+
 ## [3.8.7] - 2025-12-23 (Correcciones de reportes y clasificación)
 
 ### Corregido
