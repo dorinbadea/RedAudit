@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.9] - 2025-12-25 (Device Fingerprinting Export Fix)
+
+### Fixed
+
+- **Device fingerprinting fields now exported**: `device_vendor`, `device_model`, `device_type` are now included in `assets.jsonl` output and `agentless_hints` signals.
+  - Previously these fields were extracted but filtered out during JSONL export.
+
 ## [3.8.8] - 2025-12-25 (Device Fingerprinting & UX)
 
 ### Added

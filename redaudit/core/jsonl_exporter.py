@@ -180,6 +180,10 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
                     "smb_signing_required",
                     "smbv1_detected",
                     "product_version",
+                    # v3.8.9: Device fingerprinting from HTTP title/server
+                    "device_vendor",
+                    "device_model",
+                    "device_type",
                 ):
                     if agentless.get(key) not in (None, ""):
                         filtered[key] = agentless.get(key)

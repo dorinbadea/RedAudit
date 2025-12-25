@@ -1454,6 +1454,10 @@ class AuditorScanMixin:
                     "http_server",
                     "smb_signing_required",
                     "smbv1_detected",
+                    # v3.8.9: Device fingerprinting from HTTP probes
+                    "device_vendor",
+                    "device_model",
+                    "device_type",
                 ):
                     if agentless_fp.get(key) not in (None, ""):
                         hint_keys.append(key)
