@@ -7,7 +7,7 @@
 ![Licencia](https://img.shields.io/badge/licencia-GPLv3-green?style=flat-square&logo=gnu&logoColor=white)
 ![Plataforma](https://img.shields.io/badge/plataforma-linux-FCC624?style=flat-square&logo=linux&logoColor=black)
 [![Tests](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dorinbadea/81671a8fffccee81ca270f14d094e5a1/raw/redaudit-tests.json&style=flat-square&logo=githubactions&logoColor=white)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
-![Cobertura](https://img.shields.io/badge/cobertura-82%25-brightgreen?style=flat-square&logo=codecov&logoColor=white)
+![Cobertura](https://img.shields.io/badge/cobertura-84%25-brightgreen?style=flat-square&logo=codecov&logoColor=white)
 
 <div align="center">
 
