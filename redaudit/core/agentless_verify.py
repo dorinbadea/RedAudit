@@ -255,6 +255,7 @@ def parse_ssh_hostkeys(text: str) -> Dict[str, Any]:
 def parse_http_probe(text: str) -> Dict[str, Any]:
     """
     Parse http-title and http-server-header outputs for identity hints.
+    Also attempts to fingerprint device vendor/model from common patterns.
     """
     out: Dict[str, Any] = {}
     if not text:
@@ -278,7 +279,89 @@ def parse_http_probe(text: str) -> Dict[str, Any]:
                 if server:
                     out["server"] = server[:256]
                 break
+
+    # v3.8.8: Device fingerprinting from HTTP title/server
+    device_info = _fingerprint_device_from_http(out.get("title", ""), out.get("server", ""))
+    out.update(device_info)
+
     return out
+
+
+# Device fingerprinting patterns from HTTP title/server headers
+# Each pattern: (compiled_regex, vendor, device_type, model_group_index or None)
+_HTTP_DEVICE_PATTERNS = [
+    # Router vendors
+    (re.compile(r"(Vodafone[- ]?[A-Z0-9\-]+)", re.I), "Vodafone", "router", 1),
+    (re.compile(r"(FRITZ!?[Bb]ox[- ]?\d*)", re.I), "AVM", "router", 1),
+    (re.compile(r"(TP-?LINK[- ][A-Z0-9\-]+)", re.I), "TP-Link", "router", 1),
+    (re.compile(r"(NETGEAR[- ]?[A-Z0-9\-]*)", re.I), "NETGEAR", "router", 1),
+    (re.compile(r"(ASUS[- ]?RT[- ]?[A-Z0-9\-]+)", re.I), "ASUS", "router", 1),
+    (re.compile(r"(Linksys[- ]?[A-Z0-9\-]*)", re.I), "Linksys", "router", 1),
+    (re.compile(r"(D-?Link[- ]?[A-Z0-9\-]*)", re.I), "D-Link", "router", 1),
+    (re.compile(r"(Ubiquiti|UniFi|EdgeRouter)", re.I), "Ubiquiti", "router", 1),
+    (re.compile(r"(MikroTik|RouterOS)", re.I), "MikroTik", "router", 1),
+    (re.compile(r"(pfSense|OPNsense)", re.I), "Netgate", "router", 1),
+    (re.compile(r"(OpenWrt|LEDE)", re.I), "OpenWrt", "router", 1),
+    (re.compile(r"(Huawei[- ]?[A-Z0-9\-]*)", re.I), "Huawei", "router", 1),
+    (re.compile(r"(ZTE[- ]?[A-Z0-9\-]*)", re.I), "ZTE", "router", 1),
+    (re.compile(r"(Vigor[- ]?\d+|DrayTek)", re.I), "DrayTek", "router", 1),
+    (re.compile(r"(Synology)", re.I), "Synology", "nas", 1),
+    (re.compile(r"(QNAP)", re.I), "QNAP", "nas", 1),
+    # Switches
+    (re.compile(r"(Cisco[- ]?[A-Z0-9\-]*)", re.I), "Cisco", "switch", 1),
+    (re.compile(r"(HP[- ]?ProCurve|Aruba|HPE)", re.I), "HPE/Aruba", "switch", 1),
+    (re.compile(r"(Juniper[- ]?[A-Z0-9\-]*)", re.I), "Juniper", "switch", 1),
+    # Cameras
+    (re.compile(r"(Hikvision[- ]?[A-Z0-9\-]*)", re.I), "Hikvision", "camera", 1),
+    (re.compile(r"(Dahua[- ]?[A-Z0-9\-]*)", re.I), "Dahua", "camera", 1),
+    (re.compile(r"(Axis[- ]?[A-Z0-9\-]*|VAPIX)", re.I), "Axis", "camera", 1),
+    (re.compile(r"(Reolink[- ]?[A-Z0-9\-]*)", re.I), "Reolink", "camera", 1),
+    (re.compile(r"(ONVIF)", re.I), "ONVIF", "camera", None),
+    # IoT / Smart Home
+    (re.compile(r"(Philips Hue|Hue Bridge)", re.I), "Philips", "iot", 1),
+    (re.compile(r"(Home Assistant)", re.I), "Home Assistant", "iot", 1),
+    (re.compile(r"(Tasmota)", re.I), "Tasmota", "iot", 1),
+    (re.compile(r"(Shelly[- ]?[A-Z0-9\-]*)", re.I), "Shelly", "iot", 1),
+    (re.compile(r"(Sonoff[- ]?[A-Z0-9\-]*)", re.I), "Sonoff", "iot", 1),
+    # Printers
+    (
+        re.compile(r"(HP[- ]?(LaserJet|OfficeJet|DeskJet)[- ]?[A-Z0-9\-]*)", re.I),
+        "HP",
+        "printer",
+        1,
+    ),
+    (re.compile(r"(EPSON[- ]?[A-Z0-9\-]*)", re.I), "Epson", "printer", 1),
+    (re.compile(r"(Brother[- ]?[A-Z0-9\-]*)", re.I), "Brother", "printer", 1),
+    (re.compile(r"(Canon[- ]?(PIXMA|imageCLASS)[- ]?[A-Z0-9\-]*)", re.I), "Canon", "printer", 1),
+    # Generic server software (fallback for type detection)
+    (re.compile(r"(Apache|nginx|IIS|lighttpd)", re.I), None, "server", 1),
+    (re.compile(r"(ESXi|vSphere|VMware)", re.I), "VMware", "hypervisor", 1),
+    (re.compile(r"(Proxmox)", re.I), "Proxmox", "hypervisor", 1),
+    (re.compile(r"(iLO|iDRAC|IPMI)", re.I), None, "bmc", 1),
+]
+
+
+def _fingerprint_device_from_http(title: str, server: str) -> Dict[str, Any]:
+    """
+    Attempt to identify device vendor, model, and type from HTTP title/server.
+    Returns dict with 'device_vendor', 'device_model', 'device_type' if matched.
+    """
+    result: Dict[str, Any] = {}
+    combined = f"{title} {server}"
+
+    for pattern, vendor, device_type, model_group in _HTTP_DEVICE_PATTERNS:
+        match = pattern.search(combined)
+        if match:
+            if vendor:
+                result["device_vendor"] = vendor
+            result["device_type"] = device_type
+            if model_group is not None:
+                model = match.group(model_group).strip()
+                if model and len(model) > 2:
+                    result["device_model"] = model[:64]
+            break  # Stop at first match (most specific)
+
+    return result
 
 
 def probe_agentless_services(
@@ -427,6 +510,10 @@ def summarize_agentless_fingerprint(probe_result: Dict[str, Any]) -> Dict[str, A
             fp["http_title"] = str(http.get("title"))[:256]
         if http.get("server"):
             fp["http_server"] = str(http.get("server"))[:256]
+        # v3.8.8: Device fingerprinting from HTTP probe
+        for k in ("device_vendor", "device_model", "device_type"):
+            if http.get(k):
+                fp[k] = str(http.get(k))[:64]
 
     if isinstance(ssh, dict):
         hostkeys = ssh.get("hostkeys")
