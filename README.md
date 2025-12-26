@@ -194,17 +194,18 @@ cd RedAudit
 sudo bash redaudit_install.sh
 ```
 
-### Docker (optional)
+### Docker (Windows / macOS / Linux)
 
-Run the official container image via GHCR:
+Works on any platform with Docker Desktop. See **[Docker Guide](docs/DOCKER.md)** for detailed setup.
 
 ```bash
 docker pull ghcr.io/dorinbadea/redaudit:latest
 
-# Example scan (host networking is recommended for local subnet discovery)
-docker run --rm --network host \
-  --cap-add=NET_RAW --cap-add=NET_ADMIN \
-  -v "$(pwd)/reports:/reports" \
+# Interactive wizard
+docker run -it --rm -v $(pwd)/reports:/reports ghcr.io/dorinbadea/redaudit:latest
+
+# Direct scan
+docker run --rm -v $(pwd)/reports:/reports \
   ghcr.io/dorinbadea/redaudit:latest \
   --target 192.168.1.0/24 --mode normal --yes --output /reports
 ```
