@@ -3,6 +3,7 @@
 RedAudit - Interactive wizard Red Team prompts tests
 
 Ensures the wizard wires Net Discovery / Red Team options into the runtime config.
+v3.9.0: Updated for new profile selector and timing question.
 """
 
 import os
@@ -25,7 +26,8 @@ class TestWizardRedTeam(unittest.TestCase):
         # 1=scan mode(normal), 3=vuln(yes), 4=CVE(no), 6=UDP(quick), 6=topo(off),
         # 7=net discovery(yes), 8=windows verify(no)
         app.ask_choice_with_back = Mock(side_effect=[1, 0, 1, 0, 0, 0, 1])
-        app.ask_choice = Mock(side_effect=[1])  # Red Team (B)
+        # v3.9.0: First ask_choice is profile (3=Custom), then Red Team (B)
+        app.ask_choice = Mock(side_effect=[3, 1])
         app.ask_number = Mock(side_effect=["all", 6])  # max_hosts, threads
         app.ask_yes_no = Mock(
             side_effect=[
@@ -56,7 +58,8 @@ class TestWizardRedTeam(unittest.TestCase):
 
         # v3.8.1: ask_choice_with_back handles steps 1,3,4,6,7,8
         app.ask_choice_with_back = Mock(side_effect=[1, 0, 1, 0, 0, 0, 1])
-        app.ask_choice = Mock(side_effect=[1])  # Red Team (B), blocked without root
+        # v3.9.0: First ask_choice is profile (3=Custom), then Red Team (B), blocked without root
+        app.ask_choice = Mock(side_effect=[3, 1])
         app.ask_number = Mock(side_effect=["all", 6])  # max_hosts, threads
         app.ask_yes_no = Mock(
             side_effect=[
