@@ -189,6 +189,78 @@ En Windows/macOS, Docker corre en un entorno virtual y puede no ver todos los di
 
 ---
 
+# Auditorías de Red Profesionales
+
+## Por Qué Importa la Visibilidad de Red
+
+Cuando realizas auditorías de seguridad autorizadas para tu empresa o clientes, necesitas que Docker vea la misma red que tu ordenador. Esta sección explica cómo lograrlo.
+
+## Opción 1: Usar una VM Linux (Recomendado para Profesionales)
+
+La manera más fiable de realizar auditorías de red desde Windows/macOS es ejecutar una máquina virtual Linux ligera:
+
+1. **Instala una VM** como VirtualBox, VMware, o Parallels
+2. **Crea una VM Ubuntu/Kali** con networking en modo puente (bridged)
+3. **Instala Docker en la VM** y ejecuta RedAudit con `--network host`
+
+```bash
+# Dentro de la VM Linux
+docker run --rm --network host \
+  --cap-add=NET_RAW --cap-add=NET_ADMIN \
+  -v $(pwd)/reports:/reports \
+  ghcr.io/dorinbadea/redaudit:latest \
+  --target 192.168.1.0/24 --mode normal --yes --output /reports
+```
+
+Esto te da **visibilidad completa de red Capa 2/3** para escaneo ARP, descubrimiento de hosts, y escaneo profundo.
+
+## Opción 2: Escanear Objetivos Específicos
+
+Si una VM no es práctico, aún puedes realizar auditorías efectivas apuntando a direcciones IP específicas:
+
+```bash
+# Objetivo único
+docker run -it --rm -v ~/RedAudit-Reports:/reports \
+  ghcr.io/dorinbadea/redaudit:latest \
+  --target 192.168.1.100 --mode deep --yes --output /reports
+
+# Múltiples objetivos específicos
+docker run -it --rm -v ~/RedAudit-Reports:/reports \
+  ghcr.io/dorinbadea/redaudit:latest \
+  --target 192.168.1.1,192.168.1.10,192.168.1.50 --mode normal --yes --output /reports
+```
+
+## Opción 3: Usar host.docker.internal (Limitado)
+
+En Windows/macOS, puedes acceder a servicios en tu máquina host usando el hostname especial `host.docker.internal`:
+
+```bash
+docker run -it --rm -v ~/RedAudit-Reports:/reports \
+  ghcr.io/dorinbadea/redaudit:latest \
+  --target host.docker.internal --mode quick --yes --output /reports
+```
+
+> ⚠️ **Importante**: Esto solo escanea servicios en TU máquina, no otros dispositivos de la red.
+
+## Comparación de Visibilidad de Red
+
+| Método | Descubrimiento de Hosts | Escaneo Subred Completa | Capa 2 (ARP) |
+|--------|------------------------|------------------------|--------------|
+| Docker Windows/macOS | ❌ Limitado | ⚠️ Parcial | ❌ No |
+| VM Linux + Docker | ✅ Completo | ✅ Completo | ✅ Sí |
+| Linux Nativo | ✅ Completo | ✅ Completo | ✅ Sí |
+
+## Para Despliegues Empresariales
+
+Para auditorías de seguridad regulares en entornos corporativos, recomendamos:
+
+1. **Máquina dedicada de auditoría Linux** (física o VM) con RedAudit instalado nativamente
+2. **O**: Docker en un servidor Linux con `--network host`
+3. **Programar escaneos regulares** usando cron o tu pipeline CI/CD
+4. **Exportar reportes** a tu SIEM (RedAudit soporta JSONL para Splunk/ELK)
+
+---
+
 # Usuarios de Linux
 
 Si estás en Linux, ¡no necesitas Docker! Instala RedAudit nativamente:

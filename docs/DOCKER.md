@@ -189,6 +189,78 @@ On Windows/macOS, Docker runs in a virtual environment and may not see all local
 
 ---
 
+# Professional Network Auditing
+
+## Why Network Visibility Matters
+
+When performing authorized security audits for your company or clients, you need Docker to see the same network as your computer. This section explains how to achieve this.
+
+## Option 1: Use a Linux VM (Recommended for Professionals)
+
+The most reliable way to perform network audits from Windows/macOS is to run a lightweight Linux virtual machine:
+
+1. **Install a VM** like VirtualBox, VMware, or Parallels
+2. **Create an Ubuntu/Kali VM** with bridged networking
+3. **Install Docker in the VM** and run RedAudit with `--network host`
+
+```bash
+# Inside the Linux VM
+docker run --rm --network host \
+  --cap-add=NET_RAW --cap-add=NET_ADMIN \
+  -v $(pwd)/reports:/reports \
+  ghcr.io/dorinbadea/redaudit:latest \
+  --target 192.168.1.0/24 --mode normal --yes --output /reports
+```
+
+This gives you **full Layer 2/3 network visibility** for ARP scanning, host discovery, and deep scanning.
+
+## Option 2: Scan Specific Targets
+
+If a VM isn't practical, you can still perform effective audits by targeting specific IP addresses:
+
+```bash
+# Single target
+docker run -it --rm -v ~/RedAudit-Reports:/reports \
+  ghcr.io/dorinbadea/redaudit:latest \
+  --target 192.168.1.100 --mode deep --yes --output /reports
+
+# Multiple specific targets
+docker run -it --rm -v ~/RedAudit-Reports:/reports \
+  ghcr.io/dorinbadea/redaudit:latest \
+  --target 192.168.1.1,192.168.1.10,192.168.1.50 --mode normal --yes --output /reports
+```
+
+## Option 3: Use host.docker.internal (Limited)
+
+On Windows/macOS, you can access services on your host machine using the special hostname `host.docker.internal`:
+
+```bash
+docker run -it --rm -v ~/RedAudit-Reports:/reports \
+  ghcr.io/dorinbadea/redaudit:latest \
+  --target host.docker.internal --mode quick --yes --output /reports
+```
+
+> ⚠️ **Important**: This only scans services on YOUR machine, not other network devices.
+
+## Network Visibility Comparison
+
+| Method | Host Discovery | Full Subnet Scan | Layer 2 (ARP) |
+|--------|---------------|------------------|---------------|
+| Windows/macOS Docker | ❌ Limited | ⚠️ Partial | ❌ No |
+| Linux VM + Docker | ✅ Full | ✅ Full | ✅ Yes |
+| Native Linux | ✅ Full | ✅ Full | ✅ Yes |
+
+## For Enterprise Deployments
+
+For regular security audits in corporate environments, we recommend:
+
+1. **Dedicated Linux audit machine** (physical or VM) with RedAudit installed natively
+2. **Or**: Docker on a Linux server with `--network host`
+3. **Schedule regular scans** using cron or your CI/CD pipeline
+4. **Export reports** to your SIEM (RedAudit supports JSONL for Splunk/ELK)
+
+---
+
 # Linux Users
 
 If you're on Linux, you don't need Docker! Install RedAudit natively:
