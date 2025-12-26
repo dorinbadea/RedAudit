@@ -13,6 +13,39 @@
 
 ---
 
+# 🚀 Inicio Rápido (Recomendado)
+
+Tenemos scripts de ayuda que **detectan automáticamente tu red** y ejecutan RedAudit. Esta es la forma más fácil de empezar.
+
+## macOS - Inicio Rápido
+
+```bash
+# Descarga y ejecuta el script de ayuda
+curl -O https://raw.githubusercontent.com/dorinbadea/RedAudit/main/scripts/redaudit-docker.sh
+chmod +x redaudit-docker.sh
+./redaudit-docker.sh
+```
+
+El script:
+
+1. ✅ Verifica que Docker esté corriendo
+2. ✅ Detecta automáticamente tu red WiFi/Ethernet
+3. ✅ Te pide confirmación
+4. ✅ Ejecuta el escaneo en español
+5. ✅ Abre el reporte cuando termina
+
+## Windows - Inicio Rápido
+
+```powershell
+# Descarga y ejecuta el script de ayuda
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/main/scripts/redaudit-docker.ps1" -OutFile "redaudit-docker.ps1"
+.\redaudit-docker.ps1
+```
+
+> ⚠️ **Importante**: Porque Docker en Windows/macOS corre en una máquina virtual, la auto-detección ve la red de TU ordenador, no la red interna de Docker. Los scripts manejan esto por ti.
+
+---
+
 # Guía para macOS
 
 ## Paso 1: Instalar Docker Desktop
