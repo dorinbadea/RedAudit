@@ -1,6 +1,6 @@
 # RedAudit
 
-[![Ver en Español](https://img.shields.io/badge/🇪🇸_Español-red?style=flat-square)](README_ES.md)
+[![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](README_ES.md)
 
 ![Version](https://img.shields.io/badge/v3.8.9-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
