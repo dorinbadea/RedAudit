@@ -59,8 +59,9 @@ def test_configure_scan_interactive_standard_profile(monkeypatch, tmp_path):
     """Test Standard profile auto-configuration."""
     app = InteractiveNetworkAuditor()
 
-    # Select Standard profile (index 1)
-    monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: 1)
+    # Select Standard profile (index 1), then timing Normal (index 1)
+    choice_iter = iter([1, 1])
+    monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: next(choice_iter))
     monkeypatch.setattr("redaudit.core.auditor.get_default_reports_base_dir", lambda: str(tmp_path))
 
     app._configure_scan_interactive({})
@@ -69,14 +70,16 @@ def test_configure_scan_interactive_standard_profile(monkeypatch, tmp_path):
     assert app.config["scan_vulnerabilities"] is True
     assert app.config["topology_enabled"] is True
     assert app.config["net_discovery_enabled"] is True
+    assert app.rate_limit_delay == 0.0  # Normal timing
 
 
 def test_configure_scan_interactive_exhaustive_profile(monkeypatch, tmp_path):
     """Test Exhaustive profile auto-configuration with NVD reminder."""
     app = InteractiveNetworkAuditor()
 
-    # Select Exhaustive profile (index 2)
-    monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: 2)
+    # Select Exhaustive profile (index 2), then timing Stealth (index 0)
+    choice_iter = iter([2, 0])
+    monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: next(choice_iter))
     monkeypatch.setattr(app, "print_status", lambda *_a, **_k: None)
     monkeypatch.setattr("redaudit.core.auditor.get_default_reports_base_dir", lambda: str(tmp_path))
     # Mock NVD not configured
@@ -93,3 +96,5 @@ def test_configure_scan_interactive_exhaustive_profile(monkeypatch, tmp_path):
     assert app.config["windows_verify_enabled"] is True
     # NVD disabled because key not configured
     assert app.config["cve_lookup_enabled"] is False
+    # Stealth timing
+    assert app.rate_limit_delay == 2.0

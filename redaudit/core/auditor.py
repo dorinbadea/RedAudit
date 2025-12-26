@@ -972,7 +972,18 @@ class InteractiveNetworkAuditor(
         ]
         profile_choice = self.ask_choice(self.t("wizard_profile_q"), profile_options, default=1)
 
-        # PROFILE 0: Express - Fast scan with minimal config
+        # Helper: Ask for timing/paranoia level (applies to Standard and Exhaustive)
+        def ask_timing() -> float:
+            timing_options = [
+                self.t("timing_stealth"),
+                self.t("timing_normal"),
+                self.t("timing_aggressive"),
+            ]
+            timing_choice = self.ask_choice(self.t("timing_q"), timing_options, default=1)
+            # Stealth = 2.0s, Normal = 0.0s, Aggressive = 0.0s (threads handle parallelism)
+            return {0: 2.0, 1: 0.0, 2: 0.0}.get(timing_choice, 0.0)
+
+        # PROFILE 0: Express - Fast scan with minimal config (no timing question)
         if profile_choice == 0:
             self.config["scan_mode"] = "rapido"
             self.config["max_hosts_value"] = "all"
@@ -987,7 +998,7 @@ class InteractiveNetworkAuditor(
             self.config["save_txt_report"] = True
             self.config["save_html_report"] = True
             self.config["output_dir"] = get_default_reports_base_dir()
-            self.rate_limit_delay = 0.0  # Fast scan, no delay
+            self.rate_limit_delay = 0.0  # Express = always fast
             return
 
         # PROFILE 1: Standard - Balance (equivalent to old normal mode)
@@ -1005,7 +1016,7 @@ class InteractiveNetworkAuditor(
             self.config["save_txt_report"] = True
             self.config["save_html_report"] = True
             self.config["output_dir"] = get_default_reports_base_dir()
-            self.rate_limit_delay = 0.0  # Balanced scan, no delay
+            self.rate_limit_delay = ask_timing()  # User choice
             return
 
         # PROFILE 2: Exhaustive - Maximum discovery (auto-configures everything)
@@ -1058,8 +1069,8 @@ class InteractiveNetworkAuditor(
             # Webhook off by default
             self.config["webhook_url"] = ""
 
-            # Rate limiting - no delay for maximum speed
-            self.rate_limit_delay = 0.0
+            # Rate limiting - user choice based on environment sensitivity
+            self.rate_limit_delay = ask_timing()
             return
 
         # PROFILE 3: Custom - Full wizard with 8 steps (original behavior)
