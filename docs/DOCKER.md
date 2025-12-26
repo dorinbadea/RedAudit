@@ -2,7 +2,19 @@
 
 RedAudit is a Linux tool, but you can run it on **Windows** or **macOS** using Docker.
 
-> 💡 **Tip**: We provide helper scripts that make this process even simpler. See the [Quick Start](#-quick-start-recommended) section.
+> ⚠️ **Important Limitation**: Docker on Windows/macOS **cannot accurately discover hosts** on your network. It runs in a virtual machine that cannot see your real network at Layer 2. See [Limitations](#limitations) below.
+
+## When to Use Docker
+
+| Use Case | Docker on Win/Mac | Linux Native |
+|----------|-------------------|--------------|
+| **Scan specific known servers** | ✅ Works | ✅ Works |
+| **Demo/testing with known IPs** | ✅ Works | ✅ Works |
+| **Discover all devices on network** | ❌ False positives | ✅ Works |
+| **Professional network audit** | ❌ Limited | ✅ Full capability |
+| **ARP/Layer 2 scanning** | ❌ Not possible | ✅ Works |
+
+**Recommendation for professional audits**: Use Linux natively, or a Linux VM with bridged networking.
 
 ---
 
