@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Coverage for interactive auditor configuration flow.
+v3.9.0: Updated to work with new profile selector.
 """
 
 from __future__ import annotations
@@ -14,8 +15,11 @@ def test_configure_scan_interactive_full_flow(monkeypatch, tmp_path):
     app = InteractiveNetworkAuditor()
     app.config["deep_id_scan"] = True
 
+    # v3.9.0: First ask_choice is for profile selection (3 = Custom)
+    # Then the wizard steps follow
     choice_with_back = iter([1, 0, 0, 0, 0, 0, 0])
-    choice = iter([1])
+    # First choice is profile (3=Custom), second is redteam mode
+    choice = iter([3, 1])
     yes_no = iter([False, True, True])
     numbers = iter(["all", 4, 10])
 
@@ -49,3 +53,43 @@ def test_configure_scan_interactive_full_flow(monkeypatch, tmp_path):
     assert app.config["scan_mode"] == "normal"
     assert app.config["net_discovery_enabled"] is True
     assert app.config["windows_verify_enabled"] is True
+
+
+def test_configure_scan_interactive_standard_profile(monkeypatch, tmp_path):
+    """Test Standard profile auto-configuration."""
+    app = InteractiveNetworkAuditor()
+
+    # Select Standard profile (index 1)
+    monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: 1)
+    monkeypatch.setattr("redaudit.core.auditor.get_default_reports_base_dir", lambda: str(tmp_path))
+
+    app._configure_scan_interactive({})
+
+    assert app.config["scan_mode"] == "normal"
+    assert app.config["scan_vulnerabilities"] is True
+    assert app.config["topology_enabled"] is True
+    assert app.config["net_discovery_enabled"] is True
+
+
+def test_configure_scan_interactive_exhaustive_profile(monkeypatch, tmp_path):
+    """Test Exhaustive profile auto-configuration with NVD reminder."""
+    app = InteractiveNetworkAuditor()
+
+    # Select Exhaustive profile (index 2)
+    monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: 2)
+    monkeypatch.setattr(app, "print_status", lambda *_a, **_k: None)
+    monkeypatch.setattr("redaudit.core.auditor.get_default_reports_base_dir", lambda: str(tmp_path))
+    # Mock NVD not configured
+    monkeypatch.setattr("redaudit.utils.config.is_nvd_api_key_configured", lambda: False)
+
+    app._configure_scan_interactive({})
+
+    assert app.config["scan_mode"] == "completo"
+    assert app.config["threads"] == 16  # MAX_THREADS
+    assert app.config["scan_vulnerabilities"] is True
+    assert app.config["topology_enabled"] is True
+    assert app.config["net_discovery_enabled"] is True
+    assert app.config["net_discovery_redteam"] is True
+    assert app.config["windows_verify_enabled"] is True
+    # NVD disabled because key not configured
+    assert app.config["cve_lookup_enabled"] is False

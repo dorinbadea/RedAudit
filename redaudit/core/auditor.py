@@ -954,10 +954,115 @@ class InteractiveNetworkAuditor(
     def _configure_scan_interactive(self, defaults_for_run: Dict) -> None:
         """
         v3.8.1: Interactive prompt sequence with step-by-step navigation.
+        v3.9.0: Added profile selector (Express/Standard/Exhaustive/Custom).
 
         Uses a state machine pattern allowing users to go back to previous steps
         without restarting the entire wizard.
         """
+        # v3.9.0: Profile selector - choose audit intensity
+        from redaudit.utils.config import is_nvd_api_key_configured
+
+        # Note: is_nuclei_available is already imported at module level from nuclei.py
+
+        profile_options = [
+            self.t("wizard_profile_express"),
+            self.t("wizard_profile_standard"),
+            self.t("wizard_profile_exhaustive"),
+            self.t("wizard_profile_custom"),
+        ]
+        profile_choice = self.ask_choice(self.t("wizard_profile_q"), profile_options, default=1)
+
+        # PROFILE 0: Express - Fast scan with minimal config
+        if profile_choice == 0:
+            self.config["scan_mode"] = "rapido"
+            self.config["max_hosts_value"] = "all"
+            self.config["threads"] = DEFAULT_THREADS
+            self.config["scan_vulnerabilities"] = False
+            self.config["nuclei_enabled"] = False
+            self.config["cve_lookup_enabled"] = False
+            self.config["topology_enabled"] = True
+            self.config["net_discovery_enabled"] = True
+            self.config["net_discovery_redteam"] = False
+            self.config["windows_verify_enabled"] = False
+            self.config["save_txt_report"] = True
+            self.config["save_html_report"] = True
+            self.config["output_dir"] = get_default_reports_base_dir()
+            self.rate_limit_delay = 0.0  # Fast scan, no delay
+            return
+
+        # PROFILE 1: Standard - Balance (equivalent to old normal mode)
+        if profile_choice == 1:
+            self.config["scan_mode"] = "normal"
+            self.config["max_hosts_value"] = "all"
+            self.config["threads"] = DEFAULT_THREADS
+            self.config["scan_vulnerabilities"] = True
+            self.config["nuclei_enabled"] = False
+            self.config["cve_lookup_enabled"] = False
+            self.config["topology_enabled"] = True
+            self.config["net_discovery_enabled"] = True
+            self.config["net_discovery_redteam"] = False
+            self.config["windows_verify_enabled"] = False
+            self.config["save_txt_report"] = True
+            self.config["save_html_report"] = True
+            self.config["output_dir"] = get_default_reports_base_dir()
+            self.rate_limit_delay = 0.0  # Balanced scan, no delay
+            return
+
+        # PROFILE 2: Exhaustive - Maximum discovery (auto-configures everything)
+        if profile_choice == 2:
+            self.print_status(self.t("exhaustive_mode_applying"), "INFO")
+
+            # Core scan settings - maximum
+            self.config["scan_mode"] = "completo"
+            self.config["max_hosts_value"] = "all"
+            self.config["threads"] = MAX_THREADS
+            self.config["deep_id_scan"] = True
+
+            # UDP - full scan
+            self.config["udp_mode"] = UDP_SCAN_MODE_FULL
+            self.config["udp_top_ports"] = 200  # Thorough
+
+            # Vulnerability scanning - all enabled
+            self.config["scan_vulnerabilities"] = True
+            self.config["nuclei_enabled"] = is_nuclei_available()
+
+            # NVD/CVE - enable if API key is configured, otherwise show reminder
+            if is_nvd_api_key_configured():
+                self.config["cve_lookup_enabled"] = True
+                self.setup_nvd_api_key(non_interactive=True)
+            else:
+                self.config["cve_lookup_enabled"] = False
+                self.print_status(self.t("nvd_not_configured_reminder"), "WARNING")
+                print(f"  {self.COLORS['CYAN']}{self.t('nvd_get_key_hint')}{self.COLORS['ENDC']}")
+
+            # Discovery - all enabled
+            self.config["topology_enabled"] = True
+            self.config["topology_only"] = False
+            self.config["net_discovery_enabled"] = True
+            self.config["net_discovery_redteam"] = True
+            self.config["net_discovery_active_l2"] = True
+            self.config["net_discovery_kerberos_userenum"] = False  # Requires realm
+            self.config["net_discovery_snmp_community"] = "public"
+            self.config["net_discovery_dns_zone"] = ""
+            self.config["net_discovery_max_targets"] = 100
+
+            # Windows verification
+            self.config["windows_verify_enabled"] = True
+            self.config["windows_verify_max_targets"] = 50
+
+            # Reports
+            self.config["save_txt_report"] = True
+            self.config["save_html_report"] = True
+            self.config["output_dir"] = get_default_reports_base_dir()
+
+            # Webhook off by default
+            self.config["webhook_url"] = ""
+
+            # Rate limiting - no delay for maximum speed
+            self.rate_limit_delay = 0.0
+            return
+
+        # PROFILE 3: Custom - Full wizard with 8 steps (original behavior)
         # v3.8.1: Wizard step machine for "< Volver" / "< Go Back" navigation
         TOTAL_STEPS = 8
         step = 1
