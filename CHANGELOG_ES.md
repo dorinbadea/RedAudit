@@ -9,6 +9,39 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [3.9.0] - 2025-12-26 (Selector de Perfiles y Reportes Mejorados)
+
+### Añadido
+
+- **Selector de Perfil del Wizard**: Nueva pregunta inicial para elegir tipo de auditoría:
+  - **Express** — Escaneo rápido de descubrimiento, mínimas preguntas
+  - **Estándar** — Escaneo equilibrado con análisis de vulnerabilidades
+  - **Exhaustivo** — Máximo descubrimiento, auto-configura todo:
+    - Modo: `completo`, Hilos: `MAX`, UDP: `full (200 puertos)`
+    - Vulnerabilidades + Nuclei + Topología + Net Discovery + Red Team + Windows Verify
+    - Correlación CVE de NVD habilitada si la API key está configurada
+  - **Custom** — Wizard completo de 8 pasos para control total
+
+- **Selector de Timing/Paranoia** (perfiles Estándar y Exhaustivo):
+  - **Sigiloso** — 2 segundos de delay entre escaneos (evasión IDS)
+  - **Normal** — Sin delay, velocidad equilibrada
+  - **Agresivo** — Máximo paralelismo para entornos de laboratorio
+
+- **Recordatorio de API Key NVD**: El wizard muestra un recordatorio con enlace para obtener la API key cuando se omite correlación CVE.
+
+- **Reporte HTML Mejorado** (para auditores profesionales):
+  - **Hallazgos Expandibles**: Click en cualquier hallazgo para ver observaciones técnicas (`parsed_observations`)
+  - **Sección Smart Scan Analysis**: Muestra exactamente por qué se dispararon los deep scans (ej: `suspicious_service`, `many_ports`)
+  - **Sección Playbooks de Remediación**: Grid visual de playbooks generados con IPs objetivo
+  - **Sección Evidencia Capturada**: Lista todos los archivos PCAP capturados
+  - **Resumen de Topología**: Gateway por defecto, conteo de interfaces, conteo de rutas
+  - Plantillas EN y ES actualizadas
+
+### Cambiado
+
+- Selección de perfil por defecto es "Estándar" (índice 1)
+- El perfil Express omite la pregunta de timing (siempre rápido)
+
 ## [3.8.9] - 2025-12-25 (Corrección exportación Fingerprinting)
 
 ### Corregido

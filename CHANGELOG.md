@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.0] - 2025-12-26 (Profile Selector & Enhanced Reports)
+
+### Added
+
+- **Wizard Profile Selector**: New first-step question to choose audit type:
+  - **Express** — Fast discovery scan, minimal questions
+  - **Standard** — Balanced scan with vulnerability analysis
+  - **Exhaustive** — Maximum discovery, auto-configures everything:
+    - Mode: `completo`, Threads: `MAX`, UDP: `full (200 ports)`
+    - Vulnerabilities + Nuclei + Topology + Net Discovery + Red Team + Windows Verify
+    - NVD CVE correlation enabled if API key is configured
+  - **Custom** — Full 8-step wizard for complete control
+
+- **Timing/Paranoia Selector** (Standard & Exhaustive profiles):
+  - **Stealth** — 2 second delay between scans (IDS evasion)
+  - **Normal** — No delay, balanced speed
+  - **Aggressive** — Maximum parallelism for lab environments
+
+- **NVD API Key Reminder**: Wizard shows a reminder with link to get API key when CVE correlation is skipped.
+
+- **Enhanced HTML Report** (for professional auditors):
+  - **Expandable Findings**: Click any finding row to see technical observations (`parsed_observations`)
+  - **Smart Scan Analysis Section**: Shows exactly why deep scans were triggered (e.g., `suspicious_service`, `many_ports`)
+  - **Remediation Playbooks Section**: Visual grid of generated playbooks with target IPs
+  - **Captured Evidence Section**: Lists all captured PCAP files
+  - **Topology Summary**: Default gateway, interfaces count, routes count
+  - Both English and Spanish templates updated
+
+### Changed
+
+- Default profile selection is "Standard" (index 1)
+- Express profile skips timing question (always fast)
+
 ## [3.8.9] - 2025-12-25 (Device Fingerprinting Export Fix)
 
 ### Fixed
