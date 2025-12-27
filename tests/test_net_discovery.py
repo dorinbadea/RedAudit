@@ -131,6 +131,26 @@ IP               NetBIOS Name     Server    User              MAC
         self.assertEqual(len(result["hosts"]), 2)
         self.assertEqual(result["hosts"][0]["name"], "DESKTOP-ABC")
 
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_netbios_nmap_parse_trims_trailing_comma(self, mock_which, mock_run):
+        mock_which.side_effect = lambda tool: "/usr/bin/nmap" if tool == "nmap" else None
+        mock_run.return_value = (
+            0,
+            """
+Nmap scan report for 192.168.1.30
+Host is up (0.0010s latency).
+| nbstat:
+|   NetBIOS name: SERVER01, NetBIOS user: <unknown>
+""",
+            "",
+        )
+
+        result = netbios_discover("192.168.1.0/24")
+        self.assertIsNone(result["error"])
+        self.assertEqual(len(result["hosts"]), 1)
+        self.assertEqual(result["hosts"][0]["name"], "SERVER01")
+
 
 class TestNetdiscoverScan(unittest.TestCase):
     """Test netdiscover ARP scan parsing."""

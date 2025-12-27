@@ -37,8 +37,8 @@ def test_dhcp_discover_parses_domain_hints(monkeypatch):
             "|   Subnet Mask: 255.255.255.0",
             "|   Router: 192.168.1.1",
             "|   Domain Name Server: 8.8.8.8",
-            "Domain Name: example.local",
-            "Domain Search: corp.local",
+            "|   Domain Name: example.local",
+            "|   Domain Search: corp.local",
         ]
     )
     monkeypatch.setattr(net_discovery, "_run_cmd", lambda *_a, **_k: (0, sample, ""))
