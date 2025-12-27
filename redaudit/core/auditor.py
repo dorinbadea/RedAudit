@@ -951,6 +951,40 @@ class InteractiveNetworkAuditor(
         else:
             self.config["windows_verify_max_targets"] = 20
 
+    def _ask_auditor_and_output_dir(self, defaults_for_run: Dict) -> None:
+        """
+        v3.9.0: Ask for auditor name and output directory.
+        Used by automatic profiles (Express/Standard/Exhaustive) to ensure
+        these prompts are not skipped.
+        """
+        # Auditor name
+        auditor_default = defaults_for_run.get("auditor_name", "") if defaults_for_run else ""
+        auditor_default = auditor_default or ""
+        auditor_prompt = self.t("auditor_name_q")
+        auditor_name = input(
+            f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {auditor_prompt} "
+            f"[{auditor_default}]: "
+        ).strip()
+        if not auditor_name:
+            auditor_name = auditor_default
+        self.config["auditor_name"] = auditor_name.strip() if auditor_name else None
+
+        # Output directory
+        default_reports = get_default_reports_base_dir()
+        persisted_output = defaults_for_run.get("output_dir") if defaults_for_run else None
+        if isinstance(persisted_output, str) and persisted_output.strip():
+            default_output = persisted_output
+        else:
+            default_output = default_reports
+
+        output_prompt = self.t("output_dir_q")
+        output_dir = input(
+            f"{self.COLORS['CYAN']}?{self.COLORS['ENDC']} {output_prompt} " f"[{default_output}]: "
+        ).strip()
+        if not output_dir:
+            output_dir = default_output
+        self.config["output_dir"] = expand_user_path(output_dir)
+
     def _configure_scan_interactive(self, defaults_for_run: Dict) -> None:
         """
         v3.8.1: Interactive prompt sequence with step-by-step navigation.
@@ -1021,7 +1055,8 @@ class InteractiveNetworkAuditor(
             self.config["windows_verify_enabled"] = False
             self.config["save_txt_report"] = True
             self.config["save_html_report"] = True
-            self.config["output_dir"] = get_default_reports_base_dir()
+            # v3.9.0: Ask auditor name and output dir for all profiles
+            self._ask_auditor_and_output_dir(defaults_for_run)
             self.rate_limit_delay = 0.0  # Express = always fast
             return
 
@@ -1039,7 +1074,8 @@ class InteractiveNetworkAuditor(
             self.config["windows_verify_enabled"] = False
             self.config["save_txt_report"] = True
             self.config["save_html_report"] = True
-            self.config["output_dir"] = get_default_reports_base_dir()
+            # v3.9.0: Ask auditor name and output dir for all profiles
+            self._ask_auditor_and_output_dir(defaults_for_run)
             # v3.9.0: Apply timing settings
             self.config["nmap_timing"] = timing_nmap_template
             if timing_threads_boost:
@@ -1103,6 +1139,9 @@ class InteractiveNetworkAuditor(
 
             # Webhook off by default
             self.config["webhook_url"] = ""
+
+            # v3.9.0: Ask auditor name and output dir for all profiles
+            self._ask_auditor_and_output_dir(defaults_for_run)
 
             # Rate limiting - already asked in profile selection loop
             self.rate_limit_delay = timing_delay
