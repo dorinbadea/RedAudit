@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](README.md)
 
-![Versión](https://img.shields.io/badge/v3.9.0-blue?style=flat-square)
+![Versión](https://img.shields.io/badge/v3.8.7-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![Tests](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dorinbadea/81671a8fffccee81ca270f14d094e5a1/raw/redaudit-tests.json&style=flat-square)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -16,11 +16,11 @@
 
 ## ¿Qué es RedAudit?
 
-RedAudit es un framework de auditoría de red que orquesta herramientas de seguridad estándar de la industria (nmap, nikto, testssl, nuclei) en un pipeline concurrente. Automatiza flujos de trabajo desde el descubrimiento hasta el reporte, produciendo artefactos estructurados JSON/HTML/JSONL aptos para ingesta SIEM o informes de cumplimiento.
+RedAudit es un framework de auditoría de red que orquesta herramientas de seguridad estándar de la industria (nmap, nikto, testssl, nuclei) más helpers opcionales en un pipeline adaptativo y multifase. Automatiza flujos de trabajo desde el descubrimiento hasta el reporte con señales de topología y probes sin agente opcionales, produciendo artefactos estructurados JSON/HTML/JSONL aptos para ingesta SIEM o informes de cumplimiento.
 
 **Casos de uso**: Hardening defensivo, scoping para pentesting, seguimiento de cambios entre evaluaciones.
 
-**Diferenciador clave**: Escaneo adaptativo multifase con escalación automática—no solo ejecución paralela de herramientas.
+**Diferenciador clave**: Escalación por identidad a través de fases (TCP → UDP Prioritario → UDP Extendido), no solo ejecución paralela.
 
 ---
 
@@ -53,7 +53,7 @@ sudo redaudit
 | **HyperScan** | Batch TCP async + broadcast UDP IoT + ARP agresivo para triage ultrarrápido |
 | **Descubrimiento de Topología** | Mapeo L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para detección de redes ocultas |
 | **Descubrimiento de Red** | Protocolos broadcast (DHCP/NetBIOS/mDNS/UPNP) para detección de redes de invitados |
-| **Verificación sin agente** | Probing SMB/RDP/LDAP/SSH/HTTP con fingerprinting de dispositivos (40+ patrones) |
+| **Verificación sin agente** | Probing SMB/RDP/LDAP/SSH/HTTP con fingerprinting de dispositivos (patrones de vendor/servicio) |
 | **Modo Sigiloso** | Timing paranoid T1, mono-hilo, retardos 5s+ para evasión IDS empresarial |
 
 ### Inteligencia y Correlación
@@ -101,7 +101,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 
 ### Lógica de Escaneo Adaptativo
 
-RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa heurísticas en tiempo de ejecución para decidir la escalación, incluyendo probes HTTP breves de titulo/encabezado en rutas de login comunes para hosts silenciosos:
+RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa heurísticas en tiempo de ejecución para decidir la escalación, incluyendo probes HTTP breves de titulo/meta/encabezado en rutas de login comunes para hosts silenciosos:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -149,8 +149,8 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
                               └─────────────────────────────────┘
 ```
 
-En modo **full/completo**, el deep scan normalmente se omite porque el perfil base ya es agresivo. Solo se usa como
-fallback cuando un host no responde.
+En modo **full/completo**, el perfil base ya es agresivo, por lo que el deep scan se activa menos y solo cuando la identidad
+sigue siendo débil o hay señales sospechosas.
 
 **Heurísticas de Disparo** (qué hace un host "ambiguo", sobre todo en rápido/normal):
 
@@ -159,7 +159,7 @@ fallback cuando un host no responde.
 - Falta de MAC/vendor/hostname
 - Sin versión de servicio (score de identidad bajo)
 - Puertos filtrados o sin respuesta (fallback)
-- Hosts silenciosos con vendor detectado pueden recibir un probe HTTP/HTTPS breve en puertos comunes
+- Hosts silenciosos con vendor detectado pueden recibir un probe HTTP/HTTPS breve de titulo/meta/encabezado en puertos comunes
 
 **Resultado**: Escaneos más rápidos que UDP siempre activo, manteniendo calidad de detección para IoT, servicios filtrados
 y equipos legacy.

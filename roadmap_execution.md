@@ -74,3 +74,9 @@ Criterio de salida:
 
 - Imagen reproducible y documentada.
 - Decision de plugins documentada (implementado o postergado).
+
+## Validacion local (27-dic)
+
+- `pre-commit run --all-files` (OK; black reformateo `redaudit/core/jsonl_exporter.py`).
+- `pytest tests/ -v` (no disponible: `pytest` no instalado en este entorno).
+- `python3 -m pytest tests/ -v` (no disponible: modulo `pytest` no instalado).

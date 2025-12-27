@@ -57,6 +57,32 @@ El contenedor de nivel superior para la sesión de escaneo.
 | `vulnerabilities` | `array` | Lista de hallazgos de vulnerabilidades |
 | `summary` | `object` | Estadísticas agregadas |
 
+### summary.json (Resumen para dashboards)
+
+Resumen compacto para dashboards y automatización (se genera solo cuando el cifrado de reportes está deshabilitado).
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `schema_version` | `string` | Versión del esquema del resumen |
+| `generated_at` | `string` | Marca de tiempo de generación (ISO 8601) |
+| `session_id` | `string` | UUID de la sesión de escaneo |
+| `scan_duration` | `string` | Duración del escaneo (HH:MM:SS) |
+| `total_assets` | `integer` | Total de activos descubiertos |
+| `total_findings` | `integer` | Total de hallazgos |
+| `severity_breakdown` | `object` | Hallazgos por severidad (critical/high/medium/low/info) |
+| `severity_counts` | `object` | Alias de `severity_breakdown` |
+| `category_breakdown` | `object` | Hallazgos por categoría (surface/vuln/...) |
+| `max_risk_score` | `integer` | Puntuación de riesgo máxima |
+| `high_risk_assets` | `integer` | Activos por encima del umbral de alto riesgo |
+| `targets` | `array` | Redes objetivo escaneadas |
+| `scanner_versions` | `object` | Versiones de herramientas detectadas |
+| `scan_mode` | `string` | Modo de escaneo (rapido/normal/completo) |
+| `scan_mode_cli` | `string` | Modo CLI (best-effort) |
+| `options` | `object` | Snapshot compacto de config (threads/udp/topología/net-discovery/nuclei/etc.) |
+| `pipeline` | `object` | Resumen del pipeline (mismo formato que el reporte principal) |
+| `smart_scan_summary` | `object` | Resumen de SmartScan |
+| `redaudit_version` | `string` | Versión de RedAudit |
+
 ### Objeto Verificación sin agente (Opcional) (v3.8+)
 
 Este bloque solo aparece si la verificación sin agente está habilitada.

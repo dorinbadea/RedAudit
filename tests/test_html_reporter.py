@@ -71,6 +71,29 @@ def test_prepare_report_data_populates_tables():
     assert data["finding_table"][0]["title"] == "Finding title"
 
 
+def test_prepare_report_data_translates_titles_es():
+    results = {
+        "timestamp": "2025-01-01",
+        "hosts": [{"ip": "10.0.0.1", "ports": [{"port": 80}]}],
+        "vulnerabilities": [
+            {
+                "host": "10.0.0.1",
+                "vulnerabilities": [
+                    {"descriptive_title": "Missing X-Content-Type-Options Header", "port": 80},
+                    {"descriptive_title": "Web Service Finding on Port 443", "port": 443},
+                ],
+            }
+        ],
+        "summary": {},
+    }
+    config = {"target_networks": ["10.0.0.0/24"], "scan_mode": "normal"}
+
+    data = html_reporter.prepare_report_data(results, config, lang="es")
+    titles = [finding["title"] for finding in data["finding_table"]]
+    assert "Falta la cabecera X-Content-Type-Options" in titles
+    assert "Hallazgo de servicio web en el puerto 443" in titles
+
+
 def test_generate_and_save_html_report(tmp_path):
     results = {"hosts": [], "vulnerabilities": [], "summary": {}}
     config = {"target_networks": [], "scan_mode": "normal", "auditor_name": "x"}

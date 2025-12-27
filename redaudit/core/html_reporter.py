@@ -8,6 +8,7 @@ v3.3: Generate interactive HTML reports with Bootstrap + Chart.js.
 """
 
 import os
+import re
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -41,7 +42,7 @@ def get_template_env():
     return env
 
 
-def prepare_report_data(results: Dict, config: Dict) -> Dict:
+def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dict:
     """
     Prepare data for HTML template rendering.
 
@@ -123,13 +124,17 @@ def prepare_report_data(results: Dict, config: Dict) -> Dict:
             else:
                 observations = []
 
+            title = _extract_finding_title(vuln)
+            if lang:
+                title = _translate_finding_title(title, lang)
+
             finding_table.append(
                 {
                     "host": host_ip,
                     "url": vuln.get("matched_at") or vuln.get("url", "-"),
                     "severity": vuln.get("severity", "info"),
                     "category": vuln.get("category", "-"),
-                    "title": _extract_finding_title(vuln),
+                    "title": title,
                     "port": vuln.get("port", "-"),
                     "source": source,
                     "cve": cve_txt,
@@ -206,6 +211,51 @@ def _extract_finding_title(vuln: Dict) -> str:
     return vuln.get("url", "Finding")[:60]
 
 
+def _translate_finding_title(title: str, lang: str) -> str:
+    if not title or lang.lower() != "es":
+        return title
+
+    patterns = [
+        (
+            re.compile(r"^Missing X-Content-Type-Options Header$", re.IGNORECASE),
+            "Falta la cabecera X-Content-Type-Options",
+        ),
+        (
+            re.compile(
+                r"^Missing X-Frame-Options Header(?: \\(Clickjacking Risk\\))?$",
+                re.IGNORECASE,
+            ),
+            "Falta la cabecera X-Frame-Options (riesgo de clickjacking)",
+        ),
+        (
+            re.compile(r"^Missing HTTP Strict Transport Security Header$", re.IGNORECASE),
+            "Falta la cabecera HTTP Strict Transport Security (HSTS)",
+        ),
+        (
+            re.compile(r"^Missing HSTS header$", re.IGNORECASE),
+            "Falta la cabecera HSTS",
+        ),
+        (
+            re.compile(r"^Internal IP Address Disclosed in Headers$", re.IGNORECASE),
+            "Dirección IP interna expuesta en cabeceras",
+        ),
+        (
+            re.compile(r"^Web Service Finding on Port (\\d+)$", re.IGNORECASE),
+            None,
+        ),
+    ]
+
+    for pattern, replacement in patterns:
+        match = pattern.match(title.strip())
+        if not match:
+            continue
+        if replacement is None:
+            return f"Hallazgo de servicio web en el puerto {match.group(1)}"
+        return replacement
+
+    return title
+
+
 def generate_html_report(results: Dict, config: Dict, *, lang: str = "en") -> str:
     """
     Generate HTML report string from scan results.
@@ -221,7 +271,7 @@ def generate_html_report(results: Dict, config: Dict, *, lang: str = "en") -> st
     template_name = "report_es.html.j2" if lang == "es" else "report.html.j2"
     template = env.get_template(template_name)
 
-    data = prepare_report_data(results, config)
+    data = prepare_report_data(results, config, lang=lang)
     return template.render(**data)
 
 

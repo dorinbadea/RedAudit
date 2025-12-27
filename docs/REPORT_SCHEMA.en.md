@@ -57,6 +57,32 @@ The top-level container for the scan session.
 | `vulnerabilities` | `array` | List of vulnerability findings |
 | `summary` | `object` | Aggregated statistics |
 
+### summary.json (Dashboard Summary)
+
+Compact, flattened summary for dashboards and automation (generated only when report encryption is disabled).
+
+| Field | Type | Description |
+|---|---|---|
+| `schema_version` | `string` | Summary schema version |
+| `generated_at` | `string` | Summary generation timestamp (ISO 8601) |
+| `session_id` | `string` | Scan session UUID |
+| `scan_duration` | `string` | Scan duration (HH:MM:SS) |
+| `total_assets` | `integer` | Total assets discovered |
+| `total_findings` | `integer` | Total findings count |
+| `severity_breakdown` | `object` | Findings by severity (critical/high/medium/low/info) |
+| `severity_counts` | `object` | Alias of `severity_breakdown` |
+| `category_breakdown` | `object` | Findings by category (surface/vuln/...) |
+| `max_risk_score` | `integer` | Maximum asset risk score |
+| `high_risk_assets` | `integer` | Assets over the high-risk threshold |
+| `targets` | `array` | Target networks scanned |
+| `scanner_versions` | `object` | Detected tool versions |
+| `scan_mode` | `string` | Scan mode (rapido/normal/completo) |
+| `scan_mode_cli` | `string` | CLI scan mode string (best-effort) |
+| `options` | `object` | Compact config snapshot (threads/udp/topology/net-discovery/nuclei/etc.) |
+| `pipeline` | `object` | Pipeline summary (same structure as main report) |
+| `smart_scan_summary` | `object` | SmartScan summary |
+| `redaudit_version` | `string` | RedAudit version |
+
 ### Agentless Verification Object (Optional) (vNext)
 
 This field appears only if agentless verification was enabled.

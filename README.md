@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](README_ES.md)
 
-![Version](https://img.shields.io/badge/v3.9.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/v3.8.7-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![Tests](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dorinbadea/81671a8fffccee81ca270f14d094e5a1/raw/redaudit-tests.json&style=flat-square)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -16,11 +16,11 @@
 
 ## What is RedAudit?
 
-RedAudit is a network auditing framework that orchestrates industry-standard security tools (nmap, nikto, testssl, nuclei) into a concurrent pipeline. It automates discovery-to-report workflows, producing structured JSON/HTML/JSONL artifacts suitable for SIEM ingestion or compliance reporting.
+RedAudit is a network auditing framework that orchestrates industry-standard security tools (nmap, nikto, testssl, nuclei) plus optional helpers into an adaptive, multi-phase pipeline. It automates discovery-to-report workflows with topology signals and optional agentless probes, producing structured JSON/HTML/JSONL artifacts suitable for SIEM ingestion or compliance reporting.
 
 **Use cases**: Defensive hardening, penetration test scoping, change tracking between assessments.
 
-**Key differentiator**: Adaptive multi-phase scanning with automatic escalation—not just parallel execution of tools.
+**Key differentiator**: Identity-driven escalation across scan phases (TCP → Priority UDP → Extended UDP), not just parallel tool execution.
 
 ---
 
@@ -53,7 +53,7 @@ sudo redaudit
 | **HyperScan** | Async batch TCP + UDP IoT broadcast + aggressive ARP for ultra-fast triage |
 | **Topology Discovery** | L2/L3 mapping (ARP/VLAN/LLDP + gateway/routes) for hidden network detection |
 | **Network Discovery** | Broadcast protocols (DHCP/NetBIOS/mDNS/UPNP) for guest network detection |
-| **Agentless Verification** | Optional SMB/RDP/LDAP/SSH/HTTP probes with device fingerprinting (40+ vendor patterns) |
+| **Agentless Verification** | Optional SMB/RDP/LDAP/SSH/HTTP probes with device fingerprinting (vendor/service patterns) |
 | **Stealth Mode** | T1 paranoid timing, single-thread, 5s+ delays for enterprise IDS evasion |
 
 ### Intelligence & Correlation
@@ -101,7 +101,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 
 ### Adaptive Scanning Logic
 
-RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runtime heuristics to decide escalation, including short HTTP title/heading probes on common login paths for quiet hosts:
+RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runtime heuristics to decide escalation, including short HTTP title/meta/heading probes on common login paths for quiet hosts:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -149,8 +149,7 @@ RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runt
                               └─────────────────────────────────┘
 ```
 
-In **full/completo** mode, the deep identity scan is generally skipped because the base profile is already aggressive.
-It only runs as a fallback when a host does not respond.
+In **full/completo** mode, the base profile is already aggressive, so deep identity scan triggers less often and only when identity remains weak or signals are suspicious.
 
 **Trigger Heuristics** (what makes a host "ambiguous", mostly in fast/normal):
 
@@ -159,7 +158,7 @@ It only runs as a fallback when a host does not respond.
 - Missing MAC/vendor/hostname
 - No version info (low identity score)
 - Filtered or no-response ports (deep scan fallback)
-- Quiet hosts with vendor hints may get a short HTTP/HTTPS title probe on common ports
+- Quiet hosts with vendor hints may get a short HTTP/HTTPS title/meta/heading probe on common ports
 
 **Result**: Faster scans than always-on UDP, while preserving identity for IoT, filtered services, and legacy devices.
 

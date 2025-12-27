@@ -227,6 +227,27 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
 
     total_findings = sum(severity_counts.values())
 
+    config_snapshot = results.get("config_snapshot", {}) or {}
+    scanner_meta = results.get("scanner", {}) or {}
+    scan_mode = scanner_meta.get("mode") or config_snapshot.get("scan_mode")
+    scan_mode_cli = (
+        scanner_meta.get("mode_cli") or config_snapshot.get("scan_mode_cli") or scan_mode or ""
+    )
+    options = {
+        "threads": config_snapshot.get("threads"),
+        "udp_mode": config_snapshot.get("udp_mode"),
+        "udp_top_ports": config_snapshot.get("udp_top_ports"),
+        "topology_enabled": config_snapshot.get("topology_enabled"),
+        "net_discovery_enabled": config_snapshot.get("net_discovery_enabled"),
+        "net_discovery_redteam": config_snapshot.get("net_discovery_redteam"),
+        "net_discovery_active_l2": config_snapshot.get("net_discovery_active_l2"),
+        "scan_vulnerabilities": config_snapshot.get("scan_vulnerabilities"),
+        "nuclei_enabled": config_snapshot.get("nuclei_enabled"),
+        "cve_lookup_enabled": config_snapshot.get("cve_lookup_enabled"),
+        "windows_verify_enabled": config_snapshot.get("windows_verify_enabled"),
+    }
+    options = {k: v for k, v in options.items() if v is not None}
+
     summary = {
         "schema_version": results.get("schema_version", "3.1"),
         "generated_at": results.get("generated_at", datetime.now().isoformat()),
@@ -235,12 +256,15 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "total_assets": len(results.get("hosts", [])),
         "total_findings": total_findings,
         "severity_breakdown": severity_counts,
+        "severity_counts": severity_counts,
         "category_breakdown": category_counts,
         "max_risk_score": results.get("summary", {}).get("max_risk_score", 0),
         "high_risk_assets": results.get("summary", {}).get("high_risk_hosts", 0),
         "targets": results.get("targets", []),
         "scanner_versions": results.get("scanner_versions", {}),
-        "scan_mode": (results.get("scanner") or {}).get("mode"),
+        "scan_mode": scan_mode or "",
+        "scan_mode_cli": scan_mode_cli,
+        "options": options,
         "pipeline": results.get("pipeline", {}),
         "smart_scan_summary": results.get("smart_scan_summary", {}),
         # Convenience: summary consumers frequently need RedAudit version
