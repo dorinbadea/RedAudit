@@ -882,15 +882,15 @@ def consolidate_findings(vulnerabilities: List[Dict]) -> List[Dict]:
         else:
             # Multiple findings with same title - merge
             merged = max(vulns, key=lambda v: v.get("severity_score", 0) or 0).copy()
-            ports = set()
+            ports_set = set()
             for v in vulns:
                 port = v.get("port")
                 if port:
-                    ports.add(port)
+                    ports_set.add(port)
                 for affected in v.get("affected_ports", []) or []:
                     if affected:
-                        ports.add(affected)
-            ports = sorted(ports)
+                        ports_set.add(affected)
+            ports = sorted(ports_set)
 
             def _merge_unique_list(base, extra, limit=None):
                 if not extra:
@@ -924,12 +924,12 @@ def consolidate_findings(vulnerabilities: List[Dict]) -> List[Dict]:
                     else:
                         base = merged.get("testssl_analysis") or {}
                         extra = v.get("testssl_analysis") or {}
-                        for key in ("vulnerabilities", "weak_ciphers", "protocols"):
-                            base_list = list(base.get(key, []) or [])
-                            extra_list = list(extra.get(key, []) or [])
+                        for field_name in ("vulnerabilities", "weak_ciphers", "protocols"):
+                            base_list = list(base.get(field_name, []) or [])
+                            extra_list = list(extra.get(field_name, []) or [])
                             merged_list = _merge_unique_list(base_list, extra_list)
                             if merged_list:
-                                base[key] = merged_list
+                                base[field_name] = merged_list
                         if extra.get("summary") and not base.get("summary"):
                             base["summary"] = extra.get("summary")
                         merged["testssl_analysis"] = base
