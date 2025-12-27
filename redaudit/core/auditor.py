@@ -1066,7 +1066,7 @@ class InteractiveNetworkAuditor(
 
             # UDP - full scan
             self.config["udp_mode"] = UDP_SCAN_MODE_FULL
-            self.config["udp_top_ports"] = 200  # Thorough
+            self.config["udp_top_ports"] = 500  # ~98% coverage (was 200)
 
             # Vulnerability scanning - all enabled
             self.config["scan_vulnerabilities"] = True
