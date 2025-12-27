@@ -62,7 +62,7 @@ sudo redaudit
 |:---|:---|
 | **CVE Correlation** | NVD API 2.0 with CPE 2.3 matching and 7-day cache |
 | **Exploit Lookup** | Automatic ExploitDB (`searchsploit`) queries for detected services |
-| **Template Scanning** | Nuclei community templates for HTTP/HTTPS vulnerability detection |
+| **Template Scanning** | Nuclei community templates with false positive detection (server header vs vendor mapping) |
 | **Smart-Check Filter** | 3-layer false positive reduction (Content-Type, size, magic bytes) |
 | **Subnet Leak Detection** | Identifies hidden networks via HTTP redirect/header analysis |
 
@@ -240,11 +240,18 @@ Launch without arguments for guided setup:
 sudo redaudit
 ```
 
-The wizard will guide you through:
+The wizard offers 4 audit profiles:
+
+- **Express**: Fast discovery (host-only, no port scanning)
+- **Standard**: Balanced audit (top 1000 ports + vulnerability checks)
+- **Exhaustive**: Maximum coverage (all 65535 ports + UDP 500 + Red Team + CVE correlation)
+- **Custom**: Full 8-step wizard for granular control
+
+After selecting a profile, you'll configure:
 
 1. **Target Selection**: Choose a local subnet or enter manual CIDR
-2. **Scan Mode**: Select FAST, NORMAL, or FULL
-3. **Options**: Configure threads, rate limiting, encryption
+2. **Timing Mode**: Select Stealth (T1), Normal (T4), or Aggressive (T5)
+3. **Options**: Configure threads, rate limiting, encryption (varies by profile)
 4. **Authorization**: Confirm you have permission to scan
 
 ### Non-Interactive / Automation
@@ -292,6 +299,16 @@ See `redaudit --help` or [USAGE.md](docs/USAGE.en.md) for the complete list of 4
 ---
 
 ## Configuration
+
+### Timing Modes
+
+RedAudit applies nmap timing templates based on your selection:
+
+| Mode | Nmap Template | Threads | Delay | Use Case |
+|:---|:---|:---|:---|:---|
+| **Stealth** | `-T1` | 4 | 300ms | IDS evasion, noisy networks, legacy devices |
+| **Normal** | `-T4` | 16 | 0ms | Standard audits (default, balanced speed/noise) |
+| **Aggressive** | `-T5` | 32 | 0ms | Time-critical scans, trusted networks |
 
 ### Scan Behavior
 
@@ -360,7 +377,6 @@ redaudit/
 │   ├── wizard.py           # Interactive UI (WizardMixin)
 │   ├── scanner.py          # Nmap scanning logic + IPv6
 │   ├── network.py          # Network interface detection
-│   ├── prescan.py          # Asyncio fast port discovery
 │   ├── hyperscan.py        # Ultra-fast parallel discovery
 │   ├── net_discovery.py    # Enhanced L2/broadcast discovery
 │   ├── topology.py         # Network topology discovery
