@@ -627,7 +627,7 @@ class AuditorScanMixin:
         self.current_phase = f"discovery:{network}"
         self._set_ui_detail(f"[nmap] {network} discovery")
         self.logger.info("Discovery on %s", network)
-        args = get_nmap_arguments("rapido")
+        args = get_nmap_arguments("rapido", self.config)  # v3.9.0: Pass config for timing
         self.print_status(self.t("nmap_cmd", network, f"nmap {args} {network}"), "INFO")
         if is_dry_run(self.config.get("dry_run")):
             return []
@@ -690,7 +690,8 @@ class AuditorScanMixin:
             self._set_ui_detail(f"[nmap] {safe_ip} ({mode_label})")
         else:
             self._set_ui_detail(f"[nmap] {safe_ip}")
-        args = get_nmap_arguments(self.config["scan_mode"])
+        # v3.9.0: Pass config so nmap_timing (T1/T4/T5) is applied
+        args = get_nmap_arguments(self.config["scan_mode"], self.config)
         self.logger.debug("Nmap scan %s %s", safe_ip, args)
         self.print_status(self.t("nmap_cmd", safe_ip, f"nmap {args} {safe_ip}"), "INFO")
         if is_dry_run(self.config.get("dry_run")):
