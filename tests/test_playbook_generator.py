@@ -154,9 +154,10 @@ class TestSavePlaybooks(unittest.TestCase):
         }
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            count = save_playbooks(results, tmpdir)
+            count, playbook_data = save_playbooks(results, tmpdir)
 
             self.assertGreater(count, 0)
+            self.assertGreater(len(playbook_data), 0)
             playbooks_dir = os.path.join(tmpdir, "playbooks")
             self.assertTrue(os.path.isdir(playbooks_dir))
             self.assertGreater(len(os.listdir(playbooks_dir)), 0)
@@ -166,8 +167,9 @@ class TestSavePlaybooks(unittest.TestCase):
         results = {"vulnerabilities": []}
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            count = save_playbooks(results, tmpdir)
+            count, playbook_data = save_playbooks(results, tmpdir)
             self.assertEqual(count, 0)
+            self.assertEqual(playbook_data, [])
 
 
 if __name__ == "__main__":
