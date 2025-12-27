@@ -7,36 +7,7 @@ Batch test file to push coverage from 75.65% towards 77-78%.
 import asyncio
 
 
-# ============================================================================
-# prescan.py - Lines 33, 34, 112, 113
-# ============================================================================
-def test_prescan_check_port_generic_exception(monkeypatch):
-    """Test lines 33-34 in prescan.py: generic exception handling."""
-    from redaudit.core import prescan
-
-    async def _failing_open_connection(*args, **kwargs):
-        raise RuntimeError("Mock unexpected error")
-
-    monkeypatch.setattr(asyncio, "open_connection", _failing_open_connection)
-
-    async def _test():
-        result = await prescan.check_port("127.0.0.1", 9999, timeout=0.1)
-        assert result is False  # Should return False on any exception
-
-    asyncio.run(_test())
-
-
-def test_prescan_parse_port_range_invalid_range():
-    """Test lines 112-113 in prescan.py: ValueError in range parsing."""
-    from redaudit.core import prescan
-
-    # Invalid range format (non-numeric)
-    ports = prescan.parse_port_range("abc-def")
-    assert ports == []
-
-    # Mixed valid and invalid
-    ports = prescan.parse_port_range("80,invalid-range,443")
-    assert ports == [80, 443]
+# NOTE: prescan.py tests removed - module superseded by hyperscan.py (v3.9.0)
 
 
 # ============================================================================
