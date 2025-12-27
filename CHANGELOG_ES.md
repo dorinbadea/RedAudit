@@ -9,6 +9,12 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [3.9.2] - 2025-12-27 (Hotfix de Version)
+
+### Fixed
+
+- **Deteccion de version en instalacion script**: Acepta sufijos con letra como `3.9.1a` en `redaudit/VERSION` para evitar `0.0.0-dev` tras auto-update.
+
 ## [3.9.1a] - 2025-12-27 (Hotfix de Reportes)
 
 ### Fixed

@@ -28,7 +28,7 @@ def _read_packaged_version_file() -> Optional[str]:
         raw = version_path.read_text(encoding="utf-8").strip()
         if not raw:
             return None
-        if not re.match(r"^\d+\.\d+\.\d+([.-][0-9A-Za-z.+-]+)?$", raw):
+        if not re.match(r"^\d+\.\d+\.\d+([.+-]?[0-9A-Za-z][0-9A-Za-z.+-]*)?$", raw):
             return None
         return raw
     except Exception:

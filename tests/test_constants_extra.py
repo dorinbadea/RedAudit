@@ -36,6 +36,17 @@ def test_read_packaged_version_file_empty(tmp_path, monkeypatch):
     assert constants._read_packaged_version_file() is None
 
 
+def test_read_packaged_version_file_accepts_letter_suffix(tmp_path, monkeypatch):
+    constants_path = _make_fake_repo(tmp_path)
+    version_path = constants_path.parents[1] / "VERSION"
+    version_path.write_text("3.9.1a", encoding="utf-8")
+
+    import redaudit.utils.constants as constants
+
+    monkeypatch.setattr(constants, "__file__", str(constants_path))
+    assert constants._read_packaged_version_file() == "3.9.1a"
+
+
 def test_read_pyproject_version_missing(tmp_path, monkeypatch):
     constants_path = _make_fake_repo(tmp_path)
 

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.2] - 2025-12-27 (Version Detection Hotfix)
+
+### Fixed
+
+- **Script install version detection**: Accepts letter suffixes like `3.9.1a` in `redaudit/VERSION` to avoid `0.0.0-dev` after auto-update.
+
 ## [3.9.1a] - 2025-12-27 (Reporting Hotfix)
 
 ### Fixed
