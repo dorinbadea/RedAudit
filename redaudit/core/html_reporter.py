@@ -222,7 +222,7 @@ def _translate_finding_title(title: str, lang: str) -> str:
         ),
         (
             re.compile(
-                r"^Missing X-Frame-Options Header(?: \\(Clickjacking Risk\\))?$",
+                r"^Missing X-Frame-Options Header(?: \(Clickjacking Risk\))?$",
                 re.IGNORECASE,
             ),
             "Falta la cabecera X-Frame-Options (riesgo de clickjacking)",
@@ -240,7 +240,7 @@ def _translate_finding_title(title: str, lang: str) -> str:
             "Dirección IP interna expuesta en cabeceras",
         ),
         (
-            re.compile(r"^Web Service Finding on Port (\\d+)$", re.IGNORECASE),
+            re.compile(r"^Web Service Finding on Port (\d+)$", re.IGNORECASE),
             None,
         ),
     ]
