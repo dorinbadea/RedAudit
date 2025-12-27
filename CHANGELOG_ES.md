@@ -9,6 +9,53 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [3.9.0] - 2025-12-27 (Selector de Perfiles y Reportes Mejorados)
+
+### Añadido
+
+- **Selector de Perfil del Wizard**: Nueva pregunta inicial para elegir tipo de auditoría:
+  - **Express** — Escaneo rápido de descubrimiento, mínimas preguntas
+  - **Estándar** — Escaneo equilibrado con análisis de vulnerabilidades
+  - **Exhaustivo** — Máximo descubrimiento, auto-configura todo:
+    - Modo: `completo`, Hilos: `MAX`, UDP: `full (200 puertos)`
+    - Vulnerabilidades + Nuclei + Topología + Net Discovery + Red Team + Windows Verify
+    - Correlación CVE de NVD habilitada si la API key está configurada
+  - **Custom** — Wizard completo de 8 pasos para control total
+
+- **Navegación del Wizard**: Opción "< Volver" desde el selector de timing regresa a la selección de perfil.
+
+- **Diferencias Reales de Timing**: Los modos de timing ahora tienen efecto real en nmap:
+  - **Sigiloso** — nmap `-T1` (paranoid) + 2s delay + 2 hilos (evasión IDS)
+  - **Normal** — nmap `-T4` (aggressive) + sin delay + hilos por defecto
+  - **Agresivo** — nmap `-T5` (insane) + sin delay + MAX hilos
+
+- **Recordatorio de API Key NVD**: El wizard muestra un recordatorio con enlace para obtener la API key cuando se omite correlación CVE.
+
+- **Reporte HTML Mejorado** (para auditores profesionales):
+  - **Hallazgos Expandibles**: Click en cualquier hallazgo para ver observaciones técnicas (`parsed_observations`)
+  - **Sección Smart Scan Analysis**: Muestra exactamente por qué se dispararon los deep scans (ej: `suspicious_service`, `many_ports`)
+  - **Sección Playbooks de Remediación**: Grid visual de playbooks generados con IPs objetivo
+  - **Sección Evidencia Capturada**: Lista todos los archivos PCAP capturados
+  - **Resumen de Topología**: Gateway por defecto, conteo de interfaces, conteo de rutas
+  - Plantillas EN y ES actualizadas
+
+- **Filtrado de Logs de Sesión**: Reducción de ruido más inteligente que preserva mensajes de estado mientras filtra actualizaciones de spinner.
+
+### Corregido
+
+- **Timing de nmap no aplicado**: La configuración `nmap_timing` no se pasaba a `get_nmap_arguments()`, por lo que Sigiloso/Normal/Agresivo no tenía efecto en la ejecución real de nmap.
+- **Playbooks no aparecían en reporte HTML**: Los playbooks se generaban DESPUÉS del reporte HTML, resultando en una sección vacía. Ahora se generan antes.
+
+### Cambiado
+
+- Selección de perfil por defecto es "Estándar" (índice 1)
+- El perfil Express omite la pregunta de timing (siempre rápido)
+- `save_playbooks()` ahora devuelve tupla `(count, playbook_data)` para integración en HTML
+
+### Eliminado
+
+- **prescan.py**: Módulo de código muerto superado por `hyperscan.py` que incluye descubrimiento TCP/UDP/ARP/IoT.
+
 ## [3.8.9] - 2025-12-25 (Corrección exportación Fingerprinting)
 
 ### Corregido

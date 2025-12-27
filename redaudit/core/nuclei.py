@@ -16,6 +16,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from redaudit.core.command_runner import CommandRunner
 from redaudit.utils.dry_run import is_dry_run
+from redaudit.core.verify_vuln import check_nuclei_false_positive
 
 
 def is_nuclei_available() -> bool:
@@ -343,6 +344,9 @@ def _normalize_nuclei_finding(raw: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     }
     severity = severity_map.get(info.get("severity", "").lower(), "medium")
 
+    # v3.9.0: Check for false positives using response analysis
+    is_fp, fp_reason = check_nuclei_false_positive(raw)
+
     return {
         "source": "nuclei",
         "template_id": template_id,
@@ -357,6 +361,9 @@ def _normalize_nuclei_finding(raw: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         "tags": info.get("tags", []),
         "cve_ids": _extract_cve_ids(info),
         "raw": raw,
+        # v3.9.0: FP detection
+        "suspected_false_positive": is_fp,
+        "fp_reason": fp_reason if is_fp else None,
     }
 
 

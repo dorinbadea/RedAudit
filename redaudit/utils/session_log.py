@@ -204,7 +204,18 @@ Session Ended: {datetime.now().isoformat()}
 class TeeStream(io.TextIOBase):
     """
     Stream that writes to both terminal and log file.
+
+    v3.9.0: Enhanced filtering to reduce log noise while preserving meaningful output.
+    - Deduplicates repeated heartbeat messages
+    - Filters spinner-only progress changes
+    - Keeps state transitions (percentage jumps, phase changes)
     """
+
+    # Patterns for deduplication
+    HEARTBEAT_PATTERN = re.compile(
+        r"\[\d{2}:\d{2}:\d{2}\] \[INFO\] .*(en progreso|in progress).*\(\d+:\d+"
+    )
+    PROGRESS_PATTERN = re.compile(r"[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏].*━+.*\d+%")
 
     def __init__(
         self, terminal: TextIO, log_file: TextIO, prefix: str = "", *, mode: str = "lines"
@@ -223,6 +234,11 @@ class TeeStream(io.TextIOBase):
         self.mode = (mode or "lines").strip().lower()
         self._log_buf = ""
         self._max_buf = 4096
+        # v3.9.0: Deduplication state
+        self._last_heartbeat_key = ""
+        self._last_progress_pct = -1
+        self._last_progress_phase = ""
+        self._heartbeat_count = 0
 
     def write(self, data: str) -> int:
         """Write to both streams."""
@@ -246,13 +262,12 @@ class TeeStream(io.TextIOBase):
 
     def _write_lines(self, data: str) -> None:
         """
-        Log only stable newline-terminated output.
+        Log only stable newline-terminated output with smart filtering.
 
-        Rich progress bars typically redraw using carriage returns and ANSI control codes
-        without emitting newlines; logging those frames makes session logs extremely noisy.
-
-        This mode keeps the terminal output intact, but only writes complete lines to the
-        log file (plus best-effort buffering for partial lines).
+        v3.9.0 enhancements:
+        - Deduplicates heartbeat messages (shows first + summary count)
+        - Filters spinner-only progress changes (only logs 10% jumps or phase changes)
+        - Keeps all non-progress output intact
         """
         if not data:
             return
@@ -281,15 +296,103 @@ class TeeStream(io.TextIOBase):
             self._log_buf = ""
 
         for line in lines:
+            # v3.9.0: Smart filtering
+            if self._should_skip_line(line):
+                continue
+
             if self.prefix and line.strip():
                 self.log_file.write(self.prefix)
             self.log_file.write(line)
         self.log_file.flush()
 
+    def _should_skip_line(self, line: str) -> bool:
+        """
+        Determine if a line should be skipped (noise reduction).
+
+        v3.9.0: CONSERVATIVE filtering - only skip pure noise, never meaningful info.
+        Returns True ONLY for:
+        - Repeated heartbeats (first one kept, count shown at end)
+        - Pure spinner redraws with <5% change in same phase
+        """
+        stripped = line.strip()
+        if not stripped:
+            return False  # Keep blank lines
+
+        # ALWAYS keep: status messages with [OK], [WARN], [FAIL], [INFO] that have results
+        if any(tag in stripped for tag in ["[OK]", "[WARN]", "[FAIL]", "✓", "✅", "⚠️", "❌"]):
+            return False  # Never skip status messages
+
+        # ALWAYS keep: lines with actual scan results (hosts, ports, vulns, durations)
+        if any(
+            kw in stripped.lower()
+            for kw in [
+                "hosts",
+                "puertos",
+                "ports",
+                "vulns",
+                "duración",
+                "duration",
+                "finalizado",
+                "completed",
+                "detected",
+                "detectado",
+            ]
+        ):
+            return False
+
+        # 1. Deduplicate heartbeat messages like "[22:30:37] [INFO] Net Discovery en progreso... (8:26 transcurrido)"
+        heartbeat_match = self.HEARTBEAT_PATTERN.search(stripped)
+        if heartbeat_match:
+            # Extract key (everything except the timestamp and duration)
+            key = re.sub(r"\[\d{2}:\d{2}:\d{2}\]", "", stripped)
+            key = re.sub(r"\(\d+:\d+ (transcurrido|elapsed)\)", "", key).strip()
+
+            if key == self._last_heartbeat_key:
+                self._heartbeat_count += 1
+                return True  # Skip duplicate (count will be shown)
+            else:
+                # New heartbeat type - flush previous count if any
+                if self._heartbeat_count > 1:
+                    self.log_file.write(f"  ... ({self._heartbeat_count} updates)\n")
+                self._last_heartbeat_key = key
+                self._heartbeat_count = 1
+                return False  # Keep first occurrence
+
+        # 2. Filter ONLY pure spinner progress lines (⠋⠙⠹... with no new info)
+        progress_match = self.PROGRESS_PATTERN.search(stripped)
+        if progress_match:
+            # Extract percentage and phase
+            pct_match = re.search(r"(\d+)%", stripped)
+            phase_match = re.search(
+                r"(discovery|scan|probe|enum|verify|Nuclei|testssl|nmap|banner|deep|ARP|UDP|TCP|SMB|RPC|LDAP)\b",
+                stripped,
+                re.I,
+            )
+
+            current_pct = int(pct_match.group(1)) if pct_match else -1
+            current_phase = phase_match.group(1).lower() if phase_match else ""
+
+            # Only skip if SAME phase AND percentage change < 5%
+            if current_phase == self._last_progress_phase:
+                if abs(current_pct - self._last_progress_pct) < 5:
+                    return True  # Skip minor spinner update
+
+            # Keep - significant change
+            self._last_progress_pct = current_pct
+            self._last_progress_phase = current_phase
+            return False
+
+        # 3. Keep ALL other lines
+        return False
+
     def flush(self) -> None:
         """Flush both streams."""
         self.terminal.flush()
         try:
+            # Flush pending heartbeat count if any
+            if self._heartbeat_count > 1:
+                self.log_file.write(f"  ... (repeated {self._heartbeat_count}x)\n")
+                self._heartbeat_count = 0
             self.log_file.flush()
         except Exception:
             pass

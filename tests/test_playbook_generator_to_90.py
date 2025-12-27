@@ -170,8 +170,9 @@ def test_save_playbooks_mkdir_error():
     logger = MagicMock()
 
     with patch("os.makedirs", side_effect=PermissionError("Access denied")):
-        count = save_playbooks(results, "/nonexistent/path", logger)
+        count, data = save_playbooks(results, "/nonexistent/path", logger=logger)
         assert count == 0
+        assert data == []
         logger.warning.assert_called()
 
 
@@ -189,8 +190,9 @@ def test_save_playbooks_write_error():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         with patch("builtins.open", side_effect=IOError("Write failed")):
-            count = save_playbooks(results, tmpdir, logger)
+            count, data = save_playbooks(results, tmpdir, logger=logger)
             assert count == 0
+            assert data == []
 
 
 def test_save_playbooks_chmod_error():
@@ -207,16 +209,18 @@ def test_save_playbooks_chmod_error():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         with patch("os.chmod", side_effect=OSError("chmod failed")):
-            count = save_playbooks(results, tmpdir, logger)
+            count, data = save_playbooks(results, tmpdir, logger=logger)
             # Should still save files even if chmod fails
             assert count >= 1
+            assert len(data) >= 1
 
 
 def test_save_playbooks_empty_results():
     """Test save_playbooks with no vulnerabilities."""
     results = {"vulnerabilities": []}
-    count = save_playbooks(results, "/tmp", None)
+    count, data = save_playbooks(results, "/tmp")
     assert count == 0
+    assert data == []
 
 
 def test_save_playbooks_success():
@@ -233,8 +237,9 @@ def test_save_playbooks_success():
     }
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        count = save_playbooks(results, tmpdir, None)
+        count, data = save_playbooks(results, tmpdir)
         assert count >= 1
+        assert len(data) >= 1
         playbooks_dir = os.path.join(tmpdir, "playbooks")
         assert os.path.exists(playbooks_dir)
 

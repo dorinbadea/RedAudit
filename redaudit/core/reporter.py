@@ -798,6 +798,22 @@ def save_results(
         elif logger:
             logger.info("JSONL exports skipped (report encryption enabled)")
 
+        # v3.9.0: Generate remediation playbooks BEFORE HTML report
+        # This ensures playbook data is available for the HTML report
+        if not encryption_enabled:
+            try:
+                from redaudit.core.playbook_generator import save_playbooks
+
+                playbook_count, playbook_data = save_playbooks(results, output_dir, logger=logger)
+                # Add playbooks to results for HTML report
+                results["playbooks"] = playbook_data
+                if playbook_count > 0 and print_fn and t_fn:
+                    print_fn(t_fn("playbooks_generated", playbook_count), "OKGREEN")
+            except Exception as pb_err:
+                if logger:
+                    logger.debug("Playbook generation failed: %s", pb_err)
+                results["playbooks"] = []
+
         # v3.3: Generate HTML report if enabled
         # v3.3.1: Check both CLI key (html_report) and wizard key (save_html_report)
         html_enabled = config.get("html_report") or config.get("save_html_report")
@@ -835,18 +851,6 @@ def save_results(
         elif html_enabled and encryption_enabled:
             if logger:
                 logger.info("HTML report skipped (report encryption enabled)")
-
-        # v3.4: Generate remediation playbooks
-        if not encryption_enabled:
-            try:
-                from redaudit.core.playbook_generator import save_playbooks
-
-                playbook_count = save_playbooks(results, output_dir, logger=logger)
-                if playbook_count > 0 and print_fn and t_fn:
-                    print_fn(t_fn("playbooks_generated", playbook_count), "OKGREEN")
-            except Exception as pb_err:
-                if logger:
-                    logger.debug("Playbook generation failed: %s", pb_err)
 
         # v3.3: Send webhook alerts for high-severity findings
         webhook_url = config.get("webhook_url")

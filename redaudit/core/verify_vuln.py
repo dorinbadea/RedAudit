@@ -371,3 +371,193 @@ def filter_nikto_false_positives(
         )
 
     return verified
+
+
+# =============================================================================
+# v3.9.0: Nuclei False Positive Detection
+# =============================================================================
+
+# Mapping of CVE/template IDs to their expected vendor/product identifiers
+# If the actual Server header doesn't match, it's likely a false positive
+NUCLEI_TEMPLATE_VENDORS = {
+    # Mitel MiCollab - often false positive on routers with JSON endpoints
+    "CVE-2022-26143": {
+        "expected_vendors": ["mitel", "micollab", "mivoice"],
+        "false_positive_vendors": [
+            "fritz",
+            "avm",
+            "netgear",
+            "tp-link",
+            "asus",
+            "linksys",
+            "ubiquiti",
+        ],
+        "description": "Mitel MiCollab Information Disclosure",
+    },
+    # Add more templates as FPs are discovered
+    "CVE-2021-44228": {
+        "expected_vendors": ["java", "log4j", "apache"],
+        "false_positive_vendors": [],  # Log4j can affect many products
+        "description": "Log4Shell",
+    },
+}
+
+# Common router/device vendors that often trigger CVE false positives
+COMMON_INFRASTRUCTURE_VENDORS = frozenset(
+    [
+        "fritz",
+        "avm",
+        "netgear",
+        "tp-link",
+        "asus",
+        "linksys",
+        "d-link",
+        "ubiquiti",
+        "mikrotik",
+        "cisco",
+        "aruba",
+        "fortinet",
+        "pfsense",
+        "openwrt",
+        "synology",
+        "qnap",
+        "hikvision",
+        "dahua",
+        "axis",
+        "zyxel",
+        "huawei",
+        "samsung",
+        "philips",
+        "sonos",
+        "roku",
+    ]
+)
+
+
+def check_nuclei_false_positive(
+    finding: Dict,
+    agentless_data: Optional[Dict] = None,
+    logger=None,
+) -> Tuple[bool, str]:
+    """
+    Check if a Nuclei finding is a likely false positive.
+
+    v3.9.0: Detects FPs by comparing Server header/product identification
+    against expected vendors for the CVE template.
+
+    Args:
+        finding: Nuclei finding dict with template_id, response, etc.
+        agentless_data: Optional agentless fingerprint for the host
+        logger: Optional logger
+
+    Returns:
+        Tuple of (is_false_positive, reason)
+        - is_false_positive: True if this is likely a false positive
+        - reason: Explanation for the decision
+    """
+    template_id = finding.get("template-id", "") or finding.get("template_id", "")
+    if not template_id:
+        return False, "no_template_id"
+
+    # Check if we have vendor expectations for this template
+    template_upper = template_id.upper()
+    template_config = None
+    for known_id, config in NUCLEI_TEMPLATE_VENDORS.items():
+        if known_id.upper() in template_upper:
+            template_config = config
+            break
+
+    if not template_config:
+        return False, "no_vendor_config"
+
+    # Type assertion for mypy: template_config is guaranteed to be Dict here
+    assert isinstance(template_config, dict)
+
+    # Extract server/product info from response
+    response = finding.get("response", "")
+    server_header = ""
+    for line in response.split("\r\n"):
+        if line.lower().startswith("server:"):
+            server_header = line.split(":", 1)[1].strip().lower()
+            break
+
+    # Also check agentless fingerprint
+    agentless_vendor = ""
+    agentless_title = ""
+    if agentless_data:
+        agentless_vendor = (agentless_data.get("device_vendor") or "").lower()
+        agentless_title = (agentless_data.get("http_title") or "").lower()
+
+    # Combine all identifiers
+    identifiers = f"{server_header} {agentless_vendor} {agentless_title}".lower()
+
+    # Check if any expected vendor is present
+    expected = template_config.get("expected_vendors", [])
+    if any(v in identifiers for v in expected):
+        return False, "expected_vendor_found"
+
+    # Check if a known FP vendor is present
+    fp_vendors = template_config.get("false_positive_vendors", [])
+    for fp_vendor in fp_vendors:
+        if fp_vendor in identifiers:
+            return True, f"fp_vendor_detected:{fp_vendor}"
+
+    # Check against common infrastructure devices
+    for infra_vendor in COMMON_INFRASTRUCTURE_VENDORS:
+        if infra_vendor in identifiers:
+            # Only flag if none of the expected vendors are present
+            if not any(v in identifiers for v in expected):
+                return True, f"infrastructure_device:{infra_vendor}"
+
+    return False, "no_fp_indicators"
+
+
+def filter_nuclei_false_positives(
+    findings: List[Dict],
+    host_agentless: Optional[Dict[str, Dict]] = None,
+    logger=None,
+) -> Tuple[List[Dict], List[Dict]]:
+    """
+    Filter Nuclei findings to separate genuine findings from likely false positives.
+
+    Unlike Nikto filtering which removes FPs, this returns both lists so the
+    auditor can review flagged findings if needed.
+
+    Args:
+        findings: List of Nuclei finding dicts
+        host_agentless: Dict mapping IP -> agentless fingerprint data
+        logger: Optional logger
+
+    Returns:
+        Tuple of (genuine_findings, suspected_fp_findings)
+    """
+    if not findings:
+        return [], []
+
+    genuine = []
+    suspected_fps = []
+    host_agentless = host_agentless or {}
+
+    for finding in findings:
+        host_ip = finding.get("ip", "") or finding.get("host", "")
+        agentless_data = host_agentless.get(host_ip, {})
+
+        is_fp, reason = check_nuclei_false_positive(finding, agentless_data, logger)
+
+        if is_fp:
+            # Mark as suspected FP but don't remove
+            finding["suspected_false_positive"] = True
+            finding["fp_reason"] = reason
+            suspected_fps.append(finding)
+            if logger:
+                logger.info(
+                    "Nuclei FP suspected: %s on %s - %s",
+                    finding.get("template-id", "unknown"),
+                    host_ip,
+                    reason,
+                )
+        else:
+            finding["suspected_false_positive"] = False
+            genuine.append(finding)
+
+    return genuine, suspected_fps

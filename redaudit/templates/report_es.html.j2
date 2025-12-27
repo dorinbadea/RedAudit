@@ -82,6 +82,28 @@
         .meta-item li span { color: var(--text-primary); }
         .tag-list { display: flex; flex-wrap: wrap; gap: 0.35rem; }
         .tag { background: rgba(52,152,219,0.15); color: var(--accent-blue); padding: 0.15rem 0.45rem; border-radius: 12px; font-size: 0.7rem; }
+        /* New: Expandable rows */
+        .expandable { cursor: pointer; }
+        .expandable:hover { background: rgba(255,255,255,0.05); }
+        .expandable::before { content: '▶ '; font-size: 0.7rem; opacity: 0.5; }
+        .expandable.open::before { content: '▼ '; }
+        .details-row { display: none; }
+        .details-row.open { display: table-row; }
+        .details-cell { background: var(--bg-card); padding: 1rem !important; }
+        .observations { list-style: none; margin: 0; padding: 0; }
+        .observations li { padding: 0.3rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-secondary); }
+        .observations li:last-child { border-bottom: none; }
+        .observations li::before { content: '• '; color: var(--accent-blue); }
+        /* Playbook cards */
+        .playbook-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+        .playbook-card { background: var(--bg-card); border-radius: 8px; padding: 1rem; border: 1px solid var(--border-color); }
+        .playbook-card h5 { font-size: 0.9rem; color: var(--accent-green); margin-bottom: 0.5rem; }
+        .playbook-card .ip { font-size: 0.8rem; color: var(--text-secondary); }
+        /* Artifact pills */
+        .artifact-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .artifact-pill { background: rgba(46,204,113,0.15); color: var(--accent-green); padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; }
+        /* Reason tags */
+        .reason-tag { background: rgba(243,156,18,0.15); color: var(--accent-orange); padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; margin-right: 0.5rem; margin-bottom: 0.5rem; display: inline-block; }
     </style>
 </head>
 <body>
@@ -212,6 +234,58 @@
             </div>
         </div>
 
+        {% if smart_scan_reasons %}
+        <div class="section">
+            <div class="section-title">🎯 Análisis Smart Scan (Por qué se activaron escaneos profundos)</div>
+            <div class="meta-grid">
+                <div class="meta-item" style="grid-column: span 2;">
+                    <h4>Disparadores de escaneo profundo</h4>
+                    <div style="padding: 0.5rem 0;">
+                        {% for reason, count in smart_scan_reasons.items() %}
+                        <span class="reason-tag">{{ reason.replace('_', ' ').title() }}: {{ count }}</span>
+                        {% endfor %}
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                        Los escaneos profundos se activan cuando los hosts muestran patrones sospechosos que requieren investigación adicional.
+                    </p>
+                </div>
+                <div class="meta-item">
+                    <h4>Topología</h4>
+                    <ul>
+                        <li>Gateway predeterminado <span>{{ topology_summary.default_gateway }}</span></li>
+                        <li>Interfaces <span>{{ topology_summary.interfaces }}</span></li>
+                        <li>Rutas <span>{{ topology_summary.routes }}</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if playbooks %}
+        <div class="section">
+            <div class="section-title">📋 Playbooks de remediación ({{ playbooks|length }})</div>
+            <div class="playbook-grid">
+                {% for playbook in playbooks %}
+                <div class="playbook-card">
+                    <h5>{{ playbook.title or playbook.path|basename }}</h5>
+                    <p class="ip">{{ playbook.target_ip or '-' }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if pcaps %}
+        <div class="section">
+            <div class="section-title">📁 Evidencia capturada ({{ pcaps|length }} PCAPs)</div>
+            <div class="artifact-list">
+                {% for pcap in pcaps %}
+                <span class="artifact-pill">{{ pcap.path|basename if pcap.path else pcap }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <div class="section">
             <div class="section-title">Hosts ({{ host_count }})</div>
             <table id="hostsTable">
@@ -265,7 +339,7 @@
         </div>
 
         <div class="section">
-            <div class="section-title">Hallazgos ({{ finding_count }})</div>
+            <div class="section-title">Hallazgos ({{ finding_count }}) <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal;">— Haz clic en la fila para expandir detalles técnicos</span></div>
             <table id="findingsTable">
                 <thead>
                     <tr>
@@ -281,7 +355,7 @@
                 </thead>
                 <tbody>
                 {% for finding in finding_table %}
-                    <tr>
+                    <tr class="expandable" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
                         <td><code>{{ finding.host }}</code></td>
                         <td><span class="badge badge-{{ finding.severity }}">{{ finding.severity|upper }}</span></td>
                         <td>{{ finding.source }}</td>
@@ -290,6 +364,20 @@
                         <td>{{ finding.port }}</td>
                         <td><code>{{ finding.url }}</code></td>
                         <td>{{ finding.cve }}</td>
+                    </tr>
+                    <tr class="details-row">
+                        <td colspan="8" class="details-cell">
+                            {% if finding.observations %}
+                            <strong style="color: var(--text-secondary); font-size: 0.8rem;">Observaciones técnicas:</strong>
+                            <ul class="observations">
+                                {% for obs in finding.observations %}
+                                <li>{{ obs }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% else %}
+                            <p style="color: var(--text-secondary); font-size: 0.85rem;">No hay detalles técnicos adicionales disponibles.</p>
+                            {% endif %}
+                        </td>
                     </tr>
                 {% endfor %}
                 </tbody>

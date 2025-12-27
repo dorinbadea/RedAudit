@@ -26,10 +26,19 @@ def get_template_env():
     """
     from jinja2 import Environment, PackageLoader, select_autoescape
 
-    return Environment(
+    env = Environment(
         loader=PackageLoader("redaudit", "templates"),
         autoescape=select_autoescape(["html", "xml"]),
     )
+
+    # Custom filter for extracting filename from path
+    def basename_filter(path):
+        if not path:
+            return ""
+        return os.path.basename(str(path))
+
+    env.filters["basename"] = basename_filter
+    return env
 
 
 def prepare_report_data(results: Dict, config: Dict) -> Dict:
@@ -107,6 +116,13 @@ def prepare_report_data(results: Dict, config: Dict) -> Dict:
             )
             cve_ids = vuln.get("cve_ids") or []
             cve_txt = ", ".join(cve_ids[:3]) if isinstance(cve_ids, list) else ""
+            # Extract observations for technical details
+            observations = vuln.get("parsed_observations") or vuln.get("nikto_findings") or []
+            if isinstance(observations, list):
+                observations = [obs for obs in observations[:5] if obs]  # Limit to 5
+            else:
+                observations = []
+
             finding_table.append(
                 {
                     "host": host_ip,
@@ -117,8 +133,27 @@ def prepare_report_data(results: Dict, config: Dict) -> Dict:
                     "port": vuln.get("port", "-"),
                     "source": source,
                     "cve": cve_txt,
+                    "observations": observations,
                 }
             )
+
+    # Extract smart scan reasons for display
+    smart_scan_reasons = smart_scan_summary.get("reasons", {}) or {}
+
+    # Extract topology data
+    topology = pipeline.get("topology", {}) or {}
+    topology_summary = {
+        "default_gateway": topology.get("default_gateway", {}).get("ip", "-"),
+        "interfaces": len(topology.get("interfaces", [])),
+        "routes": len(topology.get("routes", [])),
+    }
+
+    # Extract playbooks from results
+    playbooks = results.get("playbooks", []) or []
+
+    # Extract artifacts/evidence
+    artifacts = results.get("artifacts", []) or []
+    pcaps = [a for a in artifacts if a.get("path", "").endswith(".pcap")]
 
     return {
         "version": VERSION,
@@ -136,7 +171,12 @@ def prepare_report_data(results: Dict, config: Dict) -> Dict:
         "finding_table": finding_table,
         "pipeline": pipeline,
         "smart_scan": smart_scan_summary,
+        "smart_scan_reasons": smart_scan_reasons,
         "config_snapshot": config_snapshot,
+        "topology_summary": topology_summary,
+        "playbooks": playbooks,
+        "pcaps": pcaps,
+        "scan_duration": summary.get("duration", "-"),
     }
 
 

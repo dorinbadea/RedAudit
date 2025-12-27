@@ -432,20 +432,22 @@ def render_playbook_markdown(playbook: Dict) -> str:
     return "\n".join(lines)
 
 
-def save_playbooks(results: Dict, output_dir: str, logger=None) -> int:
+def save_playbooks(results: Dict, output_dir: str, *, logger=None) -> tuple[int, list]:
     """
-    Generate and save playbooks for all findings.
+    Save remediation playbooks to output directory.
+
+    v3.9.0: Now returns (count, playbook_data) for HTML report integration.
 
     Args:
         results: Complete scan results dictionary
         output_dir: Directory to save playbooks
 
     Returns:
-        Number of playbooks generated
+        Tuple of (number of playbooks generated, list of playbook metadata)
     """
     playbooks = get_playbooks_for_results(results)
     if not playbooks:
-        return 0
+        return 0, []
 
     playbooks_dir = os.path.join(output_dir, "playbooks")
     try:
@@ -453,9 +455,10 @@ def save_playbooks(results: Dict, output_dir: str, logger=None) -> int:
     except Exception as exc:
         if logger:
             logger.warning("Could not create playbooks directory %s: %s", playbooks_dir, exc)
-        return 0
+        return 0, []
 
     count = 0
+    playbook_data = []  # v3.9.0: Collect for HTML report
     for playbook in playbooks:
         host_safe = playbook["host"].replace(".", "_")
         category = playbook["category"]
@@ -472,9 +475,19 @@ def save_playbooks(results: Dict, output_dir: str, logger=None) -> int:
                 if logger:
                     logger.debug("Could not chmod playbook %s: %s", filepath, chmod_err)
             count += 1
+            # v3.9.0: Add to data for HTML report
+            playbook_data.append(
+                {
+                    "host": playbook["host"],
+                    "category": category,
+                    "title": playbook.get("title", category),
+                    "path": filepath,
+                    "filename": filename,
+                }
+            )
         except Exception as exc:
             if logger:
                 logger.debug("Failed to write playbook %s: %s", filepath, exc)
             continue
 
-    return count
+    return count, playbook_data
