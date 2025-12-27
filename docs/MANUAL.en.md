@@ -87,7 +87,54 @@ RedAudit checks for updates on startup (interactive mode). To skip: `--skip-upda
 
 ---
 
-## 4. Operation
+## 4. Wizard Profile Selector (v3.9.0+)
+
+When running `sudo redaudit` in interactive mode, the wizard asks which **audit profile** to use:
+
+### Express
+
+**Use case:** Quick network discovery for asset inventory.
+
+- **Mode**: `fast` (host discovery only, no port scanning)
+- **Features disabled**: Vulnerability scans, Nuclei, Topology, Net Discovery
+- **Timing**: Fast
+- **Questions**: Minimal (auditor name, output dir)
+- **Best for**: Initial reconnaissance, counting live hosts
+
+### Standard
+
+**Use case:** Balanced vulnerability assessment.
+
+- **Mode**: `normal` (top 1000 ports + version detection)
+- **Features**: whatweb, searchsploit, optional topology
+- **Timing**: Normal
+- **Questions**: Standard wizard flow (7 steps)
+- **Best for**: Most security audits
+
+### Exhaustive
+
+**Use case**: Maximum discovery and correlation for comprehensive assessments.
+
+- **Mode**: `completo` (all 65535 ports + OS detection + scripts)
+- **Threads**: MAX (32)
+- **UDP**: top 500 ports
+- **Features enabled**: Vulnerabilities, Nuclei, Topology, Net Discovery, Red Team, Agentless Verification
+- **CVE Correlation**: Enabled if NVD API key is configured
+- **Timing**: Aggressive
+- **Questions**: Only auditor name and output dir (all else auto-configured)
+- **Best for**: Penetration testing, compliance audits, pre-production validation
+
+### Custom
+
+**Use case:** Full control over all configuration options.
+
+- **Behavior**: Standard 8-step wizard
+- **Questions**: Target, mode, timing, UDP, features, CVE, output
+- **Best for**: Tailored scans with specific requirements
+
+---
+
+## 5. Operation
 
 ### Execution Modes
 

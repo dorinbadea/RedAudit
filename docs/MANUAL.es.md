@@ -87,7 +87,54 @@ RedAudit verifica actualizaciones al iniciar (modo interactivo). Para omitir: `-
 
 ---
 
-## 4. Operación
+## 4. Selector de Perfil del Wizard (v3.9.0+)
+
+Al ejecutar `sudo redaudit` en modo interactivo, el wizard pregunta qué **perfil de auditoría** usar:
+
+### Express
+
+**Caso de uso**: Descubrimiento rápido de red para inventariado de assets.
+
+- **Modo**: `fast` (solo descubrimiento de hosts, sin escaneo de puertos)
+- **Features deshabilitadas**: Escaneos de vulnerabilidades, Nuclei, Topología, Net Discovery
+- **Timing**: Rápido
+- **Preguntas**: Mínimas (nombre auditor, directorio salida)
+- **Ideal para**: Reconocimiento inicial, contar hosts vivos
+
+### Standard
+
+**Caso de uso**: Evaluación balanceada de vulnerabilidades.
+
+- **Modo**: `normal` (top 1000 puertos + detección de versiones)
+- **Features**: whatweb, searchsploit, topología opcional
+- **Timing**: Normal
+- **Preguntas**: Flujo wizard estándar (7 pasos)
+- **Ideal para**: La mayoría de auditorías de seguridad
+
+### Exhaustive
+
+**Caso de uso**: Máximo descubrimiento y correlación para evaluaciones exhaustivas.
+
+- **Modo**: `completo` (todos los 65535 puertos + detección OS + scripts)
+- **Threads**: MAX (32)
+- **UDP**: top 500 puertos
+- **Features habilitadas**: Vulnerabilidades, Nuclei, Topología, Net Discovery, Red Team, Verificación Agentless
+- **Correlación CVE**: Habilitada si hay API key de NVD configurada
+- **Timing**: Agresivo
+- **Preguntas**: Solo nombre auditor y directorio (todo lo demás auto-configurado)
+- **Ideal para**: Pentesting, auditorías de cumplimiento, validación pre-producción
+
+### Custom
+
+**Caso de uso:** Control total sobre todas las opciones de configuración.
+
+- **Comportamiento**: Wizard estándar de 8 pasos
+- **Preguntas**: Target, modo, timing, UDP, features, CVE, salida
+- **Ideal para**: Escaneos personalizados con requisitos específicos
+
+---
+
+## 5. Operación
 
 ### Modos de Ejecución
 
