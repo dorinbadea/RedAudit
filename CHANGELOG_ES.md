@@ -9,6 +9,13 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [3.9.3] - 2025-12-27 (Hotfix de consolidacion de reportes)
+
+### Fixed
+
+- **Consolidacion de hallazgos con TestSSL**: los merges preservan `testssl_analysis` y observaciones para no perder alertas TLS.
+- **Titulos HTML con fallback**: cuando no hay `descriptive_title`, el HTML genera un titulo util (ej: `Web Service Finding on Port 443`) en vez de la URL.
+
 ## [3.9.2] - 2025-12-27 (Hotfix de Version)
 
 ### Fixed

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.3] - 2025-12-27 (Reporting Consolidation Hotfix)
+
+### Fixed
+
+- **Consolidated findings keep TestSSL data**: merged entries now preserve `testssl_analysis` and related observations to avoid losing TLS warnings in reports.
+- **HTML titles for tool-only findings**: when a finding lacks `descriptive_title`, HTML now derives a meaningful title (e.g., `Web Service Finding on Port 443`) instead of a raw URL.
+
 ## [3.9.2] - 2025-12-27 (Version Detection Hotfix)
 
 ### Fixed

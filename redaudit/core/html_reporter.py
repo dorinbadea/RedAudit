@@ -200,6 +200,17 @@ def _extract_finding_title(vuln: Dict) -> str:
     if vuln.get("descriptive_title"):
         return vuln["descriptive_title"]
 
+    observations = vuln.get("parsed_observations") or []
+    if observations:
+        try:
+            from redaudit.core.evidence_parser import _derive_descriptive_title
+
+            derived = _derive_descriptive_title(observations)
+            if derived:
+                return derived
+        except Exception:
+            pass
+
     # Fallback: first nikto finding or URL
     nikto = vuln.get("nikto_findings", [])
     if nikto and isinstance(nikto, list) and len(nikto) > 0:
@@ -207,6 +218,10 @@ def _extract_finding_title(vuln: Dict) -> str:
         # Skip metadata lines
         if not any(x in first.lower() for x in ["target ip:", "start time:", "end time:"]):
             return first[:80] + ("..." if len(first) > 80 else "")
+
+    port = vuln.get("port")
+    if port:
+        return f"Web Service Finding on Port {port}"
 
     return vuln.get("url", "Finding")[:60]
 

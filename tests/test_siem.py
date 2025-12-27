@@ -19,6 +19,7 @@ from redaudit.core.siem import (
     build_ecs_host,
     enrich_vulnerability_severity,
     enrich_report_for_siem,
+    consolidate_findings,
     ECS_VERSION,
 )
 
@@ -227,6 +228,38 @@ class TestSIEM(unittest.TestCase):
         summary = enriched.get("summary", {})
         self.assertIn("max_risk_score", summary)
         self.assertIn("avg_risk_score", summary)
+
+    def test_consolidate_findings_preserves_testssl(self):
+        """Ensure consolidation keeps testssl analysis from merged entries."""
+        vulnerabilities = [
+            {
+                "host": "192.168.1.10",
+                "vulnerabilities": [
+                    {
+                        "port": 8008,
+                        "descriptive_title": "Missing X-Frame-Options header",
+                        "severity_score": 30,
+                        "nikto_findings": ["Missing X-Frame-Options header"],
+                        "parsed_observations": ["Missing X-Frame-Options header"],
+                    },
+                    {
+                        "port": 8443,
+                        "descriptive_title": "Missing X-Frame-Options header",
+                        "severity_score": 70,
+                        "testssl_analysis": {
+                            "summary": "CRITICAL: 1 vulnerabilities detected",
+                            "vulnerabilities": ["POODLE vulnerability"],
+                        },
+                    },
+                ],
+            }
+        ]
+
+        merged = consolidate_findings(vulnerabilities)
+        merged_vuln = merged[0]["vulnerabilities"][0]
+        self.assertIn(8443, merged_vuln.get("affected_ports", []))
+        self.assertEqual(merged_vuln.get("severity_score"), 70)
+        self.assertIn("testssl_analysis", merged_vuln)
 
 
 if __name__ == "__main__":
