@@ -39,6 +39,10 @@ Funcionalidades presentes actualmente en `redaudit --version` >= v3.6.0.
 
 | Característica | Versión | Verificación |
 | :--- | :--- | :--- |
+| **Selector de Perfil del Wizard** | v3.9.0 | `redaudit/core/auditor.py`. Express/Estándar/Exhaustivo presets + modo Custom. |
+| **Modos de Temporización Reales** | v3.9.0 | `redaudit/core/scanner.py`. Aplica correctamente nmap `-T1`/`-T4`/`-T5` con delay/threads. |
+| **Reportes HTML Mejorados** | v3.9.0 | `redaudit/templates/report*.html.j2`. Hallazgos expandibles, análisis smart scan, playbooks, evidencia. |
+| **Detección FPs Nuclei** | v3.9.0 | `redaudit/core/verify_vuln.py`. Mapeo server header vs CPE para marcar FPs. |
 | **Consistencia de Colores** | v3.8.4 | `redaudit/core/auditor.py`. Usa Rich console.print() cuando el progreso está activo para asegurar colores correctos. |
 | **Identidad del Auditor** | v3.8.3 | `redaudit/core/wizard.py`. Prompt del wizard para nombre del auditor, visible en reportes TXT/HTML. |
 | **Reportes HTML Bilingües** | v3.8.3 | `redaudit/core/reporter.py`. Cuando el idioma es ES, se genera `report_es.html` junto al HTML principal. |
