@@ -21,6 +21,10 @@ def test_extract_finding_title_variants():
         )
         == "http://x"
     )
+    assert (
+        html_reporter._extract_finding_title({"url": "https://example.com", "port": 443})
+        == "Web Service Finding on Port 443"
+    )
 
 
 def test_prepare_report_data_populates_tables():
