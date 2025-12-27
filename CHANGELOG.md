@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.1a] - 2025-12-27 (Reporting Hotfix)
+
+### Fixed
+
+- **Spanish HTML report titles**: Regex matching now correctly localizes common finding titles in `report_es.html`.
+- **summary.json metadata**: Added `scan_mode_cli`, compact `options`, and `severity_counts` alias to improve dashboard consumers.
+
 ## [3.9.0] - 2025-12-27 (Profile Selector & Enhanced Reports)
 
 ### Added

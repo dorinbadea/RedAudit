@@ -9,6 +9,13 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [3.9.1a] - 2025-12-27 (Hotfix de Reportes)
+
+### Fixed
+
+- **Títulos en reportes HTML ES**: El regex ahora localiza correctamente títulos de hallazgos comunes en `report_es.html`.
+- **Metadatos en summary.json**: Se añadieron `scan_mode_cli`, `options` compacto y alias `severity_counts` para dashboards.
+
 ## [3.9.0] - 2025-12-27 (Selector de Perfiles y Reportes Mejorados)
 
 ### Añadido
