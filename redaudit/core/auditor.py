@@ -964,26 +964,35 @@ class InteractiveNetworkAuditor(
 
         # Note: is_nuclei_available is already imported at module level from nuclei.py
 
-        profile_options = [
-            self.t("wizard_profile_express"),
-            self.t("wizard_profile_standard"),
-            self.t("wizard_profile_exhaustive"),
-            self.t("wizard_profile_custom"),
-        ]
-        profile_choice = self.ask_choice(self.t("wizard_profile_q"), profile_options, default=1)
+        # v3.9.0: Loop for profile selection with back navigation from timing
+        profile_choice = None
+        timing_delay = 0.0
 
-        # Helper: Ask for timing/paranoia level (applies to Standard and Exhaustive)
-        def ask_timing() -> float:
-            timing_options = [
-                self.t("timing_stealth"),
-                self.t("timing_normal"),
-                self.t("timing_aggressive"),
+        while profile_choice is None:
+            profile_options = [
+                self.t("wizard_profile_express"),
+                self.t("wizard_profile_standard"),
+                self.t("wizard_profile_exhaustive"),
+                self.t("wizard_profile_custom"),
             ]
-            timing_choice = self.ask_choice(self.t("timing_q"), timing_options, default=1)
-            # Stealth = 2.0s, Normal = 0.0s, Aggressive = 0.0s (threads handle parallelism)
-            return {0: 2.0, 1: 0.0, 2: 0.0}.get(timing_choice, 0.0)
+            profile_idx = self.ask_choice(self.t("wizard_profile_q"), profile_options, default=1)
 
-        # PROFILE 0: Express - Fast scan with minimal config (no timing question)
+            # For profiles that ask timing, include a back option
+            if profile_idx in (1, 2):  # Standard or Exhaustive
+                timing_options = [
+                    self.t("timing_stealth"),
+                    self.t("timing_normal"),
+                    self.t("timing_aggressive"),
+                    self.t("go_back"),
+                ]
+                timing_choice = self.ask_choice(self.t("timing_q"), timing_options, default=1)
+                if timing_choice == 3:  # Go back
+                    continue  # Re-show profile selector
+                timing_delay = {0: 2.0, 1: 0.0, 2: 0.0}.get(timing_choice, 0.0)
+
+            profile_choice = profile_idx
+
+        # PROFILE 0: Express - Fast scan with minimal config
         if profile_choice == 0:
             self.config["scan_mode"] = "rapido"
             self.config["max_hosts_value"] = "all"
@@ -1016,7 +1025,7 @@ class InteractiveNetworkAuditor(
             self.config["save_txt_report"] = True
             self.config["save_html_report"] = True
             self.config["output_dir"] = get_default_reports_base_dir()
-            self.rate_limit_delay = ask_timing()  # User choice
+            self.rate_limit_delay = timing_delay  # Already asked above
             return
 
         # PROFILE 2: Exhaustive - Maximum discovery (auto-configures everything)
@@ -1069,8 +1078,8 @@ class InteractiveNetworkAuditor(
             # Webhook off by default
             self.config["webhook_url"] = ""
 
-            # Rate limiting - user choice based on environment sensitivity
-            self.rate_limit_delay = ask_timing()
+            # Rate limiting - already asked in profile selection loop
+            self.rate_limit_delay = timing_delay
             return
 
         # PROFILE 3: Custom - Full wizard with 8 steps (original behavior)
