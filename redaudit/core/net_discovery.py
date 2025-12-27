@@ -151,19 +151,17 @@ def dhcp_discover(
                 current_server.setdefault("dns", []).append(match.group(1))
 
         # Best-effort domain hints (useful for DNS/AD enumeration).
-        if re.search(r"^Domain Name:\s*", line, re.IGNORECASE):
-            match = re.search(r"Domain Name:\s*(.+)", line, re.IGNORECASE)
-            if match:
-                domain = match.group(1).strip().strip('"')
-                if domain and domain.lower() != "local":
-                    current_server["domain"] = domain[:200]
+        match = re.search(r"^[\s|_]*Domain Name:\s*(.+)", line, re.IGNORECASE)
+        if match:
+            domain = match.group(1).strip().strip('"')
+            if domain and domain.lower() != "local":
+                current_server["domain"] = domain[:200]
 
-        if re.search(r"^Domain Search:\s*", line, re.IGNORECASE):
-            match = re.search(r"Domain Search:\s*(.+)", line, re.IGNORECASE)
-            if match:
-                search = match.group(1).strip().strip('"')
-                if search:
-                    current_server["domain_search"] = search[:200]
+        match = re.search(r"^[\s|_]*Domain Search:\s*(.+)", line, re.IGNORECASE)
+        if match:
+            search = match.group(1).strip().strip('"')
+            if search:
+                current_server["domain_search"] = search[:200]
 
     if current_server.get("ip"):
         result["servers"].append(current_server)
@@ -273,7 +271,7 @@ def netbios_discover(
                 if ip_match:
                     current_ip = ip_match.group(1)
 
-                name_match = re.search(r"NetBIOS name:\s*(\S+)", line, re.IGNORECASE)
+                name_match = re.search(r"NetBIOS name:\s*([^\s,]+)", line, re.IGNORECASE)
                 if name_match and current_ip:
                     result["hosts"].append(
                         {
