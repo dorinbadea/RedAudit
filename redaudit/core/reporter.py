@@ -277,8 +277,22 @@ def generate_summary(
     if hosts:
         # Generic improvement: tag the default gateway as a router when topology is enabled.
         gateway_ip = ((results.get("topology") or {}).get("default_gateway") or {}).get("ip")
+
+        # v3.9.6: Find gateway MAC for VPN interface detection (same MAC = VPN virtual IP)
+        gateway_mac = None
         if gateway_ip:
             for host in hosts:
+                if host.get("ip") == gateway_ip:
+                    gateway_mac = (host.get("deep_scan") or {}).get("mac_address")
+                    break
+
+        if gateway_ip:
+            for host in hosts:
+                # Inject gateway info for VPN detection heuristic (entity_resolver uses these)
+                host["_gateway_ip"] = gateway_ip
+                if gateway_mac:
+                    host["_gateway_mac"] = gateway_mac
+
                 if host.get("ip") != gateway_ip:
                     continue
                 host["is_default_gateway"] = True

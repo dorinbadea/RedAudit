@@ -281,6 +281,34 @@ def guess_asset_type(host: Dict) -> str:
     if host.get("is_default_gateway") is True:
         return "router"
 
+    # ---------------------------------------------------------------------
+    # VPN Interface Detection (v3.9.6)
+    # Detects VPN gateways and virtual IPs using multiple heuristics
+    # ---------------------------------------------------------------------
+    port_nums = {p.get("port") for p in ports if p.get("port")}
+
+    # Heuristic 1: Same MAC as gateway + different IP = VPN virtual IP
+    gateway_mac = (host.get("_gateway_mac") or "").lower().replace("-", ":")
+    host_mac = (deep.get("mac_address") or "").lower().replace("-", ":")
+    gateway_ip = host.get("_gateway_ip")
+    host_ip = host.get("ip")
+    if gateway_mac and host_mac and gateway_mac == host_mac:
+        if gateway_ip and host_ip and gateway_ip != host_ip:
+            # Same MAC as gateway but different IP = VPN interface
+            return "vpn"
+
+    # Heuristic 2: VPN service ports (IPSec, OpenVPN, WireGuard)
+    VPN_PORTS = {500, 4500, 1194, 51820}  # IKE, NAT-T, OpenVPN, WireGuard
+    if port_nums & VPN_PORTS:
+        # If only VPN ports or very few ports, likely a VPN endpoint
+        non_vpn_ports = port_nums - VPN_PORTS - {53, 80, 443}  # Exclude common
+        if len(non_vpn_ports) <= 2:
+            return "vpn"
+
+    # Heuristic 3: VPN hostname patterns
+    if any(x in hostname for x in ["vpn", "ipsec", "wireguard", "openvpn", "tunnel"]):
+        return "vpn"
+
     # Check hostname patterns (generic first, avoid brand-specific assumptions).
     if any(x in hostname for x in ["iphone", "ipad", "android", "phone"]):
         return "mobile"
@@ -359,8 +387,7 @@ def guess_asset_type(host: Dict) -> str:
     if any(x in vendor for x in ["amazon", "google"]):
         return "smart_device"
 
-    # Check ports
-    port_nums = {p.get("port") for p in ports}
+    # Check ports (port_nums defined above in VPN detection)
     if 22 in port_nums or 3389 in port_nums:
         return "server"
     if 80 in port_nums or 443 in port_nums:

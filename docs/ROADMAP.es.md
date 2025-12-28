@@ -16,9 +16,7 @@ Estas características están aprobadas pero **aún no implementadas** en el có
 
 ### Seguridad e Integraciones (Prioridad: Alta)
 
-| Característica | Estado | Descripción |
-| :--- | :--- | :--- |
-| **Detección Interfaces VPN** | 📋 Planificado | Heurística para detectar interfaces VPN: mismo MAC que gateway + IP diferente + 0 puertos abiertos → tag `vpn-interface` en vez de `router` genérico. |
+*(No hay elementos de prioridad alta pendientes actualmente)*
 
 ### Extensiones Red Team (Prioridad: Media)
 
@@ -41,6 +39,7 @@ Funcionalidades presentes actualmente en `redaudit --version` >= v3.6.0.
 
 | Característica | Versión | Verificación |
 | :--- | :--- | :--- |
+| **Detección Interfaces VPN** | v3.9.6 | `redaudit/core/entity_resolver.py`. Clasifica gateways VPN via heurística same-MAC, puertos VPN (500/4500/1194/51820), y patrones de hostname. |
 | **Pack de Firmas IoT** | v3.9.5 | `redaudit/core/udp_probe.py`, `redaudit/core/hyperscan.py`. Payloads UDP específicos para WiZ, Yeelight, Tuya/SmartLife, CoAP/Matter. |
 | **Selector de Perfil del Wizard** | v3.9.0 | `redaudit/core/auditor.py`. Express/Estándar/Exhaustivo presets + modo Custom. |
 | **Modos de Temporización Reales** | v3.9.0 | `redaudit/core/scanner.py`. Aplica correctamente nmap `-T1`/`-T4`/`-T5` con delay/threads. |

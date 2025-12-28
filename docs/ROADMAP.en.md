@@ -16,9 +16,7 @@ These features are approved but **not yet implemented** in the codebase.
 
 ### Security & Integrations (Priority: High)
 
-| Feature | Status | Description |
-| :--- | :--- | :--- |
-| **VPN Interface Detection** | 📋 Planned | Heuristic to detect VPN gateway interfaces: same MAC as gateway + different IP + 0 open ports → tag `vpn-interface` instead of generic `router`. |
+*(No high priority items currently pending)*
 
 ### Red Team Extensions (Priority: Medium)
 
@@ -41,6 +39,7 @@ Features currently present using `redaudit --version` >= v3.6.0.
 
 | Feature | Version | Verification |
 | :--- | :--- | :--- |
+| **VPN Interface Detection** | v3.9.6 | `redaudit/core/entity_resolver.py`. Classifies VPN gateways via same-MAC-as-gateway heuristic, VPN service ports (500/4500/1194/51820), and hostname patterns. |
 | **IoT Signature Pack** | v3.9.5 | `redaudit/core/udp_probe.py`, `redaudit/core/hyperscan.py`. Protocol-specific UDP payloads for WiZ, Yeelight, Tuya/SmartLife, CoAP/Matter devices. |
 | **Wizard Profile Selector** | v3.9.0 | `redaudit/core/auditor.py`. Express/Standard/Exhaustive auto-config presets + Custom wizard mode. |
 | **Real Timing Modes** | v3.9.0 | `redaudit/core/scanner.py`. Timing modes now correctly apply nmap `-T1`/`-T4`/`-T5` templates with delay/thread adjustments. |

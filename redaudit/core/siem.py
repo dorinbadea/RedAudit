@@ -77,6 +77,7 @@ SEVERITY_KEYWORDS = {
 ASSET_TYPE_TAGS = {
     "router": ["network", "infrastructure", "gateway"],
     "switch": ["network", "infrastructure", "switch"],
+    "vpn": ["network", "infrastructure", "vpn-endpoint"],
     "workstation": ["endpoint", "user-device", "desktop"],
     "server": ["infrastructure", "backend"],
     "mobile": ["endpoint", "mobile", "user-device"],

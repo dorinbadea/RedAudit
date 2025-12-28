@@ -9,6 +9,14 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Añadido
+
+- **Detección de Interfaces VPN**: Nueva heurística para clasificar interfaces de gateway VPN:
+  - Misma MAC que gateway + IP diferente = IP virtual VPN
+  - Puertos de servicio VPN (500, 4500, 1194, 51820) = endpoint IPSec/OpenVPN/WireGuard
+  - Patrones de hostname (vpn, ipsec, wireguard, tunnel) = dispositivo VPN
+  - Nuevo tipo de asset `vpn` con tag SIEM `vpn-endpoint`
+
 ## [3.9.5a] - 2025-12-28 (Instalador y Herramientas)
 
 ### Añadido
