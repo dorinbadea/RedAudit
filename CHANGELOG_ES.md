@@ -9,6 +9,18 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [3.9.5a] - 2025-12-28 (Instalador y Herramientas)
+
+### Añadido
+
+- **Instalador: Herramientas de Análisis Web**: Añadidos `whatweb`, `nikto` y `traceroute` a la lista de paquetes apt para análisis de vulnerabilidades web completo out-of-the-box.
+
+### Corregido
+
+- **Instalador: fiabilidad de testssl.sh**: Eliminada la verificación estricta de hash de commit que causaba fallos de instalación. Ahora usa el tag de versión `v3.2` con fallback automático a latest HEAD si el tag no está disponible.
+- **CI: test_fping_sweep_logic**: Corregido el mock target para simular correctamente la no disponibilidad de `fping` en el runner de GitHub Actions (ahora mockea `shutil.which` + `_run_cmd` en vez de `CommandRunner`).
+- **Badge de Cobertura**: Reemplazado el badge dinámico de Gist roto con badge estático de 84% de cobertura.
+
 ## [3.9.5] - 2025-12-28 (Pack de Firmas IoT + Hotfix NVD)
 
 ### Añadido
