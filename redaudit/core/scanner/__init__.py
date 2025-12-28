@@ -4,6 +4,8 @@ Scanner Module - RedAudit
 Refactored into a package to improve maintainability.
 """
 
+from redaudit.utils.constants import STATUS_UP
+
 # Re-export all public symbols for backward compatibility
 from redaudit.core.scanner.utils import (
     sanitize_ip,
@@ -48,6 +50,9 @@ from redaudit.core.scanner.enrichment import (
     _fetch_http_headers,  # Internal but may be used by tests
     _fetch_http_body,  # Internal but may be used by tests
     _extract_http_title,  # Internal but may be used by tests
+    _extract_http_server,  # Internal but may be used by tests
+    _clean_http_identity_text,  # Internal but may be used by tests
+    _format_http_host,  # Internal but may be used by tests
 )
 
 __all__ = [
@@ -81,4 +86,8 @@ __all__ = [
     "_fetch_http_headers",
     "_fetch_http_body",
     "_extract_http_title",
+    "_extract_http_server",
+    "_clean_http_identity_text",
+    "_format_http_host",
+    "STATUS_UP",
 ]
