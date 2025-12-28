@@ -10,7 +10,7 @@ Esta versión se centra en **usabilidad del wizard**, **precisión del escaneo**
 
 ---
 
-## ✨ Nuevas Funcionalidades
+## Nuevas Funcionalidades
 
 ### Navegación del Wizard
 
@@ -45,7 +45,7 @@ Las plantillas de timing de Nmap ahora se aplican correctamente según el modo s
 
 ---
 
-## 🐛 Correcciones
+## Correcciones
 
 ### nmap_timing No Aplicado
 
@@ -59,7 +59,7 @@ Las plantillas de timing de Nmap ahora se aplican correctamente según el modo s
 
 ---
 
-## ⚡ Cambios
+## Cambios
 
 ### Tipo de Retorno de `save_playbooks()`
 
@@ -68,7 +68,7 @@ Las plantillas de timing de Nmap ahora se aplican correctamente según el modo s
 
 ---
 
-## 🗑️ Eliminado
+## Eliminado
 
 ### Módulo `prescan.py`
 
@@ -80,7 +80,7 @@ Las plantillas de timing de Nmap ahora se aplican correctamente según el modo s
 
 ---
 
-## 📦 Instalación
+## Instalación
 
 ```bash
 pip install --upgrade redaudit
@@ -90,7 +90,7 @@ pip install git+https://github.com/dorinbadea/RedAudit.git@v3.9.0
 
 ---
 
-## 🔗 Enlaces
+## Enlaces
 
 - [Changelog Completo](../../CHANGELOG_ES.md)
 - [Documentación](../../docs/INDEX.md)

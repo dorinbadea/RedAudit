@@ -10,7 +10,7 @@ This hotfix improves **net discovery parsing reliability**.
 
 ---
 
-## 🐛 Bug Fixes
+## Bug Fixes
 
 ### DHCP Domain Hints With Prefixed Output
 
@@ -24,7 +24,7 @@ This hotfix improves **net discovery parsing reliability**.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 pip install --upgrade redaudit
@@ -34,7 +34,7 @@ pip install git+https://github.com/dorinbadea/RedAudit.git@v3.9.4
 
 ---
 
-## 🔗 Links
+## Links
 
 - [Full Changelog](../../CHANGELOG.md)
 - [Documentation](../../docs/INDEX.md)

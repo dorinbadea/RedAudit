@@ -22,7 +22,7 @@ This release focuses on ensuring the documentation accurately reflects the codeb
 - **Docs**: Fixed redundant headers and missing language specifiers in Markdown files (Linting compliance).
 - **Structure**: Formalized the use of `docs/INDEX.md` as the documentation entry point.
 
-## 📦 Changes
+## Changes
 
 | Component | Change |
 | :--- | :--- |
@@ -30,7 +30,7 @@ This release focuses on ensuring the documentation accurately reflects the codeb
 | **Roadmap** | Verified implementation status of Red Team features |
 | **Didactic** | New instructor-focused format with session plans |
 
-## 🔗 Quick Links
+## Quick Links
 
 - [Manual (EN)](../../MANUAL.en.md)
 - [Usage Guide (EN)](../../USAGE.en.md)

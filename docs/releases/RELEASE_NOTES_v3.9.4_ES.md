@@ -10,7 +10,7 @@ Este hotfix mejora la **fiabilidad del parseo de descubrimiento de red**.
 
 ---
 
-## 🐛 Correcciones
+## Correcciones
 
 ### Pistas de dominio DHCP con prefijos
 
@@ -24,7 +24,7 @@ Este hotfix mejora la **fiabilidad del parseo de descubrimiento de red**.
 
 ---
 
-## 📦 Instalacion
+## Instalacion
 
 ```bash
 pip install --upgrade redaudit
@@ -34,7 +34,7 @@ pip install git+https://github.com/dorinbadea/RedAudit.git@v3.9.4
 
 ---
 
-## 🔗 Enlaces
+## Enlaces
 
 - [Changelog completo](../../CHANGELOG_ES.md)
 - [Documentacion](../../docs/INDEX.md)

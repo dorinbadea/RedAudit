@@ -10,7 +10,7 @@ Este hotfix mejora la **fidelidad de reportes** y los **titulos de hallazgos**.
 
 ---
 
-## 🐛 Correcciones
+## Correcciones
 
 ### Consolidacion de hallazgos con TestSSL
 
@@ -23,7 +23,7 @@ Este hotfix mejora la **fidelidad de reportes** y los **titulos de hallazgos**.
 
 ---
 
-## 📦 Instalacion
+## Instalacion
 
 ```bash
 pip install --upgrade redaudit
@@ -33,7 +33,7 @@ pip install git+https://github.com/dorinbadea/RedAudit.git@v3.9.3
 
 ---
 
-## 🔗 Enlaces
+## Enlaces
 
 - [Changelog completo](../../CHANGELOG_ES.md)
 - [Documentacion](../../docs/INDEX.md)

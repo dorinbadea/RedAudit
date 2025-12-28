@@ -10,7 +10,7 @@ This hotfix improves **report fidelity** and **finding titles**.
 
 ---
 
-## 🐛 Bug Fixes
+## Bug Fixes
 
 ### Consolidated Findings Keep TestSSL Data
 
@@ -23,7 +23,7 @@ This hotfix improves **report fidelity** and **finding titles**.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 pip install --upgrade redaudit
@@ -33,7 +33,7 @@ pip install git+https://github.com/dorinbadea/RedAudit.git@v3.9.3
 
 ---
 
-## 🔗 Links
+## Links
 
 - [Full Changelog](../../CHANGELOG.md)
 - [Documentation](../../docs/INDEX.md)

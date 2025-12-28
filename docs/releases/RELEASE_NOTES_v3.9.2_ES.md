@@ -10,7 +10,7 @@ Este hotfix asegura **la visualizacion correcta de version** tras auto-update.
 
 ---
 
-## 🐛 Correcciones
+## Correcciones
 
 ### Deteccion de version en instalacion script
 
@@ -18,7 +18,7 @@ Este hotfix asegura **la visualizacion correcta de version** tras auto-update.
 
 ---
 
-## 📦 Instalacion
+## Instalacion
 
 ```bash
 pip install --upgrade redaudit
@@ -28,7 +28,7 @@ pip install git+https://github.com/dorinbadea/RedAudit.git@v3.9.2
 
 ---
 
-## 🔗 Enlaces
+## Enlaces
 
 - [Changelog completo](../../CHANGELOG_ES.md)
 - [Documentacion](../../docs/INDEX.md)

@@ -10,7 +10,7 @@ This hotfix focuses on **reporting fidelity** and **dashboard metadata**.
 
 ---
 
-## 🐛 Bug Fixes
+## Bug Fixes
 
 ### Spanish HTML Finding Titles
 
@@ -22,7 +22,7 @@ This hotfix focuses on **reporting fidelity** and **dashboard metadata**.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 pip install --upgrade redaudit
@@ -32,7 +32,7 @@ pip install git+https://github.com/dorinbadea/RedAudit.git@v3.9.1a
 
 ---
 
-## 🔗 Links
+## Links
 
 - [Full Changelog](../../CHANGELOG.md)
 - [Documentation](../../docs/INDEX.md)

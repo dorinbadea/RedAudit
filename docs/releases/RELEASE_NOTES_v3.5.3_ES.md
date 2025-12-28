@@ -22,7 +22,7 @@ Esta versión se centra en asegurar que la documentación refleje con precisión
 - **Docs**: Corregidos encabezados redundantes y falta de especificadores de lenguaje en Markdown (Linting compliance).
 - **Estructura**: Formalizado el uso de `docs/INDEX.md` como punto de entrada.
 
-## 📦 Cambios
+## Cambios
 
 | Componente | Cambio |
 | :--- | :--- |
@@ -30,7 +30,7 @@ Esta versión se centra en asegurar que la documentación refleje con precisión
 | **Roadmap** | Estado de implementación verificado para features Red Team |
 | **Didáctico** | Nuevo formato enfocado a instructores con planes de sesión |
 
-## 🔗 Enlaces Rápidos
+## Enlaces Rápidos
 
 - [Manual (ES)](../../MANUAL.es.md)
 - [Guía de Uso (ES)](../../USAGE.es.md)

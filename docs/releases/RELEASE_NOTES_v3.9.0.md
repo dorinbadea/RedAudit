@@ -1,6 +1,6 @@
 # RedAudit v3.9.0 Release Notes
 
-[![Versión en Español](https://img.shields.io/badge/🇪🇸-Español-blue)](./RELEASE_NOTES_v3.9.0_ES.md)
+[![Versión en Español](https://img.shields.io/badge/ES-Español-blue)](./RELEASE_NOTES_v3.9.0_ES.md)
 
 **Release Date**: 2025-12-27
 
@@ -10,7 +10,7 @@ This release focuses on **wizard usability**, **scan accuracy**, and **false pos
 
 ---
 
-## ✨ New Features
+## New Features
 
 ### Wizard Navigation
 
@@ -45,7 +45,7 @@ Nmap timing templates are now correctly applied based on selected mode:
 
 ---
 
-## 🐛 Bug Fixes
+## Bug Fixes
 
 ### nmap_timing Not Applied
 
@@ -59,7 +59,7 @@ Nmap timing templates are now correctly applied based on selected mode:
 
 ---
 
-## ⚡ Changes
+## Changes
 
 ### `save_playbooks()` Return Type
 
@@ -68,7 +68,7 @@ Nmap timing templates are now correctly applied based on selected mode:
 
 ---
 
-## 🗑️ Removed
+## Removed
 
 ### `prescan.py` Module
 
@@ -80,7 +80,7 @@ Nmap timing templates are now correctly applied based on selected mode:
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 pip install --upgrade redaudit
@@ -90,7 +90,7 @@ pip install git+https://github.com/dorinbadea/RedAudit.git@v3.9.0
 
 ---
 
-## 🔗 Links
+## Links
 
 - [Full Changelog](../../CHANGELOG.md)
 - [Documentation](../../docs/INDEX.md)

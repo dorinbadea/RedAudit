@@ -10,7 +10,7 @@ Este hotfix se centra en la **fidelidad de reportes** y en **metadatos para dash
 
 ---
 
-## 🐛 Correcciones
+## Correcciones
 
 ### Títulos de hallazgos en HTML ES
 
@@ -22,7 +22,7 @@ Este hotfix se centra en la **fidelidad de reportes** y en **metadatos para dash
 
 ---
 
-## 📦 Instalación
+## Instalación
 
 ```bash
 pip install --upgrade redaudit
@@ -32,7 +32,7 @@ pip install git+https://github.com/dorinbadea/RedAudit.git@v3.9.1a
 
 ---
 
-## 🔗 Enlaces
+## Enlaces
 
 - [Changelog completo](../../CHANGELOG_ES.md)
 - [Documentación](../../docs/INDEX.md)

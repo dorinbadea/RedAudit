@@ -10,7 +10,7 @@ This hotfix ensures **accurate version display** after script-based updates.
 
 ---
 
-## 🐛 Bug Fixes
+## Bug Fixes
 
 ### Script Install Version Detection
 
@@ -18,7 +18,7 @@ This hotfix ensures **accurate version display** after script-based updates.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 pip install --upgrade redaudit
@@ -28,7 +28,7 @@ pip install git+https://github.com/dorinbadea/RedAudit.git@v3.9.2
 
 ---
 
-## 🔗 Links
+## Links
 
 - [Full Changelog](../../CHANGELOG.md)
 - [Documentation](../../docs/INDEX.md)
