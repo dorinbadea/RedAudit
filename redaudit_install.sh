@@ -87,7 +87,7 @@ echo "$MSG_INSTALL"
 # 2) Dependencies
 # -------------------------------------------
 
-EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4 nuclei"
+EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4 nuclei whatweb nikto traceroute"
 
 echo ""
 echo "$MSG_PKGS"
@@ -111,30 +111,30 @@ if $INSTALL; then
 fi
 
 # -------------------------------------------
-# 2b) Install testssl.sh from GitHub (pinned commit)
+# 2b) Install testssl.sh from GitHub
 # -------------------------------------------
 
 TESTSSL_REPO="https://github.com/drwetter/testssl.sh.git"
-TESTSSL_VERSION="${TESTSSL_VERSION:-v3.2.2}"
-TESTSSL_COMMIT="${TESTSSL_COMMIT:-3b6c5035bafcd0590f03730f76688bdce5568df0}"
+TESTSSL_VERSION="${TESTSSL_VERSION:-v3.2}"
 
 if [[ ! -f "/usr/local/bin/testssl.sh" ]]; then
-    echo "[INFO] Installing testssl.sh ($TESTSSL_VERSION, pinned) from GitHub..."
+    echo "[INFO] Installing testssl.sh ($TESTSSL_VERSION) from GitHub..."
     if command -v git &> /dev/null; then
         rm -rf /opt/testssl.sh 2>/dev/null
-        if git clone --depth 1 --branch "$TESTSSL_VERSION" "$TESTSSL_REPO" /opt/testssl.sh; then
-            CLONED_COMMIT=$(git -C /opt/testssl.sh rev-parse HEAD 2>/dev/null || echo "unknown")
-            if [[ "$CLONED_COMMIT" != "$TESTSSL_COMMIT" ]]; then
-                echo "[ERROR] testssl.sh commit mismatch (expected $TESTSSL_COMMIT, got $CLONED_COMMIT). Skipping installation."
-                rm -rf /opt/testssl.sh
-            else
-                ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl.sh
-                chmod +x /opt/testssl.sh/testssl.sh
-                echo "[OK] testssl.sh installed at /usr/local/bin/testssl.sh"
-            fi
+        # Try version tag first, fallback to latest if it fails
+        if git clone --depth 1 --branch "$TESTSSL_VERSION" "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
+            echo "[OK] Cloned testssl.sh $TESTSSL_VERSION"
+        elif git clone --depth 1 "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
+            echo "[OK] Cloned testssl.sh (latest)"
         else
             echo "[WARN] git clone failed; skipping testssl.sh installation"
-            rm -rf /opt/testssl.sh
+            rm -rf /opt/testssl.sh 2>/dev/null
+        fi
+        # Create symlink if clone succeeded
+        if [[ -f "/opt/testssl.sh/testssl.sh" ]]; then
+            ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl.sh
+            chmod +x /opt/testssl.sh/testssl.sh
+            echo "[OK] testssl.sh installed at /usr/local/bin/testssl.sh"
         fi
     else
         echo "[WARN] git not found, skipping testssl.sh installation"
@@ -142,6 +142,7 @@ if [[ ! -f "/usr/local/bin/testssl.sh" ]]; then
 else
     echo "[OK] testssl.sh already installed"
 fi
+
 
 # -------------------------------------------
 # 2c) Install kerbrute (Red Team / Kerberos)
