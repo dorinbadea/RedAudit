@@ -62,7 +62,7 @@ The top-level container for the scan session.
 Compact, flattened summary for dashboards and automation (generated only when report encryption is disabled).
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `schema_version` | `string` | Summary schema version |
 | `generated_at` | `string` | Summary generation timestamp (ISO 8601) |
 | `session_id` | `string` | Scan session UUID |
@@ -88,7 +88,7 @@ Compact, flattened summary for dashboards and automation (generated only when re
 This field appears only if agentless verification was enabled.
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `targets` | integer | Number of eligible targets selected for verification |
 | `completed` | integer | Number of verification attempts completed |
 
@@ -97,32 +97,32 @@ This field appears only if agentless verification was enabled.
 Appears only when Nuclei scanning is enabled and available.
 
 | Field | Type | Description |
-|---|---|---|
-| `enabled` | boolean | True when nuclei ran (best-effort) |
-| `targets` | integer | HTTP/HTTPS targets submitted to nuclei |
-| `findings` | integer | Nuclei findings parsed into the report |
-| `success` | boolean | Whether nuclei produced an output file |
-| `output_file` | string | Relative path to nuclei output file (best-effort) |
-| `error` | string | Error message if nuclei failed (best-effort) |
+| :--- | :--- | :--- |
+| `enabled` | boolean | True when Nuclei was executed (best-effort) |
+| `targets` | integer | HTTP/HTTPS targets sent to Nuclei |
+| `findings` | integer | Nuclei findings parsed |
+| `success` | boolean | If Nuclei generated output file |
+| `output_file` | string | Relative path to output file (best-effort) |
+| `error` | string | Error if Nuclei failed (best-effort) |
 
 ### Config Snapshot (v3.7+)
 
 Sanitized run configuration, stored for reproducibility.
 
 | Field | Type | Description |
-|---|---|---|
-| `targets` | array | Target networks scanned |
-| `scan_mode` | string | Scan mode (rapido/normal/completo) |
-| `threads` | integer | Concurrency level used |
-| `udp_mode` | string | UDP scan mode (quick/full) |
-| `udp_top_ports` | integer | UDP top-ports coverage |
-| `topology_enabled` | boolean | Topology discovery enabled |
-| `net_discovery_enabled` | boolean | Enhanced discovery enabled |
-| `net_discovery_redteam` | boolean | Red Team discovery enabled |
-| `windows_verify_enabled` | boolean | Agentless verification enabled |
-| `scan_vulnerabilities` | boolean | Web vuln scan enabled |
+| :--- | :--- | :--- |
+| `targets` | array | Target networks |
+| `scan_mode` | string | Scan mode |
+| `threads` | integer | Concurrency used |
+| `udp_mode` | string | UDP strategy |
+| `udp_top_ports` | integer | UDP coverage |
+| `topology_enabled` | boolean | Topology enabled |
+| `net_discovery_enabled` | boolean | Net Discovery enabled |
+| `net_discovery_redteam` | boolean | Red Team enabled |
+| `windows_verify_enabled` | boolean | Agentless verify |
+| `scan_vulnerabilities` | boolean | Web vuln enabled |
 | `nuclei_enabled` | boolean | Nuclei enabled |
-| `cve_lookup_enabled` | boolean | NVD enrichment enabled |
+| `cve_lookup_enabled` | boolean | NVD enrichment |
 | `dry_run` | boolean | Dry-run mode |
 
 ### Pipeline Summary (v3.7+)
@@ -130,22 +130,22 @@ Sanitized run configuration, stored for reproducibility.
 Compact roll-up for dashboards.
 
 | Field | Type | Description |
-|---|---|---|
-| `host_scan` | object | Targets scanned + threads |
-| `net_discovery` | object | Counts for DHCP/ARP/NetBIOS/UPNP + redteam summary |
-| `agentless_verify` | object | Targets + completed + protocol counts |
-| `nuclei` | object | Nuclei summary (targets/findings) |
+| :--- | :--- | :--- |
+| `host_scan` | object | Targets + threads |
+| `net_discovery` | object | DHCP/ARP/NetBIOS/UPNP counts + redteam |
+| `agentless_verify` | object | Targets + completed + counts per protocol |
+| `nuclei` | object | Nuclei summary |
 | `vulnerability_scan` | object | Total findings + sources |
 
 ### Smart Scan Summary (v3.7+)
 
 | Field | Type | Description |
-|---|---|---|
-| `hosts` | integer | Hosts evaluated for SmartScan |
+| :--- | :--- | :--- |
+| `hosts` | integer | Hosts evaluated by SmartScan |
 | `identity_score_avg` | number | Average identity score |
 | `deep_scan_triggered` | integer | Hosts that triggered deep scan |
-| `deep_scan_executed` | integer | Hosts where deep scan ran |
-| `signals` | object | Signal counts (hostname, cpe, agentless, etc.) |
+| `deep_scan_executed` | integer | Hosts with deep scan executed |
+| `signals` | object | Signals counts |
 | `reasons` | object | Trigger reasons (many_ports, suspicious_service, etc.) |
 
 ### Net Discovery Object (Optional) (v3.2+)
@@ -155,26 +155,26 @@ This field appears only if network discovery was enabled (CLI: `--net-discovery`
 Network discovery is **best-effort**: missing tools will reduce visibility but should not fail the scan.
 
 | Field | Type | Description |
-|---|---|---|
-| `enabled` | boolean | Always true when the block is present |
+| :--- | :--- | :--- |
+| `enabled` | boolean | Always true when block is present |
 | `generated_at` | string | Timestamp (ISO 8601) |
 | `protocols_used` | array | List of protocols used (dhcp, netbios, mdns, upnp, arp, fping) |
 | `redteam_enabled` | boolean | True if Red Team techniques were enabled |
-| `tools` | object | Tool availability flags (nmap, fping, nbtscan, netdiscover, etc.) |
+| `tools` | object | Tool availability flags (nmap, fping, nbtscan, etc.) |
 | `dhcp_servers` | array | Discovered DHCP servers (see below) |
 | `alive_hosts` | array | IPs responding to fping sweep |
 | `netbios_hosts` | array | Windows hosts discovered via NetBIOS |
 | `arp_hosts` | array | Hosts discovered via ARP/netdiscover |
-| `mdns_services` | array | mDNS/Bonjour services discovered |
-| `upnp_devices` | array | UPNP devices discovered |
-| `candidate_vlans` | array | Potential guest networks/VLANs detected |
+| `mdns_services` | array | Discovered mDNS/Bonjour services |
+| `upnp_devices` | array | Discovered UPNP devices |
+| `candidate_vlans` | array | Potential guest/VLAN networks detected |
 | `redteam` | object | (Optional) Red Team recon results (SNMP/SMB/RPC/LDAP/Kerberos/DNS + passive L2 signals) |
 | `errors` | array | Best-effort errors encountered |
 
 **dhcp_servers[]** entries:
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `ip` | string | DHCP server IP address |
 | `subnet` | string | Subnet mask offered |
 | `gateway` | string | Default gateway offered |
@@ -185,7 +185,7 @@ Network discovery is **best-effort**: missing tools will reduce visibility but s
 **netbios_hosts[]** entries:
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `ip` | string | Host IP address |
 | `name` | string | NetBIOS hostname |
 | `workgroup` | string | (Optional) Windows workgroup |
@@ -194,7 +194,7 @@ Network discovery is **best-effort**: missing tools will reduce visibility but s
 **candidate_vlans[]** entries:
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `source` | string | Detection method (e.g., "dhcp_server") |
 | `gateway` | string | Gateway IP of the potential VLAN |
 | `subnet` | string | Subnet mask |
@@ -203,7 +203,7 @@ Network discovery is **best-effort**: missing tools will reduce visibility but s
 **redteam** object (when enabled):
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `enabled` | boolean | Always true when the block is present |
 | `interface` | string | (Optional) Interface used for L2 captures (if set) |
 | `targets_considered` | integer | Number of candidate targets selected for Red Team checks |
@@ -231,7 +231,7 @@ Represents a single targeted IP address.
 Additional host-level fields:
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `os_detected` | string | (Optional) OS fingerprint (best-effort, usually from deep scan output) **(v3.1.4+)** |
 | `agentless_probe` | object | (Optional) Raw agentless probe outputs (SMB/RDP/LDAP/SSH/HTTP) **(v3.8.5)** |
 | `agentless_fingerprint` | object | (Optional) Normalized identity hints (see below) **(vNext)** |
@@ -270,7 +270,7 @@ Additional host-level fields:
 Normalized hints derived from SMB/RDP/LDAP probes. All fields are optional.
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `domain` | string | DNS or NetBIOS domain name hint |
 | `computer_name` | string | Hostname from RDP/SMB hints |
 | `product_version` | string | RDP product version (best-effort) |
@@ -299,7 +299,7 @@ Normalized hints derived from SMB/RDP/LDAP probes. All fields are optional.
 This field appears only if automatic deep scan was triggered.
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `strategy` | string | Strategy identifier (e.g., `adaptive_v2.8`) |
 | `mac_address` | string | (Optional) MAC address if detected |
 | `vendor` | string | (Optional) Hardware vendor if detected |
@@ -330,7 +330,7 @@ This field appears only if topology discovery was enabled (CLI: `--topology` / `
 Topology discovery is **best-effort**: missing tools, permissions, or lack of traffic will reduce visibility but should not fail the scan.
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `enabled` | boolean | Always true when the block is present |
 | `generated_at` | string | Timestamp (ISO 8601) |
 | `tools` | object | Tool availability flags (`ip`, `tcpdump`, `arp-scan`, `lldpctl`) |
@@ -343,7 +343,7 @@ Topology discovery is **best-effort**: missing tools, permissions, or lack of tr
 **interfaces[]** entries (high level):
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `interface` | string | Interface name (e.g., `eth0`) |
 | `ip` | string | (Optional) Interface IP address |
 | `networks` | array | Local networks associated with the interface |
@@ -361,7 +361,7 @@ Enrichment is performed only for services with detected version information (or 
 **Port-level fields** (inside `hosts[].ports[]`):
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `cves` | array | (Optional) List of CVEs (top 10) mapped to the service |
 | `cves[].cve_id` | string | CVE identifier (e.g., `CVE-2024-12345`) |
 | `cves[].cvss_score` | number | (Optional) CVSS base score |
@@ -374,7 +374,7 @@ Enrichment is performed only for services with detected version information (or 
 **Host-level fields** (inside `hosts[]`):
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `cve_summary` | object | (Optional) Aggregated CVE statistics for the host |
 | `cve_summary.total` | integer | Total CVEs across all ports |
 | `cve_summary.critical` | integer | Count of ports with max severity CRITICAL |
@@ -385,7 +385,7 @@ Enrichment is performed only for services with detected version information (or 
 Appears in host records when DNS/whois enrichment was performed.
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `reverse` | array | List of reverse DNS PTR records |
 | `whois_summary` | string | (Optional) Whois information for public IPs (first 25 lines) |
 
@@ -394,7 +394,7 @@ Appears in host records when DNS/whois enrichment was performed.
 List of web vulnerability findings. Each entry contains:
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `host` | string | IP address of the host |
 | `vulnerabilities` | array | List of vulnerability findings per URL |
 | `vulnerabilities[].url` | string | Full URL tested |
@@ -426,7 +426,7 @@ List of web vulnerability findings. Each entry contains:
 Starting in v3.1.4, PCAP file references use portable relative paths:
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `pcap_file` | string | Relative filename (e.g., `traffic_192.168.1.1.pcap`) - portable |
 | `pcap_file_abs` | string | Absolute path - for internal use |
 
@@ -443,7 +443,7 @@ Starting in v3.1.4, PCAP file references use portable relative paths:
 ```
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `networks` | integer | Number of target networks scanned |
 | `hosts_found` | integer | Total hosts discovered (up) |
 | `hosts_scanned` | integer | Hosts that underwent full port scanning |
@@ -489,7 +489,7 @@ List of detected network interfaces.
 ### Host Enrichment
 
 | Field | Type | Description |
-|---|---|---|
+| :--- | :--- | :--- |
 | `risk_score` | integer | Risk score (0-100) based on ports, services, exploits |
 | `tags` | array | Auto-generated tags (web, database, iot, admin, etc.) |
 | `observable_hash` | string | SHA256 hash for SIEM deduplication |
@@ -502,7 +502,7 @@ List of detected network interfaces.
   "unified_assets": [
     {
       "asset_name": "msi-laptop",
-      "asset_type": "workstation",
+      "asset_type": "workstation", // router, vpn, server, printer, media, mobile, iot, etc.
       "interfaces": [
         {"ip": "192.168.1.10", "mac": "D8:43:AE:...", "type": "WiFi"},
         {"ip": "192.168.1.15", "mac": "10:91:D1:...", "type": "Ethernet"}

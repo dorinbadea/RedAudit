@@ -8,11 +8,7 @@
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
 ![Cobertura](https://img.shields.io/badge/cobertura-84%25-brightgreen?style=flat-square)
 
-<div align="center">
-
-<img src="assets/Banner_es.png" alt="Banner de RedAudit">
-
-</div>
+![Banner de RedAudit](assets/Banner_es.png)
 
 ## ¿Qué es RedAudit?
 
@@ -48,7 +44,7 @@ sudo redaudit
 ### Escaneo y Descubrimiento
 
 | Capacidad | Descripción |
-|:---|:---|
+| :--- | :--- |
 | **Deep Scan Adaptativo** | Escalación en 3 fases (TCP → UDP Prioritario → UDP Extendido) solo cuando la identidad es débil o el host no responde |
 | **HyperScan** | Batch TCP async + broadcast UDP IoT + ARP agresivo para triage ultrarrápido |
 | **Descubrimiento de Topología** | Mapeo L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para detección de redes ocultas |
@@ -60,7 +56,7 @@ sudo redaudit
 ### Inteligencia y Correlación
 
 | Capacidad | Descripción |
-|:---|:---|
+| :--- | :--- |
 | **Correlación CVE** | NVD API 2.0 con matching CPE 2.3 y caché de 7 días |
 | **Búsqueda de Exploits** | Consultas automáticas a ExploitDB (`searchsploit`) para servicios detectados |
 | **Escaneo de Templates** | Templates Nuclei con detección de falsos positivos (mapeo server header vs vendor) |
@@ -70,7 +66,7 @@ sudo redaudit
 ### Reportes e Integración
 
 | Capacidad | Descripción |
-|:---|:---|
+| :--- | :--- |
 | **Salida Multi-Formato** | JSON, TXT, dashboard HTML, JSONL (compatible ECS v8.11) |
 | **Playbooks de Remediación** | Guías Markdown auto-generadas por host/categoría |
 | **Análisis Diferencial** | Compara reportes JSON para rastrear cambios en la red |
@@ -80,7 +76,7 @@ sudo redaudit
 ### Operaciones
 
 | Capacidad | Descripción |
-|:---|:---|
+| :--- | :--- |
 | **Defaults Persistentes** | Preferencias de usuario guardadas en `~/.redaudit/config.json` |
 | **Webhooks Interactivos** | Alertas tiempo real via Slack, Teams o PagerDuty (configurables en wizard) |
 | **Logging de Sesión** | Captura de salida terminal en doble formato (`.log` raw + `.txt` limpio) |
@@ -170,7 +166,7 @@ y equipos legacy.
 RedAudit usa `ThreadPoolExecutor` de Python para escanear múltiples hosts simultáneamente.
 
 | Parámetro | Defecto | Rango | Notas |
-|:---|:---|:---|:---|
+| :--- | :--- | :--- | :--- |
 | `--threads` | 6 | 1-16 | Hilos comparten memoria, ejecutan nmap independientemente |
 | `--rate-limit` | 0 | 0-∞ | Segundos entre hosts (jitter ±30% aplicado) |
 
@@ -216,7 +212,7 @@ docker run --rm -v $(pwd)/reports:/reports \
 Después de instalar, recarga la configuración de tu shell:
 
 | Distribución | Shell por Defecto | Comando |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | **Kali Linux** (2020.3+) | Zsh | `source ~/.zshrc` |
 | **Debian / Ubuntu / Parrot** | Bash | `source ~/.bashrc` |
 
@@ -283,7 +279,7 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 ### Opciones CLI Principales
 
 | Opción | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `-t, --target` | Red(es) objetivo en notación CIDR |
 | `-m, --mode` | Modo de escaneo: `fast` / `normal` / `full` (defecto: normal) |
 | `-j, --threads` | Hilos concurrentes (1-16, defecto: 6) |
@@ -309,7 +305,7 @@ Consulta `redaudit --help` o [USAGE.md](docs/USAGE.es.md) para la lista completa
 RedAudit aplica plantillas de temporización nmap según tu selección:
 
 | Modo | Plantilla Nmap | Threads | Delay | Caso de Uso |
-|:---|:---|:---|:---|:---|
+| :--- | :--- | :--- | :--- | :--- |
 | **Stealth** | `-T1` | 4 | 300ms | Evasión IDS, redes ruidosas, dispositivos legacy |
 | **Normal** | `-T4` | 16 | 0ms | Auditorías estándar (default, velocidad/ruido balanceado) |
 | **Agresivo** | `-T5` | 32 | 0ms | Escaneos urgentes, redes confiables |
@@ -317,7 +313,7 @@ RedAudit aplica plantillas de temporización nmap según tu selección:
 ### Comportamiento de Escaneo
 
 | Parámetro | Propósito | Recomendación |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | `--threads N` | Escaneo paralelo de hosts | 6 para equilibrado, 2-4 para sigilo |
 | `--rate-limit N` | Retardo inter-host (segundos) | 1-5s para entornos de producción |
 | `--udp-ports N` | Puertos UDP en modo full | 100 (defecto), hasta 500 para exhaustivo |
@@ -358,7 +354,7 @@ Los defaults se almacenan en `~/.redaudit/config.json`.
 RedAudit orquesta estas herramientas:
 
 | Categoría | Herramientas | Propósito |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | **Escáner Core** | `nmap`, `python3-nmap` | Escaneo TCP/UDP, detección de servicios/versión, fingerprinting SO |
 | **Reconocimiento Web** | `whatweb`, `curl`, `wget`, `nikto` | Cabeceras HTTP, tecnologías, vulnerabilidades |
 | **Escáner Templates** | `nuclei` | Escáner de templates opcional (habilitar en wizard o con `--nuclei`) |
@@ -415,7 +411,7 @@ redaudit/
 ### Terminología
 
 | Término | Definición |
-|:---|:---|
+| :--- | :--- |
 | **Deep Scan** | Escalación selectiva (fingerprinting TCP + UDP) cuando la identidad es débil o el host no responde |
 | **HyperScan** | Módulo de descubrimiento async ultrarrápido (batch TCP, UDP IoT, ARP agresivo) |
 | **Smart-Check** | Filtro de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |

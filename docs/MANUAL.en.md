@@ -30,7 +30,7 @@ RedAudit is an **automated network auditing framework** for Linux (Debian-family
 ## 2. Requirements and Permissions
 
 | Requirement | Details |
-|:---|:---|
+| :--- | :--- |
 | **OS** | Kali Linux, Debian 11+, Ubuntu 20.04+, Parrot OS |
 | **Python** | 3.9+ |
 | **Privileges** | `sudo` / root required for: raw sockets (nmap OS detection), packet capture (tcpdump), ARP scanning |
@@ -100,6 +100,10 @@ When running `sudo redaudit` in interactive mode, the wizard asks which **audit 
 - **Timing**: Fast
 - **Questions**: Minimal (auditor name, output dir)
 - **Best for**: Initial reconnaissance, counting live hosts
+- **Detection heuristics**:
+  - **Asset type guessing**: Automatic identification of `printer`, `ipp`, `media`, `iot`, `voip`, `vpn` (v3.9.6+), and `camera`.
+  - **VPN Heuristics**: Detection based on gateway MAC-IP mismatch, VPN ports (500, 4500, 1194, 51820), and hostname patterns (`tunnel`, `ipsec`, etc.).
+- **PCAP Evidence**: Initial reconnaissance, counting live hosts
 
 ### Standard
 
@@ -139,14 +143,14 @@ When running `sudo redaudit` in interactive mode, the wizard asks which **audit 
 ### Execution Modes
 
 | Mode | Invocation | Behavior |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | **Interactive** | `sudo redaudit` | Text-based wizard; prompts for target, mode, options |
 | **Non-interactive** | `sudo redaudit --target X --yes` | Direct execution; all options via CLI flags |
 
 ### Scan Modes (`--mode`)
 
 | Mode | nmap Behavior | Additional Tools |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | `fast` | `-sn` (host discovery only) | None |
 | `normal` | Top 1000 ports, version detection | whatweb, searchsploit |
 | `full` | All 65535 ports, scripts, OS detection | whatweb, nikto, testssl.sh, nuclei (if installed and enabled), searchsploit |
@@ -157,20 +161,22 @@ devices.
 
 ### Adaptive Deep Scan
 
-When enabled (default), RedAudit performs additional scanning on hosts where initial results are ambiguous:
+When enabled (default), RedAudit performs additional scanning on hosts where initial results are ambiguous or indicate virtual infrastructure:
 
 **Trigger conditions:**
 
 - Fewer than 3 open ports found
 - Services identified as `unknown` or `tcpwrapped`
 - MAC/vendor information not obtained
+- **VPN Gateway Detection**: Host shares the MAC address with the gateway but has a different IP (virtual interface)
 
 **Behavior:**
 
 1. Phase 1: Aggressive TCP (`-A -p- -sV -Pn`)
-2. Phase 2a: Priority UDP scan (17 common ports: DNS, DHCP, SNMP, etc.)
-3. Phase 2b: Extended UDP (if `--udp-mode full` and identity still unclear)
-4. Quiet hosts with vendor hints and zero open ports may get a short HTTP/HTTPS title/meta/heading probe on common ports and login paths
+2. Phase 2a: Priority UDP scan (17 common ports including VPN ports 500/4500)
+3. Phase 2b: Extended UDP (including WireGuard 51820 and OpenVPN 1194)
+4. Phase 3: VPN Classification via hostname patterns (`vpn`, `ipsec`, `wireguard`, `tunnel`)
+5. Quiet hosts with vendor hints and zero open ports may get a short HTTP/HTTPS probe on common paths
 
 Disable with `--no-deep-scan`.
 
@@ -188,12 +194,12 @@ predictable.
 
 ## 5. CLI Reference (Complete)
 
-Flags verified against `redaudit --help` (v3.8.9):
+Flags verified against `redaudit --help` (v3.9.6):
 
 ### Core
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `-t, --target CIDR` | Target network(s), comma-separated |
 | `-m, --mode {fast,normal,full}` | Scan intensity (default: normal) |
 | `-o, --output DIR` | Output directory (default: `~/Documents/RedAuditReports`) |
@@ -203,7 +209,7 @@ Flags verified against `redaudit --help` (v3.8.9):
 ### Performance
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `-j, --threads 1-16` | Concurrent host workers (default: 6) |
 | `--rate-limit SECONDS` | Delay between hosts (±30% jitter applied) |
 | `--max-hosts N` | Limit hosts to scan |
@@ -215,14 +221,14 @@ Flags verified against `redaudit --help` (v3.8.9):
 ### UDP Scanning
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `--udp-mode {quick,full}` | quick = priority ports only; full = top N ports |
 | `--udp-ports N` | Number of ports for full mode (default: 100) |
 
 ### Topology & Discovery
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `--topology` | Enable L2/L3 topology discovery |
 | `--no-topology` | Disable topology discovery |
 | `--topology-only` | Run topology only, skip host scanning |
@@ -235,7 +241,7 @@ Flags verified against `redaudit --help` (v3.8.9):
 ### Security
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `-e, --encrypt` | Encrypt reports (AES-128-CBC via Fernet) |
 | `--encrypt-password PASSWORD` | Password for encryption (or random generated) |
 | `--allow-non-root` | Run without sudo (limited functionality) |
@@ -243,7 +249,7 @@ Flags verified against `redaudit --help` (v3.8.9):
 ### Reporting
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `--html-report` | Generate interactive HTML dashboard |
 | `--webhook URL` | POST alerts for high/critical findings |
 | `--no-txt-report` | Skip TXT report generation |
@@ -254,7 +260,7 @@ Flags verified against `redaudit --help` (v3.8.9):
 ### Verification (Agentless)
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `--agentless-verify` | Enable agentless verification (SMB/RDP/LDAP/SSH/HTTP) |
 | `--no-agentless-verify` | Disable agentless verification (overrides defaults) |
 | `--agentless-verify-max-targets N` | Cap verification targets (1-200, default: 20) |
@@ -262,20 +268,20 @@ Flags verified against `redaudit --help` (v3.8.9):
 ### CVE Correlation
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `--cve-lookup` | Enable NVD API correlation |
 | `--nvd-key KEY` | API key for faster rate limits |
 
 ### Comparison
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `--diff OLD NEW` | Compare two JSON reports (no scan performed) |
 
 ### Other
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `--dry-run` | Print commands without executing |
 | `--no-prevent-sleep` | Don't inhibit system sleep during scan |
 | `--ipv6` | IPv6-only mode |
@@ -296,7 +302,7 @@ Default output path: `~/Documents/RedAuditReports/RedAudit_YYYY-MM-DD_HH-MM-SS/`
 ### Generated Files
 
 | File | Condition | Description |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | `redaudit_*.json` | Always | Complete structured results |
 | `redaudit_*.txt` | Unless `--no-txt-report` | Human-readable summary |
 | `report.html` | If `--html-report` | Interactive dashboard |
@@ -376,7 +382,7 @@ done
 ## 9. Troubleshooting
 
 | Symptom | Cause | Solution |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | Permission denied | Running without sudo | Use `sudo redaudit` |
 | nmap: command not found | Missing dependency | Run `sudo bash redaudit_install.sh` |
 | Decryption failed: Invalid token | Wrong password or corrupted .salt | Verify password; ensure .salt file exists |
@@ -392,7 +398,7 @@ See [TROUBLESHOOTING.en.md](TROUBLESHOOTING.en.md) for complete error reference.
 RedAudit orchestrates (does not modify or install):
 
 | Tool | Invocation Condition | Report Field |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | `nmap` | Always | `hosts[].ports` |
 | `whatweb` | HTTP/HTTPS detected | `vulnerabilities[].whatweb` |
 | `nikto` | HTTP/HTTPS + full mode | `vulnerabilities[].nikto_findings` |

@@ -13,7 +13,7 @@
 
 Ejecuta estos comandos para comenzar de inmediato.
 
-**Asistente Interactivo (Recomendado para primera vez)**
+### Asistente Interactivo (Recomendado para primera vez)
 
 Nuevo en v3.8: Navegación paso a paso con opción "< Volver". Configura Webhooks, SIEM y Descubrimiento Avanzado interactivamente.
 
@@ -21,16 +21,26 @@ Nuevo en v3.8: Navegación paso a paso con opción "< Volver". Configura Webhook
 sudo redaudit
 ```
 
-**Inventario Rápido (LAN)**
+### One-liner básico (Normal)
 
 ```bash
 sudo redaudit -t 192.168.1.0/24 -m fast --yes
 ```
 
-**Auditoría Estándar (Host Único)**
+### Auditoría Estándar (Host Único)
 
 ```bash
 sudo redaudit -t 10.10.10.5 -m normal --html-report
+```
+
+### Descubrimiento de Gateways VPN
+
+Escanea una red para identificar interfaces VPN y endpoints virtuales:
+
+```bash
+sudo redaudit -t 10.0.0.0/24 --mode full --yes
+# Ver resultados de assets VPN
+cat redaudit_*.json | jq '.hosts[] | select(.asset_type == "vpn")'
 ```
 
 ---
@@ -51,7 +61,7 @@ sudo redaudit -t 192.168.56.101 \
 
 **Artefactos:** JSON, HTML, PCAP (si deep scan se activa), Playbooks.
 
-### Pentest Autorizado (Sigiloso/Corporativo)
+### Escaneo Sigiloso (Modo Red Team)
 
 Enfoque en bajo ruido, artefactos fiables y cifrado para cadena de custodia.
 
@@ -112,26 +122,28 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 ### Alcance e Intensidad
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `-t, --target CIDR` | IP, rango o CIDR (soporta lista separada por comas) |
 | `-m, --mode` | `fast` (ping), `normal` (top 1000), `full` (65k + scripts) |
 | `-j, --threads N` | Hosts paralelos 1-16 (Defecto: 6) |
 | `--rate-limit S` | Retardo entre hosts en segundos (aplica jitter) |
 | `--stealth` | Fuerza timing T1, 1 hilo, 5s retardo |
 | `--dry-run` | Muestra comandos sin ejecutarlos |
+| `--threads` | Nivel de concurrencia |
 
 ### Conectividad y Proxy
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `--proxy URL` | Proxy SOCKS5 (socks5://host:port) |
 | `--ipv6` | Activa modo escaneo solo IPv6 |
-| `--no-prevent-sleep`| No inhibir suspensión del sistema |
+| `--mode` | Modo de escaneo (rapido/normal/completo) |
+| `--no-prevent-sleep` | No inhibir suspensión del sistema |
 
 ### Descubrimiento Avanzado
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `--net-discovery` | Protocolos broadcast (dhcp,netbios,mdns,upnp,arp,fping) |
 | `--topology` | Mapeo de topología L2/L3 (rutas/gateways) |
 | `--udp-mode` | `quick` (puertos prioritarios) o `full` (top ports) |
@@ -144,32 +156,36 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 ### Reportes e Integración
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `-o, --output DIR` | Directorio de salida personalizado |
+| `--output` | Ruta del directorio de salida |
 | `--html-report` | Generar dashboard interactivo (HTML) |
 | `--webhook URL` | Enviar hallazgos a Slack/Teams/Discord |
 | `--nuclei` | Habilitar escaneo de templates con Nuclei (requiere `nuclei`; solo en modo full) |
 | `--no-nuclei` | Deshabilitar Nuclei (sobrescribe defaults persistentes) |
+| `--udp-mode` | Estrategia escaneo UDP (quick/full) |
 | `--no-vuln-scan` | Omitir escaneo de vulnerabilidades Web/Nikto |
 | `--cve-lookup` | Correlar servicios con datos CVE NVD |
 
 ### Seguridad y Privacidad
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `-e, --encrypt` | Cifrar todos los artefactos sensibles (AES-128) |
 | `--allow-non-root` | Ejecutar sin sudo (capacidad limitada) |
 | `--searchsploit` | (Habilitado por defecto en normal/full) |
+| `--yes` | Auto-confirmar todos los prompts |
 
 ### Configuración
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `--save-defaults` | Guardar argumentos CLI actuales en `~/.redaudit/config.json` |
 | `--use-defaults` | Cargar argumentos desde config.json automáticamente |
 | `--ignore-defaults` | Forzar valores de fábrica |
 | `--no-color` | Deshabilitar salida a color |
 | `--skip-update-check` | Saltar chequeo de actualizaciones al inicio |
+| `--lang` | Idioma del reporte (en/es) |
 
 ---
 

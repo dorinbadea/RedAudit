@@ -22,7 +22,7 @@ Esta versión se centra en **usabilidad del wizard**, **precisión del escaneo**
 Las plantillas de timing de Nmap ahora se aplican correctamente según el modo seleccionado:
 
 | Modo | Plantilla | Hilos | Retardo |
-|------|-----------|-------|---------|
+| :--- | :--- | :--- | :--- |
 | Sigiloso | `-T1` | 4 | 300ms |
 | Normal | `-T4` | 16 | 0ms |
 | Agresivo | `-T5` | 32 | 0ms |

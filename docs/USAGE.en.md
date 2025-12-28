@@ -13,7 +13,7 @@
 
 Run these commands to get started immediately.
 
-**Interactive Wizard (Best for first time)**
+### Interactive Wizard (Best for first time)
 
 New in v3.8: Step-by-step navigation with "< Go Back" option. Configures Webhooks, SIEM, and Advanced Network Discovery interactively.
 
@@ -21,25 +21,17 @@ New in v3.8: Step-by-step navigation with "< Go Back" option. Configures Webhook
 sudo redaudit
 ```
 
-**Fast Inventory (LAN)**
+### Fast Inventory (LAN)
 
 ```bash
 sudo redaudit -t 192.168.1.0/24 -m fast --yes
 ```
 
-**Standard Audit (Single Host)**
+### Standard Audit (Single Host)
 
 ```bash
 sudo redaudit -t 10.10.10.5 -m normal --html-report
 ```
-
----
-
-## 2. Examples by Scenario
-
-### Lab / CTF (Aggressive)
-
-Focus on speed and maximum information gathering.
 
 ```bash
 sudo redaudit -t 192.168.56.101 \
@@ -103,6 +95,14 @@ redaudit --diff reports/report_v1.json reports/report_v2.json
 
 **Output:** Delta analysis showing New/Open/Closed/Changed ports. No scan is performed.
 
+### VPN Gateway Discovery
+
+Identify VPN interfaces and endpoints within a report:
+
+```bash
+cat redaudit_*.json | jq '.hosts[] | select(.asset_type == "vpn")'
+```
+
 ---
 
 ## 3. CLI Flags Reference
@@ -112,7 +112,7 @@ Grouped by operational function. Verified against the current codebase.
 ### Scan Scope & Intensity
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `-t, --target CIDR` | IP, range, or CIDR (comma-separated supported) |
 | `-m, --mode` | `fast` (ping), `normal` (top 1000), `full` (65k + scripts) |
 | `-j, --threads N` | Parallel hosts 1-16 (Default: 6) |
@@ -123,15 +123,16 @@ Grouped by operational function. Verified against the current codebase.
 ### Connectivity & Proxy
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `--proxy URL` | SOCKS5 proxy (socks5://host:port) |
 | `--ipv6` | Enable IPv6-only scanning mode |
-| `--no-prevent-sleep`| Do not inhibit system sleep |
+| `--no-prevent-sleep` | Do not inhibit system sleep |
 
 ### Advanced Discovery
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
+| `--yes` | Auto-confirm all prompts |
 | `--net-discovery` | Broadcast protocols (dhcp,netbios,mdns,upnp,arp,fping) |
 | `--topology` | L2/L3 topology mapping (routes/gateways) |
 | `--udp-mode` | `quick` (priority ports) or `full` (top ports) |
@@ -144,8 +145,9 @@ Grouped by operational function. Verified against the current codebase.
 ### Reporting & Integration
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `-o, --output DIR` | Custom output directory |
+| `--lang` | Report language (en/es) |
 | `--html-report` | Generate interactive dashboard (HTML) |
 | `--webhook URL` | Send findings to Slack/Teams/Discord |
 | `--nuclei` | Enable Nuclei template scanning (requires `nuclei`; runs in full mode only) |
@@ -156,7 +158,7 @@ Grouped by operational function. Verified against the current codebase.
 ### Security & Privacy
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `-e, --encrypt` | Encrypt all sensitive artifacts (AES-128) |
 | `--allow-non-root` | Run without sudo (limited capability) |
 | `--searchsploit` | (Enabled by default in normal/full) |
@@ -164,7 +166,7 @@ Grouped by operational function. Verified against the current codebase.
 ### Configuration
 
 | Flag | Description |
-|:---|:---|
+| :--- | :--- |
 | `--save-defaults` | Save current CLI args to `~/.redaudit/config.json` |
 | `--use-defaults` | Load args from config.json automatically |
 | `--ignore-defaults` | Force factory defaults |

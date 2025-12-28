@@ -15,13 +15,14 @@ RedAudit implementa una filosofía de "seguro por diseño", asumiendo la ejecuci
 ## Versiones soportadas
 
 | Versión | Soportada | Estado |
-| ------- | --------- | ------ |
-| 3.8.x   | Sí        | Estable actual |
-| 3.7.x   | Sí        | Soportada |
-| 3.6.x   | Sí        | Soportada |
-| 3.5.x   | Solo fixes de seguridad | Mantenimiento |
-| 3.4.x   | Solo fixes de seguridad | EOL: Junio 2026 |
-| < 3.4   | No        | EOL |
+| :--- | :--- | :--- |
+| 3.9.x | Sí | Estable actual |
+| 3.8.x | Sí | Soportada |
+| 3.7.x | Sí | Soportada |
+| 3.6.x | Sí | Soportada |
+| 3.5.x | Solo fixes de seguridad | Mantenimiento |
+| 3.4.x | Solo fixes de seguridad | EOL: Junio 2026 |
+| < 3.4 | No | EOL |
 
 ## 1. Sanitización de Entrada
 
@@ -123,7 +124,7 @@ RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `
 ### Advertencias Específicas por Herramienta
 
 | Herramienta | Capacidad | Nivel de Riesgo | Autorización Requerida |
-|:------------|:----------|:----------------|:-----------------------|
+| :--- | :--- | :--- | :--- |
 | `snmpwalk` | Consulta agentes SNMP para información de dispositivos red (VLANs, tablas ARP, configs interfaces) | **Medio** - Logs en dispositivos con SNMP | ✅ Aprobación admin interno |
 | `enum4linux` | Enumera recursos SMB Windows, usuarios, políticas contraseñas, info dominio | **Alto** - Activa logs seguridad, puede alertar SOC | ✅ Aprobación admin dominio |
 | `masscan` | Escáner puertos ultra-rápido (capacidad 1M paquetes/seg) | **Alto** - Alto ruido red, probable trigger IDS | ✅ Aprobación equipo red + seguridad |

@@ -22,7 +22,7 @@ This release focuses on **wizard usability**, **scan accuracy**, and **false pos
 Nmap timing templates are now correctly applied based on selected mode:
 
 | Mode | Template | Threads | Delay |
-|------|----------|---------|-------|
+| :--- | :--- | :--- | :--- |
 | Stealth | `-T1` | 4 | 300ms |
 | Normal | `-T4` | 16 | 0ms |
 | Aggressive | `-T5` | 32 | 0ms |

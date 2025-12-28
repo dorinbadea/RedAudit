@@ -62,7 +62,7 @@ El contenedor de nivel superior para la sesión de escaneo.
 Resumen compacto para dashboards y automatización (se genera solo cuando el cifrado de reportes está deshabilitado).
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `schema_version` | `string` | Versión del esquema del resumen |
 | `generated_at` | `string` | Marca de tiempo de generación (ISO 8601) |
 | `session_id` | `string` | UUID de la sesión de escaneo |
@@ -88,14 +88,14 @@ Resumen compacto para dashboards y automatización (se genera solo cuando el cif
 Este bloque solo aparece si la verificación sin agente está habilitada.
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `targets` | integer | Número de objetivos elegibles seleccionados |
 | `completed` | integer | Número de verificaciones completadas |
 
 ### Objeto Resumen Nuclei (Opcional) (v3.7+)
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `enabled` | boolean | True cuando Nuclei se ejecutó (best-effort) |
 | `targets` | integer | Targets HTTP/HTTPS enviados a Nuclei |
 | `findings` | integer | Hallazgos Nuclei parseados |
@@ -106,7 +106,7 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 ### Config Snapshot (v3.7+)
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `targets` | array | Redes objetivo |
 | `scan_mode` | string | Modo de escaneo |
 | `threads` | integer | Concurrencia usada |
@@ -124,7 +124,7 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 ### Resumen del Pipeline (v3.7+)
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `host_scan` | object | Targets + threads |
 | `net_discovery` | object | Conteos DHCP/ARP/NetBIOS/UPNP + redteam |
 | `agentless_verify` | object | Targets + completados + conteos por protocolo |
@@ -134,7 +134,7 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 ### Resumen SmartScan (v3.7+)
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `hosts` | integer | Hosts evaluados por SmartScan |
 | `identity_score_avg` | number | Promedio de identidad |
 | `deep_scan_triggered` | integer | Hosts que dispararon deep scan |
@@ -149,7 +149,7 @@ Este campo aparece solo si el descubrimiento de red fue habilitado (CLI: `--net-
 El descubrimiento de red es **best-effort**: herramientas faltantes reducirán la visibilidad pero no fallarán el escaneo.
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `enabled` | boolean | Siempre true cuando el bloque está presente |
 | `generated_at` | string | Marca de tiempo (ISO 8601) |
 | `protocols_used` | array | Lista de protocolos usados (dhcp, netbios, mdns, upnp, arp, fping) |
@@ -168,7 +168,7 @@ El descubrimiento de red es **best-effort**: herramientas faltantes reducirán l
 **Entradas dhcp_servers[]:**
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `ip` | string | Dirección IP del servidor DHCP |
 | `subnet` | string | Máscara de subred ofrecida |
 | `gateway` | string | Gateway por defecto ofrecido |
@@ -179,7 +179,7 @@ El descubrimiento de red es **best-effort**: herramientas faltantes reducirán l
 **Entradas netbios_hosts[]:**
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `ip` | string | Dirección IP del host |
 | `name` | string | Nombre NetBIOS |
 | `workgroup` | string | (Opcional) Grupo de trabajo Windows |
@@ -188,7 +188,7 @@ El descubrimiento de red es **best-effort**: herramientas faltantes reducirán l
 **Entradas candidate_vlans[]:**
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `source` | string | Método de detección (ej: "dhcp_server") |
 | `gateway` | string | IP del gateway de la potencial VLAN |
 | `subnet` | string | Máscara de subred |
@@ -197,7 +197,7 @@ El descubrimiento de red es **best-effort**: herramientas faltantes reducirán l
 **Objeto `redteam`** (cuando está activado):
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `enabled` | boolean | Siempre true cuando el bloque está presente |
 | `interface` | string | (Opcional) Interfaz usada para capturas L2 (si se define) |
 | `targets_considered` | integer | Número de objetivos candidatos seleccionados para checks Red Team |
@@ -225,7 +225,7 @@ Representa una única dirección IP objetivo.
 Campos adicionales a nivel de host:
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `os_detected` | string | (Opcional) Fingerprint de SO (best-effort; normalmente desde salida de deep scan) **(v3.1.4+)** |
 | `agentless_probe` | object | (Opcional) Salida raw de probes SMB/RDP/LDAP/SSH/HTTP **(v3.8.5)** |
 | `agentless_fingerprint` | object | (Opcional) Hints normalizados de identidad (ver abajo) **(vNext)** |
@@ -237,6 +237,7 @@ Campos adicionales a nivel de host:
   "ports": [
     {
       "port": 80,
+      "asset_type": "workstation",  // router, vpn, server, printer, media, mobile, iot, etc.
       "state": "open",
       "protocol": "tcp",
       "service": "http",
@@ -264,7 +265,7 @@ Campos adicionales a nivel de host:
 Hints normalizados derivados de probes SMB/RDP/LDAP. Todos los campos son opcionales.
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `domain` | string | Pista de dominio DNS o NetBIOS |
 | `computer_name` | string | Hostname desde hints RDP/SMB |
 | `product_version` | string | Versión de producto RDP (best-effort) |
@@ -293,7 +294,7 @@ Hints normalizados derivados de probes SMB/RDP/LDAP. Todos los campos son opcion
 Este campo aparece solo si se activó el escaneo profundo automático.
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `strategy` | string | Identificador de estrategia (p. ej., `adaptive_v2.8`) |
 | `mac_address` | string | (Opcional) Dirección MAC si se detectó |
 | `vendor` | string | (Opcional) Fabricante de hardware si se detectó |
@@ -324,7 +325,7 @@ Este campo aparece solo si se activó el descubrimiento de topología (CLI: `--t
 El descubrimiento es **best-effort**: si faltan herramientas, permisos o tráfico, habrá menos visibilidad, pero no debería fallar el escaneo principal.
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `enabled` | boolean | Siempre true cuando el bloque está presente |
 | `generated_at` | string | Marca de tiempo (ISO 8601) |
 | `tools` | object | Flags de disponibilidad (`ip`, `tcpdump`, `arp-scan`, `lldpctl`) |
@@ -337,7 +338,7 @@ El descubrimiento es **best-effort**: si faltan herramientas, permisos o tráfic
 **interfaces[]** (alto nivel):
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `interface` | string | Nombre de interfaz (p. ej., `eth0`) |
 | `ip` | string | (Opcional) IP de la interfaz |
 | `networks` | array | Redes locales asociadas a la interfaz |
@@ -355,7 +356,7 @@ El enriquecimiento solo se realiza para servicios con información de versión d
 **Campos a nivel de puerto** (dentro de `hosts[].ports[]`):
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `cves` | array | (Opcional) Lista de CVEs (top 10) asociados al servicio |
 | `cves[].cve_id` | string | Identificador CVE (ej: `CVE-2024-12345`) |
 | `cves[].cvss_score` | number | (Opcional) Puntuación base CVSS |
@@ -368,7 +369,7 @@ El enriquecimiento solo se realiza para servicios con información de versión d
 **Campos a nivel de host** (dentro de `hosts[]`):
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `cve_summary` | object | (Opcional) Estadísticas agregadas de CVE para el host |
 | `cve_summary.total` | integer | Total de CVEs en todos los puertos |
 | `cve_summary.critical` | integer | Número de puertos con severidad máxima CRITICAL |
@@ -379,7 +380,7 @@ El enriquecimiento solo se realiza para servicios con información de versión d
 Aparece en registros de host cuando se realizó enriquecimiento DNS/whois.
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `reverse` | array | Lista de registros PTR de DNS reverso |
 | `whois_summary` | string | (Opcional) Información whois para IPs públicas (primeras 25 líneas) |
 
@@ -388,7 +389,7 @@ Aparece en registros de host cuando se realizó enriquecimiento DNS/whois.
 Lista de hallazgos de vulnerabilidades web. Cada entrada contiene:
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `host` | string | Dirección IP del host |
 | `vulnerabilities` | array | Lista de hallazgos de vulnerabilidades por URL |
 | `vulnerabilities[].url` | string | URL completa testeada |
@@ -420,7 +421,7 @@ Lista de hallazgos de vulnerabilidades web. Cada entrada contiene:
 Desde v3.1.4, las referencias a archivos PCAP usan rutas relativas portables:
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `pcap_file` | string | Nombre de archivo relativo (ej: `traffic_192.168.1.1.pcap`) - portable |
 | `pcap_file_abs` | string | Ruta absoluta - para uso interno |
 
@@ -437,7 +438,7 @@ Desde v3.1.4, las referencias a archivos PCAP usan rutas relativas portables:
 ```
 
 | Campo | Tipo | Descripción |
-|---|---|---|
+| :--- | :--- | :--- |
 | `networks` | integer | Número de redes objetivo escaneadas |
 | `hosts_found` | integer | Total de hosts descubiertos (up) |
 | `hosts_scanned` | integer | Hosts que se sometieron a escaneo de puertos completo |

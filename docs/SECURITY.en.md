@@ -27,14 +27,15 @@ If you discover a security vulnerability in RedAudit, please report it responsib
 
 ### Supported Versions
 
-| Version | Supported          | Status |
-| ------- | ------------------ | ------ |
-| 3.8.x   | Yes                | Current stable |
-| 3.7.x   | Yes                | Supported |
-| 3.6.x   | Yes                | Supported |
-| 3.5.x   | Security fixes only | Maintenance |
-| 3.4.x   | Security fixes only | EOL: June 2026 |
-| < 3.4   | No                 | EOL |
+| Version | Supported | Status |
+| :--- | :--- | :--- |
+| 3.9.x | Yes | Current stable |
+| 3.8.x | Yes | Supported |
+| 3.7.x | Yes | Supported |
+| 3.6.x | Yes | Supported |
+| 3.5.x | Security fixes only | Maintenance |
+| 3.4.x | Security fixes only | EOL: June 2026 |
+| < 3.4 | No | EOL |
 
 ---
 
@@ -147,7 +148,7 @@ RedAudit v3.2 introduces **Active Reconnaissance** capabilities (`--redteam`, `-
 ### Tool-Specific Warnings
 
 | Tool | Capability | Risk Level | Authorization Required |
-|:-----|:-----------|:-----------|:-----------------------|
+| :--- | :--- | :--- | :--- |
 | `snmpwalk` | Queries SNMP agents for network device information (VLANs, ARP tables, interface configs) | **Medium** - Logs on SNMP-enabled devices | ✅ Internal admin approval |
 | `enum4linux` | Enumerates Windows SMB shares, users, password policies, domain info | **High** - Triggers security logs, may alert SOC | ✅ Domain admin approval |
 | `masscan` | Ultra-fast port scanner (1M packets/sec capability) | **High** - High network noise, likely IDS trigger | ✅ Network team + security approval |

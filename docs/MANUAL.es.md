@@ -30,7 +30,7 @@ RedAudit es un **framework de auditoría de red automatizado** para Linux (famil
 ## 2. Requisitos y Permisos
 
 | Requisito | Detalles |
-|:---|:---|
+| :--- | :--- |
 | **SO** | Kali Linux, Debian 11+, Ubuntu 20.04+, Parrot OS |
 | **Python** | 3.9+ |
 | **Privilegios** | `sudo` / root requerido para: sockets raw (detección de SO con nmap), captura de paquetes (tcpdump), escaneo ARP |
@@ -89,11 +89,11 @@ RedAudit verifica actualizaciones al iniciar (modo interactivo). Para omitir: `-
 
 ## 4. Selector de Perfil del Wizard (v3.9.0+)
 
-Al ejecutar `sudo redaudit` en modo interactivo, el wizard pregunta qué **perfil de auditoría** usar:
+Al ejecutar `sudo redaudit` en modo interactivo, el wizard pregunta qué perfil de escaneo usar. Los perfiles preconfigurados son:
 
 ### Express
 
-**Caso de uso**: Descubrimiento rápido de red para inventariado de assets.
+**Caso de uso**: Reconocimiento rápido de hosts vivos.
 
 - **Modo**: `fast` (solo descubrimiento de hosts, sin escaneo de puertos)
 - **Features deshabilitadas**: Escaneos de vulnerabilidades, Nuclei, Topología, Net Discovery
@@ -139,14 +139,14 @@ Al ejecutar `sudo redaudit` en modo interactivo, el wizard pregunta qué **perfi
 ### Modos de Ejecución
 
 | Modo | Invocación | Comportamiento |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | **Interactivo** | `sudo redaudit` | Wizard basado en texto; solicita objetivo, modo, opciones |
 | **No interactivo** | `sudo redaudit --target X --yes` | Ejecución directa; todas las opciones via flags CLI |
 
 ### Modos de Escaneo (`--mode`)
 
 | Modo | Comportamiento nmap | Herramientas Adicionales |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | `fast` | `-sn` (solo descubrimiento de hosts) | Ninguna |
 | `normal` | Top 1000 puertos, detección de versiones | whatweb, searchsploit |
 | `full` | Los 65535 puertos, scripts, detección de SO | whatweb, nikto, testssl.sh, nuclei (si está instalado y habilitado), searchsploit |
@@ -157,20 +157,22 @@ fluido en dispositivos IoT/embebidos.
 
 ### Deep Scan Adaptativo
 
-Cuando está habilitado (por defecto), RedAudit realiza escaneos adicionales en hosts donde los resultados iniciales son ambiguos:
+Cuando está habilitado (por defecto), RedAudit realiza escaneos adicionales en hosts donde los resultados iniciales son ambiguos o indican infraestructura virtual:
 
 **Condiciones de disparo:**
 
 - Menos de 3 puertos abiertos encontrados
 - Servicios identificados como `unknown` o `tcpwrapped`
 - Información MAC/vendor no obtenida
+- **Detección de Gateway VPN**: El host comparte la dirección MAC con el gateway pero tiene una IP diferente (interfaz virtual)
 
 **Comportamiento:**
 
 1. Fase 1: TCP Agresivo (`-A -p- -sV -Pn`)
-2. Fase 2a: Escaneo UDP prioritario (17 puertos comunes: DNS, DHCP, SNMP, etc.)
-3. Fase 2b: UDP extendido (si `--udp-mode full` y la identidad sigue siendo poco clara)
-4. Hosts silenciosos con vendor detectado y cero puertos abiertos pueden recibir un probe HTTP/HTTPS breve de titulo/meta/encabezado en puertos comunes y rutas de login
+2. Fase 2a: Escaneo UDP prioritario (17 puertos comunes incluyendo puertos VPN 500/4500)
+3. Fase 2b: UDP extendido (incluyendo WireGuard 51820 y OpenVPN 1194)
+4. Fase 3: Clasificación VPN via patrones de hostname (`vpn`, `ipsec`, `wireguard`, `tunnel`)
+5. Hosts silenciosos con vendor detectado y cero puertos abiertos pueden recibir un probe HTTP/HTTPS breve en rutas comunes
 
 Deshabilitar con `--no-deep-scan`.
 
@@ -187,12 +189,12 @@ controlado.
 
 ## 5. Referencia CLI (Completa)
 
-Flags verificadas contra `redaudit --help` (v3.8.9):
+Flags verificadas contra `redaudit --help` (v3.9.6):
 
 ### Core
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `-t, --target CIDR` | Red(es) objetivo, separadas por comas |
 | `-m, --mode {fast,normal,full}` | Intensidad del escaneo (defecto: normal) |
 | `-o, --output DIR` | Directorio de salida (defecto: `~/Documents/RedAuditReports`) |
@@ -202,7 +204,7 @@ Flags verificadas contra `redaudit --help` (v3.8.9):
 ### Rendimiento
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `-j, --threads 1-16` | Workers concurrentes por host (defecto: 6) |
 | `--rate-limit SECONDS` | Retardo entre hosts (se aplica jitter ±30%) |
 | `--max-hosts N` | Limitar hosts a escanear |
@@ -214,14 +216,14 @@ Flags verificadas contra `redaudit --help` (v3.8.9):
 ### Escaneo UDP
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `--udp-mode {quick,full}` | quick = solo puertos prioritarios; full = top N puertos |
 | `--udp-ports N` | Número de puertos para modo full (defecto: 100) |
 
 ### Topología y Descubrimiento
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `--topology` | Habilitar descubrimiento de topología L2/L3 |
 | `--no-topology` | Deshabilitar descubrimiento de topología |
 | `--topology-only` | Ejecutar solo topología, omitir escaneo de hosts |
@@ -234,7 +236,7 @@ Flags verificadas contra `redaudit --help` (v3.8.9):
 ### Seguridad
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `-e, --encrypt` | Cifrar reportes (AES-128-CBC via Fernet) |
 | `--encrypt-password PASSWORD` | Contraseña para cifrado (o se genera aleatoriamente) |
 | `--allow-non-root` | Ejecutar sin sudo (funcionalidad limitada) |
@@ -242,7 +244,7 @@ Flags verificadas contra `redaudit --help` (v3.8.9):
 ### Reportes
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `--html-report` | Generar dashboard HTML interactivo |
 | `--webhook URL` | POST alertas para hallazgos high/critical |
 | `--no-txt-report` | Omitir generación de reporte TXT |
@@ -253,7 +255,7 @@ Flags verificadas contra `redaudit --help` (v3.8.9):
 ### Verificación (Sin Agente)
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `--agentless-verify` | Verificación sin agente (SMB/RDP/LDAP/SSH/HTTP) |
 | `--no-agentless-verify` | Desactivar verificación sin agente (sobrescribe defaults) |
 | `--agentless-verify-max-targets N` | Límite de objetivos (1-200, defecto: 20) |
@@ -261,20 +263,20 @@ Flags verificadas contra `redaudit --help` (v3.8.9):
 ### Correlación CVE
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `--cve-lookup` | Habilitar correlación API NVD |
 | `--nvd-key KEY` | Clave API para rate limits más rápidos |
 
 ### Comparación
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `--diff OLD NEW` | Comparar dos reportes JSON (sin escaneo) |
 
 ### Otros
 
 | Flag | Descripción |
-|:---|:---|
+| :--- | :--- |
 | `--dry-run` | Imprimir comandos sin ejecutar |
 | `--no-prevent-sleep` | No inhibir suspensión del sistema durante escaneo |
 | `--ipv6` | Modo solo IPv6 |
@@ -295,7 +297,7 @@ Ruta de salida por defecto: `~/Documents/RedAuditReports/RedAudit_YYYY-MM-DD_HH-
 ### Ficheros Generados
 
 | Fichero | Condición | Descripción |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | `redaudit_*.json` | Siempre | Resultados estructurados completos |
 | `redaudit_*.txt` | A menos que `--no-txt-report` | Resumen legible por humanos |
 | `report.html` | Si `--html-report` | Dashboard interactivo |
@@ -375,7 +377,7 @@ done
 ## 9. Solución de Problemas
 
 | Síntoma | Causa | Solución |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | Permission denied | Ejecutando sin sudo | Usar `sudo redaudit` |
 | nmap: command not found | Dependencia faltante | Ejecutar `sudo bash redaudit_install.sh` |
 | Decryption failed: Invalid token | Contraseña incorrecta o .salt corrupto | Verificar contraseña; asegurar que existe fichero .salt |
@@ -391,7 +393,7 @@ Ver [TROUBLESHOOTING.es.md](TROUBLESHOOTING.es.md) para referencia completa de e
 RedAudit orquesta (no modifica ni instala):
 
 | Herramienta | Condición de Invocación | Campo del Reporte |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | `nmap` | Siempre | `hosts[].ports` |
 | `whatweb` | HTTP/HTTPS detectado | `vulnerabilities[].whatweb` |
 | `nikto` | HTTP/HTTPS + modo full | `vulnerabilities[].nikto_findings` |

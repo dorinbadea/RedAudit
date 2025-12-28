@@ -2,36 +2,37 @@
 
 RedAudit es una herramienta para Linux, pero puedes ejecutarla en **Windows** o **macOS** usando Docker.
 
-> ⚠️ **Limitación Importante**: Docker en Windows/macOS **no puede descubrir hosts con precisión** en tu red. Corre en una máquina virtual que no puede ver tu red real a Nivel 2. Ver [Limitaciones](#limitaciones) más abajo.
+> ⚠️ **Limitación Importante**: Docker en Windows/macOS **no puede descubrir hosts con precisión** en tu red. Corre en una máquina virtual que no puede ver tu red real a Nivel 2. Ver [Limitaciones](#limitaciones-en-windowsmacos) más abajo.
 
 ## Cuándo Usar Docker
 
 | Caso de Uso | Docker en Win/Mac | Linux Nativo |
-|-------------|-------------------|--------------|
+| :--- | :--- | :--- |
 | **Escanear servidores conocidos** | ✅ Funciona | ✅ Funciona |
 | **Demo/pruebas con IPs conocidas** | ✅ Funciona | ✅ Funciona |
 | **Descubrir todos los dispositivos** | ❌ Falsos positivos | ✅ Funciona |
 | **Auditoría profesional de red** | ❌ Limitado | ✅ Capacidad completa |
 | **Escaneo ARP/Nivel 2** | ❌ No es posible | ✅ Funciona |
+| **Detección VPN (MAC/GW)** | ❌ Limitada/Imprecisa | ✅ Funciona |
 
 **Recomendación para auditorías profesionales**: Usa Linux nativo, o una VM Linux con networking en modo puente (bridged).
 
 ---
 
-# 🚀 Inicio Rápido (Recomendado)
+## 🚀 Inicio Rápido (Recomendado)
 
 Nuestros scripts de ayuda manejan todo automáticamente: detectar tu red, descargar la última imagen, y ejecutar el escaneo.
 
 ## macOS
 
-### Primera vez (descargar el script)
+### macOS: Primera vez (descargar script)
 
 ```bash
 curl -O https://raw.githubusercontent.com/dorinbadea/RedAudit/main/scripts/redaudit-docker.sh
 chmod +x redaudit-docker.sh
 ```
 
-### Cada vez que quieras escanear
+### macOS: Cada vez que quieras escanear
 
 ```bash
 ./redaudit-docker.sh
@@ -41,13 +42,13 @@ chmod +x redaudit-docker.sh
 
 ## Windows (PowerShell)
 
-### Primera vez (descargar el script)
+### Windows: Primera vez (descargar script)
 
 ```powershell
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/main/scripts/redaudit-docker.ps1" -OutFile "redaudit-docker.ps1"
 ```
 
-### Cada vez que quieras escanear
+### Windows: Cada vez que quieras escanear
 
 ```powershell
 .\redaudit-docker.ps1
@@ -65,9 +66,9 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/ma
 
 ---
 
-# macOS - Guía Completa
+## macOS - Guía Completa
 
-## 1. Instalar Docker Desktop
+## macOS - 1. Instalar Docker Desktop
 
 1. Ve a: **<https://www.docker.com/products/docker-desktop/>**
 
@@ -90,13 +91,13 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/ma
 
 9. **Espera** hasta que el icono de la ballena en la barra de menú esté **verde** ✅
 
-## 2. Abrir Terminal
+## macOS - 2. Abrir Terminal
 
 1. Presiona **Cmd + Espacio**
 2. Escribe **Terminal**
 3. Presiona **Enter**
 
-## 3. Descargar RedAudit
+## macOS - 3. Descargar RedAudit
 
 ```bash
 docker pull ghcr.io/dorinbadea/redaudit:latest
@@ -110,13 +111,13 @@ Verifica que la imagen está descargada:
 docker images | grep redaudit
 ```
 
-## 4. Crear Carpeta de Reportes
+## macOS - 4. Crear Carpeta de Reportes
 
 ```bash
-mkdir -p ~/RedAudit-Reports
+mkdir ~/RedAudit-Reports
 ```
 
-## 5. Encontrar Tu Red
+## macOS - 5. Encontrar Tu Red
 
 Docker en macOS no puede detectar automáticamente tu red real. Encuentra tu IP:
 
@@ -128,7 +129,7 @@ Ejemplo de salida: `192.168.178.35`
 
 Tu red sería: `192.168.178.0/24` (reemplaza el último número con `0/24`)
 
-## 6. Ejecutar RedAudit
+## macOS - 6. Ejecutar RedAudit
 
 **Opción A - Con tu red (recomendado):**
 
@@ -152,7 +153,7 @@ docker run -it --rm \
 
 *Nota: El wizard mostrará la red interna de Docker (172.17.x.x). Debes introducir manualmente tu red real.*
 
-## 7. Ver Reportes
+## macOS - 7. Ver Reportes
 
 ```bash
 open ~/RedAudit-Reports/report.html
@@ -160,9 +161,9 @@ open ~/RedAudit-Reports/report.html
 
 ---
 
-# Windows - Guía Completa
+## Windows - Guía Completa
 
-## 1. Instalar Docker Desktop
+## Windows - 1. Instalar Docker Desktop
 
 1. Ve a: **<https://www.docker.com/products/docker-desktop/>**
 
@@ -182,12 +183,12 @@ open ~/RedAudit-Reports/report.html
 
 > ⚠️ **Windows 10/11 Home**: Docker puede pedirte que instales WSL2. Sigue las instrucciones - es necesario.
 
-## 2. Abrir PowerShell
+## Windows - 2. Abrir PowerShell
 
 1. Presiona **Win + X**
 2. Haz clic en **Windows PowerShell** o **Terminal**
 
-## 3. Descargar RedAudit
+## Windows - 3. Descargar RedAudit
 
 ```powershell
 docker pull ghcr.io/dorinbadea/redaudit:latest
@@ -219,7 +220,7 @@ Busca "Dirección IPv4" bajo tu adaptador de red (ej., `192.168.1.50`).
 
 Tu red sería: `192.168.1.0/24` (reemplaza el último número con `0/24`)
 
-## 6. Ejecutar RedAudit
+## Windows - 6. Ejecutar RedAudit
 
 **Opción A - Con tu red (recomendado):**
 
@@ -233,13 +234,13 @@ docker run -it --rm -v C:\RedAudit-Reports:/reports ghcr.io/dorinbadea/redaudit:
 docker run -it --rm -v C:\RedAudit-Reports:/reports ghcr.io/dorinbadea/redaudit:latest --lang es
 ```
 
-## 7. Ver Reportes
+## Windows - 7. Ver Reportes
 
 Abre el Explorador de Archivos → Navega a `C:\RedAudit-Reports` → Haz doble clic en `report.html`
 
 ---
 
-# Linux - Guía Completa
+## Linux - Guía Completa
 
 En Linux, puedes instalar RedAudit **nativamente** (recomendado) o usar Docker.
 
@@ -303,11 +304,11 @@ sudo docker run --rm --network host \
 
 ---
 
-# Por Qué Docker No Puede Ver Tu Red (Windows/macOS)
+## Limitaciones en Windows/macOS
 
 En Windows y macOS, Docker corre dentro de una **máquina virtual**:
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │  Tu Ordenador                           │
 │  └─ Red real: 192.168.x.x              │
@@ -328,7 +329,7 @@ En Windows y macOS, Docker corre dentro de una **máquina virtual**:
 
 ---
 
-# Auditorías Profesionales
+## Auditorías Profesionales
 
 Para auditorías de seguridad autorizadas en entornos corporativos:
 
@@ -360,10 +361,10 @@ docker run -it --rm -v ~/reports:/reports \
 
 ---
 
-# Referencia Rápida
+## Referencia Rápida
 
 | Acción | Comando |
-|--------|---------|
+| :--- | :--- |
 | Descargar/Actualizar | `docker pull ghcr.io/dorinbadea/redaudit:latest` |
 | Ejecutar (Español) | `docker run -it --rm -v ~/reports:/reports ghcr.io/dorinbadea/redaudit:latest --target TU_RED --lang es --output /reports` |
 | Ejecutar (Inglés) | `docker run -it --rm -v ~/reports:/reports ghcr.io/dorinbadea/redaudit:latest --target TU_RED --output /reports` |
@@ -372,7 +373,7 @@ docker run -it --rm -v ~/reports:/reports \
 
 ---
 
-# Solución de Problemas
+## Solución de Problemas
 
 ## "Cannot connect to Docker daemon"
 
@@ -422,7 +423,7 @@ Si ves texto como `[1m[95m` o `[0m[91m` en lugar de colores, tu terminal no sopo
    ```
 
 | Terminal | Colores ANSI |
-|----------|--------------|
+| :--- | :--- |
 | Windows Terminal | ✅ Sí |
 | PowerShell 7+ | ✅ Sí |
 | PowerShell 5 (negro) | ⚠️ Parcial |
