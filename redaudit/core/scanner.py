@@ -1387,14 +1387,14 @@ def finalize_host_status(host_record: Dict) -> str:
     if current_status == STATUS_UP:
         return STATUS_UP
 
+    # If ports were found, host is up regardless of whether deep_scan ran.
+    if host_record.get("ports") and len(host_record.get("ports", [])) > 0:
+        return STATUS_UP
+
     # Check if we have meaningful data from deep scan
     deep_scan = host_record.get("deep_scan", {})
     if not deep_scan:
         return current_status
-
-    # If ports were found, host is up regardless of MAC/vendor hints.
-    if host_record.get("ports") and len(host_record.get("ports", [])) > 0:
-        return STATUS_UP
 
     # Check command outputs for any response indicators
     commands = deep_scan.get("commands", [])

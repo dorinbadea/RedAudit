@@ -174,6 +174,8 @@ SUSPICIOUS_SERVICE_KEYWORDS = [
     "cobalt",
     "empire",
     "beacon",
+    "pptp",
+    "telnet",
 ]
 
 # v3.2.2b: Well-known ports that should NOT have unexpected services
