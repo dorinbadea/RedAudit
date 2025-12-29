@@ -86,6 +86,8 @@ Scanning every host with full UDP (-p- -sU) would take hours. RedAudit uses **he
 
 ---
 
+---
+
 ### Concept 4: Structured Reporting (ECS Schema)
 
 **What to explain:**
@@ -102,6 +104,37 @@ Raw text output is human-readable but machine-hostile. Structured JSON enables:
 - `event.type: redaudit.scan.complete`
 
 **Where in code:** [`siem.py`](../redaudit/core/siem.py) defines ECS mappings.
+
+---
+
+### Concept 5: How RedAudit Filters Noise (Smart-Check)
+
+**What to explain:**
+A common frustration in auditing is "False Positives" (tools reporting issues that aren't real). RedAudit implements a logic layer to verify findings before reporting them.
+
+**The "Smart-Check" Mechanism:**
+
+1. **Nikto Content Verification:** If Nikto claims it found `backup.tar`, RedAudit actually downloads the first 512 bytes.
+    - *Check:* Are the distinct "magic bytes" of a TAR file present?
+    - *Check:* Is the Content-Type `application/x-tar`?
+    - *Result:* If the file is actually an HTML error page (Soft 404), the finding is silently discarded.
+2. **Nuclei Context Awareness:** If a vulnerability scanner reports a specific CVE for "Mitel VoIP", but RedAudit has already identified the device as a "HP Printer", it flags the finding as a `suspected_false_positive` or discards it.
+
+**Where in code:** [`redaudit/core/verify_vuln.py`](../redaudit/core/verify_vuln.py)
+
+---
+
+### Concept 6: Architecture - Async vs. Threading
+
+**What to explain:**
+Why use different scaling models?
+
+- **Host Scanning (Threading):** Nmap is a blocking process. We use `ThreadPoolExecutor` (default 6-16 threads) so one slow host doesn't block the entire scan.
+- **Discovery (Async):** Broadcasting UDP packets (for IoT/Service discovery) is IO-bound. We use `asyncio` in `HyperScan` to blast thousands of tiny packets instantly without creating thousands of OS threads.
+
+**Where in code:**
+- Threading: `scan_hosts_concurrent()` in `auditor_scan.py`
+- Async: `hyperscan.py` modules
 
 ---
 

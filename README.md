@@ -16,11 +16,15 @@
 
 ## What is RedAudit?
 
-RedAudit is a network auditing framework that orchestrates industry-standard security tools (nmap, nikto, testssl, nuclei) plus optional helpers into an adaptive, multi-phase pipeline. It automates discovery-to-report workflows with topology signals and optional agentless probes, producing structured JSON/HTML/JSONL artifacts suitable for SIEM ingestion or compliance reporting.
+RedAudit is an **intelligent, evidence-driven network auditing framework** designed to automate the entire lifecycle of a security assessment.
+
+Unlike traditional wrappers that simply run tools in parallel, RedAudit acts as a **cybersecurity decision engine**: it discovers assets, identifies their nature (IoT vs Server vs Workstation), and adaptively escalates scans based on real-time findings—never indiscriminately blasting packets.
+
+It orchestrates industry standards (`nmap`, `nuclei`, `nikto`) into a cohesive workflow, filtering noise via **Smart-Check technology** to deliver clean, audit-ready reports (JSON/SIEM/HTML) that professionals can trust.
 
 **Use cases**: Defensive hardening, penetration test scoping, change tracking between assessments.
 
-**Key differentiator**: Identity-driven escalation across scan phases (TCP → Priority UDP → Extended UDP), not just parallel tool execution.
+**Key differentiator**: Identity-driven escalation (TCP → Deep UDP) combined with **Smart Filtering** that proactively verifies findings (e.g., magic bytes, banner checks) to eliminate false positives before reporting.
 
 ---
 
@@ -96,7 +100,12 @@ sudo redaudit
 
 ### Architecture Overview
 
-RedAudit operates as an orchestration layer, managing concurrent execution threads for network interaction and data processing. It implements a two-phase architecture: generic discovery followed by targeted deep scans.
+RedAudit operates as an orchestration layer, managing concurrent execution threads for network interaction and data processing. It implements a multi-stage architecture:
+
+1. **Hyperscan**: Async UDP/TCP discovery.
+2. **Adaptive Deep Scan**: Targeted enumeration based on host identity.
+3. **Entity Resolution**: Consolidating multi-interface devices into single assets.
+4. **Smart Filtering**: Reducing noise via context-aware verification (`verify_vuln.py`).
 
 ![System Overview](docs/images/system_overview_en.png)
 
