@@ -57,15 +57,20 @@ def test_updater_mocked_fetch():
     """Test fetch_latest_version with mock."""
     from redaudit.core.updater import fetch_latest_version
 
-    with patch("requests.get") as mock_get:
-        mock_get.return_value = MagicMock(
-            status_code=200,
-            json=lambda: {
-                "tag_name": "v3.0.0",
-                "name": "Release 3.0.0",
-                "body": "Test notes",
-            },
-        )
+    payload = {
+        "tag_name": "v3.0.0",
+        "name": "Release 3.0.0",
+        "body": "Test notes",
+        "published_at": "2025-01-01T00:00:00Z",
+        "html_url": "https://example.com/release",
+    }
+    response = MagicMock()
+    response.status = 200
+    response.read.return_value = str(payload).replace("'", '"').encode("utf-8")
+    response.__enter__.return_value = response
+    response.__exit__.return_value = None
+
+    with patch("redaudit.core.updater.urlopen", return_value=response):
         result = fetch_latest_version()
         assert result is not None
 
