@@ -262,6 +262,11 @@ def guess_asset_type(host: Dict) -> str:
         Asset type string
     """
     hostname = (host.get("hostname") or "").lower()
+    hostname_base = re.sub(
+        r"(?:\.(?:fritz\.box|local|lan|home|home\.arpa|localdomain))+$",
+        "",
+        hostname,
+    )
     ports = host.get("ports", [])
     deep = host.get("deep_scan", {})
     vendor = (deep.get("vendor") or "").lower()
@@ -306,22 +311,30 @@ def guess_asset_type(host: Dict) -> str:
             return "vpn"
 
     # Heuristic 3: VPN hostname patterns
-    if any(x in hostname for x in ["vpn", "ipsec", "wireguard", "openvpn", "tunnel"]):
+    if any(x in hostname_base for x in ["vpn", "ipsec", "wireguard", "openvpn", "tunnel"]):
         return "vpn"
 
     # Check hostname patterns (generic first, avoid brand-specific assumptions).
-    if any(x in hostname for x in ["iphone", "ipad", "android", "phone"]):
+    if any(x in hostname_base for x in ["iphone", "ipad", "android", "phone"]):
         return "mobile"
-    if any(x in hostname for x in ["macbook", "imac", "laptop", "desktop", "workstation"]):
+    if any(x in hostname_base for x in ["macbook", "imac", "laptop", "desktop", "workstation"]):
         return "workstation"
-    if re.search(r"\bpc\b", hostname):
+    if re.search(r"\bpc\b", hostname_base):
         return "workstation"
-    if any(x in hostname for x in ["printer", "canon", "epson"]):
+    if any(x in hostname_base for x in ["printer", "canon", "epson"]):
         return "printer"
-    if any(x in hostname for x in ["tv", "chromecast", "roku", "firetv", "shield"]):
+    if any(x in hostname_base for x in ["tv", "chromecast", "roku", "firetv", "shield"]):
         return "media"
-    if any(x in hostname for x in ["router", "gateway", "modem", "ont", "cpe", "firewall"]):
+    if any(x in hostname_base for x in ["router", "gateway", "modem", "ont", "cpe", "firewall"]):
         return "router"
+
+    # Samsung devices can be phones or TVs; avoid defaulting to mobile without signals.
+    if "samsung" in vendor:
+        mobile_indicators = any(x in hostname for x in ["galaxy", "android", "phone"]) or (
+            "android" in os_detected
+        )
+        if not mobile_indicators:
+            return "media"
 
     # Check device type hints (from discovery/agentless signals).
     if isinstance(device_hints, list):

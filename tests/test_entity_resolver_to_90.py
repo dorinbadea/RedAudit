@@ -248,6 +248,18 @@ def test_guess_asset_type_device_hints_server():
     assert result == "server"
 
 
+def test_guess_asset_type_samsung_vendor_tv_default():
+    """Samsung vendor without mobile hints should default to media."""
+    host = {
+        "hostname": "Samsung.fritz.box",
+        "ports": [],
+        "deep_scan": {"vendor": "Samsung Electronics"},
+        "device_type_hints": ["mobile"],
+    }
+    result = guess_asset_type(host)
+    assert result == "media"
+
+
 # -------------------------------------------------------------------------
 # create_unified_asset Tests
 # -------------------------------------------------------------------------
