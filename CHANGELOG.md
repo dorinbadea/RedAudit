@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.8] - 2025-12-29 (Discovery Identity Tuning)
+
+### Fixed
+
+- **Hostname suffix normalization**: Asset typing no longer depends on local DNS suffixes (e.g., `.fritz.box`).
+- **Samsung classification**: Defaults to media unless explicit mobile indicators are present.
+- **Router vendors**: Sercomm/Sagemcom now map to router/CPE devices.
+
+### Improved
+
+- **HTTP/agentless hints**: Device-type hints (router/repeater/access point) influence asset typing.
+- **Android cast devices**: Hosts with cast/SSDP signals now classify as media.
+- **Workstation hints**: Brand hostnames (MSI/Dell/Lenovo/HP/Asus/Acer) override RDP server heuristic.
+- **Repeater fingerprint**: Added FRITZ!Repeater HTTP pattern for router detection.
+
 ## [3.9.7] - 2025-12-29 (Audit Quality Hotfix)
 
 ### Fixed

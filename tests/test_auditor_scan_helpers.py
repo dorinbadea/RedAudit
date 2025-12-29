@@ -88,6 +88,24 @@ def test_lookup_topology_identity():
     assert vendor == "Acme"
 
 
+def test_apply_net_discovery_identity():
+    app = InteractiveNetworkAuditor()
+    app.results["net_discovery"] = {
+        "netbios_hosts": [{"ip": "10.0.0.5", "name": "DEVICE1"}],
+        "arp_hosts": [{"ip": "10.0.0.5", "mac": "aa:bb:cc:dd:ee:ff", "vendor": "Tuya Smart Inc."}],
+        "upnp_devices": [{"ip": "10.0.0.5", "device": "Test UPnP Device"}],
+    }
+    host_record = {"ip": "10.0.0.5", "hostname": "", "ports": [], "status": "down"}
+    app._apply_net_discovery_identity(host_record)
+
+    assert host_record.get("hostname") == "DEVICE1"
+    deep = host_record.get("deep_scan") or {}
+    assert deep.get("mac_address") == "aa:bb:cc:dd:ee:ff"
+    assert deep.get("vendor") == "Tuya Smart Inc."
+    agentless = host_record.get("agentless_fingerprint") or {}
+    assert agentless.get("http_title") == "Test UPnP Device"
+
+
 def test_run_nmap_xml_scan_dry_run():
     app = InteractiveNetworkAuditor()
     app.config["dry_run"] = True

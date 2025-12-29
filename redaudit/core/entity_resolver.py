@@ -262,6 +262,11 @@ def guess_asset_type(host: Dict) -> str:
         Asset type string
     """
     hostname = (host.get("hostname") or "").lower()
+    hostname_base = re.sub(
+        r"(?:\.(?:fritz\.box|local|lan|home|home\.arpa|localdomain))+$",
+        "",
+        hostname,
+    )
     ports = host.get("ports", [])
     deep = host.get("deep_scan", {})
     vendor = (deep.get("vendor") or "").lower()
@@ -277,6 +282,9 @@ def guess_asset_type(host: Dict) -> str:
             if value:
                 port_services.append(value)
 
+    port_nums = {p.get("port") for p in ports if p.get("port")}
+    http_hint = f"{http_title} {http_server}".strip()
+
     # Generic gateway hint: mark default gateway as router when known.
     if host.get("is_default_gateway") is True:
         return "router"
@@ -285,8 +293,6 @@ def guess_asset_type(host: Dict) -> str:
     # VPN Interface Detection (v3.9.6)
     # Detects VPN gateways and virtual IPs using multiple heuristics
     # ---------------------------------------------------------------------
-    port_nums = {p.get("port") for p in ports if p.get("port")}
-
     # Heuristic 1: Same MAC as gateway + different IP = VPN virtual IP
     gateway_mac = (host.get("_gateway_mac") or "").lower().replace("-", ":")
     host_mac = (deep.get("mac_address") or "").lower().replace("-", ":")
@@ -306,22 +312,56 @@ def guess_asset_type(host: Dict) -> str:
             return "vpn"
 
     # Heuristic 3: VPN hostname patterns
-    if any(x in hostname for x in ["vpn", "ipsec", "wireguard", "openvpn", "tunnel"]):
+    if any(x in hostname_base for x in ["vpn", "ipsec", "wireguard", "openvpn", "tunnel"]):
         return "vpn"
 
     # Check hostname patterns (generic first, avoid brand-specific assumptions).
-    if any(x in hostname for x in ["iphone", "ipad", "android", "phone"]):
+    if any(x in hostname_base for x in ["iphone", "ipad", "phone"]):
         return "mobile"
-    if any(x in hostname for x in ["macbook", "imac", "laptop", "desktop", "workstation"]):
+    if "android" in hostname_base:
+        if port_nums & {8008, 8009} or any(
+            token in http_hint for token in ("chromecast", "cast", "ssdp", "iot", "smart tv")
+        ):
+            return "media"
+        return "mobile"
+    if any(x in hostname_base for x in ["macbook", "imac", "laptop", "desktop", "workstation"]):
         return "workstation"
-    if re.search(r"\bpc\b", hostname):
+    if any(
+        x in hostname_base
+        for x in ("msi", "lenovo", "thinkpad", "dell", "hp", "hewlett", "asus", "acer")
+    ):
         return "workstation"
-    if any(x in hostname for x in ["printer", "canon", "epson"]):
+    if re.search(r"\bpc\b", hostname_base):
+        return "workstation"
+    if any(x in hostname_base for x in ["printer", "canon", "epson"]):
         return "printer"
-    if any(x in hostname for x in ["tv", "chromecast", "roku", "firetv", "shield"]):
+    if any(x in hostname_base for x in ["tv", "chromecast", "roku", "firetv", "shield"]):
         return "media"
-    if any(x in hostname for x in ["router", "gateway", "modem", "ont", "cpe", "firewall"]):
+    if any(x in hostname_base for x in ["router", "gateway", "modem", "ont", "cpe", "firewall"]):
         return "router"
+
+    # Samsung devices can be phones or TVs; avoid defaulting to mobile without signals.
+    if "samsung" in vendor:
+        mobile_indicators = any(x in hostname for x in ["galaxy", "android", "phone"]) or (
+            "android" in os_detected
+        )
+        if not mobile_indicators:
+            return "media"
+
+    agentless_type = str(agentless.get("device_type") or "").lower()
+    if agentless_type:
+        if agentless_type in ("router", "gateway", "firewall", "repeater", "access_point", "ap"):
+            return "router"
+        if agentless_type == "switch":
+            return "switch"
+        if agentless_type == "printer":
+            return "printer"
+        if agentless_type in ("smart_tv", "media"):
+            return "media"
+        if agentless_type in ("iot", "smart_device"):
+            return "iot"
+        if agentless_type in ("nas", "server", "bmc", "hypervisor"):
+            return "server"
 
     # Check device type hints (from discovery/agentless signals).
     if isinstance(device_hints, list):
@@ -336,11 +376,12 @@ def guess_asset_type(host: Dict) -> str:
             return "media"
         if "iot_lighting" in normalized_hints:
             return "iot"
+        if "iot" in normalized_hints:
+            return "iot"
         if "hypervisor" in normalized_hints:
             return "server"
 
     # Check agentless HTTP hints when hostname is missing.
-    http_hint = f"{http_title} {http_server}".strip()
     if http_hint:
         if any(
             token in http_hint
@@ -354,6 +395,9 @@ def guess_asset_type(host: Dict) -> str:
                 "firewall",
                 "home hub",
                 "homehub",
+                "repeater",
+                "extender",
+                "access point",
             )
         ):
             return "router"
@@ -380,9 +424,11 @@ def guess_asset_type(host: Dict) -> str:
         return "mobile"
 
     # Check vendor
+    if any(x in vendor for x in ["sercomm", "sagemcom"]):
+        return "router"
     if any(x in vendor for x in ["apple", "microsoft"]):
         return "workstation"
-    if any(x in vendor for x in ["wiz", "philips", "tp-link"]):
+    if any(x in vendor for x in ["wiz", "philips", "tp-link", "tuya"]):
         return "iot"
     if any(x in vendor for x in ["amazon", "google"]):
         return "smart_device"

@@ -248,6 +248,50 @@ def test_guess_asset_type_device_hints_server():
     assert result == "server"
 
 
+def test_guess_asset_type_android_cast_media():
+    """Android hostname with cast ports should be media."""
+    host = {
+        "hostname": "android-box",
+        "ports": [{"port": 8008}],
+        "agentless_fingerprint": {"http_title": "IoT (ssdp)"},
+    }
+    result = guess_asset_type(host)
+    assert result == "media"
+
+
+def test_guess_asset_type_workstation_brand_overrides_rdp():
+    """Workstation brand in hostname should override RDP server heuristic."""
+    host = {"hostname": "msi-vector-16", "ports": [{"port": 3389}]}
+    result = guess_asset_type(host)
+    assert result == "workstation"
+
+
+def test_guess_asset_type_vendor_sercomm_router():
+    """Sercomm vendor should be classified as router."""
+    host = {"ports": [], "deep_scan": {"vendor": "Sercomm"}}
+    result = guess_asset_type(host)
+    assert result == "router"
+
+
+def test_guess_asset_type_agentless_device_type_router():
+    """Agentless device type should map to router."""
+    host = {"ports": [], "agentless_fingerprint": {"device_type": "router"}}
+    result = guess_asset_type(host)
+    assert result == "router"
+
+
+def test_guess_asset_type_samsung_vendor_tv_default():
+    """Samsung vendor without mobile hints should default to media."""
+    host = {
+        "hostname": "Samsung.fritz.box",
+        "ports": [],
+        "deep_scan": {"vendor": "Samsung Electronics"},
+        "device_type_hints": ["mobile"],
+    }
+    result = guess_asset_type(host)
+    assert result == "media"
+
+
 # -------------------------------------------------------------------------
 # create_unified_asset Tests
 # -------------------------------------------------------------------------

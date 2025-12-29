@@ -293,6 +293,7 @@ _HTTP_DEVICE_PATTERNS = [
     # Router vendors
     (re.compile(r"(Vodafone[- ]?[A-Z0-9\-]+)", re.I), "Vodafone", "router", 1),
     (re.compile(r"(FRITZ!?[Bb]ox[- ]?\d*)", re.I), "AVM", "router", 1),
+    (re.compile(r"(FRITZ!?Repeater[- ]?[A-Z0-9\-]*)", re.I), "AVM", "router", 1),
     (re.compile(r"(TP-?LINK[- ][A-Z0-9\-]+)", re.I), "TP-Link", "router", 1),
     (re.compile(r"(NETGEAR[- ]?[A-Z0-9\-]*)", re.I), "NETGEAR", "router", 1),
     (re.compile(r"(ASUS[- ]?RT[- ]?[A-Z0-9\-]+)", re.I), "ASUS", "router", 1),

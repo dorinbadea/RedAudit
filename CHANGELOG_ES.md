@@ -9,6 +9,21 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [3.9.8] - 2025-12-29 (Ajuste de identidad de descubrimiento)
+
+### Corregido
+
+- **Normalización de sufijos**: El tipado de activos no depende de sufijos DNS locales (ej. `.fritz.box`).
+- **Samsung**: Por defecto clasifica como media salvo señales móviles explícitas.
+- **Vendors de router**: Sercomm/Sagemcom se mapean como router/CPE.
+
+### Mejorado
+
+- **Hints HTTP/agentless**: Los hints de tipo de dispositivo (router/repeater/access point) influyen en el tipado.
+- **Android cast**: Hosts con señales cast/SSDP se clasifican como media.
+- **Workstation hints**: Hostnames MSI/Dell/Lenovo/HP/Asus/Acer sobrescriben la heurística de RDP server.
+- **Fingerprint de repetidor**: Patrón FRITZ!Repeater añadido para detectar routers.
+
 ## [3.9.7] - 2025-12-29 (Hotfix de calidad de auditoría)
 
 ### Corregido

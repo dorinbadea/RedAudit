@@ -59,6 +59,7 @@ from redaudit.utils.constants import (
     UDP_TOP_PORTS,
 )
 from redaudit.utils.dry_run import is_dry_run
+from redaudit.utils.oui_lookup import get_vendor_with_fallback
 
 # Try to import nmap
 nmap = None
@@ -327,6 +328,59 @@ class AuditorScanMixin:
                         vendor = None
                     return mac, vendor
         return None, None
+
+    def _apply_net_discovery_identity(self, host_record: Dict[str, Any]) -> None:
+        """Merge net_discovery hints (MAC/vendor/hostname/UPnP) into host record."""
+        nd_results = self.results.get("net_discovery") if isinstance(self.results, dict) else None
+        if not isinstance(nd_results, dict):
+            return
+
+        ip = host_record.get("ip")
+        if not ip:
+            return
+
+        if not host_record.get("hostname"):
+            for host in nd_results.get("netbios_hosts", []) or []:
+                if isinstance(host, dict) and host.get("ip") == ip and host.get("name"):
+                    name = str(host.get("name") or "").strip()
+                    if name:
+                        host_record["hostname"] = sanitize_hostname(name) or name
+                    break
+
+        mac = None
+        vendor = None
+        for host in nd_results.get("arp_hosts", []) or []:
+            if isinstance(host, dict) and host.get("ip") == ip:
+                mac = host.get("mac") or None
+                vendor = host.get("vendor") or None
+                break
+
+        if isinstance(vendor, str) and "unknown" in vendor.lower():
+            vendor = None
+
+        if mac and not vendor:
+            try:
+                vendor = get_vendor_with_fallback(mac, None, online_fallback=True)
+            except Exception:
+                vendor = None
+
+        if mac or vendor:
+            deep_meta = host_record.setdefault(
+                "deep_scan", {"strategy": "net_discovery", "commands": []}
+            )
+            if mac and not deep_meta.get("mac_address"):
+                deep_meta["mac_address"] = mac
+            if vendor and not deep_meta.get("vendor"):
+                deep_meta["vendor"] = vendor
+
+        for device in nd_results.get("upnp_devices", []) or []:
+            if isinstance(device, dict) and device.get("ip") == ip:
+                device_name = str(device.get("device") or "").strip()
+                if device_name:
+                    agentless = host_record.setdefault("agentless_fingerprint", {})
+                    if not agentless.get("http_title"):
+                        agentless["http_title"] = device_name[:80]
+                break
 
     def _run_nmap_xml_scan(self, target: str, args: str) -> Tuple[Optional[Any], str]:
         """
@@ -856,6 +910,9 @@ class AuditorScanMixin:
                         "Failed to read nmap identity metadata for %s", safe_ip, exc_info=True
                     )
 
+            # v3.9.8: Merge net_discovery identity hints (ARP/NetBIOS/UPnP) before heuristics.
+            self._apply_net_discovery_identity(host_record)
+
             # v2.8.0: Banner grab fallback for unidentified ports
             if unknown_ports and len(unknown_ports) <= 20:
                 self.print_status(self.t("banner_grab", safe_ip, len(unknown_ports)), "INFO")
@@ -909,6 +966,8 @@ class AuditorScanMixin:
                     for x in ("philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo")
                 ):
                     device_type_hints.append("iot_lighting")
+                elif "tuya" in vendor_lower:
+                    device_type_hints.append("iot")
                 elif any(
                     x in vendor_lower
                     for x in (
@@ -923,6 +982,8 @@ class AuditorScanMixin:
                         "asus",
                         "linksys",
                         "tp-link",
+                        "sercomm",
+                        "sagemcom",
                     )
                 ):
                     device_type_hints.append("router")
