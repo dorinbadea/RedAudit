@@ -86,6 +86,8 @@ Escanear cada host con UDP completo (-p- -sU) tomaría horas. RedAudit usa **heu
 
 ---
 
+---
+
 ### Concepto 4: Reportes Estructurados (Schema ECS)
 
 **Qué explicar:**
@@ -102,6 +104,37 @@ La salida de texto crudo es legible para humanos pero hostil para máquinas. JSO
 - `event.type: redaudit.scan.complete`
 
 **Ubicación en código:** [`siem.py`](../redaudit/core/siem.py) define los mapeos ECS.
+
+---
+
+### Concepto 5: Cómo RedAudit Filtra el Ruido (Smart-Check)
+
+**Qué explicar:**
+Una frustración común en auditorías son los "Falsos Positivos" (herramientas que reportan problemas que no existen). RedAudit implementa una capa lógica para verificar hallazgos antes de reportarlos.
+
+**El Mecanismo "Smart-Check":**
+
+1. **Verificación de Contenido Nikto:** Si Nikto afirma haber encontrado `backup.tar`, RedAudit descarga los primeros 512 bytes.
+    - *Verificación:* ¿Están presentes los "magic bytes" distintivos de un archivo TAR?
+    - *Verificación:* ¿Es el Content-Type `application/x-tar`?
+    - *Resultado:* Si el archivo es realmente una página de error HTML (Soft 404), el hallazgo se descarta silenciosamente.
+2. **Conciencia de Contexto Nuclei:** Si un escáner reporta un CVE específico para "Mitel VoIP", pero RedAudit ya identificó el dispositivo como "HP Printer", marca el hallazgo como `suspected_false_positive` o lo descarta.
+
+**Ubicación en código:** [`redaudit/core/verify_vuln.py`](../redaudit/core/verify_vuln.py)
+
+---
+
+### Concepto 6: Arquitectura - Async vs. Threading
+
+**Qué explicar:**
+¿Por qué usar modelos de escalado diferentes?
+
+- **Escaneo de Hosts (Threading):** Nmap es un proceso bloqueante. Usamos `ThreadPoolExecutor` (por defecto 6-16 hilos) para que un host lento no bloquee todo el escaneo.
+- **Descubrimiento (Async):** La transmisión de paquetes UDP (para IoT/Descubrimiento de Servicios) es intensiva en E/S. Usamos `asyncio` en `HyperScan` para lanzar miles de paquetes pequeños instantáneamente sin crear miles de hilos del sistema operativo.
+
+**Ubicación en código:**
+- Threading: `scan_hosts_concurrent()` en `auditor_scan.py`
+- Async: Módulos de `hyperscan.py`
 
 ---
 

@@ -12,11 +12,15 @@
 
 ## ¿Qué es RedAudit?
 
-RedAudit es un framework de auditoría de red que orquesta herramientas de seguridad estándar de la industria (nmap, nikto, testssl, nuclei) más helpers opcionales en un pipeline adaptativo y multifase. Automatiza flujos de trabajo desde el descubrimiento hasta el reporte con señales de topología y probes sin agente opcionales, produciendo artefactos estructurados JSON/HTML/JSONL aptos para ingesta SIEM o informes de cumplimiento.
+RedAudit es un **framework de auditoría de red inteligente y basado en evidencia**, diseñado para automatizar el ciclo de vida completo de una evaluación de seguridad.
+
+A diferencia de los wrappers tradicionales que simplemente ejecutan herramientas en paralelo, RedAudit actúa como un **motor de decisión en ciberseguridad**: descubre activos, identifica su naturaleza (IoT vs Servidor vs Workstation) y escala adaptativamente los escaneos basándose en hallazgos en tiempo real—nunca disparando paquetes indiscriminadamente.
+
+Orquesta estándares de la industria (`nmap`, `nuclei`, `nikto`) en un flujo de trabajo cohesivo, filtrando el ruido via **tecnología Smart-Check** para entregar reportes limpios y listos para auditoría (JSON/SIEM/HTML) en los que los profesionales pueden confiar.
 
 **Casos de uso**: Hardening defensivo, scoping para pentesting, seguimiento de cambios entre evaluaciones.
 
-**Diferenciador clave**: Escalación por identidad a través de fases (TCP → UDP Prioritario → UDP Extendido), no solo ejecución paralela.
+**Diferenciador clave**: Escalación por identidad (TCP → UDP Profundo) combinada con **Filtrado Inteligente** que verifica proactivamente hallazgos (ej: magic bytes, chequeos de banner) para eliminar falsos positivos antes de reportar.
 
 ---
 
@@ -92,7 +96,12 @@ sudo redaudit
 
 ### Vista General de Arquitectura
 
-RedAudit opera como una capa de orquestación, gestionando hilos de ejecución concurrentes para la interacción de red y el procesamiento de datos. Implementa una arquitectura de dos fases: descubrimiento genérico seguido de escaneos profundos dirigidos.
+RedAudit opera como una capa de orquestación, gestionando hilos de ejecución concurrentes para la interacción de red y el procesamiento de datos. Implementa una arquitectura multifase:
+
+1. **Hyperscan**: Descubrimiento async UDP/TCP.
+2. **Deep Scan Adaptativo**: Enumeración dirigida basada en la identidad del host.
+3. **Resolución de Entidad**: Consolidación de dispositivos multi-interfaz en activos únicos.
+4. **Filtrado Inteligente**: Reducción de ruido via verificación consciente del contexto (`verify_vuln.py`).
 
 ![Vista General del Sistema](docs/images/system_overview_es.png)
 
