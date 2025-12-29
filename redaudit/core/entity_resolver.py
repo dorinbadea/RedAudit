@@ -330,7 +330,16 @@ def guess_asset_type(host: Dict) -> str:
         return "workstation"
     if any(
         x in hostname_base
-        for x in ("printer", "laserjet", "officejet", "deskjet", "pixma", "imageclass", "canon", "epson")
+        for x in (
+            "printer",
+            "laserjet",
+            "officejet",
+            "deskjet",
+            "pixma",
+            "imageclass",
+            "canon",
+            "epson",
+        )
     ):
         return "printer"
     if any(
