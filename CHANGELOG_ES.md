@@ -9,6 +9,12 @@ y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [3.9.9] - 2025-12-29 (Fix de heurística de impresoras)
+
+### Corregido
+
+- **Detección de impresoras por hostname**: Los tokens de impresora ahora tienen prioridad sobre marcas de workstation.
+
 ## [3.9.8] - 2025-12-29 (Ajuste de identidad de descubrimiento)
 
 ### Corregido

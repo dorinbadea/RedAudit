@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.9] - 2025-12-29 (Printer Heuristic Fix)
+
+### Fixed
+
+- **Printer hostname detection**: Printer tokens now take precedence over workstation brand hints.
+
 ## [3.9.8] - 2025-12-29 (Discovery Identity Tuning)
 
 ### Fixed
