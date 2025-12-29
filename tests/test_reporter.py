@@ -115,7 +115,9 @@ class TestReporter(unittest.TestCase):
         }
         config = {"target_networks": ["192.168.1.0/24"], "threads": 1, "scan_mode": "normal"}
 
-        summary = generate_summary(results, config, ["192.168.1.10"], results["hosts"], datetime.now())
+        summary = generate_summary(
+            results, config, ["192.168.1.10"], results["hosts"], datetime.now()
+        )
 
         self.assertEqual(summary["vulns_found_raw"], 2)
         self.assertEqual(summary["vulns_found"], 1)

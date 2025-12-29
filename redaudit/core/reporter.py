@@ -332,7 +332,9 @@ def generate_summary(
     results.update(enriched)
     consolidated_vulns = 0
     try:
-        consolidated_vulns = _summarize_vulnerabilities(results.get("vulnerabilities", [])).get("total", 0)
+        consolidated_vulns = _summarize_vulnerabilities(results.get("vulnerabilities", [])).get(
+            "total", 0
+        )
     except Exception:
         consolidated_vulns = raw_vulns
     summary["vulns_found"] = consolidated_vulns
