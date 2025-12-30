@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
-![Coverage](https://img.shields.io/badge/coverage-84%25-brightgreen?style=flat-square)
+![Coverage](https://img.shields.io/badge/coverage-93%25-brightgreen?style=flat-square)
 
 <div align="center">
 
