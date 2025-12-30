@@ -100,6 +100,7 @@
             </div>
         </div>
 
+        {% set web_vuln_delta = summary.get('web_vuln_delta', 0) %}
         <div class="summary-cards">
             <div class="card">
                 <div class="card-label">New Hosts</div>
@@ -123,8 +124,8 @@
             </div>
             <div class="card">
                 <div class="card-label">Web Findings Δ</div>
-                <div class="card-value {% if summary.web_vuln_delta > 0 %}negative{% elif summary.web_vuln_delta < 0 %}positive{% else %}neutral{% endif %}">
-                    {% if summary.web_vuln_delta > 0 %}+{% endif %}{{ summary.web_vuln_delta }}
+                <div class="card-value {% if web_vuln_delta > 0 %}negative{% elif web_vuln_delta < 0 %}positive{% else %}neutral{% endif %}">
+                    {% if web_vuln_delta > 0 %}+{% endif %}{{ web_vuln_delta }}
                 </div>
             </div>
         </div>

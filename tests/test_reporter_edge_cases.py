@@ -121,11 +121,12 @@ def test_save_results_encryption_txt_and_salt():
                     )
 
 
-def test_save_results_logs_and_failures():
+def test_save_results_logs_and_failures(tmp_path):
     """Test save_results logging paths (lines 827, 839, 861, 880, 892, 910)."""
     logger = MagicMock()
     results = {"summary": {}, "vulnerabilities": []}
-    config = {"html_report": True}
+    output_dir = str(tmp_path)
+    config = {"html_report": True, "output_dir": output_dir}
 
     # JSONL skipped log (827)
     save_results(results, config, encryption_enabled=True, logger=logger)
@@ -135,25 +136,37 @@ def test_save_results_logs_and_failures():
     with patch("redaudit.core.playbook_generator.save_playbooks", return_value=(1, [])):
         print_fn = MagicMock()
         t_fn = MagicMock(return_value="Playbooks!")
-        save_results(results, {"save_playbooks": True}, print_fn=print_fn, t_fn=t_fn)
+        save_results(
+            results,
+            {"save_playbooks": True, "output_dir": output_dir},
+            print_fn=print_fn,
+            t_fn=t_fn,
+        )
         print_fn.assert_any_call("Playbooks!", "OKGREEN")
 
     # HTML path not found message (861-862)
     with patch("redaudit.core.html_reporter.save_html_report", return_value=None):
         print_fn = MagicMock()
-        save_results(results, {"html_report": True}, print_fn=print_fn, t_fn=MagicMock())
+        save_results(
+            results,
+            {"html_report": True, "output_dir": output_dir},
+            print_fn=print_fn,
+            t_fn=MagicMock(),
+        )
         print_fn.assert_any_call("HTML report generation failed (check log)", "WARNING")
 
     # Webhook fail log (892-894)
     err = Exception("Webhook Error")
     with patch("redaudit.utils.webhook.process_findings_for_alerts", side_effect=err):
-        save_results(results, {"webhook_url": "http://web"}, logger=logger)
+        save_results(
+            results, {"webhook_url": "http://web", "output_dir": output_dir}, logger=logger
+        )
         logger.warning.assert_any_call("Webhook alerting failed: %s", err)
 
     # Manifest failure (910-912)
     err = Exception("Manifest Error")
     with patch("redaudit.core.reporter._write_output_manifest", side_effect=err):
-        save_results(results, {}, logger=logger)
+        save_results(results, {"output_dir": output_dir}, logger=logger)
         logger.debug.assert_any_call("Run manifest generation failed: %s", err, exc_info=True)
 
 

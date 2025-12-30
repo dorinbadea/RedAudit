@@ -96,16 +96,18 @@ def test_auditor_show_defaults_summary():
         auditor._show_defaults_summary(defaults)
 
 
-def test_run_complete_scan_short_circuit():
+def test_run_complete_scan_short_circuit(tmp_path):
     """Test run_complete_scan with interrupted state (line 360)."""
     auditor = InteractiveNetworkAuditor()
+    auditor.config["output_dir"] = str(tmp_path)
     auditor.interrupted = True
     assert auditor.run_complete_scan() is False
 
 
-def test_run_complete_scan_no_setup():
+def test_run_complete_scan_no_setup(tmp_path):
     """Test run_complete_scan with quick profile (lines 430, 647)."""
     auditor = InteractiveNetworkAuditor()
+    auditor.config["output_dir"] = str(tmp_path)
     auditor.config["target_networks"] = ["1.1.1.0/24"]
 
     # Mock all heavy dependencies

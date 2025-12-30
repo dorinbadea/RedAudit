@@ -24,7 +24,7 @@ class MockInput:
 
 
 @pytest.fixture
-def mock_auditor():
+def mock_auditor(tmp_path):
     with (
         patch("redaudit.core.auditor.InteractiveNetworkAuditor._setup_logging"),
         patch("signal.signal"),
@@ -32,6 +32,7 @@ def mock_auditor():
         patch("redaudit.core.auditor.InteractiveNetworkAuditor.stop_heartbeat"),
     ):
         a = InteractiveNetworkAuditor()
+        a.config["output_dir"] = str(tmp_path)
         a.logger = MagicMock()
         a.t = lambda k, *args: f"T({k})"
         a.COLORS = COLORS.copy()
