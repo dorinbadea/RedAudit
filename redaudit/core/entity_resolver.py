@@ -315,19 +315,6 @@ def guess_asset_type(host: Dict) -> str:
     if any(x in hostname_base for x in ["vpn", "ipsec", "wireguard", "openvpn", "tunnel"]):
         return "vpn"
 
-    # Check hostname patterns (generic first, avoid brand-specific assumptions).
-    if any(x in hostname_base for x in ["iphone", "ipad", "phone"]):
-        return "mobile"
-    if "android" in hostname_base:
-        if port_nums & {8008, 8009} or any(
-            token in http_hint for token in ("chromecast", "cast", "ssdp", "iot", "smart tv")
-        ):
-            return "media"
-        return "mobile"
-    if any(x in hostname_base for x in ["macbook", "imac", "laptop", "desktop", "workstation"]):
-        return "workstation"
-    if re.search(r"\bpc\b", hostname_base):
-        return "workstation"
     if any(
         x in hostname_base
         for x in (
@@ -342,6 +329,20 @@ def guess_asset_type(host: Dict) -> str:
         )
     ):
         return "printer"
+
+    # Check hostname patterns (generic first, avoid brand-specific assumptions).
+    if any(x in hostname_base for x in ["iphone", "ipad", "phone"]):
+        return "mobile"
+    if "android" in hostname_base:
+        if port_nums & {8008, 8009} or any(
+            token in http_hint for token in ("chromecast", "cast", "ssdp", "iot", "smart tv")
+        ):
+            return "media"
+        return "mobile"
+    if any(x in hostname_base for x in ["macbook", "imac", "laptop", "desktop", "workstation"]):
+        return "workstation"
+    if re.search(r"\bpc\b", hostname_base):
+        return "workstation"
     if any(
         x in hostname_base
         for x in ("msi", "lenovo", "thinkpad", "dell", "hp", "hewlett", "asus", "acer")
