@@ -277,14 +277,17 @@ def test_perform_git_update_missing_key_file(mock_popen, mock_which):
 
 def test_restart_self_edge():
     """Test restart_self in various failure modes."""
-    with patch("os.execvp", side_effect=Exception("EXECVP_FAIL")), patch(
-        "os.execv", side_effect=Exception("EXEC_FAIL")
+    with (
+        patch("os.execvp", side_effect=Exception("EXECVP_FAIL")),
+        patch("os.execv", side_effect=Exception("EXEC_FAIL")),
     ):
         assert restart_self(logger=MagicMock()) is False
 
-    with patch("os.execvp", side_effect=Exception("EXECVP_FAIL")), patch(
-        "os.execv", side_effect=Exception("EXEC_FAIL")
-    ), patch("sys.executable", ""):
+    with (
+        patch("os.execvp", side_effect=Exception("EXECVP_FAIL")),
+        patch("os.execv", side_effect=Exception("EXEC_FAIL")),
+        patch("sys.executable", ""),
+    ):
         assert restart_self() is False
 
 

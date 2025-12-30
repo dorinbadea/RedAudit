@@ -158,7 +158,9 @@ def test_save_results_logs_and_failures(tmp_path):
     # Webhook fail log (892-894)
     err = Exception("Webhook Error")
     with patch("redaudit.utils.webhook.process_findings_for_alerts", side_effect=err):
-        save_results(results, {"webhook_url": "http://web", "output_dir": output_dir}, logger=logger)
+        save_results(
+            results, {"webhook_url": "http://web", "output_dir": output_dir}, logger=logger
+        )
         logger.warning.assert_any_call("Webhook alerting failed: %s", err)
 
     # Manifest failure (910-912)
