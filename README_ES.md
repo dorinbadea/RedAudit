@@ -160,10 +160,10 @@ sigue siendo débil o hay señales sospechosas.
 
 **Heurísticas de Disparo** (qué hace un host "ambiguo", sobre todo en rápido/normal):
 
-- Pocos puertos abiertos (≤3)
+- Pocos puertos abiertos (≤3) solo si la identidad está por debajo del umbral
 - Servicios sospechosos (`unknown`, `tcpwrapped`)
 - Falta de MAC/vendor/hostname
-- Sin versión de servicio (score de identidad bajo)
+- Sin versión de servicio (identidad por debajo del umbral)
 - Puertos filtrados o sin respuesta (fallback)
 - Hosts silenciosos con vendor detectado pueden recibir un probe HTTP/HTTPS breve de titulo/meta/encabezado en puertos comunes
 

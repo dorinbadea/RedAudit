@@ -115,46 +115,46 @@ RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runt
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│              PHASE 1: Mode-Specific Nmap Profile            │
-│        fast/normal/full modes drive the base scan           │
+│          FASE 1: Perfil Nmap según el modo de escaneo        │
+│        rápido/normal/completo definen el scan base           │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
               ┌───────────────────────┐
-              │  Identity Evaluation  │
-              │  • MAC/vendor?        │
-              │  • Hostname/DNS?      │
-              │  • Service version?   │
-              │  • CPE/banner?        │
-              │  • HTTP title/heading?│
-              │  • Agentless hints?   │
+              │  Evaluación Identidad │
+              │  • ¿MAC/vendor?       │
+              │  • ¿Hostname/DNS?     │
+              │  • ¿Versión servicio? │
+              │  • ¿CPE/banner?       │
+              │  • HTTP titulo/encab.?│
+              │  • ¿Hints sin agente? │
               └───────────┬───────────┘
                           │
             ┌─────────────┴─────────────┐
             │                           │
             ▼                           ▼
     ┌───────────────┐          ┌────────────────┐
-    │ SUFFICIENT    │          │ AMBIGUOUS HOST │
-    │ Stop scanning │          │ Continue...    │
+    │ SUFICIENTE    │          │ HOST AMBIGUO   │
+    │ Detener scan  │          │ Continuar...   │
     └───────────────┘          └───────┬────────┘
                                        │
                                        ▼
                     ┌──────────────────────────────────────┐
-                    │   PHASE 2a: Priority UDP             │
-                    │   17 common ports (DNS, DHCP, SNMP)  │
+                    │  FASE 2a: UDP Prioritario            │
+                    │  17 puertos comunes (DNS/DHCP/SNMP)  │
                     └──────────────────┬───────────────────┘
                                        │
                           ┌────────────┴────────────┐
                           │                         │
                           ▼                         ▼
                   ┌───────────────┐        ┌────────────────┐
-                  │ Identity found│        │ Still ambiguous│
-                  │ Stop          │        │ (full mode)    │
+                  │ Identidad OK  │        │ Aún ambiguo    │
+                  │ Detener       │        │ (modo full)    │
                   └───────────────┘        └───────┬────────┘
                                                    │
                                                    ▼
                               ┌─────────────────────────────────┐
-                              │   PHASE 2b: Extended UDP        │
+                              │     FASE 2b: UDP Extendido      │
                               │  --top-ports N (configurable)   │
                               └─────────────────────────────────┘
 ```
@@ -163,10 +163,10 @@ In **full/completo** mode, the base profile is already aggressive, so deep ident
 
 **Trigger Heuristics** (what makes a host "ambiguous", mostly in fast/normal):
 
-- Few open ports (≤3)
+- Low visibility (few open ports) only when identity score is below the threshold
 - Suspicious services (`unknown`, `tcpwrapped`)
 - Missing MAC/vendor/hostname
-- No version info (low identity score)
+- No version info (identity score below the threshold)
 - Filtered or no-response ports (deep scan fallback)
 - Quiet hosts with vendor hints may get a short HTTP/HTTPS title/meta/heading probe on common ports
 
