@@ -87,10 +87,12 @@ def test_activity_indicator_exhaustive():
     s = io.StringIO()
     s.isatty = lambda: False
     start = time.monotonic()
-    with patch("time.monotonic", side_effect=[start, start + 10, start + 10, start + 10.1] * 10):
-        ind = _ActivityIndicator(label="L", stream=s, refresh_s=0.01)
-        with ind:
-            time.sleep(0.02)
+    ind = _ActivityIndicator(label="L", stream=s, refresh_s=0.01)
+    ind._stop = MagicMock()
+    ind._stop.is_set.side_effect = [False, True]
+    with patch("time.monotonic", side_effect=[start, start + 10]):
+        with patch("time.sleep", return_value=None):
+            ind._run()
     assert "[INFO]" in s.getvalue()
 
     # Edge cases
