@@ -129,8 +129,34 @@ DEFAULT_OUTPUT_DIR = "~/Documents/RedAuditReports"
 DEFAULT_THREADS = 6
 DEFAULT_IDENTITY_THRESHOLD = 3
 DEFAULT_DEEP_SCAN_BUDGET = 0
+
+# Thread limits and autodetection.
+# Maximum concurrent host scans is capped at 16. Higher values cause:
+# - Network congestion (packet loss, switch/router saturation)
+# - Diminishing returns (nmap is I/O bound, not CPU bound)
+# - Increased IDS/IPS trigger probability from burst traffic
+# - Memory pressure (~50MB per nmap instance)
+# Tested optimal range: 6-12 for most LANs. 16 is a safe ceiling.
 MAX_THREADS = 16
 MIN_THREADS = 1
+
+
+def suggest_threads() -> int:
+    """Suggest optimal thread count based on system CPU cores.
+
+    Returns a value between MIN_THREADS+1 and min(cores, 12, MAX_THREADS).
+    Falls back to 4 if core count cannot be determined.
+    """
+    import os
+
+    try:
+        cores = os.cpu_count() or 4
+    except Exception:
+        cores = 4
+    # Heuristic: use cores but cap at 12 to avoid network saturation
+    return max(MIN_THREADS + 1, min(cores, 12, MAX_THREADS))
+
+
 MAX_PORTS_DISPLAY = 50
 
 # File permissions
