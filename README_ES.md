@@ -111,8 +111,8 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│          FASE 1: Perfil Nmap según el modo de escaneo        │
-│        rápido/normal/completo definen el scan base           │
+│         FASE 1: Perfil Nmap según el modo de escaneo        │
+│        rápido/normal/completo definen el scan base          │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
@@ -122,7 +122,7 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
               │  • ¿Hostname/DNS?     │
               │  • ¿Versión servicio? │
               │  • ¿CPE/banner?       │
-              │  • HTTP titulo/encab.?│
+              │  • HTTP título/encab.?│
               │  • ¿Hints sin agente? │
               └───────────┬───────────┘
                           │
@@ -130,8 +130,8 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
             │                           │
             ▼                           ▼
     ┌───────────────┐          ┌────────────────┐
-    │ SUFICIENTE    │          │ HOST AMBIGUO   │
-    │ Detener scan  │          │ Continuar...   │
+    │  SUFICIENTE   │          │ HOST AMBIGUO   │
+    │  Detener scan │          │ Continuar...   │
     └───────────────┘          └───────┬────────┘
                                        │
                                        ▼
