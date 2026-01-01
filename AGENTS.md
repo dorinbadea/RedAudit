@@ -233,6 +233,14 @@ Also update any tests that assert version output (e.g., integration tests).
 - `pytest tests/ -v` (or `python3 -m unittest discover -s tests`)
 - `git status` must be clean
 
+### Release candidate (local validation, no merge to main)
+
+Run a local release candidate validation without merging to `main`.
+
+```bash
+git fetch origin --prune && git checkout -B release/candidate origin/release/candidate && sudo bash redaudit_install.sh && pytest tests/ -v --cov=redaudit --cov-report=xml --cov-report=term-missing
+```
+
 ### 5) Merge, tag, publish
 
 From `main`:
