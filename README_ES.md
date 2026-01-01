@@ -254,11 +254,13 @@ El asistente te guía por la selección de objetivo y el perfil de auditoría. O
 - **Exhaustivo**: Escaneo completo con más profundidad. UDP top-ports (500) se activa en hosts ambiguos; Red Team y verificación sin agente activadas. La correlación CVE solo se habilita si ya hay API key NVD configurada.
 - **Custom**: Wizard completo de 8 pasos con navegación atrás para control granular.
 
+La Fase 0 de enriquecimiento de bajo impacto es un prompt opt-in en todos los perfiles (por defecto desactivada).
+
 El asistente cubre:
 
 1. **Selección de objetivo**: Elige una subred local o introduce CIDR manual
 2. **Preset de temporización**: Stealth (T1), Normal (T4) o Agresivo (T5) en Estándar/Exhaustivo
-3. **Opciones**: Hilos, rate limiting, UDP/topología/descubrimiento, verificación sin agente (según perfil)
+3. **Opciones**: Hilos, rate limiting, Fase 0 de bajo impacto, UDP/topología/descubrimiento, verificación sin agente (según perfil)
 4. **Autorización**: Confirma que tienes permiso para escanear
 
 ### Modo No Interactivo / Automatización

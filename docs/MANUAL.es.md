@@ -101,7 +101,7 @@ Al ejecutar `sudo redaudit` en modo interactivo, el asistente pregunta qué perf
 - **Features deshabilitadas**: Escaneos de vulnerabilidades, Nuclei, correlación CVE, verificación sin agente
 - **Descubrimiento habilitado**: Topología + Net Discovery
 - **Timing**: Rápido
-- **Preguntas**: Mínimas (nombre auditor, directorio salida)
+- **Preguntas**: Mínimas (prompt de Fase 0, nombre auditor, directorio salida)
 - **Ideal para**: Reconocimiento inicial, contar hosts vivos
 
 ### Standard
@@ -111,7 +111,7 @@ Al ejecutar `sudo redaudit` en modo interactivo, el asistente pregunta qué perf
 - **Modo**: `normal` (nmap `-F` / top 100 puertos + detección de versiones)
 - **Features**: escaneo web habilitado (whatweb; nikto/testssl solo en full), searchsploit si está disponible, topología + discovery de red
 - **Timing**: Elegido por preset (Stealth/Normal/Agresivo)
-- **Preguntas**: Selección de perfil + timing + prompts de auditor/salida
+- **Preguntas**: Selección de perfil + timing + prompt de Fase 0 + prompts de auditor/salida
 - **Ideal para**: La mayoría de auditorías de seguridad
 
 ### Exhaustive
@@ -124,7 +124,7 @@ Al ejecutar `sudo redaudit` en modo interactivo, el asistente pregunta qué perf
 - **Features habilitadas**: Vulnerabilidades, Topología, Net Discovery, Red Team, Verificación sin agente; Nuclei si está instalado
 - **Correlación CVE**: Habilitada si hay API key de NVD configurada
 - **Timing**: Elegido por preset (Stealth/Normal/Agresivo)
-- **Preguntas**: Solo nombre auditor y directorio (todo lo demás auto-configurado)
+- **Preguntas**: Prompt de Fase 0 + nombre auditor y directorio (todo lo demás auto-configurado)
 - **Ideal para**: Pentesting, auditorías de cumplimiento, validación pre-producción
 
 ### Custom
@@ -132,7 +132,7 @@ Al ejecutar `sudo redaudit` en modo interactivo, el asistente pregunta qué perf
 **Caso de uso:** Control total sobre todas las opciones de configuración.
 
 - **Comportamiento**: Wizard completo de 8 pasos con navegación atrás
-- **Preguntas**: Modo de escaneo, hilos/retardo, vulnerabilidades, CVE, salida/auditor, UDP/topología, discovery/red team, verificación sin agente + webhook
+- **Preguntas**: Modo de escaneo, hilos/retardo + prompt de Fase 0, vulnerabilidades, CVE, salida/auditor, UDP/topología, discovery/red team, verificación sin agente + webhook
 - **Ideal para**: Escaneos personalizados con requisitos específicos
 
 ---
@@ -171,7 +171,7 @@ Cuando está habilitado (por defecto), RedAudit realiza escaneos adicionales en 
 
 **Comportamiento:**
 
-0. (Opcional) Fase 0 de enriquecimiento de bajo impacto (DNS reverso, mDNS unicast, SNMP sysDescr) con `--low-impact-enrichment`
+0. (Opcional) Fase 0 de enriquecimiento de bajo impacto (DNS reverso, mDNS unicast, SNMP sysDescr) al activarlo en el wizard o con `--low-impact-enrichment`
 1. Fase 1: TCP agresivo (`-A -p- -sV -Pn`)
 2. Fase 2a: Sonda UDP prioritaria (17 puertos comunes incluyendo 500/4500)
 3. Fase 2b: UDP top-ports (`--udp-ports`) cuando el modo es `full` y la identidad sigue débil

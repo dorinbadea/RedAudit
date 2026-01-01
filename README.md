@@ -256,11 +256,13 @@ The wizard offers 4 audit profiles:
 - **Exhaustive**: Full port scan with deeper discovery. UDP top-ports (500) is enabled for ambiguous hosts; Red Team discovery and agentless verification are enabled. CVE correlation is enabled only if an NVD API key is already configured.
 - **Custom**: Full 8-step wizard with back navigation for granular control.
 
+Phase 0 low-impact enrichment is an opt-in wizard prompt across all profiles (default off).
+
 The wizard covers:
 
 1. **Target Selection**: Choose a local subnet or enter manual CIDR
 2. **Timing Preset**: Stealth (T1), Normal (T4), or Aggressive (T5) for Standard/Exhaustive profiles
-3. **Options**: Threads, rate limiting, UDP/topology/net discovery, agentless verification (varies by profile)
+3. **Options**: Threads, rate limiting, Phase 0 low-impact enrichment, UDP/topology/net discovery, agentless verification (varies by profile)
 4. **Authorization**: Confirm you have permission to scan
 
 ### Non-Interactive / Automation

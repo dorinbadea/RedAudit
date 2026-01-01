@@ -16,6 +16,7 @@ Run these commands to get started immediately.
 ### Interactive Wizard (Best for first time)
 
 Step-by-step navigation with a "< Go Back" option (v3.8.1+). Webhook configuration and network discovery options are available in the wizard; SIEM exports are generated automatically when encryption is off.
+Phase 0 low-impact enrichment can be enabled from the wizard (default off) or via `--low-impact-enrichment`.
 
 ```bash
 sudo redaudit

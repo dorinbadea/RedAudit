@@ -15,7 +15,7 @@ Ejecuta estos comandos para comenzar de inmediato.
 
 ### Asistente Interactivo (Recomendado para primera vez)
 
-Navegación paso a paso con opción "< Volver" (v3.8.1+). La configuración de webhooks y opciones de descubrimiento está disponible en el asistente; las exportaciones SIEM se generan automáticamente cuando el cifrado está desactivado.
+Navegación paso a paso con opción "< Volver" (v3.8.1+). La configuración de webhooks y opciones de descubrimiento está disponible en el asistente; las exportaciones SIEM se generan automáticamente cuando el cifrado está desactivado. La Fase 0 de bajo impacto puede activarse desde el wizard (por defecto desactivada) o con `--low-impact-enrichment`.
 
 ```bash
 sudo redaudit
