@@ -752,6 +752,20 @@ class AuditorScanMixin:
 
         return identity_found
 
+    def _reserve_deep_scan_slot(self, budget: int) -> Tuple[bool, int]:
+        if not isinstance(budget, int) or budget <= 0:
+            return True, 0
+        lock = getattr(self, "_deep_budget_lock", None)
+        if lock is None:
+            lock = threading.Lock()
+            setattr(self, "_deep_budget_lock", lock)
+        with lock:
+            deep_count = getattr(self, "_deep_executed_count", 0)
+            if deep_count >= budget:
+                return False, deep_count
+            setattr(self, "_deep_executed_count", deep_count + 1)
+            return True, deep_count + 1
+
     def _run_nmap_xml_scan(self, target: str, args: str) -> Tuple[Optional[Any], str]:
         """
         Run an nmap scan with XML output and enforce a hard timeout.
@@ -1171,8 +1185,8 @@ class AuditorScanMixin:
                 deep = None
                 if self.config.get("deep_id_scan", True):
                     budget = self.config.get("deep_scan_budget", 0)
-                    deep_count = getattr(self, "_deep_executed_count", 0)
-                    if budget > 0 and deep_count >= budget:
+                    reserved, deep_count = self._reserve_deep_scan_slot(budget)
+                    if not reserved:
                         if self.logger:
                             self.logger.info(
                                 self.t(
@@ -1184,8 +1198,6 @@ class AuditorScanMixin:
                             )
                     else:
                         deep = self.deep_scan_host(safe_ip)
-                        if deep:
-                            self._deep_executed_count = deep_count + 1
                 base = {
                     "ip": safe_ip,
                     "hostname": "",
@@ -1381,8 +1393,8 @@ class AuditorScanMixin:
 
             if trigger_deep:
                 budget = self.config.get("deep_scan_budget", 0)
-                deep_count = getattr(self, "_deep_executed_count", 0)
-                if budget > 0 and deep_count >= budget:
+                reserved, deep_count = self._reserve_deep_scan_slot(budget)
+                if not reserved:
                     trigger_deep = False
                     deep_reasons.append("budget_exhausted")
                     if self.logger:
@@ -1434,7 +1446,6 @@ class AuditorScanMixin:
                         + (["udp_priority"] if udp_priority_used else [])
                         + ["tcp_aggressive"]
                     )
-                    self._deep_executed_count = getattr(self, "_deep_executed_count", 0) + 1
 
             if total_ports == 0 and self.config.get("deep_id_scan", True):
                 identity_source = host_record.get("deep_scan") or {}
@@ -1483,8 +1494,8 @@ class AuditorScanMixin:
                 deep = None
                 if self.config.get("deep_id_scan", True):
                     budget = self.config.get("deep_scan_budget", 0)
-                    deep_count = getattr(self, "_deep_executed_count", 0)
-                    if budget > 0 and deep_count >= budget:
+                    reserved, deep_count = self._reserve_deep_scan_slot(budget)
+                    if not reserved:
                         if self.logger:
                             self.logger.info(
                                 self.t(
@@ -1499,7 +1510,6 @@ class AuditorScanMixin:
                         if deep:
                             result["deep_scan"] = deep
                             result["status"] = finalize_host_status(result)
-                            self._deep_executed_count = deep_count + 1
             except Exception:
                 if self.logger:
                     self.logger.debug("Deep scan fallback failed for %s", safe_ip, exc_info=True)

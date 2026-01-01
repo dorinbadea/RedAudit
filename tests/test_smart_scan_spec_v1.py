@@ -1,5 +1,7 @@
 """Acceptance tests for SPEC_FOR_CODEX v1 SmartScan changes."""
 
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -276,6 +278,45 @@ def test_phase0_dns_fallback_no_global_timeout(monkeypatch):
     result = auditor._run_low_impact_enrichment("1.1.1.1")
     assert result.get("dns_reverse") == "host.local"
     mock_setdefault.assert_not_called()
+
+
+def test_budget_thread_safe_under_concurrency(patch_common):
+    auditor = MockAuditor()
+    auditor.config["deep_scan_budget"] = 1
+    ports = {"tcp": {80: {"name": "http", "product": "", "version": "", "cpe": []}}}
+    barrier = threading.Barrier(2)
+    deep_started = threading.Event()
+    release = threading.Event()
+
+    def _nmap_side_effect(target, _args):
+        return _make_nmap_mock(ip=target, ports=ports), ""
+
+    def _should_trigger(*_args, **_kwargs):
+        barrier.wait()
+        return True, ["identity_weak"]
+
+    def _deep_scan(_ip):
+        deep_started.set()
+        release.wait(timeout=0.5)
+        return {"os_detected": "Linux"}
+
+    with patch.object(auditor, "_run_nmap_xml_scan", side_effect=_nmap_side_effect):
+        with patch.object(auditor, "_should_trigger_deep", side_effect=_should_trigger):
+            with patch.object(auditor, "_run_udp_priority_probe", return_value=False):
+                with patch.object(auditor, "deep_scan_host", side_effect=_deep_scan) as deep:
+                    with ThreadPoolExecutor(max_workers=2) as pool:
+                        fut1 = pool.submit(auditor.scan_host_ports, "1.1.1.1")
+                        fut2 = pool.submit(auditor.scan_host_ports, "1.1.1.2")
+                        deep_started.wait(timeout=1.0)
+                        release.set()
+                        res1 = fut1.result(timeout=2.0)
+                        res2 = fut2.result(timeout=2.0)
+
+    assert deep.call_count == 1
+    assert (
+        "budget_exhausted" in (res1.get("smart_scan") or {}).get("reasons", [])
+        or "budget_exhausted" in (res2.get("smart_scan") or {}).get("reasons", [])
+    )
 
 
 def test_escalation_reason_in_json(patch_common):
