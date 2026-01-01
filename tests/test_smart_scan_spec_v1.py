@@ -146,6 +146,21 @@ def test_low_visibility_no_trigger_alone():
     assert "identity_strong" in reasons
 
 
+def test_no_trigger_when_score_meets_threshold(patch_common):
+    auditor = MockAuditor()
+    ports = {"tcp": {80: {"name": "http", "product": "nginx", "version": "1.0", "cpe": []}}}
+    nm = _make_nmap_mock(ports=ports, hostname="host")
+
+    with patch.object(auditor, "_run_nmap_xml_scan", return_value=(nm, "")):
+        with patch.object(auditor, "_compute_identity_score", return_value=(3, ["hostname"])):
+            with patch.object(auditor, "deep_scan_host", return_value={}) as deep:
+                res = auditor.scan_host_ports("1.1.1.1")
+    assert deep.called is False
+    assert res["smart_scan"]["trigger_deep"] is False
+    assert "low_visibility" not in res["smart_scan"]["reasons"]
+    assert "identity_weak" not in res["smart_scan"]["reasons"]
+
+
 def test_low_visibility_triggers_with_weak_identity():
     auditor = MockAuditor()
     trigger, reasons = auditor._should_trigger_deep(

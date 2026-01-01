@@ -16,7 +16,12 @@ import ipaddress
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from redaudit.utils.constants import SCHEMA_VERSION, VERSION, SECURE_FILE_MODE
+from redaudit.utils.constants import (
+    DEFAULT_IDENTITY_THRESHOLD,
+    SCHEMA_VERSION,
+    SECURE_FILE_MODE,
+    VERSION,
+)
 from redaudit.utils.paths import get_default_reports_base_dir, maybe_chown_tree_to_invoking_user
 from redaudit.core.crypto import encrypt_data
 from redaudit.core.entity_resolver import reconcile_assets
@@ -26,15 +31,21 @@ from redaudit.core.scanner_versions import get_scanner_versions
 
 def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
     """Create a safe, minimal snapshot of the run configuration."""
+    scan_mode = config.get("scan_mode")
+    identity_threshold = config.get("identity_threshold")
+    if not isinstance(identity_threshold, int) or identity_threshold < 0:
+        identity_threshold = DEFAULT_IDENTITY_THRESHOLD
+    if scan_mode in ("completo", "full") and identity_threshold < 4:
+        identity_threshold = 4
     return {
         "targets": config.get("target_networks", []),
-        "scan_mode": config.get("scan_mode"),
-        "scan_mode_cli": config.get("scan_mode_cli", config.get("scan_mode")),
+        "scan_mode": scan_mode,
+        "scan_mode_cli": config.get("scan_mode_cli", scan_mode),
         "threads": config.get("threads"),
         "rate_limit_delay": config.get("rate_limit_delay", config.get("rate_limit")),
         "low_impact_enrichment": config.get("low_impact_enrichment"),
         "deep_scan_budget": config.get("deep_scan_budget"),
-        "identity_threshold": config.get("identity_threshold"),
+        "identity_threshold": identity_threshold,
         "udp_mode": config.get("udp_mode"),
         "udp_top_ports": config.get("udp_top_ports"),
         "topology_enabled": config.get("topology_enabled"),

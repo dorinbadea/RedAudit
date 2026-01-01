@@ -680,6 +680,7 @@ class AuditorScanMixin:
         deep_reasons: List[str] = []
         if not self.config.get("deep_id_scan", True):
             return False, deep_reasons
+        identity_is_weak = identity_score < identity_threshold
 
         if total_ports > 8:
             trigger_deep = True
@@ -687,7 +688,7 @@ class AuditorScanMixin:
         if suspicious:
             trigger_deep = True
             deep_reasons.append("suspicious_service")
-        if 0 < total_ports <= 3 and identity_score < identity_threshold:
+        if 0 < total_ports <= 3 and identity_is_weak:
             trigger_deep = True
             deep_reasons.append("low_visibility")
         if total_ports > 0 and not any_version:
@@ -696,7 +697,7 @@ class AuditorScanMixin:
         if "router" in device_type_hints or "network_device" in device_type_hints:
             trigger_deep = True
             deep_reasons.append("network_infrastructure")
-        if total_ports > 0 and identity_score < identity_threshold:
+        if total_ports > 0 and identity_is_weak:
             trigger_deep = True
             deep_reasons.append("identity_weak")
 
@@ -710,6 +711,26 @@ class AuditorScanMixin:
             deep_reasons.append("identity_strong")
 
         return trigger_deep, deep_reasons
+
+    def _prune_weak_identity_reasons(self, smart_scan: Dict[str, Any]) -> None:
+        if not isinstance(smart_scan, dict):
+            return
+        reasons = list(smart_scan.get("reasons") or [])
+        if not reasons:
+            return
+        try:
+            identity_score = int(smart_scan.get("identity_score", 0))
+            identity_threshold = int(
+                smart_scan.get("identity_threshold", DEFAULT_IDENTITY_THRESHOLD)
+            )
+        except Exception:
+            return
+        if identity_score < identity_threshold:
+            return
+        pruned = [r for r in reasons if r not in ("low_visibility", "identity_weak")]
+        if pruned != reasons:
+            smart_scan["reasons"] = pruned
+            smart_scan["escalation_reason"] = "|".join(pruned) if pruned else None
 
     def _run_udp_priority_probe(self, host_record: Dict[str, Any]) -> bool:
         safe_ip = sanitize_ip(host_record.get("ip"))
@@ -1476,6 +1497,7 @@ class AuditorScanMixin:
                                 smart["identity_score"] = int(smart.get("identity_score", 0)) + 1
                             except Exception:
                                 smart["identity_score"] = smart.get("identity_score", 0)
+                            self._prune_weak_identity_reasons(smart)
 
             enrich_host_with_dns(host_record, self.extra_tools)
             enrich_host_with_whois(host_record, self.extra_tools)
@@ -1825,6 +1847,7 @@ class AuditorScanMixin:
                         smart["identity_score"] = int(smart.get("identity_score", 0)) + 1
                     except Exception:
                         smart["identity_score"] = smart.get("identity_score", 0)
+                    self._prune_weak_identity_reasons(smart)
                 hint_keys = []
                 for key in (
                     "domain",
