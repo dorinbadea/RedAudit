@@ -13,6 +13,7 @@ import random
 import re
 import shlex
 import shutil
+import socket
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed, wait
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
@@ -23,6 +24,7 @@ from redaudit.core.agentless_verify import (
     summarize_agentless_fingerprint,
 )
 from redaudit.core.auditor_mixins import _ActivityIndicator
+from redaudit.core.command_runner import CommandRunner
 from redaudit.core.crypto import is_crypto_available
 from redaudit.core.network import detect_all_networks, get_neighbor_mac
 from redaudit.core.scanner import (
@@ -46,9 +48,11 @@ from redaudit.core.scanner import (
 )
 from redaudit.core.udp_probe import run_udp_probe
 from redaudit.utils.constants import (
+    DEFAULT_IDENTITY_THRESHOLD,
     DEFAULT_UDP_MODE,
     DEEP_SCAN_TIMEOUT,
     MAX_PORTS_DISPLAY,
+    PHASE0_TIMEOUT,
     STATUS_DOWN,
     STATUS_NO_RESPONSE,
     UDP_HOST_TIMEOUT_STRICT,
@@ -381,6 +385,366 @@ class AuditorScanMixin:
                     if not agentless.get("http_title"):
                         agentless["http_title"] = device_name[:80]
                 break
+
+    def _run_low_impact_enrichment(self, host: str) -> Dict[str, Any]:
+        """Best-effort DNS/mDNS/SNMP probes with short timeouts (opt-in)."""
+        signals: Dict[str, Any] = {}
+        safe_ip = sanitize_ip(host)
+        if not safe_ip:
+            return signals
+        if is_dry_run(self.config.get("dry_run")):
+            return signals
+
+        # DNS reverse lookup (fast, low-impact).
+        try:
+            dns_value = None
+            dig = self.extra_tools.get("dig")
+            if dig:
+                runner = CommandRunner(
+                    logger=self.logger,
+                    dry_run=False,
+                    default_timeout=float(PHASE0_TIMEOUT),
+                    default_retries=0,
+                    backoff_base_s=0.0,
+                )
+                res = runner.run(
+                    [dig, "+short", "-x", safe_ip],
+                    timeout=float(PHASE0_TIMEOUT),
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                )
+                output = str(res.stdout or "").strip()
+                if output:
+                    dns_value = output.splitlines()[0].strip().rstrip(".")[:255]
+            else:
+                prev_timeout = socket.getdefaulttimeout()
+                socket.setdefaulttimeout(float(PHASE0_TIMEOUT))
+                try:
+                    dns_value = socket.gethostbyaddr(safe_ip)[0].strip().rstrip(".")[:255]
+                except Exception:
+                    dns_value = None
+                finally:
+                    socket.setdefaulttimeout(prev_timeout)
+
+            if dns_value:
+                signals["dns_reverse"] = dns_value
+        except Exception:
+            if self.logger:
+                self.logger.debug("Phase0 DNS reverse failed for %s", safe_ip, exc_info=True)
+
+        # mDNS unicast probe (best-effort, short timeout).
+        try:
+            mdns_timeout = min(1.0, float(PHASE0_TIMEOUT))
+            try:
+                from redaudit.core.hyperscan import _build_mdns_query
+
+                payload = _build_mdns_query()
+            except Exception:
+                payload = b"\x00"
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                sock.settimeout(mdns_timeout)
+                sock.sendto(payload, (safe_ip, 5353))
+                data, _addr = sock.recvfrom(4096)
+                if data:
+                    mdns_name = self._extract_mdns_name(data) or "mdns_response"
+                    signals["mdns_name"] = mdns_name[:255]
+            finally:
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+        except Exception:
+            if self.logger:
+                self.logger.debug("Phase0 mDNS probe failed for %s", safe_ip, exc_info=True)
+
+        # SNMP sysDescr (read-only, only if community is public).
+        try:
+            community = str(self.config.get("net_discovery_snmp_community", "public") or "").strip()
+            if community.lower() == "public" and shutil.which("snmpwalk"):
+                snmp_timeout = min(1.0, float(PHASE0_TIMEOUT))
+                runner = CommandRunner(
+                    logger=self.logger,
+                    dry_run=False,
+                    default_timeout=snmp_timeout,
+                    default_retries=0,
+                    backoff_base_s=0.0,
+                )
+                cmd = [
+                    "snmpwalk",
+                    "-v2c",
+                    "-c",
+                    "public",
+                    "-t",
+                    "1",
+                    "-r",
+                    "0",
+                    "-On",
+                    safe_ip,
+                    "1.3.6.1.2.1.1.1.0",
+                ]
+                res = runner.run(
+                    cmd,
+                    timeout=snmp_timeout,
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                )
+                text = str(res.stdout or "").strip() or str(res.stderr or "").strip()
+                if text and "timeout" not in text.lower():
+                    line = text.splitlines()[0].strip()
+                    if "=" in line:
+                        line = line.split("=", 1)[1].strip()
+                    line = re.sub(r"^[A-Z][A-Z0-9\\-]*:\\s*", "", line).strip().strip('"')
+                    if line:
+                        signals["snmp_sysDescr"] = line[:255]
+        except Exception:
+            if self.logger:
+                self.logger.debug("Phase0 SNMP probe failed for %s", safe_ip, exc_info=True)
+
+        return signals
+
+    @staticmethod
+    def _extract_mdns_name(data: bytes) -> str:
+        if not data:
+            return ""
+        try:
+            text = data.decode("utf-8", errors="ignore")
+        except Exception:
+            return ""
+        match = re.search(r"([A-Za-z0-9._-]+\\.local)", text)
+        return match.group(1) if match else ""
+
+    def _compute_identity_score(self, host_record: Dict[str, Any]) -> Tuple[int, List[str]]:
+        score = 0
+        signals: List[str] = []
+        ports = host_record.get("ports") or []
+        device_type_hints: List[str] = []
+
+        if host_record.get("hostname"):
+            score += 1
+            signals.append("hostname")
+        if any(p.get("product") or p.get("version") for p in ports):
+            score += 1
+            signals.append("service_version")
+        if any(p.get("cpe") for p in ports):
+            score += 1
+            signals.append("cpe")
+
+        deep_meta = host_record.get("deep_scan") or {}
+        if deep_meta.get("mac_address") or deep_meta.get("vendor"):
+            score += 1
+            signals.append("mac_vendor")
+            vendor_lower = str(deep_meta.get("vendor") or "").lower()
+            if any(
+                x in vendor_lower
+                for x in ("apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus")
+            ):
+                device_type_hints.append("mobile")
+            elif any(
+                x in vendor_lower for x in ("hp", "canon", "epson", "brother", "lexmark", "xerox")
+            ):
+                device_type_hints.append("printer")
+            elif any(
+                x in vendor_lower
+                for x in ("philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo")
+            ):
+                device_type_hints.append("iot_lighting")
+            elif "tuya" in vendor_lower:
+                device_type_hints.append("iot")
+            elif any(
+                x in vendor_lower
+                for x in (
+                    "avm",
+                    "fritz",
+                    "cisco",
+                    "juniper",
+                    "mikrotik",
+                    "ubiquiti",
+                    "netgear",
+                    "dlink",
+                    "asus",
+                    "linksys",
+                    "tp-link",
+                    "sercomm",
+                    "sagemcom",
+                )
+            ):
+                device_type_hints.append("router")
+            elif any(
+                x in vendor_lower for x in ("google", "amazon", "roku", "lg", "sony", "vizio")
+            ):
+                device_type_hints.append("smart_tv")
+
+        hostname_lower = str(host_record.get("hostname") or "").lower()
+        if any(x in hostname_lower for x in ("iphone", "ipad", "ipod", "macbook", "imac")):
+            if "mobile" not in device_type_hints:
+                device_type_hints.append("mobile")
+        elif any(x in hostname_lower for x in ("android", "galaxy", "pixel", "oneplus")):
+            if "mobile" not in device_type_hints:
+                device_type_hints.append("mobile")
+
+        if host_record.get("os_detected") or deep_meta.get("os_detected"):
+            score += 1
+            signals.append("os_detected")
+        if any(p.get("banner") for p in ports):
+            score += 1
+            signals.append("banner")
+
+        nd_results = self.results.get("net_discovery") or {}
+        nd_hosts_ips = set()
+        for h in nd_results.get("arp_hosts", []) or []:
+            nd_hosts_ips.add(h.get("ip"))
+        for h in nd_results.get("upnp_devices", []) or []:
+            nd_hosts_ips.add(h.get("ip"))
+        for svc in nd_results.get("mdns_services", []):
+            for addr in svc.get("addresses", []):
+                nd_hosts_ips.add(addr)
+
+        if host_record.get("ip") in nd_hosts_ips:
+            score += 1
+            signals.append("net_discovery")
+
+        for upnp in nd_results.get("upnp_devices", []) or []:
+            if upnp.get("ip") == host_record.get("ip"):
+                upnp_type = str(upnp.get("device_type") or upnp.get("st") or "").lower()
+                if "router" in upnp_type or "gateway" in upnp_type:
+                    device_type_hints.append("router")
+                    score += 1
+                    signals.append("upnp_router")
+                elif "printer" in upnp_type:
+                    device_type_hints.append("printer")
+                elif "mediarenderer" in upnp_type or "mediaplayer" in upnp_type:
+                    device_type_hints.append("smart_tv")
+                break
+
+        for svc in nd_results.get("mdns_services", []):
+            if host_record.get("ip") in svc.get("addresses", []):
+                svc_type = str(svc.get("type") or "").lower()
+                if "_ipp" in svc_type or "_printer" in svc_type:
+                    device_type_hints.append("printer")
+                elif "_airplay" in svc_type or "_raop" in svc_type:
+                    device_type_hints.append("apple_device")
+                elif "_googlecast" in svc_type:
+                    device_type_hints.append("chromecast")
+                elif "_hap" in svc_type or "_homekit" in svc_type:
+                    device_type_hints.append("homekit")
+
+        for p in ports:
+            svc = str(p.get("service") or "").lower()
+            prod = str(p.get("product") or "").lower()
+            if any(x in svc or x in prod for x in ("ipp", "printer", "cups")):
+                device_type_hints.append("printer")
+            elif any(x in svc or x in prod for x in ("router", "mikrotik", "routeros")):
+                device_type_hints.append("router")
+            elif "esxi" in prod or "vmware" in prod or "vcenter" in prod:
+                device_type_hints.append("hypervisor")
+
+        agentless = host_record.get("agentless_fingerprint") or {}
+        if agentless.get("http_title") or agentless.get("http_server"):
+            score += 1
+            signals.append("http_probe")
+
+        phase0 = host_record.get("phase0_enrichment") or {}
+        if phase0.get("dns_reverse"):
+            score += 1
+            signals.append("dns_reverse")
+        if phase0.get("mdns_name"):
+            score += 1
+            signals.append("mdns_name")
+        if phase0.get("snmp_sysDescr"):
+            score += 1
+            signals.append("snmp_sysDescr")
+
+        host_record["device_type_hints"] = list(set(device_type_hints))
+        return score, signals
+
+    def _should_trigger_deep(
+        self,
+        *,
+        total_ports: int,
+        any_version: bool,
+        suspicious: bool,
+        device_type_hints: List[str],
+        identity_score: int,
+        identity_threshold: int,
+    ) -> Tuple[bool, List[str]]:
+        trigger_deep = False
+        deep_reasons: List[str] = []
+        if not self.config.get("deep_id_scan", True):
+            return False, deep_reasons
+
+        if total_ports > 8:
+            trigger_deep = True
+            deep_reasons.append("many_ports")
+        if suspicious:
+            trigger_deep = True
+            deep_reasons.append("suspicious_service")
+        if 0 < total_ports <= 3 and identity_score < identity_threshold:
+            trigger_deep = True
+            deep_reasons.append("low_visibility")
+        if total_ports > 0 and not any_version:
+            trigger_deep = True
+            deep_reasons.append("no_version_info")
+        if "router" in device_type_hints or "network_device" in device_type_hints:
+            trigger_deep = True
+            deep_reasons.append("network_infrastructure")
+        if total_ports > 0 and identity_score < identity_threshold:
+            trigger_deep = True
+            deep_reasons.append("identity_weak")
+
+        if (
+            identity_score >= identity_threshold
+            and not suspicious
+            and total_ports <= 12
+            and any_version
+        ):
+            trigger_deep = False
+            deep_reasons.append("identity_strong")
+
+        return trigger_deep, deep_reasons
+
+    def _run_udp_priority_probe(self, host_record: Dict[str, Any]) -> bool:
+        safe_ip = sanitize_ip(host_record.get("ip"))
+        if not safe_ip:
+            return False
+        if is_dry_run(self.config.get("dry_run")):
+            return False
+
+        priority_ports = []
+        for p in str(UDP_PRIORITY_PORTS).split(","):
+            try:
+                pi = int(p.strip())
+                if 1 <= pi <= 65535:
+                    priority_ports.append(pi)
+            except Exception:
+                if self.logger:
+                    self.logger.debug(
+                        "Skipping invalid UDP priority port token: %r", p, exc_info=True
+                    )
+                continue
+
+        udp_probe = run_udp_probe(
+            safe_ip,
+            priority_ports,
+            timeout=0.8,
+            concurrency=200,
+        )
+        identity_found = False
+        for res in udp_probe:
+            if (
+                res.get("port") == 5353
+                and res.get("state") == "responded"
+                and res.get("response_bytes", 0) > 0
+            ):
+                phase0 = host_record.setdefault("phase0_enrichment", {})
+                if not phase0.get("mdns_name"):
+                    phase0["mdns_name"] = "mdns_response"
+                identity_found = True
+                break
+
+        return identity_found
 
     def _run_nmap_xml_scan(self, target: str, args: str) -> Tuple[Optional[Any], str]:
         """
@@ -758,6 +1122,9 @@ class AuditorScanMixin:
                 "status": STATUS_DOWN,
                 "dry_run": True,
             }
+        phase0_enrichment: Dict[str, Any] = {}
+        if self.config.get("low_impact_enrichment"):
+            phase0_enrichment = self._run_low_impact_enrichment(safe_ip)
         try:
             nm, scan_error = self._run_nmap_xml_scan(safe_ip, args)
             if not nm:
@@ -777,7 +1144,7 @@ class AuditorScanMixin:
                         deep_meta["mac_address"] = mac
                     if vendor:
                         deep_meta["vendor"] = vendor
-                return {
+                result = {
                     "ip": safe_ip,
                     "hostname": "",
                     "ports": [],
@@ -790,11 +1157,29 @@ class AuditorScanMixin:
                     ),
                     "deep_scan": deep_meta,
                 }
+                if self.config.get("low_impact_enrichment"):
+                    result["phase0_enrichment"] = phase0_enrichment or {}
+                return result
             if safe_ip not in nm.all_hosts():
                 # Host didn't respond to initial scan - do deep scan
                 deep = None
                 if self.config.get("deep_id_scan", True):
-                    deep = self.deep_scan_host(safe_ip)
+                    budget = self.config.get("deep_scan_budget", 0)
+                    deep_count = getattr(self, "_deep_executed_count", 0)
+                    if budget > 0 and deep_count >= budget:
+                        if self.logger:
+                            self.logger.info(
+                                self.t(
+                                    "deep_scan_budget_exhausted",
+                                    deep_count,
+                                    budget,
+                                    safe_ip,
+                                )
+                            )
+                    else:
+                        deep = self.deep_scan_host(safe_ip)
+                        if deep:
+                            self._deep_executed_count = deep_count + 1
                 base = {
                     "ip": safe_ip,
                     "hostname": "",
@@ -802,6 +1187,8 @@ class AuditorScanMixin:
                     "web_ports_count": 0,
                     "total_ports_found": 0,
                 }
+                if self.config.get("low_impact_enrichment"):
+                    base["phase0_enrichment"] = phase0_enrichment or {}
                 result = (
                     {**base, "status": STATUS_NO_RESPONSE, "deep_scan": deep}
                     if deep
@@ -877,6 +1264,8 @@ class AuditorScanMixin:
                 "status": data.state(),
                 "total_ports_found": total_ports,
             }
+            if self.config.get("low_impact_enrichment"):
+                host_record["phase0_enrichment"] = phase0_enrichment or {}
 
             # Best-effort identity capture from nmap host data (fast, avoids deep scan for quiet hosts).
             try:
@@ -930,141 +1319,9 @@ class AuditorScanMixin:
                             if extra.get("ssl_cert"):
                                 port_info["ssl_cert"] = extra["ssl_cert"]
 
-            # v3.8.0: Enhanced evidence-based identity scoring with topology/net_discovery signals
-            identity_score = 0
-            identity_signals = []
-            device_type_hints = []  # v3.8: Collect device type indicators
+            identity_score, identity_signals = self._compute_identity_score(host_record)
+            device_type_hints = host_record.get("device_type_hints") or []
 
-            # --- Standard signals ---
-            if host_record.get("hostname"):
-                identity_score += 1
-                identity_signals.append("hostname")
-            if any_version:
-                identity_score += 1
-                identity_signals.append("service_version")
-            if any(p.get("cpe") for p in ports):
-                identity_score += 1
-                identity_signals.append("cpe")
-            deep_meta = host_record.get("deep_scan") or {}
-            if deep_meta.get("mac_address") or deep_meta.get("vendor"):
-                identity_score += 1
-                identity_signals.append("mac_vendor")
-                # v3.8.1: Device type from vendor (IoT, mobile, printer, router, etc.)
-                vendor_lower = str(deep_meta.get("vendor") or "").lower()
-                if any(
-                    x in vendor_lower
-                    for x in ("apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus")
-                ):
-                    device_type_hints.append("mobile")
-                elif any(
-                    x in vendor_lower
-                    for x in ("hp", "canon", "epson", "brother", "lexmark", "xerox")
-                ):
-                    device_type_hints.append("printer")
-                elif any(
-                    x in vendor_lower
-                    for x in ("philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo")
-                ):
-                    device_type_hints.append("iot_lighting")
-                elif "tuya" in vendor_lower:
-                    device_type_hints.append("iot")
-                elif any(
-                    x in vendor_lower
-                    for x in (
-                        "avm",
-                        "fritz",
-                        "cisco",
-                        "juniper",
-                        "mikrotik",
-                        "ubiquiti",
-                        "netgear",
-                        "dlink",
-                        "asus",
-                        "linksys",
-                        "tp-link",
-                        "sercomm",
-                        "sagemcom",
-                    )
-                ):
-                    device_type_hints.append("router")
-                elif any(
-                    x in vendor_lower for x in ("google", "amazon", "roku", "lg", "sony", "vizio")
-                ):
-                    device_type_hints.append("smart_tv")
-
-            # v3.8.1: Hostname-based device detection (catches Apple devices without vendor)
-            hostname_lower = str(host_record.get("hostname") or "").lower()
-            if any(x in hostname_lower for x in ("iphone", "ipad", "ipod", "macbook", "imac")):
-                if "mobile" not in device_type_hints:
-                    device_type_hints.append("mobile")
-            elif any(x in hostname_lower for x in ("android", "galaxy", "pixel", "oneplus")):
-                if "mobile" not in device_type_hints:
-                    device_type_hints.append("mobile")
-            if host_record.get("os_detected"):
-                identity_score += 1
-                identity_signals.append("os_detected")
-            if any(p.get("banner") for p in ports):
-                identity_score += 1
-                identity_signals.append("banner")
-
-            # --- v3.8: New topology/net_discovery signals ---
-            # Check if this host appeared in net_discovery results (UPNP, mDNS, ARP, etc.)
-            nd_results = self.results.get("net_discovery") or {}
-            nd_hosts_ips = set()
-            for h in nd_results.get("arp_hosts", []):
-                nd_hosts_ips.add(h.get("ip"))
-            for h in nd_results.get("upnp_devices", []):
-                nd_hosts_ips.add(h.get("ip"))
-            for svc in nd_results.get("mdns_services", []):
-                for addr in svc.get("addresses", []):
-                    nd_hosts_ips.add(addr)
-
-            if safe_ip in nd_hosts_ips:
-                identity_score += 1
-                identity_signals.append("net_discovery")
-
-            # UPNP device type enrichment
-            for upnp in nd_results.get("upnp_devices", []):
-                if upnp.get("ip") == safe_ip:
-                    upnp_type = str(upnp.get("device_type") or upnp.get("st") or "").lower()
-                    if "router" in upnp_type or "gateway" in upnp_type:
-                        device_type_hints.append("router")
-                        identity_score += 1
-                        identity_signals.append("upnp_router")
-                    elif "printer" in upnp_type:
-                        device_type_hints.append("printer")
-                    elif "mediarenderer" in upnp_type or "mediaplayer" in upnp_type:
-                        device_type_hints.append("smart_tv")
-                    break
-
-            # mDNS service type enrichment
-            for svc in nd_results.get("mdns_services", []):
-                if safe_ip in svc.get("addresses", []):
-                    svc_type = str(svc.get("type") or "").lower()
-                    if "_ipp" in svc_type or "_printer" in svc_type:
-                        device_type_hints.append("printer")
-                    elif "_airplay" in svc_type or "_raop" in svc_type:
-                        device_type_hints.append("apple_device")
-                    elif "_googlecast" in svc_type:
-                        device_type_hints.append("chromecast")
-                    elif "_hap" in svc_type or "_homekit" in svc_type:
-                        device_type_hints.append("homekit")
-
-            # Service-based device detection
-            for p in ports:
-                svc = str(p.get("service") or "").lower()
-                prod = str(p.get("product") or "").lower()
-                if any(x in svc or x in prod for x in ("ipp", "printer", "cups")):
-                    device_type_hints.append("printer")
-                elif any(x in svc or x in prod for x in ("router", "mikrotik", "routeros")):
-                    device_type_hints.append("router")
-                elif "esxi" in prod or "vmware" in prod or "vcenter" in prod:
-                    device_type_hints.append("hypervisor")
-
-            # Store device type hints (deduplicated)
-            host_record["device_type_hints"] = list(set(device_type_hints))
-
-            # v3.8: Visible logging of SmartScan decision
             if self.logger:
                 self.logger.debug(
                     "Identity signals for %s: score=%s (%s), device_hints=%s",
@@ -1074,50 +1331,75 @@ class AuditorScanMixin:
                     ",".join(device_type_hints) or "none",
                 )
 
-            # Heuristics for deep identity scan
-            trigger_deep = False
-            deep_enabled = self.config.get("deep_id_scan", True)
-            # v3.8: In full scan mode still allow deep heuristic, but with higher threshold
             is_full_mode = self.config.get("scan_mode") in ("completo", "full")
-            deep_reasons = []
-            if deep_enabled:
-                # v3.8: More triggers for thorough discovery
-                if total_ports > 8:
-                    trigger_deep = True
-                    deep_reasons.append("many_ports")
-                if suspicious:
-                    trigger_deep = True
-                    deep_reasons.append("suspicious_service")
-                # Low visibility hosts need deep scan to identify
-                if 0 < total_ports <= 3:
-                    trigger_deep = True
-                    deep_reasons.append("low_visibility")
-                if total_ports > 0 and not any_version:
-                    trigger_deep = True
-                    deep_reasons.append("no_version_info")
-                # v3.8: Network devices (routers/switches) always get deep treatment
-                if "router" in device_type_hints or "network_device" in device_type_hints:
-                    trigger_deep = True
-                    deep_reasons.append("network_infrastructure")
-                # v3.8: Adjust threshold based on scan mode (full mode is more lenient)
-                identity_threshold = 4 if is_full_mode else 3
-                if (
-                    identity_score >= identity_threshold
-                    and not suspicious
-                    and total_ports <= 12
-                    and any_version
-                ):
+            identity_threshold = self.config.get("identity_threshold", DEFAULT_IDENTITY_THRESHOLD)
+            if not isinstance(identity_threshold, int) or identity_threshold < 0:
+                identity_threshold = DEFAULT_IDENTITY_THRESHOLD
+            if is_full_mode and identity_threshold < 4:
+                identity_threshold = 4
+
+            trigger_deep, deep_reasons = self._should_trigger_deep(
+                total_ports=total_ports,
+                any_version=any_version,
+                suspicious=suspicious,
+                device_type_hints=device_type_hints,
+                identity_score=identity_score,
+                identity_threshold=identity_threshold,
+            )
+
+            open_tcp_ports = sum(1 for p in ports if p.get("protocol") == "tcp")
+            udp_priority_used = False
+            if (
+                trigger_deep
+                and not self.config.get("stealth_mode")
+                and open_tcp_ports <= 1
+                and identity_score < 2
+            ):
+                udp_priority_used = True
+                udp_identity = self._run_udp_priority_probe(host_record)
+                if udp_identity:
+                    identity_score, identity_signals = self._compute_identity_score(host_record)
+                    device_type_hints = host_record.get("device_type_hints") or []
+                    trigger_deep, deep_reasons = self._should_trigger_deep(
+                        total_ports=total_ports,
+                        any_version=any_version,
+                        suspicious=suspicious,
+                        device_type_hints=device_type_hints,
+                        identity_score=identity_score,
+                        identity_threshold=identity_threshold,
+                    )
+                    if identity_score >= identity_threshold:
+                        trigger_deep = False
+                        if "udp_resolved_identity" not in deep_reasons:
+                            deep_reasons.append("udp_resolved_identity")
+
+            if trigger_deep:
+                budget = self.config.get("deep_scan_budget", 0)
+                deep_count = getattr(self, "_deep_executed_count", 0)
+                if budget > 0 and deep_count >= budget:
                     trigger_deep = False
-                    deep_reasons.append("identity_strong")
+                    deep_reasons.append("budget_exhausted")
+                    if self.logger:
+                        self.logger.info(
+                            self.t(
+                                "deep_scan_budget_exhausted",
+                                deep_count,
+                                budget,
+                                safe_ip,
+                            )
+                        )
 
             host_record["smart_scan"] = {
                 "mode": self.config.get("scan_mode"),
                 "identity_score": identity_score,
+                "identity_threshold": identity_threshold,
                 "signals": identity_signals,
                 "suspicious_service": suspicious,
                 "trigger_deep": bool(trigger_deep),
                 "reasons": deep_reasons,
                 "deep_scan_executed": False,
+                "escalation_reason": "|".join(deep_reasons) if deep_reasons else None,
+                "escalation_path": None,
             }
 
             # SearchSploit exploit lookup for services with version info
@@ -1141,6 +1423,12 @@ class AuditorScanMixin:
                     if deep.get("os_detected"):
                         host_record["os_detected"] = deep["os_detected"]
                     host_record["smart_scan"]["deep_scan_executed"] = True
+                    host_record["smart_scan"]["escalation_path"] = " -> ".join(
+                        ["nmap_initial"]
+                        + (["udp_priority"] if udp_priority_used else [])
+                        + ["tcp_aggressive"]
+                    )
+                    self._deep_executed_count = getattr(self, "_deep_executed_count", 0) + 1
 
             if total_ports == 0 and self.config.get("deep_id_scan", True):
                 identity_source = host_record.get("deep_scan") or {}
@@ -1186,10 +1474,26 @@ class AuditorScanMixin:
             self.print_status(f"⚠️  Scan error {safe_ip}: {exc}", "FAIL", force=True)
             result = {"ip": safe_ip, "error": str(exc)}
             try:
-                deep = self.deep_scan_host(safe_ip)
-                if deep:
-                    result["deep_scan"] = deep
-                    result["status"] = finalize_host_status(result)
+                deep = None
+                if self.config.get("deep_id_scan", True):
+                    budget = self.config.get("deep_scan_budget", 0)
+                    deep_count = getattr(self, "_deep_executed_count", 0)
+                    if budget > 0 and deep_count >= budget:
+                        if self.logger:
+                            self.logger.info(
+                                self.t(
+                                    "deep_scan_budget_exhausted",
+                                    deep_count,
+                                    budget,
+                                    safe_ip,
+                                )
+                            )
+                    else:
+                        deep = self.deep_scan_host(safe_ip)
+                        if deep:
+                            result["deep_scan"] = deep
+                            result["status"] = finalize_host_status(result)
+                            self._deep_executed_count = deep_count + 1
             except Exception:
                 if self.logger:
                     self.logger.debug("Deep scan fallback failed for %s", safe_ip, exc_info=True)

@@ -20,6 +20,8 @@ from redaudit.utils.constants import (
     MAX_CIDR_LENGTH,
     DEFAULT_UDP_MODE,
     UDP_TOP_PORTS,
+    DEFAULT_DEEP_SCAN_BUDGET,
+    DEFAULT_IDENTITY_THRESHOLD,
 )
 from redaudit.utils.i18n import TRANSLATIONS, detect_preferred_language
 from redaudit.utils.paths import expand_user_path, get_default_reports_base_dir
@@ -156,6 +158,25 @@ Examples:
         "--max-hosts", type=int, help="Maximum number of hosts to scan (default: all)"
     )
     parser.add_argument("--no-deep-scan", action="store_true", help="Disable adaptive deep scan")
+    parser.add_argument(
+        "--low-impact-enrichment",
+        action="store_true",
+        help="Habilita enriquecimiento de bajo impacto (DNS/mDNS/SNMP) antes del escaneo TCP. Timeouts cortos, ruido mínimo.",
+    )
+    parser.add_argument(
+        "--deep-scan-budget",
+        type=int,
+        default=DEFAULT_DEEP_SCAN_BUDGET,
+        metavar="N",
+        help="Máximo hosts que pueden ejecutar Deep Scan agresivo por ejecución (0 = sin límite).",
+    )
+    parser.add_argument(
+        "--identity-threshold",
+        type=int,
+        default=DEFAULT_IDENTITY_THRESHOLD,
+        metavar="N",
+        help="Umbral mínimo de identity_score para omitir Deep Scan (defecto: 3).",
+    )
     parser.add_argument(
         "--yes",
         "-y",
@@ -519,6 +540,15 @@ def configure_from_args(app, args) -> bool:
 
     # Set deep scan
     app.config["deep_id_scan"] = not args.no_deep_scan
+    app.config["low_impact_enrichment"] = bool(getattr(args, "low_impact_enrichment", False))
+    deep_scan_budget = getattr(args, "deep_scan_budget", DEFAULT_DEEP_SCAN_BUDGET)
+    if not isinstance(deep_scan_budget, int) or deep_scan_budget < 0:
+        deep_scan_budget = DEFAULT_DEEP_SCAN_BUDGET
+    app.config["deep_scan_budget"] = deep_scan_budget
+    identity_threshold = getattr(args, "identity_threshold", DEFAULT_IDENTITY_THRESHOLD)
+    if not isinstance(identity_threshold, int) or identity_threshold < 0:
+        identity_threshold = DEFAULT_IDENTITY_THRESHOLD
+    app.config["identity_threshold"] = identity_threshold
 
     # Set pre-scan configuration (v2.7)
     app.config["prescan_enabled"] = args.prescan

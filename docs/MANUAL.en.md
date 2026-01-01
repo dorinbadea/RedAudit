@@ -167,19 +167,22 @@ When enabled (default), RedAudit performs additional scanning on hosts where ini
 
 **Trigger conditions:**
 
-- Fewer than 3 open ports found
+- Fewer than 3 open ports found (when identity is weak)
 - Services identified as `unknown` or `tcpwrapped`
 - MAC/vendor information not obtained
 - **VPN Gateway Detection**: Host shares the MAC address with the gateway but has a different IP (virtual interface)
 
 **Behavior:**
 
+0. (Optional) Phase 0 low-impact enrichment (DNS reverse, mDNS unicast, SNMP sysDescr) when `--low-impact-enrichment` is enabled
 1. Phase 1: Aggressive TCP (`-A -p- -sV -Pn`)
 2. Phase 2a: Priority UDP probe (17 common ports including 500/4500)
 3. Phase 2b: UDP top-ports (`--udp-ports`) when mode is `full` and identity is still weak
 4. Quiet hosts with vendor hints and zero open ports may get a short HTTP/HTTPS probe on common paths
 
 Disable with `--no-deep-scan`.
+
+SmartScan uses an identity score (default threshold: 3; full mode uses 4) to decide whether to escalate.
 
 VPN classification is handled by asset typing heuristics (gateway MAC/IP, VPN ports, hostname patterns) after scanning.
 
@@ -217,10 +220,13 @@ Flags verified against `redaudit --help` (v3.9.9):
 | `--rate-limit SECONDS` | Delay between hosts (±30% jitter applied) |
 | `--max-hosts N` | Limit hosts to scan |
 | `--no-deep-scan` | Disable adaptive deep scan |
+| `--low-impact-enrichment` | Low-impact enrichment (DNS/mDNS/SNMP) before TCP scanning |
+| `--deep-scan-budget N` | Max hosts that can run aggressive deep scan per run (0 = unlimited) |
+| `--identity-threshold N` | Minimum identity_score to skip deep scan (default: 3) |
 | `--prescan` | Reserved flag (currently stored in config; no pre-scan executed) |
 | `--prescan-ports RANGE` | Reserved (default: 1-1024) |
 | `--prescan-timeout SECONDS` | Reserved (default: 0.5) |
-| `--stealth` | T1 timing, 1 thread, 5s delay (IDS evasion) |
+| `--stealth` | T1 timing, 1 thread, 5s delay (detection-sensitive environments) |
 
 ### UDP Scanning
 
