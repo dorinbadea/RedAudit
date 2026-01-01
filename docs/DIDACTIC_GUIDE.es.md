@@ -5,7 +5,7 @@
 **Audiencia:** Instructores, Profesores, Mentores
 **Propósito:** Enseñar conceptos de auditoría de red usando RedAudit como herramienta práctica
 **Conocimiento Previo:** Fundamentos TCP/IP, uso básico de CLI Linux
-**Fuente de verdad:** `redaudit/core/auditor.py`
+**Fuente de verdad:** `redaudit/core/auditor.py`, `redaudit/core/auditor_scan.py`
 
 > **Esto NO es un manual de software.** Para referencia CLI, ver [USAGE.es.md](USAGE.es.md). Para detalles de arquitectura, ver [MANUAL.es.md](MANUAL.es.md).
 
@@ -77,10 +77,10 @@ Escanear cada host con UDP completo (-p- -sU) tomaría horas. RedAudit usa **heu
 
 | Condición | Razonamiento |
 |:---|:---|
-| ≤3 puertos abiertos | Posible firewall, necesita sondeo más profundo |
-| Servicios = `unknown` o `tcpwrapped` | Evasión detectada, identidad poco clara |
-| No se extrajo MAC/vendor | Identidad del host desconocida |
-| >8 puertos abiertos | Host complejo, vale la pena enumeración completa |
+| Score de identidad por debajo del umbral (p. ej., falta de MAC/vendor/hostname, sin CPE/banner, señales HTTP/sin agente débiles) | Identidad sigue débil |
+| ≤3 puertos abiertos **y** la identidad es débil | Baja visibilidad, requiere sondeo extra |
+| Fingerprint de servicio débil (`unknown`, `tcpwrapped` o sin versión) | Identidad ambigua o filtrada |
+| >8 puertos abiertos **o** pistas de dispositivo de red | Host complejo o infraestructura, merece enumeración adicional |
 
 **Ubicación en código:** Condiciones en [`scan_host_ports()`](../redaudit/core/auditor_scan.py)
 
@@ -273,10 +273,10 @@ Estas son las ubicaciones de código más útiles pedagógicamente. Úsalas para
 | Concepto | Archivo | Función/Área |
 |:---|:---|:---|
 | Orquestación principal | `core/auditor.py` | `run_complete_scan()` |
-| Disparadores de Deep Scan | `core/auditor.py` | `scan_host_ports()` (buscar `trigger_deep`) |
-| Ejecución paralela | `core/auditor.py` | `scan_hosts_concurrent()` con `ThreadPoolExecutor` |
-| UI de progreso + ETA | `core/auditor.py` | `_progress_columns()` y `scan_hosts_concurrent()` |
-| Escaneos con timeout | `core/auditor.py` | `_run_nmap_xml_scan()` |
+| Disparadores de Deep Scan | `core/auditor_scan.py` | `scan_host_ports()` (buscar `trigger_deep`) |
+| Ejecución paralela | `core/auditor_scan.py` | `scan_hosts_concurrent()` con `ThreadPoolExecutor` |
+| UI de progreso + ETA | `core/auditor_mixins.py` | `_progress_columns()` |
+| Escaneos con timeout | `core/auditor_scan.py` | `_run_nmap_xml_scan()` |
 | Descubrimiento async | `core/hyperscan.py` | Descubrimiento TCP/UDP/ARP asíncrono usando `asyncio` |
 | Mapeo schema ECS | `core/siem.py` | `build_ecs_event()` |
 | Cifrado | `core/crypto.py` | `encrypt_file()`, `derive_key_from_password()` |
