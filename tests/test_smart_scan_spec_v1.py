@@ -250,6 +250,34 @@ def test_phase0_enrichment_signals(patch_common):
     assert res["smart_scan"]["identity_score"] >= 1
 
 
+def test_phase0_dns_fallback_no_global_timeout(monkeypatch):
+    auditor = MockAuditor()
+    auditor.config["low_impact_enrichment"] = True
+
+    class DummySocket:
+        def settimeout(self, *_args, **_kwargs):
+            return None
+
+        def sendto(self, *_args, **_kwargs):
+            return None
+
+        def recvfrom(self, *_args, **_kwargs):
+            return b"", ("0.0.0.0", 0)
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(scan_mod.socket, "socket", lambda *_args, **_kwargs: DummySocket())
+    mock_setdefault = MagicMock()
+    monkeypatch.setattr(scan_mod.socket, "setdefaulttimeout", mock_setdefault)
+    monkeypatch.setattr(scan_mod.socket, "gethostbyaddr", lambda _ip: ("host.local", [], []))
+    monkeypatch.setattr(scan_mod.shutil, "which", lambda _name: None)
+
+    result = auditor._run_low_impact_enrichment("1.1.1.1")
+    assert result.get("dns_reverse") == "host.local"
+    mock_setdefault.assert_not_called()
+
+
 def test_escalation_reason_in_json(patch_common):
     auditor = MockAuditor()
     nm = _make_nmap_mock(

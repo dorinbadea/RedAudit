@@ -14,6 +14,7 @@ import re
 import shlex
 import shutil
 import socket
+import threading
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed, wait
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
@@ -418,14 +419,19 @@ class AuditorScanMixin:
                 if output:
                     dns_value = output.splitlines()[0].strip().rstrip(".")[:255]
             else:
-                prev_timeout = socket.getdefaulttimeout()
-                socket.setdefaulttimeout(float(PHASE0_TIMEOUT))
-                try:
-                    dns_value = socket.gethostbyaddr(safe_ip)[0].strip().rstrip(".")[:255]
-                except Exception:
-                    dns_value = None
-                finally:
-                    socket.setdefaulttimeout(prev_timeout)
+                result_holder = {"value": None}
+
+                def _lookup():
+                    try:
+                        result_holder["value"] = socket.gethostbyaddr(safe_ip)[0]
+                    except Exception:
+                        result_holder["value"] = None
+
+                worker = threading.Thread(target=_lookup, daemon=True)
+                worker.start()
+                worker.join(timeout=float(PHASE0_TIMEOUT))
+                if result_holder["value"]:
+                    dns_value = result_holder["value"].strip().rstrip(".")[:255]
 
             if dns_value:
                 signals["dns_reverse"] = dns_value
