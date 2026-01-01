@@ -328,10 +328,9 @@ def test_budget_thread_safe_under_concurrency(patch_common):
                         res2 = fut2.result(timeout=2.0)
 
     assert deep.call_count == 1
-    assert (
-        "budget_exhausted" in (res1.get("smart_scan") or {}).get("reasons", [])
-        or "budget_exhausted" in (res2.get("smart_scan") or {}).get("reasons", [])
-    )
+    assert "budget_exhausted" in (res1.get("smart_scan") or {}).get(
+        "reasons", []
+    ) or "budget_exhausted" in (res2.get("smart_scan") or {}).get("reasons", [])
 
 
 def test_escalation_reason_in_json(patch_common):
