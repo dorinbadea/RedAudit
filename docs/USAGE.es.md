@@ -124,7 +124,7 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | :--- | :--- |
 | `-t, --target CIDR` | IP, rango o CIDR (soporta lista separada por comas) |
 | `-m, --mode` | `fast` (descubrimiento de hosts), `normal` (top 100), `full` (todos los puertos + scripts/detección de SO) |
-| `-j, --threads N` | Hosts paralelos 1-16 (Defecto: 6) |
+| `-j, --threads N` | Hosts paralelos 1-16 (Auto-detectado) |
 | `--rate-limit S` | Retardo entre hosts en segundos (aplica jitter) |
 | `--stealth` | Fuerza timing T1, 1 hilo, 5s retardo |
 | `--dry-run` | Muestra comandos sin ejecutarlos |

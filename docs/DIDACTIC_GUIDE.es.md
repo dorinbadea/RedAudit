@@ -129,7 +129,7 @@ Una frustración común en auditorías son los "Falsos Positivos" (herramientas 
 **Qué explicar:**
 ¿Por qué usar modelos de escalado diferentes?
 
-- **Escaneo de Hosts (Threading):** Nmap es un proceso bloqueante. Usamos `ThreadPoolExecutor` (por defecto 6-16 hilos) para que un host lento no bloquee todo el escaneo.
+- **Escaneo de Hosts (Threading):** Nmap es un proceso bloqueante. Usamos `ThreadPoolExecutor` (2-16 hilos, auto-detectado según CPU) para que un host lento no bloquee todo el escaneo.
 - **Descubrimiento (Async):** La transmisión de paquetes UDP (para IoT/Descubrimiento de Servicios) es intensiva en E/S. Usamos `asyncio` en `HyperScan` para lanzar miles de paquetes pequeños instantáneamente sin crear miles de hilos del sistema operativo.
 
 **Ubicación en código:**

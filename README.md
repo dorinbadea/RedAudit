@@ -293,7 +293,7 @@ redaudit --diff ~/reports/monday.json ~/reports/friday.json
 |:---|:---|
 | `-t, --target` | Target network(s) in CIDR notation |
 | `-m, --mode` | Scan mode: `fast` / `normal` / `full` (default: normal) |
-| `-j, --threads` | Concurrent threads (1-16, default: 6) |
+| `-j, --threads` | Concurrent threads (1-16, auto-detected) |
 | `--rate-limit` | Delay between hosts in seconds (±30% jitter) |
 | `-e, --encrypt` | Encrypt reports with AES-128 |
 | `-o, --output` | Output directory |

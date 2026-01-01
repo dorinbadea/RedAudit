@@ -291,7 +291,7 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | :--- | :--- |
 | `-t, --target` | Red(es) objetivo en notación CIDR |
 | `-m, --mode` | Modo de escaneo: `fast` / `normal` / `full` (defecto: normal) |
-| `-j, --threads` | Hilos concurrentes (1-16, defecto: 6) |
+| `-j, --threads` | Hilos concurrentes (1-16, auto-detectado) |
 | `--rate-limit` | Retardo entre hosts en segundos (jitter ±30%) |
 | `-e, --encrypt` | Cifrar reportes con AES-128 |
 | `-o, --output` | Directorio de salida |
