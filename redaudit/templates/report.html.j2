@@ -220,6 +220,10 @@
                         <li>Identity Avg <span>{{ smart_scan.identity_score_avg or 0 }}</span></li>
                         <li>Deep Triggered <span>{{ smart_scan.deep_scan_triggered or 0 }}</span></li>
                         <li>Deep Executed <span>{{ smart_scan.deep_scan_executed or 0 }}</span></li>
+                        {% if smart_scan.deep_scan_budget and smart_scan.deep_scan_budget > 0 %}
+                        <li>Deep Budget <span>{{ smart_scan.deep_scan_budget }}</span></li>
+                        <li>Skipped by Budget <span>{{ smart_scan.hosts_skipped_by_budget or 0 }}</span></li>
+                        {% endif %}
                     </ul>
                 </div>
                 <div class="meta-item">

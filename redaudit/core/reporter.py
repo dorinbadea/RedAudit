@@ -32,6 +32,9 @@ def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
         "scan_mode_cli": config.get("scan_mode_cli", config.get("scan_mode")),
         "threads": config.get("threads"),
         "rate_limit_delay": config.get("rate_limit_delay", config.get("rate_limit")),
+        "low_impact_enrichment": config.get("low_impact_enrichment"),
+        "deep_scan_budget": config.get("deep_scan_budget"),
+        "identity_threshold": config.get("identity_threshold"),
         "udp_mode": config.get("udp_mode"),
         "udp_top_ports": config.get("udp_top_ports"),
         "topology_enabled": config.get("topology_enabled"),
@@ -136,13 +139,17 @@ def _summarize_agentless(
     return summary
 
 
-def _summarize_smart_scan(hosts: list) -> Dict[str, Any]:
+def _summarize_smart_scan(hosts: list, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     hosts_count = 0
     deep_triggered = 0
     deep_executed = 0
     scores: List[int] = []
     signals: Dict[str, int] = {}
     reasons: Dict[str, int] = {}
+    phase0_signals_collected = 0
+    phase0_enabled = (
+        bool(config.get("low_impact_enrichment", False)) if isinstance(config, dict) else False
+    )
 
     for host in hosts or []:
         smart = host.get("smart_scan")
@@ -161,6 +168,27 @@ def _summarize_smart_scan(hosts: list) -> Dict[str, Any]:
             signals[sig] = signals.get(sig, 0) + 1
         for reason in smart.get("reasons", []) or []:
             reasons[reason] = reasons.get(reason, 0) + 1
+        if phase0_enabled:
+            phase0 = host.get("phase0_enrichment") or {}
+            if any(
+                phase0.get(key)
+                for key in (
+                    "dns_reverse",
+                    "mdns_name",
+                    "snmp_sysDescr",
+                )
+            ):
+                phase0_signals_collected += 1
+
+    budget = 0
+    if isinstance(config, dict):
+        try:
+            budget = int(config.get("deep_scan_budget", 0))
+            if budget < 0:
+                budget = 0
+        except Exception:
+            budget = 0
+    skipped_by_budget = reasons.get("budget_exhausted", 0)
 
     return {
         "hosts": hosts_count,
@@ -169,6 +197,11 @@ def _summarize_smart_scan(hosts: list) -> Dict[str, Any]:
         "deep_scan_executed": deep_executed,
         "signals": signals,
         "reasons": reasons,
+        "deep_scan_budget": budget,
+        "deep_scan_budget_exhausted": bool(budget > 0 and skipped_by_budget > 0),
+        "hosts_skipped_by_budget": skipped_by_budget,
+        "phase0_enrichment_enabled": phase0_enabled,
+        "phase0_signals_collected": phase0_signals_collected,
     }
 
 
@@ -239,7 +272,7 @@ def generate_summary(
 
     # Attach sanitized config snapshot + pipeline + smart scan summary for reporting.
     results["config_snapshot"] = _build_config_snapshot(config)
-    results["smart_scan_summary"] = _summarize_smart_scan(results.get("hosts", []))
+    results["smart_scan_summary"] = _summarize_smart_scan(results.get("hosts", []), config)
     raw_vuln_summary = _summarize_vulnerabilities(results.get("vulnerabilities", []))
     results["pipeline"] = {
         "topology": results.get("topology") or {},

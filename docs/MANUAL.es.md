@@ -164,19 +164,22 @@ Cuando está habilitado (por defecto), RedAudit realiza escaneos adicionales en 
 
 **Condiciones de disparo:**
 
-- Menos de 3 puertos abiertos encontrados
+- Menos de 3 puertos abiertos encontrados (cuando la identidad es débil)
 - Servicios identificados como `unknown` o `tcpwrapped`
 - Información MAC/vendor no obtenida
 - **Detección de Gateway VPN**: El host comparte la dirección MAC con el gateway pero tiene una IP diferente (interfaz virtual)
 
 **Comportamiento:**
 
+0. (Opcional) Fase 0 de enriquecimiento de bajo impacto (DNS reverso, mDNS unicast, SNMP sysDescr) con `--low-impact-enrichment`
 1. Fase 1: TCP agresivo (`-A -p- -sV -Pn`)
 2. Fase 2a: Sonda UDP prioritaria (17 puertos comunes incluyendo 500/4500)
 3. Fase 2b: UDP top-ports (`--udp-ports`) cuando el modo es `full` y la identidad sigue débil
 4. Hosts silenciosos con vendor detectado y cero puertos abiertos pueden recibir un probe HTTP/HTTPS breve en rutas comunes
 
 Deshabilitar con `--no-deep-scan`.
+
+SmartScan usa un score de identidad (umbral por defecto: 3; modo full usa 4) para decidir si escalar.
 
 La clasificación VPN se realiza mediante heurísticas de tipado de activo (MAC/IP de gateway, puertos VPN, patrones de hostname).
 
@@ -213,10 +216,13 @@ Flags verificadas contra `redaudit --help` (v3.9.9):
 | `--rate-limit SECONDS` | Retardo entre hosts (se aplica jitter ±30%) |
 | `--max-hosts N` | Limitar hosts a escanear |
 | `--no-deep-scan` | Deshabilitar deep scan adaptativo |
+| `--low-impact-enrichment` | Enriquecimiento de bajo impacto (DNS/mDNS/SNMP) antes del escaneo TCP |
+| `--deep-scan-budget N` | Máximo de hosts que pueden ejecutar deep scan agresivo por ejecución (0 = sin límite) |
+| `--identity-threshold N` | Umbral mínimo de identity_score para omitir deep scan (defecto: 3) |
 | `--prescan` | Flag reservado (se guarda en config; no ejecuta pre-scan) |
 | `--prescan-ports RANGE` | Reservado (defecto: 1-1024) |
 | `--prescan-timeout SECONDS` | Reservado (defecto: 0.5) |
-| `--stealth` | Timing T1, 1 hilo, retardo 5s (evasión IDS) |
+| `--stealth` | Timing T1, 1 hilo, retardo 5s (entornos sensibles a la detección) |
 
 ### Escaneo UDP
 

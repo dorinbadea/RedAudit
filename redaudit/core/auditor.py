@@ -21,6 +21,8 @@ from redaudit.utils.constants import (
     COLORS,
     DEFAULT_LANG,
     DEFAULT_THREADS,
+    DEFAULT_DEEP_SCAN_BUDGET,
+    DEFAULT_IDENTITY_THRESHOLD,
     DEFAULT_UDP_MODE,
     MAX_THREADS,
     MIN_THREADS,
@@ -109,6 +111,10 @@ class InteractiveNetworkAuditor(
             "nvd_api_key": None,
             # v2.8: Adaptive deep identity scan
             "deep_id_scan": True,
+            # v3.9.9: SmartScan governance defaults
+            "low_impact_enrichment": False,
+            "deep_scan_budget": DEFAULT_DEEP_SCAN_BUDGET,
+            "identity_threshold": DEFAULT_IDENTITY_THRESHOLD,
             # v3.1+: Optional topology discovery
             "topology_enabled": False,
             "topology_only": False,
@@ -356,6 +362,7 @@ class InteractiveNetworkAuditor(
         """Execute the complete scan workflow."""
         self.scan_start_time = datetime.now()
         self.start_heartbeat()
+        self._deep_executed_count = 0
 
         inhibitor = None
         if self.config.get("prevent_sleep", True):
