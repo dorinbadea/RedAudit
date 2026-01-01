@@ -14,7 +14,6 @@ import ipaddress
 
 from redaudit.utils.constants import (
     VERSION,
-    DEFAULT_THREADS,
     MAX_THREADS,
     MIN_THREADS,
     MAX_CIDR_LENGTH,
@@ -22,6 +21,7 @@ from redaudit.utils.constants import (
     UDP_TOP_PORTS,
     DEFAULT_DEEP_SCAN_BUDGET,
     DEFAULT_IDENTITY_THRESHOLD,
+    suggest_threads,
 )
 from redaudit.utils.i18n import TRANSLATIONS, detect_preferred_language
 from redaudit.utils.paths import expand_user_path, get_default_reports_base_dir
@@ -89,9 +89,10 @@ Examples:
         persisted_defaults = {}
 
     # Apply persisted defaults with safe validation/fallbacks.
+    # Use suggest_threads() for dynamic detection if no valid persisted value.
     default_threads = persisted_defaults.get("threads")
     if not isinstance(default_threads, int) or not (MIN_THREADS <= default_threads <= MAX_THREADS):
-        default_threads = DEFAULT_THREADS
+        default_threads = suggest_threads()
 
     default_output = persisted_defaults.get("output_dir")
     if not isinstance(default_output, str) or not default_output.strip():
@@ -152,7 +153,7 @@ Examples:
         default=default_threads,
         choices=range(MIN_THREADS, MAX_THREADS + 1),
         metavar=f"{MIN_THREADS}-{MAX_THREADS}",
-        help=f"Concurrent scanning threads (default: {DEFAULT_THREADS})",
+        help=f"Concurrent scanning threads (default: auto-detected, max {MAX_THREADS})",
     )
     parser.add_argument(
         "--rate-limit",
@@ -755,7 +756,7 @@ def main():
             return any(f in argv for f in flags)
 
         if not _has_any(["--threads", "-j"]):
-            args.threads = DEFAULT_THREADS
+            args.threads = suggest_threads()
         if not _has_any(["--rate-limit"]):
             args.rate_limit = 0.0
         if not _has_any(["--output", "-o"]):

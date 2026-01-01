@@ -115,7 +115,7 @@ Grouped by operational function. Verified against the current codebase.
 | :--- | :--- |
 | `-t, --target CIDR` | IP, range, or CIDR (comma-separated supported) |
 | `-m, --mode` | `fast` (host discovery), `normal` (top 100), `full` (all ports + scripts/OS detection) |
-| `-j, --threads N` | Parallel hosts 1-16 (Default: 6) |
+| `-j, --threads N` | Parallel hosts 1-16 (Auto-detected) |
 | `--rate-limit S` | Delay between hosts in seconds (applies jitter) |
 | `--stealth` | Force T1 timing, 1 thread, 5s delay |
 | `--dry-run` | Show commands without executing them |

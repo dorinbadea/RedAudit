@@ -216,7 +216,7 @@ Flags verified against `redaudit --help` (v3.10.0):
 
 | Flag | Description |
 | :--- | :--- |
-| `-j, --threads 1-16` | Concurrent host workers (default: 6) |
+| `-j, --threads 1-16` | Concurrent host workers (auto-detected) |
 | `--rate-limit SECONDS` | Delay between hosts (±30% jitter applied) |
 | `--max-hosts N` | Limit hosts to scan |
 | `--no-deep-scan` | Disable adaptive deep scan |

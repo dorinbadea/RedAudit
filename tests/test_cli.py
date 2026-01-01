@@ -12,10 +12,10 @@ import pytest
 
 from redaudit import cli
 from redaudit.utils.constants import (
-    DEFAULT_THREADS,
     MAX_CIDR_LENGTH,
     DEFAULT_UDP_MODE,
     UDP_TOP_PORTS,
+    suggest_threads,
 )
 
 
@@ -153,7 +153,8 @@ def test_parse_arguments_handles_persisted_error(monkeypatch):
     monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", _raise)
     with patch.object(sys, "argv", ["redaudit"]):
         args = cli.parse_arguments()
-    assert args.threads == DEFAULT_THREADS
+    # When persisted defaults error, fallback is suggest_threads() (auto-detected)
+    assert args.threads == suggest_threads()
 
 
 def test_configure_from_args_sets_lang():
@@ -325,7 +326,8 @@ def test_main_defaults_ignore_resets_cli_values(monkeypatch):
     with patch.object(sys, "argv", ["redaudit"]):
 
         def _configure(app, cfg):
-            assert cfg.threads == DEFAULT_THREADS
+            # --defaults=ignore resets threads to suggest_threads() (auto-detected)
+            assert cfg.threads == suggest_threads()
             assert cfg.rate_limit == 0.0
             assert cfg.udp_mode == DEFAULT_UDP_MODE
             assert cfg.udp_ports == UDP_TOP_PORTS
