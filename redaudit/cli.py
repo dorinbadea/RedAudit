@@ -541,11 +541,11 @@ def configure_from_args(app, args) -> bool:
     # Set deep scan
     app.config["deep_id_scan"] = not args.no_deep_scan
     app.config["low_impact_enrichment"] = bool(getattr(args, "low_impact_enrichment", False))
-    deep_scan_budget = args.deep_scan_budget
+    deep_scan_budget = getattr(args, "deep_scan_budget", DEFAULT_DEEP_SCAN_BUDGET)
     if not isinstance(deep_scan_budget, int) or deep_scan_budget < 0:
         deep_scan_budget = DEFAULT_DEEP_SCAN_BUDGET
     app.config["deep_scan_budget"] = deep_scan_budget
-    identity_threshold = args.identity_threshold
+    identity_threshold = getattr(args, "identity_threshold", DEFAULT_IDENTITY_THRESHOLD)
     if not isinstance(identity_threshold, int) or identity_threshold < 0:
         identity_threshold = DEFAULT_IDENTITY_THRESHOLD
     app.config["identity_threshold"] = identity_threshold

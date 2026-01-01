@@ -162,10 +162,12 @@ def test_low_visibility_triggers_with_weak_identity():
 def test_budget_exhausted(patch_common):
     auditor = MockAuditor()
     auditor.config["deep_scan_budget"] = 2
-    nm = _make_nmap_mock(
-        ports={"tcp": {80: {"name": "http", "product": "", "version": "", "cpe": []}}}
-    )
-    with patch.object(auditor, "_run_nmap_xml_scan", return_value=(nm, "")):
+    ports = {"tcp": {80: {"name": "http", "product": "", "version": "", "cpe": []}}}
+
+    def _nmap_side_effect(target, _args):
+        return _make_nmap_mock(ip=target, ports=ports), ""
+
+    with patch.object(auditor, "_run_nmap_xml_scan", side_effect=_nmap_side_effect):
         with patch.object(auditor, "_should_trigger_deep", return_value=(True, ["identity_weak"])):
             with patch.object(auditor, "_run_udp_priority_probe", return_value=False):
                 with patch.object(
@@ -256,7 +258,7 @@ def test_escalation_reason_in_json(patch_common):
     with patch.object(auditor, "_run_nmap_xml_scan", return_value=(nm, "")):
         with patch.object(auditor, "_should_trigger_deep", return_value=(True, ["identity_weak"])):
             with patch.object(auditor, "_run_udp_priority_probe", return_value=False):
-                with patch.object(auditor, "deep_scan_host", return_value={}):
+                with patch.object(auditor, "deep_scan_host", return_value={"os_detected": "Linux"}):
                     res = auditor.scan_host_ports("1.1.1.1")
     assert isinstance(res["smart_scan"]["escalation_reason"], str)
 
@@ -269,7 +271,7 @@ def test_escalation_path_recorded(patch_common):
     with patch.object(auditor, "_run_nmap_xml_scan", return_value=(nm, "")):
         with patch.object(auditor, "_should_trigger_deep", return_value=(True, ["identity_weak"])):
             with patch.object(auditor, "_run_udp_priority_probe", return_value=False):
-                with patch.object(auditor, "deep_scan_host", return_value={}):
+                with patch.object(auditor, "deep_scan_host", return_value={"os_detected": "Linux"}):
                     res = auditor.scan_host_ports("1.1.1.1")
     path = res["smart_scan"]["escalation_path"] or ""
     assert "nmap_initial" in path

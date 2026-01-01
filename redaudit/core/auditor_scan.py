@@ -690,7 +690,7 @@ class AuditorScanMixin:
         if "router" in device_type_hints or "network_device" in device_type_hints:
             trigger_deep = True
             deep_reasons.append("network_infrastructure")
-        if identity_score < identity_threshold:
+        if total_ports > 0 and identity_score < identity_threshold:
             trigger_deep = True
             deep_reasons.append("identity_weak")
 
