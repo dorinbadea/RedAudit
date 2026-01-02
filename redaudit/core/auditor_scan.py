@@ -1557,6 +1557,13 @@ class AuditorScanMixin:
                             self._prune_weak_identity_reasons(smart)
 
             enrich_host_with_dns(host_record, self.extra_tools)
+            # v3.10.1: Consolidate DNS reverse from phase0 if enrichment failed
+            # This ensures consumers like reporters only need to check host["dns"]["reverse"]
+            # for the canonical hostname, though they may still double-check phase0 for completeness.
+            if not host_record.get("dns", {}).get("reverse"):
+                phase0 = host_record.get("phase0_enrichment", {})
+                if phase0.get("dns_reverse"):
+                    host_record.setdefault("dns", {})["reverse"] = [str(phase0["dns_reverse"])]
             enrich_host_with_whois(host_record, self.extra_tools)
 
             # v2.8.0: Finalize status based on all collected data
