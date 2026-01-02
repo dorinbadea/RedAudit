@@ -1060,6 +1060,16 @@ class AuditorScanMixin:
                     if neigh_mac:
                         deep_obj["mac_address"] = neigh_mac
                         mac = neigh_mac
+                        # v3.10.1: Perform OUI vendor lookup for neighbor cache MACs
+                        if not deep_obj.get("vendor"):
+                            try:
+                                neigh_vendor = get_vendor_with_fallback(
+                                    neigh_mac, None, online_fallback=True
+                                )
+                                if neigh_vendor:
+                                    deep_obj["vendor"] = neigh_vendor
+                            except Exception:
+                                pass
 
                 # Phase 2b: Full UDP scan (only if mode is 'full' and still no identity)
                 # v2.9: Optimized to use top-ports instead of full 65535 port scan
@@ -1219,6 +1229,12 @@ class AuditorScanMixin:
                 mac, vendor = self._lookup_topology_identity(safe_ip)
                 if not mac:
                     mac = get_neighbor_mac(safe_ip)
+                    # v3.10.1: Perform OUI vendor lookup for neighbor cache MACs
+                    if mac and not vendor:
+                        try:
+                            vendor = get_vendor_with_fallback(mac, None, online_fallback=True)
+                        except Exception:
+                            pass
                 deep_meta = None
                 if mac or vendor:
                     deep_meta = {"strategy": "topology", "commands": []}
