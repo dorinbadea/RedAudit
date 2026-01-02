@@ -34,3 +34,5 @@ RedAudit_*/
 .agent/
 diff_report_*.html
 diff_report_*.md
+*.log
+test_debug.log
