@@ -18,10 +18,15 @@ from redaudit.utils.vendor_hints import get_best_vendor
 
 def _get_reverse_dns(host: Dict) -> str:
     """Extract first reverse DNS entry for hostname fallback."""
+    # Source 1: dns.reverse (from enrich_host_with_dns)
     dns = host.get("dns", {})
     reverse = dns.get("reverse", [])
     if reverse and isinstance(reverse, list) and reverse[0]:
         return reverse[0].rstrip(".")
+    # Source 2: phase0_enrichment.dns_reverse (from low_impact_enrichment)
+    phase0 = host.get("phase0_enrichment", {})
+    if isinstance(phase0, dict) and phase0.get("dns_reverse"):
+        return str(phase0["dns_reverse"]).rstrip(".")
     return ""
 
 
