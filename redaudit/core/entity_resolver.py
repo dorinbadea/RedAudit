@@ -89,6 +89,13 @@ def extract_identity_fingerprint(host_record: Dict) -> Optional[str]:
             if normalized and len(normalized) > 2:
                 return normalized
 
+    # Priority 4: phase0_enrichment.dns_reverse (low-impact enrichment)
+    phase0 = host_record.get("phase0_enrichment", {})
+    if isinstance(phase0, dict) and phase0.get("dns_reverse"):
+        normalized = normalize_hostname(str(phase0["dns_reverse"]))
+        if normalized and len(normalized) > 2:
+            return normalized
+
     return None
 
 

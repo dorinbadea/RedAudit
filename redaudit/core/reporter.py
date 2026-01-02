@@ -29,6 +29,23 @@ from redaudit.core.siem import enrich_report_for_siem
 from redaudit.core.scanner_versions import get_scanner_versions
 
 
+def _get_hostname_fallback(host: Dict) -> str:
+    """Get hostname with fallback to dns_reverse sources."""
+    hostname = host.get("hostname", "")
+    if hostname:
+        return hostname
+    # Fallback 1: dns.reverse
+    dns = host.get("dns", {})
+    reverse = dns.get("reverse", [])
+    if reverse and isinstance(reverse, list) and reverse[0]:
+        return reverse[0].rstrip(".")
+    # Fallback 2: phase0_enrichment.dns_reverse
+    phase0 = host.get("phase0_enrichment", {})
+    if isinstance(phase0, dict) and phase0.get("dns_reverse"):
+        return str(phase0["dns_reverse"]).rstrip(".")
+    return ""
+
+
 def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
     """Create a safe, minimal snapshot of the run configuration."""
     scan_mode = config.get("scan_mode")
@@ -624,7 +641,7 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
         lines.append("\n")
 
     for h in results.get("hosts", []):
-        hostname = h.get("hostname") or "-"
+        hostname = _get_hostname_fallback(h) or "-"
         status = h.get("status") or "unknown"
         total_ports = h.get("total_ports_found") or 0
         risk_score = h.get("risk_score")

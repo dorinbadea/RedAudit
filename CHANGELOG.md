@@ -10,6 +10,18 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [3.10.1] - 2026-01-02 (Identity Consistency & Vendor Hints)
+
+### Added
+
+- **Vendor Hints**: New fallback mechanism (`vendor_hints.py`) to infer device manufacturer from hostname patterns (e.g., Pixel, Galaxy, iPhone) when OUI lookup is unavailable.
+
+### Fixed
+
+- **Neighbor Cache Enrichment**: MAC addresses discovered via passive neighbor cache (ARP/NDP) now trigger an online OUI vendor lookup.
+- **Hostname Consistency**: Consolidated Phase 0 (low-impact) DNS reverse lookups into the canonical host record, ensuring consistent hostname display across all reports (HTML/TXT) and entity resolution logic.
+- **Data Flow**: Fixed gaps where low-impact enrichment data was not fully propagating to downstream consumers.
+
 ## [3.10.0] - 2026-01-01 (SmartScan Governance & Phase0)
 
 ### Added

@@ -10,6 +10,18 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [3.10.1] - 2026-01-02 (Consistencia de Identidad y Hints de Vendor)
+
+### Añadido
+
+- **Vendor Hints**: Nuevo mecanismo de respaldo (`vendor_hints.py`) para inferir el fabricante del dispositivo desde patrones de hostname (ej: Pixel, Galaxy, iPhone) cuando el lookup OUI no está disponible.
+
+### Corregido
+
+- **Enriquecimiento Neighbor Cache**: Las direcciones MAC descubiertas vía neighbor cache pasivo (ARP/NDP) ahora disparan un lookup OUI online.
+- **Consistencia de Hostname**: Consolidación de búsquedas DNS reversas de Fase 0 (bajo impacto) en el registro de host canónico, asegurando visualización consistente en todos los reportes (HTML/TXT) y lógica de resolución de entidades.
+- **Flujo de Datos**: Corregidas brechas donde datos de enriquecimiento de bajo impacto no se propagaban completamente a los consumidores posteriores.
+
 ## [3.10.0] - 2026-01-01 (Gobernanza SmartScan y Fase 0)
 
 ### Added

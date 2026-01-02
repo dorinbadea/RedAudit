@@ -343,11 +343,12 @@ class AuditorScanMixin:
     def _apply_net_discovery_identity(self, host_record: Dict[str, Any]) -> None:
         """
         Merge net_discovery hints (MAC/vendor/hostname/UPnP) into host record.
+        v3.10.1: Also check topology neighbor_cache as fallback MAC source.
         """
         r = self.results
         nd_results = r.get("net_discovery") if isinstance(r, dict) else None
         if not isinstance(nd_results, dict):
-            return
+            nd_results = {}
 
         ip = host_record.get("ip")
         if not ip:
@@ -364,11 +365,37 @@ class AuditorScanMixin:
 
         mac = None
         vendor = None
+        # Source 1: net_discovery.arp_hosts
         for host in nd_results.get("arp_hosts", []) or []:
             if isinstance(host, dict) and host.get("ip") == ip:
                 mac = host.get("mac") or None
                 vendor = host.get("vendor") or None
                 break
+
+        # Source 2: topology.interfaces[].arp.hosts + neighbor_cache (fallback)
+        if not mac:
+            pipeline = r.get("pipeline", {}) if isinstance(r, dict) else {}
+            topology = pipeline.get("topology", {}) if isinstance(pipeline, dict) else {}
+            for iface in topology.get("interfaces", []) or []:
+                if not isinstance(iface, dict):
+                    continue
+                # Check arp.hosts first
+                arp = iface.get("arp", {}) or {}
+                for h in arp.get("hosts", []) or []:
+                    if isinstance(h, dict) and h.get("ip") == ip:
+                        mac = h.get("mac") or None
+                        vendor = h.get("vendor") or None
+                        break
+                if mac:
+                    break
+                # Check neighbor_cache
+                neighbor_cache = iface.get("neighbor_cache", {}) or {}
+                for entry in neighbor_cache.get("entries", []) or []:
+                    if isinstance(entry, dict) and entry.get("ip") == ip and entry.get("mac"):
+                        mac = entry.get("mac")
+                        break
+                if mac:
+                    break
 
         if isinstance(vendor, str) and "unknown" in vendor.lower():
             vendor = None
@@ -1033,6 +1060,16 @@ class AuditorScanMixin:
                     if neigh_mac:
                         deep_obj["mac_address"] = neigh_mac
                         mac = neigh_mac
+                        # v3.10.1: Perform OUI vendor lookup for neighbor cache MACs
+                        if not deep_obj.get("vendor"):
+                            try:
+                                neigh_vendor = get_vendor_with_fallback(
+                                    neigh_mac, None, online_fallback=True
+                                )
+                                if neigh_vendor:
+                                    deep_obj["vendor"] = neigh_vendor
+                            except Exception:
+                                pass
 
                 # Phase 2b: Full UDP scan (only if mode is 'full' and still no identity)
                 # v2.9: Optimized to use top-ports instead of full 65535 port scan
@@ -1192,6 +1229,12 @@ class AuditorScanMixin:
                 mac, vendor = self._lookup_topology_identity(safe_ip)
                 if not mac:
                     mac = get_neighbor_mac(safe_ip)
+                    # v3.10.1: Perform OUI vendor lookup for neighbor cache MACs
+                    if mac and not vendor:
+                        try:
+                            vendor = get_vendor_with_fallback(mac, None, online_fallback=True)
+                        except Exception:
+                            pass
                 deep_meta = None
                 if mac or vendor:
                     deep_meta = {"strategy": "topology", "commands": []}
@@ -1514,6 +1557,13 @@ class AuditorScanMixin:
                             self._prune_weak_identity_reasons(smart)
 
             enrich_host_with_dns(host_record, self.extra_tools)
+            # v3.10.1: Consolidate DNS reverse from phase0 if enrichment failed
+            # This ensures consumers like reporters only need to check host["dns"]["reverse"]
+            # for the canonical hostname, though they may still double-check phase0 for completeness.
+            if not host_record.get("dns", {}).get("reverse"):
+                phase0 = host_record.get("phase0_enrichment", {})
+                if phase0.get("dns_reverse"):
+                    host_record.setdefault("dns", {})["reverse"] = [str(phase0["dns_reverse"])]
             enrich_host_with_whois(host_record, self.extra_tools)
 
             # v2.8.0: Finalize status based on all collected data

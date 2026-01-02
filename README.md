@@ -2,11 +2,11 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-![Version](https://img.shields.io/badge/v3.10.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/v3.10.1-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
-![Coverage](https://img.shields.io/badge/coverage-95.2%25-brightgreen?style=flat-square)
+![Coverage](https://img.shields.io/badge/coverage-94.4%25-brightgreen?style=flat-square)
 
 <div align="center">
 

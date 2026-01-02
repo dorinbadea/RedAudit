@@ -2,11 +2,11 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-![Versión](https://img.shields.io/badge/v3.10.0-blue?style=flat-square)
+![Versión](https://img.shields.io/badge/v3.10.1-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
-![Cobertura](https://img.shields.io/badge/cobertura-95.2%25-brightgreen?style=flat-square)
+![Cobertura](https://img.shields.io/badge/cobertura-94.4%25-brightgreen?style=flat-square)
 
 ![Banner de RedAudit](../assets/Banner_es.png)
 
