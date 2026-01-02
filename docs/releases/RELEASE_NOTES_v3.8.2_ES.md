@@ -28,5 +28,5 @@ RedAudit v3.8.2 es un release de pulido UX enfocado en **navegación del wizard*
 
 ## Documentación
 
-- [Registro de cambios completo](../../CHANGELOG_ES.md)
+- [Registro de cambios completo](../../ES/CHANGELOG_ES.md)
 - [Roadmap](../ROADMAP.es.md)

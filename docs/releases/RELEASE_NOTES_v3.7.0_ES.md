@@ -79,4 +79,4 @@ cd RedAudit && pip install -e .
 ## Documentación
 
 - [Guía de Integración SIEM](docs/SIEM_INTEGRATION.en.md)
-- [Changelog Completo](CHANGELOG_ES.md)
+- [Changelog Completo](../../ES/CHANGELOG_ES.md)

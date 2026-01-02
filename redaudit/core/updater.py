@@ -154,7 +154,7 @@ def fetch_changelog_snippet(
     Returns:
         Changelog snippet string or None
     """
-    filename = "CHANGELOG_ES.md" if lang == "es" else "CHANGELOG.md"
+    filename = "ES/CHANGELOG_ES.md" if lang == "es" else "CHANGELOG.md"
     urls: List[Tuple[str, str]] = [
         (f"{GITHUB_RAW_BASE}/{GITHUB_OWNER}/{GITHUB_REPO}/main/{filename}", lang)
     ]

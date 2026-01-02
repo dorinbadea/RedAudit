@@ -1,6 +1,6 @@
 # Changelog
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](CHANGELOG_ES.md)
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](ES/CHANGELOG_ES.md)
 
 All notable changes are documented in this file.
 
@@ -403,7 +403,7 @@ Release notes live under `docs/releases/` for additional context.
 
 ### Fixed
 
-- **Broken Links**: Fixed `pyproject.toml` pointing to non-existent `docs/en/MANUAL.md`.
+- **Broken Links**: Fixed `pyproject.toml` pointing to non-existent `docs/MANUAL.md`.
 - **Structure**: Removed legacy `docs/en/` and `docs/es/` references; normalized to `docs/*.en.md` and `docs/*.es.md`.
 - **Linting**: Fixed various Markdown linting issues in READMEs (headers, code blocks).
 

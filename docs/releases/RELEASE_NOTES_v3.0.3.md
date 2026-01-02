@@ -34,4 +34,4 @@ During update, RedAudit now prints:
 
 - **Changelog**: [CHANGELOG.md](../../CHANGELOG.md)
 - **GitHub Release Notes**: [GitHub Release Draft](DRAFT_TEMPLATE.md)
-- **Security Specification**: [docs/en/SECURITY.en.md](../SECURITY.en.md)
+- **Security Specification**: [docs/SECURITY.en.md](../SECURITY.en.md)

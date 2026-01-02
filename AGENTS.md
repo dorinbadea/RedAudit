@@ -188,7 +188,7 @@ When using real scan artifacts to refine heuristics or output:
 
 When changing behavior/UX, update the relevant docs in both EN/ES (flat docs structure):
 
-- `README.md`, `README_ES.md`
+- `README.md`, `ES/README_ES.md`
 - `docs/INDEX.md`
 - `docs/USAGE.en.md`, `docs/USAGE.es.md`
 - `docs/MANUAL.en.md`, `docs/MANUAL.es.md`
@@ -198,7 +198,7 @@ When changing behavior/UX, update the relevant docs in both EN/ES (flat docs str
 - `docs/SECURITY.en.md`, `docs/SECURITY.es.md`
 - `docs/TROUBLESHOOTING.en.md`, `docs/TROUBLESHOOTING.es.md`
 - `docs/SIEM_INTEGRATION.en.md`, `docs/SIEM_INTEGRATION.es.md` (if impacted)
-- `CHANGELOG.md`, `CHANGELOG_ES.md`
+- `CHANGELOG.md`, `ES/CHANGELOG_ES.md`
 - release notes: `docs/releases/RELEASE_NOTES_vX.Y.Z*.md`
 
 Make sure menu text, flags, defaults, and examples match the code.
@@ -223,7 +223,7 @@ Also update any tests that assert version output (e.g., integration tests).
 
 ### 3) Update release documentation
 
-- Add a new section to `CHANGELOG.md` and `CHANGELOG_ES.md`
+- Add a new section to `CHANGELOG.md` and `ES/CHANGELOG_ES.md`
 - Add release notes:
   - `docs/releases/RELEASE_NOTES_vX.Y.Z.md`
   - `docs/releases/RELEASE_NOTES_vX.Y.Z_ES.md`

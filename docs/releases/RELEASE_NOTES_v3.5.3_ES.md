@@ -34,4 +34,4 @@ Esta versión se centra en asegurar que la documentación refleje con precisión
 
 - [Manual (ES)](../../MANUAL.es.md)
 - [Guía de Uso (ES)](../../USAGE.es.md)
-- [Historial de Cambios](../../../CHANGELOG_ES.md)
+- [Historial de Cambios](../../ES/CHANGELOG_ES.md)

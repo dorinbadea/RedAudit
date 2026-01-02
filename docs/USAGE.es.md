@@ -238,4 +238,4 @@ Falta el archivo `.salt` o contraseña incorrecta.
 
 ---
 
-[Volver al README](../README_ES.md) | [Índice de Documentación](INDEX.md)
+[Volver al README](../ES/README_ES.md) | [Índice de Documentación](INDEX.md)

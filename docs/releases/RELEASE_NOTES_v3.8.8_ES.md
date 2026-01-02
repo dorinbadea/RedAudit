@@ -54,4 +54,4 @@ redaudit --version  # Verificar versión actual
 
 ## Changelog Completo
 
-Ver [CHANGELOG_ES.md](../../CHANGELOG_ES.md) para la lista completa de cambios.
+Ver [CHANGELOG_ES.md](../../ES/CHANGELOG_ES.md) para la lista completa de cambios.

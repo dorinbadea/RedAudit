@@ -26,5 +26,5 @@ para redes mixtas con routers e IoT.
 
 ## Documentación
 
-- [Registro de cambios completo](CHANGELOG_ES.md)
+- [Registro de cambios completo](../../ES/CHANGELOG_ES.md)
 - [Roadmap](docs/ROADMAP.es.md)

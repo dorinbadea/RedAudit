@@ -30,4 +30,4 @@ Esta versión mejora la **precisión del tipado de activos** en redes heterogén
 
 ---
 
-**Changelog completo**: [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
+**Changelog completo**: [CHANGELOG_ES.md](../../ES/CHANGELOG_ES.md)

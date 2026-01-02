@@ -1,5 +1,7 @@
 # Security Audit (2025-02-14)
 
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](ES/SECURITY_AUDIT_ES.md)
+
 ## Scope
 
 - Codebase review and automated checks for the RedAudit project.

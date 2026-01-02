@@ -29,5 +29,5 @@ Fecha de Lanzamiento: 2025-12-18
 
 ## Documentación
 
-- [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
+- [CHANGELOG_ES.md](../../ES/CHANGELOG_ES.md)
 - [Guía de Uso](../USAGE.es.md)

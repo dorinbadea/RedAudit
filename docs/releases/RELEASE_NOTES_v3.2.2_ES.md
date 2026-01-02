@@ -62,5 +62,5 @@ curl -sL https://raw.githubusercontent.com/dorinbadea/RedAudit/v3.2.2/redaudit_i
 
 ## Enlaces útiles
 
-- **Changelog**: [CHANGELOG.md](../../CHANGELOG.md) / [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
-- **Documentación de seguridad**: [docs/en/SECURITY.es.md](../SECURITY.es.md) / [docs/es/SECURITY.es.md](../SECURITY.es.md)
+- **Changelog**: [CHANGELOG.md](../../CHANGELOG.md) / [CHANGELOG_ES.md](../../ES/CHANGELOG_ES.md)
+- **Documentación de seguridad**: [docs/SECURITY.es.md](../SECURITY.es.md) / [docs/SECURITY.es.md](../SECURITY.es.md)

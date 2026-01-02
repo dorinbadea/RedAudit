@@ -52,6 +52,6 @@ cd RedAudit && sudo bash redaudit_install.sh
 
 ## Enlaces
 
-- [Changelog Completo](../../CHANGELOG_ES.md)
+- [Changelog Completo](../../ES/CHANGELOG_ES.md)
 - [Documentación](../../docs/INDEX.md)
 - [Lanzamientos en GitHub](https://github.com/dorinbadea/RedAudit/releases)

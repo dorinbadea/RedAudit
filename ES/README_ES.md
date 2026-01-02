@@ -1,6 +1,6 @@
 # RedAudit
 
-[![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](README.md)
+[![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
 ![Versión](https://img.shields.io/badge/v3.10.0-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
@@ -8,7 +8,7 @@
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
 ![Cobertura](https://img.shields.io/badge/cobertura-95.2%25-brightgreen?style=flat-square)
 
-![Banner de RedAudit](assets/Banner_es.png)
+![Banner de RedAudit](../assets/Banner_es.png)
 
 ## ¿Qué es RedAudit?
 
@@ -103,7 +103,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 3. **Resolución de Entidad**: Consolidación de dispositivos multi-interfaz en activos únicos.
 4. **Filtrado Inteligente**: Reducción de ruido via verificación consciente del contexto (`verify_vuln.py`).
 
-![Vista General del Sistema](docs/images/system_overview_es.png)
+![Vista General del Sistema](../docs/images/system_overview_es.png)
 
 ### Lógica de Escaneo Adaptativo
 
@@ -202,7 +202,7 @@ sudo bash redaudit_install.sh
 
 ### Docker (Windows / macOS / Linux)
 
-Funciona en cualquier plataforma con Docker Desktop. Ver **[Guía de Docker](docs/DOCKER.es.md)** para configuración detallada.
+Funciona en cualquier plataforma con Docker Desktop. Ver **[Guía de Docker](../docs/DOCKER.es.md)** para configuración detallada.
 
 ```bash
 docker pull ghcr.io/dorinbadea/redaudit:latest
@@ -303,7 +303,7 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | `--stealth` | Activar timing paranoid para entornos sensibles a IDS |
 | `-y, --yes` | Omitir confirmaciones (modo automatización) |
 
-Consulta `redaudit --help` o [USAGE.md](docs/USAGE.es.md) para la lista completa de opciones.
+Consulta `redaudit --help` o [USAGE.md](../docs/USAGE.es.md) para la lista completa de opciones.
 
 ---
 
@@ -442,14 +442,14 @@ redaudit/
 
 ### Solución de Problemas
 
-Para solución de problemas completa, consulta: 📖 **[Guía Completa de Solución de Problemas](docs/TROUBLESHOOTING.es.md)**
+Para solución de problemas completa, consulta: 📖 **[Guía Completa de Solución de Problemas](../docs/TROUBLESHOOTING.es.md)**
 
 **Enlaces Rápidos**:
 
-- [Problemas de Instalación](docs/TROUBLESHOOTING.es.md#1-permission-denied--root-privileges-required)
-- [Problemas de Escaneo](docs/TROUBLESHOOTING.es.md#5-scan-appears-frozen--long-pauses)
-- [Problemas de Network Discovery](docs/TROUBLESHOOTING.es.md#12-net-discovery-missing-tools--tool_missing-v32)
-- [Cifrado/Descifrado](docs/TROUBLESHOOTING.es.md#8-decryption-failed-invalid-token)
+- [Problemas de Instalación](../docs/TROUBLESHOOTING.es.md#1-permission-denied--root-privileges-required)
+- [Problemas de Escaneo](../docs/TROUBLESHOOTING.es.md#5-scan-appears-frozen--long-pauses)
+- [Problemas de Network Discovery](../docs/TROUBLESHOOTING.es.md#12-net-discovery-missing-tools--tool_missing-v32)
+- [Cifrado/Descifrado](../docs/TROUBLESHOOTING.es.md#8-decryption-failed-invalid-token)
 
 ### Logging
 
@@ -467,7 +467,7 @@ Consulta [CHANGELOG_ES.md](CHANGELOG_ES.md) para el historial completo de versio
 
 ## Licencia
 
-RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**. Consulta [LICENSE](LICENSE).
+RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**. Consulta [LICENSE](../LICENSE).
 
 ---
 
@@ -477,4 +477,4 @@ RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**. Cons
 
 ---
 
-[Documentación Completa](docs/INDEX.md) | [Esquema de Reporte](docs/REPORT_SCHEMA.es.md) | [Especificaciones de Seguridad](docs/SECURITY.es.md)
+[Documentación Completa](../docs/INDEX.md) | [Esquema de Reporte](../docs/REPORT_SCHEMA.es.md) | [Especificaciones de Seguridad](../docs/SECURITY.es.md)

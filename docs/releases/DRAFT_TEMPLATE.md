@@ -94,13 +94,13 @@ redaudit/core/
 
 Complete bilingual documentation (English/Spanish):
 
-- [README.md](../../README.md) / [README_ES.md](../../README_ES.md)
+- [README.md](../../README.md) / [README_ES.md](../../ES/README_ES.md)
 - [MANUAL (EN)](../MANUAL.en.md) / [MANUAL (ES)](../MANUAL.es.md)
 - [USAGE (EN)](../USAGE.en.md) / [USAGE (ES)](../USAGE.es.md)
 
 #### Links
 
-- **Full Changelog**: [CHANGELOG.md](../../CHANGELOG.md) / [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
+- **Full Changelog**: [CHANGELOG.md](../../CHANGELOG.md) / [CHANGELOG_ES.md](../../ES/CHANGELOG_ES.md)
 - **Release Notes**: [RELEASE_NOTES_v3.1.1.md](RELEASE_NOTES_v3.1.1.md) / [RELEASE_NOTES_v3.1.1_ES.md](RELEASE_NOTES_v3.1.1_ES.md)
 - **Security Specs**: [EN](../SECURITY.en.md) / [ES](../SECURITY.es.md)
 
@@ -198,12 +198,12 @@ redaudit/core/
 
 Documentación bilingüe (inglés/español):
 
-- [README.md](../../README.md) / [README_ES.md](../../README_ES.md)
+- [README.md](../../README.md) / [README_ES.md](../../ES/README_ES.md)
 - [MANUAL (EN)](../MANUAL.en.md) / [MANUAL (ES)](../MANUAL.es.md)
 - [USAGE (EN)](../USAGE.en.md) / [USAGE (ES)](../USAGE.es.md)
 
 #### Links
 
-- **Changelog completo**: [CHANGELOG.md](../../CHANGELOG.md) / [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
+- **Changelog completo**: [CHANGELOG.md](../../CHANGELOG.md) / [CHANGELOG_ES.md](../../ES/CHANGELOG_ES.md)
 - **Release Notes**: [RELEASE_NOTES_v3.1.1.md](RELEASE_NOTES_v3.1.1.md) / [RELEASE_NOTES_v3.1.1_ES.md](RELEASE_NOTES_v3.1.1_ES.md)
 - **Especificaciones de seguridad**: [EN](../SECURITY.en.md) / [ES](../SECURITY.es.md)
