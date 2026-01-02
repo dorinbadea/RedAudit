@@ -48,4 +48,4 @@ No se requieren cambios de configuracion.
 
 ---
 
-[Volver al README](../../README_ES.md) | [Registro completo](../../CHANGELOG_ES.md)
+[Volver al README](../../ES/README_ES.md) | [Registro completo](../../ES/CHANGELOG_ES.md)

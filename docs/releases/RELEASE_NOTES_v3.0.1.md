@@ -119,7 +119,7 @@ All 25+ documentation files synchronized to v3.0.1:
 
 **Version References Updated**:
 
-- `README.md` / `README_ES.md`: Version badge `3.0.1`
+- `README.md` / `ES/README_ES.md`: Version badge `3.0.1`
 - `MANUAL_EN.md` / `MANUAL_ES.md`: Header `v3.0.1`
 - `DIDACTIC_GUIDE.md` / `GUIA_DIDACTICA.md`: Version `v3.0.1` + TL;DR sections
 - `GITHUB_RELEASE.md`: New v3.0.1 section
@@ -129,7 +129,7 @@ All 25+ documentation files synchronized to v3.0.1:
 
 - `USAGE.en.md` / `USAGE_ES.md`: "CVE Correlation Setup" section
 - `SECURITY.en.md` / `SECURITY_ES.md`: "NVD API Key Storage (v3.0.1)" section
-- `CONTRIBUTING.md` / `CONTRIBUTING_ES.md`: Updated package structure with `config.py`
+- `CONTRIBUTING.md` / `ES/CONTRIBUTING_ES.md`: Updated package structure with `config.py`
 
 **Didactic Guide Enhancements**:
 
@@ -174,12 +174,12 @@ RedAudit still recommends `sudo`/root for full functionality, but now supports a
 
 **Documentation** (16 files updated):
 
-- Core: `README.md`, `README_ES.md`, `CHANGELOG.md`, `GITHUB_RELEASE.md`
+- Core: `README.md`, `ES/README_ES.md`, `CHANGELOG.md`, `GITHUB_RELEASE.md`
 - Manuals: `MANUAL_EN.md`, `MANUAL_ES.md`
 - Guides: `DIDACTIC_GUIDE.md`, `GUIA_DIDACTICA.md`
 - Usage: `USAGE.en.md`, `USAGE_ES.md`
 - Security: `SECURITY.en.md`, `SECURITY_ES.md`
-- Contributing: `CONTRIBUTING.md`, `CONTRIBUTING_ES.md`
+- Contributing: `CONTRIBUTING.md`, `ES/CONTRIBUTING_ES.md`
 - Release: `RELEASE_NOTES_v3.0.1.md` (THIS FILE)
 
 ---
@@ -245,7 +245,7 @@ For general troubleshooting, see [TROUBLESHOOTING.en.md](../TROUBLESHOOTING.en.m
 - **Full Changelog**: [CHANGELOG.md](../../CHANGELOG.md)
 - **Previous Release**: [RELEASE_NOTES_v3.0.0.md](RELEASE_NOTES_v3.0.0.md)
 - **Installation Guide**: [README.md#installation](../../README.md#installation)
-- **Security Policy**: [docs/en/SECURITY.en.md](../SECURITY.en.md)
+- **Security Policy**: [docs/SECURITY.en.md](../SECURITY.en.md)
 
 ---
 

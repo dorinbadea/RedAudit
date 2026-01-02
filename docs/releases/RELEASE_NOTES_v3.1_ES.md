@@ -75,8 +75,8 @@ redaudit/core/
 
 - **Changelog**: [CHANGELOG.md](../../CHANGELOG.md)
 - **GitHub Release Notes**: [GitHub Release Draft](DRAFT_TEMPLATE.md)
-- **Manual de usuario (EN)**: [docs/en/MANUAL.es.md](../MANUAL.es.md)
-- **Manual (ES)**: [docs/es/MANUAL.es.md](../MANUAL.es.md)
-- **Esquema de reporte (EN)**: [docs/en/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
-- **Esquema de reporte (ES)**: [docs/es/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
+- **Manual de usuario (EN)**: [docs/MANUAL.es.md](../MANUAL.es.md)
+- **Manual (ES)**: [docs/MANUAL.es.md](../MANUAL.es.md)
+- **Esquema de reporte (EN)**: [docs/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
+- **Esquema de reporte (ES)**: [docs/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
 - **Especificación de seguridad**: [EN](../SECURITY.es.md) / [ES](../SECURITY.es.md)

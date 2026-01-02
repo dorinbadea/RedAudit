@@ -34,4 +34,4 @@ Esta versión añade enriquecimiento de identidad opt-in y un escalado más estr
 
 ---
 
-**Changelog completo**: [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
+**Changelog completo**: [CHANGELOG_ES.md](../../ES/CHANGELOG_ES.md)

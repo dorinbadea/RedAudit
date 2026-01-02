@@ -29,5 +29,5 @@ progreso más estable (especialmente durante HyperScan en Net Discovery y en los
 
 ## Documentación
 
-- [Registro de cambios completo](CHANGELOG_ES.md)
+- [Registro de cambios completo](../../ES/CHANGELOG_ES.md)
 - [Roadmap](docs/ROADMAP.es.md)

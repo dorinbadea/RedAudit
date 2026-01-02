@@ -60,4 +60,4 @@ No se requieren cambios de configuración.
 
 ---
 
-[Volver al README](../../README_ES.md) | [Changelog completo](../../CHANGELOG_ES.md)
+[Volver al README](../../ES/README_ES.md) | [Changelog completo](../../ES/CHANGELOG_ES.md)

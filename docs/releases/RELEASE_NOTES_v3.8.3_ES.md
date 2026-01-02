@@ -51,4 +51,4 @@ Esta versión es compatible hacia atrás. No requiere cambios de configuración.
 
 ---
 
-**Registro completo:** [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
+**Registro completo:** [CHANGELOG_ES.md](../../ES/CHANGELOG_ES.md)

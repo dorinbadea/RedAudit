@@ -13,7 +13,7 @@
 - **Fecha Auditoría**: 2025-02-14
 - **Cobertura**: ~93.03% (Alta confianza)
 - **Estado**: Revisión interna best-effort. Sin vulnerabilidades críticas conocidas.
-- **Ver**: [SECURITY_AUDIT_ES.md](../SECURITY_AUDIT_ES.md) para detalles completos.
+- **Ver**: [SECURITY_AUDIT_ES.md](../ES/SECURITY_AUDIT_ES.md) para detalles completos.
 
 ## Visión General
 

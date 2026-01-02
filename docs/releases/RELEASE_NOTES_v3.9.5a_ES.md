@@ -68,4 +68,4 @@ redaudit --version
 
 ---
 
-**Changelog Completo**: [CHANGELOG_ES.md](../../CHANGELOG_ES.md)
+**Changelog Completo**: [CHANGELOG_ES.md](../../ES/CHANGELOG_ES.md)

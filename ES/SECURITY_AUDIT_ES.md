@@ -1,5 +1,7 @@
 # Auditoria de Seguridad (2025-02-14)
 
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](../SECURITY_AUDIT.md)
+
 ## Alcance
 
 - Revision del codigo y checks automatizados del proyecto RedAudit.

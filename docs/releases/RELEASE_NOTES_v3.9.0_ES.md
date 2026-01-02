@@ -92,6 +92,6 @@ pip install git+https://github.com/dorinbadea/RedAudit.git@v3.9.0
 
 ## Enlaces
 
-- [Changelog Completo](../../CHANGELOG_ES.md)
+- [Changelog Completo](../../ES/CHANGELOG_ES.md)
 - [Documentación](../../docs/INDEX.md)
 - [GitHub Releases](https://github.com/dorinbadea/RedAudit/releases)

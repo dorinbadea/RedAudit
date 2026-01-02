@@ -59,7 +59,7 @@ source ~/.bashrc  # or ~/.zshrc
 ## Documentation
 
 All documentation has been updated:
-- README.md / README_ES.md
+- README.md / ES/README_ES.md
 - MANUAL_EN.md / MANUAL_ES.md
 - USAGE.en.md / USAGE_ES.md
 - SECURITY.en.md
