@@ -10,13 +10,20 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [3.10.2] - 2026-01-04 (Detección VPN por Vendor y Fixes de Docs)
+
+### Añadido
+
+- **Detección VPN por Vendor OUI**: Nueva heurística en `entity_resolver.py` para clasificar dispositivos VPN/Firewall de 12 vendors conocidos (Palo Alto, Fortinet, Cisco, Juniper, SonicWall, Check Point, WatchGuard, Sophos, Pulse Secure, F5, Barracuda).
+
 ### Eliminado
 
 - **Flags zombie de prescan**: Eliminadas las flags CLI obsoletas `--prescan`, `--prescan-ports`, `--prescan-timeout` (superadas por HyperScan en v3.0).
 
 ### Cambiado
 
-- **Wording de Subnet Leak**: Renombrado "Detección de Fugas de Subred" a "Indicios de Fuga de Red" en README para reflejar el comportamiento real basado en DHCP.
+- **Wording de Subnet Leak**: Renombrado "Detección de Fugas de Subred" a "Indicios de Fuga de Red" en README.
+- **Descripción de detección VPN**: Actualizada de "heurísticas MAC" a "OUI de vendor" en toda la documentación.
 
 ### Documentación
 
