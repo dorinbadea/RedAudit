@@ -163,6 +163,21 @@ class InteractiveNetworkAuditor(
         self._setup_logging()
         signal.signal(signal.SIGINT, self.signal_handler)
 
+    # v4.0: Adapter property for gradual migration to ConfigurationContext
+    @property
+    def cfg(self):
+        """
+        Get typed ConfigurationContext wrapper (adapter pattern).
+
+        This allows gradual migration from dict access to typed properties.
+        Eventually, all config access will go through self.cfg instead of self.config.
+        """
+        if not hasattr(self, "_config_context"):
+            from redaudit.core.config_context import ConfigurationContext
+
+            self._config_context = ConfigurationContext(self.config)
+        return self._config_context
+
     # ---------- Reporting ----------
 
     def show_config_summary(self):
