@@ -286,25 +286,6 @@ Examples:
     )
     parser.add_argument("--version", "-V", action="version", version=f"RedAudit v{VERSION}")
 
-    # Pre-scan options (v2.7)
-    parser.add_argument(
-        "--prescan", action="store_true", help="Enable fast asyncio pre-scan before nmap"
-    )
-    parser.add_argument(
-        "--prescan-ports",
-        type=str,
-        default="1-1024",
-        metavar="RANGE",
-        help="Port range for pre-scan (default: 1-1024)",
-    )
-    parser.add_argument(
-        "--prescan-timeout",
-        type=float,
-        default=0.5,
-        metavar="SECONDS",
-        help="Pre-scan connection timeout (default: 0.5)",
-    )
-
     # v2.8.0 options
     parser.add_argument(
         "--udp-mode",
@@ -579,11 +560,6 @@ def configure_from_args(app, args) -> bool:
     if not isinstance(identity_threshold, int) or identity_threshold < 0:
         identity_threshold = DEFAULT_IDENTITY_THRESHOLD
     app.config["identity_threshold"] = identity_threshold
-
-    # Set pre-scan configuration (v2.7)
-    app.config["prescan_enabled"] = args.prescan
-    app.config["prescan_ports"] = args.prescan_ports
-    app.config["prescan_timeout"] = args.prescan_timeout
 
     # Set UDP mode (v2.8.0)
     app.config["udp_mode"] = args.udp_mode

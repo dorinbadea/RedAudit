@@ -219,9 +219,6 @@ Flags verificadas contra `redaudit --help` (v3.10.0):
 | `--low-impact-enrichment` | Enriquecimiento de bajo impacto (DNS/mDNS/SNMP) antes del escaneo TCP |
 | `--deep-scan-budget N` | Máximo de hosts que pueden ejecutar deep scan agresivo por ejecución (0 = sin límite) |
 | `--identity-threshold N` | Umbral mínimo de identity_score para omitir deep scan (defecto: 3) |
-| `--prescan` | Flag reservado (se guarda en config; no ejecuta pre-scan) |
-| `--prescan-ports RANGE` | Reservado (defecto: 1-1024) |
-| `--prescan-timeout SECONDS` | Reservado (defecto: 0.5) |
 | `--stealth` | Timing T1, 1 hilo, retardo 5s (entornos sensibles a la detección) |
 
 ### Escaneo UDP

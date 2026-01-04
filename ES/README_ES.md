@@ -65,7 +65,7 @@ sudo redaudit
 | **Búsqueda de Exploits** | Consultas automáticas a ExploitDB (`searchsploit`) para servicios detectados |
 | **Escaneo de Templates** | Templates Nuclei con comprobaciones best-effort de falsos positivos (cabeceras/vendor/título) |
 | **Filtro Smart-Check** | Reducción de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |
-| **Detección de Fugas de Subred** | Identifica redes ocultas vía análisis de redirects/cabeceras HTTP |
+| **Indicios de Fuga de Red** | Señala múltiples subredes/VLANs anunciadas por DHCP como posibles redes ocultas |
 
 ### Reportes e Integración
 
@@ -298,9 +298,13 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | `--topology` | Activar descubrimiento de topología |
 | `--net-discovery` | Descubrimiento L2/broadcast mejorado |
 | `--cve-lookup` | Correlación CVE via NVD API |
+| `--nvd-key KEY` | API key NVD para rate limits más rápidos |
 | `--diff OLD NEW` | Análisis diferencial entre escaneos |
 | `--html-report` | Generar dashboard HTML interactivo |
 | `--stealth` | Activar timing paranoid para entornos sensibles a IDS |
+| `--max-hosts N` | Limitar número de hosts a escanear |
+| `--no-deep-scan` | Deshabilitar deep scan adaptativo |
+| `--no-txt-report` | Omitir generación de reporte TXT |
 | `-y, --yes` | Omitir confirmaciones (modo automatización) |
 
 Consulta `redaudit --help` o [USAGE.md](../docs/USAGE.es.md) para la lista completa de opciones.

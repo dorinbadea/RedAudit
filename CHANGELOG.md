@@ -10,6 +10,19 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+### Removed
+
+- **Zombie prescan flags**: Removed deprecated `--prescan`, `--prescan-ports`, `--prescan-timeout` CLI flags (superseded by HyperScan in v3.0).
+
+### Changed
+
+- **Subnet Leak wording**: Renamed "Subnet Leak Detection" to "Network Leak Hints" in README to reflect actual DHCP-based behavior.
+
+### Documentation
+
+- Added `--max-hosts`, `--no-deep-scan`, `--no-txt-report`, `--nvd-key` to README CLI tables (EN/ES).
+- Removed prescan reserved flags from MANUAL (EN/ES).
+
 ## [3.10.1] - 2026-01-02 (Identity Consistency & Vendor Hints)
 
 ### Added

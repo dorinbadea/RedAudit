@@ -10,6 +10,19 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+### Eliminado
+
+- **Flags zombie de prescan**: Eliminadas las flags CLI obsoletas `--prescan`, `--prescan-ports`, `--prescan-timeout` (superadas por HyperScan en v3.0).
+
+### Cambiado
+
+- **Wording de Subnet Leak**: Renombrado "Detección de Fugas de Subred" a "Indicios de Fuga de Red" en README para reflejar el comportamiento real basado en DHCP.
+
+### Documentación
+
+- Añadidas `--max-hosts`, `--no-deep-scan`, `--no-txt-report`, `--nvd-key` a las tablas CLI del README (EN/ES).
+- Eliminadas las flags reservadas de prescan del MANUAL (EN/ES).
+
 ## [3.10.1] - 2026-01-02 (Consistencia de Identidad y Hints de Vendor)
 
 ### Añadido

@@ -69,7 +69,7 @@ sudo redaudit
 | **Exploit Lookup** | Automatic ExploitDB (`searchsploit`) queries for detected services |
 | **Template Scanning** | Nuclei templates with best-effort false-positive checks (header/vendor/title hints) |
 | **Smart-Check Filter** | 3-layer false positive reduction (Content-Type, size, magic bytes) |
-| **Subnet Leak Detection** | Identifies hidden networks via HTTP redirect/header analysis |
+| **Network Leak Hints** | Flags multiple DHCP-advertised subnets/VLANs as potential hidden networks |
 
 ### Reporting & Integration
 
@@ -300,9 +300,13 @@ redaudit --diff ~/reports/monday.json ~/reports/friday.json
 | `--topology` | Enable network topology discovery |
 | `--net-discovery` | Enhanced L2/broadcast discovery |
 | `--cve-lookup` | CVE correlation via NVD API |
+| `--nvd-key KEY` | NVD API key for faster rate limits |
 | `--diff OLD NEW` | Differential analysis between scans |
 | `--html-report` | Generate interactive HTML dashboard |
 | `--stealth` | Enable paranoid timing for IDS-sensitive environments |
+| `--max-hosts N` | Limit number of hosts to scan |
+| `--no-deep-scan` | Disable adaptive deep scan |
+| `--no-txt-report` | Skip TXT report generation |
 | `-y, --yes` | Skip confirmations (automation mode) |
 
 See `redaudit --help` or [USAGE.md](docs/USAGE.en.md) for the complete option list.

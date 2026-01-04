@@ -99,10 +99,6 @@ class InteractiveNetworkAuditor(
             "scan_vulnerabilities": True,
             "save_txt_report": True,
             "encryption_salt": None,
-            # Pre-scan config (v2.7)
-            "prescan_enabled": False,
-            "prescan_ports": "1-1024",
-            "prescan_timeout": 0.5,
             # UDP scan config (v2.8)
             "udp_mode": DEFAULT_UDP_MODE,
             "udp_top_ports": UDP_TOP_PORTS,

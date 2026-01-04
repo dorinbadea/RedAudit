@@ -223,9 +223,6 @@ Flags verified against `redaudit --help` (v3.10.0):
 | `--low-impact-enrichment` | Low-impact enrichment (DNS/mDNS/SNMP) before TCP scanning |
 | `--deep-scan-budget N` | Max hosts that can run aggressive deep scan per run (0 = unlimited) |
 | `--identity-threshold N` | Minimum identity_score to skip deep scan (default: 3) |
-| `--prescan` | Reserved flag (currently stored in config; no pre-scan executed) |
-| `--prescan-ports RANGE` | Reserved (default: 1-1024) |
-| `--prescan-timeout SECONDS` | Reserved (default: 0.5) |
 | `--stealth` | T1 timing, 1 thread, 5s delay (detection-sensitive environments) |
 
 ### UDP Scanning
