@@ -15,6 +15,9 @@ class TestDefaultsFlow(unittest.TestCase):
 
         # Make prompts deterministic by returning the key itself.
         app.t = lambda key, *args: key
+        # Mock UI manager translation as well (v4.0 composition)
+        if hasattr(app, "ui"):
+            app.ui.t = lambda key, *args: key
 
         asked = []
 

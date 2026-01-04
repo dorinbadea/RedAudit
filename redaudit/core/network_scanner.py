@@ -300,17 +300,17 @@ class NetworkScanner:
     @staticmethod
     def sanitize_ip(ip_str: str) -> str:
         """Sanitize IP address string."""
-        if not ip_str:
+        if ip_str is None:
             return ""
         try:
-            return str(ipaddress.ip_address(ip_str.strip()))
+            return str(ipaddress.ip_address(str(ip_str).strip()))
         except ValueError:
             return ""
 
     @staticmethod
     def sanitize_hostname(hostname: str) -> str:
         """Sanitize hostname string."""
-        if not hostname:
+        if not isinstance(hostname, str) or not hostname:
             return ""
         # Remove dangerous characters
         cleaned = re.sub(r"[^\w\.\-]", "", str(hostname))

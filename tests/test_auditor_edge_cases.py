@@ -117,7 +117,7 @@ def test_run_complete_scan_no_setup(tmp_path):
         with patch.object(auditor, "scan_network_discovery", return_value=["1.1.1.1"]):
             with patch.object(auditor, "scan_hosts_concurrent", return_value=[{"ip": "1.1.1.1"}]):
                 with patch.object(auditor, "save_results"):
-                    with patch.object(auditor, "detect_all_networks"):
+                    with patch.object(auditor.scanner, "detect_local_networks"):
                         # Ensure net_discovery is enabled to reach that path
                         auditor.config["net_discovery_enabled"] = True
                         # Completo mode triggers discover_networks
