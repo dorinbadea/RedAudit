@@ -108,3 +108,118 @@ def test_configure_scan_interactive_exhaustive_profile(monkeypatch, tmp_path):
     assert app.config["cve_lookup_enabled"] is False
     # Stealth timing
     assert app.rate_limit_delay == 2.0
+
+
+def test_interactive_setup_with_defaults_use(monkeypatch, tmp_path):
+    """Test interactive_setup with 'use defaults' option."""
+    app = InteractiveNetworkAuditor()
+    app.defaults_mode = "ask"
+
+    # Mock persisted defaults
+    persisted = {
+        "lang": "en",
+        "target_networks": ["192.168.1.0/24"],
+        "threads": 8,
+        "output_dir": str(tmp_path),
+        "scan_mode": "normal",
+    }
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", lambda: persisted)
+    monkeypatch.setattr(app, "clear_screen", lambda: None)
+    monkeypatch.setattr(app, "print_banner", lambda: None)
+    monkeypatch.setattr(app, "check_dependencies", lambda: True)
+    monkeypatch.setattr(app, "show_legal_warning", lambda: True)
+    monkeypatch.setattr(app, "show_config_summary", lambda: None)
+
+    # Choose "Use defaults and start" (choice 0)
+    monkeypatch.setattr(app, "ask_choice", lambda *a, **kw: 0)
+    monkeypatch.setattr(app, "print_status", lambda *a, **kw: None)
+
+    result = app.interactive_setup()
+
+    assert result is True
+    assert app.config["target_networks"] == ["192.168.1.0/24"]
+
+
+def test_interactive_setup_with_defaults_ignore(monkeypatch, tmp_path):
+    """Test interactive_setup with 'ignore defaults' option."""
+    app = InteractiveNetworkAuditor()
+    app.defaults_mode = "ignore"
+
+    persisted = {"lang": "en", "target_networks": ["10.0.0.0/8"]}
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", lambda: persisted)
+    monkeypatch.setattr(app, "clear_screen", lambda: None)
+    monkeypatch.setattr(app, "print_banner", lambda: None)
+    monkeypatch.setattr(app, "check_dependencies", lambda: True)
+    monkeypatch.setattr(app, "show_legal_warning", lambda: True)
+    monkeypatch.setattr(app, "show_config_summary", lambda: None)
+    monkeypatch.setattr(app, "ask_network_range", lambda: ["172.16.0.0/16"])
+    monkeypatch.setattr(app, "_configure_scan_interactive", lambda d: None)
+    monkeypatch.setattr(app, "ask_yes_no", lambda *a, **kw: True)  # Start scan
+    monkeypatch.setattr(app, "print_status", lambda *a, **kw: None)
+
+    result = app.interactive_setup()
+
+    assert result is True
+
+
+def test_interactive_setup_legal_rejected(monkeypatch):
+    """Test interactive_setup returns False when legal warning rejected."""
+    app = InteractiveNetworkAuditor()
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", lambda: {})
+    monkeypatch.setattr(app, "clear_screen", lambda: None)
+    monkeypatch.setattr(app, "print_banner", lambda: None)
+    monkeypatch.setattr(app, "check_dependencies", lambda: True)
+    monkeypatch.setattr(app, "show_legal_warning", lambda: False)
+
+    result = app.interactive_setup()
+
+    assert result is False
+
+
+def test_interactive_setup_dependencies_fail(monkeypatch):
+    """Test interactive_setup returns False when dependencies fail."""
+    app = InteractiveNetworkAuditor()
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", lambda: {})
+    monkeypatch.setattr(app, "clear_screen", lambda: None)
+    monkeypatch.setattr(app, "print_banner", lambda: None)
+    monkeypatch.setattr(app, "check_dependencies", lambda: False)
+
+    result = app.interactive_setup()
+
+    assert result is False
+
+
+def test_interactive_setup_save_defaults(monkeypatch, tmp_path):
+    """Test saving defaults during interactive_setup."""
+    app = InteractiveNetworkAuditor()
+    app.defaults_mode = "ask"
+
+    persisted = {}
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", lambda: persisted)
+    monkeypatch.setattr(app, "clear_screen", lambda: None)
+    monkeypatch.setattr(app, "print_banner", lambda: None)
+    monkeypatch.setattr(app, "check_dependencies", lambda: True)
+    monkeypatch.setattr(app, "show_legal_warning", lambda: True)
+    monkeypatch.setattr(app, "show_config_summary", lambda: None)
+    monkeypatch.setattr(app, "ask_network_range", lambda: ["10.0.0.0/24"])
+    monkeypatch.setattr(app, "_configure_scan_interactive", lambda d: None)
+    monkeypatch.setattr(app, "print_status", lambda *a, **kw: None)
+
+    # First yes_no is save_defaults, second is start_audit
+    yes_no_iter = iter([True, True])
+    monkeypatch.setattr(app, "ask_yes_no", lambda *a, **kw: next(yes_no_iter))
+
+    save_called = []
+    monkeypatch.setattr(
+        "redaudit.utils.config.update_persistent_defaults",
+        lambda **kw: save_called.append(True) or True,
+    )
+
+    result = app.interactive_setup()
+
+    assert result is True
+    assert len(save_called) == 1
