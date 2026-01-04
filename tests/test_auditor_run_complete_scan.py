@@ -4,6 +4,7 @@ RedAudit - Tests for run_complete_scan orchestration.
 """
 
 from contextlib import contextmanager
+from unittest.mock import MagicMock
 
 from redaudit.core.auditor import InteractiveNetworkAuditor
 
@@ -30,6 +31,7 @@ def _noop_cm():
 def test_run_complete_scan_orchestration(tmp_path, monkeypatch):
     app = InteractiveNetworkAuditor()
     app.logger = _Logger()
+    app.scanner = MagicMock()
     app.config["target_networks"] = ["10.0.0.0/24"]
     app.config["output_dir"] = str(tmp_path)
     app.config["topology_enabled"] = True
@@ -80,6 +82,7 @@ def test_run_complete_scan_topology_only(tmp_path, monkeypatch):
     """Test topology-only mode exits early."""
     app = InteractiveNetworkAuditor()
     app.logger = _Logger()
+    app.scanner = MagicMock()
     app.config["target_networks"] = ["10.0.0.0/24"]
     app.config["output_dir"] = str(tmp_path)
     app.config["topology_enabled"] = True
@@ -110,6 +113,7 @@ def test_run_complete_scan_no_hosts(tmp_path, monkeypatch):
     """Test scan returns False when no hosts found."""
     app = InteractiveNetworkAuditor()
     app.logger = _Logger()
+    app.scanner = MagicMock()
     app.config["target_networks"] = ["10.0.0.0/24"]
     app.config["output_dir"] = str(tmp_path)
     app.config["prevent_sleep"] = False
@@ -130,6 +134,7 @@ def test_run_complete_scan_with_nuclei(tmp_path, monkeypatch):
     """Test nuclei integration branch."""
     app = InteractiveNetworkAuditor()
     app.logger = _Logger()
+    app.scanner = MagicMock()
     app.config["target_networks"] = ["10.0.0.0/24"]
     app.config["output_dir"] = str(tmp_path)
     app.config["scan_mode"] = "completo"
@@ -164,6 +169,11 @@ def test_run_complete_scan_with_nuclei(tmp_path, monkeypatch):
         lambda **kw: {"success": True, "findings": [{"template_id": "test", "matched_at": "x"}]},
     )
 
+    monkeypatch.setattr(
+        "redaudit.core.net_discovery.discover_networks",
+        lambda *_args, **_kwargs: {},
+    )
+
     assert app.run_complete_scan() is True
 
 
@@ -171,6 +181,7 @@ def test_run_complete_scan_cve_lookup(tmp_path, monkeypatch):
     """Test CVE lookup integration branch."""
     app = InteractiveNetworkAuditor()
     app.logger = _Logger()
+    app.scanner = MagicMock()
     app.config["target_networks"] = ["10.0.0.0/24"]
     app.config["output_dir"] = str(tmp_path)
     app.config["cve_lookup_enabled"] = True
@@ -205,6 +216,7 @@ def test_run_complete_scan_interrupted(tmp_path, monkeypatch):
     """Test interrupted scan handling."""
     app = InteractiveNetworkAuditor()
     app.logger = _Logger()
+    app.scanner = MagicMock()
     app.config["target_networks"] = ["10.0.0.0/24"]
     app.config["output_dir"] = str(tmp_path)
     app.config["prevent_sleep"] = False
@@ -218,6 +230,11 @@ def test_run_complete_scan_interrupted(tmp_path, monkeypatch):
 
     monkeypatch.setattr("redaudit.core.auditor.maybe_chown_to_invoking_user", lambda *a, **kw: None)
     monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **kw: None)
+
+    monkeypatch.setattr(
+        "redaudit.core.net_discovery.discover_networks",
+        lambda *_args, **_kwargs: {},
+    )
 
     # Interrupted with no hosts should still return False
     assert app.run_complete_scan() is False

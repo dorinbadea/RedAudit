@@ -167,6 +167,8 @@ class AuditorScanMixin:
             ip = sanitize_ip(value)
             if ip:
                 ips.add(ip)
+                # v4.0: Ensure Host object exists in scanner
+                self.scanner.get_or_create_host(ip)
 
         for ip in discovery.get("alive_hosts", []) or []:
             _add_ip(ip)

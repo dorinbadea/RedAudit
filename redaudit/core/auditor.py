@@ -602,7 +602,9 @@ class InteractiveNetworkAuditor(
             if max_val != "all" and isinstance(max_val, int):
                 all_hosts = all_hosts[:max_val]
 
-            results = self.scan_hosts_concurrent(all_hosts)
+            # v4.0: Pass Host objects to scanning engine
+            host_targets = [self.scanner.get_or_create_host(ip) for ip in all_hosts]
+            results = self.scan_hosts_concurrent(host_targets)
 
             # v3.8: Agentless Windows verification (SMB/RDP/LDAP) - opt-in
             if not self.interrupted:
