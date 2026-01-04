@@ -54,79 +54,159 @@ class NetworkScanner:
     # Identity Scoring (Pure Logic - No I/O)
     # -------------------------------------------------------------------------
 
-    def compute_identity_score(self, host_record: Dict[str, Any]) -> Tuple[int, List[str]]:
+    def compute_identity_score(
+        self,
+        host_record: Dict[str, Any],
+        net_discovery_results: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[int, List[str]]:
         """
-        Compute identity confidence score for a host.
+        Compute identity confidence score and enrich device_type_hints.
+        (Migrated from AuditorScanMixin analysis logic).
+        """
+        if net_discovery_results is None:
+            net_discovery_results = {}
 
-        Returns:
-            Tuple of (score, list of reasons)
-        """
         score = 0
-        reasons = []
-
-        # --- MAC-derived identity ---
-        mac = host_record.get("mac") or ""
-        vendor = host_record.get("vendor") or ""
-
-        if mac and mac.upper() not in ("UNKNOWN", ""):
-            score += 10
-            reasons.append("mac_present")
-
-            if vendor and vendor.lower() not in ("unknown", ""):
-                score += 15
-                reasons.append(f"vendor:{vendor[:20]}")
-
-        # --- Hostname quality ---
-        hostname = host_record.get("hostname") or ""
-        if hostname:
-            hostname_lower = hostname.lower()
-            # Weak: just reverse DNS
-            if hostname_lower.startswith("dhcp") or hostname_lower.startswith("ip-"):
-                score += 5
-                reasons.append("hostname_weak")
-            # Strong: appears to be a real name
-            elif "." in hostname or len(hostname) > 6:
-                score += 20
-                reasons.append("hostname_strong")
-            else:
-                score += 10
-                reasons.append("hostname_present")
-
-        # --- Port/service richness ---
+        signals: List[str] = []
         ports = host_record.get("ports") or []
-        if isinstance(ports, list):
-            open_ports = [p for p in ports if p.get("state") == "open"]
-            num_open = len(open_ports)
+        device_type_hints: List[str] = []
 
-            if num_open >= 5:
-                score += 15
-                reasons.append(f"ports:{num_open}")
-            elif num_open >= 2:
-                score += 10
-                reasons.append(f"ports:{num_open}")
-            elif num_open >= 1:
-                score += 5
-                reasons.append(f"ports:{num_open}")
+        if host_record.get("hostname"):
+            score += 1
+            signals.append("hostname")
+        if any(p.get("product") or p.get("version") for p in ports):
+            score += 1
+            signals.append("service_version")
+        if any(p.get("cpe") for p in ports):
+            score += 1
+            signals.append("cpe")
 
-            # Check for version info
-            has_version = any(p.get("version") for p in open_ports)
-            if has_version:
-                score += 10
-                reasons.append("version_info")
+        deep_meta = host_record.get("deep_scan") or {}
+        if deep_meta.get("mac_address") or deep_meta.get("vendor"):
+            score += 1
+            signals.append("mac_vendor")
+            vendor_lower = str(deep_meta.get("vendor") or "").lower()
+            if any(
+                x in vendor_lower
+                for x in ("apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus")
+            ):
+                device_type_hints.append("mobile")
+            elif any(
+                x in vendor_lower for x in ("hp", "canon", "epson", "brother", "lexmark", "xerox")
+            ):
+                device_type_hints.append("printer")
+            elif any(
+                x in vendor_lower
+                for x in ("philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo")
+            ):
+                device_type_hints.append("iot_lighting")
+            elif "tuya" in vendor_lower:
+                device_type_hints.append("iot")
+            elif any(
+                x in vendor_lower
+                for x in (
+                    "avm",
+                    "fritz",
+                    "cisco",
+                    "juniper",
+                    "mikrotik",
+                    "ubiquiti",
+                    "netgear",
+                    "dlink",
+                    "asus",
+                    "linksys",
+                    "tp-link",
+                    "sercomm",
+                    "sagemcom",
+                )
+            ):
+                device_type_hints.append("router")
+            elif any(
+                x in vendor_lower for x in ("google", "amazon", "roku", "lg", "sony", "vizio")
+            ):
+                device_type_hints.append("smart_tv")
 
-        # --- OS detection ---
-        os_info = host_record.get("os_detection") or ""
-        if os_info and os_info.lower() not in ("unknown", ""):
-            score += 15
-            reasons.append("os_detected")
+        hostname_lower = str(host_record.get("hostname") or "").lower()
+        if any(x in hostname_lower for x in ("iphone", "ipad", "ipod", "macbook", "imac")):
+            if "mobile" not in device_type_hints:
+                device_type_hints.append("mobile")
+        elif any(x in hostname_lower for x in ("android", "galaxy", "pixel", "oneplus")):
+            if "mobile" not in device_type_hints:
+                device_type_hints.append("mobile")
 
-        # --- Smart scan hints ---
-        smart = host_record.get("smart_scan") or {}
-        if smart.get("classification"):
-            score += 10
-            reasons.append(f"classified:{smart['classification']}")
+        if host_record.get("os_detected") or deep_meta.get("os_detected"):
+            score += 1
+            signals.append("os_detected")
+        if any(p.get("banner") for p in ports):
+            score += 1
+            signals.append("banner")
 
-        return score, reasons
+        nd_hosts_ips = set()
+        for h in net_discovery_results.get("arp_hosts", []) or []:
+            nd_hosts_ips.add(h.get("ip"))
+        for h in net_discovery_results.get("upnp_devices", []) or []:
+            nd_hosts_ips.add(h.get("ip"))
+        for svc in net_discovery_results.get("mdns_services", []):
+            for addr in svc.get("addresses", []):
+                nd_hosts_ips.add(addr)
+
+        if host_record.get("ip") in nd_hosts_ips:
+            score += 1
+            signals.append("net_discovery")
+
+        for upnp in net_discovery_results.get("upnp_devices", []) or []:
+            if upnp.get("ip") == host_record.get("ip"):
+                upnp_type = str(upnp.get("device_type") or upnp.get("st") or "").lower()
+                if "router" in upnp_type or "gateway" in upnp_type:
+                    device_type_hints.append("router")
+                    score += 1
+                    signals.append("upnp_router")
+                elif "printer" in upnp_type:
+                    device_type_hints.append("printer")
+                elif "mediarenderer" in upnp_type or "mediaplayer" in upnp_type:
+                    device_type_hints.append("smart_tv")
+                break
+
+        for svc in net_discovery_results.get("mdns_services", []):
+            if host_record.get("ip") in svc.get("addresses", []):
+                svc_type = str(svc.get("type") or "").lower()
+                if "_ipp" in svc_type or "_printer" in svc_type:
+                    device_type_hints.append("printer")
+                elif "_airplay" in svc_type or "_raop" in svc_type:
+                    device_type_hints.append("apple_device")
+                elif "_googlecast" in svc_type:
+                    device_type_hints.append("chromecast")
+                elif "_hap" in svc_type or "_homekit" in svc_type:
+                    device_type_hints.append("homekit")
+
+        for p in ports:
+            svc = str(p.get("service") or "").lower()
+            prod = str(p.get("product") or "").lower()
+            if any(x in svc or x in prod for x in ("ipp", "printer", "cups")):
+                device_type_hints.append("printer")
+            elif any(x in svc or x in prod for x in ("router", "mikrotik", "routeros")):
+                device_type_hints.append("router")
+            elif "esxi" in prod or "vmware" in prod or "vcenter" in prod:
+                device_type_hints.append("hypervisor")
+
+        agentless = host_record.get("agentless_fingerprint") or {}
+        if agentless.get("http_title") or agentless.get("http_server"):
+            score += 1
+            signals.append("http_probe")
+
+        phase0 = host_record.get("phase0_enrichment") or {}
+        if phase0.get("dns_reverse"):
+            score += 1
+            signals.append("dns_reverse")
+        if phase0.get("mdns_name"):
+            score += 1
+            signals.append("mdns_name")
+        if phase0.get("snmp_sysDescr"):
+            score += 1
+            signals.append("snmp_sysDescr")
+
+        host_record["device_type_hints"] = list(set(device_type_hints))
+        return score, signals
 
     def should_trigger_deep_scan(
         self,

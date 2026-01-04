@@ -58,6 +58,7 @@ from redaudit.core.reporter import (
     show_results_summary,
 )
 from redaudit.core.config_context import ConfigurationContext
+from redaudit.core.network_scanner import NetworkScanner
 
 
 class InteractiveNetworkAuditor(
@@ -121,6 +122,7 @@ class InteractiveNetworkAuditor(
         from redaudit.core.ui_manager import UIManager
 
         self._ui_manager = UIManager(lang=self.lang, colors=self.COLORS, logger=self.logger)
+        self.scanner = NetworkScanner(self.cfg, self._ui_manager, self.logger)
 
         signal.signal(signal.SIGINT, self.signal_handler)
 

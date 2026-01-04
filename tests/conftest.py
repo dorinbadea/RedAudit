@@ -9,6 +9,9 @@ import logging
 import pytest
 from unittest.mock import MagicMock, patch
 
+from redaudit.core.config_context import ConfigurationContext
+from redaudit.core.network_scanner import NetworkScanner
+
 
 # ==============================================================================
 # Mock Classes for Mixin Testing
@@ -30,6 +33,8 @@ class MockAuditorBase:
             "windows_verify_enabled": False,
             "udp_mode": "quick",
         }
+        self.cfg = ConfigurationContext(self.config)
+
         self.logger = MagicMock(spec=logging.Logger)
         self.results = {}
         self.extra_tools = {"nmap": "/usr/bin/nmap"}
@@ -51,6 +56,9 @@ class MockAuditorBase:
         self.ui.colors = self.COLORS
         self.ui.t.side_effect = self.t
         self.ui.print_status = MagicMock()
+
+        # v4.0 Scanner Composition
+        self.scanner = NetworkScanner(self.cfg, self.ui, self.logger)
 
     def print_status(self, msg, status_type="info", **kwargs):
         pass

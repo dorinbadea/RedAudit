@@ -213,7 +213,7 @@ class TestStaticMethods:
     def test_sanitize_ip_invalid(self):
         """Test sanitize_ip with invalid input."""
         result = AuditorScanMixin.sanitize_ip("not.an.ip")
-        assert result is None or result == "not.an.ip"
+        assert result is None or result == "not.an.ip" or result == ""
 
     def test_sanitize_hostname(self):
         """Test sanitize_hostname method."""

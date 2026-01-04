@@ -48,6 +48,7 @@ from redaudit.core.scanner import (
     stop_background_capture,
 )
 from redaudit.core.udp_probe import run_udp_probe
+from redaudit.core.network_scanner import NetworkScanner
 from redaudit.utils.constants import (
     DEFAULT_IDENTITY_THRESHOLD,
     DEFAULT_UDP_MODE,
@@ -77,34 +78,12 @@ class AuditorScanMixin:
     logger: Optional[logging.Logger]
     rate_limit_delay: float
     interrupted: bool
+    scanner: NetworkScanner
 
     if TYPE_CHECKING:
 
         def _coerce_text(self, value: object) -> str:
             raise NotImplementedError
-
-    # v4.0: Adapter property for gradual migration to NetworkScanner
-    @property
-    def scanner(self):
-        """
-        Get NetworkScanner instance (adapter pattern).
-
-        This allows gradual migration from mixin methods to composed scanner.
-        Eventually, scanning logic will go through self.scanner.
-        """
-        if not hasattr(self, "_network_scanner"):
-            from redaudit.core.config_context import ConfigurationContext
-            from redaudit.core.network_scanner import NetworkScanner
-            from redaudit.core.ui_manager import UIManager
-
-            cfg = ConfigurationContext(self.config)
-            ui = UIManager(
-                lang=getattr(self, "lang", "en"),
-                colors=getattr(self, "COLORS", None),
-                logger=self.logger,
-            )
-            self._network_scanner = NetworkScanner(cfg, ui, self.logger)
-        return self._network_scanner
 
     # ---------- Dependencies ----------
 
@@ -314,12 +293,12 @@ class AuditorScanMixin:
     @staticmethod
     def sanitize_ip(ip_str):
         """Sanitize and validate IP address."""
-        return sanitize_ip(ip_str)
+        return NetworkScanner.sanitize_ip(ip_str)
 
     @staticmethod
     def sanitize_hostname(hostname):
         """Sanitize and validate hostname."""
-        return sanitize_hostname(hostname)
+        return NetworkScanner.sanitize_hostname(hostname)
 
     def is_web_service(self, name):
         """Check if service is web-related."""
@@ -585,148 +564,10 @@ class AuditorScanMixin:
         return match.group(1) if match else ""
 
     def _compute_identity_score(self, host_record: Dict[str, Any]) -> Tuple[int, List[str]]:
-        score = 0
-        signals: List[str] = []
-        ports = host_record.get("ports") or []
-        device_type_hints: List[str] = []
-
-        if host_record.get("hostname"):
-            score += 1
-            signals.append("hostname")
-        if any(p.get("product") or p.get("version") for p in ports):
-            score += 1
-            signals.append("service_version")
-        if any(p.get("cpe") for p in ports):
-            score += 1
-            signals.append("cpe")
-
-        deep_meta = host_record.get("deep_scan") or {}
-        if deep_meta.get("mac_address") or deep_meta.get("vendor"):
-            score += 1
-            signals.append("mac_vendor")
-            vendor_lower = str(deep_meta.get("vendor") or "").lower()
-            if any(
-                x in vendor_lower
-                for x in ("apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus")
-            ):
-                device_type_hints.append("mobile")
-            elif any(
-                x in vendor_lower for x in ("hp", "canon", "epson", "brother", "lexmark", "xerox")
-            ):
-                device_type_hints.append("printer")
-            elif any(
-                x in vendor_lower
-                for x in ("philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo")
-            ):
-                device_type_hints.append("iot_lighting")
-            elif "tuya" in vendor_lower:
-                device_type_hints.append("iot")
-            elif any(
-                x in vendor_lower
-                for x in (
-                    "avm",
-                    "fritz",
-                    "cisco",
-                    "juniper",
-                    "mikrotik",
-                    "ubiquiti",
-                    "netgear",
-                    "dlink",
-                    "asus",
-                    "linksys",
-                    "tp-link",
-                    "sercomm",
-                    "sagemcom",
-                )
-            ):
-                device_type_hints.append("router")
-            elif any(
-                x in vendor_lower for x in ("google", "amazon", "roku", "lg", "sony", "vizio")
-            ):
-                device_type_hints.append("smart_tv")
-
-        hostname_lower = str(host_record.get("hostname") or "").lower()
-        if any(x in hostname_lower for x in ("iphone", "ipad", "ipod", "macbook", "imac")):
-            if "mobile" not in device_type_hints:
-                device_type_hints.append("mobile")
-        elif any(x in hostname_lower for x in ("android", "galaxy", "pixel", "oneplus")):
-            if "mobile" not in device_type_hints:
-                device_type_hints.append("mobile")
-
-        if host_record.get("os_detected") or deep_meta.get("os_detected"):
-            score += 1
-            signals.append("os_detected")
-        if any(p.get("banner") for p in ports):
-            score += 1
-            signals.append("banner")
-
+        """Compute identity/confidence score (delegated to NetworkScanner)."""
         nd_results = self.results.get("net_discovery") or {}
-        nd_hosts_ips = set()
-        for h in nd_results.get("arp_hosts", []) or []:
-            nd_hosts_ips.add(h.get("ip"))
-        for h in nd_results.get("upnp_devices", []) or []:
-            nd_hosts_ips.add(h.get("ip"))
-        for svc in nd_results.get("mdns_services", []):
-            for addr in svc.get("addresses", []):
-                nd_hosts_ips.add(addr)
-
-        if host_record.get("ip") in nd_hosts_ips:
-            score += 1
-            signals.append("net_discovery")
-
-        for upnp in nd_results.get("upnp_devices", []) or []:
-            if upnp.get("ip") == host_record.get("ip"):
-                upnp_type = str(upnp.get("device_type") or upnp.get("st") or "").lower()
-                if "router" in upnp_type or "gateway" in upnp_type:
-                    device_type_hints.append("router")
-                    score += 1
-                    signals.append("upnp_router")
-                elif "printer" in upnp_type:
-                    device_type_hints.append("printer")
-                elif "mediarenderer" in upnp_type or "mediaplayer" in upnp_type:
-                    device_type_hints.append("smart_tv")
-                break
-
-        for svc in nd_results.get("mdns_services", []):
-            if host_record.get("ip") in svc.get("addresses", []):
-                svc_type = str(svc.get("type") or "").lower()
-                if "_ipp" in svc_type or "_printer" in svc_type:
-                    device_type_hints.append("printer")
-                elif "_airplay" in svc_type or "_raop" in svc_type:
-                    device_type_hints.append("apple_device")
-                elif "_googlecast" in svc_type:
-                    device_type_hints.append("chromecast")
-                elif "_hap" in svc_type or "_homekit" in svc_type:
-                    device_type_hints.append("homekit")
-
-        for p in ports:
-            svc = str(p.get("service") or "").lower()
-            prod = str(p.get("product") or "").lower()
-            if any(x in svc or x in prod for x in ("ipp", "printer", "cups")):
-                device_type_hints.append("printer")
-            elif any(x in svc or x in prod for x in ("router", "mikrotik", "routeros")):
-                device_type_hints.append("router")
-            elif "esxi" in prod or "vmware" in prod or "vcenter" in prod:
-                device_type_hints.append("hypervisor")
-
-        agentless = host_record.get("agentless_fingerprint") or {}
-        if agentless.get("http_title") or agentless.get("http_server"):
-            score += 1
-            signals.append("http_probe")
-
-        phase0 = host_record.get("phase0_enrichment") or {}
-        if phase0.get("dns_reverse"):
-            score += 1
-            signals.append("dns_reverse")
-        if phase0.get("mdns_name"):
-            score += 1
-            signals.append("mdns_name")
-        if phase0.get("snmp_sysDescr"):
-            score += 1
-            signals.append("snmp_sysDescr")
-
-        host_record["device_type_hints"] = list(set(device_type_hints))
-        return score, signals
+        # v4.0: Usage of composed NetworkScanner
+        return self.scanner.compute_identity_score(host_record, nd_results)
 
     def _should_trigger_deep(
         self,
