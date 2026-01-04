@@ -10,25 +10,26 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
-## [3.10.2] - 2026-01-04 (VPN Vendor Detection & Doc Fixes)
+## [3.10.2] - 2026-01-04 (Auditor Node & MAC Display Fix)
 
 ### Added
 
-- **VPN Vendor OUI Detection**: New heuristic in `entity_resolver.py` to classify VPN/Firewall devices from 12 known vendors (Palo Alto, Fortinet, Cisco, Juniper, SonicWall, Check Point, WatchGuard, Sophos, Pulse Secure, F5, Barracuda).
+- **Auditor Node Detection**: Scanner's own network interfaces are now marked as `(Auditor Node)` / `(Nodo Auditor)` in HTML reports instead of `-` for MAC column.
+- **Architecture Foundation (Internal)**: Preparatory work for v4.0 modular architecture:
+  - `UIManager` standalone class for UI operations
+  - `ConfigurationContext` typed wrapper for configuration
+  - `NetworkScanner` with identity scoring utilities
+  - Adapter properties for backward compatibility
 
-### Removed
+### Fixed
 
-- **Zombie prescan flags**: Removed deprecated `--prescan`, `--prescan-ports`, `--prescan-timeout` CLI flags (superseded by HyperScan in v3.0).
-
-### Changed
-
-- **Subnet Leak wording**: Renamed "Subnet Leak Detection" to "Network Leak Hints" in README to reflect actual DHCP-based behavior.
-- **VPN detection description**: Updated from "MAC heuristics" to "vendor OUI matching" across all docs.
+- **MAC Address Display**: Fixed bug where MAC addresses were not showing in HTML reports despite being captured correctly. Root cause: key mismatch (`host.get("mac")` vs `host.get("mac_address")`).
 
 ### Documentation
 
-- Added `--max-hosts`, `--no-deep-scan`, `--no-txt-report`, `--nvd-key` to README CLI tables (EN/ES).
-- Removed prescan reserved flags from MANUAL (EN/ES).
+- VPN Vendor OUI Detection heuristic documentation
+- Subnet Leak wording updated to "Network Leak Hints"
+- Added missing CLI flags to README tables
 
 ## [3.10.1] - 2026-01-02 (Identity Consistency & Vendor Hints)
 

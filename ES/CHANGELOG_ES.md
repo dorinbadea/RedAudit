@@ -10,25 +10,26 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
-## [3.10.2] - 2026-01-04 (Detección VPN por Vendor y Fixes de Docs)
+## [3.10.2] - 2026-01-04 (Nodo Auditor y Corrección de MAC)
 
 ### Añadido
 
-- **Detección VPN por Vendor OUI**: Nueva heurística en `entity_resolver.py` para clasificar dispositivos VPN/Firewall de 12 vendors conocidos (Palo Alto, Fortinet, Cisco, Juniper, SonicWall, Check Point, WatchGuard, Sophos, Pulse Secure, F5, Barracuda).
+- **Detección de Nodo Auditor**: Las interfaces de red propias del escáner ahora se marcan como `(Nodo Auditor)` en los informes HTML en lugar de `-` en la columna MAC.
+- **Fundamentos de Arquitectura (Interno)**: Trabajo preparatorio para arquitectura modular v4.0:
+  - Clase `UIManager` independiente para operaciones de UI
+  - `ConfigurationContext` envoltorio tipado para configuración
+  - `NetworkScanner` con utilidades de puntuación de identidad
+  - Propiedades adaptador para compatibilidad hacia atrás
 
-### Eliminado
+### Corregido
 
-- **Flags zombie de prescan**: Eliminadas las flags CLI obsoletas `--prescan`, `--prescan-ports`, `--prescan-timeout` (superadas por HyperScan en v3.0).
-
-### Cambiado
-
-- **Wording de Subnet Leak**: Renombrado "Detección de Fugas de Subred" a "Indicios de Fuga de Red" en README.
-- **Descripción de detección VPN**: Actualizada de "heurísticas MAC" a "OUI de vendor" en toda la documentación.
+- **Visualización de MAC**: Corregido bug donde las direcciones MAC no aparecían en los informes HTML a pesar de capturarse correctamente. Causa raíz: discrepancia de clave (`host.get("mac")` vs `host.get("mac_address")`).
 
 ### Documentación
 
-- Añadidas `--max-hosts`, `--no-deep-scan`, `--no-txt-report`, `--nvd-key` a las tablas CLI del README (EN/ES).
-- Eliminadas las flags reservadas de prescan del MANUAL (EN/ES).
+- Documentación de heurística de detección VPN por vendor OUI
+- Wording de Subnet Leak actualizado a "Indicios de Fuga de Red"
+- Añadidas flags CLI faltantes a las tablas README
 
 ## [3.10.1] - 2026-01-02 (Consistencia de Identidad y Hints de Vendor)
 

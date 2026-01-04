@@ -1,41 +1,53 @@
-# RedAudit v3.10.2 Release Notes
+# Release Notes v3.10.2
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/main/docs/releases/RELEASE_NOTES_v3.10.2_ES.md)
+[![ES](https://img.shields.io/badge/lang-ES-red.svg)](RELEASE_NOTES_v3.10.2_ES.md)
 
 **Release Date:** 2026-01-04
+**Codename:** Auditor Node & MAC Display Fix
 
 ## Summary
 
-VPN Vendor Detection & Documentation Accuracy
+This patch release fixes a critical bug where MAC addresses were not displaying in HTML reports, and introduces the "Auditor Node" feature that clearly identifies the scanner's own machine in audit reports.
 
-## Highlights
+## New Features
 
-### VPN/Firewall Vendor Detection
+### Auditor Node Detection
 
-New heuristic in `entity_resolver.py` classifies devices from 12 known VPN/Firewall vendors:
+Scanner's own network interfaces are now automatically detected and marked in HTML reports:
 
-- Palo Alto, Fortinet, Cisco, Juniper, SonicWall
-- Check Point, WatchGuard, Sophos, Pulse Secure
-- F5 Networks, Barracuda
+- Displays `(Auditor Node)` / `(Nodo Auditor)` instead of `-` for MAC column
+- Works for all interfaces (Ethernet, Wi-Fi, etc.)
+- Improves professional audit context
 
-**Logic:**
+### Architecture Foundation (Internal)
 
-- Vendor + VPN ports (500/4500/1194/51820) → `"vpn"`
-- Vendor + Web ports (80/443/8443) → `"firewall"`
+Preparatory work for v4.0 modular architecture:
 
-### Documentation Cleanup
+- `UIManager` standalone class for UI operations
+- `ConfigurationContext` typed wrapper for configuration
+- `NetworkScanner` with identity scoring utilities
+- Adapter properties for backward compatibility
 
-- **Removed zombie prescan flags** (`--prescan`, `--prescan-ports`, `--prescan-timeout`) - superseded by HyperScan since v3.0
-- **Documented hidden CLI flags** in READMEs: `--max-hosts`, `--no-deep-scan`, `--no-txt-report`, `--nvd-key`
-- **Fixed "Subnet Leak" wording** → "Network Leak Hints" to reflect DHCP-based detection
-- **Fixed VPN description** → "vendor OUI matching" instead of "MAC heuristics"
+## Fixes
 
-## Upgrade
+### MAC Address Display in HTML Reports
 
-```bash
-sudo bash redaudit_install.sh
-```
+Fixed a bug where MAC addresses were not showing in HTML reports despite being captured correctly:
+
+- **Root cause:** Key mismatch (`host.get("mac")` vs `host.get("mac_address")`)
+- **Fix:** Now checks both `mac_address` (canonical) and `mac` (legacy) keys
+- **Scope:** Affected all hosts without a full deep scan
+
+## Testing
+
+- 1264+ tests passing
+- 82 new tests for architecture components
+- Coverage: 84.72%
+
+## Upgrade Notes
+
+This is a backward-compatible patch release. No configuration changes required.
 
 ---
 
-[Full Changelog](../../CHANGELOG.md)
+[Full Changelog](../../CHANGELOG.md) | [Documentation Index](../INDEX.md)

@@ -1,41 +1,53 @@
-# Notas de la Versión RedAudit v3.10.2
+# Notas de la Versión v3.10.2
 
-[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/main/docs/releases/RELEASE_NOTES_v3.10.2.md)
+[![EN](https://img.shields.io/badge/lang-EN-blue.svg)](RELEASE_NOTES_v3.10.2.md)
 
-**Fecha de lanzamiento:** 2026-01-04
+**Fecha de Publicación:** 2026-01-04
+**Nombre clave:** Nodo Auditor y Corrección de MAC
 
 ## Resumen
 
-Detección VPN por Vendor y Precisión de Documentación
+Esta versión corrige un error crítico donde las direcciones MAC no se mostraban en los informes HTML, e introduce la funcionalidad "Nodo Auditor" que identifica claramente la máquina del escáner en los informes de auditoría.
 
-## Novedades
+## Nuevas Funcionalidades
 
-### Detección de Vendors VPN/Firewall
+### Detección de Nodo Auditor
 
-Nueva heurística en `entity_resolver.py` clasifica dispositivos de 12 vendors conocidos:
+Las interfaces de red propias del escáner ahora se detectan automáticamente y se marcan en los informes HTML:
 
-- Palo Alto, Fortinet, Cisco, Juniper, SonicWall
-- Check Point, WatchGuard, Sophos, Pulse Secure
-- F5 Networks, Barracuda
+- Muestra `(Nodo Auditor)` en lugar de `-` en la columna MAC
+- Funciona para todas las interfaces (Ethernet, Wi-Fi, etc.)
+- Mejora el contexto profesional de las auditorías
 
-**Lógica:**
+### Fundamentos de Arquitectura (Interno)
 
-- Vendor + puertos VPN (500/4500/1194/51820) → `"vpn"`
-- Vendor + puertos Web (80/443/8443) → `"firewall"`
+Trabajo preparatorio para la arquitectura modular v4.0:
 
-### Limpieza de Documentación
+- Clase `UIManager` independiente para operaciones de UI
+- `ConfigurationContext` envoltorio tipado para configuración
+- `NetworkScanner` con utilidades de puntuación de identidad
+- Propiedades adaptador para compatibilidad hacia atrás
 
-- **Eliminadas flags zombie de prescan** (`--prescan`, `--prescan-ports`, `--prescan-timeout`) - superadas por HyperScan desde v3.0
-- **Documentadas flags CLI ocultas** en READMEs: `--max-hosts`, `--no-deep-scan`, `--no-txt-report`, `--nvd-key`
-- **Corregido wording "Subnet Leak"** → "Indicios de Fuga de Red" para reflejar detección basada en DHCP
-- **Corregida descripción VPN** → "OUI de vendor" en lugar de "heurísticas MAC"
+## Correcciones
 
-## Actualización
+### Visualización de MAC en Informes HTML
 
-```bash
-sudo bash redaudit_install.sh
-```
+Se corrigió un error donde las direcciones MAC no aparecían en los informes HTML a pesar de capturarse correctamente:
+
+- **Causa raíz:** Discrepancia de clave (`host.get("mac")` vs `host.get("mac_address")`)
+- **Corrección:** Ahora verifica ambas claves `mac_address` (canónica) y `mac` (legada)
+- **Alcance:** Afectaba a todos los hosts sin escaneo profundo completo
+
+## Pruebas
+
+- Más de 1264 tests pasando
+- 82 nuevos tests para componentes de arquitectura
+- Cobertura: 84,72%
+
+## Notas de Actualización
+
+Esta es una versión de parche compatible hacia atrás. No requiere cambios de configuración.
 
 ---
 
-[Changelog Completo](../../ES/CHANGELOG_ES.md)
+[Registro de Cambios Completo](../../ES/CHANGELOG_ES.md) | [Índice de Documentación](../INDEX.md)
