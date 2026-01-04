@@ -17,16 +17,21 @@ class _DummyWizard(WizardMixin):
         from unittest.mock import MagicMock
 
         self.ui = MagicMock()
-        self.COLORS = {
+        self.ui.colors = {
             "FAIL": "",
             "BOLD": "",
             "HEADER": "",
             "ENDC": "",
             "CYAN": "",
             "OKBLUE": "",
+            "OKGREEN": "",
+            "WARNING": "",
         }
+        # Ensure self.ui.t returns a string
+        self.ui.t.side_effect = lambda k, *a: str(k) if k != "banner_subtitle" else "Subtitle"
 
     def t(self, key, *_args):
+        # Kept for compatibility if WizardMixin uses self.t
         if key == "banner_subtitle":
             return "Subtitle"
         return key

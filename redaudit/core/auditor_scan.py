@@ -1378,6 +1378,8 @@ class AuditorScanMixin:
                 host_obj.agentless_fingerprint = host_record["agentless_fingerprint"]
             if host_record.get("agentless_probe"):
                 host_obj.agentless_probe = host_record["agentless_probe"]
+            if host_record.get("smart_scan"):
+                host_obj.smart_scan = host_record["smart_scan"]
 
             return host_obj
 

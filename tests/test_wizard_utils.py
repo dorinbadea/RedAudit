@@ -18,7 +18,7 @@ class _DummyWizard(WizardMixin):
         from unittest.mock import MagicMock
 
         self.ui = MagicMock()
-        self.COLORS = {
+        self.ui.colors = {
             "FAIL": "",
             "BOLD": "",
             "HEADER": "",
@@ -28,9 +28,11 @@ class _DummyWizard(WizardMixin):
             "WARNING": "",
             "OKGREEN": "",
         }
+        self.ui.t.side_effect = lambda k, *a: f"{k}:{','.join(str(s) for s in a)}" if a else str(k)
         self._messages = []
 
     def t(self, key, *args):
+        # Kept for compatibility if WizardMixin uses self.t
         if args:
             return f"{key}:{','.join(str(a) for a in args)}"
         return key
@@ -99,8 +101,8 @@ def test_truncate_menu_text_zero_width():
 
 def test_format_menu_option_colors():
     wiz = _DummyWizard()
-    wiz.COLORS["OKGREEN"] = "<G>"
-    wiz.COLORS["ENDC"] = "<E>"
+    wiz.ui.colors["OKGREEN"] = "<G>"
+    wiz.ui.colors["ENDC"] = "<E>"
     assert wiz._format_menu_option(wiz.t("yes_default")) == "<G>yes_default<E>"
 
     colored = "\x1b[31mAlready colored\x1b[0m"

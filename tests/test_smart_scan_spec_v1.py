@@ -12,7 +12,10 @@ import redaudit.core.auditor_scan as scan_mod
 from redaudit.core.network_scanner import NetworkScanner
 
 
-class MockAuditor:
+from redaudit.core.auditor_scan import AuditorScanMixin
+
+
+class MockAuditor(AuditorScanMixin):
     def __init__(self):
         self.config = {
             "output_dir": "/tmp",
@@ -30,17 +33,30 @@ class MockAuditor:
         self.logger = MagicMock()
         self.ui = MagicMock()
         self.scanner = NetworkScanner(self.config, self.logger, self.ui)
+        self.results = {"hosts": [], "net_discovery": {}}
+        self.extra_tools = {}
 
-        # Legacy attributes potentially accessed by tests
-        self.results = {"hosts": []}
+    def _set_ui_detail(self, detail):
+        pass
+
+    def _get_ui_detail(self):
+        return ""
+
+    def _progress_ui(self):
+        from contextlib import nullcontext
+
+        return nullcontext()
 
     def scan_host_ports(self, target_ip):
-        host = self.scanner.scan_host(target_ip)
-        return host.to_dict()
-
-    # Proxy methods that tests might try to patch on auditor directly
-    # (Though ideally tests should patch auditor.scanner.method)
-    # We will update tests to patch auditor.scanner.*
+        host = super().scan_host_ports(target_ip)
+        # Convert Host object to dict for tests that expect dict access
+        if hasattr(host, "to_dict"):
+            d = host.to_dict()
+            # Ensure smart_scan is in the dict if it was attached
+            if hasattr(host, "smart_scan") and "smart_scan" not in d:
+                d["smart_scan"] = host.smart_scan
+            return d
+        return host.__dict__
 
 
 def _make_nmap_mock(ip="1.1.1.1", ports=None, hostname=""):
@@ -71,29 +87,30 @@ def patch_common(monkeypatch):
 
 def test_identity_score_calculation():
     auditor = MockAuditor()
-    from redaudit.core.models import Host, Service
+    host_record = {
+        "ip": "1.1.1.1",
+        "hostname": "host",
+        "ports": [
+            {
+                "port": 80,
+                "protocol": "tcp",
+                "service": "http",
+                "product": "nginx",
+                "version": "1.0",
+                "cpe": ["cpe:/a:nginx:nginx:1.0"],
+            }
+        ],
+        "deep_scan": {"mac_address": "aa:bb:cc:dd:ee:ff", "vendor": "Acme"},
+    }
 
-    host_record = Host(ip="1.1.1.1", hostname="host")
-    host_record.services = [
-        Service(
-            port=80,
-            protocol="tcp",
-            name="http",
-            product="nginx",
-            version="1.0",
-            cpe=["cpe:/a:nginx:nginx:1.0"],
-        )
-    ]
-    host_record.deep_scan = {"mac_address": "aa:bb:cc:dd:ee:ff", "vendor": "Acme"}
-
-    score, signals = auditor.scanner._compute_identity_score(host_record)
+    score, signals = auditor.scanner.compute_identity_score(host_record)
     assert score == 4
     assert set(signals) >= {"hostname", "service_version", "cpe", "mac_vendor"}
 
 
 def test_low_visibility_no_trigger_alone():
     auditor = MockAuditor()
-    trigger, reasons = auditor.scanner._should_trigger_deep(
+    trigger, reasons = auditor._should_trigger_deep(
         total_ports=2,
         any_version=True,
         suspicious=False,
@@ -111,11 +128,11 @@ def test_no_trigger_when_score_meets_threshold(patch_common):
     ports = {"tcp": {80: {"name": "http", "product": "nginx", "version": "1.0", "cpe": []}}}
     nm = _make_nmap_mock(ports=ports, hostname="host")
 
-    with patch.object(auditor.scanner, "_run_nmap_xml_scan", return_value=(nm, "")):
+    with patch.object(auditor.scanner, "run_nmap_scan", return_value=(nm, "")):
         with patch.object(
-            auditor.scanner, "_compute_identity_score", return_value=(3, ["hostname"])
+            auditor.scanner, "compute_identity_score", return_value=(3, ["hostname"])
         ):
-            with patch.object(auditor.scanner, "deep_scan_host", return_value={}) as deep:
+            with patch.object(auditor, "deep_scan_host", return_value={}) as deep:
                 res = auditor.scan_host_ports("1.1.1.1")
     assert deep.called is False
     assert res["smart_scan"]["trigger_deep"] is False
@@ -125,7 +142,7 @@ def test_no_trigger_when_score_meets_threshold(patch_common):
 
 def test_low_visibility_triggers_with_weak_identity():
     auditor = MockAuditor()
-    trigger, reasons = auditor.scanner._should_trigger_deep(
+    trigger, reasons = auditor._should_trigger_deep(
         total_ports=2,
         any_version=False,
         suspicious=False,
@@ -146,13 +163,11 @@ def test_budget_exhausted(patch_common):
     def _nmap_side_effect(target, _args):
         return _make_nmap_mock(ip=target, ports=ports), ""
 
-    with patch.object(auditor.scanner, "_run_nmap_xml_scan", side_effect=_nmap_side_effect):
-        with patch.object(
-            auditor.scanner, "_should_trigger_deep", return_value=(True, ["identity_weak"])
-        ):
-            with patch.object(auditor.scanner, "_run_udp_priority_probe", return_value=False):
+    with patch.object(auditor.scanner, "run_nmap_scan", side_effect=_nmap_side_effect):
+        with patch.object(auditor, "_should_trigger_deep", return_value=(True, ["identity_weak"])):
+            with patch.object(auditor, "_run_udp_priority_probe", return_value=False):
                 with patch.object(
-                    auditor.scanner,
+                    auditor,
                     "deep_scan_host",
                     return_value={"os_detected": "Linux"},
                 ) as deep:
@@ -172,7 +187,7 @@ def test_budget_zero_no_limit(patch_common):
     nm = _make_nmap_mock(
         ports={"tcp": {80: {"name": "http", "product": "", "version": "", "cpe": []}}}
     )
-    with patch.object(auditor, "_run_nmap_xml_scan", return_value=(nm, "")):
+    with patch.object(auditor.scanner, "run_nmap_scan", return_value=(nm, "")):
         with patch.object(auditor, "_should_trigger_deep", return_value=(True, ["identity_weak"])):
             with patch.object(auditor, "_run_udp_priority_probe", return_value=False):
                 with patch.object(auditor, "deep_scan_host", return_value={}) as deep:
@@ -187,7 +202,7 @@ def test_stealth_no_udp_reorder(patch_common):
     nm = _make_nmap_mock(
         ports={"tcp": {80: {"name": "http", "product": "", "version": "", "cpe": []}}}
     )
-    with patch.object(auditor, "_run_nmap_xml_scan", return_value=(nm, "")):
+    with patch.object(auditor.scanner, "run_nmap_scan", return_value=(nm, "")):
         with patch.object(auditor, "_should_trigger_deep", return_value=(True, ["identity_weak"])):
             with patch.object(auditor, "_run_udp_priority_probe") as udp_probe:
                 with patch.object(auditor, "deep_scan_host", return_value={}):
@@ -208,12 +223,10 @@ def test_udp_reorder_resolves_identity(patch_common):
         phase0["mdns_name"] = "device.local"
         return True
 
-    with patch.object(auditor.scanner, "_run_nmap_xml_scan", return_value=(nm, "")):
-        with patch.object(
-            auditor.scanner, "_should_trigger_deep", return_value=(True, ["identity_weak"])
-        ):
-            with patch.object(auditor.scanner, "_run_udp_priority_probe", side_effect=_udp_probe):
-                with patch.object(auditor.scanner, "deep_scan_host", return_value={}) as deep:
+    with patch.object(auditor.scanner, "run_nmap_scan", return_value=(nm, "")):
+        with patch.object(auditor, "_should_trigger_deep", return_value=(True, ["identity_weak"])):
+            with patch.object(auditor, "_run_udp_priority_probe", side_effect=_udp_probe):
+                with patch.object(auditor, "deep_scan_host", return_value={}) as deep:
                     res = auditor.scan_host_ports("1.1.1.1")
     assert deep.called is False
     assert res["smart_scan"]["trigger_deep"] is False
@@ -225,10 +238,8 @@ def test_phase0_enrichment_signals(patch_common):
     auditor.config["low_impact_enrichment"] = True
     auditor.config["deep_id_scan"] = False
     nm = _make_nmap_mock(ports={"tcp": {}})
-    with patch.object(
-        auditor.scanner, "_run_low_impact_enrichment", return_value={"dns_reverse": "host"}
-    ):
-        with patch.object(auditor.scanner, "_run_nmap_xml_scan", return_value=(nm, "")):
+    with patch.object(auditor, "_run_low_impact_enrichment", return_value={"dns_reverse": "host"}):
+        with patch.object(auditor.scanner, "run_nmap_scan", return_value=(nm, "")):
             res = auditor.scan_host_ports("1.1.1.1")
     assert res["phase0_enrichment"]["dns_reverse"] == "host"
     assert "dns_reverse" in res["smart_scan"]["signals"]
@@ -258,7 +269,7 @@ def test_phase0_dns_fallback_no_global_timeout(monkeypatch):
     monkeypatch.setattr(scan_mod.socket, "gethostbyaddr", lambda _ip: ("host.local", [], []))
     monkeypatch.setattr(scan_mod.shutil, "which", lambda _name: None)
 
-    result = auditor.scanner._run_low_impact_enrichment("1.1.1.1")
+    result = auditor._run_low_impact_enrichment("1.1.1.1")
     assert result.get("dns_reverse") == "host.local"
     mock_setdefault.assert_not_called()
 
@@ -283,12 +294,10 @@ def test_budget_thread_safe_under_concurrency(patch_common):
         release.wait(timeout=0.5)
         return {"os_detected": "Linux"}
 
-    with patch.object(auditor.scanner, "_run_nmap_xml_scan", side_effect=_nmap_side_effect):
-        with patch.object(auditor.scanner, "_should_trigger_deep", side_effect=_should_trigger):
-            with patch.object(auditor.scanner, "_run_udp_priority_probe", return_value=False):
-                with patch.object(
-                    auditor.scanner, "deep_scan_host", side_effect=_deep_scan
-                ) as deep:
+    with patch.object(auditor.scanner, "run_nmap_scan", side_effect=_nmap_side_effect):
+        with patch.object(auditor, "_should_trigger_deep", side_effect=_should_trigger):
+            with patch.object(auditor, "_run_udp_priority_probe", return_value=False):
+                with patch.object(auditor, "deep_scan_host", side_effect=_deep_scan) as deep:
                     with ThreadPoolExecutor(max_workers=2) as pool:
                         fut1 = pool.submit(auditor.scan_host_ports, "1.1.1.1")
                         fut2 = pool.submit(auditor.scan_host_ports, "1.1.1.2")
@@ -308,14 +317,10 @@ def test_escalation_reason_in_json(patch_common):
     nm = _make_nmap_mock(
         ports={"tcp": {80: {"name": "http", "product": "", "version": "", "cpe": []}}}
     )
-    with patch.object(auditor.scanner, "_run_nmap_xml_scan", return_value=(nm, "")):
-        with patch.object(
-            auditor.scanner, "_should_trigger_deep", return_value=(True, ["identity_weak"])
-        ):
-            with patch.object(auditor.scanner, "_run_udp_priority_probe", return_value=False):
-                with patch.object(
-                    auditor.scanner, "deep_scan_host", return_value={"os_detected": "Linux"}
-                ):
+    with patch.object(auditor.scanner, "run_nmap_scan", return_value=(nm, "")):
+        with patch.object(auditor, "_should_trigger_deep", return_value=(True, ["identity_weak"])):
+            with patch.object(auditor, "_run_udp_priority_probe", return_value=False):
+                with patch.object(auditor, "deep_scan_host", return_value={"os_detected": "Linux"}):
                     res = auditor.scan_host_ports("1.1.1.1")
     assert isinstance(res["smart_scan"]["escalation_reason"], str)
 
@@ -325,14 +330,10 @@ def test_escalation_path_recorded(patch_common):
     nm = _make_nmap_mock(
         ports={"tcp": {80: {"name": "http", "product": "", "version": "", "cpe": []}}}
     )
-    with patch.object(auditor.scanner, "_run_nmap_xml_scan", return_value=(nm, "")):
-        with patch.object(
-            auditor.scanner, "_should_trigger_deep", return_value=(True, ["identity_weak"])
-        ):
-            with patch.object(auditor.scanner, "_run_udp_priority_probe", return_value=False):
-                with patch.object(
-                    auditor.scanner, "deep_scan_host", return_value={"os_detected": "Linux"}
-                ):
+    with patch.object(auditor.scanner, "run_nmap_scan", return_value=(nm, "")):
+        with patch.object(auditor, "_should_trigger_deep", return_value=(True, ["identity_weak"])):
+            with patch.object(auditor, "_run_udp_priority_probe", return_value=False):
+                with patch.object(auditor, "deep_scan_host", return_value={"os_detected": "Linux"}):
                     res = auditor.scan_host_ports("1.1.1.1")
     path = res["smart_scan"]["escalation_path"] or ""
     assert "nmap_initial" in path
