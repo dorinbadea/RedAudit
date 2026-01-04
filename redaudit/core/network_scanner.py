@@ -12,10 +12,21 @@ from __future__ import annotations
 import ipaddress
 import logging
 import re
+import shlex
+import shutil
 import socket
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    import nmap
+except ImportError:
+    nmap = None
+
+from redaudit.core.scanner.nmap import run_nmap_command
+from redaudit.utils.dry_run import is_dry_run
+
 from redaudit.core.config_context import ConfigurationContext
+from redaudit.core.network import detect_all_networks
 from redaudit.core.ui_manager import UIManager
 from redaudit.utils.constants import (
     STATUS_DOWN,
@@ -49,6 +60,16 @@ class NetworkScanner:
         self.ui = ui
         self.logger = logger
         self.interrupted = False
+
+    # -------------------------------------------------------------------------
+    # Network Discovery (Migrated)
+    # -------------------------------------------------------------------------
+
+    def detect_local_networks(self) -> List[Dict[str, Any]]:
+        """Detect all local networks using net_discovery module."""
+        self.ui.print_status(self.ui.t("analyzing_nets"), "INFO")
+        lang = str(self.config.get("lang", "en"))
+        return detect_all_networks(lang, self.ui.print_status)
 
     # -------------------------------------------------------------------------
     # Identity Scoring (Pure Logic - No I/O)
@@ -366,6 +387,133 @@ class NetworkScanner:
         web_ports = {80, 443, 8080, 8443, 8000, 8888, 3000, 5000}
         open_ports = set(NetworkScanner.get_open_ports(host_record))
         return bool(open_ports & web_ports)
+
+    # -------------------------------------------------------------------------
+    # Nmap Execution (Migrated)
+    # -------------------------------------------------------------------------
+
+    def run_nmap_scan(self, target: str, args: str) -> Tuple[Optional[Any], str]:
+        """
+        Run an nmap scan with XML output and timeout enforcement.
+
+        Returns:
+            (PortScanner or None, error message string if any)
+        """
+        if is_dry_run(self.config.get("dry_run")):
+            return None, "dry_run"
+        if shutil.which("nmap") is None:
+            return None, "nmap_not_available"
+        if nmap is None:
+            return None, "python_nmap_missing"
+
+        host_timeout_s = self._parse_host_timeout_s(args)
+        if host_timeout_s is None:
+            host_timeout_s = self._get_default_host_timeout()
+
+        timeout_s = max(30.0, host_timeout_s + 30.0)
+        cmd = ["nmap"] + shlex.split(args) + ["-oX", "-", target]
+
+        record_sink: Dict[str, Any] = {"commands": []}
+        rec = run_nmap_command(
+            cmd,
+            int(timeout_s),
+            target,
+            record_sink,
+            logger=self.logger,
+            dry_run=False,
+            max_stdout=0,
+            max_stderr=2000,
+            include_full_output=True,
+        )
+
+        if rec.get("error"):
+            return None, str(rec["error"])
+
+        r_out = rec.get("stdout_full") or rec.get("stdout") or ""
+        raw_stdout = self._coerce_text(r_out)
+        xml_output = self._extract_nmap_xml(raw_stdout)
+        if not xml_output:
+            r_err = rec.get("stderr_full") or rec.get("stderr") or ""
+            raw_stderr = self._coerce_text(r_err)
+            xml_output = self._extract_nmap_xml(raw_stderr)
+        if not xml_output:
+            stderr = self._coerce_text(rec.get("stderr", "")).strip()
+            if len(stderr) > 200:
+                stderr = f"{stderr[:200].rstrip()}..."
+            return None, stderr or "empty_nmap_output"
+
+        nm = nmap.PortScanner()
+        analyser = getattr(nm, "analyse_nmap_xml_scan", None) or getattr(
+            nm, "analyze_nmap_xml_scan", None
+        )
+        if analyser:
+            try:
+                analyser(
+                    xml_output,
+                    nmap_err=self._coerce_text(rec.get("stderr", "")),
+                    nmap_err_keep_trace=self._coerce_text(rec.get("stderr", "")),
+                    nmap_warn_keep_trace="",
+                )
+            except Exception as exc:
+                msg = str(exc).strip().replace("\n", " ")
+                if len(msg) > 200:
+                    msg = f"{msg[:200].rstrip()}..."
+                return None, f"nmap_xml_parse_error: {msg or 'invalid_xml'}"
+        else:
+            # Fallback for stubs or older python-nmap builds without XML parser.
+            try:
+                nm.scan(target, arguments=args)
+            except Exception as exc:
+                return None, f"nmap_scan_fallback_error: {exc}"
+
+        return nm, ""
+
+    def _get_default_host_timeout(self) -> float:
+        mode = str(self.config.get("scan_mode") or "").strip().lower()
+        if mode in ("fast", "rapido"):
+            return 10.0
+        if mode in ("full", "completo"):
+            return 300.0
+        return 60.0
+
+    @staticmethod
+    def _parse_host_timeout_s(nmap_args: str) -> Optional[float]:
+        if not isinstance(nmap_args, str):
+            return None
+        m = re.search(r"--host-timeout\s+(\d+)(ms|s|m|h)\b", nmap_args)
+        if not m:
+            return None
+        val = int(m.group(1))
+        unit = m.group(2)
+        if unit == "ms":
+            return val / 1000.0
+        if unit == "s":
+            return float(val)
+        if unit == "m":
+            return float(val) * 60.0
+        if unit == "h":
+            return float(val) * 3600.0
+        return None
+
+    @staticmethod
+    def _extract_nmap_xml(raw: str) -> str:
+        if not raw:
+            return ""
+        start = raw.find("<nmaprun")
+        if start < 0:
+            start = raw.find("<?xml")
+        if start > 0:
+            raw = raw[start:]
+        end = raw.rfind("</nmaprun>")
+        if end >= 0:
+            raw = raw[: end + len("</nmaprun>")]
+        return raw.strip()
+
+    @staticmethod
+    def _coerce_text(value: Any) -> str:
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return str(value) if value is not None else ""
 
 
 def create_network_scanner(

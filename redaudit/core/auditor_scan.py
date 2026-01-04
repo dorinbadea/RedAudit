@@ -11,7 +11,7 @@ import math
 import os
 import random
 import re
-import shlex
+
 import shutil
 import socket
 import threading
@@ -24,10 +24,9 @@ from redaudit.core.agentless_verify import (
     select_agentless_probe_targets,
     summarize_agentless_fingerprint,
 )
-from redaudit.core.auditor_mixins import _ActivityIndicator
 from redaudit.core.command_runner import CommandRunner
 from redaudit.core.crypto import is_crypto_available
-from redaudit.core.network import detect_all_networks, get_neighbor_mac
+from redaudit.core.network import get_neighbor_mac
 from redaudit.core.scanner import (
     banner_grab_fallback,
     enrich_host_with_dns,
@@ -160,8 +159,8 @@ class AuditorScanMixin:
 
     def detect_all_networks(self):
         """Detect all local networks."""
-        self.ui.print_status(self.ui.t("analyzing_nets"), "INFO")
-        nets = detect_all_networks(self.lang, self.ui.print_status)
+        # v4.0: Usage of composed NetworkScanner
+        nets = self.scanner.detect_local_networks()
         self.results["network_info"] = nets
         return nets
 
@@ -693,77 +692,10 @@ class AuditorScanMixin:
     def _run_nmap_xml_scan(self, target: str, args: str) -> Tuple[Optional[Any], str]:
         """
         Run an nmap scan with XML output and enforce a hard timeout.
-
-        Returns:
-            (PortScanner or None, error message string if any)
+        (Delegated to NetworkScanner)
         """
-        if is_dry_run(self.config.get("dry_run")):
-            return None, "dry_run"
-        if shutil.which("nmap") is None:
-            return None, "nmap_not_available"
-        if nmap is None:
-            return None, "python_nmap_missing"
-
-        host_timeout_s = self._parse_host_timeout_s(args)
-        if host_timeout_s is None:
-            host_timeout_s = self._scan_mode_host_timeout_s()
-        timeout_s = max(30.0, host_timeout_s + 30.0)
-        cmd = ["nmap"] + shlex.split(args) + ["-oX", "-", target]
-
-        record_sink: Dict[str, Any] = {"commands": []}
-        rec = run_nmap_command(
-            cmd,
-            int(timeout_s),
-            target,
-            record_sink,
-            logger=self.logger,
-            dry_run=False,
-            max_stdout=0,
-            max_stderr=2000,
-            include_full_output=True,
-        )
-
-        if rec.get("error"):
-            return None, str(rec["error"])
-
-        r_out = rec.get("stdout_full") or rec.get("stdout") or ""
-        raw_stdout = self._coerce_text(r_out)
-        xml_output = self._extract_nmap_xml(raw_stdout)
-        if not xml_output:
-            r_err = rec.get("stderr_full") or rec.get("stderr") or ""
-            raw_stderr = self._coerce_text(r_err)
-            xml_output = self._extract_nmap_xml(raw_stderr)
-        if not xml_output:
-            stderr = self._coerce_text(rec.get("stderr", "")).strip()
-            if len(stderr) > 200:
-                stderr = f"{stderr[:200].rstrip()}..."
-            return None, stderr or "empty_nmap_output"
-
-        nm = nmap.PortScanner()
-        analyser = getattr(nm, "analyse_nmap_xml_scan", None) or getattr(
-            nm, "analyze_nmap_xml_scan", None
-        )
-        if analyser:
-            try:
-                analyser(
-                    xml_output,
-                    nmap_err=self._coerce_text(rec.get("stderr", "")),
-                    nmap_err_keep_trace=self._coerce_text(rec.get("stderr", "")),
-                    nmap_warn_keep_trace="",
-                )
-            except Exception as exc:
-                msg = str(exc).strip().replace("\n", " ")
-                if len(msg) > 200:
-                    msg = f"{msg[:200].rstrip()}..."
-                return None, f"nmap_xml_parse_error: {msg or 'invalid_xml'}"
-        else:
-            # Fallback for stubs or older python-nmap builds without XML parser.
-            try:
-                nm.scan(target, arguments=args)
-            except Exception as exc:
-                return None, f"nmap_scan_fallback_error: {exc}"
-
-        return nm, ""
+        # v4.0: Usage of composed NetworkScanner
+        return self.scanner.run_nmap_scan(target, args)
 
     @staticmethod
     def _parse_host_timeout_s(nmap_args: str) -> Optional[float]:
@@ -1003,43 +935,18 @@ class AuditorScanMixin:
         self.logger.info("Discovery on %s", network)
         args = get_nmap_arguments("rapido", self.config)  # v3.9.0: Pass config for timing
         self.ui.print_status(self.ui.t("nmap_cmd", network, f"nmap {args} {network}"), "INFO")
-        if is_dry_run(self.config.get("dry_run")):
-            return []
-        nm = nmap.PortScanner()
-        try:
-            # Nmap host discovery can look "stuck" on larger subnets; keep a visible activity
-            # indicator while the scan is running.
-            try:
-                from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 
-                with self._progress_ui():
-                    with Progress(
-                        SpinnerColumn(),
-                        self._safe_text_column(
-                            f"[cyan]Discovery {network}[/cyan] {{task.description}}",
-                            overflow="ellipsis",
-                            no_wrap=True,
-                        ),
-                        TimeElapsedColumn(),
-                        console=self._progress_console(),
-                        transient=True,
-                        refresh_per_second=4,
-                    ) as progress:
-                        task = progress.add_task("nmap host discovery...", total=None)
-                        nm.scan(hosts=network, arguments=args)
-                        progress.update(task, description="complete")
-            except Exception:
-                with _ActivityIndicator(
-                    label=f"Discovery {network}",
-                    initial="nmap host discovery...",
-                    touch_activity=self._touch_activity,
-                ):
-                    nm.scan(hosts=network, arguments=args)
-        except Exception as exc:
-            self.logger.error("Discovery failed on %s: %s", network, exc)
-            self.logger.debug("Discovery exception details for %s", network, exc_info=True)
-            self.ui.print_status(self.ui.t("scan_error", exc), "FAIL")
+        # v4.0: Delegate to NetworkScanner (cleaner, robust error handling)
+        nm, err = self.scanner.run_nmap_scan(network, args)
+
+        if err:
+            self.logger.error("Discovery failed on %s: %s", network, err)
+            self.ui.print_status(self.ui.t("scan_error", err), "FAIL")
             return []
+
+        if not nm:
+            return []
+
         hosts = [h for h in nm.all_hosts() if nm[h].state() == "up"]
         self.ui.print_status(self.ui.t("hosts_active", network, len(hosts)), "OKGREEN")
         return hosts

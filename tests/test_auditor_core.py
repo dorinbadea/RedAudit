@@ -115,7 +115,7 @@ class TestNetworkDetection:
         """Test detect_all_networks method."""
         auditor = MockAuditorScan()
         with patch(
-            "redaudit.core.auditor_scan.detect_all_networks",
+            "redaudit.core.network.detect_all_networks",
             return_value=[{"network": "192.168.1.0/24", "interface": "eth0"}],
         ):
             nets = auditor.detect_all_networks()
@@ -261,9 +261,9 @@ class TestNmapScanning:
         mock_module, mock_scanner = mock_nmap_module
 
         with (
-            patch.object(auditor_scan_module, "nmap", mock_module),
+            patch("redaudit.core.network_scanner.nmap", mock_module),
             patch(
-                "redaudit.core.auditor_scan.run_nmap_command",
+                "redaudit.core.network_scanner.run_nmap_command",
                 return_value={"stdout": "<nmaprun>XML</nmaprun>", "returncode": 0},
             ),
         ):
@@ -276,9 +276,9 @@ class TestNmapScanning:
         mock_module, _ = mock_nmap_module
 
         with (
-            patch.object(auditor_scan_module, "nmap", mock_module),
+            patch("redaudit.core.network_scanner.nmap", mock_module),
             patch(
-                "redaudit.core.auditor_scan.run_nmap_command",
+                "redaudit.core.network_scanner.run_nmap_command",
                 return_value={"error": "Timeout"},
             ),
         ):
@@ -293,7 +293,10 @@ class TestNmapScanning:
         mock_scanner.all_hosts.return_value = ["1.1.1.1"]
         mock_scanner["1.1.1.1"].state.return_value = "up"
 
-        with patch.object(auditor_scan_module, "nmap", mock_module):
+        with (
+            patch("shutil.which", return_value="/usr/bin/nmap"),
+            patch("redaudit.core.network_scanner.nmap", mock_module),
+        ):
             hosts = auditor.scan_network_discovery("1.1.1.0/24")
             assert hosts == ["1.1.1.1"]
 
@@ -320,7 +323,7 @@ class TestDeepScan:
             ),
             patch("redaudit.core.auditor_scan.stop_background_capture"),
             patch(
-                "redaudit.core.auditor_scan.run_nmap_command",
+                "redaudit.core.network_scanner.run_nmap_command",
                 return_value={"stdout": "Scan Output", "timeout": False},
             ),
             patch("redaudit.core.auditor_scan.run_udp_probe", return_value=[]),
@@ -482,7 +485,7 @@ class TestEdgeCases:
         mock_module = MagicMock()
         mock_module.PortScanner.return_value = mock_scanner
 
-        with patch.object(auditor_scan_module, "nmap", mock_module):
+        with patch("redaudit.core.network_scanner.nmap", mock_module):
             hosts = auditor.scan_network_discovery("1.1.1.0/24")
             assert hosts == []
 
@@ -758,7 +761,7 @@ class TestAskNetworkRange:
         auditor.ask_choice = MagicMock(return_value=0)
 
         with patch(
-            "redaudit.core.auditor_scan.detect_all_networks",
+            "redaudit.core.network.detect_all_networks",
             return_value=[
                 {"network": "192.168.1.0/24", "interface": "eth0", "hosts_estimated": 254}
             ],
@@ -773,7 +776,7 @@ class TestAskNetworkRange:
         auditor.ask_manual_network = MagicMock(return_value="10.0.0.0/8")
 
         with patch(
-            "redaudit.core.auditor_scan.detect_all_networks",
+            "redaudit.core.network.detect_all_networks",
             return_value=[
                 {"network": "192.168.1.0/24", "interface": "eth0", "hosts_estimated": 254}
             ],
@@ -786,7 +789,7 @@ class TestAskNetworkRange:
         auditor = MockAuditorScan()
         auditor.ask_manual_network = MagicMock(return_value="172.16.0.0/16")
 
-        with patch("redaudit.core.auditor_scan.detect_all_networks", return_value=[]):
+        with patch("redaudit.core.network.detect_all_networks", return_value=[]):
             result = auditor.ask_network_range()
             assert result == ["172.16.0.0/16"]
 
