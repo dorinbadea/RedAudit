@@ -35,16 +35,8 @@ from redaudit.utils.paths import (
     maybe_chown_to_invoking_user,
 )
 from redaudit.utils.i18n import TRANSLATIONS
-from redaudit.core.auditor_mixins import (
-    AuditorCryptoMixin,
-    AuditorLoggingMixin,
-    AuditorNVDMixin,
-    AuditorUIMixin,
-    _ActivityIndicator,
-)
-from redaudit.core.auditor_scan import AuditorScanMixin
-from redaudit.core.auditor_vuln import AuditorVulnMixin
-from redaudit.core.wizard import WizardMixin
+from redaudit.core.auditor_components import _ActivityIndicator
+from redaudit.core.auditor_runtime import AuditorRuntime
 from redaudit.core.nuclei import (
     is_nuclei_available,
     run_nuclei_scan,
@@ -61,16 +53,14 @@ from redaudit.core.config_context import ConfigurationContext
 from redaudit.core.network_scanner import NetworkScanner
 
 
-class InteractiveNetworkAuditor(
-    AuditorUIMixin,
-    AuditorLoggingMixin,
-    AuditorCryptoMixin,
-    AuditorNVDMixin,
-    AuditorScanMixin,
-    AuditorVulnMixin,
-    WizardMixin,
-):
+class InteractiveNetworkAuditor:
     """Main orchestrator for RedAudit scans."""
+
+    def __getattr__(self, name: str):
+        runtime = self.__dict__.get("_runtime")
+        if runtime is not None and hasattr(runtime, name):
+            return getattr(runtime, name)
+        raise AttributeError(f"{self.__class__.__name__} has no attribute {name}")
 
     def __init__(self):
         self.lang = DEFAULT_LANG if DEFAULT_LANG in TRANSLATIONS else "en"
@@ -84,7 +74,6 @@ class InteractiveNetworkAuditor(
             "vulnerabilities": [],
             "summary": {},
         }
-        # v4.0: ConfigurationContext Composition
         # v4.0: ConfigurationContext Composition
         self.cfg = ConfigurationContext()
 
@@ -116,6 +105,7 @@ class InteractiveNetworkAuditor(
         self.COLORS = COLORS
 
         self.logger = None
+        self._runtime = AuditorRuntime(self)
         self._setup_logging()
 
         # v4.0: Direct Composition - UIManager
@@ -175,7 +165,7 @@ class InteractiveNetworkAuditor(
             self.logger,
         )
 
-    # ---------- Interactive flow (UI methods inherited from WizardMixin) ----------
+    # ---------- Interactive flow (UI methods inherited from Wizard) ----------
 
     def interactive_setup(self):
         """Run interactive configuration setup."""
@@ -859,13 +849,28 @@ class InteractiveNetworkAuditor(
 
     def signal_handler(self, sig, frame):
         """Handle SIGINT (Ctrl+C) with proper cleanup."""
-        self.ui.print_status(self.ui.t("interrupted"), "WARNING")
+        try:
+            ui = self.ui
+        except AttributeError:
+            ui = None
+
+        def _status(msg_key: str, level: str) -> None:
+            if ui:
+                ui.print_status(ui.t(msg_key), level)
+                return
+            t_fn = getattr(self, "t", None)
+            text = t_fn(msg_key) if callable(t_fn) else msg_key
+            printer = getattr(self, "print_status", None)
+            if callable(printer):
+                printer(text, level)
+
+        _status("interrupted", "WARNING")
         self.current_phase = "interrupted"
         self.interrupted = True
 
         # Kill all active subprocesses (nmap, tcpdump, etc.)
         if self._active_subprocesses:
-            self.ui.print_status(self.ui.t("terminating_scans"), "WARNING")
+            _status("terminating_scans", "WARNING")
             self.kill_all_subprocesses()
 
         # Stop heartbeat monitoring

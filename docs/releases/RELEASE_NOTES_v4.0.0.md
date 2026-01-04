@@ -7,7 +7,7 @@
 
 ## Summary
 
-RedAudit v4.0.0 marks the most significant architectural evolution in the project's history. This release completes the transition from a mixin-based monolith to a modern, composition-based architecture powered by robust data models. This shift guarantees type safety, eliminates entire classes of dictionary-key bugs, and provides a solid foundation for future extensibility without breaking changes.
+RedAudit v4.0.0 marks the most significant architectural evolution in the project's history. This release completes the transition from an inheritance-heavy monolith to a modern, composition-based architecture powered by robust data models. This shift guarantees type safety, eliminates entire classes of dictionary-key bugs, and provides a solid foundation for future extensibility without breaking changes.
 
 ## New Features
 
@@ -18,7 +18,7 @@ RedAudit v4.0.0 marks the most significant architectural evolution in the projec
 
 ### Architectural Composition
 
-- **Mixin Retirement**: The legacy `AuditorScanMixin` and other mixins have been refactored into a composed `NetworkScanner` and other modular components.
+- **Legacy Refactor**: The legacy `AuditorScan` and other inherited paths have been refactored into a composed `NetworkScanner` and modular components.
 - **Cleaner Core**: The main loop in `auditor.py` is now a clean orchestrator that passes `Host` objects between specialized components.
 
 ## Fixes

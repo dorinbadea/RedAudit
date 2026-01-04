@@ -1,5 +1,5 @@
 """
-RedAudit - Network Scanner (Extracted from AuditorScanMixin)
+RedAudit - Network Scanner (Extracted from AuditorScan)
 
 This module provides standalone network scanning logic that can be tested
 independently from the main Auditor class.
@@ -90,7 +90,7 @@ class NetworkScanner:
     ) -> Tuple[int, List[str]]:
         """
         Compute identity confidence score and enrich device_type_hints.
-        (Migrated from AuditorScanMixin analysis logic).
+        (Migrated from AuditorScan analysis logic).
         """
         if net_discovery_results is None:
             net_discovery_results = {}

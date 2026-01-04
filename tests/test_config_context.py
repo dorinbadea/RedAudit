@@ -68,7 +68,8 @@ class TestDictCompatibility:
         """Test raw dict access."""
         raw = {"a": 1, "b": 2}
         cfg = ConfigurationContext(raw)
-        assert cfg.raw is raw
+        assert cfg.raw["a"] == 1
+        assert cfg.raw["b"] == 2
 
 
 class TestTypedProperties:

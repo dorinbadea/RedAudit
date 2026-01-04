@@ -1,22 +1,22 @@
-"""Tests for auditor_mixins.py to push coverage to 95%+
-Targets UI activity indicators, status printing, heartbeat monitoring, and crypto/NVD utilities.
-"""
+"""Edge-case tests for auditor components (UI, heartbeat, crypto, NVD)."""
 
+import io
 import logging
-import threading
-import time
 import os
 import sys
-import io
-from unittest.mock import patch, MagicMock
+import threading
+import time
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
 import pytest
-from redaudit.core.auditor_mixins import (
+from redaudit.core.auditor_components import (
     _ActivityIndicator,
-    AuditorUIMixin,
-    AuditorLoggingMixin,
-    AuditorCryptoMixin,
-    AuditorNVDMixin,
+    AuditorUI,
+    AuditorLogging,
+    AuditorCrypto,
+    AuditorNVD,
 )
+from redaudit.utils.constants import HEARTBEAT_FAIL_THRESHOLD
 
 
 def test_activity_indicator_edge_cases():
@@ -43,7 +43,7 @@ def test_activity_indicator_edge_cases():
         time.sleep(0.3)  # Wait for a few ticks
 
 
-class MockUI(AuditorUIMixin):
+class MockUI(AuditorUI):
     def __init__(self):
         self.COLORS = {
             "INFO": "",
@@ -65,8 +65,8 @@ class MockUI(AuditorUIMixin):
         self.last_activity = None
 
 
-def test_ui_mixin_print_status_edge():
-    """Test print_status with various flags and noisy suppression (lines 196-197, 204-205, 239, 246)."""
+def test_ui_component_print_status_edge():
+    """Test print_status with flags and noisy suppression."""
     ui = MockUI()
     # 196: Suppress during progress
     ui._ui_progress_active = True
@@ -82,8 +82,8 @@ def test_ui_mixin_print_status_edge():
             assert mock_rich_print.called or mock_print.called
 
 
-def test_ui_mixin_condense_truncation():
-    """Test _condense_for_ui logic (lines 305)."""
+def test_ui_condense_truncation():
+    """Test _condense_for_ui truncation."""
     ui = MockUI()
     # Very long command > 60 chars
     long_cmd = "nmap -sS -sV -A -T4 -p 1-65535 --script vuln 192.168.1.1 192.168.1.2 192.168.1.3"
@@ -92,8 +92,8 @@ def test_ui_mixin_condense_truncation():
     assert condensed.endswith("…")
 
 
-def test_ui_mixin_phase_detail():
-    """Test _phase_detail with all phases (lines 322, 335)."""
+def test_ui_phase_detail():
+    """Test _phase_detail with all phases."""
     ui = MockUI()
     ui.current_phase = "init"
     assert "init" in ui._phase_detail()
@@ -101,39 +101,45 @@ def test_ui_mixin_phase_detail():
     assert "testssl" in ui._phase_detail()
 
 
-def test_ui_mixin_should_emit_details():
-    """Test _should_emit_during_progress with specific levels (lines 374-403)."""
+def test_ui_should_emit_details():
+    """Test _should_emit_during_progress with specific levels."""
     ui = MockUI()
     assert ui._should_emit_during_progress("critical error", "FAIL") is True
     assert ui._should_emit_during_progress("routine info", "INFO") is False
 
 
-def test_ui_mixin_format_eta():
-    """Test _format_eta with various durations (lines 405-414)."""
-    assert "1:40" in AuditorUIMixin._format_eta(100)
-    assert "1:00:00" in AuditorUIMixin._format_eta(3600)
+def test_ui_format_eta():
+    """Test _format_eta with various durations."""
+    assert "1:40" in AuditorUI._format_eta(100)
+    assert "1:00:00" in AuditorUI._format_eta(3600)
 
 
-class MockLogger(AuditorLoggingMixin):
+class MockLogger(AuditorLogging):
     def __init__(self):
         self.logger = MagicMock()
         self.heartbeat_thread = None
         self.heartbeat_stop = False
-        self.last_activity = time.time()
+        self.last_activity = datetime.now()
         self.interrupted = False
         self.activity_lock = threading.Lock()
         self.current_phase = "scan"
 
 
-def test_logging_mixin_heartbeat_edge():
-    """Test heartbeat loop with simulated timeout (lines 589-590, 625-633, 648-652)."""
-    # Simply covering the method call for now
+def test_logging_component_heartbeat_warns_on_silence(monkeypatch):
+    """Test heartbeat loop warns when activity is stale."""
     l = MockLogger()
-    # Mock loop would require threading wait, just test return
-    pass
+    l.last_activity = datetime.now() - timedelta(seconds=HEARTBEAT_FAIL_THRESHOLD + 1)
+    l.heartbeat_stop = False
+
+    def _sleep(_seconds):
+        l.heartbeat_stop = True
+
+    monkeypatch.setattr("redaudit.core.auditor_components.time.sleep", _sleep)
+    l._heartbeat_loop()
+    assert l.logger.warning.called
 
 
-class MockCrypto(AuditorCryptoMixin):
+class MockCrypto(AuditorCrypto):
     def __init__(self):
         self.config = {}
         self.encryption_enabled = False
@@ -141,6 +147,8 @@ class MockCrypto(AuditorCryptoMixin):
         self.cryptography_available = True
         self.lang = "en"
         self.COLORS = {"WARNING": "", "ENDC": "", "OKGREEN": ""}
+        self.colors = self.COLORS
+        self.ui = self
 
     def t(self, key):
         return key
@@ -152,22 +160,24 @@ class MockCrypto(AuditorCryptoMixin):
         return True
 
 
-def test_crypto_mixin_setup():
-    """Test setup_encryption (lines 598-652)."""
+def test_crypto_component_setup():
+    """Test setup_encryption."""
     c = MockCrypto()
-    with patch("redaudit.core.auditor_mixins.ask_password_twice", return_value="pwd"):
+    with patch("redaudit.core.auditor_components.ask_password_twice", return_value="pwd"):
         with patch(
-            "redaudit.core.auditor_mixins.derive_key_from_password", return_value=(b"key", b"salt")
+            "redaudit.core.auditor_components.derive_key_from_password", return_value=(b"key", b"salt")
         ):
             c.setup_encryption()
             assert c.encryption_enabled is True
 
 
-class MockNVD(AuditorNVDMixin):
+class MockNVD(AuditorNVD):
     def __init__(self):
         self.config = {"cve_lookup_enabled": True}
         self.COLORS = {"WARNING": "", "ENDC": "", "CYAN": ""}
         self.lang = "en"
+        self.colors = self.COLORS
+        self.ui = self
 
     def t(self, key):
         return key
@@ -179,8 +189,8 @@ class MockNVD(AuditorNVDMixin):
         return 2  # Skip
 
 
-def test_nvd_mixin_setup():
-    """Test setup_nvd_api_key (lines 656-748)."""
+def test_nvd_component_setup():
+    """Test setup_nvd_api_key."""
     n = MockNVD()
     with patch("redaudit.utils.config.get_nvd_api_key", return_value=None):
         n.setup_nvd_api_key()

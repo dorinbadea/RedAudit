@@ -27,7 +27,8 @@ Internal refactoring using Strangler Fig pattern:
 3. ✅ **Phase 3**: NetworkScanner - Identity scoring utilities
 4. ✅ **Phase 4**: Adapter properties for gradual migration
 
-**Status**: Completed in v4.0.0. Full migration to composed `NetworkScanner` and `Host` models.
+**Status**: Completed in v4.0.0. Composition-first orchestration via `AuditorRuntime`, with
+legacy inheritance removed and compatibility handled by adapter-backed components.
 
 ### Red Team Extensions (Priority: Medium)
 

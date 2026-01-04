@@ -10,24 +10,33 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+### Changed
+
+- **Composition Adapter**: Main auditor now delegates legacy component behavior through
+  `redaudit/core/auditor_runtime.py`, keeping orchestration composition-first.
+
+### Removed
+
+- **Tests**: Removed `tests/test_entity_resolver_extra.py` (coverage filler).
+
 ## [4.0.0] - 2026-01-04
 
 ### Added
 
 - **Data Models**: New `Host`, `Service`, `Vulnerability` dataclasses in `redaudit/core/models.py`.
-- **Composition**: `NetworkScanner` class replacing `AuditorScanMixin`.
+- **Composition**: `NetworkScanner` class replacing `AuditorScan`.
 - **Architecture**: Full migration to object-based pipeline in `auditor_scan.py` and `reporter.py`.
 
 ### Changed
 
-- **Refactor**: Replaced legacy mixin-based scanning logic with composed scanner.
+- **Refactor**: Replaced legacy inheritance-based scanning logic with composed scanner.
 - **Reporting**: Updated `reporter.py` to serialize `Host` objects for JSON/HTML reports.
 - **Testing**: Major cleanup of test suite, ensuring tests verify logic (48/48 core tests passing).
 
 ### Removed
 
 - Legacy "coverage filler" tests.
-- Deprecated mixin logic related to ad-hoc dictionary handling.
+- Deprecated inheritance logic related to ad-hoc dictionary handling.
 
 ## [3.10.2] - 2026-01-04 (Auditor Node & MAC Display Fix)
 

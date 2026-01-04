@@ -408,7 +408,11 @@ def get_http_targets_from_hosts(hosts: List[Dict]) -> List[str]:
 
     targets = []
 
+    from redaudit.core.models import Host
+
     for host in hosts:
+        if isinstance(host, Host):
+            host = host.to_dict()
         ip = host.get("ip", "")
         if not ip:
             continue

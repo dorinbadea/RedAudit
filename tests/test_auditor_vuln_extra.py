@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Extra coverage for AuditorVulnMixin paths.
+Extra coverage for AuditorVuln paths.
 """
 
 import contextlib
 
 from redaudit.core import auditor_vuln
-from redaudit.core.auditor_vuln import AuditorVulnMixin
+from redaudit.core.auditor_vuln import AuditorVuln
 
 
 class _DummyLogger:
@@ -20,7 +20,7 @@ class _DummyLogger:
         pass
 
 
-class _DummyAuditor(AuditorVulnMixin):
+class _DummyAuditor(AuditorVuln):
     def __init__(self):
         self.results = {"vulnerabilities": []}
         self.extra_tools = {}

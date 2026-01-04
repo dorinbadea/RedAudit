@@ -23,6 +23,7 @@ class Service:
     name: str = "unknown"
     product: str = ""
     version: str = ""
+    extrainfo: str = ""
     state: str = "open"
     reason: str = ""
     tunnel: str = ""  # ssl/tls if applicable
@@ -82,9 +83,14 @@ class Host:
     # Collections
     services: List[Service] = field(default_factory=list)
     vulnerabilities: List[Vulnerability] = field(default_factory=list)
+    ports: List[Dict] = field(default_factory=list)
+
+    web_ports_count: int = 0
+    total_ports_found: int = 0
 
     # Metadata
     tags: Set[str] = field(default_factory=set)
+    device_type_hints: List[str] = field(default_factory=list)
     risk_score: float = 0.0
     status: str = "up"
 
@@ -97,6 +103,7 @@ class Host:
     phase0_enrichment: Dict = field(default_factory=dict)
     dns: Dict = field(default_factory=dict)
     cve_summary: Dict = field(default_factory=dict)
+    smart_scan: Dict = field(default_factory=dict)
 
     # Raw data preservation (for transition)
     raw_nmap_data: Dict = field(default_factory=dict)
@@ -117,6 +124,26 @@ class Host:
 
     def to_dict(self) -> Dict:
         """Serialize for JSON reports compatibility."""
+        if self.ports:
+            ports = [dict(p) for p in self.ports]
+        else:
+            ports = []
+            for svc in self.services:
+                ports.append(
+                    {
+                        "port": svc.port,
+                        "protocol": svc.protocol,
+                        "service": svc.name,
+                        "product": svc.product,
+                        "version": svc.version,
+                        "extrainfo": svc.extrainfo,
+                        "state": svc.state,
+                        "reason": svc.reason,
+                        "tunnel": svc.tunnel,
+                        "cpe": svc.cpe,
+                        "script_output": svc.script_output,
+                    }
+                )
         return {
             "ip": self.ip,
             "mac_address": self.mac_address,
@@ -126,10 +153,14 @@ class Host:
             "os_detected": self.os_detected,
             "device_type": self.device_type,
             "services": [s.__dict__ for s in self.services],
+            "ports": ports,
             "vulnerabilities": [v.to_dict() for v in self.vulnerabilities],
             "tags": list(self.tags),
+            "device_type_hints": list(self.device_type_hints),
             "risk_score": self.risk_score,
             "status": self.status,
+            "web_ports_count": self.web_ports_count,
+            "total_ports_found": self.total_ports_found,
             "is_auditor_node": self.is_auditor_node,
             # Extended fields
             "deep_scan": self.deep_scan,
@@ -138,4 +169,5 @@ class Host:
             "phase0_enrichment": self.phase0_enrichment,
             "dns": self.dns,
             "cve_summary": self.cve_summary,
+            "smart_scan": self.smart_scan,
         }

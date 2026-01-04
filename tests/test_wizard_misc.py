@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import sys
 
-from redaudit.core.wizard import WizardMixin
+from redaudit.core.wizard import Wizard
 
 
-class _DummyWizard(WizardMixin):
+class _DummyWizard(Wizard):
     def __init__(self):
         self.lang = "en"
         self.config = {"dry_run": False}
@@ -31,7 +31,7 @@ class _DummyWizard(WizardMixin):
         self.ui.t.side_effect = lambda k, *a: str(k) if k != "banner_subtitle" else "Subtitle"
 
     def t(self, key, *_args):
-        # Kept for compatibility if WizardMixin uses self.t
+        # Kept for compatibility if Wizard uses self.t
         if key == "banner_subtitle":
             return "Subtitle"
         return key

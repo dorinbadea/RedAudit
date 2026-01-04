@@ -1,5 +1,5 @@
 """
-RedAudit - Auditor scanning mixin.
+RedAudit - Auditor scanning component.
 """
 
 from __future__ import annotations
@@ -71,7 +71,7 @@ from redaudit.utils.oui_lookup import get_vendor_with_fallback
 nmap = None
 
 
-class AuditorScanMixin:
+class AuditorScan:
     results: Dict[str, Any]
     config: Dict[str, Any]
     extra_tools: Dict[str, Optional[str]]
@@ -154,7 +154,7 @@ class AuditorScanMixin:
             self.ui.print_status(msg, "WARNING")
         return True
 
-    # ---------- Input utilities (inherited from WizardMixin) ----------
+    # ---------- Input utilities (inherited from Wizard) ----------
 
     # ---------- Network detection ----------
 
@@ -960,7 +960,6 @@ class AuditorScanMixin:
         Accepts IP string or Host object (v4.0).
         """
         if isinstance(host, Host):
-
             safe_ip = host.ip
         else:
             safe_ip = sanitize_ip(host)
@@ -1124,6 +1123,7 @@ class AuditorScanMixin:
                         name=name,
                         product=product,
                         version=version,
+                        extrainfo=extrainfo,
                         state=svc.get("state", "open"),
                         reason=svc.get("reason", ""),
                         tunnel=svc.get("tunnel", ""),
@@ -1365,11 +1365,21 @@ class AuditorScanMixin:
             host_record["status"] = finalize_host_status(host_record)
 
             # v4.0: Sync final enrichment data to Host model
+            host_obj.hostname = host_record.get("hostname") or host_obj.hostname
+            host_obj.ports = ports
+            host_obj.web_ports_count = int(host_record.get("web_ports_count", 0) or 0)
+            host_obj.total_ports_found = int(host_record.get("total_ports_found", 0) or 0)
+            host_obj.device_type_hints = host_record.get("device_type_hints") or []
             host_obj.dns = host_record.get("dns", {})
             host_obj.status = host_record.get("status")
             host_obj.risk_score = host_record.get("risk_score", 0.0)
             if host_record.get("deep_scan"):
                 host_obj.deep_scan = host_record["deep_scan"]
+                deep_meta = host_record["deep_scan"]
+                if deep_meta.get("mac_address"):
+                    host_obj.mac_address = deep_meta["mac_address"]
+                if deep_meta.get("vendor"):
+                    host_obj.vendor = deep_meta["vendor"]
             if host_record.get("os_detected"):
                 host_obj.os_detected = host_record["os_detected"]
             if host_record.get("phase0_enrichment"):

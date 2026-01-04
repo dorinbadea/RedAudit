@@ -5,8 +5,8 @@ Test Audit Fixes - Verify data flow consistency fixes.
 import unittest
 from unittest.mock import MagicMock, patch
 
-# Mock class for AuditorScanMixin to test the specific method
-from redaudit.core.auditor_scan import AuditorScanMixin
+# Mock class for AuditorScan to test the specific method
+from redaudit.core.auditor_scan import AuditorScan
 
 
 class MockAuditor:
@@ -28,7 +28,7 @@ class MockAuditor:
         return True, 0
 
 
-class RealMockAuditor(AuditorScanMixin):
+class RealMockAuditor(AuditorScan):
     def __init__(self):
         self.config = {
             "deep_id_scan": False,

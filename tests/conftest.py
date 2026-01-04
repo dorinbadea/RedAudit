@@ -14,12 +14,12 @@ from redaudit.core.network_scanner import NetworkScanner
 
 
 # ==============================================================================
-# Mock Classes for Mixin Testing
+# Mock Classes for Component Testing
 # ==============================================================================
 
 
 class MockAuditorBase:
-    """Base mock auditor with common attributes required by all mixins."""
+    """Base mock auditor with common attributes required by shared components."""
 
     def __init__(self, config=None):
         self.config = config or {

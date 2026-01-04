@@ -1,5 +1,5 @@
 """
-RedAudit - UI Manager (Extracted from AuditorUIMixin)
+RedAudit - UI Manager (Extracted from AuditorUI)
 
 This module provides standalone UI functionality that can be tested
 independently from the main Auditor class.

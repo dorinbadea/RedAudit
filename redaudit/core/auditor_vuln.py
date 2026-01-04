@@ -1,5 +1,5 @@
 """
-RedAudit - Auditor vulnerability mixin.
+RedAudit - Auditor vulnerability component.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from redaudit.core.command_runner import CommandRunner
 from redaudit.core.scanner import http_enrichment, ssl_deep_analysis, tls_enrichment
 
 
-class AuditorVulnMixin:
+class AuditorVuln:
     results: Dict[str, Any]
     extra_tools: Dict[str, Any]
     config: Dict[str, Any]
@@ -52,6 +52,14 @@ class AuditorVulnMixin:
             return host, port, scheme
         except Exception:
             return "", 0, ""
+
+    @staticmethod
+    def _normalize_host_info(host_info: Any) -> Dict[str, Any]:
+        from redaudit.core.models import Host
+
+        if isinstance(host_info, Host):
+            return host_info.to_dict()
+        return host_info
 
     def _merge_nuclei_findings(self, findings: List[Dict[str, Any]]) -> int:
         if not findings:
@@ -145,6 +153,7 @@ class AuditorVulnMixin:
 
     def scan_vulnerabilities_web(self, host_info):
         """Scan web vulnerabilities on a host."""
+        host_info = self._normalize_host_info(host_info)
         web_ports = [p for p in host_info.get("ports", []) if p.get("is_web_service")]
         if not web_ports:
             return None
@@ -281,7 +290,8 @@ class AuditorVulnMixin:
 
     def scan_vulnerabilities_concurrent(self, host_results):
         """Scan vulnerabilities on multiple hosts concurrently with progress bar."""
-        web_hosts = [h for h in host_results if h.get("web_ports_count", 0) > 0]
+        normalized_hosts = [self._normalize_host_info(h) for h in (host_results or [])]
+        web_hosts = [h for h in normalized_hosts if h.get("web_ports_count", 0) > 0]
         if not web_hosts:
             return
 

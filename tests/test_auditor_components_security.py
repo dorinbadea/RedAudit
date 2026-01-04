@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Coverage for auditor mixin encryption and NVD setup flows.
+Coverage for auditor component encryption and NVD setup flows.
 """
 
 from __future__ import annotations
 
 import base64
 
-from redaudit.core.auditor_mixins import AuditorCryptoMixin, AuditorNVDMixin
+from redaudit.core.auditor_components import AuditorCrypto, AuditorNVD
 
 
-class _DummyAuditor(AuditorCryptoMixin, AuditorNVDMixin):
+class _DummyAuditor(AuditorCrypto, AuditorNVD):
     def __init__(self):
         self.config = {"cve_lookup_enabled": True}
         self.encryption_enabled = False
@@ -39,9 +39,9 @@ class _DummyAuditor(AuditorCryptoMixin, AuditorNVDMixin):
 def test_setup_encryption_non_interactive_generates_password(monkeypatch):
     auditor = _DummyAuditor()
 
-    monkeypatch.setattr("redaudit.core.auditor_mixins.generate_random_password", lambda: "pw")
+    monkeypatch.setattr("redaudit.core.auditor_components.generate_random_password", lambda: "pw")
     monkeypatch.setattr(
-        "redaudit.core.auditor_mixins.derive_key_from_password",
+        "redaudit.core.auditor_components.derive_key_from_password",
         lambda _pw: (b"key", b"salt"),
     )
 

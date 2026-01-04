@@ -87,17 +87,15 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
         )
         nm = _FakePortScanner(ip=ip, host=fake_host)
 
-        with patch("redaudit.core.auditor_scan.nmap") as mock_nmap:
-            mock_nmap.PortScanner.return_value = nm
+        with patch.object(app.scanner, "run_nmap_scan", return_value=(nm, "")):
             app.deep_scan_host = Mock(return_value={"strategy": "mock", "commands": []})
-
             result = app.scan_host_ports(ip)
 
         # v3.8: Quiet hosts (0 ports, generic vendor, no signals) skip deep scan
         self.assertFalse(app.deep_scan_host.called)
-        self.assertEqual(result.get("total_ports_found"), 0)
-        self.assertEqual(result.get("deep_scan", {}).get("mac_address"), "00:11:22:33:44:55")
-        self.assertEqual(result.get("deep_scan", {}).get("vendor"), "Generic Corp")
+        self.assertEqual(result.total_ports_found, 0)
+        self.assertEqual(result.deep_scan.get("mac_address"), "00:11:22:33:44:55")
+        self.assertEqual(result.deep_scan.get("vendor"), "Generic Corp")
 
     def test_normal_mode_still_triggers_deep_scan_for_small_port_hosts(self):
         app = InteractiveNetworkAuditor()
@@ -122,10 +120,8 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
         )
         nm = _FakePortScanner(ip=ip, host=fake_host)
 
-        with patch("redaudit.core.auditor_scan.nmap") as mock_nmap:
-            mock_nmap.PortScanner.return_value = nm
+        with patch.object(app.scanner, "run_nmap_scan", return_value=(nm, "")):
             app.deep_scan_host = Mock(return_value={"strategy": "mock", "commands": []})
-
             _ = app.scan_host_ports(ip)
 
         self.assertTrue(app.deep_scan_host.called)

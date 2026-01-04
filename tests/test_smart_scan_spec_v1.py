@@ -12,10 +12,10 @@ import redaudit.core.auditor_scan as scan_mod
 from redaudit.core.network_scanner import NetworkScanner
 
 
-from redaudit.core.auditor_scan import AuditorScanMixin
+from redaudit.core.auditor_scan import AuditorScan
 
 
-class MockAuditor(AuditorScanMixin):
+class MockAuditor(AuditorScan):
     def __init__(self):
         self.config = {
             "output_dir": "/tmp",
@@ -51,11 +51,7 @@ class MockAuditor(AuditorScanMixin):
         host = super().scan_host_ports(target_ip)
         # Convert Host object to dict for tests that expect dict access
         if hasattr(host, "to_dict"):
-            d = host.to_dict()
-            # Ensure smart_scan is in the dict if it was attached
-            if hasattr(host, "smart_scan") and "smart_scan" not in d:
-                d["smart_scan"] = host.smart_scan
-            return d
+            return host.to_dict()
         return host.__dict__
 
 

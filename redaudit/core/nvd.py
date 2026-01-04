@@ -436,7 +436,10 @@ def enrich_host_with_cves(host_record: Dict, api_key: Optional[str] = None, logg
     Returns:
         Host record with CVE-enriched ports
     """
-    ports = host_record.get("ports", [])
+    from redaudit.core.models import Host
+
+    host_obj = host_record if isinstance(host_record, Host) else None
+    ports = host_obj.ports if host_obj is not None else host_record.get("ports", [])
 
     for i, port_info in enumerate(ports):
         # Check services with version info OR reported CPE (Nmap may provide CPE without a version string).
@@ -455,12 +458,19 @@ def enrich_host_with_cves(host_record: Dict, api_key: Optional[str] = None, logg
     high_count = sum(1 for p in ports if p.get("cve_max_severity") == "HIGH")
 
     if total_cves > 0:
-        host_record["cve_summary"] = {
+        summary = {
             "total": total_cves,
             "critical": critical_count,
             "high": high_count,
         }
+        if host_obj is not None:
+            host_obj.cve_summary = summary
+        else:
+            host_record["cve_summary"] = summary
 
+    if host_obj is not None:
+        host_obj.ports = ports
+        return host_obj
     return host_record
 
 

@@ -30,7 +30,7 @@ from redaudit.utils.paths import expand_user_path, get_default_reports_base_dir
 from redaudit.utils.dry_run import is_dry_run
 
 
-class WizardMixin:
+class Wizard:
     """
     Mixin class containing interactive UI methods for RedAudit.
 

@@ -5,10 +5,10 @@ Extra coverage for wizard arrow menu navigation.
 
 import io
 
-from redaudit.core.wizard import WizardMixin
+from redaudit.core.wizard import Wizard
 
 
-class _DummyWizard(WizardMixin):
+class _DummyWizard(Wizard):
     def __init__(self):
         self.lang = "en"
         self.config = {}
@@ -28,7 +28,7 @@ class _DummyWizard(WizardMixin):
         self.ui.t.side_effect = lambda k, *a: f"{k}:{','.join(str(s) for s in a)}" if a else str(k)
 
     def t(self, key, *args):
-        # Kept for compatibility if WizardMixin uses self.t
+        # Kept for compatibility if Wizard uses self.t
         if args:
             return f"{key}:{','.join(str(a) for a in args)}"
         return key

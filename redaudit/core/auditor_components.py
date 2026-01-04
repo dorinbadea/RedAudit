@@ -1,5 +1,5 @@
 """
-RedAudit - Auditor mixins and utilities.
+RedAudit - Auditor components and utilities.
 """
 
 from __future__ import annotations
@@ -134,9 +134,9 @@ class _ActivityIndicator:
             time.sleep(self._refresh_s)
 
 
-class AuditorUIMixin:
+class AuditorUI:
     """
-    UI mixin for auditor class.
+    UI component for auditor class.
 
     v4.0: Gradually migrating to UIManager via adapter pattern.
     The `ui` property provides access to standalone UIManager.
@@ -159,7 +159,7 @@ class AuditorUIMixin:
         """
         Get UIManager instance (adapter pattern).
 
-        This allows gradual migration from mixin methods to composed UIManager.
+        This allows gradual migration from component helpers to composed UIManager.
         Eventually, all UI calls will go through self.ui instead of self.method.
         """
         if not hasattr(self, "_ui_manager"):
@@ -512,7 +512,7 @@ class AuditorUIMixin:
             self._ui_progress_active = prev
 
 
-class AuditorLoggingMixin:
+class AuditorLogging:
     def _setup_logging(self):
         """Configure logging with rotation."""
         log_dir = os.path.expanduser("~/.redaudit/logs")
@@ -620,7 +620,7 @@ class AuditorLoggingMixin:
             time.sleep(HEARTBEAT_INTERVAL)
 
 
-class AuditorCryptoMixin:
+class AuditorCrypto:
     def setup_encryption(self, non_interactive=False, password=None):
         """
         Setup encryption if requested and available.
@@ -678,7 +678,7 @@ class AuditorCryptoMixin:
                     raise
 
 
-class AuditorNVDMixin:
+class AuditorNVD:
     def setup_nvd_api_key(self, non_interactive=False, api_key=None):
         """
         Setup NVD API key for CVE correlation.
