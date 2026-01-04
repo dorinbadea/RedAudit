@@ -322,6 +322,29 @@ def guess_asset_type(host: Dict) -> str:
     if any(x in hostname_base for x in ["vpn", "ipsec", "wireguard", "openvpn", "tunnel"]):
         return "vpn"
 
+    # Heuristic 4: VPN/Firewall Vendor OUI
+    VPN_FIREWALL_VENDORS = [
+        "palo alto",
+        "fortinet",
+        "fortigate",
+        "cisco",
+        "juniper",
+        "sonicwall",
+        "checkpoint",
+        "watchguard",
+        "sophos",
+        "pulse secure",
+        "f5 networks",
+        "barracuda",
+    ]
+    if vendor and any(v in vendor for v in VPN_FIREWALL_VENDORS):
+        # These vendors + VPN ports = almost certainly VPN/Firewall endpoint
+        if port_nums & VPN_PORTS:
+            return "vpn"
+        # These vendors + web ports only = likely firewall admin interface
+        if port_nums & {80, 443, 8443}:
+            return "firewall"
+
     if any(
         x in hostname_base
         for x in (

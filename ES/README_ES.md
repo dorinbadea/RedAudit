@@ -54,7 +54,7 @@ sudo redaudit
 | **Descubrimiento de Topología** | Mapeo L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para contexto de red |
 | **Descubrimiento de Red** | Protocolos broadcast (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) para visibilidad L2 |
 | **Verificación sin agente** | Sondas SMB/RDP/LDAP/SSH/HTTP para pistas de identidad |
-| **Detección Interfaces VPN** | Clasifica endpoints VPN por heurísticas de MAC/IP de gateway, puertos VPN y patrones de hostname |
+| **Detección Interfaces VPN** | Clasifica endpoints VPN por vendor OUI, puertos VPN (500/4500/1194/51820) y patrones de hostname |
 | **Modo Sigiloso** | Timing T1, 1 hilo, retardos 5s+ para entornos sensibles a IDS (`--stealth`) |
 
 ### Inteligencia y Correlación
