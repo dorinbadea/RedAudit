@@ -16,7 +16,7 @@ RedAudit es un **framework de auditoría de red automatizado** para Linux (famil
 **Es:**
 
 - Un orquestador de reconocimiento y descubrimiento de vulnerabilidades
-- Un generador de reportes (JSON, TXT, HTML, JSONL)
+- Un generador de informes (JSON, TXT, HTML, JSONL)
 - Una herramienta para evaluaciones de seguridad autorizadas
 
 **NO es:**
@@ -53,7 +53,7 @@ source ~/.zshrc  # o ~/.bashrc
 
 El instalador:
 
-1. Instala dependencias del sistema via `apt`
+1. Instala dependencias del sistema vía `apt`
 2. Copia el código a `/usr/local/lib/redaudit`
 3. Crea el alias `redaudit` en el shell
 4. Solicita preferencia de idioma (EN/ES)
@@ -144,7 +144,7 @@ Al ejecutar `sudo redaudit` en modo interactivo, el asistente pregunta qué perf
 | Modo | Invocación | Comportamiento |
 | :--- | :--- | :--- |
 | **Interactivo** | `sudo redaudit` | Wizard basado en texto; solicita objetivo, modo, opciones |
-| **No interactivo** | `sudo redaudit --target X --yes` | Ejecución directa; todas las opciones via flags CLI |
+| **No interactivo** | `sudo redaudit --target X --yes` | Ejecución directa; todas las opciones vía flags CLI |
 
 ### Modos de Escaneo (`--mode`)
 
@@ -166,20 +166,20 @@ Cuando está habilitado (por defecto), RedAudit realiza escaneos adicionales en 
 
 - Menos de 3 puertos abiertos encontrados (cuando la identidad es débil)
 - Servicios identificados como `unknown` o `tcpwrapped`
-- Información MAC/vendor no obtenida
+- Información MAC/fabricante no obtenida
 - **Detección de Gateway VPN**: El host comparte la dirección MAC con el gateway pero tiene una IP diferente (interfaz virtual)
 
 **Comportamiento:**
 
-0. (Opcional) Fase 0 de enriquecimiento de bajo impacto (DNS reverso, mDNS unicast, SNMP sysDescr) al activarlo en el wizard o con `--low-impact-enrichment`
+0. (Opcional) Fase 0 de enriquecimiento de bajo impacto (DNS reverso, mDNS unicast, SNMP sysDescr) al activarlo en el asistente o con `--low-impact-enrichment`
 1. Fase 1: TCP agresivo (`-A -p- -sV -Pn`)
 2. Fase 2a: Sonda UDP prioritaria (17 puertos comunes incluyendo 500/4500)
 3. Fase 2b: UDP top-ports (`--udp-ports`) cuando el modo es `full` y la identidad sigue débil
-4. Hosts silenciosos con vendor detectado y cero puertos abiertos pueden recibir un probe HTTP/HTTPS breve en rutas comunes
+4. Hosts silenciosos con fabricante detectado y cero puertos abiertos pueden recibir una sonda HTTP/HTTPS breve en rutas habituales
 
 Deshabilitar con `--no-deep-scan`.
 
-SmartScan usa un score de identidad (umbral por defecto: 3; modo full usa 4) para decidir si escalar.
+SmartScan usa una puntuación de identidad (umbral por defecto: 3; modo full usa 4) para decidir si escalar.
 
 La clasificación VPN se realiza mediante heurísticas de tipado de activo (MAC/IP de gateway, puertos VPN, patrones de hostname).
 
@@ -249,7 +249,7 @@ Flags verificadas contra `redaudit --help` (v3.10.0):
 
 | Flag | Descripción |
 | :--- | :--- |
-| `-e, --encrypt` | Cifrar reportes (AES-128-CBC via Fernet) |
+| `-e, --encrypt` | Cifrar informes (AES-128-CBC vía Fernet) |
 | `--encrypt-password PASSWORD` | Contraseña para cifrado (o se genera aleatoriamente) |
 | `--allow-non-root` | Ejecutar sin sudo (funcionalidad limitada) |
 
@@ -259,7 +259,7 @@ Flags verificadas contra `redaudit --help` (v3.10.0):
 | :--- | :--- |
 | `--html-report` | Generar dashboard HTML interactivo |
 | `--webhook URL` | POST alertas para hallazgos high/critical |
-| `--no-txt-report` | Omitir generación de reporte TXT |
+| `--no-txt-report` | Omitir generación de informe TXT |
 | `--no-vuln-scan` | Omitir escaneo nikto/vulnerabilidades web |
 | `--nuclei` | Habilitar escaneo de plantillas Nuclei (requiere `nuclei`) |
 | `--no-nuclei` | Deshabilitar Nuclei (ignora defaults) |
@@ -283,7 +283,7 @@ Flags verificadas contra `redaudit --help` (v3.10.0):
 
 | Flag | Descripción |
 | :--- | :--- |
-| `--diff OLD NEW` | Comparar dos reportes JSON (sin escaneo) |
+| `--diff OLD NEW` | Comparar dos informes JSON (sin escaneo) |
 
 ### Otros
 

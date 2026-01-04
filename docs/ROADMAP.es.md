@@ -57,15 +57,15 @@ Funcionalidades presentes en versiones con `redaudit --version` >= v3.6.0, con r
 
 | Característica | Versión | Verificación |
 | :--- | :--- | :--- |
-| **Detección Interfaces VPN** | v3.9.6 | `redaudit/core/entity_resolver.py`. Clasifica gateways VPN via OUI de vendor, puertos VPN (500/4500/1194/51820), y patrones de hostname. |
+| **Detección Interfaces VPN** | v3.9.6 | `redaudit/core/entity_resolver.py`. Clasifica gateways VPN vía OUI del fabricante, puertos VPN (500/4500/1194/51820) y patrones de nombre de host. |
 | **Pack de Firmas IoT** | v3.9.5 | `redaudit/core/udp_probe.py`, `redaudit/core/hyperscan.py`. Payloads UDP específicos para WiZ, Yeelight, Tuya/SmartLife, CoAP/Matter. |
 | **Selector de Perfil del Wizard** | v3.9.0 | `redaudit/core/auditor.py`. Express/Estándar/Exhaustivo presets + modo Custom. |
 | **Modos de Temporización Reales** | v3.9.0 | `redaudit/core/scanner/nmap.py`, `redaudit/core/auditor_scan.py`. Aplica nmap `-T1`/`-T4`/`-T5` con ajustes de delay/threads. |
 | **Reportes HTML Mejorados** | v3.9.0 | `redaudit/templates/report*.html.j2`. Hallazgos expandibles, análisis smart scan, playbooks, evidencia. |
 | **Detección FPs Nuclei** | v3.9.0 | `redaudit/core/verify_vuln.py`. Mapeo server header vs CPE para marcar FPs. |
 | **Consistencia de Colores** | v3.8.4 | `redaudit/core/auditor.py`. Usa Rich console.print() cuando el progreso está activo para asegurar colores correctos. |
-| **Identidad del Auditor** | v3.8.3 | `redaudit/core/wizard.py`. Prompt del asistente para nombre del auditor, visible en reportes TXT/HTML. |
-| **Reportes HTML Bilingües** | v3.8.3 | `redaudit/core/reporter.py`. Cuando el idioma es ES, se genera `report_es.html` junto al HTML principal. |
+| **Identidad del Auditor** | v3.8.3 | `redaudit/core/wizard.py`. Prompt del asistente para nombre del auditor, visible en informes TXT/HTML. |
+| **Informes HTML Bilingües** | v3.8.3 | `redaudit/core/reporter.py`. Cuando el idioma es ES, se genera `report_es.html` junto al HTML principal. |
 | **Navegación del Asistente** | v3.8.1 | `redaudit/core/wizard.py`. Opción "< Volver" en menús del asistente para navegación paso a paso. |
 | **Watermark HTML** | v3.8.2 | `redaudit/templates/report.html.j2`. Footer profesional con GPLv3, autor y enlace a GitHub. |
 | **Webhooks Interactivos** | v3.7.0 | `redaudit/core/wizard.py`. Configura Slack/Teams directamente en el asistente. |
@@ -78,9 +78,9 @@ Funcionalidades presentes en versiones con `redaudit --version` >= v3.6.0, con r
 
 | Característica | Versión | Verificación |
 | :--- | :--- | :--- |
-| **Integración Nuclei** | v3.6.0 | Módulo `redaudit/core/nuclei.py`. Ejecuta templates cuando Nuclei está instalado y se habilita explícitamente (asistente o `--nuclei`). |
+| **Integración Nuclei** | v3.6.0 | Módulo `redaudit/core/nuclei.py`. Ejecuta plantillas cuando Nuclei está instalado y se habilita explícitamente (asistente o `--nuclei`). |
 | **Verificación sin agente** | v3.7.3 | `redaudit/core/agentless_verify.py`. Fingerprinting SMB/RDP/LDAP/SSH/HTTP opcional (asistente o `--agentless-verify`). |
-| **Probe HTTP en hosts silenciosos** | v3.8.5 | `redaudit/core/auditor_scan.py`, `redaudit/core/scanner/enrichment.py`. Probe HTTP/HTTPS breve en puertos comunes para hosts con vendor y cero puertos abiertos. |
+| **Sonda HTTP en hosts silenciosos** | v3.8.5 | `redaudit/core/auditor_scan.py`, `redaudit/core/scanner/enrichment.py`. Sonda HTTP/HTTPS breve en puertos comunes para hosts con fabricante y cero puertos abiertos. |
 | **Generación Playbooks** | v3.4.0 | Módulo `redaudit/core/playbook_generator.py`. Crea guías de remediación MD en `playbooks/`. |
 | **Red Team: Kerberos** | v3.2.0 | Módulo `redaudit/core/net_discovery.py`. Usa `kerbrute` para enumeración si está autorizado. |
 | **Red Team: SNMP/SMB** | v3.2.0 | Módulo `redaudit/core/net_discovery.py`. Usa `snmpwalk` y `enum4linux`. |

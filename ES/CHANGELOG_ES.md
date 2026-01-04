@@ -10,10 +10,15 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-01-04
+
 ### Cambios
 
-- **Adaptador de composición**: El auditor principal ahora delega comportamiento heredado
-  vía `redaudit/core/auditor_runtime.py`, manteniendo la orquestación por composición.
+- **Arquitectura**: El auditor principal ahora delega el comportamiento de componentes vía
+  `redaudit/core/auditor_runtime.py`, manteniendo la orquestación por composición.
+- **Pruebas**: Endurecidas las pruebas de error de importación de OUI para evitar solicitudes
+  externas y advertencias por desfase de tiempo.
+- **Documentación**: Alineada la redacción del refactor de composición en roadmap y notas.
 
 ### Eliminado
 
@@ -170,7 +175,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Fixed
 
 - **Consolidacion de hallazgos con TestSSL**: los merges preservan `testssl_analysis` y observaciones para no perder alertas TLS.
-- **Titulos HTML con fallback**: cuando no hay `descriptive_title`, el HTML genera un titulo util (ej: `Web Service Finding on Port 443`) en vez de la URL.
+- **Títulos HTML con fallback**: cuando no hay `descriptive_title`, el HTML genera un título útil (ej: `Web Service Finding on Port 443`) en vez de la URL.
 
 ## [3.9.2] - 2025-12-27 (Hotfix de Version)
 
@@ -403,7 +408,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 - **Webhooks Interactivos**: El wizard ahora solicita URL de webhook Slack/Teams/PagerDuty con alerta de prueba opcional.
 - **Net Discovery Avanzado en Wizard**: Cadena SNMP, zona DNS y máximo de objetivos ahora configurables en el wizard.
 - **Pipeline SIEM Nativo**: Incluye `siem/filebeat.yml`, `siem/logstash.conf` y 3 reglas Sigma para integración ELK y otros SIEM.
-- **Verificación Osquery**: Nuevo módulo `redaudit/core/osquery.py` para validación de configuración de hosts post-scan via SSH.
+- **Verificación Osquery**: Nuevo módulo `redaudit/core/osquery.py` para validación de configuración de hosts post-scan vía SSH.
 - **Logging de Sesión**: Salida de terminal capturada automáticamente a carpeta `session_logs/` (`.log` raw + `.txt` limpio).
 - **Spinner de Progreso Nuclei**: Spinner animado Rich con tiempo transcurrido durante escaneos de templates Nuclei.
 
@@ -420,7 +425,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Añadido
 
 - **Consolidación de hallazgos**: Los hallazgos duplicados en el mismo host (ej: "X-Frame-Options faltante" en 5 puertos) ahora se fusionan en uno con array `affected_ports`.
-- **Fallback OUI online**: Nuevo módulo `redaudit/utils/oui_lookup.py` para consulta de vendor MAC via macvendors.com cuando la base local está incompleta.
+- **Fallback OUI online**: Nuevo módulo `redaudit/utils/oui_lookup.py` para consulta de vendor MAC vía macvendors.com cuando la base local está incompleta.
 - **Detección de puertos HTTPS**: Ampliada detección SSL/TLS para incluir puertos no estándar (8443, 4443, 9443, 49443).
 
 ### Corregido
@@ -1290,7 +1295,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 
 ### Cambiado
 
-- **Gestión de dependencias**: Se deja de usar `pip`. Dependencias via `apt` (python3-nmap, etc.) alineado con Kali/Debian.
+- **Gestión de dependencias**: Se deja de usar `pip`. Dependencias vía `apt` (python3-nmap, etc.) alineado con Kali/Debian.
 - **Networking**: Reemplaza `netifaces` (a menudo ausente) por parsing robusto de `ip addr show` o `ifconfig`.
 - **Arquitectura**: `redaudit_install.sh` ahora despliega el core Python directamente, eliminando descargas de `.py` separado.
 

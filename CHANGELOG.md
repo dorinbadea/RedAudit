@@ -10,10 +10,15 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-01-04
+
 ### Changed
 
-- **Composition Adapter**: Main auditor now delegates legacy component behavior through
+- **Architecture**: Main auditor now delegates component behavior through
   `redaudit/core/auditor_runtime.py`, keeping orchestration composition-first.
+- **Testing**: Hardened OUI lookup import error test to avoid external requests and time-skew
+  warnings.
+- **Documentation**: Aligned composition refactor wording across roadmap and release notes.
 
 ### Removed
 

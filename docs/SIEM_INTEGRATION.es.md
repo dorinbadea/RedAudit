@@ -47,7 +47,7 @@ sigma convert -t qradar siem/sigma/*.yml
 
 ## Esquema JSONL de RedAudit
 
-Las exportaciones JSONL se generan solo cuando el cifrado de reportes está desactivado.
+Las exportaciones JSONL se generan solo cuando el cifrado de informes está desactivado.
 
 ### findings.jsonl
 

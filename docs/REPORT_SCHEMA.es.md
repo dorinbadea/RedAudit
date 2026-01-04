@@ -10,7 +10,7 @@
 
 ## Visión General
 
-RedAudit genera reportes legibles por máquina en formato JSON. Este documento describe la estructura del esquema para los artefactos `redaudit_<timestamp>.json`.
+RedAudit genera informes legibles por máquina en formato JSON. Este documento describe la estructura del esquema para los artefactos `redaudit_<timestamp>.json`.
 
 **Tipos de Datos**: Tipos JSON estándar (`string`, `number`, `boolean`, `array`, `object`).
 **Nullable**: Los campos son nullable a menos que se especifique lo contrario.
@@ -25,7 +25,7 @@ En el mismo directorio de salida, RedAudit también puede generar archivos plano
 - `summary.json`: Resumen compacto para dashboards
 - `run_manifest.json`: Manifiesto de la carpeta de salida (archivos + métricas)
 
-Estas exportaciones se generan solo cuando el cifrado de reportes está **desactivado**, para evitar crear artefactos en texto plano junto a reportes cifrados.
+Estas exportaciones se generan solo cuando el cifrado de informes está **desactivado**, para evitar crear artefactos en texto plano junto a informes cifrados.
 
 ## Definición del Esquema
 
@@ -59,7 +59,7 @@ El contenedor de nivel superior para la sesión de escaneo.
 
 ### summary.json (Resumen para dashboards)
 
-Resumen compacto para dashboards y automatización (se genera solo cuando el cifrado de reportes está deshabilitado).
+Resumen compacto para dashboards y automatización (se genera solo cuando el cifrado de informes está deshabilitado).
 
 | Campo | Tipo | Descripción |
 | :--- | :--- | :--- |
@@ -80,7 +80,7 @@ Resumen compacto para dashboards y automatización (se genera solo cuando el cif
 | `scan_mode` | `string` | Modo de escaneo (rapido/normal/completo) |
 | `scan_mode_cli` | `string` | Modo CLI (best-effort) |
 | `options` | `object` | Snapshot compacto de config (threads/udp/topología/net-discovery/nuclei/etc.) |
-| `pipeline` | `object` | Resumen del pipeline (mismo formato que el reporte principal) |
+| `pipeline` | `object` | Resumen del pipeline (mismo formato que el informe principal) |
 | `smart_scan_summary` | `object` | Resumen de SmartScan |
 | `redaudit_version` | `string` | Versión de RedAudit |
 
