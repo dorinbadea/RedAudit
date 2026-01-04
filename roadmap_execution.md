@@ -11,6 +11,7 @@ Objetivo: mejoras visibles, documentación operativa y señales de calidad.
 - [x] Consolidar CONTRIBUTING en la raíz (sustituyendo .github/CONTRIBUTING.md).
 - [x] Revisar y actualizar issue templates (bug/feature).
 - [ ] Corregir ResourceWarning si aparecen en tests (no se detectaron en la ejecución actual).
+- [ ] Corregir warnings de asyncio en tests de hyperscan (coroutines no awaited).
 
 Criterio de salida:
 
@@ -26,7 +27,7 @@ Objetivo: reducir deuda y mejorar separación de responsabilidades.
   - auditor.py (orquestación)
   - auditor_scan.py (scans)
   - auditor_vuln.py (vulnerabilidades)
-  - auditor_mixins.py (utilidades)
+  - auditor_components.py (utilidades)
 - Mantener API estable y tests intactos.
 
 Criterio de salida:

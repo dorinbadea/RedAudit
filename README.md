@@ -393,8 +393,9 @@ RedAudit orchestrates these tools:
 ```text
 redaudit/
 ├── core/                   # Core functionality
-│   ├── auditor.py          # Main orchestrator
-│   ├── wizard.py           # Interactive UI (WizardMixin)
+│   ├── auditor.py          # Main orchestrator (composition entrypoint)
+│   ├── auditor_runtime.py  # Composition adapter (auditor component bridge)
+│   ├── wizard.py           # Interactive UI (Wizard component)
 │   ├── scanner/            # Nmap scanning logic + IPv6 helpers
 │   ├── network.py          # Network interface detection
 │   ├── hyperscan.py        # Ultra-fast parallel discovery

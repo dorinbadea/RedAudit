@@ -275,7 +275,7 @@ These are the most pedagogically useful code locations. Use them for advanced st
 | Main orchestration | `core/auditor.py` | `run_complete_scan()` |
 | Deep Scan triggers | `core/auditor_scan.py` | `scan_host_ports()` (look for `trigger_deep`) |
 | Parallel execution | `core/auditor_scan.py` | `scan_hosts_concurrent()` with `ThreadPoolExecutor` |
-| Progress UI + ETA | `core/auditor_mixins.py` | `_progress_columns()` |
+| Progress UI + ETA | `core/auditor_components.py` | `_progress_columns()` |
 | Timeout-safe host scans | `core/auditor_scan.py` | `_run_nmap_xml_scan()` |
 | Async discovery | `core/hyperscan.py` | Async TCP/UDP/ARP discovery using `asyncio` |
 | ECS schema mapping | `core/siem.py` | `build_ecs_event()` |

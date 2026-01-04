@@ -275,7 +275,7 @@ Estas son las ubicaciones de código más útiles pedagógicamente. Úsalas para
 | Orquestación principal | `core/auditor.py` | `run_complete_scan()` |
 | Disparadores de Deep Scan | `core/auditor_scan.py` | `scan_host_ports()` (buscar `trigger_deep`) |
 | Ejecución paralela | `core/auditor_scan.py` | `scan_hosts_concurrent()` con `ThreadPoolExecutor` |
-| UI de progreso + ETA | `core/auditor_mixins.py` | `_progress_columns()` |
+| UI de progreso + ETA | `core/auditor_components.py` | `_progress_columns()` |
 | Escaneos con timeout | `core/auditor_scan.py` | `_run_nmap_xml_scan()` |
 | Descubrimiento async | `core/hyperscan.py` | Descubrimiento TCP/UDP/ARP asíncrono usando `asyncio` |
 | Mapeo schema ECS | `core/siem.py` | `build_ecs_event()` |

@@ -7,7 +7,7 @@
 
 ## Resumen
 
-RedAudit v4.0.0 marca la evolución arquitectónica más significativa en la historia del proyecto. Esta versión completa la transición de un monolito basado en mixins a una arquitectura moderna basada en composición y potenciada por modelos de datos robustos. Este cambio garantiza la seguridad de tipos, elimina clases enteras de errores por claves de diccionario y proporciona una base sólida para la extensibilidad futura sin cambios rupturistas.
+RedAudit v4.0.0 marca la evolución arquitectónica más significativa en la historia del proyecto. Esta versión completa la transición de un monolito basado en herencia a una arquitectura moderna basada en composición y potenciada por modelos de datos robustos. Este cambio garantiza la seguridad de tipos, elimina clases enteras de errores por claves de diccionario y proporciona una base sólida para la extensibilidad futura sin cambios rupturistas.
 
 ## Nuevas Características
 
@@ -18,7 +18,7 @@ RedAudit v4.0.0 marca la evolución arquitectónica más significativa en la his
 
 ### Composición Arquitectónica
 
-- **Retiro de Mixins**: El antiguo `AuditorScanMixin` y otros mixins han sido refactorizados en un `NetworkScanner` compuesto y otros componentes modulares.
+- **Refactor Heredado**: El antiguo `AuditorScan` y otras rutas heredadas han sido refactorizadas en un `NetworkScanner` compuesto y componentes modulares.
 - **Núcleo Más Limpio**: El bucle principal en `auditor.py` es ahora un orquestador limpio que pasa objetos `Host` entre componentes especializados.
 
 ## Correcciones
