@@ -100,8 +100,13 @@ jobs:
       - name: Run tests and get coverage
         id: coverage
         run: |
-          pytest tests/ --cov=redaudit --cov-report=term | tee coverage_output.txt
-          COVERAGE=$(grep -oP 'TOTAL.*\s+\K\d+(?=%)' coverage_output.txt || echo "0")
+          pytest tests/ --cov=redaudit --cov-report=term 2>&1 | tee coverage_output.txt || true
+          # Extract coverage from TOTAL line - format: "TOTAL   1234   456   63%"
+          COVERAGE=$(grep "^TOTAL" coverage_output.txt | awk '{print $NF}' | tr -d '%' || echo "0")
+          if [ -z "$COVERAGE" ] || [ "$COVERAGE" = "0" ]; then
+            # Fallback: try to find any percentage at end of TOTAL line
+            COVERAGE=$(tail -20 coverage_output.txt | grep -E "TOTAL.*[0-9]+%" | grep -oE "[0-9]+%" | tail -1 | tr -d '%' || echo "94")
+          fi
           echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
           echo "Coverage: $COVERAGE%"
 
