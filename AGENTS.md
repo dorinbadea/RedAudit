@@ -108,6 +108,23 @@ Optional (also supported in this repo):
 python3 -m unittest discover -s tests
 ```
 
+### Test Organization (Quality over Quantity)
+
+The test suite prioritizes maintainability over raw coverage numbers:
+
+- **Use `conftest.py`**: Shared fixtures (`MockAuditorBase`, sample data) live in `tests/conftest.py`. Do not duplicate mock classes across files.
+- **Semantic file names**: Test files match the module they cover (e.g., `test_entity_resolver.py` for `entity_resolver.py`). Avoid names like `batch1`, `to_90`, `aggressive`.
+- **Extend existing files**: When adding tests for a module, add them to the existing test file rather than creating new fragmented files.
+- **No coverage gaming**: Do not create tests solely to hit a coverage number. Each test should verify meaningful behavior.
+- **One mock, many tests**: Define mock classes once and reuse via fixtures. A single well-designed mock beats 50 copy-pasted variants.
+
+When modifying tests:
+
+1. Check if a test file for that module already exists.
+2. If yes, add your test to that file.
+3. If no, create one file per module with a clear name.
+4. Import fixtures from `conftest.py` instead of defining inline mocks.
+
 ## CI (What GitHub Actions Enforces)
 
 Workflow: `.github/workflows/tests.yml`
