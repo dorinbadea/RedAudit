@@ -48,7 +48,9 @@ from redaudit.utils.constants import (
 class MockAuditorScan(MockAuditorBase, AuditorScanMixin):
     """Mock auditor with AuditorScanMixin for testing scan methods."""
 
-    pass
+    def __init__(self):
+        super().__init__()
+        self.scanner = MagicMock()
 
 
 # =============================================================================
@@ -110,17 +112,6 @@ class TestDependencies:
 
 class TestNetworkDetection:
     """Tests for network detection and interface selection."""
-
-    def test_detect_all_networks(self):
-        """Test detect_all_networks method."""
-        auditor = MockAuditorScan()
-        with patch(
-            "redaudit.core.network.detect_all_networks",
-            return_value=[{"network": "192.168.1.0/24", "interface": "eth0"}],
-        ):
-            nets = auditor.detect_all_networks()
-            assert len(nets) == 1
-            assert auditor.results["network_info"] == nets
 
     def test_collect_discovery_hosts(self):
         """Test _collect_discovery_hosts aggregation."""
@@ -220,11 +211,6 @@ class TestStaticMethods:
         result = AuditorScanMixin.sanitize_hostname("server.example.com")
         assert isinstance(result, str) or result is None
 
-    def test_extract_nmap_xml_empty(self):
-        """Test _extract_nmap_xml with empty string."""
-        result = AuditorScanMixin._extract_nmap_xml("")
-        assert result is None or result == ""
-
     def test_is_web_service_http(self):
         """Test is_web_service with HTTP."""
         auditor = MockAuditorScan()
@@ -254,44 +240,21 @@ class TestNmapScanning:
         mock_module.PortScanner.return_value = mock_scanner
         return mock_module, mock_scanner
 
-    def test_run_nmap_xml_scan_success(self, mock_nmap_module):
-        """Test successful nmap XML scan."""
-        auditor = MockAuditorScan()
-        auditor.config["dry_run"] = False
-        mock_module, mock_scanner = mock_nmap_module
-
-        with (
-            patch("redaudit.core.network_scanner.nmap", mock_module),
-            patch(
-                "redaudit.core.network_scanner.run_nmap_command",
-                return_value={"stdout": "<nmaprun>XML</nmaprun>", "returncode": 0},
-            ),
-        ):
-            nm, err = auditor._run_nmap_xml_scan("1.2.3.4", "-sV")
-            assert err == ""
-
-    def test_run_nmap_xml_scan_timeout(self, mock_nmap_module):
-        """Test nmap scan timeout handling."""
-        auditor = MockAuditorScan()
-        mock_module, _ = mock_nmap_module
-
-        with (
-            patch("redaudit.core.network_scanner.nmap", mock_module),
-            patch(
-                "redaudit.core.network_scanner.run_nmap_command",
-                return_value={"error": "Timeout"},
-            ),
-        ):
-            nm, err = auditor._run_nmap_xml_scan("1.2.3.4", "-sV")
-            assert nm is None
-            assert err == "Timeout"
-
     def test_scan_network_discovery(self, mock_nmap_module):
         """Test scan_network_discovery method."""
         auditor = MockAuditorScan()
         mock_module, mock_scanner = mock_nmap_module
-        mock_scanner.all_hosts.return_value = ["1.1.1.1"]
-        mock_scanner["1.1.1.1"].state.return_value = "up"
+
+        # Configure scanner
+        mock_nm_result = MagicMock()
+        mock_nm_result.all_hosts.return_value = ["1.1.1.1"]
+        mock_nm_result["1.1.1.1"].state.return_value = "up"
+        auditor.scanner.run_nmap_scan.return_value = (mock_nm_result, "")
+
+        # Configure host repository mock
+        mock_host = MagicMock()
+        mock_host.status = "up"
+        auditor.scanner.get_or_create_host.return_value = mock_host
 
         with (
             patch("shutil.which", return_value="/usr/bin/nmap"),
@@ -353,16 +316,18 @@ class TestHostPortScan:
         host_data.hostnames.return_value = [{"name": "host1"}]
         host_data.state.return_value = "up"
         host_data.all_protocols.return_value = ["tcp"]
+        # Allow nested dict access for protocol data
         host_data.__getitem__.return_value = {
             80: {"name": "http", "product": "", "version": "", "extrainfo": "", "cpe": []}
         }
 
+        # Configure Scanner Mock
+        auditor.scanner.run_nmap_scan.return_value = (mock_nm, "")
+        mock_host = MagicMock()
+        mock_host.ip = "1.1.1.1"
+        auditor.scanner.get_or_create_host.return_value = mock_host
+
         with (
-            patch.object(
-                AuditorScanMixin,
-                "_run_nmap_xml_scan",
-                return_value=(mock_nm, ""),
-            ),
             patch("redaudit.core.auditor_scan.finalize_host_status", return_value=STATUS_UP),
             patch("redaudit.core.auditor_scan.exploit_lookup", return_value=[]),
             patch(
@@ -380,15 +345,11 @@ class TestHostPortScan:
     def test_scan_host_ports_nmap_failure(self):
         """Test host port scan when nmap fails."""
         auditor = MockAuditorScan()
+        auditor.scanner.run_nmap_scan.return_value = (None, "Scan Error")
 
-        with patch.object(
-            AuditorScanMixin,
-            "_run_nmap_xml_scan",
-            return_value=(None, "Scan Error"),
-        ):
-            res = auditor.scan_host_ports("1.1.1.1")
-            assert res["status"] == STATUS_NO_RESPONSE
-            assert res["error"] == "Scan Error"
+        res = auditor.scan_host_ports("1.1.1.1")
+        assert res["status"] == STATUS_NO_RESPONSE
+        assert res["error"] == "Scan Error"
 
 
 # =============================================================================

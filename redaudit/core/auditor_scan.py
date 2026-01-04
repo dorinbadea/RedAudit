@@ -158,13 +158,6 @@ class AuditorScanMixin:
 
     # ---------- Network detection ----------
 
-    def detect_all_networks(self):
-        """Detect all local networks."""
-        # v4.0: Usage of composed NetworkScanner
-        nets = self.scanner.detect_local_networks()
-        self.results["network_info"] = nets
-        return nets
-
     def _collect_discovery_hosts(self, target_networks: List[str]) -> List[str]:
         """Collect host IPs from enhanced discovery results (best-effort)."""
         discovery = self.results.get("net_discovery") or {}
@@ -223,7 +216,9 @@ class AuditorScanMixin:
         h = self.ui.colors["HEADER"]
         print(f"\n{h}{self.ui.t('selection_target')}{self.ui.colors['ENDC']}")
         print("-" * 60)
-        nets = self.detect_all_networks()
+        # v4.0: Use Scanner directly (Populate results for consistency)
+        nets = self.scanner.detect_local_networks()
+        self.results["network_info"] = nets
         if nets:
             g = self.ui.colors["OKGREEN"]
             print(f"{g}{self.ui.t('interface_detected')}{self.ui.colors['ENDC']}")
@@ -311,20 +306,6 @@ class AuditorScanMixin:
         if mode in ("full", "completo"):
             return 300.0
         return 60.0
-
-    @staticmethod
-    def _extract_nmap_xml(raw: str) -> str:
-        if not raw:
-            return ""
-        start = raw.find("<nmaprun")
-        if start < 0:
-            start = raw.find("<?xml")
-        if start > 0:
-            raw = raw[start:]
-        end = raw.rfind("</nmaprun>")
-        if end >= 0:
-            raw = raw[: end + len("</nmaprun>")]
-        return raw.strip()
 
     def _lookup_topology_identity(self, ip: str) -> Tuple[Optional[str], Optional[str]]:
         t = self.results.get("topology")
@@ -690,14 +671,6 @@ class AuditorScanMixin:
             setattr(self, "_deep_executed_count", deep_count + 1)
             return True, deep_count + 1
 
-    def _run_nmap_xml_scan(self, target: str, args: str) -> Tuple[Optional[Any], str]:
-        """
-        Run an nmap scan with XML output and enforce a hard timeout.
-        (Delegated to NetworkScanner)
-        """
-        # v4.0: Usage of composed NetworkScanner
-        return self.scanner.run_nmap_scan(target, args)
-
     @staticmethod
     def _parse_host_timeout_s(nmap_args: str) -> Optional[float]:
         if not isinstance(nmap_args, str):
@@ -1017,7 +990,8 @@ class AuditorScanMixin:
         if self.config.get("low_impact_enrichment"):
             phase0_enrichment = self._run_low_impact_enrichment(safe_ip)
         try:
-            nm, scan_error = self._run_nmap_xml_scan(safe_ip, args)
+            # v4.0: Use NetworkScanner direct execution
+            nm, scan_error = self.scanner.run_nmap_scan(safe_ip, args)
             if not nm:
                 self.logger.warning("Nmap scan failed for %s: %s", safe_ip, scan_error)
                 self.ui.print_status(

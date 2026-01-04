@@ -372,7 +372,9 @@ class InteractiveNetworkAuditor(
             # Ensure network_info is populated for reports and topology discovery.
             if not self.results.get("network_info"):
                 try:
-                    self.detect_all_networks()
+                    # v4.0: Use Scanner
+                    nets = self.scanner.detect_local_networks()
+                    self.results["network_info"] = nets
                 except Exception:
                     if self.logger:
                         self.logger.debug("Failed to detect local networks", exc_info=True)
