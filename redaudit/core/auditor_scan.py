@@ -83,6 +83,29 @@ class AuditorScanMixin:
         def _coerce_text(self, value: object) -> str:
             raise NotImplementedError
 
+    # v4.0: Adapter property for gradual migration to NetworkScanner
+    @property
+    def scanner(self):
+        """
+        Get NetworkScanner instance (adapter pattern).
+
+        This allows gradual migration from mixin methods to composed scanner.
+        Eventually, scanning logic will go through self.scanner.
+        """
+        if not hasattr(self, "_network_scanner"):
+            from redaudit.core.config_context import ConfigurationContext
+            from redaudit.core.network_scanner import NetworkScanner
+            from redaudit.core.ui_manager import UIManager
+
+            cfg = ConfigurationContext(self.config)
+            ui = UIManager(
+                lang=getattr(self, "lang", "en"),
+                colors=getattr(self, "COLORS", None),
+                logger=self.logger,
+            )
+            self._network_scanner = NetworkScanner(cfg, ui, self.logger)
+        return self._network_scanner
+
     # ---------- Dependencies ----------
 
     def check_dependencies(self):
