@@ -1,6 +1,6 @@
 # Notas de la Versión RedAudit v3.10.2
 
-[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.10.2.md)
+[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/main/docs/releases/RELEASE_NOTES_v3.10.2.md)
 
 **Fecha de lanzamiento:** 2026-01-04
 
