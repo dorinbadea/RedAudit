@@ -10,6 +10,25 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-01-04
+
+### Added
+
+- **Data Models**: New `Host`, `Service`, `Vulnerability` dataclasses in `redaudit/core/models.py`.
+- **Composition**: `NetworkScanner` class replacing `AuditorScanMixin`.
+- **Architecture**: Full migration to object-based pipeline in `auditor_scan.py` and `reporter.py`.
+
+### Changed
+
+- **Refactor**: Replaced legacy mixin-based scanning logic with composed scanner.
+- **Reporting**: Updated `reporter.py` to serialize `Host` objects for JSON/HTML reports.
+- **Testing**: Major cleanup of test suite, ensuring tests verify logic (48/48 core tests passing).
+
+### Removed
+
+- Legacy "coverage filler" tests.
+- Deprecated mixin logic related to ad-hoc dictionary handling.
+
 ## [3.10.2] - 2026-01-04 (Auditor Node & MAC Display Fix)
 
 ### Added

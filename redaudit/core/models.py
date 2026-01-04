@@ -87,7 +87,16 @@ class Host:
     tags: Set[str] = field(default_factory=set)
     risk_score: float = 0.0
     status: str = "up"
+
     is_auditor_node: bool = False
+
+    # Extended Data
+    deep_scan: Dict = field(default_factory=dict)
+    agentless_fingerprint: Dict = field(default_factory=dict)
+    agentless_probe: Dict = field(default_factory=dict)
+    phase0_enrichment: Dict = field(default_factory=dict)
+    dns: Dict = field(default_factory=dict)
+    cve_summary: Dict = field(default_factory=dict)
 
     # Raw data preservation (for transition)
     raw_nmap_data: Dict = field(default_factory=dict)
@@ -122,4 +131,11 @@ class Host:
             "risk_score": self.risk_score,
             "status": self.status,
             "is_auditor_node": self.is_auditor_node,
+            # Extended fields
+            "deep_scan": self.deep_scan,
+            "agentless_fingerprint": self.agentless_fingerprint,
+            "agentless_probe": self.agentless_probe,
+            "phase0_enrichment": self.phase0_enrichment,
+            "dns": self.dns,
+            "cve_summary": self.cve_summary,
         }

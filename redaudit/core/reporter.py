@@ -286,6 +286,21 @@ def generate_summary(
         len(v.get("vulnerabilities", [])) for v in results.get("vulnerabilities", []) if v
     )
 
+    # v4.0: Normalize Host objects to dicts for reporting
+    from redaudit.core.models import Host
+
+    normalized_hosts = []
+    for h in scanned_results:
+        if isinstance(h, Host):
+            normalized_hosts.append(h.to_dict())
+        else:
+            normalized_hosts.append(h)
+    scanned_results = normalized_hosts
+
+    # Update results["hosts"] in place safely
+    if results.get("hosts"):
+        results["hosts"] = [h.to_dict() if isinstance(h, Host) else h for h in results["hosts"]]
+
     unique_hosts = {h for h in (all_hosts or []) if isinstance(h, str) and h.strip()}
     summary = {
         "networks": len(config.get("target_networks", [])),
@@ -575,6 +590,14 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
     lines = []
     status_txt = "PARTIAL/INTERRUPTED" if partial else "COMPLETED"
 
+    # v4.0: Normalize Host objects
+    from redaudit.core.models import Host
+
+    host_list = results.get("hosts", [])
+    if host_list and isinstance(host_list[0], Host):
+        host_list = [h.to_dict() for h in host_list]
+        results["hosts"] = host_list
+
     lines.append(f"NETWORK AUDIT REPORT v{VERSION}\n")
     lines.append(f"Date: {datetime.now()}\n")
     lines.append(f"Status: {status_txt}\n\n")
@@ -800,6 +823,12 @@ def save_results(
     Returns:
         True if save succeeded
     """
+    # v4.0: Ensure all hosts are serialized
+    from redaudit.core.models import Host
+
+    if results.get("hosts"):
+        results["hosts"] = [h.to_dict() if isinstance(h, Host) else h for h in results["hosts"]]
+
     prefix = "PARTIAL_" if partial else ""
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 

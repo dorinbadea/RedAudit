@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from redaudit.core.command_runner import CommandRunner
 from redaudit.utils.dry_run import is_dry_run
 from redaudit.core.scanner import is_web_service, sanitize_ip
+from redaudit.core.models import Host
 
 
 _REDAUDIT_REDACT_ENV_KEYS = {"NVD_API_KEY", "GITHUB_TOKEN"}
@@ -46,35 +47,58 @@ def select_agentless_probe_targets(
 ) -> List[AgentlessProbeTarget]:
     targets: List[AgentlessProbeTarget] = []
     for host in host_results or []:
-        ip = sanitize_ip(host.get("ip"))
-        if not ip:
-            continue
-        ports = host.get("ports") or []
         open_ports: set[int] = set()
         ssh_ports: set[int] = set()
         http_ports: set[int] = set()
-        for p in ports:
-            try:
-                port_num = int(p.get("port"))
-            except Exception:
-                continue
+
+        # 1. Extract IP and standardized port/service tuples
+        # Format: (port_num, service_name)
+        extracted_ports: List[Tuple[int, str]] = []
+        host_ip = ""
+
+        if isinstance(host, Host):
+            host_ip = host.ip
+            for svc in host.services:
+                try:
+                    p_num = int(svc.port)
+                    s_name = (svc.name or "").lower()
+                    extracted_ports.append((p_num, s_name))
+                except (ValueError, TypeError):
+                    continue
+        else:
+            host_ip = sanitize_ip(host.get("ip"))
+            for p_dict in host.get("ports") or []:
+                try:
+                    p_num = int(p_dict.get("port"))
+                    s_name = _parse_service_name(p_dict).lower()
+                    extracted_ports.append((p_num, s_name))
+                except (ValueError, TypeError):
+                    continue
+
+        if not host_ip:
+            continue
+
+        # 2. Analyze ports
+        for port_num, service in extracted_ports:
             open_ports.add(port_num)
-            service = _parse_service_name(p).lower()
+
             if service and "ssh" in service:
                 ssh_ports.add(port_num)
             if is_web_service(service):
                 http_ports.add(port_num)
             if port_num in _HTTP_PORT_HINTS:
                 http_ports.add(port_num)
+
         smb = 445 in open_ports
         rdp = 3389 in open_ports
         ldap = bool(open_ports.intersection({389, 636}))
         if 22 in open_ports:
             ssh_ports.add(22)
+
         if ssh_ports or http_ports or smb or rdp or ldap:
             targets.append(
                 AgentlessProbeTarget(
-                    ip=ip,
+                    ip=host_ip,
                     smb=smb,
                     rdp=rdp,
                     ldap=ldap,

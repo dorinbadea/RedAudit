@@ -27,7 +27,7 @@ Refactorización interna utilizando el patrón Strangler Fig:
 3. ✅ **Fase 3**: NetworkScanner - Utilidades de puntuación de identidad
 4. ✅ **Fase 4**: Propiedades adaptador para migración gradual
 
-**Estado**: Fundación completa. Migración incremental de métodos en curso.
+**Estado**: Completado en v4.0.0. Migración total a modelos `Host` y `NetworkScanner` compuesto.
 
 ### Extensiones Red Team (Prioridad: Media)
 

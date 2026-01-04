@@ -979,15 +979,10 @@ class AuditorScanMixin:
         self.logger.debug("Nmap scan %s %s", safe_ip, args)
         self.ui.print_status(self.ui.t("nmap_cmd", safe_ip, f"nmap {args} {safe_ip}"), "INFO")
         if is_dry_run(self.config.get("dry_run")):
-            return {
-                "ip": safe_ip,
-                "hostname": "",
-                "ports": [],
-                "web_ports_count": 0,
-                "total_ports_found": 0,
-                "status": STATUS_DOWN,
-                "dry_run": True,
-            }
+            host_obj = self.scanner.get_or_create_host(safe_ip)
+            host_obj.status = STATUS_DOWN
+            host_obj.raw_nmap_data = {"dry_run": True}
+            return host_obj
         phase0_enrichment: Dict[str, Any] = {}
         if self.config.get("low_impact_enrichment"):
             phase0_enrichment = self._run_low_impact_enrichment(safe_ip)
@@ -1017,22 +1012,21 @@ class AuditorScanMixin:
                         deep_meta["mac_address"] = mac
                     if vendor:
                         deep_meta["vendor"] = vendor
-                result = {
-                    "ip": safe_ip,
-                    "hostname": "",
-                    "ports": [],
-                    "web_ports_count": 0,
-                    "total_ports_found": 0,
-                    "status": STATUS_NO_RESPONSE,
-                    "error": scan_error,
-                    "scan_timeout_s": (
-                        self._parse_host_timeout_s(args) or self._scan_mode_host_timeout_s()
-                    ),
-                    "deep_scan": deep_meta,
-                }
+                    deep_meta["vendor"] = vendor
+
+                # v4.0: Populate Host model on scan failure (topology only)
+                host_obj = self.scanner.get_or_create_host(safe_ip)
+                host_obj.status = STATUS_NO_RESPONSE
+                host_obj.raw_nmap_data = {"error": scan_error}
+                if deep_meta:
+                    host_obj.deep_scan = deep_meta
+
+                # Preserve result dict for phase0 logic below if needed, but we return object
                 if self.config.get("low_impact_enrichment"):
-                    result["phase0_enrichment"] = phase0_enrichment or {}
-                return result
+                    host_obj.phase0_enrichment = phase0_enrichment or {}
+
+                return host_obj
+
             if safe_ip not in nm.all_hosts():
                 # Host didn't respond to initial scan - do deep scan
                 deep = None
@@ -1069,7 +1063,17 @@ class AuditorScanMixin:
                     result["os_detected"] = deep["os_detected"]
                 # Finalize status based on deep scan results
                 result["status"] = finalize_host_status(result)
-                return result
+
+                # v4.0: Populate Host model
+                host_obj = self.scanner.get_or_create_host(safe_ip)
+                host_obj.status = result["status"]
+                host_obj.deep_scan = result.get("deep_scan") or {}
+                host_obj.phase0_enrichment = result.get("phase0_enrichment") or {}
+                host_obj.raw_nmap_data = {"error": scan_error}
+                if result.get("os_detected"):
+                    host_obj.os_detected = result["os_detected"]
+
+                return host_obj
 
             data = nm[safe_ip]
             hostname = ""
@@ -1351,8 +1355,6 @@ class AuditorScanMixin:
 
             enrich_host_with_dns(host_record, self.extra_tools)
             # v3.10.1: Consolidate DNS reverse from phase0 if enrichment failed
-            # This ensures consumers like reporters only need to check host["dns"]["reverse"]
-            # for the canonical hostname, though they may still double-check phase0 for completeness.
             if not host_record.get("dns", {}).get("reverse"):
                 phase0 = host_record.get("phase0_enrichment", {})
                 if phase0.get("dns_reverse"):
@@ -1362,13 +1364,35 @@ class AuditorScanMixin:
             # v2.8.0: Finalize status based on all collected data
             host_record["status"] = finalize_host_status(host_record)
 
-            return host_record
+            # v4.0: Sync final enrichment data to Host model
+            host_obj.dns = host_record.get("dns", {})
+            host_obj.status = host_record.get("status")
+            host_obj.risk_score = host_record.get("risk_score", 0.0)
+            if host_record.get("deep_scan"):
+                host_obj.deep_scan = host_record["deep_scan"]
+            if host_record.get("os_detected"):
+                host_obj.os_detected = host_record["os_detected"]
+            if host_record.get("phase0_enrichment"):
+                host_obj.phase0_enrichment = host_record["phase0_enrichment"]
+            if host_record.get("agentless_fingerprint"):
+                host_obj.agentless_fingerprint = host_record["agentless_fingerprint"]
+            if host_record.get("agentless_probe"):
+                host_obj.agentless_probe = host_record["agentless_probe"]
+
+            return host_obj
 
         except Exception as exc:
             self.logger.error("Scan error %s: %s", safe_ip, exc, exc_info=True)
             # Keep terminal output clean while progress UIs are active.
             self.ui.print_status(f"⚠️  Scan error {safe_ip}: {exc}", "FAIL", force=True)
-            result = {"ip": safe_ip, "error": str(exc)}
+
+            # v4.0: Return Host object on error
+            host_obj = self.scanner.get_or_create_host(safe_ip)
+            # We don't overwrite existing data on error, just status if needed?
+            # Actually, standard behavior is to return a result indicating error.
+            # We'll map the error state to the object for this scan session.
+
+            result_dict = {"ip": safe_ip, "error": str(exc)}
             try:
                 deep = None
                 if self.config.get("deep_id_scan", True):
@@ -1387,13 +1411,20 @@ class AuditorScanMixin:
                     else:
                         deep = self.deep_scan_host(safe_ip)
                         if deep:
-                            result["deep_scan"] = deep
-                            result["status"] = finalize_host_status(result)
+                            result_dict["deep_scan"] = deep
+                            result_dict["status"] = finalize_host_status(result_dict)
+
+                            # Sync to Host object
+                            host_obj.deep_scan = deep
+                            host_obj.status = result_dict["status"]
+                            if deep.get("os_detected"):
+                                host_obj.os_detected = deep["os_detected"]
+
             except Exception:
                 if self.logger:
                     self.logger.debug("Deep scan fallback failed for %s", safe_ip, exc_info=True)
                 pass
-            return result
+            return host_obj
 
     def scan_hosts_concurrent(self, hosts):
         """Scan multiple hosts concurrently with progress bar."""
@@ -1401,6 +1432,8 @@ class AuditorScanMixin:
 
         # v4.0: Deduplicate hosts (handling both str and Host objects)
         unique_map = {}
+        from redaudit.core.models import Host
+
         for h in hosts:
             if isinstance(h, Host):
                 ip = h.ip
