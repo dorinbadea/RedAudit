@@ -21,9 +21,6 @@ from redaudit.utils.constants import (
     COLORS,
     DEFAULT_LANG,
     DEFAULT_THREADS,
-    DEFAULT_DEEP_SCAN_BUDGET,
-    DEFAULT_IDENTITY_THRESHOLD,
-    DEFAULT_UDP_MODE,
     MAX_THREADS,
     MIN_THREADS,
     suggest_threads,
@@ -60,6 +57,7 @@ from redaudit.core.reporter import (
     show_config_summary,
     show_results_summary,
 )
+from redaudit.core.config_context import ConfigurationContext
 
 
 class InteractiveNetworkAuditor(
@@ -85,52 +83,9 @@ class InteractiveNetworkAuditor(
             "vulnerabilities": [],
             "summary": {},
         }
-        self.config = {
-            "target_networks": [],
-            "max_hosts": "all",
-            "max_hosts_value": "all",
-            "scan_mode": "normal",
-            "threads": DEFAULT_THREADS,
-            "output_dir": get_default_reports_base_dir(),
-            # v3.5: Dry-run (print commands without executing)
-            "dry_run": False,
-            # v3.5: Best-effort prevent system/display sleep during scan
-            "prevent_sleep": True,
-            "scan_vulnerabilities": True,
-            "save_txt_report": True,
-            "encryption_salt": None,
-            # UDP scan config (v2.8)
-            "udp_mode": DEFAULT_UDP_MODE,
-            "udp_top_ports": UDP_TOP_PORTS,
-            # v3.0 configuration
-            "ipv6_only": False,
-            "cve_lookup_enabled": False,
-            "nvd_api_key": None,
-            # v2.8: Adaptive deep identity scan
-            "deep_id_scan": True,
-            # v3.10.0: SmartScan governance defaults
-            "low_impact_enrichment": False,
-            "deep_scan_budget": DEFAULT_DEEP_SCAN_BUDGET,
-            "identity_threshold": DEFAULT_IDENTITY_THRESHOLD,
-            # v3.1+: Optional topology discovery
-            "topology_enabled": False,
-            "topology_only": False,
-            # v3.2+: Enhanced network discovery
-            # None = auto (enabled in full/topology), True/False = explicit override
-            "net_discovery_enabled": None,
-            "net_discovery_protocols": None,  # None = all, or list like ["dhcp", "netbios"]
-            "net_discovery_redteam": False,
-            "net_discovery_interface": None,
-            "net_discovery_max_targets": 50,
-            "net_discovery_snmp_community": "public",
-            "net_discovery_dns_zone": None,
-            "net_discovery_kerberos_realm": None,
-            "net_discovery_kerberos_userlist": None,
-            "net_discovery_active_l2": False,
-            # v3.8: Agentless Windows verification (SMB/RDP/LDAP)
-            "windows_verify_enabled": False,
-            "windows_verify_max_targets": 20,
-        }
+        # v4.0: ConfigurationContext Composition
+        # v4.0: ConfigurationContext Composition
+        self.cfg = ConfigurationContext()
 
         self.encryption_enabled = False
         self.encryption_key = None
@@ -170,19 +125,22 @@ class InteractiveNetworkAuditor(
         signal.signal(signal.SIGINT, self.signal_handler)
 
     # v4.0: Adapter property for gradual migration to ConfigurationContext
+    # v4.0: Adapter property for gradual migration to ConfigurationContext
     @property
-    def cfg(self):
+    def config(self):
         """
-        Get typed ConfigurationContext wrapper (adapter pattern).
-
-        This allows gradual migration from dict access to typed properties.
-        Eventually, all config access will go through self.cfg instead of self.config.
+        Backward compatibility proxy for self.cfg (ConfigurationContext).
+        Allows access akin to self.config["key"].
         """
-        if not hasattr(self, "_config_context"):
-            from redaudit.core.config_context import ConfigurationContext
+        return self.cfg
 
-            self._config_context = ConfigurationContext(self.config)
-        return self._config_context
+    @config.setter
+    def config(self, value):
+        # Handle re-assignment of self.config
+        if isinstance(value, ConfigurationContext):
+            self.cfg = value
+        else:
+            self.cfg = ConfigurationContext(value)
 
     # ---------- Reporting ----------
 

@@ -9,7 +9,8 @@ Part of v4.0 Architecture Refactoring - Phase 2.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from collections.abc import MutableMapping
+from typing import Any, Dict, Iterator, List, Optional
 
 from redaudit.utils.constants import (
     DEFAULT_DEEP_SCAN_BUDGET,
@@ -21,7 +22,7 @@ from redaudit.utils.constants import (
 from redaudit.utils.paths import get_default_reports_base_dir
 
 
-class ConfigurationContext:
+class ConfigurationContext(MutableMapping):
     """
     Typed wrapper for RedAudit scan configuration.
 
@@ -36,7 +37,11 @@ class ConfigurationContext:
         Args:
             raw_config: Optional raw config dict. If None, uses defaults.
         """
-        self._config = raw_config if raw_config is not None else self._defaults()
+        if raw_config is None:
+            self._config = self._defaults()
+        else:
+            self._config = self._defaults()
+            self._config.update(raw_config)
 
     @staticmethod
     def _defaults() -> Dict[str, Any]:
@@ -96,7 +101,19 @@ class ConfigurationContext:
         """Dict-like set."""
         self._config[key] = value
 
-    def __contains__(self, key: str) -> bool:
+    def __delitem__(self, key: str) -> None:
+        """Dict-like delete."""
+        del self._config[key]
+
+    def __iter__(self) -> Iterator[str]:
+        """Dict-like iterator."""
+        return iter(self._config)
+
+    def __len__(self) -> int:
+        """Dict-like length."""
+        return len(self._config)
+
+    def __contains__(self, key: object) -> bool:
         """Dict-like contains check."""
         return key in self._config
 
