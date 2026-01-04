@@ -26,6 +26,7 @@ from redaudit.core.agentless_verify import (
 )
 from redaudit.core.command_runner import CommandRunner
 from redaudit.core.crypto import is_crypto_available
+from redaudit.core.models import Host
 from redaudit.core.network import get_neighbor_mac
 from redaudit.core.scanner import (
     banner_grab_fallback,
@@ -947,23 +948,50 @@ class AuditorScanMixin:
         if not nm:
             return []
 
-        hosts = [h for h in nm.all_hosts() if nm[h].state() == "up"]
-        self.ui.print_status(self.ui.t("hosts_active", network, len(hosts)), "OKGREEN")
-        return hosts
+        hosts_out = []
+        for ip in nm.all_hosts():
+            if nm[ip].state() == "up":
+                # v4.0: Populate central Host model
+                host_obj = self.scanner.get_or_create_host(ip)
+                host_obj.status = "up"
+
+                # Extract discovery metadata
+                if "addresses" in nm[ip]:
+                    addrs = nm[ip]["addresses"]
+                    if "mac" in addrs:
+                        host_obj.mac_address = addrs["mac"]
+
+                if "vendor" in nm[ip]:
+                    # python-nmap vendor is {mac: name}
+                    for mac, vendor in nm[ip]["vendor"].items():
+                        if mac == host_obj.mac_address:
+                            host_obj.vendor = vendor
+                            break
+
+                if "hostnames" in nm[ip]:
+                    for h_rec in nm[ip]["hostnames"]:
+                        if h_rec.get("name"):
+                            host_obj.hostname = h_rec["name"]
+                            break
+
+                hosts_out.append(ip)
+
+        self.ui.print_status(self.ui.t("hosts_active", network, len(hosts_out)), "OKGREEN")
+        return hosts_out
 
     def scan_host_ports(self, host):
         """
-        Scan ports on a single host (v2.8.0).
-
-        Improvements:
-        - Intelligent status finalization based on deep scan results
-        - Banner grab fallback for unidentified services
-        - Better handling of filtered/no-response hosts
+        Scan ports on a single host.
+        Accepts IP string or Host object (v4.0).
         """
-        safe_ip = sanitize_ip(host)
-        if not safe_ip:
-            self.logger.warning("Invalid IP: %s", host)
-            return {"ip": host, "error": "Invalid IP"}
+        if isinstance(host, Host):
+
+            safe_ip = host.ip
+        else:
+            safe_ip = sanitize_ip(host)
+            if not safe_ip:
+                self.logger.warning("Invalid IP: %s", host)
+                return {"ip": host, "error": "Invalid IP"}
 
         self.current_phase = f"ports:{safe_ip}"
         mode_label = str(self.config.get("scan_mode", "") or "").strip()
@@ -1376,7 +1404,20 @@ class AuditorScanMixin:
     def scan_hosts_concurrent(self, hosts):
         """Scan multiple hosts concurrently with progress bar."""
         self.ui.print_status(self.ui.t("scan_start", len(hosts)), "HEADER")
-        unique_hosts = sorted(set(hosts))
+
+        # v4.0: Deduplicate hosts (handling both str and Host objects)
+        unique_map = {}
+        for h in hosts:
+            if isinstance(h, Host):
+                ip = h.ip
+                val = h
+            else:
+                ip = str(h)
+                val = ip
+            if ip not in unique_map:
+                unique_map[ip] = val
+
+        unique_hosts = [unique_map[ip] for ip in sorted(unique_map.keys())]
         results = []
         threads = max(1, int(self.config.get("threads", 1)))
         start_t = time.time()

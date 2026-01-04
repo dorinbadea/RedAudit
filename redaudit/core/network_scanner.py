@@ -26,6 +26,7 @@ from redaudit.core.scanner.nmap import run_nmap_command
 from redaudit.utils.dry_run import is_dry_run
 
 from redaudit.core.config_context import ConfigurationContext
+from redaudit.core.models import Host
 from redaudit.core.network import detect_all_networks
 from redaudit.core.ui_manager import UIManager
 from redaudit.utils.constants import (
@@ -36,18 +37,12 @@ from redaudit.utils.constants import (
 
 class NetworkScanner:
     """
-    Standalone network scanner with dependency injection.
-
-    This class encapsulates network scanning logic that was previously
-    in AuditorScanMixin, allowing for easier testing and composability.
+    Composed Network Scanner for RedAudit v4.0.
+    Encapsulates all logic related to network discovery, Nmap execution,
+    identity calculation, and result parsing.
     """
 
-    def __init__(
-        self,
-        config: ConfigurationContext,
-        ui: UIManager,
-        logger: Optional[logging.Logger] = None,
-    ):
+    def __init__(self, config: ConfigurationContext, ui: UIManager, logger=None):
         """
         Initialize NetworkScanner.
 
@@ -60,6 +55,19 @@ class NetworkScanner:
         self.ui = ui
         self.logger = logger
         self.interrupted = False
+
+        # v4.0: Central Host Repository
+        self.hosts: Dict[str, Host] = {}
+
+    def get_or_create_host(self, ip: str) -> Host:
+        """Get existing host or create new one."""
+        if ip not in self.hosts:
+            self.hosts[ip] = Host(ip=ip)
+        return self.hosts[ip]
+
+    def add_host(self, host: Host) -> None:
+        """Add or update a host in the repository."""
+        self.hosts[host.ip] = host
 
     # -------------------------------------------------------------------------
     # Network Discovery (Migrated)
