@@ -15,7 +15,7 @@ Ejecuta estos comandos para comenzar de inmediato.
 
 ### Asistente Interactivo (Recomendado para primera vez)
 
-Navegación paso a paso con opción "< Volver" (v3.8.1+). La configuración de webhooks y opciones de descubrimiento está disponible en el asistente; las exportaciones SIEM se generan automáticamente cuando el cifrado está desactivado. La Fase 0 de bajo impacto puede activarse desde el wizard (por defecto desactivada) o con `--low-impact-enrichment`.
+Navegación paso a paso con opción "< Volver" (v3.8.1+). La configuración de webhooks y opciones de descubrimiento está disponible en el asistente; las exportaciones SIEM se generan automáticamente cuando el cifrado está desactivado. La Fase 0 de bajo impacto puede activarse desde el asistente (por defecto desactivada) o con `--low-impact-enrichment`.
 
 ```bash
 sudo redaudit
@@ -157,7 +157,7 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | `-o, --output DIR` | Directorio de salida personalizado |
 | `--html-report` | Generar dashboard interactivo (HTML) |
 | `--webhook URL` | Enviar alertas webhook (JSON) para hallazgos high/critical |
-| `--nuclei` | Habilitar escaneo de templates con Nuclei (requiere `nuclei`; solo en modo full) |
+| `--nuclei` | Habilitar escaneo de plantillas con Nuclei (requiere `nuclei`; solo en modo full) |
 | `--no-nuclei` | Deshabilitar Nuclei (sobrescribe defaults persistentes) |
 | `--no-vuln-scan` | Omitir escaneo de vulnerabilidades Web/Nikto |
 | `--cve-lookup` | Correlar servicios con datos CVE NVD |

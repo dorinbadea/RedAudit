@@ -168,9 +168,9 @@ curl --socks5 pivot-host:1080 http://example.com
 sudo apt update && sudo apt install nbtscan netdiscover fping avahi-utils snmp ldap-utils samba-common-bin
 ```
 
-### 12b. Nuclei no encontrado / templates deshabilitados (v3.5.5+)
+### 12b. Nuclei no encontrado / plantillas deshabilitadas (v3.5.5+)
 
-**Síntoma**: Se omite el escaneo Nuclei o no aparece nunca el prompt para habilitar templates.
+**Síntoma**: Se omite el escaneo Nuclei o no aparece nunca el prompt para habilitar plantillas.
 **Causa**: `nuclei` no está instalado, o el escaneo está deshabilitado (`--no-nuclei` / defaults guardados).
 **Solución**:
 
@@ -201,7 +201,7 @@ sudo bash redaudit_install.sh
 
 ### 14. Fallo al Generar Reporte HTML (v3.3)
 
-**Síntoma**: "Error generating HTML report" o el archivo reporte tiene 0 bytes.
+**Síntoma**: "Error generating HTML report" o el archivo de informe tiene 0 bytes.
 **Causa**:
 
 - Falta el motor de plantillas `jinja2` (raro, instalado por defecto).

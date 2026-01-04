@@ -19,7 +19,7 @@
 |:---|:---|:---|:---|
 | **30 min** | Solo Demo | ¿Qué es orquestación? Escaneo en vivo de 1 host. Salida JSON. | Ninguno |
 | **60 min** | Introducción | Orquestación + Heurísticas. Escanear subred /28. | Lab 1 (Básico) |
-| **90 min** | Estándar | Lo anterior + Lógica Deep Scan + Estructura de reportes. | Lab 1 + Lab 2 |
+| **90 min** | Estándar | Lo anterior + Lógica Deep Scan + Estructura de informes. | Lab 1 + Lab 2 |
 | **120 min** | Avanzado | Lo anterior + Integración SIEM + Revisión de código. | Los tres labs |
 
 ### Checklist de Materiales
@@ -43,7 +43,7 @@ Ejecutar `nmap`, `nikto`, `testssl` manualmente produce salidas dispersas. Corre
 
 1. Un programa central llama múltiples herramientas en secuencia.
 2. Los resultados se unifican en un documento estructurado único (JSON).
-3. Las decisiones (ej: "¿debemos escanear UDP?") se toman automáticamente via heurísticas.
+3. Las decisiones (ej: "¿debemos escanear UDP?") se toman automáticamente vía heurísticas.
 
 **Ubicación en código:** [`run_complete_scan()`](../redaudit/core/auditor.py) orquesta todas las fases.
 
@@ -52,7 +52,7 @@ Ejecutar `nmap`, `nikto`, `testssl` manualmente produce salidas dispersas. Corre
 ### Concepto 2: Auditoría Basada en Evidencia
 
 **Qué explicar:**
-Las auditorías profesionales requieren **evidencia verificable**. Un reporte que dice "puerto 22 está abierto" no tiene valor sin:
+Las auditorías profesionales requieren **evidencia verificable**. Un informe que dice "puerto 22 está abierto" no tiene valor sin:
 
 - Timestamp del escaneo
 - Herramienta y versión usada
@@ -77,7 +77,7 @@ Escanear cada host con UDP completo (-p- -sU) tomaría horas. RedAudit usa **heu
 
 | Condición | Razonamiento |
 |:---|:---|
-| Score de identidad por debajo del umbral (p. ej., falta de MAC/vendor/hostname, sin CPE/banner, señales HTTP/sin agente débiles) | Identidad sigue débil |
+| Puntuación de identidad por debajo del umbral (p. ej., falta de MAC/fabricante/nombre de host, sin CPE/banner, señales HTTP/sin agente débiles) | Identidad sigue débil |
 | ≤3 puertos abiertos **y** la identidad es débil | Baja visibilidad, requiere sondeo extra |
 | Fingerprint de servicio débil (`unknown`, `tcpwrapped` o sin versión) | Identidad ambigua o filtrada |
 | >8 puertos abiertos **o** pistas de dispositivo de red | Host complejo o infraestructura, merece enumeración adicional |
@@ -88,7 +88,7 @@ Escanear cada host con UDP completo (-p- -sU) tomaría horas. RedAudit usa **heu
 
 ---
 
-### Concepto 4: Reportes Estructurados (Alineados a ECS)
+### Concepto 4: Informes Estructurados (Alineados a ECS)
 
 **Qué explicar:**
 La salida de texto crudo es legible para humanos pero hostil para máquinas. JSON estructurado permite:
@@ -99,8 +99,8 @@ La salida de texto crudo es legible para humanos pero hostil para máquinas. JSO
 
 RedAudit enriquece el informe principal con campos alineados a ECS:
 
-- `ecs.version` y `event.*` en la raíz del reporte (metadatos del escaneo)
-- `hosts[].ecs_host` con campos de identidad (ip/hostname/mac/vendor)
+- `ecs.version` y `event.*` en la raíz del informe (metadatos del escaneo)
+- `hosts[].ecs_host` con campos de identidad (`ip`, `hostname`, `mac`, `vendor`)
 - Exportaciones JSONL planas para SIEM (mapeadas vía las configs incluidas)
 
 **Ubicación en código:** [`siem.py`](../redaudit/core/siem.py) define los mapeos ECS.
@@ -110,7 +110,7 @@ RedAudit enriquece el informe principal con campos alineados a ECS:
 ### Concepto 5: Cómo RedAudit Filtra el Ruido (Smart-Check)
 
 **Qué explicar:**
-Una frustración común en auditorías son los "Falsos Positivos" (herramientas que reportan problemas que no existen). RedAudit implementa una capa lógica para verificar hallazgos antes de reportarlos.
+Una frustración común en auditorías son los "Falsos Positivos" (herramientas que informan de problemas que no existen). RedAudit implementa una capa lógica para verificar hallazgos antes de reportarlos.
 
 **El Mecanismo "Smart-Check":**
 
@@ -259,7 +259,7 @@ Basados en observaciones reales en aula:
 | Ejecutar sin `sudo` | `Permission denied` en sockets | Explicar requisitos de raw sockets |
 | Escanear IPs públicas | El escaneo tarda eternamente o falla | Usar solo redes de laboratorio. Discutir legalidad. |
 | Esperar playbooks con `--encrypt` | Carpeta `playbooks/` vacía | El cifrado deshabilita artefactos en texto plano |
-| Comparar reportes viejos/nuevos falla | `--diff` devuelve "No scan performed" | Explicar que `--diff` es solo comparación, no escaneo |
+| Comparar informes antiguos/nuevos falla | `--diff` devuelve "No scan performed" | Explicar que `--diff` es solo comparación, no escaneo |
 | Editar constants.py sin reiniciar | Los cambios no aplican | Python cachea imports; reinicio requerido |
 | Confundir modo scan con modo UDP | Se escanean puertos incorrectos | `--mode` ≠ `--udp-mode`. Uno es intensidad, otro es alcance de protocolo. |
 | Tratar el ETA como exacto | ETA parece “clavado” o muy alto | Explicar `ETA≤` como límite por timeout y `ETA≈` como estimación dinámica |

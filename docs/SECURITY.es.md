@@ -59,7 +59,7 @@ Todas las entradas externas—rangos objetivo, nombres de host, nombres de inter
 
 ## 2. Implementación Criptográfica
 
-El cifrado de reportes se gestiona mediante la librería `cryptography` para asegurar la confidencialidad de los resultados de auditoría.
+El cifrado de informes se gestiona mediante la librería `cryptography` para asegurar la confidencialidad de los resultados de auditoría.
 
 - **Primitiva**: AES-128-CBC (especificación Fernet).
 - **Gestión de Claves**: Las claves se derivan de contraseñas proporcionadas por el usuario usando PBKDF2HMAC-SHA256 con 480,000 iteraciones y un salt aleatorio por sesión.
@@ -69,8 +69,8 @@ El cifrado de reportes se gestiona mediante la librería `cryptography` para ase
 
 ## 3. Seguridad Operacional (OpSec)
 
-- **Permisos de Artefactos**: RedAudit aplica `0o600` (lectura/escritura solo para el propietario) a los artefactos generados (reportes, HTML/playbooks, vistas JSONL/JSON, evidencia externalizada) para reducir filtraciones a otros usuarios del sistema.
-- **Seguridad en Modo Cifrado**: Si el cifrado de reportes está activado, RedAudit evita generar artefactos adicionales en texto plano (HTML/JSONL/playbooks/resumen/manifiestos y evidencia externalizada) junto a reportes `.enc`.
+- **Permisos de Artefactos**: RedAudit aplica `0o600` (lectura/escritura solo para el propietario) a los artefactos generados (informes, HTML/playbooks, vistas JSONL/JSON, evidencia externalizada) para reducir filtraciones a otros usuarios del sistema.
+- **Seguridad en Modo Cifrado**: Si el cifrado de informes está activado, RedAudit evita generar artefactos adicionales en texto plano (HTML/JSONL/playbooks/resumen/manifiestos y evidencia externalizada) junto a informes `.enc`.
 - **Rate-Limiting con Jitter**: Limitación de velocidad configurable con varianza aleatoria ±30% para reducir predictibilidad en entornos sensibles a IDS.
 - **Descubrimiento HyperScan**: Descubrimiento TCP/UDP/ARP asíncrono puede reducir invocaciones de nmap cuando está habilitado (net discovery).
 - **Heartbeat**: Monitoreo en segundo plano asegura la integridad del proceso sin requerir acceso interactivo a la shell.
@@ -167,7 +167,7 @@ RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `
 
 ### Reportes HTML (`--html-report`)
 
-- **Offline/Air-gap**: El reporte embebe el CSS, pero las gráficas cargan Chart.js desde un CDN. En entornos aislados el HTML abre; las gráficas pueden no renderizar sin esa dependencia.
+- **Offline/Air-gap**: El informe embebe el CSS, pero las gráficas cargan Chart.js desde un CDN. En entornos aislados el HTML abre; las gráficas pueden no renderizar sin esa dependencia.
 - **Sin Rastreo Remoto**: No se incluyen analíticas ni píxeles de seguimiento.
 
 ### Alertas Webhook (`--webhook`)

@@ -62,7 +62,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/ma
 - ✅ Detectar tu red automáticamente
 - ✅ Hacer pull de la última imagen
 - ✅ Ejecutar el escaneo
-- ✅ Ofrecer abrir el reporte cuando termine
+- ✅ Ofrecer abrir el informe cuando termine
 
 ---
 
