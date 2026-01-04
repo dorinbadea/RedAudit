@@ -46,6 +46,12 @@ class MockAuditorBase:
         self.cryptography_available = True
         self.console = MagicMock()
 
+        # v4.0 Compatibility: Mock UI Manager
+        self.ui = MagicMock()
+        self.ui.colors = self.COLORS
+        self.ui.t.side_effect = self.t
+        self.ui.print_status = MagicMock()
+
     def print_status(self, msg, status_type="info", **kwargs):
         pass
 

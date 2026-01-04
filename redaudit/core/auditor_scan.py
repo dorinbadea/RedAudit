@@ -110,23 +110,23 @@ class AuditorScanMixin:
 
     def check_dependencies(self):
         """Check and verify required dependencies."""
-        self.print_status(self.t("verifying_env"), "HEADER")
+        self.ui.print_status(self.ui.t("verifying_env"), "HEADER")
 
         if shutil.which("nmap") is None:
-            self.print_status(self.t("nmap_binary_missing"), "FAIL")
+            self.ui.print_status(self.ui.t("nmap_binary_missing"), "FAIL")
             return False
 
         global nmap
         try:
             nmap = importlib.import_module("nmap")
-            self.print_status(self.t("nmap_avail"), "OKGREEN")
+            self.ui.print_status(self.ui.t("nmap_avail"), "OKGREEN")
         except ImportError:
-            self.print_status(self.t("nmap_missing"), "FAIL")
+            self.ui.print_status(self.ui.t("nmap_missing"), "FAIL")
             return False
 
         self.cryptography_available = is_crypto_available()
         if not self.cryptography_available:
-            self.print_status(self.t("crypto_missing"), "WARNING")
+            self.ui.print_status(self.ui.t("crypto_missing"), "WARNING")
 
         tools = [
             "whatweb",
@@ -165,14 +165,14 @@ class AuditorScanMixin:
                         break
             if path:
                 self.extra_tools[tname] = path
-                self.print_status(self.t("avail_at", tname, path), "OKGREEN")
+                self.ui.print_status(self.ui.t("avail_at", tname, path), "OKGREEN")
             else:
                 self.extra_tools[tname] = None
                 missing.append(tname)
 
         if missing:
-            msg = self.t("missing_opt", ", ".join(missing))
-            self.print_status(msg, "WARNING")
+            msg = self.ui.t("missing_opt", ", ".join(missing))
+            self.ui.print_status(msg, "WARNING")
         return True
 
     # ---------- Input utilities (inherited from WizardMixin) ----------
@@ -181,8 +181,8 @@ class AuditorScanMixin:
 
     def detect_all_networks(self):
         """Detect all local networks."""
-        self.print_status(self.t("analyzing_nets"), "INFO")
-        nets = detect_all_networks(self.lang, self.print_status)
+        self.ui.print_status(self.ui.t("analyzing_nets"), "INFO")
+        nets = detect_all_networks(self.lang, self.ui.print_status)
         self.results["network_info"] = nets
         return nets
 
@@ -241,21 +241,21 @@ class AuditorScanMixin:
 
     def ask_network_range(self):
         """Ask user to select target network(s)."""
-        h = self.COLORS["HEADER"]
-        print(f"\n{h}{self.t('selection_target')}{self.COLORS['ENDC']}")
+        h = self.ui.colors["HEADER"]
+        print(f"\n{h}{self.ui.t('selection_target')}{self.ui.colors['ENDC']}")
         print("-" * 60)
         nets = self.detect_all_networks()
         if nets:
-            g = self.COLORS["OKGREEN"]
-            print(f"{g}{self.t('interface_detected')}{self.COLORS['ENDC']}")
+            g = self.ui.colors["OKGREEN"]
+            print(f"{g}{self.ui.t('interface_detected')}{self.ui.colors['ENDC']}")
             opts = []
             for n in nets:
                 info = f" ({n['interface']})" if n["interface"] else ""
                 h_est = n["hosts_estimated"]
                 opts.append(f"{n['network']}{info} - ~{h_est} hosts")
-            opts.append(self.t("manual_entry"))
-            opts.append(self.t("scan_all"))
-            choice = self.ask_choice(self.t("select_net"), opts)
+            opts.append(self.ui.t("manual_entry"))
+            opts.append(self.ui.t("scan_all"))
+            choice = self.ask_choice(self.ui.t("select_net"), opts)
             if choice == len(opts) - 2:
                 return [self.ask_manual_network()]
             if choice == len(opts) - 1:
@@ -271,7 +271,7 @@ class AuditorScanMixin:
                 return unique_nets
             return [nets[choice]["network"]]
         else:
-            self.print_status(self.t("no_nets_auto"), "WARNING")
+            self.ui.print_status(self.ui.t("no_nets_auto"), "WARNING")
             return [self.ask_manual_network()]
 
     def _select_net_discovery_interface(self) -> Optional[str]:
@@ -964,8 +964,8 @@ class AuditorScanMixin:
         self._set_ui_detail(f"[deep] {safe_ip} tcp")
         deep_obj = {"strategy": "adaptive_v2.8", "commands": []}
 
-        self.print_status(
-            self.t("deep_identity_start", safe_ip, self.t("deep_strategy_adaptive")),
+        self.ui.print_status(
+            self.ui.t("deep_identity_start", safe_ip, self.ui.t("deep_strategy_adaptive")),
             "WARNING",
         )
 
@@ -992,8 +992,8 @@ class AuditorScanMixin:
                 "9",
                 safe_ip,
             ]
-            self.print_status(
-                self.t("deep_identity_cmd", safe_ip, " ".join(cmd_p1), "120-180"), "WARNING"
+            self.ui.print_status(
+                self.ui.t("deep_identity_cmd", safe_ip, " ".join(cmd_p1), "120-180"), "WARNING"
             )
             rec1 = run_nmap_command(
                 cmd_p1,
@@ -1020,7 +1020,7 @@ class AuditorScanMixin:
 
             # Phase 2: UDP scanning (Intelligent strategy)
             if has_identity:
-                self.print_status(self.t("deep_scan_skip"), "OKGREEN")
+                self.ui.print_status(self.ui.t("deep_scan_skip"), "OKGREEN")
                 deep_obj["phase2_skipped"] = True
             else:
                 # Phase 2a: Quick UDP scan of priority ports only
@@ -1037,8 +1037,8 @@ class AuditorScanMixin:
                                 "Skipping invalid UDP priority port token: %r", p, exc_info=True
                             )
                         continue
-                self.print_status(
-                    self.t(
+                self.ui.print_status(
+                    self.ui.t(
                         "deep_udp_priority_cmd",
                         safe_ip,
                         f"async UDP probe ({len(priority_ports)} ports)",
@@ -1114,8 +1114,8 @@ class AuditorScanMixin:
                         UDP_HOST_TIMEOUT_STRICT,
                         safe_ip,
                     ]
-                    self.print_status(
-                        self.t("deep_udp_full_cmd", safe_ip, " ".join(cmd_p2b), udp_top_ports),
+                    self.ui.print_status(
+                        self.ui.t("deep_udp_full_cmd", safe_ip, " ".join(cmd_p2b), udp_top_ports),
                         "WARNING",
                     )
                     self._set_ui_detail(f"[deep] {safe_ip} udp top {udp_top_ports}")
@@ -1152,7 +1152,7 @@ class AuditorScanMixin:
                     deep_obj["pcap_capture"] = pcap_result
 
         total_dur = sum(c.get("duration_seconds", 0) for c in deep_obj["commands"])
-        self.print_status(self.t("deep_identity_done", safe_ip, total_dur), "OKGREEN")
+        self.ui.print_status(self.ui.t("deep_identity_done", safe_ip, total_dur), "OKGREEN")
         return deep_obj
 
     def scan_network_discovery(self, network):
@@ -1161,7 +1161,7 @@ class AuditorScanMixin:
         self._set_ui_detail(f"[nmap] {network} discovery")
         self.logger.info("Discovery on %s", network)
         args = get_nmap_arguments("rapido", self.config)  # v3.9.0: Pass config for timing
-        self.print_status(self.t("nmap_cmd", network, f"nmap {args} {network}"), "INFO")
+        self.ui.print_status(self.ui.t("nmap_cmd", network, f"nmap {args} {network}"), "INFO")
         if is_dry_run(self.config.get("dry_run")):
             return []
         nm = nmap.PortScanner()
@@ -1197,10 +1197,10 @@ class AuditorScanMixin:
         except Exception as exc:
             self.logger.error("Discovery failed on %s: %s", network, exc)
             self.logger.debug("Discovery exception details for %s", network, exc_info=True)
-            self.print_status(self.t("scan_error", exc), "FAIL")
+            self.ui.print_status(self.ui.t("scan_error", exc), "FAIL")
             return []
         hosts = [h for h in nm.all_hosts() if nm[h].state() == "up"]
-        self.print_status(self.t("hosts_active", network, len(hosts)), "OKGREEN")
+        self.ui.print_status(self.ui.t("hosts_active", network, len(hosts)), "OKGREEN")
         return hosts
 
     def scan_host_ports(self, host):
@@ -1226,7 +1226,7 @@ class AuditorScanMixin:
         # v3.9.0: Pass config so nmap_timing (T1/T4/T5) is applied
         args = get_nmap_arguments(self.config["scan_mode"], self.config)
         self.logger.debug("Nmap scan %s %s", safe_ip, args)
-        self.print_status(self.t("nmap_cmd", safe_ip, f"nmap {args} {safe_ip}"), "INFO")
+        self.ui.print_status(self.ui.t("nmap_cmd", safe_ip, f"nmap {args} {safe_ip}"), "INFO")
         if is_dry_run(self.config.get("dry_run")):
             return {
                 "ip": safe_ip,
@@ -1244,7 +1244,7 @@ class AuditorScanMixin:
             nm, scan_error = self._run_nmap_xml_scan(safe_ip, args)
             if not nm:
                 self.logger.warning("Nmap scan failed for %s: %s", safe_ip, scan_error)
-                self.print_status(
+                self.ui.print_status(
                     f"⚠️  Nmap scan failed {safe_ip}: {scan_error}",
                     "FAIL",
                     force=True,
@@ -1290,7 +1290,7 @@ class AuditorScanMixin:
                     if not reserved:
                         if self.logger:
                             self.logger.info(
-                                self.t(
+                                self.ui.t(
                                     "deep_scan_budget_exhausted",
                                     deep_count,
                                     budget,
@@ -1372,7 +1372,7 @@ class AuditorScanMixin:
 
             total_ports = len(ports)
             if total_ports > MAX_PORTS_DISPLAY:
-                self.print_status(self.t("ports_truncated", safe_ip, total_ports), "WARNING")
+                self.ui.print_status(self.ui.t("ports_truncated", safe_ip, total_ports), "WARNING")
                 ports = ports[:MAX_PORTS_DISPLAY]
 
             host_record = {
@@ -1423,7 +1423,7 @@ class AuditorScanMixin:
 
             # v2.8.0: Banner grab fallback for unidentified ports
             if unknown_ports and len(unknown_ports) <= 20:
-                self.print_status(self.t("banner_grab", safe_ip, len(unknown_ports)), "INFO")
+                self.ui.print_status(self.ui.t("banner_grab", safe_ip, len(unknown_ports)), "INFO")
                 banner_info = banner_grab_fallback(safe_ip, unknown_ports, logger=self.logger)
                 if banner_info:
                     # Merge banner info into ports
@@ -1500,7 +1500,7 @@ class AuditorScanMixin:
                     deep_reasons.append("budget_exhausted")
                     if self.logger:
                         self.logger.info(
-                            self.t(
+                            self.ui.t(
                                 "deep_scan_budget_exhausted",
                                 deep_count,
                                 budget,
@@ -1530,8 +1530,8 @@ class AuditorScanMixin:
                         exploits = exploit_lookup(product, version, self.extra_tools, self.logger)
                         if exploits:
                             port_info["known_exploits"] = exploits
-                            self.print_status(
-                                self.t("exploits_found", len(exploits), f"{product} {version}"),
+                            self.ui.print_status(
+                                self.ui.t("exploits_found", len(exploits), f"{product} {version}"),
                                 "WARNING",
                             )
 
@@ -1597,7 +1597,7 @@ class AuditorScanMixin:
         except Exception as exc:
             self.logger.error("Scan error %s: %s", safe_ip, exc, exc_info=True)
             # Keep terminal output clean while progress UIs are active.
-            self.print_status(f"⚠️  Scan error {safe_ip}: {exc}", "FAIL", force=True)
+            self.ui.print_status(f"⚠️  Scan error {safe_ip}: {exc}", "FAIL", force=True)
             result = {"ip": safe_ip, "error": str(exc)}
             try:
                 deep = None
@@ -1607,7 +1607,7 @@ class AuditorScanMixin:
                     if not reserved:
                         if self.logger:
                             self.logger.info(
-                                self.t(
+                                self.ui.t(
                                     "deep_scan_budget_exhausted",
                                     deep_count,
                                     budget,
@@ -1627,7 +1627,7 @@ class AuditorScanMixin:
 
     def scan_hosts_concurrent(self, hosts):
         """Scan multiple hosts concurrently with progress bar."""
-        self.print_status(self.t("scan_start", len(hosts)), "HEADER")
+        self.ui.print_status(self.ui.t("scan_start", len(hosts)), "HEADER")
         unique_hosts = sorted(set(hosts))
         results = []
         threads = max(1, int(self.config.get("threads", 1)))
@@ -1678,7 +1678,7 @@ class AuditorScanMixin:
                         initial_detail = self._get_ui_detail()
                         # v3.8.1: Simplified task - no ETA fields
                         task = progress.add_task(
-                            f"[cyan]{self.t('scanning_hosts')}",
+                            f"[cyan]{self.ui.t('scanning_hosts')}",
                             total=total,
                             detail=initial_detail,
                         )
@@ -1704,7 +1704,7 @@ class AuditorScanMixin:
                             if now - last_heartbeat >= 60.0:
                                 elapsed = int(now - start_t)
                                 mins, secs = divmod(elapsed, 60)
-                                self.print_status(
+                                self.ui.print_status(
                                     f"Escaneando hosts... {done}/{total} ({mins}:{secs:02d} transcurrido)",
                                     "INFO",
                                     force=True,
@@ -1730,7 +1730,7 @@ class AuditorScanMixin:
                                 progress.update(
                                     task,
                                     advance=1,
-                                    description=f"[cyan]{self.t('scanned_host', host_ip)}",
+                                    description=f"[cyan]{self.ui.t('scanned_host', host_ip)}",
                                     detail=last_detail,
                                 )
                 else:
@@ -1755,8 +1755,8 @@ class AuditorScanMixin:
                         if total and done % max(1, total // 10) == 0:
                             elapsed = int(time.time() - start_t)
                             mins, secs = divmod(elapsed, 60)
-                            self.print_status(
-                                f"{self.t('progress', done, total)} ({mins}:{secs:02d} transcurrido)",
+                            self.ui.print_status(
+                                f"{self.ui.t('progress', done, total)} ({mins}:{secs:02d} transcurrido)",
                                 "INFO",
                                 update_activity=False,
                                 force=True,
@@ -1777,16 +1777,16 @@ class AuditorScanMixin:
 
         targets = select_agentless_probe_targets(host_results)
         if not targets:
-            self.print_status(self.t("windows_verify_none"), "INFO")
+            self.ui.print_status(self.ui.t("windows_verify_none"), "INFO")
             return
 
         max_targets = int(self.config.get("windows_verify_max_targets", 20) or 20)
         max_targets = min(max(max_targets, 1), 200)
         if len(targets) > max_targets:
             targets = sorted(targets, key=lambda t: t.ip)[:max_targets]
-            self.print_status(self.t("windows_verify_limit", max_targets), "WARNING")
+            self.ui.print_status(self.ui.t("windows_verify_limit", max_targets), "WARNING")
 
-        self.print_status(self.t("windows_verify_start", len(targets)), "HEADER")
+        self.ui.print_status(self.ui.t("windows_verify_start", len(targets)), "HEADER")
 
         host_index = {h.get("ip"): h for h in host_results if isinstance(h, dict)}
         results: List[Dict[str, Any]] = []
@@ -1828,7 +1828,7 @@ class AuditorScanMixin:
                         refresh_per_second=4,
                     ) as progress:
                         task = progress.add_task(
-                            f"[cyan]{self.t('windows_verify_label')}",
+                            f"[cyan]{self.ui.t('windows_verify_label')}",
                             total=total,
                             detail="",
                             eta_upper=self._format_eta(
@@ -1870,7 +1870,7 @@ class AuditorScanMixin:
                                 progress.update(
                                     task,
                                     advance=1,
-                                    description=f"[cyan]{self.t('windows_verify_label')} ({done}/{total})",
+                                    description=f"[cyan]{self.ui.t('windows_verify_label')} ({done}/{total})",
                                     eta_upper=self._format_eta(
                                         upper_per_target_s * math.ceil(remaining / workers)
                                         if remaining
@@ -1903,8 +1903,8 @@ class AuditorScanMixin:
                             )
                             elapsed = int(time.time() - start_t)
                             mins, secs = divmod(elapsed, 60)
-                            self.print_status(
-                                f"{self.t('windows_verify_label')} {done}/{total} | ETA≈ {eta_est_val}",
+                            self.ui.print_status(
+                                f"{self.ui.t('windows_verify_label')} {done}/{total} | ETA≈ {eta_est_val}",
                                 "INFO",
                                 update_activity=False,
                                 force=True,
