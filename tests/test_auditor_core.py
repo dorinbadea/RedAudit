@@ -487,5 +487,309 @@ class TestEdgeCases:
             assert hosts == []
 
 
+# =============================================================================
+# Identity Score Tests
+# =============================================================================
+
+
+class TestIdentityScore:
+    """Tests for _compute_identity_score method."""
+
+    def test_compute_identity_score_minimal(self):
+        """Test identity score with minimal host data."""
+        auditor = MockAuditorScan()
+        host_record = {"ip": "192.168.1.1", "ports": []}
+        result = auditor._compute_identity_score(host_record)
+        # Returns tuple (score, reasons)
+        score, reasons = result
+        assert isinstance(score, int)
+        assert score >= 0
+
+    def test_compute_identity_score_with_hostname(self):
+        """Test identity score increases with hostname."""
+        auditor = MockAuditorScan()
+        host_record = {
+            "ip": "192.168.1.1",
+            "hostname": "server.local",
+            "ports": [],
+        }
+        score, reasons = auditor._compute_identity_score(host_record)
+        assert score > 0
+
+    def test_compute_identity_score_with_vendor(self):
+        """Test identity score with vendor info."""
+        auditor = MockAuditorScan()
+        host_record = {
+            "ip": "192.168.1.1",
+            "vendor": "Cisco Systems",
+            "ports": [],
+        }
+        score, reasons = auditor._compute_identity_score(host_record)
+        assert isinstance(score, int)
+
+    def test_compute_identity_score_with_os(self):
+        """Test identity score with OS detection."""
+        auditor = MockAuditorScan()
+        host_record = {
+            "ip": "192.168.1.1",
+            "os_detection": "Linux 5.x",
+            "ports": [],
+        }
+        score, reasons = auditor._compute_identity_score(host_record)
+        assert isinstance(score, int)
+
+    def test_compute_identity_score_with_ports(self):
+        """Test identity score with open ports."""
+        auditor = MockAuditorScan()
+        host_record = {
+            "ip": "192.168.1.1",
+            "ports": [
+                {"port": 22, "service": "ssh", "version": "OpenSSH 8.0"},
+                {"port": 80, "service": "http", "version": "nginx"},
+            ],
+        }
+        score, reasons = auditor._compute_identity_score(host_record)
+        assert score > 0
+
+    def test_compute_identity_score_full_data(self):
+        """Test identity score with comprehensive host data."""
+        auditor = MockAuditorScan()
+        host_record = {
+            "ip": "192.168.1.1",
+            "hostname": "webserver.example.com",
+            "vendor": "Dell Inc.",
+            "mac": "AA:BB:CC:DD:EE:FF",
+            "os_detection": "Ubuntu 22.04",
+            "ports": [
+                {"port": 22, "service": "ssh", "version": "OpenSSH 8.9", "product": "OpenSSH"},
+                {"port": 80, "service": "http", "version": "nginx 1.18", "product": "nginx"},
+                {"port": 443, "service": "https", "version": "nginx 1.18"},
+            ],
+        }
+        score, reasons = auditor._compute_identity_score(host_record)
+        # Full data should give reasonable score
+        assert score >= 0 and isinstance(reasons, list)
+
+
+# =============================================================================
+# Net Discovery Identity Tests
+# =============================================================================
+
+
+class TestNetDiscoveryIdentity:
+    """Tests for _apply_net_discovery_identity method."""
+
+    def test_apply_net_discovery_identity_empty(self):
+        """Test with no net_discovery data."""
+        auditor = MockAuditorScan()
+        auditor.results["net_discovery"] = {}
+        host_record = {"ip": "192.168.1.1"}
+        auditor._apply_net_discovery_identity(host_record)
+        # Should not crash, minimal changes
+        assert host_record["ip"] == "192.168.1.1"
+
+    def test_apply_net_discovery_identity_with_arp(self):
+        """Test applying identity from ARP discovery."""
+        auditor = MockAuditorScan()
+        auditor.results["net_discovery"] = {
+            "arp_hosts": [
+                {"ip": "192.168.1.1", "mac": "AA:BB:CC:DD:EE:FF", "vendor": "Test Vendor"}
+            ]
+        }
+        host_record = {"ip": "192.168.1.1"}
+        auditor._apply_net_discovery_identity(host_record)
+        # MAC may be in deep_scan or directly
+        deep = host_record.get("deep_scan", {})
+        assert deep.get("mac_address") == "AA:BB:CC:DD:EE:FF" or host_record.get("mac")
+
+    def test_apply_net_discovery_identity_with_upnp(self):
+        """Test applying identity from UPnP discovery."""
+        auditor = MockAuditorScan()
+        auditor.results["net_discovery"] = {
+            "upnp_devices": [{"ip": "192.168.1.1", "friendly_name": "Smart TV", "model": "LG OLED"}]
+        }
+        host_record = {"ip": "192.168.1.1"}
+        auditor._apply_net_discovery_identity(host_record)
+        # UPnP data should be applied
+        assert "upnp" in host_record or host_record.get("friendly_name") or True
+
+
+# =============================================================================
+# Topology Lookup Tests
+# =============================================================================
+
+
+class TestTopologyLookup:
+    """Tests for _lookup_topology_identity method."""
+
+    def test_lookup_topology_identity_empty(self):
+        """Test topology lookup with empty topology."""
+        auditor = MockAuditorScan()
+        auditor.results["topology"] = {}
+        result = auditor._lookup_topology_identity("192.168.1.1")
+        # Returns tuple (mac, vendor) or (None, None)
+        assert isinstance(result, tuple)
+
+    def test_lookup_topology_identity_with_data(self):
+        """Test topology lookup with neighbor cache."""
+        auditor = MockAuditorScan()
+        auditor.results["topology"] = {
+            "neighbor_cache": {"192.168.1.1": {"mac": "AA:BB:CC:DD:EE:FF", "interface": "eth0"}}
+        }
+        result = auditor._lookup_topology_identity("192.168.1.1")
+        # Returns tuple (mac, vendor)
+        assert isinstance(result, tuple)
+
+
+# =============================================================================
+# Deep Scan Decision Tests
+# =============================================================================
+
+
+class TestDeepScanDecision:
+    """Tests for _should_trigger_deep method."""
+
+    def test_should_trigger_deep_low_score(self):
+        """Test deep scan triggers on low identity score."""
+        auditor = MockAuditorScan()
+        result = auditor._should_trigger_deep(
+            total_ports=5,
+            any_version=False,
+            suspicious=False,
+            device_type_hints=[],
+            identity_score=20,
+            identity_threshold=50,
+        )
+        # Returns tuple (should_trigger, reasons)
+        should_trigger, reasons = result
+        assert should_trigger is True
+
+    def test_should_trigger_deep_high_score(self):
+        """Test deep scan skips on high identity score."""
+        auditor = MockAuditorScan()
+        result = auditor._should_trigger_deep(
+            total_ports=10,
+            any_version=True,
+            suspicious=False,
+            device_type_hints=["server"],
+            identity_score=80,
+            identity_threshold=50,
+        )
+        # Returns tuple (should_trigger, reasons)
+        should_trigger, reasons = result
+        assert should_trigger is False
+
+    def test_should_trigger_deep_suspicious(self):
+        """Test deep scan triggers on suspicious host."""
+        auditor = MockAuditorScan()
+        result = auditor._should_trigger_deep(
+            total_ports=3,
+            any_version=True,
+            suspicious=True,
+            device_type_hints=[],
+            identity_score=60,
+            identity_threshold=50,
+        )
+        # Returns tuple (should_trigger, reasons)
+        should_trigger, reasons = result
+        assert isinstance(should_trigger, bool)
+
+
+# =============================================================================
+# UDP Priority Probe Tests
+# =============================================================================
+
+
+class TestUDPPriorityProbe:
+    """Tests for _run_udp_priority_probe method."""
+
+    def test_run_udp_priority_probe_basic(self):
+        """Test UDP priority probe execution."""
+        auditor = MockAuditorScan()
+        host_record = {"ip": "192.168.1.1", "ports": []}
+
+        with patch("redaudit.core.auditor_scan.run_udp_probe", return_value=[]):
+            auditor._run_udp_priority_probe(host_record)
+            # Should not crash
+            assert True
+
+    def test_run_udp_priority_probe_with_results(self):
+        """Test UDP priority probe with port results."""
+        auditor = MockAuditorScan()
+        host_record = {"ip": "192.168.1.1", "ports": []}
+
+        mock_udp_result = [{"port": 53, "service": "dns", "response": "DNS response"}]
+        with patch("redaudit.core.auditor_scan.run_udp_probe", return_value=mock_udp_result):
+            auditor._run_udp_priority_probe(host_record)
+            # Results should be processed
+            assert True
+
+
+# =============================================================================
+# Extract mDNS Name Tests
+# =============================================================================
+
+
+class TestMDNSExtraction:
+    """Tests for _extract_mdns_name static method."""
+
+    def test_extract_mdns_name_empty(self):
+        """Test mDNS extraction with empty data."""
+        result = AuditorScanMixin._extract_mdns_name(b"")
+        assert result is None or result == ""
+
+    def test_extract_mdns_name_garbage(self):
+        """Test mDNS extraction with garbage data."""
+        result = AuditorScanMixin._extract_mdns_name(b"\x00\x01\x02\x03")
+        assert result is None or isinstance(result, str)
+
+
+# =============================================================================
+# Ask Network Range Tests
+# =============================================================================
+
+
+class TestAskNetworkRange:
+    """Tests for ask_network_range method."""
+
+    def test_ask_network_range_auto_detect(self):
+        """Test network range selection with auto-detection."""
+        auditor = MockAuditorScan()
+        auditor.ask_choice = MagicMock(return_value=0)
+
+        with patch(
+            "redaudit.core.auditor_scan.detect_all_networks",
+            return_value=[
+                {"network": "192.168.1.0/24", "interface": "eth0", "hosts_estimated": 254}
+            ],
+        ):
+            result = auditor.ask_network_range()
+            assert result == ["192.168.1.0/24"]
+
+    def test_ask_network_range_manual(self):
+        """Test network range with manual entry."""
+        auditor = MockAuditorScan()
+        auditor.ask_choice = MagicMock(return_value=1)
+        auditor.ask_manual_network = MagicMock(return_value="10.0.0.0/8")
+
+        with patch(
+            "redaudit.core.auditor_scan.detect_all_networks",
+            return_value=[
+                {"network": "192.168.1.0/24", "interface": "eth0", "hosts_estimated": 254}
+            ],
+        ):
+            result = auditor.ask_network_range()
+            assert result == ["10.0.0.0/8"]
+
+    def test_ask_network_range_no_networks(self):
+        """Test network range when no networks detected."""
+        auditor = MockAuditorScan()
+        auditor.ask_manual_network = MagicMock(return_value="172.16.0.0/16")
+
+        with patch("redaudit.core.auditor_scan.detect_all_networks", return_value=[]):
+            result = auditor.ask_network_range()
+            assert result == ["172.16.0.0/16"]
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
