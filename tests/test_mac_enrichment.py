@@ -88,10 +88,10 @@ class TestMacEnrichmentFromTopology:
     def test_apply_net_discovery_identity_uses_neighbor_cache(self):
         """MAC should be enriched from topology neighbor_cache when arp_hosts missing."""
         from unittest.mock import MagicMock
-        from redaudit.core.auditor_scan import AuditorScanMixin
+        from redaudit.core.auditor_scan import AuditorScan
 
         # Create mock auditor
-        auditor = MagicMock(spec=AuditorScanMixin)
+        auditor = MagicMock(spec=AuditorScan)
         auditor.results = {
             "net_discovery": {},  # No arp_hosts data
             "pipeline": {
@@ -117,7 +117,7 @@ class TestMacEnrichmentFromTopology:
         host_record = {"ip": "192.168.1.100"}
 
         # Call the method (need to use the real implementation)
-        AuditorScanMixin._apply_net_discovery_identity(auditor, host_record)
+        AuditorScan._apply_net_discovery_identity(auditor, host_record)
 
         # Verify MAC was enriched
         deep_scan = host_record.get("deep_scan", {})
@@ -126,9 +126,9 @@ class TestMacEnrichmentFromTopology:
     def test_apply_net_discovery_identity_prefers_arp_hosts(self):
         """arp_hosts should be preferred over neighbor_cache."""
         from unittest.mock import MagicMock
-        from redaudit.core.auditor_scan import AuditorScanMixin
+        from redaudit.core.auditor_scan import AuditorScan
 
-        auditor = MagicMock(spec=AuditorScanMixin)
+        auditor = MagicMock(spec=AuditorScan)
         auditor.results = {
             "net_discovery": {
                 "arp_hosts": [
@@ -150,7 +150,7 @@ class TestMacEnrichmentFromTopology:
 
         host_record = {"ip": "192.168.1.100"}
 
-        AuditorScanMixin._apply_net_discovery_identity(auditor, host_record)
+        AuditorScan._apply_net_discovery_identity(auditor, host_record)
 
         deep_scan = host_record.get("deep_scan", {})
         # Should use arp_hosts MAC, not neighbor_cache

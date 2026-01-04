@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RedAudit - Tests for auditor mixins.
+RedAudit - Tests for auditor components.
 """
 
 import logging
@@ -22,7 +22,7 @@ def test_setup_logging_adds_rotating_handler(tmp_path):
     logger.handlers = []
     try:
         with patch(
-            "redaudit.core.auditor_mixins.os.path.expanduser",
+            "redaudit.core.auditor_components.os.path.expanduser",
             return_value=str(tmp_path / "logs"),
         ):
             app = InteractiveNetworkAuditor()

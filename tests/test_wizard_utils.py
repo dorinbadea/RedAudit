@@ -8,10 +8,10 @@ from types import SimpleNamespace
 
 from unittest.mock import patch
 
-from redaudit.core.wizard import WizardMixin
+from redaudit.core.wizard import Wizard
 
 
-class _DummyWizard(WizardMixin):
+class _DummyWizard(Wizard):
     def __init__(self):
         self.lang = "en"
         self.config = {}
@@ -32,7 +32,7 @@ class _DummyWizard(WizardMixin):
         self._messages = []
 
     def t(self, key, *args):
-        # Kept for compatibility if WizardMixin uses self.t
+        # Kept for compatibility if Wizard uses self.t
         if args:
             return f"{key}:{','.join(str(a) for a in args)}"
         return key

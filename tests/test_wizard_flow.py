@@ -3,11 +3,11 @@
 RedAudit - Tests for wizard flows and helpers.
 """
 
-from redaudit.core.wizard import WizardMixin
+from redaudit.core.wizard import Wizard
 from redaudit.utils.constants import DEFAULT_THREADS, UDP_SCAN_MODE_QUICK, UDP_TOP_PORTS
 
 
-class _DummyWizard(WizardMixin):
+class _DummyWizard(Wizard):
     def __init__(self):
         self.lang = "en"
         self.config = {"dry_run": False}
@@ -260,7 +260,7 @@ def test_ask_choice_invalid_then_valid(monkeypatch):
 
 def test_ask_manual_network_with_range():
     """Test ask_manual_network accepts valid range."""
-    from redaudit.core.wizard import WizardMixin
+    from redaudit.core.wizard import Wizard
     import ipaddress
 
     # Test that ipaddress can validate our test inputs

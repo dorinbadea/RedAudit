@@ -3,6 +3,7 @@
 RedAudit - Tests for OUI lookup helpers.
 """
 
+import builtins
 import sys
 import time
 import types
@@ -137,9 +138,14 @@ def test_lookup_vendor_online_import_error(monkeypatch):
 
     monkeypatch.setattr(time, "time", lambda: 1000.0)
 
-    # Remove requests from sys.modules to trigger ImportError
-    if "requests" in sys.modules:
-        monkeypatch.delitem(sys.modules, "requests")
+    real_import = builtins.__import__
+
+    def _blocked_import(name, *args, **kwargs):
+        if name == "requests":
+            raise ImportError("requests not available")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _blocked_import)
 
     vendor = oui_lookup.lookup_vendor_online("aa:bb:cc:dd:ee:ff")
     assert vendor is None

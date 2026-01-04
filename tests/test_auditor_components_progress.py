@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RedAudit - Tests for auditor mixins progress helpers.
+RedAudit - Tests for auditor component progress helpers.
 """
 
 import builtins

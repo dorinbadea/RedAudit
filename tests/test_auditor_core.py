@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Consolidated tests for redaudit.core.auditor_scan (AuditorScanMixin).
+Consolidated tests for redaudit.core.auditor_scan (AuditorScan).
 
 This file consolidates tests from:
 - test_auditor_scan_coverage.py
@@ -30,7 +30,7 @@ from conftest import MockAuditorBase
 
 # Import module under test
 import redaudit.core.auditor_scan as auditor_scan_module
-from redaudit.core.auditor_scan import AuditorScanMixin
+from redaudit.core.auditor_scan import AuditorScan
 from redaudit.utils.constants import (
     STATUS_UP,
     STATUS_DOWN,
@@ -41,12 +41,12 @@ from redaudit.utils.constants import (
 
 
 # =============================================================================
-# Mock Classes (Mixin-specific, extends MockAuditorBase)
+# Mock Classes (Component-specific, extends MockAuditorBase)
 # =============================================================================
 
 
-class MockAuditorScan(MockAuditorBase, AuditorScanMixin):
-    """Mock auditor with AuditorScanMixin for testing scan methods."""
+class MockAuditorScan(MockAuditorBase, AuditorScan):
+    """Mock auditor with AuditorScan for testing scan methods."""
 
     def __init__(self):
         super().__init__()
@@ -174,17 +174,17 @@ class TestScanModes:
 
     def test_parse_host_timeout_seconds(self):
         """Test _parse_host_timeout_s with seconds format."""
-        result = AuditorScanMixin._parse_host_timeout_s("--host-timeout 1000ms")
+        result = AuditorScan._parse_host_timeout_s("--host-timeout 1000ms")
         assert result == 1.0
 
     def test_parse_host_timeout_minutes(self):
         """Test _parse_host_timeout_s with minutes format."""
-        result = AuditorScanMixin._parse_host_timeout_s("--host-timeout 5m")
+        result = AuditorScan._parse_host_timeout_s("--host-timeout 5m")
         assert result is None or result == 300.0
 
     def test_parse_host_timeout_missing(self):
         """Test _parse_host_timeout_s with no timeout."""
-        result = AuditorScanMixin._parse_host_timeout_s("-sV -A")
+        result = AuditorScan._parse_host_timeout_s("-sV -A")
         assert result is None
 
 
@@ -198,17 +198,17 @@ class TestStaticMethods:
 
     def test_sanitize_ip_valid(self):
         """Test sanitize_ip with valid IP."""
-        result = AuditorScanMixin.sanitize_ip("192.168.1.1")
+        result = AuditorScan.sanitize_ip("192.168.1.1")
         assert result == "192.168.1.1" or result is None
 
     def test_sanitize_ip_invalid(self):
         """Test sanitize_ip with invalid input."""
-        result = AuditorScanMixin.sanitize_ip("not.an.ip")
+        result = AuditorScan.sanitize_ip("not.an.ip")
         assert result is None or result == "not.an.ip" or result == ""
 
     def test_sanitize_hostname(self):
         """Test sanitize_hostname method."""
-        result = AuditorScanMixin.sanitize_hostname("server.example.com")
+        result = AuditorScan.sanitize_hostname("server.example.com")
         assert isinstance(result, str) or result is None
 
     def test_is_web_service_http(self):
@@ -331,7 +331,7 @@ class TestHostPortScan:
             patch("redaudit.core.auditor_scan.finalize_host_status", return_value=STATUS_UP),
             patch("redaudit.core.auditor_scan.exploit_lookup", return_value=[]),
             patch(
-                "redaudit.core.auditor_scan.AuditorScanMixin.deep_scan_host",
+                "redaudit.core.auditor_scan.AuditorScan.deep_scan_host",
                 return_value={},
             ),
             patch("redaudit.core.auditor_scan.banner_grab_fallback", return_value={}),
@@ -708,12 +708,12 @@ class TestMDNSExtraction:
 
     def test_extract_mdns_name_empty(self):
         """Test mDNS extraction with empty data."""
-        result = AuditorScanMixin._extract_mdns_name(b"")
+        result = AuditorScan._extract_mdns_name(b"")
         assert result is None or result == ""
 
     def test_extract_mdns_name_garbage(self):
         """Test mDNS extraction with garbage data."""
-        result = AuditorScanMixin._extract_mdns_name(b"\x00\x01\x02\x03")
+        result = AuditorScan._extract_mdns_name(b"\x00\x01\x02\x03")
         assert result is None or isinstance(result, str)
 
 

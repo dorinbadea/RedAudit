@@ -1,6 +1,4 @@
-"""Batch 2 tests for hyperscan.py to push coverage to 95%+
-Targets missing lines identified in the global coverage report.
-"""
+"""Edge-case tests for hyperscan async sweeps and probe utilities."""
 
 import asyncio
 import socket
@@ -21,14 +19,16 @@ async def test_tcp_connect_wait_closed_fallback():
     """Test _tcp_connect with wait_closed failure (lines 129-131)."""
     sem = asyncio.Semaphore(1)
     mock_writer = MagicMock()
-    # Mock wait_closed as a coroutine that raises error
     mock_writer.wait_closed = AsyncMock(side_effect=OSError("Already closed"))
-    with patch(
-        "asyncio.wait_for", side_effect=[(MagicMock(), mock_writer), OSError("Wait closed fail")]
-    ):
-        res = await _tcp_connect(sem, "1.1.1.1", 80, 0.1)
-        # Should still return result because open_connection succeeded
-        assert res == ("1.1.1.1", 80)
+
+    async def _fake_wait_for(coro, timeout=None):
+        return await coro
+
+    with patch("asyncio.open_connection", AsyncMock(return_value=(MagicMock(), mock_writer))):
+        with patch("asyncio.wait_for", _fake_wait_for):
+            res = await _tcp_connect(sem, "1.1.1.1", 80, 0.1)
+            # Should still return result because open_connection succeeded
+            assert res == ("1.1.1.1", 80)
 
 
 @pytest.mark.asyncio
