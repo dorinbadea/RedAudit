@@ -1271,6 +1271,38 @@ class AuditorScan:
                 identity_threshold=identity_threshold,
             )
 
+            # v4.0.4: Use HyperScan results to override deep scan decision
+            # HyperScan runs during net_discovery and may detect ports that nmap's quick scan missed
+            nd_results = (
+                self.results.get("net_discovery", {}) if isinstance(self.results, dict) else {}
+            )
+            hyperscan_ports = (nd_results.get("hyperscan_tcp_hosts") or {}).get(safe_ip, [])
+            if hyperscan_ports and not trigger_deep:
+                # HyperScan found ports but we decided not to deep scan - override
+                if total_ports == 0:
+                    trigger_deep = True
+                    deep_reasons.append("hyperscan_ports_detected")
+                    if self.logger:
+                        self.logger.info(
+                            "HyperScan detected %d ports on %s, forcing deep scan",
+                            len(hyperscan_ports),
+                            safe_ip,
+                        )
+                # Check for web ports in HyperScan results
+                from redaudit.utils.constants import WEB_LIKELY_PORTS
+
+                hyperscan_web_ports = [p for p in hyperscan_ports if p in WEB_LIKELY_PORTS]
+                if hyperscan_web_ports and web_count == 0:
+                    web_count = len(hyperscan_web_ports)
+                    host_record["web_ports_count"] = web_count
+                    if self.logger:
+                        self.logger.info(
+                            "HyperScan found web ports %s on %s, setting web_count=%d",
+                            hyperscan_web_ports,
+                            safe_ip,
+                            web_count,
+                        )
+
             # v4.0.4: Force web vuln scan for hosts with HTTP fingerprint from net_discovery
             # This fixes the detection gap where hosts passing identity threshold skip vuln scan
             agentless_fp = host_record.get("agentless_fingerprint") or {}
