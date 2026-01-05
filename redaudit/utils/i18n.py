@@ -30,6 +30,13 @@ TRANSLATIONS = {
         "nmap_binary_missing": "Error: nmap binary not found.",
         "missing_crit": "Error: missing critical dependencies: {}",
         "missing_opt": "Warning: missing optional tools: {} (reduced web/traffic features)",
+        "tool_version_warn": (
+            "Tool version warning: {} {} (expected {}); parser compatibility may be affected."
+        ),
+        "tool_version_unknown": (
+            "Tool version warning: {} version not detected (expected {}); "
+            "parser compatibility may be affected."
+        ),
         "crypto_missing": "cryptography library not available. Report encryption disabled.",
         "avail_at": "✓ {} available at {}",
         "not_found": "{} not found (automatic usage skipped)",
@@ -364,6 +371,13 @@ TRANSLATIONS = {
         "nmap_binary_missing": "Error: binario nmap no encontrado.",
         "missing_crit": "Error: faltan dependencias críticas: {}",
         "missing_opt": "Aviso: faltan herramientas opcionales: {} (menos funciones web/tráfico)",
+        "tool_version_warn": (
+            "Aviso de versión: {} {} (se espera {}); la compatibilidad de parseo puede verse afectada."
+        ),
+        "tool_version_unknown": (
+            "Aviso de versión: no se pudo detectar la versión de {} (se espera {}); "
+            "la compatibilidad de parseo puede verse afectada."
+        ),
         "crypto_missing": "Librería cryptography no disponible. El cifrado de reportes queda deshabilitado.",
         "avail_at": "✓ {} disponible en {}",
         "not_found": "{} no encontrado (se omitirá su uso automático)",

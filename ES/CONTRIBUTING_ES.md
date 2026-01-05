@@ -8,3 +8,15 @@ Si estás leyendo esto desde la raíz del repositorio, usa:
 
 - `CONTRIBUTING_ES.md` (Español)
 - `../CONTRIBUTING.md` (English)
+
+## Comprobaciones de Integración (Opcional)
+
+Para validar el parseo con salida real de herramientas:
+
+```bash
+REDAUDIT_REAL_TOOLS=1 pytest tests/integration/test_real_tool_output.py -v
+```
+
+Notas:
+- Requiere `nmap` instalado.
+- El test levanta un servidor HTTP local y ejecuta `nmap` contra `127.0.0.1`.

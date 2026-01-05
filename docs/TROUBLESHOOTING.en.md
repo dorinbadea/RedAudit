@@ -29,6 +29,15 @@
 sudo apt update && sudo apt install nmap
 ```
 
+### 2b. Tool version compatibility warning
+
+**Symptom**: You see warnings like: `Tool version warning: nmap 6.x (expected 7.x/8.x)`
+**Cause**: Installed tool versions can affect output parsing (nmap/nuclei).
+**Resolution**:
+
+- Upgrade the tool to a supported major version.
+- If you must stay on the current version, verify parsing against real output before relying on results.
+
 ### 3. `ModuleNotFoundError: No module named 'cryptography'`
 
 **Symptom**: Script fails during imports.

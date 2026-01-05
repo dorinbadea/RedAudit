@@ -29,6 +29,15 @@
 sudo apt update && sudo apt install nmap
 ```
 
+### 2b. Aviso de compatibilidad de versión de herramientas
+
+**Síntoma**: Ves avisos como: `Aviso de versión: nmap 6.x (se espera 7.x/8.x)`
+**Causa**: Las versiones instaladas pueden afectar el parseo de salidas (nmap/nuclei).
+**Resolución**:
+
+- Actualiza la herramienta a una versión mayor compatible.
+- Si debes mantener la versión actual, valida el parseo con salidas reales antes de confiar en los resultados.
+
 ### 3. `ModuleNotFoundError: No module named 'cryptography'`
 
 **Síntoma**: El script falla durante las importaciones.
