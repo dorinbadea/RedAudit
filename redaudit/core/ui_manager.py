@@ -144,18 +144,20 @@ class UIManager:
         rich_style = rich_color_map.get(color_key, "bright_blue")
         try:
             from rich.console import Console
-            from rich.markup import escape
+            from rich.text import Text
 
             console = Console(
                 file=getattr(sys, "__stdout__", sys.stdout),
                 width=self._terminal_width(),
             )
-            # Escape message content to prevent Rich interpreting [...] as markup
-            safe_line = escape(lines[0]) if lines else ""
-            # v4.0.4: Use escaped brackets for status_display to prevent Rich parsing [WARN] etc
-            console.print(f"[{rich_style}]\\[{ts}] \\[{status_display}][/{rich_style}] {safe_line}")
+            # v4.0.4: Use Text objects for reliable color output
+            # This avoids markup escaping issues with brackets in [WARN], [INFO] etc
+            prefix = Text()
+            prefix.append(f"[{ts}] [{status_display}] ", style=rich_style)
+            prefix.append(lines[0] if lines else "")
+            console.print(prefix)
             for line in lines[1:]:
-                console.print(f"  {escape(line)}")
+                console.print(f"  {line}")
         except ImportError:
             self._print_ansi(ts, status_display, "", "", lines)
 
