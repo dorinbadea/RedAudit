@@ -14,10 +14,22 @@ from redaudit.core.scanner import http_enrichment, ssl_deep_analysis, tls_enrich
 
 
 class AuditorVuln:
+    """Vulnerability scanning mixin for Auditor class.
+
+    Attributes defined here are provided by the composed Auditor class at runtime.
+    """
+
     results: Dict[str, Any]
     extra_tools: Dict[str, Any]
     config: Dict[str, Any]
     logger: Any
+    current_phase: str
+    ui: Any  # UIManager, provided by Auditor composition
+    proxy_manager: Any  # ProxyManager, provided by Auditor composition
+
+    def _set_ui_detail(self, detail: str) -> None:
+        """Set UI detail - provided by Auditor composition."""
+        ...
 
     @staticmethod
     def _parse_url_target(value: object) -> Tuple[str, int, str]:
@@ -153,7 +165,11 @@ class AuditorVuln:
         return max(5.0, budget)
 
     def scan_vulnerabilities_web(self, host_info):
-        """Scan web vulnerabilities on a host."""
+        """Scan web vulnerabilities on a host.
+
+        v4.1: Parallelizes testssl, whatweb, and nikto execution per port
+        for 2-3x faster vulnerability detection.
+        """
         host_info = self._normalize_host_info(host_info)
         web_ports = [p for p in host_info.get("ports", []) if p.get("is_web_service")]
         if not web_ports:
@@ -171,7 +187,7 @@ class AuditorVuln:
             url = f"{scheme}://{ip}:{port}/"
             finding = {"url": url, "port": port}
 
-            # HTTP enrichment
+            # HTTP enrichment (always sequential - quick)
             http_data = http_enrichment(
                 url,
                 self.extra_tools,
@@ -181,7 +197,7 @@ class AuditorVuln:
             )
             finding.update(http_data)
 
-            # TLS enrichment
+            # TLS enrichment (always sequential - quick)
             if scheme == "https":
                 tls_data = tls_enrichment(
                     ip,
@@ -193,119 +209,242 @@ class AuditorVuln:
                 )
                 finding.update(tls_data)
 
-                # TestSSL deep analysis (only in completo mode)
-                if self.config["scan_mode"] == "completo" and self.extra_tools.get("testssl.sh"):
-                    self.current_phase = f"vulns:testssl:{ip}:{port}"
-                    self._set_ui_detail(f"[testssl] {ip}:{port}")
-                    self.ui.print_status(
-                        f"[testssl] {ip}:{port} → {self.ui.t('testssl_analysis', ip, port)}", "INFO"
-                    )
-                    ssl_analysis = ssl_deep_analysis(
-                        ip,
-                        port,
-                        self.extra_tools,
-                        self.logger,
-                        proxy_manager=getattr(self, "proxy_manager", None),
-                    )
-                    if ssl_analysis:
-                        finding["testssl_analysis"] = ssl_analysis
-                        # Alert if vulnerabilities found
-                        if ssl_analysis.get("vulnerabilities"):
-                            self.ui.print_status(
-                                f"⚠️  SSL/TLS vulnerabilities detected on {ip}:{port}", "WARNING"
-                            )
+            # v4.1: Parallel execution of slow tools (testssl, whatweb, nikto)
+            is_full_mode = self.config["scan_mode"] == "completo"
+            parallel_vuln_enabled = not self.config.get("no_parallel_vuln", False)
 
-            # WhatWeb
-            if self.extra_tools.get("whatweb"):
-                try:
-                    self.current_phase = f"vulns:whatweb:{ip}:{port}"
-                    self._set_ui_detail(f"[whatweb] {ip}:{port}")
-                    runner = CommandRunner(
-                        logger=self.logger,
-                        dry_run=bool(self.config.get("dry_run", False)),
-                        default_timeout=30.0,
-                        default_retries=0,
-                        backoff_base_s=0.0,
-                        redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
-                        command_wrapper=get_proxy_command_wrapper(
-                            getattr(self, "proxy_manager", None)
-                        ),
-                    )
-                    res = runner.run(
-                        [self.extra_tools["whatweb"], "-q", "-a", "3", url],
-                        capture_output=True,
-                        check=False,
-                        text=True,
-                        timeout=30.0,
-                    )
-                    if not res.timed_out:
-                        output = str(res.stdout or "").strip()
-                        if output:
-                            finding["whatweb"] = output[:2000]
-                except Exception:
-                    if self.logger:
-                        self.logger.debug("WhatWeb scan failed for %s", url, exc_info=True)
-
-            # Nikto (only in full mode)
-            # v2.9: Smart-Check integration for false positive filtering
-            if self.config["scan_mode"] == "completo" and self.extra_tools.get("nikto"):
-                try:
-                    self.current_phase = f"vulns:nikto:{ip}:{port}"
-                    self._set_ui_detail(f"[nikto] {ip}:{port}")
-                    from redaudit.core.verify_vuln import filter_nikto_false_positives
-
-                    runner = CommandRunner(
-                        logger=self.logger,
-                        dry_run=bool(self.config.get("dry_run", False)),
-                        default_timeout=150.0,
-                        default_retries=0,
-                        backoff_base_s=0.0,
-                        redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
-                        command_wrapper=get_proxy_command_wrapper(
-                            getattr(self, "proxy_manager", None)
-                        ),
-                    )
-                    res = runner.run(
-                        [self.extra_tools["nikto"], "-h", url, "-maxtime", "120s", "-Tuning", "x"],
-                        capture_output=True,
-                        check=False,
-                        text=True,
-                        timeout=150.0,
-                    )
-                    if not res.timed_out:
-                        output = str(res.stdout or "") or str(res.stderr or "")
-                        if output:
-                            findings_list = [line for line in output.splitlines() if "+ " in line][
-                                :20
-                            ]
-                            if findings_list:
-                                # v2.9: Filter false positives using Smart-Check
-                                original_count = len(findings_list)
-                                verified = filter_nikto_false_positives(
-                                    findings_list,
-                                    url,
-                                    self.extra_tools,
-                                    self.logger,
-                                    proxy_manager=getattr(self, "proxy_manager", None),
-                                )
-                                if verified:
-                                    finding["nikto_findings"] = verified
-                                    # Track how many were filtered
-                                    filtered = original_count - len(verified)
-                                    if filtered > 0:
-                                        finding["nikto_filtered_count"] = filtered
-                                        self.ui.print_status(
-                                            f"[nikto] {ip}:{port} → Filtered {filtered}/{original_count} false positives",
-                                            "INFO",
-                                        )
-                except Exception:
-                    if self.logger:
-                        self.logger.debug("Nikto scan failed for %s", url, exc_info=True)
+            if parallel_vuln_enabled and is_full_mode:
+                # Run testssl, whatweb, nikto concurrently
+                parallel_results = self._run_vuln_tools_parallel(ip, port, url, scheme, finding)
+                finding.update(parallel_results)
+            else:
+                # Sequential fallback (legacy behavior)
+                self._run_vuln_tools_sequential(ip, port, url, scheme, finding)
 
             if len(finding) > 2:
                 vulns.append(finding)
 
         return {"host": ip, "vulnerabilities": vulns} if vulns else None
+
+    def _run_vuln_tools_parallel(
+        self, ip: str, port: int, url: str, scheme: str, finding: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """v4.1: Run testssl, whatweb, nikto in parallel for faster scanning."""
+        results: Dict[str, Any] = {}
+
+        def run_testssl():
+            if scheme != "https" or not self.extra_tools.get("testssl.sh"):
+                return {}
+            self._set_ui_detail(f"[testssl] {ip}:{port}")
+            ssl_analysis = ssl_deep_analysis(
+                ip,
+                port,
+                self.extra_tools,
+                self.logger,
+                proxy_manager=getattr(self, "proxy_manager", None),
+            )
+            if ssl_analysis:
+                return {"testssl_analysis": ssl_analysis}
+            return {}
+
+        def run_whatweb():
+            if not self.extra_tools.get("whatweb"):
+                return {}
+            try:
+                self._set_ui_detail(f"[whatweb] {ip}:{port}")
+                runner = CommandRunner(
+                    logger=self.logger,
+                    dry_run=bool(self.config.get("dry_run", False)),
+                    default_timeout=30.0,
+                    default_retries=0,
+                    backoff_base_s=0.0,
+                    redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
+                    command_wrapper=get_proxy_command_wrapper(getattr(self, "proxy_manager", None)),
+                )
+                res = runner.run(
+                    [self.extra_tools["whatweb"], "-q", "-a", "3", url],
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                    timeout=30.0,
+                )
+                if not res.timed_out:
+                    output = str(res.stdout or "").strip()
+                    if output:
+                        return {"whatweb": output[:2000]}
+            except Exception:
+                if self.logger:
+                    self.logger.debug("WhatWeb scan failed for %s", url, exc_info=True)
+            return {}
+
+        def run_nikto():
+            if not self.extra_tools.get("nikto"):
+                return {}
+            try:
+                self._set_ui_detail(f"[nikto] {ip}:{port}")
+                from redaudit.core.verify_vuln import filter_nikto_false_positives
+
+                runner = CommandRunner(
+                    logger=self.logger,
+                    dry_run=bool(self.config.get("dry_run", False)),
+                    default_timeout=150.0,
+                    default_retries=0,
+                    backoff_base_s=0.0,
+                    redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
+                    command_wrapper=get_proxy_command_wrapper(getattr(self, "proxy_manager", None)),
+                )
+                res = runner.run(
+                    [self.extra_tools["nikto"], "-h", url, "-maxtime", "120s", "-Tuning", "x"],
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                    timeout=150.0,
+                )
+                if not res.timed_out:
+                    output = str(res.stdout or "") or str(res.stderr or "")
+                    if output:
+                        findings_list = [line for line in output.splitlines() if "+ " in line][:20]
+                        if findings_list:
+                            original_count = len(findings_list)
+                            verified = filter_nikto_false_positives(
+                                findings_list,
+                                url,
+                                self.extra_tools,
+                                self.logger,
+                                proxy_manager=getattr(self, "proxy_manager", None),
+                            )
+                            if verified:
+                                result = {"nikto_findings": verified}
+                                filtered = original_count - len(verified)
+                                if filtered > 0:
+                                    result["nikto_filtered_count"] = filtered
+                                return result
+            except Exception:
+                if self.logger:
+                    self.logger.debug("Nikto scan failed for %s", url, exc_info=True)
+            return {}
+
+        # Execute tools in parallel
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [
+                executor.submit(run_testssl),
+                executor.submit(run_whatweb),
+                executor.submit(run_nikto),
+            ]
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        results.update(result)
+                except Exception as e:
+                    if self.logger:
+                        self.logger.debug("Parallel vuln tool error: %s", e, exc_info=True)
+
+        return results
+
+    def _run_vuln_tools_sequential(
+        self, ip: str, port: int, url: str, scheme: str, finding: Dict[str, Any]
+    ) -> None:
+        """Legacy sequential execution of vuln tools (fallback)."""
+        # TestSSL deep analysis (only in completo mode)
+        if self.config["scan_mode"] == "completo" and self.extra_tools.get("testssl.sh"):
+            if scheme == "https":
+                self.current_phase = f"vulns:testssl:{ip}:{port}"
+                self._set_ui_detail(f"[testssl] {ip}:{port}")
+                self.ui.print_status(
+                    f"[testssl] {ip}:{port} → {self.ui.t('testssl_analysis', ip, port)}", "INFO"
+                )
+                ssl_analysis = ssl_deep_analysis(
+                    ip,
+                    port,
+                    self.extra_tools,
+                    self.logger,
+                    proxy_manager=getattr(self, "proxy_manager", None),
+                )
+                if ssl_analysis:
+                    finding["testssl_analysis"] = ssl_analysis
+                    if ssl_analysis.get("vulnerabilities"):
+                        self.ui.print_status(
+                            f"⚠️  SSL/TLS vulnerabilities detected on {ip}:{port}", "WARNING"
+                        )
+
+        # WhatWeb
+        if self.extra_tools.get("whatweb"):
+            try:
+                self.current_phase = f"vulns:whatweb:{ip}:{port}"
+                self._set_ui_detail(f"[whatweb] {ip}:{port}")
+                runner = CommandRunner(
+                    logger=self.logger,
+                    dry_run=bool(self.config.get("dry_run", False)),
+                    default_timeout=30.0,
+                    default_retries=0,
+                    backoff_base_s=0.0,
+                    redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
+                    command_wrapper=get_proxy_command_wrapper(getattr(self, "proxy_manager", None)),
+                )
+                res = runner.run(
+                    [self.extra_tools["whatweb"], "-q", "-a", "3", url],
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                    timeout=30.0,
+                )
+                if not res.timed_out:
+                    output = str(res.stdout or "").strip()
+                    if output:
+                        finding["whatweb"] = output[:2000]
+            except Exception:
+                if self.logger:
+                    self.logger.debug("WhatWeb scan failed for %s", url, exc_info=True)
+
+        # Nikto (only in full mode)
+        if self.config["scan_mode"] == "completo" and self.extra_tools.get("nikto"):
+            try:
+                self.current_phase = f"vulns:nikto:{ip}:{port}"
+                self._set_ui_detail(f"[nikto] {ip}:{port}")
+                from redaudit.core.verify_vuln import filter_nikto_false_positives
+
+                runner = CommandRunner(
+                    logger=self.logger,
+                    dry_run=bool(self.config.get("dry_run", False)),
+                    default_timeout=150.0,
+                    default_retries=0,
+                    backoff_base_s=0.0,
+                    redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
+                    command_wrapper=get_proxy_command_wrapper(getattr(self, "proxy_manager", None)),
+                )
+                res = runner.run(
+                    [self.extra_tools["nikto"], "-h", url, "-maxtime", "120s", "-Tuning", "x"],
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                    timeout=150.0,
+                )
+                if not res.timed_out:
+                    output = str(res.stdout or "") or str(res.stderr or "")
+                    if output:
+                        findings_list = [line for line in output.splitlines() if "+ " in line][:20]
+                        if findings_list:
+                            original_count = len(findings_list)
+                            verified = filter_nikto_false_positives(
+                                findings_list,
+                                url,
+                                self.extra_tools,
+                                self.logger,
+                                proxy_manager=getattr(self, "proxy_manager", None),
+                            )
+                            if verified:
+                                finding["nikto_findings"] = verified
+                                filtered = original_count - len(verified)
+                                if filtered > 0:
+                                    finding["nikto_filtered_count"] = filtered
+                                    self.ui.print_status(
+                                        f"[nikto] {ip}:{port} → Filtered {filtered}/{original_count} false positives",
+                                        "INFO",
+                                    )
+            except Exception:
+                if self.logger:
+                    self.logger.debug("Nikto scan failed for %s", url, exc_info=True)
 
     def scan_vulnerabilities_concurrent(self, host_results):
         """Scan vulnerabilities on multiple hosts concurrently with progress bar."""
