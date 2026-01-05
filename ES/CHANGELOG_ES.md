@@ -10,6 +10,21 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [4.0.2] - 2026-01-05
+
+### Cambios
+
+- **Tests**: Reorganización de la suite en `tests/core`, `tests/cli`, `tests/utils`,
+  `tests/integration` para mejorar la navegación.
+- **Cobertura**: Añadidas pruebas significativas para componentes de auditoría,
+  vulnerabilidades, asistente (wizard) e HyperScan.
+- **Documentación**: Ajustadas las directrices de merge y CI en `AGENTS.md`.
+
+### Corregido
+
+- **Terminal Size**: Evitado el parcheo global de `shutil.get_terminal_size` que rompía
+  `pytest` en CI.
+
 ## [4.0.1] - 2026-01-04
 
 ### Cambios
