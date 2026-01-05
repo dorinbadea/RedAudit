@@ -11,6 +11,7 @@ This file is reusable "initial context" for contributors working on RedAudit. Th
 - Keep code/docs/tests consistent (no version drift, no "docs say X but CLI does Y").
 - Do not retag/rewrite published tags/releases. If something was released, publish a new version.
 - Do not commit private data. `scan_results_private/` must never be pushed.
+- Wait for CI to be green before merging to `main` (do not force-merge with failing checks).
 
 ## Contributor Workflow Guidelines
 
