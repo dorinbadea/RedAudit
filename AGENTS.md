@@ -12,6 +12,8 @@ This file is reusable "initial context" for contributors working on RedAudit. Th
 - Do not retag/rewrite published tags/releases. If something was released, publish a new version.
 - Do not commit private data. `scan_results_private/` must never be pushed.
 - Wait for CI to be green before merging to `main` (do not force-merge with failing checks).
+  Exception: documentation-only changes may merge with owner approval if checks are
+  pending/skipped and there are no red failures.
 
 ## Contributor Workflow Guidelines
 
@@ -140,6 +142,8 @@ Workflow: `.github/workflows/tests.yml`
 - `update-badge` job: updates a dynamic badge via Gist (repo secrets)
 
 Do not merge if CI is red unless the failure is understood and explicitly accepted.
+For documentation-only changes, it is acceptable to merge with owner approval if CI is
+pending/skipped and no failures are present.
 
 ## When CI Fails (Process)
 

@@ -1,6 +1,6 @@
 # Release Notes v4.0.2
 
-[![ES](https://img.shields.io/badge/lang-ES-red.svg)](RELEASE_NOTES_v4.0.2_ES.md)
+[![ES](https://img.shields.io/badge/lang-ES-red.svg)](https://github.com/dorinbadea/RedAudit/blob/v4.0.2/docs/releases/RELEASE_NOTES_v4.0.2_ES.md)
 
 **Release Date:** 2026-01-05
 **Codename:** Test Suite Consolidation

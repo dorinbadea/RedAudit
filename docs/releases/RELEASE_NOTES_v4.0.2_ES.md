@@ -1,6 +1,6 @@
 # Notas de Lanzamiento v4.0.2
 
-[![EN](https://img.shields.io/badge/lang-EN-blue.svg)](RELEASE_NOTES_v4.0.2.md)
+[![EN](https://img.shields.io/badge/lang-EN-blue.svg)](https://github.com/dorinbadea/RedAudit/blob/v4.0.2/docs/releases/RELEASE_NOTES_v4.0.2.md)
 
 **Fecha de lanzamiento:** 2026-01-05
 **Nombre en clave:** Consolidación de Pruebas
