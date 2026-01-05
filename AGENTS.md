@@ -231,6 +231,11 @@ When changing behavior/UX, update the relevant docs in both EN/ES (flat docs str
 Make sure menu text, flags, defaults, and examples match the code.
 For ES docs, use Spanish (Spain) phrasing (`es-ES`) and avoid LATAM variants.
 
+**Documentation style:**
+
+- Avoid emojis in documentation; use a professional, neutral tone.
+- In release notes, use absolute URLs (e.g., `https://github.com/.../blob/vX.Y.Z/...`) for language badge links. Relative links break when viewed from the GitHub release page.
+
 ## Versioning & Release Checklist (SemVer)
 
 ### 1) Decide bump
