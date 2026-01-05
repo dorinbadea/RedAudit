@@ -10,6 +10,22 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.0.4] - 2026-01-05
+
+### Fixed
+
+- **Critical: HyperScan Port Integration**: When HyperScan detects open ports during net_discovery but the initial nmap scan found none (due to identity threshold), we now force a deep scan. This fixes the Metasploitable2 detection gap where 10+ ports were detected by HyperScan but ignored.
+- **Vulnerability Detection Gap**: Hosts passing identity threshold but having HTTP fingerprints (from net_discovery/agentless probes) now correctly trigger web vulnerability scanning.
+- **Port-based Web Detection**: Added `WEB_LIKELY_PORTS` constant (3000, 3001, 5000, 8000, 8080, 8443, 8888, 9000) as fallback for web service detection when nmap misidentifies services.
+- **Vuln Scan Host Selection**: `scan_vulnerabilities_concurrent()` now includes hosts with `agentless_fingerprint.http_title` or `http_server` even when `web_ports_count=0`.
+- **Agentless Summary Accuracy**: `_summarize_agentless()` now counts HTTP signals from `agentless_fingerprint` (http_title/http_server), not just from `agentless_probe`.
+- **Descriptive Title Priority**: Improved `_derive_descriptive_title()` to use tiered priority — SSL/TLS issues (mismatch, expired) now rank above minor info leaks (ETag inode).
+
+### Changed
+
+- **Deep Scan Logic**: Uses HyperScan ports as signal for deep scan decision (`hyperscan_ports_detected` reason). Also forces `web_count` when HyperScan found web ports (80, 443, 3000, 8080, etc.).
+- **HyperScan Fallback**: When nmap times out (returncode 124) or finds 0 ports, we now populate the port list from HyperScan data with `hyperscan_fallback_used` flag. This handles slow-responding hosts like Metasploitable2.
+
 ## [4.0.3] - 2026-01-05
 
 ### Added

@@ -36,10 +36,13 @@ class UIManager:
         lang: str = "en",
         colors: Optional[Dict[str, str]] = None,
         logger: Optional[Any] = None,
+        progress_active_callback: Optional[Any] = None,
     ):
         self.lang = lang
         self.colors = colors or COLORS
         self.logger = logger
+        # v4.0.4: Callback to check parent's progress state
+        self._progress_active_callback = progress_active_callback
 
         # Thread safety locks
         self._print_lock = threading.Lock()
@@ -51,6 +54,17 @@ class UIManager:
         self._ui_detail = ""
         self.last_activity = datetime.now()
         self.current_phase = "init"
+
+    def _is_progress_active(self) -> bool:
+        """Check if progress UI is active (local or parent state)."""
+        if self._ui_progress_active:
+            return True
+        if self._progress_active_callback:
+            try:
+                return bool(self._progress_active_callback())
+            except Exception:
+                pass
+        return False
 
     def t(self, key: str, *args) -> str:
         """Get translated text."""
@@ -101,7 +115,8 @@ class UIManager:
         endc = self.colors.get("ENDC", "") if is_tty else ""
 
         msg = "" if message is None else str(message)
-        if self._ui_progress_active and not force:
+        progress_active = self._is_progress_active()
+        if progress_active and not force:
             if not self._should_emit_during_progress(msg, status_display):
                 try:
                     if msg:
@@ -126,7 +141,7 @@ class UIManager:
             lines.extend(wrapped if wrapped else [""])
 
         with self._print_lock:
-            if self._ui_progress_active:
+            if progress_active:
                 self._print_with_rich(ts, status_display, color_key, lines)
             else:
                 self._print_ansi(ts, status_display, color, endc, lines)
@@ -136,20 +151,26 @@ class UIManager:
         """Print using Rich console for progress compatibility."""
         rich_color_map = {
             "OKBLUE": "bright_blue",
-            "OKGREEN": "green",
-            "WARNING": "yellow",
-            "FAIL": "red",
-            "HEADER": "magenta",
+            "OKGREEN": "bright_green",
+            "WARNING": "bright_yellow",
+            "FAIL": "bright_red",
+            "HEADER": "bright_magenta",
         }
         rich_style = rich_color_map.get(color_key, "bright_blue")
         try:
             from rich.console import Console
+            from rich.text import Text
 
             console = Console(
                 file=getattr(sys, "__stdout__", sys.stdout),
                 width=self._terminal_width(),
             )
-            console.print(f"[{rich_style}][{ts}] [{status_display}][/{rich_style}] {lines[0]}")
+            # v4.0.4: Use Text objects for reliable color output
+            # This avoids markup escaping issues with brackets in [WARN], [INFO] etc
+            prefix = Text()
+            prefix.append(f"[{ts}] [{status_display}] ", style=rich_style)
+            prefix.append(lines[0] if lines else "")
+            console.print(prefix)
             for line in lines[1:]:
                 console.print(f"  {line}")
         except ImportError:

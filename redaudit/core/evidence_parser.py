@@ -70,6 +70,8 @@ def _derive_descriptive_title(observations: List[str]) -> Optional[str]:
 
     The goal is to avoid generic "Finding on URL" titles for web findings that
     are represented as a single record per URL/port.
+
+    v4.0.4: Improved priority order - SSL/TLS issues before minor info leaks.
     """
 
     if not observations:
@@ -81,12 +83,34 @@ def _derive_descriptive_title(observations: List[str]) -> Optional[str]:
         if match:
             return match.group(0).upper()
 
+    # Tier 1: Critical security issues (SSL/TLS, certificates, authentication)
+    tier1_tokens = (
+        "expired",
+        "mismatch",
+        "weak cipher",
+        "self-signed",
+        "invalid certificate",
+        "vulnerability",
+        "directory listing",
+    )
+    for obs in observations:
+        if not isinstance(obs, str):
+            continue
+        lower = obs.strip().lower()
+        if any(token in lower for token in tier1_tokens):
+            return obs.strip()[:80]
+
     # Prefer "Missing ..." (headers, hardening, etc.).
     for obs in observations:
         if isinstance(obs, str) and obs.strip().lower().startswith("missing "):
             return obs.strip()[:80]
 
-    # Prefer obviously security-relevant observations.
+    # Tier 2: Secondary security-relevant observations (info leaks, disclosures)
+    tier2_tokens = (
+        "disclosure",
+        "leak",
+        "enabled",
+    )
     for obs in observations:
         if not isinstance(obs, str):
             continue
@@ -94,19 +118,7 @@ def _derive_descriptive_title(observations: List[str]) -> Optional[str]:
         lower = text.lower()
         if lower.startswith(("server banner:", "technology:", "http methods:")):
             continue
-        if any(
-            token in lower
-            for token in (
-                "vulnerability",
-                "expired",
-                "mismatch",
-                "directory listing",
-                "leak",
-                "disclosure",
-                "weak ciphers",
-                "enabled",
-            )
-        ):
+        if any(token in lower for token in tier2_tokens):
             return text[:80]
 
     # Fallback: first non-metadata observation.

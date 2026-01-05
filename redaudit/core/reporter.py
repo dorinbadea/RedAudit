@@ -156,7 +156,13 @@ def _summarize_agentless(
         if probe.get("http"):
             counts["http"] += 1
 
+        # v4.0.4: Also count HTTP signals from agentless_fingerprint
+        # Fixes summary showing 0 HTTP signals when fingerprints contain http_title/http_server
         fp = host.get("agentless_fingerprint") or {}
+        if fp.get("http_title") or fp.get("http_server"):
+            if not probe.get("http"):  # Avoid double-counting
+                counts["http"] += 1
+
         for key in ("domain", "dns_domain_name", "dns_domain"):
             val = fp.get(key)
             if isinstance(val, str) and val.strip():

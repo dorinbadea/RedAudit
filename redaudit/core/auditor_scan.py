@@ -1116,6 +1116,20 @@ class AuditorScan:
                     extrainfo = svc.get("extrainfo", "") or ""
                     cpe = svc.get("cpe") or []
                     is_web = is_web_service(name)
+                    # v4.0.4: Port-based fallback for misidentified web services
+                    # e.g., Juice Shop on port 3000 detected as "ppp" by nmap
+                    if not is_web:
+                        from redaudit.utils.constants import WEB_LIKELY_PORTS
+
+                        if p in WEB_LIKELY_PORTS:
+                            is_web = True
+                            if self.logger:
+                                self.logger.debug(
+                                    "Port-based web detection for %s:%d (service=%s)",
+                                    safe_ip,
+                                    p,
+                                    name or "unknown",
+                                )
                     if is_web:
                         web_count += 1
 
@@ -1257,6 +1271,56 @@ class AuditorScan:
                 identity_threshold=identity_threshold,
             )
 
+            # v4.0.4: Use HyperScan results to override deep scan decision
+            # HyperScan runs during net_discovery and may detect ports that nmap's quick scan missed
+            nd_results = (
+                self.results.get("net_discovery", {}) if isinstance(self.results, dict) else {}
+            )
+            hyperscan_ports = (nd_results.get("hyperscan_tcp_hosts") or {}).get(safe_ip, [])
+            if hyperscan_ports and not trigger_deep:
+                # HyperScan found ports but we decided not to deep scan - override
+                if total_ports == 0:
+                    trigger_deep = True
+                    deep_reasons.append("hyperscan_ports_detected")
+                    if self.logger:
+                        self.logger.info(
+                            "HyperScan detected %d ports on %s, forcing deep scan",
+                            len(hyperscan_ports),
+                            safe_ip,
+                        )
+                # Check for web ports in HyperScan results
+                from redaudit.utils.constants import WEB_LIKELY_PORTS
+
+                hyperscan_web_ports = [p for p in hyperscan_ports if p in WEB_LIKELY_PORTS]
+                if hyperscan_web_ports and web_count == 0:
+                    web_count = len(hyperscan_web_ports)
+                    host_record["web_ports_count"] = web_count
+                    if self.logger:
+                        self.logger.info(
+                            "HyperScan found web ports %s on %s, setting web_count=%d",
+                            hyperscan_web_ports,
+                            safe_ip,
+                            web_count,
+                        )
+
+            # v4.0.4: Force web vuln scan for hosts with HTTP fingerprint from net_discovery
+            # This fixes the detection gap where hosts passing identity threshold skip vuln scan
+            agentless_fp = host_record.get("agentless_fingerprint") or {}
+            if agentless_fp.get("http_title") or agentless_fp.get("http_server"):
+                if web_count == 0:
+                    web_count = 1  # Ensure host is included in web vulnerability scanning
+                    host_record["web_ports_count"] = web_count
+                    if self.logger:
+                        self.logger.info(
+                            "HTTP fingerprint detected for %s (%s), forcing web vuln scan",
+                            safe_ip,
+                            agentless_fp.get("http_title") or agentless_fp.get("http_server"),
+                        )
+                if not trigger_deep and total_ports == 0:
+                    # Force deep scan to discover ports when we know HTTP is present
+                    trigger_deep = True
+                    deep_reasons.append("http_fingerprint_present")
+
             open_tcp_ports = sum(1 for p in ports if p.get("protocol") == "tcp")
             udp_priority_used = False
             if (
@@ -1338,6 +1402,50 @@ class AuditorScan:
                         + (["udp_priority"] if udp_priority_used else [])
                         + ["tcp_aggressive"]
                     )
+
+                    # v4.0.4: Fallback to HyperScan ports when nmap times out or finds 0 ports
+                    # This handles cases like Metasploitable2 where deep scans timeout
+                    deep_commands = (deep or {}).get("commands", [])
+                    nmap_timed_out = any(
+                        cmd.get("returncode") == 124
+                        or "timeout" in str(cmd.get("error", "")).lower()
+                        for cmd in deep_commands
+                        if "nmap" in str(cmd.get("command", "")).lower()
+                    )
+                    if (nmap_timed_out or len(ports) == 0) and hyperscan_ports:
+                        # Use HyperScan ports as fallback
+                        from redaudit.utils.constants import WEB_LIKELY_PORTS
+
+                        fallback_ports = []
+                        for p in hyperscan_ports:
+                            is_web = p in WEB_LIKELY_PORTS
+                            fallback_ports.append(
+                                {
+                                    "port": p,
+                                    "protocol": "tcp",
+                                    "service": "http" if is_web else "unknown",
+                                    "product": "",
+                                    "version": "",
+                                    "extrainfo": "detected by HyperScan (nmap timeout fallback)",
+                                    "cpe": [],
+                                    "is_web_service": is_web,
+                                }
+                            )
+                            if is_web:
+                                web_count += 1
+                        if fallback_ports:
+                            ports.extend(fallback_ports)
+                            host_record["ports"] = ports
+                            host_record["total_ports_found"] = len(ports)
+                            host_record["web_ports_count"] = web_count
+                            host_record["smart_scan"]["hyperscan_fallback_used"] = True
+                            if self.logger:
+                                self.logger.info(
+                                    "Used HyperScan fallback for %s: %d ports (nmap %s)",
+                                    safe_ip,
+                                    len(fallback_ports),
+                                    "timeout" if nmap_timed_out else "no results",
+                                )
 
             if total_ports == 0 and self.config.get("deep_id_scan", True):
                 identity_source = host_record.get("deep_scan") or {}
@@ -1500,7 +1608,8 @@ class AuditorScan:
                     if self.interrupted:
                         break
                     fut = executor.submit(self.scan_host_ports, h)
-                    futures[fut] = h
+                    # v4.0.4: Store IP string for progress display (not Host object)
+                    futures[fut] = h.ip if hasattr(h, "ip") else str(h)
                     if self.rate_limit_delay > 0:
                         # A3: Jitter ±30% for IDS evasion
                         jitter = random.uniform(-0.3, 0.3) * self.rate_limit_delay

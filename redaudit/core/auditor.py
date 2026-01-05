@@ -111,7 +111,12 @@ class InteractiveNetworkAuditor:
         # v4.0: Direct Composition - UIManager
         from redaudit.core.ui_manager import UIManager
 
-        self._ui_manager = UIManager(lang=self.lang, colors=self.COLORS, logger=self.logger)
+        self._ui_manager = UIManager(
+            lang=self.lang,
+            colors=self.COLORS,
+            logger=self.logger,
+            progress_active_callback=lambda: self._ui_progress_active,
+        )
         self.scanner = NetworkScanner(
             self.cfg,
             self._ui_manager,

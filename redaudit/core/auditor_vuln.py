@@ -310,7 +310,15 @@ class AuditorVuln:
     def scan_vulnerabilities_concurrent(self, host_results):
         """Scan vulnerabilities on multiple hosts concurrently with progress bar."""
         normalized_hosts = [self._normalize_host_info(h) for h in (host_results or [])]
-        web_hosts = [h for h in normalized_hosts if h.get("web_ports_count", 0) > 0]
+        # v4.0.4: Include hosts with HTTP fingerprint even if web_ports_count == 0
+        # This fixes detection gap for hosts where nmap missed web services but HTTP was probed
+        web_hosts = [
+            h
+            for h in normalized_hosts
+            if h.get("web_ports_count", 0) > 0
+            or (h.get("agentless_fingerprint") or {}).get("http_title")
+            or (h.get("agentless_fingerprint") or {}).get("http_server")
+        ]
         if not web_hosts:
             return
 

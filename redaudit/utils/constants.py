@@ -177,6 +177,10 @@ WEB_SERVICES_EXACT = [
     "http-connect",
 ]
 
+# v4.0.4: Port-based fallback for web service detection
+# When nmap misidentifies a web service (e.g., port 3000 as "ppp"), use port matching
+WEB_LIKELY_PORTS = {80, 443, 3000, 3001, 5000, 8000, 8080, 8443, 8888, 9000, 9443}
+
 SUSPICIOUS_SERVICE_KEYWORDS = [
     # Original suspicious services
     "socks",
