@@ -10,6 +10,23 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.0.2] - 2026-01-05
+
+### Changed
+
+- **Tests**: Reorganized the suite to mirror source layout (`tests/core`, `tests/cli`,
+  `tests/utils`, `tests/integration`) and consolidated satellite files.
+- **Coverage**: Expanded meaningful coverage for auditor components, vulnerability scanning,
+  wizard flows, and hyperscan utilities.
+
+### Fixed
+
+- **CI**: Avoided global terminal size patching that could break pytest output in CI.
+
+### Documentation
+
+- **Process**: Clarified release/CI gating and ES documentation language guidance in `AGENTS.md`.
+
 ## [4.0.1] - 2026-01-04
 
 ### Changed
