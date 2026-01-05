@@ -1,6 +1,6 @@
 # Release Notes v4.0.4
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v4.0.4_ES.md)
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/v4.0.4/docs/releases/RELEASE_NOTES_v4.0.4_ES.md)
 
 **Release Date:** 2026-01-05
 
