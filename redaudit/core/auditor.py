@@ -631,27 +631,8 @@ class InteractiveNetworkAuditor:
             if not self.interrupted:
                 self.run_agentless_verification(results)
 
-            # v3.0.1: CVE correlation via NVD (optional; can be slow)
-            if self.config.get("cve_lookup_enabled") and not self.interrupted:
-                try:
-                    from redaudit.core.nvd import enrich_host_with_cves, get_api_key_from_config
-
-                    # Ensure API key is loaded (from CLI, env, or config) without mislabeling the source.
-                    if not self.config.get("nvd_api_key"):
-                        self.setup_nvd_api_key(non_interactive=True)
-                    api_key = self.config.get("nvd_api_key") or get_api_key_from_config()
-                    for i, host_record in enumerate(results):
-                        if self.interrupted:
-                            break
-                        results[i] = enrich_host_with_cves(
-                            host_record, api_key=api_key, logger=self.logger
-                        )
-                    self.results["hosts"] = results
-                except Exception:
-                    # Best-effort: CVE enrichment should never break scans
-                    if self.logger:
-                        self.logger.debug("CVE enrichment failed (best-effort)", exc_info=True)
-                    pass
+            # v4.1: CVE Lookup moved to AFTER Vuln Scan + Nuclei for complete version data
+            # (see below, after Nuclei block)
 
             if self.config.get("scan_vulnerabilities") and not self.interrupted:
                 self.scan_vulnerabilities_concurrent(results)
@@ -827,6 +808,28 @@ class InteractiveNetworkAuditor:
                     if self.logger:
                         self.logger.warning("Nuclei scan failed: %s", e, exc_info=True)
                     self.ui.print_status(f"Nuclei: {e}", "WARNING")
+
+            # v4.1: CVE correlation moved here AFTER Vuln Scan + Nuclei
+            # This ensures all version data from nikto/whatweb/testssl/nuclei is available
+            if self.config.get("cve_lookup_enabled") and not self.interrupted:
+                try:
+                    from redaudit.core.nvd import enrich_host_with_cves, get_api_key_from_config
+
+                    self.ui.print_status("Running CVE correlation (NVD)...", "INFO")
+                    # Ensure API key is loaded
+                    if not self.config.get("nvd_api_key"):
+                        self.setup_nvd_api_key(non_interactive=True)
+                    api_key = self.config.get("nvd_api_key") or get_api_key_from_config()
+                    for i, host_record in enumerate(results):
+                        if self.interrupted:
+                            break
+                        results[i] = enrich_host_with_cves(
+                            host_record, api_key=api_key, logger=self.logger
+                        )
+                    self.results["hosts"] = results
+                except Exception:
+                    if self.logger:
+                        self.logger.debug("CVE enrichment failed (best-effort)", exc_info=True)
 
             self.config["rate_limit_delay"] = self.rate_limit_delay
             generate_summary(self.results, self.config, all_hosts, results, self.scan_start_time)
