@@ -189,6 +189,11 @@ def test_parse_http_probe_edge():
     res = agentless_verify.parse_http_probe(text_hik)
     assert res["device_vendor"] == "Hikvision"
 
+    text_nmap = "|_http-title: Directory listing for /\n|_http-server-header: SimpleHTTP/0.6"
+    res = agentless_verify.parse_http_probe(text_nmap)
+    assert res["title"] == "Directory listing for /"
+    assert res["server"] == "SimpleHTTP/0.6"
+
     assert agentless_verify.parse_http_probe("") == {}
 
 

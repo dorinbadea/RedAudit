@@ -284,25 +284,21 @@ def parse_http_probe(text: str) -> Dict[str, Any]:
     out: Dict[str, Any] = {}
     if not text:
         return out
-    t = str(text)
-    title_match = re.search(r"http-title:\s*(.+)", t, re.IGNORECASE)
-    if title_match:
-        title = title_match.group(1).strip()
-        if title:
-            out["title"] = title[:256]
-    server_match = re.search(r"http-server-header:\s*(.+)", t, re.IGNORECASE)
-    if server_match:
-        server = server_match.group(1).strip()
-        if server:
-            out["server"] = server[:256]
-    if "server" not in out:
-        lines = [line.strip() for line in t.splitlines() if line.strip()]
-        for idx, line in enumerate(lines):
-            if line.lower().startswith("http-server-header:") and idx + 1 < len(lines):
-                server = lines[idx + 1].strip()
-                if server:
-                    out["server"] = server[:256]
-                break
+
+    lines = [line for line in str(text).splitlines() if line.strip()]
+    cleaned = [re.sub(r"^\|[_\s]*", "", line).strip() for line in lines]
+    for idx, line in enumerate(cleaned):
+        lower = line.lower()
+        if lower.startswith("http-title:"):
+            title = line.split(":", 1)[1].strip()
+            if title:
+                out["title"] = title[:256]
+        elif lower.startswith("http-server-header:"):
+            server = line.split(":", 1)[1].strip()
+            if not server and idx + 1 < len(cleaned):
+                server = cleaned[idx + 1].strip()
+            if server:
+                out["server"] = server[:256]
 
     # v3.8.8: Device fingerprinting from HTTP title/server
     device_info = _fingerprint_device_from_http(out.get("title", ""), out.get("server", ""))

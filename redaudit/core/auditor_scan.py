@@ -49,6 +49,7 @@ from redaudit.core.scanner import (
 )
 from redaudit.core.udp_probe import run_udp_probe
 from redaudit.core.network_scanner import NetworkScanner
+from redaudit.core.tool_compat import check_tool_compatibility
 from redaudit.utils.constants import (
     DEFAULT_IDENTITY_THRESHOLD,
     DEFAULT_UDP_MODE,
@@ -151,6 +152,15 @@ class AuditorScan:
 
         if missing:
             msg = self.ui.t("missing_opt", ", ".join(missing))
+            self.ui.print_status(msg, "WARNING")
+
+        dry_run = self.config.get("dry_run") if hasattr(self.config, "get") else None
+        compat_issues = check_tool_compatibility(("nmap", "nuclei"), dry_run=dry_run)
+        for issue in compat_issues:
+            if issue.reason == "unsupported_major":
+                msg = self.ui.t("tool_version_warn", issue.tool, issue.version, issue.expected)
+            else:
+                msg = self.ui.t("tool_version_unknown", issue.tool, issue.expected)
             self.ui.print_status(msg, "WARNING")
         return True
 
