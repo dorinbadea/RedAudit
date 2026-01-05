@@ -20,11 +20,16 @@ Release notes live under `docs/releases/` for additional context.
 - **Vuln Scan Host Selection**: `scan_vulnerabilities_concurrent()` now includes hosts with `agentless_fingerprint.http_title` or `http_server` even when `web_ports_count=0`.
 - **Agentless Summary Accuracy**: `_summarize_agentless()` now counts HTTP signals from `agentless_fingerprint` (http_title/http_server), not just from `agentless_probe`.
 - **Descriptive Title Priority**: Improved `_derive_descriptive_title()` to use tiered priority — SSL/TLS issues (mismatch, expired) now rank above minor info leaks (ETag inode).
+- **CLI Visual Regression**: Fixed colors not displaying correctly during progress UI. Changed from Rich markup strings to `rich.text.Text` objects for reliable styling.
+- **Progress Bar Display**: Fixed progress bar showing raw `Host(ip='...')` object. Now displays clean IP string.
+- **Spinner Restored**: Re-added `SpinnerColumn` to progress bar for visual feedback during long scans.
+- **UIManager State Sync**: Added `progress_active_callback` to ensure consistent color output from all code paths.
 
 ### Changed
 
 - **Deep Scan Logic**: Uses HyperScan ports as signal for deep scan decision (`hyperscan_ports_detected` reason). Also forces `web_count` when HyperScan found web ports (80, 443, 3000, 8080, etc.).
 - **HyperScan Fallback**: When nmap times out (returncode 124) or finds 0 ports, we now populate the port list from HyperScan data with `hyperscan_fallback_used` flag. This handles slow-responding hosts like Metasploitable2.
+- **Rich Colors**: Upgraded from `yellow`/`green`/`red` to `bright_yellow`/`bright_green`/`bright_red` for better visibility in dark terminal themes.
 
 ## [4.0.3] - 2026-01-05
 

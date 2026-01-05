@@ -10,6 +10,27 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [4.0.4] - 2026-01-05
+
+### Corregido
+
+- **Crítico: Integración de Puertos HyperScan**: Cuando HyperScan detecta puertos abiertos durante net_discovery pero el escaneo inicial de nmap no encuentra ninguno (debido al umbral de identidad), ahora forzamos un escaneo profundo. Esto corrige la brecha de detección de Metasploitable2 donde 10+ puertos fueron detectados por HyperScan pero ignorados.
+- **Brecha en Detección de Vulnerabilidades**: Hosts con huellas HTTP ahora activan correctamente el escaneo de vulnerabilidades web.
+- **Detección Web Basada en Puertos**: Añadida constante `WEB_LIKELY_PORTS` para puertos web comunes (3000, 8080, etc.).
+- **Selección de Hosts para Escaneo de Vulns**: `scan_vulnerabilities_concurrent()` ahora incluye hosts con `agentless_fingerprint.http_title` o `http_server`.
+- **Precisión del Resumen Agentless**: `_summarize_agentless()` ahora cuenta señales HTTP correctamente.
+- **Prioridad de Títulos Descriptivos**: Los problemas SSL/TLS ahora tienen prioridad sobre fugas menores (ETag inode).
+- **Regresión Visual de CLI**: Cambiado de markup Rich a objetos `rich.text.Text` para colores fiables.
+- **Visualización de Barra de Progreso**: Ahora muestra la IP limpia en lugar de `Host(ip='...')`.
+- **Spinner Restaurado**: Re-añadido `SpinnerColumn` para retroalimentación visual durante escaneos largos.
+- **Sincronización de Estado UIManager**: Añadido `progress_active_callback` para colores consistentes en todos los code paths.
+
+### Cambiado
+
+- **Lógica de Escaneo Profundo**: Usa puertos HyperScan como señal (`hyperscan_ports_detected`). También fuerza `web_count` cuando HyperScan encuentra puertos web (80, 443, 3000, 8080, etc.).
+- **Fallback HyperScan**: Cuando nmap hace timeout (returncode 124) o encuentra 0 puertos, ahora poblamos la lista de puertos desde datos de HyperScan con flag `hyperscan_fallback_used`.
+- **Colores Rich**: Actualizado a variantes `bright_*` para mejor visibilidad en temas oscuros de terminal.
+
 ## [4.0.3] - 2026-01-05
 
 ### Añadido
