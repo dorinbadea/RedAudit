@@ -8,11 +8,11 @@ Este hotfix aborda brechas críticas de detección y corrige una regresión visu
 
 ## Destacado
 
-### 🔧 Corrección de Integración de Puertos HyperScan
+### Corrección de Integración de Puertos HyperScan
 
 Cuando HyperScan detectaba puertos abiertos durante net_discovery pero el escaneo inicial de nmap no encontraba ninguno (debido al umbral de identidad), ahora forzamos un escaneo profundo. Esto corrige la brecha de detección de Metasploitable2 donde 10+ puertos fueron detectados por HyperScan pero ignorados.
 
-### 🎨 Regresión Visual de CLI Corregida
+### Regresión Visual de CLI Corregida
 
 Restaurada la salida completa de colores y retroalimentación visual:
 
