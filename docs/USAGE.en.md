@@ -126,9 +126,11 @@ Grouped by operational function. Verified against the current codebase.
 
 | Flag | Description |
 | :--- | :--- |
-| `--proxy URL` | SOCKS5 proxy (socks5://host:port) |
+| `--proxy URL` | SOCKS5 proxy (socks5://host:port; requires proxychains4, TCP only) |
 | `--ipv6` | Enable IPv6-only scanning mode |
 | `--no-prevent-sleep` | Do not inhibit system sleep |
+
+**Note:** `--proxy` wraps external tools with `proxychains4` and only affects TCP connect-based probes. UDP/ARP/ICMP discovery remains direct.
 
 ### Advanced Discovery
 

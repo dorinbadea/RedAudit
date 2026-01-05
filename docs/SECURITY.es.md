@@ -131,6 +131,7 @@ Los usuarios deben tratar el archivo de configuración como sensible. La clave A
 
 - **Requiere root/sudo**: Necesario para sockets raw (nmap, tcpdump)
 - **Sin sandboxing**: Las herramientas externas se ejecutan con privilegios del sistema
+- **Alcance del proxy**: `--proxy` depende de `proxychains4` y solo envuelve tráfico TCP (connect); UDP/ARP/ICMP y escaneos raw no se proxifican
 - **Huella de red**: Los escaneos generan tráfico significativo
 - **Recon opcional**: `--net-discovery` / `--redteam` pueden invocar tooling broadcast/L2 adicional (best-effort; solo con autorización explícita)
 

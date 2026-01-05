@@ -137,6 +137,7 @@ Users should treat the config file as sensitive. The API key grants increased ra
 
 - **Requires root/sudo**: Necessary for raw socket access (nmap, tcpdump)
 - **No sandboxing**: External tools run with full system privileges
+- **Proxy scope**: `--proxy` relies on `proxychains4` and only wraps TCP connect traffic; UDP/ARP/ICMP and raw socket scans are not proxied
 - **Network visibility**: Scans generate significant network traffic
 - **Optional recon features**: `--net-discovery` / `--redteam` may invoke additional broadcast/L2 tooling (best-effort; use only with explicit authorization)
 
