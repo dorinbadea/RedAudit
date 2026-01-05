@@ -221,7 +221,7 @@ When changing behavior/UX, update the relevant docs in both EN/ES (flat docs str
 - release notes: `docs/releases/RELEASE_NOTES_vX.Y.Z*.md`
 
 Make sure menu text, flags, defaults, and examples match the code.
-For ES docs, use Spanish (Spain) phrasing (`es-ES`) and avoid LATAM variants; do not mention this preference in user-facing docs.
+For ES docs, use Spanish (Spain) phrasing (`es-ES`) and avoid LATAM variants.
 
 ## Versioning & Release Checklist (SemVer)
 
