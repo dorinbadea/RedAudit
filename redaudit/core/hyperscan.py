@@ -231,6 +231,71 @@ def hyperscan_tcp_sweep_sync(
     )
 
 
+def hyperscan_full_port_sweep(
+    target_ip: str,
+    batch_size: int = 5000,
+    timeout: float = 0.3,
+    logger=None,
+    progress_callback: Optional[HyperScanProgressCallback] = None,
+) -> List[int]:
+    """
+    v4.1: Scan ALL 65,535 TCP ports on a single host using async batches.
+
+    This is the core of the HyperScan-First optimization. By probing all ports
+    with fast async connections (~60-90s), we can then run nmap only on the
+    discovered open ports, eliminating the slow -p- full scan.
+
+    Args:
+        target_ip: Single IP address to scan
+        batch_size: Concurrent connections (default 5000, safe for most systems)
+        timeout: Per-connection timeout in seconds (0.3s is aggressive but fast)
+        logger: Optional logger
+        progress_callback: Optional callback(completed, total, desc) for progress
+
+    Returns:
+        Sorted list of open port numbers
+    """
+    if not target_ip:
+        return []
+
+    # Generate all 65535 ports
+    all_ports = list(range(1, 65536))
+
+    if logger:
+        logger.info(
+            "HyperScan FULL: Scanning %d ports on %s (batch=%d, timeout=%.1fs)",
+            len(all_ports),
+            target_ip,
+            batch_size,
+            timeout,
+        )
+
+    start_time = time.time()
+
+    # Use existing TCP sweep function
+    results = hyperscan_tcp_sweep_sync(
+        targets=[target_ip],
+        ports=all_ports,
+        batch_size=batch_size,
+        timeout=timeout,
+        logger=logger,
+        progress_callback=progress_callback,
+    )
+
+    open_ports = sorted(results.get(target_ip, []))
+    duration = time.time() - start_time
+
+    if logger:
+        logger.info(
+            "HyperScan FULL: Found %d open ports on %s in %.1fs",
+            len(open_ports),
+            target_ip,
+            duration,
+        )
+
+    return open_ports
+
+
 # ============================================================================
 # UDP Parallel Sweep (Full Protocol Coverage)
 # ============================================================================

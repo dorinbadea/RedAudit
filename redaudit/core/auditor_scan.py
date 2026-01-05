@@ -49,6 +49,7 @@ from redaudit.core.scanner import (
 )
 from redaudit.core.udp_probe import run_udp_probe
 from redaudit.core.network_scanner import NetworkScanner
+from redaudit.core.hyperscan import hyperscan_full_port_sweep
 from redaudit.core.tool_compat import check_tool_compatibility
 from redaudit.utils.constants import (
     DEFAULT_IDENTITY_THRESHOLD,
@@ -997,6 +998,62 @@ class AuditorScan:
         phase0_enrichment: Dict[str, Any] = {}
         if self.config.get("low_impact_enrichment"):
             phase0_enrichment = self._run_low_impact_enrichment(safe_ip)
+
+        # v4.1: HyperScan-First optimization
+        # For mode=full (non-stealth), probe all 65,535 ports with HyperScan first,
+        # then run nmap only on discovered ports for fingerprinting
+        hyperscan_first_enabled = (
+            mode_label == "full"
+            and not self.config.get("stealth")
+            and not self.config.get("no_hyperscan_first")
+        )
+        hyperscan_discovered_ports: List[int] = []
+
+        if hyperscan_first_enabled:
+            self._set_ui_detail(f"[HyperScan] {safe_ip} (65535 ports)")
+            self.ui.print_status(
+                f"⚡ HyperScan-First: Scanning all 65,535 ports on {safe_ip}...",
+                "INFO",
+            )
+            try:
+                hyperscan_discovered_ports = hyperscan_full_port_sweep(
+                    safe_ip,
+                    batch_size=self.config.get("hyperscan_batch_size", 5000),
+                    timeout=self.config.get("hyperscan_timeout", 0.3),
+                    logger=self.logger,
+                )
+                if hyperscan_discovered_ports:
+                    # Build targeted nmap args for discovered ports only
+                    port_list = ",".join(str(p) for p in hyperscan_discovered_ports)
+                    # Use -sV -sC -A for full fingerprinting but only on discovered ports
+                    args = f"-sV -sC -A -Pn -p {port_list}"
+                    # Apply timing template from config
+                    timing = self.config.get("nmap_timing")
+                    if timing:
+                        args = f"-T{timing} {args}"
+                    self.ui.print_status(
+                        f"✓ HyperScan found {len(hyperscan_discovered_ports)} open ports, targeting nmap fingerprint",
+                        "OKGREEN",
+                    )
+                else:
+                    # HyperScan found nothing, fall back to standard nmap scan
+                    self.ui.print_status(
+                        "⚠ HyperScan found 0 ports, falling back to standard nmap scan",
+                        "WARNING",
+                    )
+                    args = get_nmap_arguments(self.config["scan_mode"], self.config)
+            except Exception as hs_err:
+                self.logger.warning(
+                    "HyperScan-First failed for %s: %s, falling back to nmap",
+                    safe_ip,
+                    hs_err,
+                )
+                args = get_nmap_arguments(self.config["scan_mode"], self.config)
+
+        self._set_ui_detail(f"[nmap] {safe_ip} ({mode_label})")
+        self.logger.debug("Nmap scan %s %s", safe_ip, args)
+        self.ui.print_status(self.ui.t("nmap_cmd", safe_ip, f"nmap {args} {safe_ip}"), "INFO")
+
         try:
             # v4.0: Use NetworkScanner direct execution
             nm, scan_error = self.scanner.run_nmap_scan(safe_ip, args)
