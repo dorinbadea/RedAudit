@@ -176,7 +176,7 @@ RedAudit usa `ThreadPoolExecutor` de Python para escanear múltiples hosts simul
 
 | Parámetro | Defecto | Rango | Notas |
 | :--- | :--- | :--- | :--- |
-| `--threads` | 6 | 1-16 | Hilos comparten memoria, ejecutan nmap independientemente |
+| `--threads` | Autodetectado | 1-16 | Hilos comparten memoria, ejecutan nmap independientemente |
 | `--rate-limit` | 0 | 0-∞ | Segundos entre hosts (jitter ±30% aplicado) |
 
 **Guía**:
@@ -291,17 +291,24 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | :--- | :--- |
 | `-t, --target` | Red(es) objetivo en notación CIDR |
 | `-m, --mode` | Modo de escaneo: `fast` / `normal` / `full` (defecto: normal) |
-| `-j, --threads` | Hilos concurrentes (1-16, auto-detectado) |
+| `-j, --threads` | Hilos concurrentes (1-16, autodetectado) |
 | `--rate-limit` | Retardo entre hosts en segundos (jitter ±30%) |
 | `-e, --encrypt` | Cifrar informes con AES-128 |
 | `-o, --output` | Directorio de salida |
 | `--topology` | Activar descubrimiento de topología |
 | `--net-discovery` | Descubrimiento L2/broadcast mejorado |
+| `--redteam` | Activar técnicas de descubrimiento Red Team |
+| `--agentless-verify` | Verificación sin agente (SMB/RDP/LDAP/SSH/HTTP) |
+| `--nuclei` | Habilitar escaneo de plantillas Nuclei (solo modo full) |
+| `--proxy URL` | Proxy SOCKS5 para pivoting |
+| `--ipv6` | Modo de escaneo solo IPv6 |
+| `--deep-scan-budget N` | Presupuesto para deep scan agresivo (0 = sin límite) |
+| `--identity-threshold N` | Umbral mínimo de identidad para omitir deep scan |
 | `--cve-lookup` | Correlación CVE vía NVD API |
 | `--nvd-key KEY` | API key NVD para rate limits más rápidos |
 | `--diff OLD NEW` | Análisis diferencial entre escaneos |
 | `--html-report` | Generar dashboard HTML interactivo |
-| `--stealth` | Activar timing paranoid para entornos sensibles a IDS |
+| `--stealth` | Activar temporización paranoica para entornos sensibles a IDS |
 | `--max-hosts N` | Limitar número de hosts a escanear |
 | `--no-deep-scan` | Deshabilitar deep scan adaptativo |
 | `--no-txt-report` | Omitir generación de informe TXT |
@@ -317,17 +324,17 @@ Consulta `redaudit --help` o [USAGE.md](../docs/USAGE.es.md) para la lista compl
 
 RedAudit aplica plantillas de temporización nmap según tu selección:
 
-| Modo | Plantilla Nmap | Threads | Delay | Caso de Uso |
+| Modo | Plantilla Nmap | Hilos | Retardo | Caso de Uso |
 | :--- | :--- | :--- | :--- | :--- |
 | **Stealth** | `-T1` | 1 (forzado por `--stealth`) | 5s+ | Redes sensibles a IDS |
-| **Normal** | `-T4` | 6 (defecto; configurable) | 0s | Auditorías estándar (equilibrio velocidad/ruido) |
-| **Agresivo** | `-T5` | 16 (preset del asistente; configurable) | 0s | Escaneos urgentes en redes confiables |
+| **Normal** | `-T4` | Autodetectado (configurable) | 0s | Auditorías estándar (equilibrio velocidad/ruido) |
+| **Agresivo** | `-T5` | Autodetectado (límite 16; configurable) | 0s | Escaneos urgentes en redes confiables |
 
 ### Comportamiento de Escaneo
 
 | Parámetro | Propósito | Recomendación |
 | :--- | :--- | :--- |
-| `--threads N` | Escaneo paralelo de hosts | 6 para equilibrado, 2-4 para sigilo |
+| `--threads N` | Escaneo paralelo de hosts | Autodetectado por CPU; 2-4 para sigilo |
 | `--rate-limit N` | Retardo inter-host (segundos) | 1-5s para entornos de producción |
 | `--udp-ports N` | Top UDP en modo full | 100 (defecto), rango 50-500 |
 | `--stealth` | Modo paranoid | Usar en entornos sensibles a IDS/IPS |
@@ -364,6 +371,7 @@ redaudit --target 192.168.1.0/24 --threads 8 --rate-limit 1 --save-defaults --ye
 
 Los defaults se almacenan en `~/.redaudit/config.json`.
 Usa `--defaults {ask,use,ignore}` (o `--use-defaults`/`--ignore-defaults`) para controlar su aplicación en ejecuciones no interactivas.
+Los defaults persistentes cubren modo de escaneo, hilos, rate limit, ajustes UDP, topología/descubrimiento de red, Red Team, verificación sin agente y Nuclei.
 
 ---
 

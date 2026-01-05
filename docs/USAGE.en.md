@@ -15,7 +15,7 @@ Run these commands to get started immediately.
 
 ### Interactive Wizard (Best for first time)
 
-Step-by-step navigation with a "< Go Back" option (v3.8.1+). Webhook configuration and network discovery options are available in the wizard; SIEM exports are generated automatically when encryption is off.
+Step-by-step navigation with a "< Go Back" option (v4.0.1+). Webhook configuration and network discovery options are available in the wizard; SIEM exports are generated automatically when encryption is off.
 Phase 0 low-impact enrichment can be enabled from the wizard (default off) or via `--low-impact-enrichment`.
 
 ```bash
@@ -117,6 +117,8 @@ Grouped by operational function. Verified against the current codebase.
 | `-m, --mode` | `fast` (host discovery), `normal` (top 100), `full` (all ports + scripts/OS detection) |
 | `-j, --threads N` | Parallel hosts 1-16 (Auto-detected) |
 | `--rate-limit S` | Delay between hosts in seconds (applies jitter) |
+| `--deep-scan-budget N` | Max hosts eligible for aggressive deep scan (0 = unlimited) |
+| `--identity-threshold N` | Minimum identity score to skip deep scan |
 | `--stealth` | Force T1 timing, 1 thread, 5s delay |
 | `--dry-run` | Show commands without executing them |
 

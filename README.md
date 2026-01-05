@@ -178,7 +178,7 @@ RedAudit uses Python's `ThreadPoolExecutor` to scan multiple hosts simultaneousl
 
 | Parameter | Default | Range | Notes |
 |:---|:---|:---|:---|
-| `--threads` | 6 | 1-16 | Threads share memory, execute nmap independently |
+| `--threads` | Auto-detected | 1-16 | Threads share memory, execute nmap independently |
 | `--rate-limit` | 0 | 0-∞ | Seconds between hosts (±30% jitter applied) |
 
 **Guidance**:
@@ -299,6 +299,13 @@ redaudit --diff ~/reports/monday.json ~/reports/friday.json
 | `-o, --output` | Output directory |
 | `--topology` | Enable network topology discovery |
 | `--net-discovery` | Enhanced L2/broadcast discovery |
+| `--redteam` | Enable Red Team discovery techniques |
+| `--agentless-verify` | Agentless verification (SMB/RDP/LDAP/SSH/HTTP) |
+| `--nuclei` | Enable Nuclei template scanning (full mode only) |
+| `--proxy URL` | SOCKS5 proxy for pivoting |
+| `--ipv6` | IPv6-only scanning mode |
+| `--deep-scan-budget N` | Budget for aggressive deep scans (0 = unlimited) |
+| `--identity-threshold N` | Minimum identity score to skip deep scan |
 | `--cve-lookup` | CVE correlation via NVD API |
 | `--nvd-key KEY` | NVD API key for faster rate limits |
 | `--diff OLD NEW` | Differential analysis between scans |
@@ -322,14 +329,14 @@ RedAudit applies nmap timing templates based on your selection:
 | Mode | Nmap Template | Threads | Delay | Use Case |
 |:---|:---|:---|:---|:---|
 | **Stealth** | `-T1` | 1 (forced by `--stealth`) | 5s+ | IDS-sensitive or fragile networks |
-| **Normal** | `-T4` | 6 (default; configurable) | 0s | Standard audits (balanced speed/noise) |
-| **Aggressive** | `-T5` | 16 (wizard preset; configurable) | 0s | Time-critical scans on trusted networks |
+| **Normal** | `-T4` | Auto-detected (configurable) | 0s | Standard audits (balanced speed/noise) |
+| **Aggressive** | `-T5` | Auto-detected (cap 16; configurable) | 0s | Time-critical scans on trusted networks |
 
 ### Scan Behavior
 
 | Parameter | Purpose | Recommendation |
 |:---|:---|:---|
-| `--threads N` | Parallel host scanning | 6 for balanced, 2-4 for stealth |
+| `--threads N` | Parallel host scanning | Auto-detected by CPU; 2-4 for stealth |
 | `--rate-limit N` | Inter-host delay (seconds) | 1-5s for production environments |
 | `--udp-ports N` | Top UDP ports in full mode | 100 (default), range 50-500 |
 | `--stealth` | Paranoid mode | Use in IDS-sensitive environments |
@@ -366,6 +373,7 @@ redaudit --target 192.168.1.0/24 --threads 8 --rate-limit 1 --save-defaults --ye
 
 Defaults are stored in `~/.redaudit/config.json`.
 Use `--defaults {ask,use,ignore}` (or `--use-defaults`/`--ignore-defaults`) to control how persisted settings are applied in non-interactive runs.
+Persisted defaults cover scan mode, threads, rate limit, UDP settings, topology/net discovery, Red Team, agentless verification, and Nuclei toggles.
 
 ---
 
