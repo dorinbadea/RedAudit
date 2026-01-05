@@ -10,7 +10,6 @@ import os
 import re
 import shutil
 import sys
-import textwrap
 import threading
 import time
 from contextlib import contextmanager
@@ -177,107 +176,19 @@ class AuditorUI:
         return get_text(key, self.lang, *args)
 
     def print_status(self, message, status="INFO", update_activity=True, *, force: bool = False):
-        """Print status message with timestamp and color."""
+        """Print status message with timestamp and color.
+
+        v4.0.4: Delegates to UIManager for consistent color handling.
+        """
         if update_activity:
             with self.activity_lock:
                 self.last_activity = datetime.now()
 
-        ts = datetime.now().strftime("%H:%M:%S")
+        # Sync progress state to UIManager
+        self.ui._ui_progress_active = self._ui_progress_active
 
-        # v3.2.2+: Map internal status tokens to professional display labels
-        # Applied for ALL modes (TTY and non-TTY) to avoid leaking internal names
-        status_map = {
-            "OKGREEN": "OK",
-            "OKBLUE": "INFO",
-            "HEADER": "INFO",
-            "WARNING": "WARN",
-            "FAIL": "FAIL",
-            "INFO": "INFO",
-            "OK": "OK",
-        }
-        is_tty = sys.stdout.isatty()
-        status_display = status_map.get(status, status)
-
-        color_key = status
-        if status_display == "OK":
-            color_key = "OKGREEN"
-        elif status_display in ("WARN", "WARNING"):
-            color_key = "WARNING"
-        elif status_display in ("FAIL", "ERROR"):
-            color_key = "FAIL"
-        elif status_display == "INFO":
-            color_key = "OKBLUE"
-        color = self.COLORS.get(color_key, self.COLORS["OKBLUE"]) if is_tty else ""
-        endc = self.COLORS["ENDC"] if is_tty else ""
-
-        # Wrap long messages on word boundaries to avoid splitting words mid-line.
-        msg = "" if message is None else str(message)
-        if self._ui_progress_active and not force:
-            if not self._should_emit_during_progress(msg, status_display):
-                # Store last suppressed line so progress UIs can surface "what's happening"
-                # without flooding the terminal with logs.
-                try:
-                    if msg:
-                        self._set_ui_detail(msg, status_display)
-                except Exception:
-                    pass
-                if self.logger:
-                    self.logger.debug("UI suppressed [%s]: %s", status_display, msg)
-                return
-        lines = []
-        for raw_line in msg.splitlines() or [""]:
-            if not raw_line:
-                lines.append("")
-                continue
-            wrapped = textwrap.wrap(
-                raw_line,
-                width=100,
-                break_long_words=False,
-                break_on_hyphens=False,
-            )
-            lines.extend(wrapped if wrapped else [""])
-        # NOTE: These print statements output status messages (e.g., "Scanning host X"),
-        # NOT passwords or sensitive data. CodeQL incorrectly flags these.
-        # v3.8.4: Use Rich console.print when progress is active to handle colors correctly
-        with self._print_lock:
-            if self._ui_progress_active:
-                # Rich Progress is active - use Rich markup instead of ANSI codes
-                # This ensures colors display correctly even when Progress bar is updating
-                rich_color_map = {
-                    "OKBLUE": "bright_blue",
-                    "OKGREEN": "green",
-                    "WARNING": "yellow",
-                    "FAIL": "red",
-                    "HEADER": "magenta",
-                }
-                rich_style = rich_color_map.get(color_key, "bright_blue")
-                try:
-                    from rich.console import Console
-
-                    console = Console(
-                        file=getattr(sys, "__stdout__", sys.stdout),
-                        width=self._terminal_width(),
-                    )
-                    console.print(
-                        f"[{rich_style}][{ts}] [{status_display}][/{rich_style}] {lines[0]}"
-                    )
-                    for line in lines[1:]:
-                        console.print(f"  {line}")
-                except ImportError:
-                    # Fallback to ANSI if Rich not available
-                    print(
-                        f"{color}[{ts}] [{status_display}]{endc} {lines[0]}"
-                    )  # lgtm[py/clear-text-logging-sensitive-data]
-                    for line in lines[1:]:
-                        print(f"  {line}")  # lgtm[py/clear-text-logging-sensitive-data]
-            else:
-                # No progress active - use standard ANSI codes
-                print(
-                    f"{color}[{ts}] [{status_display}]{endc} {lines[0]}"
-                )  # lgtm[py/clear-text-logging-sensitive-data]
-                for line in lines[1:]:
-                    print(f"  {line}")  # lgtm[py/clear-text-logging-sensitive-data]
-            sys.stdout.flush()
+        # Delegate to UIManager
+        self.ui.print_status(message, status, update_activity=False, force=force)
 
     def _condense_for_ui(self, text: str) -> str:
         """
