@@ -698,8 +698,10 @@ def test_should_emit_during_progress_variants():
 def test_terminal_width_fallback(monkeypatch):
     ui = _MockUI()
     monkeypatch.setattr(
-        "redaudit.core.auditor_components.shutil.get_terminal_size",
-        lambda *_args: (_ for _ in ()).throw(RuntimeError()),
+        "redaudit.core.auditor_components.shutil",
+        SimpleNamespace(
+            get_terminal_size=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError())
+        ),
     )
     assert ui._terminal_width(10) == 60
 
