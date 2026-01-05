@@ -176,6 +176,7 @@ class _DummyAuditor(AuditorVuln):
         self.current_phase = ""
         self._ui_detail = ""
         self.interrupted = False
+        self.proxy_manager = None
         self.statuses = []
         self.ui = self
         self.colors = {}

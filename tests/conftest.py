@@ -59,6 +59,7 @@ class MockAuditorBase:
         }
         self.cryptography_available = True
         self.console = MagicMock()
+        self.proxy_manager = None
 
         # v4.0 Compatibility: Mock UI Manager
         self.ui = MagicMock()
@@ -67,7 +68,12 @@ class MockAuditorBase:
         self.ui.print_status = MagicMock()
 
         # v4.0 Scanner Composition
-        self.scanner = NetworkScanner(self.cfg, self.ui, self.logger)
+        self.scanner = NetworkScanner(
+            self.cfg,
+            self.ui,
+            self.logger,
+            proxy_manager=self.proxy_manager,
+        )
 
     def print_status(self, msg, status_type="info", **kwargs):
         pass

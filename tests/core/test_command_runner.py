@@ -47,6 +47,14 @@ class TestCommandRunner(unittest.TestCase):
         mock_run.assert_not_called()
         self.assertTrue(any("dry-run" in m[1] for m in logger.messages if m[0] == "info"))
 
+    def test_command_wrapper_applies(self):
+        def _wrap(cmd):
+            return ["proxychains"] + list(cmd)
+
+        runner = CommandRunner(dry_run=True, command_wrapper=_wrap)
+        res = runner.run(["nmap", "-sV"])
+        self.assertEqual(res.args[0], "proxychains")
+
     @patch("redaudit.core.command_runner.subprocess.run")
     def test_dry_run_binary_mode_returns_bytes(self, mock_run):
         runner = CommandRunner(dry_run=True)
