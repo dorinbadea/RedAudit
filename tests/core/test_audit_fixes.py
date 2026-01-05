@@ -14,6 +14,7 @@ class MockAuditor:
         self.config = {"deep_id_scan": False}
         self.logger = MagicMock()
         self.extra_tools = {}
+        self.proxy_manager = None
 
     def t(self, key, *args):
         return key
@@ -42,6 +43,7 @@ class RealMockAuditor(AuditorScan):
         self.t = MagicMock(return_value="trans")
         self.print_status = MagicMock()
         self.interrupted = False
+        self.proxy_manager = None
         self._deep_budget = 100
         self._deep_budget_lock = MagicMock()
 

@@ -761,6 +761,7 @@ class AuditorScan:
                 deep_obj,
                 logger=self.logger,
                 dry_run=bool(self.config.get("dry_run", False)),
+                proxy_manager=self.proxy_manager,
             )
 
             # Check for Identity
@@ -886,6 +887,7 @@ class AuditorScan:
                         deep_obj,
                         logger=self.logger,
                         dry_run=bool(self.config.get("dry_run", False)),
+                        proxy_manager=self.proxy_manager,
                     )
                     if not mac:
                         m2b, v2b = extract_vendor_mac(rec2b.get("stdout", ""))
@@ -1208,7 +1210,12 @@ class AuditorScan:
             # v2.8.0: Banner grab fallback for unidentified ports
             if unknown_ports and len(unknown_ports) <= 20:
                 self.ui.print_status(self.ui.t("banner_grab", safe_ip, len(unknown_ports)), "INFO")
-                banner_info = banner_grab_fallback(safe_ip, unknown_ports, logger=self.logger)
+                banner_info = banner_grab_fallback(
+                    safe_ip,
+                    unknown_ports,
+                    logger=self.logger,
+                    proxy_manager=self.proxy_manager,
+                )
                 if banner_info:
                     # Merge banner info into ports
                     for port_info in ports:
@@ -1345,6 +1352,7 @@ class AuditorScan:
                         self.extra_tools,
                         dry_run=bool(self.config.get("dry_run", False)),
                         logger=self.logger,
+                        proxy_manager=self.proxy_manager,
                     )
                     if http_probe:
                         agentless_fp = host_record.setdefault("agentless_fingerprint", {})
@@ -1647,6 +1655,7 @@ class AuditorScan:
                         t,
                         logger=self.logger,
                         dry_run=bool(self.config.get("dry_run", False)),
+                        proxy_manager=self.proxy_manager,
                     ): t.ip
                     for t in targets
                 }

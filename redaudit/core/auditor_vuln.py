@@ -9,6 +9,7 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Tuple
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.core.scanner import http_enrichment, ssl_deep_analysis, tls_enrichment
 
 
@@ -176,6 +177,7 @@ class AuditorVuln:
                 self.extra_tools,
                 dry_run=bool(self.config.get("dry_run", False)),
                 logger=self.logger,
+                proxy_manager=getattr(self, "proxy_manager", None),
             )
             finding.update(http_data)
 
@@ -187,6 +189,7 @@ class AuditorVuln:
                     self.extra_tools,
                     dry_run=bool(self.config.get("dry_run", False)),
                     logger=self.logger,
+                    proxy_manager=getattr(self, "proxy_manager", None),
                 )
                 finding.update(tls_data)
 
@@ -197,7 +200,13 @@ class AuditorVuln:
                     self.ui.print_status(
                         f"[testssl] {ip}:{port} → {self.ui.t('testssl_analysis', ip, port)}", "INFO"
                     )
-                    ssl_analysis = ssl_deep_analysis(ip, port, self.extra_tools, self.logger)
+                    ssl_analysis = ssl_deep_analysis(
+                        ip,
+                        port,
+                        self.extra_tools,
+                        self.logger,
+                        proxy_manager=getattr(self, "proxy_manager", None),
+                    )
                     if ssl_analysis:
                         finding["testssl_analysis"] = ssl_analysis
                         # Alert if vulnerabilities found
@@ -218,6 +227,9 @@ class AuditorVuln:
                         default_retries=0,
                         backoff_base_s=0.0,
                         redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
+                        command_wrapper=get_proxy_command_wrapper(
+                            getattr(self, "proxy_manager", None)
+                        ),
                     )
                     res = runner.run(
                         [self.extra_tools["whatweb"], "-q", "-a", "3", url],
@@ -249,6 +261,9 @@ class AuditorVuln:
                         default_retries=0,
                         backoff_base_s=0.0,
                         redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
+                        command_wrapper=get_proxy_command_wrapper(
+                            getattr(self, "proxy_manager", None)
+                        ),
                     )
                     res = runner.run(
                         [self.extra_tools["nikto"], "-h", url, "-maxtime", "120s", "-Tuning", "x"],
@@ -267,7 +282,11 @@ class AuditorVuln:
                                 # v2.9: Filter false positives using Smart-Check
                                 original_count = len(findings_list)
                                 verified = filter_nikto_false_positives(
-                                    findings_list, url, self.extra_tools, self.logger
+                                    findings_list,
+                                    url,
+                                    self.extra_tools,
+                                    self.logger,
+                                    proxy_manager=getattr(self, "proxy_manager", None),
                                 )
                                 if verified:
                                     finding["nikto_findings"] = verified

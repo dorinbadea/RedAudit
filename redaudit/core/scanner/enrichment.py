@@ -11,6 +11,7 @@ import html as html_module
 from typing import Dict, List, Optional, Any
 
 from redaudit.core.scanner.utils import sanitize_ip, is_ipv6
+from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.core.scanner.nmap import _make_runner, _is_dry_run
 
 
@@ -70,7 +71,12 @@ def enrich_host_with_whois(host_record: Dict, extra_tools: Dict) -> None:
 
 
 def _fetch_http_headers(
-    url: str, extra_tools: Dict, *, dry_run: Optional[bool] = None, logger=None
+    url: str,
+    extra_tools: Dict,
+    *,
+    dry_run: Optional[bool] = None,
+    logger=None,
+    proxy_manager=None,
 ) -> str:
     if extra_tools.get("curl"):
         args = [
@@ -87,7 +93,12 @@ def _fetch_http_headers(
             args.append("-k")
         args.append(url)
         try:
-            runner = _make_runner(logger=logger, dry_run=dry_run, timeout=6.0)
+            runner = _make_runner(
+                logger=logger,
+                dry_run=dry_run,
+                timeout=6.0,
+                command_wrapper=get_proxy_command_wrapper(proxy_manager),
+            )
             res = runner.run(
                 args,
                 capture_output=True,
@@ -110,7 +121,12 @@ def _fetch_http_headers(
             args.append("--no-check-certificate")
         args.append(url)
         try:
-            runner = _make_runner(logger=logger, dry_run=dry_run, timeout=6.0)
+            runner = _make_runner(
+                logger=logger,
+                dry_run=dry_run,
+                timeout=6.0,
+                command_wrapper=get_proxy_command_wrapper(proxy_manager),
+            )
             res = runner.run(
                 args,
                 capture_output=True,
@@ -125,7 +141,12 @@ def _fetch_http_headers(
 
 
 def _fetch_http_body(
-    url: str, extra_tools: Dict, *, dry_run: Optional[bool] = None, logger=None
+    url: str,
+    extra_tools: Dict,
+    *,
+    dry_run: Optional[bool] = None,
+    logger=None,
+    proxy_manager=None,
 ) -> str:
     if extra_tools.get("curl"):
         args = [
@@ -143,7 +164,12 @@ def _fetch_http_body(
             args.append("-k")
         args.append(url)
         try:
-            runner = _make_runner(logger=logger, dry_run=dry_run, timeout=7.0)
+            runner = _make_runner(
+                logger=logger,
+                dry_run=dry_run,
+                timeout=7.0,
+                command_wrapper=get_proxy_command_wrapper(proxy_manager),
+            )
             res = runner.run(
                 args,
                 capture_output=True,
@@ -166,7 +192,12 @@ def _fetch_http_body(
             args.append("--no-check-certificate")
         args.append(url)
         try:
-            runner = _make_runner(logger=logger, dry_run=dry_run, timeout=7.0)
+            runner = _make_runner(
+                logger=logger,
+                dry_run=dry_run,
+                timeout=7.0,
+                command_wrapper=get_proxy_command_wrapper(proxy_manager),
+            )
             res = runner.run(
                 args,
                 capture_output=True,
@@ -181,7 +212,12 @@ def _fetch_http_body(
 
 
 def http_enrichment(
-    url: str, extra_tools: Dict, *, dry_run: Optional[bool] = None, logger=None
+    url: str,
+    extra_tools: Dict,
+    *,
+    dry_run: Optional[bool] = None,
+    logger=None,
+    proxy_manager=None,
 ) -> Dict:
     """
     Enrich with HTTP headers using curl/wget.
@@ -190,7 +226,12 @@ def http_enrichment(
 
     if extra_tools.get("curl"):
         try:
-            runner = _make_runner(logger=logger, dry_run=dry_run, timeout=15.0)
+            runner = _make_runner(
+                logger=logger,
+                dry_run=dry_run,
+                timeout=15.0,
+                command_wrapper=get_proxy_command_wrapper(proxy_manager),
+            )
             res = runner.run(
                 [extra_tools["curl"], "-I", "--max-time", "10", url],
                 capture_output=True,
@@ -206,7 +247,12 @@ def http_enrichment(
 
     if extra_tools.get("wget"):
         try:
-            runner = _make_runner(logger=logger, dry_run=dry_run, timeout=15.0)
+            runner = _make_runner(
+                logger=logger,
+                dry_run=dry_run,
+                timeout=15.0,
+                command_wrapper=get_proxy_command_wrapper(proxy_manager),
+            )
             res = runner.run(
                 [extra_tools["wget"], "--spider", "-S", "--timeout=10", url],
                 capture_output=True,
@@ -292,6 +338,7 @@ def http_identity_probe(
     *,
     dry_run: Optional[bool] = None,
     logger=None,
+    proxy_manager=None,
 ) -> Dict:
     """
     Best-effort HTTP probe for hosts with no visible web ports.
@@ -312,10 +359,22 @@ def http_identity_probe(
             for path in HTTP_IDENTITY_PATHS:
                 url = f"{scheme}://{host}:{port}{path}"
                 if not server:
-                    headers = _fetch_http_headers(url, extra_tools, dry_run=dry_run, logger=logger)
+                    headers = _fetch_http_headers(
+                        url,
+                        extra_tools,
+                        dry_run=dry_run,
+                        logger=logger,
+                        proxy_manager=proxy_manager,
+                    )
                     server = _extract_http_server(headers)
                 if not title:
-                    body = _fetch_http_body(url, extra_tools, dry_run=dry_run, logger=logger)
+                    body = _fetch_http_body(
+                        url,
+                        extra_tools,
+                        dry_run=dry_run,
+                        logger=logger,
+                        proxy_manager=proxy_manager,
+                    )
                     title = _extract_http_title(body[:40000])
                 if title and server:
                     break
@@ -337,6 +396,7 @@ def tls_enrichment(
     *,
     dry_run: Optional[bool] = None,
     logger=None,
+    proxy_manager=None,
 ) -> Dict:
     """
     Enrich with TLS certificate information.
@@ -345,7 +405,12 @@ def tls_enrichment(
 
     if extra_tools.get("openssl"):
         try:
-            runner = _make_runner(logger=logger, dry_run=dry_run, timeout=10.0)
+            runner = _make_runner(
+                logger=logger,
+                dry_run=dry_run,
+                timeout=10.0,
+                command_wrapper=get_proxy_command_wrapper(proxy_manager),
+            )
             res = runner.run(
                 [
                     extra_tools["openssl"],
@@ -438,7 +503,12 @@ def exploit_lookup(service_name: str, version: str, extra_tools: Dict, logger=No
 
 
 def ssl_deep_analysis(
-    host_ip: str, port: int, extra_tools: Dict, logger=None, timeout: int = 90
+    host_ip: str,
+    port: int,
+    extra_tools: Dict,
+    logger=None,
+    timeout: int = 90,
+    proxy_manager=None,
 ) -> Optional[Dict]:
     """
     Perform comprehensive SSL/TLS security analysis using testssl.sh.
@@ -464,7 +534,11 @@ def ssl_deep_analysis(
             f"{safe_ip}:{port}",
         ]
 
-        runner = _make_runner(logger=logger, timeout=float(timeout))
+        runner = _make_runner(
+            logger=logger,
+            timeout=float(timeout),
+            command_wrapper=get_proxy_command_wrapper(proxy_manager),
+        )
         res = runner.run(cmd, capture_output=True, check=False, text=True, timeout=float(timeout))
 
         if res.timed_out:
@@ -537,7 +611,12 @@ def ssl_deep_analysis(
 
 
 def banner_grab_fallback(
-    host_ip: str, ports: List[int], extra_tools: Dict = None, timeout: int = 30, logger=None
+    host_ip: str,
+    ports: List[int],
+    extra_tools: Dict = None,
+    timeout: int = 30,
+    logger=None,
+    proxy_manager=None,
 ) -> Dict[int, Dict]:
     """
     Fallback banner grabbing for unidentified services (v2.8.0).
@@ -572,7 +651,11 @@ def banner_grab_fallback(
     results: Dict[int, Dict] = {}
 
     try:
-        runner = _make_runner(logger=logger, timeout=float(timeout))
+        runner = _make_runner(
+            logger=logger,
+            timeout=float(timeout),
+            command_wrapper=get_proxy_command_wrapper(proxy_manager),
+        )
         res = runner.run(cmd, capture_output=True, check=False, text=True, timeout=float(timeout))
         if res.timed_out:
             if logger:

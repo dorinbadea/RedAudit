@@ -12,6 +12,7 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.utils.dry_run import is_dry_run
 
 # File extensions that suggest sensitive/binary content
@@ -99,7 +100,10 @@ def is_sensitive_file(path: str) -> bool:
 
 
 def verify_content_type(
-    url: str, extra_tools: Optional[Dict] = None, timeout: int = 10
+    url: str,
+    extra_tools: Optional[Dict] = None,
+    timeout: int = 10,
+    proxy_manager=None,
 ) -> Tuple[Optional[str], Optional[int]]:
     """
     Perform HEAD request to verify Content-Type of a URL.
@@ -108,6 +112,7 @@ def verify_content_type(
         url: Full URL to check
         extra_tools: Dict of available tool paths (uses curl if available)
         timeout: Request timeout in seconds
+        proxy_manager: Optional proxy manager for command wrapping
 
     Returns:
         Tuple of (content_type, content_length) or (None, None) on error
@@ -122,6 +127,7 @@ def verify_content_type(
         default_retries=0,
         backoff_base_s=0.0,
         redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
+        command_wrapper=get_proxy_command_wrapper(proxy_manager),
     )
 
     try:
@@ -200,7 +206,11 @@ def is_false_positive_by_size(expected_ext: str, content_length: Optional[int]) 
 
 
 def verify_magic_bytes(
-    url: str, expected_ext: str, extra_tools: Optional[Dict] = None, timeout: int = 10
+    url: str,
+    expected_ext: str,
+    extra_tools: Optional[Dict] = None,
+    timeout: int = 10,
+    proxy_manager=None,
 ) -> Tuple[bool, str]:
     """
     v3.0: Download first 512 bytes and verify magic signature.
@@ -213,6 +223,7 @@ def verify_magic_bytes(
         expected_ext: Expected file extension (e.g., '.tar')
         extra_tools: Dict of available tool paths
         timeout: Request timeout in seconds
+        proxy_manager: Optional proxy manager for command wrapping
 
     Returns:
         Tuple of (is_valid, reason)
@@ -247,6 +258,7 @@ def verify_magic_bytes(
         default_retries=0,
         backoff_base_s=0.0,
         redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
+        command_wrapper=get_proxy_command_wrapper(proxy_manager),
     )
 
     try:
@@ -278,7 +290,10 @@ def verify_magic_bytes(
 
 
 def verify_nikto_finding(
-    finding: str, base_url: str, extra_tools: Optional[Dict] = None
+    finding: str,
+    base_url: str,
+    extra_tools: Optional[Dict] = None,
+    proxy_manager=None,
 ) -> Tuple[bool, str]:
     """
     Verify a single Nikto finding to determine if it's a false positive.
@@ -289,6 +304,7 @@ def verify_nikto_finding(
         finding: Raw Nikto finding line
         base_url: Base URL for the target (e.g., "http://192.168.1.1:8189")
         extra_tools: Dict of available tool paths
+        proxy_manager: Optional proxy manager for command wrapping
 
     Returns:
         Tuple of (is_valid, reason)
@@ -312,7 +328,9 @@ def verify_nikto_finding(
 
     # Build full URL and verify
     full_url = base_url.rstrip("/") + path
-    content_type, content_length = verify_content_type(full_url, extra_tools)
+    content_type, content_length = verify_content_type(
+        full_url, extra_tools, proxy_manager=proxy_manager
+    )
 
     # Check 1: Content-Type mismatch
     if is_false_positive_by_content_type(ext, content_type):
@@ -323,7 +341,7 @@ def verify_nikto_finding(
         return False, f"filtered:too_small:{content_length}bytes"
 
     # Check 3 (v3.0): Magic byte verification
-    is_valid, reason = verify_magic_bytes(full_url, ext, extra_tools)
+    is_valid, reason = verify_magic_bytes(full_url, ext, extra_tools, proxy_manager=proxy_manager)
     if not is_valid:
         return False, reason
 
@@ -331,7 +349,11 @@ def verify_nikto_finding(
 
 
 def filter_nikto_false_positives(
-    findings: List[str], base_url: str, extra_tools: Optional[Dict] = None, logger=None
+    findings: List[str],
+    base_url: str,
+    extra_tools: Optional[Dict] = None,
+    logger=None,
+    proxy_manager=None,
 ) -> List[str]:
     """
     Filter a list of Nikto findings to remove false positives.
@@ -354,7 +376,12 @@ def filter_nikto_false_positives(
     filtered_count = 0
 
     for finding in findings:
-        is_valid, reason = verify_nikto_finding(finding, base_url, extra_tools)
+        is_valid, reason = verify_nikto_finding(
+            finding,
+            base_url,
+            extra_tools,
+            proxy_manager=proxy_manager,
+        )
 
         if is_valid:
             verified.append(finding)

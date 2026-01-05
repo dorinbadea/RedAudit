@@ -13,7 +13,7 @@ import shlex
 import subprocess
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 
 @dataclass(frozen=True)
@@ -41,6 +41,7 @@ class CommandRunner:
         default_retries: int = 0,
         backoff_base_s: float = 0.5,
         redact_env_keys: Optional[Iterable[str]] = None,
+        command_wrapper: Optional[Callable[[Sequence[str]], Sequence[str]]] = None,
     ):
         self._logger = logger
         self._dry_run = bool(dry_run)
@@ -48,6 +49,7 @@ class CommandRunner:
         self._default_retries = int(default_retries)
         self._backoff_base_s = float(backoff_base_s)
         self._redact_env_keys: Set[str] = {k for k in (redact_env_keys or []) if isinstance(k, str)}
+        self._command_wrapper = command_wrapper
 
     @property
     def dry_run(self) -> bool:
@@ -68,6 +70,7 @@ class CommandRunner:
         input_text: Optional[str] = None,
     ) -> CommandResult:
         cmd = self._validate_args(args)
+        cmd = self._apply_command_wrapper(cmd)
         merged_env = self._merge_env(env)
         redact_values = self._collect_redact_values(merged_env)
 
@@ -246,6 +249,21 @@ class CommandRunner:
         if not cmd or not cmd[0].strip():
             raise ValueError("Empty command")
         return tuple(cmd)
+
+    def _apply_command_wrapper(self, cmd: Tuple[str, ...]) -> Tuple[str, ...]:
+        wrapper = self._command_wrapper
+        if not wrapper:
+            return cmd
+        try:
+            wrapped = wrapper(list(cmd))
+        except Exception as exc:
+            self._log("WARNING", f"command_wrapper failed: {exc}")
+            return cmd
+        try:
+            return self._validate_args(wrapped)
+        except Exception as exc:
+            self._log("WARNING", f"command_wrapper returned invalid args: {exc}")
+            return cmd
 
     def _merge_env(self, env: Optional[Mapping[str, str]]) -> Dict[str, str]:
         merged = os.environ.copy()

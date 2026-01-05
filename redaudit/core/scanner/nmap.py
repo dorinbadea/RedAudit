@@ -9,6 +9,7 @@ import time
 from typing import Dict, List, Optional, Any
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.core.scanner.utils import is_ipv6
 
 _REDAUDIT_REDACT_ENV_KEYS = {"NVD_API_KEY", "GITHUB_TOKEN"}
@@ -22,7 +23,11 @@ def _is_dry_run(dry_run: Optional[bool] = None) -> bool:
 
 
 def _make_runner(
-    *, logger=None, dry_run: Optional[bool] = None, timeout: Optional[float] = None
+    *,
+    logger=None,
+    dry_run: Optional[bool] = None,
+    timeout: Optional[float] = None,
+    command_wrapper=None,
 ) -> CommandRunner:
     return CommandRunner(
         logger=logger,
@@ -31,6 +36,7 @@ def _make_runner(
         default_retries=0,
         backoff_base_s=0.0,
         redact_env_keys=_REDAUDIT_REDACT_ENV_KEYS,
+        command_wrapper=command_wrapper,
     )
 
 
@@ -73,6 +79,7 @@ def run_nmap_command(
     *,
     logger=None,
     dry_run: bool = False,
+    proxy_manager=None,
     max_stdout: Optional[int] = 8000,
     max_stderr: Optional[int] = 2000,
     include_full_output: bool = False,
@@ -83,7 +90,12 @@ def run_nmap_command(
     start = time.time()
     record: Dict[str, Any] = {"command": " ".join(cmd)}
 
-    runner = _make_runner(logger=logger, dry_run=dry_run, timeout=float(timeout))
+    runner = _make_runner(
+        logger=logger,
+        dry_run=dry_run,
+        timeout=float(timeout),
+        command_wrapper=get_proxy_command_wrapper(proxy_manager),
+    )
     res = runner.run(cmd, timeout=float(timeout), capture_output=True, check=False, text=True)
 
     duration = time.time() - start

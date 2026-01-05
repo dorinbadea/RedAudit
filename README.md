@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-![Version](https://img.shields.io/badge/v4.0.2-blue?style=flat-square)
+![Version](https://img.shields.io/badge/v4.0.3-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -89,7 +89,7 @@ sudo redaudit
 | **Interactive Webhooks** | Webhook alerts for high/critical findings (wizard or CLI) |
 | **Session Logging** | Dual-format terminal output capture (`.log` raw + `.txt` clean) for audit trails |
 | **Timeout-Safe Scanning** | Host scans are bounded by hard timeouts; progress shows upper-bound ETA |
-| **IPv6 + Proxy Support** | Full dual-stack scanning with SOCKS5 pivoting |
+| **IPv6 + Proxy Support** | Dual-stack scanning with SOCKS5 pivoting via proxychains4 (TCP connect only) |
 | **Rate Limiting** | Configurable inter-host delay with ±30% jitter to reduce predictability |
 | **Bilingual Interface** | Complete English/Spanish localization |
 | **Auto-Update** | Atomic staged updates with automatic rollback on failure |
@@ -302,7 +302,7 @@ redaudit --diff ~/reports/monday.json ~/reports/friday.json
 | `--redteam` | Enable Red Team discovery techniques |
 | `--agentless-verify` | Agentless verification (SMB/RDP/LDAP/SSH/HTTP) |
 | `--nuclei` | Enable Nuclei template scanning (full mode only) |
-| `--proxy URL` | SOCKS5 proxy for pivoting |
+| `--proxy URL` | SOCKS5 proxy for pivoting (requires proxychains4; TCP only) |
 | `--ipv6` | IPv6-only scanning mode |
 | `--deep-scan-budget N` | Budget for aggressive deep scans (0 = unlimited) |
 | `--identity-threshold N` | Minimum identity score to skip deep scan |

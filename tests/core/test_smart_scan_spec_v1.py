@@ -35,6 +35,7 @@ class MockAuditor(AuditorScan):
         self.scanner = NetworkScanner(self.config, self.logger, self.ui)
         self.results = {"hosts": [], "net_discovery": {}}
         self.extra_tools = {}
+        self.proxy_manager = None
 
     def _set_ui_detail(self, detail):
         pass

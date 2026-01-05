@@ -371,6 +371,28 @@ def test_main_proxy_invalid_exits(monkeypatch):
     assert exc.value.code == 1
 
 
+def test_main_proxy_missing_proxychains(monkeypatch):
+    args = _base_args(proxy="socks5://example.com:1080", target=None)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
+
+    class _Proxy:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def is_valid(self):
+            return True
+
+        def test_connection(self):
+            return True, "ok"
+
+    monkeypatch.setattr("redaudit.core.proxy.ProxyManager", _Proxy)
+    monkeypatch.setattr("redaudit.core.proxy.is_proxychains_available", lambda: False)
+    with pytest.raises(SystemExit) as exc:
+        cli.main()
+    assert exc.value.code == 1
+
+
 def test_main_defaults_ignore_resets_cli_values(monkeypatch):
     args = _base_args(defaults="ignore", threads=9, rate_limit=3.0, udp_mode="full", udp_ports=200)
     monkeypatch.setattr(cli, "parse_arguments", lambda: args)

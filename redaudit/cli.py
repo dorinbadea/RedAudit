@@ -315,7 +315,10 @@ Examples:
         "--proxy",
         type=str,
         metavar="URL",
-        help="SOCKS5 proxy for pivoting (socks5://host:port or socks5://user:pass@host:port)",
+        help=(
+            "SOCKS5 proxy for pivoting (requires proxychains4; TCP only; "
+            "socks5://host:port or socks5://user:pass@host:port)"
+        ),
     )
     parser.add_argument(
         "--ipv6", action="store_true", help="Enable IPv6-only mode (scan only IPv6 networks)"
@@ -747,7 +750,7 @@ def main():
 
     # v3.0: Configure proxy if specified
     if args.proxy:
-        from redaudit.core.proxy import ProxyManager
+        from redaudit.core.proxy import ProxyManager, is_proxychains_available
 
         proxy_manager = ProxyManager(args.proxy)
         if not proxy_manager.is_valid():
@@ -756,6 +759,9 @@ def main():
         success, msg = proxy_manager.test_connection()
         if success:
             app.print_status(app.t("proxy_configured", msg), "OKGREEN")
+            if not is_proxychains_available():
+                app.print_status(app.t("proxychains_missing"), "FAIL")
+                sys.exit(1)
             app.proxy_manager = proxy_manager
         else:
             app.print_status(app.t("proxy_test_failed", msg), "FAIL")

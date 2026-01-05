@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.utils.dry_run import is_dry_run
 from redaudit.core.scanner import is_web_service, sanitize_ip
 from redaudit.core.models import Host
@@ -110,7 +111,11 @@ def select_agentless_probe_targets(
 
 
 def _make_runner(
-    *, logger=None, dry_run: Optional[bool] = None, timeout: float = 45.0
+    *,
+    logger=None,
+    dry_run: Optional[bool] = None,
+    timeout: float = 45.0,
+    command_wrapper=None,
 ) -> CommandRunner:
     return CommandRunner(
         logger=logger,
@@ -119,6 +124,7 @@ def _make_runner(
         default_retries=0,
         backoff_base_s=0.0,
         redact_env_keys=_REDAUDIT_REDACT_ENV_KEYS,
+        command_wrapper=command_wrapper,
     )
 
 
@@ -137,11 +143,17 @@ def _run_nmap_script(
     scripts: str,
     logger=None,
     dry_run: Optional[bool] = None,
+    proxy_manager=None,
     timeout_s: float = 60.0,
 ) -> Tuple[int, str, str]:
     if not shutil.which("nmap"):
         return 127, "", "nmap not found"
-    runner = _make_runner(logger=logger, dry_run=dry_run, timeout=timeout_s)
+    runner = _make_runner(
+        logger=logger,
+        dry_run=dry_run,
+        timeout=timeout_s,
+        command_wrapper=get_proxy_command_wrapper(proxy_manager),
+    )
     cmd = [
         "nmap",
         "-Pn",
@@ -390,6 +402,7 @@ def probe_agentless_services(
     *,
     logger=None,
     dry_run: Optional[bool] = None,
+    proxy_manager=None,
 ) -> Dict[str, Any]:
     """
     Run best-effort agentless probes for SMB/RDP/LDAP/SSH/HTTP on a host.
@@ -416,6 +429,7 @@ def probe_agentless_services(
             scripts="smb-os-discovery,smb2-security-mode,smb-protocols",
             logger=logger,
             dry_run=dry_run,
+            proxy_manager=proxy_manager,
             timeout_s=60.0,
         )
         parsed = parse_smb_nmap(out + "\n" + err)
@@ -429,6 +443,7 @@ def probe_agentless_services(
             scripts="rdp-ntlm-info",
             logger=logger,
             dry_run=dry_run,
+            proxy_manager=proxy_manager,
             timeout_s=60.0,
         )
         parsed = parse_rdp_ntlm_info(out + "\n" + err)
@@ -442,6 +457,7 @@ def probe_agentless_services(
             scripts="ldap-rootdse",
             logger=logger,
             dry_run=dry_run,
+            proxy_manager=proxy_manager,
             timeout_s=60.0,
         )
         parsed = parse_ldap_rootdse(out + "\n" + err)
@@ -456,6 +472,7 @@ def probe_agentless_services(
             scripts="ssh-hostkey",
             logger=logger,
             dry_run=dry_run,
+            proxy_manager=proxy_manager,
             timeout_s=45.0,
         )
         parsed = parse_ssh_hostkeys(out + "\n" + err)
@@ -471,6 +488,7 @@ def probe_agentless_services(
             scripts="http-title,http-server-header",
             logger=logger,
             dry_run=dry_run,
+            proxy_manager=proxy_manager,
             timeout_s=45.0,
         )
         parsed = parse_http_probe(out + "\n" + err)

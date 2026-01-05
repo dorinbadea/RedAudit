@@ -84,7 +84,7 @@ class InteractiveNetworkAuditor:
         self.extra_tools = {}
 
         # v3.0: Proxy manager (set by CLI if --proxy used)
-        self.proxy_manager = None
+        self._proxy_manager = None
 
         self.last_activity = datetime.now()
         self.activity_lock = threading.Lock()
@@ -112,7 +112,12 @@ class InteractiveNetworkAuditor:
         from redaudit.core.ui_manager import UIManager
 
         self._ui_manager = UIManager(lang=self.lang, colors=self.COLORS, logger=self.logger)
-        self.scanner = NetworkScanner(self.cfg, self._ui_manager, self.logger)
+        self.scanner = NetworkScanner(
+            self.cfg,
+            self._ui_manager,
+            self.logger,
+            proxy_manager=self._proxy_manager,
+        )
 
         signal.signal(signal.SIGINT, self.signal_handler)
 
@@ -133,6 +138,17 @@ class InteractiveNetworkAuditor:
             self.cfg = value
         else:
             self.cfg = ConfigurationContext(value)
+
+    @property
+    def proxy_manager(self):
+        return self._proxy_manager
+
+    @proxy_manager.setter
+    def proxy_manager(self, value):
+        self._proxy_manager = value
+        scanner = getattr(self, "scanner", None)
+        if scanner is not None:
+            scanner.proxy_manager = value
 
     # ---------- Reporting ----------
 
@@ -358,6 +374,16 @@ class InteractiveNetworkAuditor:
             from redaudit.utils.session_log import start_session_log
 
             start_session_log(self.config["_actual_output_dir"], ts_folder)
+
+            if self.proxy_manager:
+                proxy_cfg = getattr(self.proxy_manager, "proxy_config", None)
+                proxy_label = "proxychains"
+                if isinstance(proxy_cfg, dict):
+                    host = proxy_cfg.get("host")
+                    port = proxy_cfg.get("port")
+                    if host and port:
+                        proxy_label = f"{host}:{port}"
+                self.ui.print_status(self.ui.t("proxy_in_use", proxy_label), "INFO")
 
             # Ensure network_info is populated for reports and topology discovery.
             if not self.results.get("network_info"):
@@ -720,6 +746,7 @@ class InteractiveNetworkAuditor:
                                         logger=self.logger,
                                         dry_run=bool(self.config.get("dry_run", False)),
                                         print_status=self.ui.print_status,
+                                        proxy_manager=self.proxy_manager,
                                     )
                         except Exception:
                             nuclei_result = run_nuclei_scan(
@@ -730,6 +757,7 @@ class InteractiveNetworkAuditor:
                                 logger=self.logger,
                                 dry_run=bool(self.config.get("dry_run", False)),
                                 print_status=self.ui.print_status,
+                                proxy_manager=self.proxy_manager,
                             )
 
                         findings = nuclei_result.get("findings") or []
@@ -807,6 +835,12 @@ class InteractiveNetworkAuditor:
             session_log_path = stop_session_log()
             if session_log_path and self.logger:
                 self.logger.info("Session log saved: %s", session_log_path)
+
+            if self.proxy_manager:
+                try:
+                    self.proxy_manager.cleanup()
+                except Exception:
+                    pass
 
             if inhibitor is not None:
                 try:

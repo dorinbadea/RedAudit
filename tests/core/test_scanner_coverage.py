@@ -156,6 +156,33 @@ class TestScannerCoverage(unittest.TestCase):
         rec2 = run_nmap_command(["nmap"], 10, "1.1.1.1", deep_obj, include_full_output=True)
         self.assertIn("stdout_full", rec2)
 
+    @patch("redaudit.core.scanner.nmap._make_runner")
+    def test_run_nmap_command_proxy_wrapper(self, mock_make_runner):
+        mock_runner = MagicMock()
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        mock_res.stdout = "ok"
+        mock_res.stderr = ""
+        mock_res.timed_out = False
+        mock_runner.run.return_value = mock_res
+        mock_make_runner.return_value = mock_runner
+
+        class _Proxy:
+            def wrap_command(self, cmd):
+                return ["proxychains"] + list(cmd)
+
+        deep_obj = {}
+        run_nmap_command(
+            ["nmap", "-sV"],
+            10,
+            "1.1.1.1",
+            deep_obj,
+            proxy_manager=_Proxy(),
+        )
+
+        _, kwargs = mock_make_runner.call_args
+        self.assertTrue(callable(kwargs.get("command_wrapper")))
+
     # ---------- Traffic Capture ----------
 
     @patch("redaudit.core.scanner.traffic._make_runner")

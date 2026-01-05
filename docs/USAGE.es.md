@@ -135,9 +135,11 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 
 | Flag | Descripción |
 | :--- | :--- |
-| `--proxy URL` | Proxy SOCKS5 (socks5://host:port) |
+| `--proxy URL` | Proxy SOCKS5 (socks5://host:port; requiere proxychains4, solo TCP) |
 | `--ipv6` | Activa modo escaneo solo IPv6 |
 | `--no-prevent-sleep` | No inhibir suspensión del sistema |
+
+**Nota:** `--proxy` envuelve herramientas externas con `proxychains4` y solo afecta sondas TCP (connect). El descubrimiento UDP/ARP/ICMP es directo.
 
 ### Descubrimiento Avanzado
 

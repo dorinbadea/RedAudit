@@ -11,7 +11,7 @@ Supports both proxychains wrapper and native nmap --proxies option.
 import os
 import shutil
 import tempfile
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 from urllib.parse import urlparse
 
 from redaudit.core.command_runner import CommandRunner
@@ -268,6 +268,20 @@ def is_proxychains_available() -> bool:
             shutil.which("proxychains-ng"),
         ]
     )
+
+
+def get_proxy_command_wrapper(
+    proxy_manager: Optional[object],
+) -> Optional[Callable[[Sequence[str]], Sequence[str]]]:
+    """
+    Return a command wrapper for proxy routing when available.
+    """
+    if proxy_manager is None:
+        return None
+    wrapper = getattr(proxy_manager, "wrap_command", None)
+    if callable(wrapper):
+        return wrapper
+    return None
 
 
 class ProxyManager:

@@ -42,7 +42,13 @@ class NetworkScanner:
     identity calculation, and result parsing.
     """
 
-    def __init__(self, config: ConfigurationContext, ui: UIManager, logger=None):
+    def __init__(
+        self,
+        config: ConfigurationContext,
+        ui: UIManager,
+        logger=None,
+        proxy_manager=None,
+    ):
         """
         Initialize NetworkScanner.
 
@@ -55,6 +61,7 @@ class NetworkScanner:
         self.ui = ui
         self.logger = logger
         self.interrupted = False
+        self.proxy_manager = proxy_manager
 
         # v4.0: Central Host Repository
         self.hosts: Dict[str, Host] = {}
@@ -432,6 +439,7 @@ class NetworkScanner:
             max_stdout=0,
             max_stderr=2000,
             include_full_output=True,
+            proxy_manager=self.proxy_manager,
         )
 
         if rec.get("error"):
@@ -528,6 +536,7 @@ def create_network_scanner(
     config: ConfigurationContext,
     ui: UIManager,
     logger: Optional[logging.Logger] = None,
+    proxy_manager=None,
 ) -> NetworkScanner:
     """Factory function for NetworkScanner."""
-    return NetworkScanner(config=config, ui=ui, logger=logger)
+    return NetworkScanner(config=config, ui=ui, logger=logger, proxy_manager=proxy_manager)

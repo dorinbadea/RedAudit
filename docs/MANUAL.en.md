@@ -296,7 +296,7 @@ Flags verified against `redaudit --help` (v3.10.0):
 | `--dry-run` | Print commands without executing |
 | `--no-prevent-sleep` | Don't inhibit system sleep during scan |
 | `--ipv6` | IPv6-only mode |
-| `--proxy URL` | SOCKS5 proxy (socks5://host:port) |
+| `--proxy URL` | SOCKS5 proxy (socks5://host:port; requires proxychains4, TCP only) |
 | `--lang {en,es}` | Interface language |
 | `--no-color` | Disable colored output |
 | `--save-defaults` | Save current settings to ~/.redaudit/config.json |
@@ -304,6 +304,8 @@ Flags verified against `redaudit --help` (v3.10.0):
 | `--use-defaults` | Use saved defaults without prompting |
 | `--ignore-defaults` | Ignore saved defaults |
 | `--skip-update-check` | Skip update check at startup |
+
+**Note:** `--proxy` wraps external tools with `proxychains4` and only affects TCP connect-based probes. UDP/ARP/ICMP discovery remains direct.
 
 ---
 

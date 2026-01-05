@@ -15,6 +15,7 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.utils.dry_run import is_dry_run
 from redaudit.core.verify_vuln import check_nuclei_false_positive
 
@@ -61,6 +62,7 @@ def run_nuclei_scan(
     logger=None,
     dry_run: bool = False,
     print_status=None,
+    proxy_manager=None,
 ) -> Dict[str, Any]:
     """
     Run Nuclei scan against HTTP/HTTPS targets.
@@ -122,6 +124,7 @@ def run_nuclei_scan(
             logger=logger,
             default_timeout=float(timeout),
             dry_run=dry_run,
+            command_wrapper=get_proxy_command_wrapper(proxy_manager),
         )
 
         # Run in batches to provide real progress/ETA on long scans.

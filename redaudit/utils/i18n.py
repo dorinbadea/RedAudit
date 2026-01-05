@@ -317,6 +317,8 @@ TRANSLATIONS = {
         "invalid_proxy_url": "Invalid proxy URL: {}",
         "proxy_configured": "Proxy configured: {}",
         "proxy_test_failed": "Proxy test failed: {}",
+        "proxychains_missing": "proxychains not installed. Install proxychains4 to enable proxy routing.",
+        "proxy_in_use": "Proxy routing enabled via proxychains ({})",
         "random_password_generated": "Generated random encryption password (save this!): {}",
         # v3.2.2+: Non-TTY update one-liner
         "update_oneliner": "UPDATE: RedAudit v{} available (current v{}) — {}",
@@ -660,6 +662,8 @@ TRANSLATIONS = {
         "invalid_proxy_url": "URL de proxy inválida: {}",
         "proxy_configured": "Proxy configurado: {}",
         "proxy_test_failed": "Prueba de proxy fallida: {}",
+        "proxychains_missing": "proxychains no está instalado. Instala proxychains4 para habilitar el proxy.",
+        "proxy_in_use": "Proxy en uso vía proxychains ({})",
         "random_password_generated": "Contraseña aleatoria generada para cifrado (¡guárdala!): {}",
         # v3.2.2+: Update one-liner no-TTY
         "update_oneliner": "UPDATE: RedAudit v{} disponible (actual v{}) — {}",

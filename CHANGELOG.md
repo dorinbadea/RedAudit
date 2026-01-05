@@ -10,6 +10,32 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.0.3] - 2026-01-05
+
+### Added
+
+- **Proxy routing**: Proxy settings now wrap external tools via proxychains (nmap, agentless probes,
+  enrichment, vuln tools, nuclei) for TCP connect pivots.
+- **Proxy lifecycle**: Added session status and cleanup to remove temporary proxychains configs.
+
+### Changed
+
+- **CommandRunner**: Added optional command wrapper support for proxy routing.
+- **CLI**: `--proxy` now enforces proxychains availability and clarifies TCP-only behavior.
+
+### Fixed
+
+- **Proxy Support**: `--proxy` is now applied across scan/vuln/enrichment flows instead of being
+  silently ignored.
+
+### Documentation
+
+- **Proxy scope**: Clarified proxychains requirement and TCP-only limitations in EN/ES docs.
+
+### Tests
+
+- **Coverage**: Added tests for proxy wrapper wiring and CLI proxychains gating.
+
 ## [4.0.2] - 2026-01-05
 
 ### Changed
