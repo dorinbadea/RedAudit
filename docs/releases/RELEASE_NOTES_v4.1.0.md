@@ -1,5 +1,7 @@
 # RedAudit v4.1.0 Release Notes
 
+[![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/v4.1.0/docs/releases/RELEASE_NOTES_v4.1.0_ES.md)
+
 **Release Date:** 2026-01-06
 
 ---
