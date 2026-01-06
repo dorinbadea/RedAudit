@@ -625,6 +625,12 @@ class InteractiveNetworkAuditor:
 
             # v4.0: Pass Host objects to scanning engine
             host_targets = [self.scanner.get_or_create_host(ip) for ip in all_hosts]
+
+            # v4.1: Run HyperScan-First sequentially BEFORE parallel nmap
+            # This avoids file descriptor exhaustion by running one at a time
+            if not self.interrupted:
+                self._run_hyperscan_prescan(all_hosts)
+
             results = self.scan_hosts_concurrent(host_targets)
 
             # v3.8: Agentless Windows verification (SMB/RDP/LDAP) - opt-in
