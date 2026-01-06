@@ -1652,16 +1652,38 @@ class AuditorScan:
         # Try to use rich for better progress visualization
         use_rich = self.ui.get_progress_console() is not None
 
+        # Deduplicate hosts for Deep Scan
+        unique_map = {}
+        import re
+
+        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+        for h in hosts:
+            if hasattr(h, "ip"):
+                raw_ip = h.ip
+                val = h
+            else:
+                raw_ip = str(h)
+                val = raw_ip
+
+            clean_ip = ansi_escape.sub("", raw_ip).strip()
+            if clean_ip and clean_ip not in unique_map:
+                unique_map[clean_ip] = val
+
+        unique_hosts = [unique_map[ip] for ip in sorted(unique_map.keys())]
+
         with self._progress_ui():
             with ThreadPoolExecutor(max_workers=workers) as executor:
                 futures = {}
 
                 def _deep_worker(host):
                     try:
-                        ip = host.ip
-                        # Mark execution
-                        if host.smart_scan:
-                            host.smart_scan["deep_scan_executed"] = True
+                        ip = host.ip if hasattr(host, "ip") else str(host)
+                        host_obj = host if hasattr(host, "ip") else None
+
+                        # Mark execution if it's a Host object
+                        if host_obj and hasattr(host_obj, "smart_scan") and host_obj.smart_scan:
+                            host_obj.smart_scan["deep_scan_executed"] = True
 
                         # Check budget
                         budget = self.config.get("deep_scan_budget", 0)
@@ -1672,17 +1694,18 @@ class AuditorScan:
                             return
 
                         deep = self.deep_scan_host(ip)
-                        if deep:
-                            host.deep_scan = deep
+                        if deep and host_obj:
+                            host_obj.deep_scan = deep
                             if deep.get("os_detected"):
-                                host.os_detected = deep["os_detected"]
+                                host_obj.os_detected = deep["os_detected"]
                             # Re-finalize status
-                            host.status = finalize_host_status(host.to_dict())
+                            host_obj.status = finalize_host_status(host_obj.to_dict())
                     except Exception as e:
                         if self.logger:
-                            self.logger.error(f"Deep scan error for {host.ip}: {e}", exc_info=True)
+                            img_ip = host.ip if hasattr(host, "ip") else str(host)
+                            self.logger.error(f"Deep scan error for {img_ip}: {e}", exc_info=True)
 
-                for h in hosts:
+                for h in unique_hosts:
                     if self.interrupted:
                         break
                     fut = executor.submit(_deep_worker, h)
@@ -1782,18 +1805,27 @@ class AuditorScan:
         self.ui.print_status(self.ui.t("scan_start", len(hosts)), "HEADER")
 
         # v4.0: Deduplicate hosts (handling both str and Host objects)
+        # v4.0: Deduplicate hosts (handling both str and Host objects)
         unique_map = {}
         from redaudit.core.models import Host
+        import re
+
+        # Regex to strip ANSI escape codes
+        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
         for h in hosts:
             if isinstance(h, Host):
-                ip = h.ip
+                raw_ip = h.ip
                 val = h
             else:
-                ip = str(h)
-                val = ip
-            if ip not in unique_map:
-                unique_map[ip] = val
+                raw_ip = str(h)
+                val = raw_ip
+
+            # Sanitization: Strip ANSI codes and whitespace
+            clean_ip = ansi_escape.sub("", raw_ip).strip()
+
+            if clean_ip and clean_ip not in unique_map:
+                unique_map[clean_ip] = val
 
         unique_hosts = [unique_map[ip] for ip in sorted(unique_map.keys())]
         results = []
