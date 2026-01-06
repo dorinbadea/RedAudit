@@ -621,6 +621,28 @@ class InteractiveNetworkAuditor:
                 self.stop_heartbeat()
                 return False
 
+            # v4.2 Fix: Aggressive deduplication of all_hosts to prevent "ghost" duplicates
+            # caused by invisible ANSI codes or whitespace from discovery tools
+            import re
+
+            ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+            unique_map = {}
+            cleaned_hosts = []
+
+            for h in all_hosts:
+                raw = str(h)
+                clean = ansi_escape.sub("", raw).strip()
+                if clean and clean not in unique_map:
+                    unique_map[clean] = True
+                    cleaned_hosts.append(clean)  # Use the clean version
+
+            if len(cleaned_hosts) < len(all_hosts):
+                diff = len(all_hosts) - len(cleaned_hosts)
+                if self.logger:
+                    self.logger.debug(f"Deduplicated {diff} ghost hosts from discovery list.")
+
+            all_hosts = cleaned_hosts
+
             max_val = self.config["max_hosts_value"]
             if max_val != "all" and isinstance(max_val, int):
                 all_hosts = all_hosts[:max_val]
