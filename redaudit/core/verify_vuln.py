@@ -461,10 +461,129 @@ COMMON_INFRASTRUCTURE_VENDORS = frozenset(
 )
 
 
+def parse_cpe_components(cpe_string: str) -> Dict[str, str]:
+    """
+    Parse CPE 2.3 or 2.2 string into vendor, product, version components.
+
+    v4.3: Smart-Check helper for CPE-based validation.
+
+    Args:
+        cpe_string: CPE string like 'cpe:2.3:a:apache:httpd:2.4.50:*:*:*:*:*:*:*'
+                   or 'cpe:/a:apache:httpd:2.4.50'
+
+    Returns:
+        Dict with 'vendor', 'product', 'version' (may be empty strings)
+    """
+    result = {"vendor": "", "product": "", "version": ""}
+
+    if not cpe_string or not isinstance(cpe_string, str):
+        return result
+
+    cpe = cpe_string.strip().lower()
+
+    # CPE 2.3 format: cpe:2.3:part:vendor:product:version:...
+    if cpe.startswith("cpe:2.3:"):
+        parts = cpe.split(":")
+        if len(parts) >= 5:
+            result["vendor"] = parts[3] if parts[3] != "*" else ""
+            result["product"] = parts[4] if parts[4] != "*" else ""
+        if len(parts) >= 6:
+            result["version"] = parts[5] if parts[5] not in ("*", "-") else ""
+    # CPE 2.2 format: cpe:/part:vendor:product:version
+    elif cpe.startswith("cpe:/"):
+        rest = cpe[5:]  # Remove 'cpe:/'
+        parts = rest.split(":")
+        if len(parts) >= 3:
+            # parts[0] = 'a' (application), parts[1] = vendor, parts[2] = product
+            result["vendor"] = parts[1] if len(parts) > 1 else ""
+            result["product"] = parts[2] if len(parts) > 2 else ""
+            result["version"] = parts[3] if len(parts) > 3 else ""
+
+    return result
+
+
+def validate_cpe_against_template(
+    host_cpe_list: List[str],
+    template_config: Dict,
+) -> Tuple[bool, str]:
+    """
+    Validate host CPEs against expected vendors for a template.
+
+    v4.3: Smart-Check CPE validation.
+
+    Args:
+        host_cpe_list: List of CPE strings from host scan
+        template_config: Template config with expected_vendors
+
+    Returns:
+        Tuple of (is_fp, reason)
+    """
+    if not host_cpe_list:
+        return False, "no_host_cpe"
+
+    expected_vendors = template_config.get("expected_vendors", [])
+    fp_vendors = template_config.get("false_positive_vendors", [])
+
+    for cpe in host_cpe_list:
+        parsed = parse_cpe_components(cpe)
+        vendor = parsed.get("vendor", "")
+        product = parsed.get("product", "")
+
+        # If host CPE matches an expected vendor, it's likely genuine
+        for ev in expected_vendors:
+            if ev in vendor or ev in product:
+                return False, f"cpe_matches_expected:{ev}"
+
+        # If host CPE matches a known FP vendor, flag it
+        for fpv in fp_vendors:
+            if fpv in vendor or fpv in product:
+                return True, f"cpe_matches_fp_vendor:{fpv}"
+
+        # Check against infrastructure devices
+        for infra in COMMON_INFRASTRUCTURE_VENDORS:
+            if infra in vendor or infra in product:
+                return True, f"cpe_is_infrastructure:{infra}"
+
+    return False, "cpe_no_match"
+
+
+def extract_host_cpes(host_data: Dict) -> List[str]:
+    """
+    Extract all CPE strings from host scan data.
+
+    v4.3: Helper to gather CPEs from various sources.
+
+    Args:
+        host_data: Host record or agentless data
+
+    Returns:
+        List of CPE strings found
+    """
+    cpes = []
+
+    # From agentless fingerprint
+    if "http_server" in host_data:
+        server = host_data.get("http_server", "")
+        # Some servers report CPE in headers
+        if "cpe:/" in str(server).lower():
+            cpes.append(server)
+
+    # From ports data
+    for port in host_data.get("ports", []):
+        port_cpe = port.get("cpe")
+        if isinstance(port_cpe, str) and port_cpe:
+            cpes.append(port_cpe)
+        elif isinstance(port_cpe, list):
+            cpes.extend([c for c in port_cpe if isinstance(c, str) and c])
+
+    return cpes
+
+
 def check_nuclei_false_positive(
     finding: Dict,
     agentless_data: Optional[Dict] = None,
     logger=None,
+    host_data: Optional[Dict] = None,
 ) -> Tuple[bool, str]:
     """
     Check if a Nuclei finding is a likely false positive.
@@ -472,10 +591,13 @@ def check_nuclei_false_positive(
     v3.9.0: Detects FPs by comparing Server header/product identification
     against expected vendors for the CVE template.
 
+    v4.3: Added CPE validation for enhanced accuracy.
+
     Args:
         finding: Nuclei finding dict with template_id, response, etc.
         agentless_data: Optional agentless fingerprint for the host
         logger: Optional logger
+        host_data: Optional full host record with ports/CPE data (v4.3)
 
     Returns:
         Tuple of (is_false_positive, reason)
@@ -500,6 +622,16 @@ def check_nuclei_false_positive(
     # Type assertion for mypy: template_config is guaranteed to be Dict here
     assert isinstance(template_config, dict)
 
+    # v4.3: CPE-based validation (most reliable)
+    if host_data:
+        host_cpes = extract_host_cpes(host_data)
+        if host_cpes:
+            is_fp, reason = validate_cpe_against_template(host_cpes, template_config)
+            if is_fp:
+                return True, reason
+            if "matches_expected" in reason:
+                return False, reason  # Early exit if CPE confirms genuine
+
     # Extract server/product info from response
     response = finding.get("response", "")
     if not response:
@@ -515,12 +647,14 @@ def check_nuclei_false_positive(
     # Also check agentless fingerprint
     agentless_vendor = ""
     agentless_title = ""
+    agentless_server = ""
     if agentless_data:
         agentless_vendor = (agentless_data.get("device_vendor") or "").lower()
         agentless_title = (agentless_data.get("http_title") or "").lower()
+        agentless_server = (agentless_data.get("http_server") or "").lower()
 
     # Combine all identifiers
-    identifiers = f"{server_header} {agentless_vendor} {agentless_title}".lower()
+    identifiers = f"{server_header} {agentless_vendor} {agentless_title} {agentless_server}".lower()
 
     # Check if any expected vendor is present
     expected = template_config.get("expected_vendors", [])
