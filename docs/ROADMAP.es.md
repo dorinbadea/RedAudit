@@ -18,6 +18,12 @@ Estas características están aprobadas pero **aún no implementadas** en el có
 
 *(No hay elementos de prioridad alta pendientes actualmente)*
 
+### v4.3 Mejoras al Risk Score (Prioridad: Alta) ✅
+
+| Característica | Estado | Descripción |
+| :--- | :--- | :--- |
+| **Algoritmo Weighted Maximum Gravity** | ✅ Hecho | Refactorizado `calculate_risk_score()` para usar scores CVSS de datos NVD como factor principal. Fórmula: Base (max CVSS * 10) + Bonus densidad (log10) + Multiplicador exposición (1.15x para puertos externos). |
+
 ### v4.1 Optimizaciones de Rendimiento ✅ (En desarrollo)
 
 | Característica | Estado | Descripción |

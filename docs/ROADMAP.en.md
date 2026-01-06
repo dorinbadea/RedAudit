@@ -18,15 +18,23 @@ These features are approved but **not yet implemented** in the codebase.
 
 *(No high priority items currently pending)*
 
-### v4.1 Performance Optimizations (Priority: High)
+### v4.3 Risk Score Improvements (Priority: High) ✅
+
+| Feature | Status | Description |
+| :--- | :--- | :--- |
+| **Weighted Maximum Gravity Algorithm** | ✅ Done | Refactored `calculate_risk_score()` to use CVSS scores from NVD data as primary factor. Formula: Base (max CVSS * 10) + Density bonus (log10) + Exposure multiplier (1.15x for external ports). |
+
+### v4.1 Performance Optimizations (Priority: High) ✅
 
 Optimizations following the "fast discovery, targeted fingerprint" pattern:
 
 | Feature | Status | Description |
 | :--- | :--- | :--- |
-| **HyperScan-First Discovery** | 🚧 Planned | Use HyperScan (asyncio) to scan all 65,535 ports first (~60-90s), then run nmap fingerprinting only on discovered ports. Replaces current slow nmap -p- approach. Expected 3-4x speedup. |
-| **Parallel Vuln Scanning** | 🚧 Planned | Run nikto/testssl/whatweb concurrently instead of sequentially per host. Expected 2-3x speedup for web vuln phase. |
-| **Pre-filter Nikto Targets** | 🚧 Planned | Skip Nikto on CDN/proxy servers (Cloudflare, Akamai) based on Server header. Reduces false positives by ~50%. |
+| **HyperScan-First Sequential** | ✅ Done | Pre-scan all 65,535 ports per host sequentially before nmap. Avoids FD exhaustion. batch_size=2000. |
+| **Parallel Vuln Scanning** | ✅ Done | Run nikto/testssl/whatweb concurrently per host. |
+| **Pre-filter Nikto CDN** | ✅ Done | Skip Nikto on Cloudflare/Akamai/AWS CloudFront. |
+| **Masscan Port Reuse** | ✅ Done | Pre-scan uses masscan ports if already discovered. |
+| **CVE Lookup Reordering** | ✅ Done | CVE correlation moved after Vuln Scan + Nuclei. |
 
 ### v4.0 Architecture Refactoring ✅ (Released in v3.10.2)
 
