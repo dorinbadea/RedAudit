@@ -49,8 +49,8 @@ def get_nmap_arguments(mode: str, config: Optional[Dict] = None) -> str:
     args = {
         "rapido": f"-sn -{timing} --max-retries 1 --host-timeout 10s",
         "normal": f"-{timing} -F -sV --version-intensity 5 --host-timeout 60s --open",
-        # v2.9: Reduced max-retries from 2 to 1 for LAN efficiency
-        "completo": f"-{timing} -p- -sV -sC -A --version-intensity 9 --host-timeout 300s --max-retries 1",
+        # v4.1: -A includes -sV -sC -O, removed redundant flags
+        "completo": f"-{timing} -p- -A --version-intensity 9 --host-timeout 300s --max-retries 1",
     }
     return args.get(mode, args["normal"])
 
