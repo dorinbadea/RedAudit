@@ -10,6 +10,33 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-01-06
+
+### Añadido
+
+- **Pre-escaneo HyperScan-First Secuencial**: Nuevo método `_run_hyperscan_prescan()` ejecuta descubrimiento completo de puertos (65,535) secuencialmente en todos los hosts *antes* del fingerprinting paralelo con nmap. Esto elimina el agotamiento de descriptores de archivo y permite `batch_size=2000` para escaneos más rápidos.
+- **Reuso de Puertos Masscan**: Cuando masscan ya ha descubierto puertos para un host, HyperScan-First los reutiliza en lugar de re-escanear.
+- **Lookup Online de Fabricante OUI**: Cuando arp-scan/netdiscover locales devuelven "Unknown", RedAudit ahora recurre a la API de macvendors.com para enriquecimiento de fabricante MAC.
+- **Integración Básica de sqlmap**: Añadido `run_sqlmap()` al escaneo de vulnerabilidades para detección automática de inyección SQL en objetivos web. Ejecuta en modo batch con crawl de formularios y escaneo inteligente.
+- **Auto-detección de sqlmap**: Añadido sqlmap a `TOOL_CONFIGS` para detección automática de versión e informe.
+
+### Cambiado
+
+- **Optimización de Comandos Nmap**: Eliminadas flags redundantes `-sV -sC` cuando se usa `-A` (ya que `-A` las incluye). Aplicado tanto a `auditor_scan.py` como a `nmap.py`.
+- **Herramientas de Vuln en Paralelo**: Aumentados los workers de `ThreadPoolExecutor` de 3 a 4 para acomodar sqlmap junto a testssl, whatweb y nikto.
+
+### Corregido
+
+- **Bug de Recursión Infinita**: Corregido `hasattr(self, "_hyperscan_prescan_ports")` causando recursión infinita debido a `__getattr__` personalizado en clases Auditor. Cambiado a `"_hyperscan_prescan_ports" in self.__dict__`.
+
+### Documentación
+
+- **Roadmap v4.2**: Añadidas características planificadas: Escaneo de Vulns de Apps Web (sqlmap/ZAP completo), separación de Deep Scan, paso de datos Red Team → Agentless, mejoras UX del Wizard, limpieza de nombres HyperScan, mejora del log de sesión.
+
+### Instalador
+
+- **sqlmap**: Añadido a `EXTRA_PKGS` en `redaudit_install.sh` para instalación automática.
+
 ## [4.0.4] - 2026-01-05
 
 ### Corregido

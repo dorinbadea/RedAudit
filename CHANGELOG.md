@@ -10,6 +10,33 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-01-06
+
+### Added
+
+- **Sequential HyperScan-First Pre-scan**: New `_run_hyperscan_prescan()` method runs full port discovery (65,535 ports) sequentially on all hosts *before* parallel nmap fingerprinting. This eliminates file descriptor exhaustion and allows `batch_size=2000` for faster scanning.
+- **Masscan Port Reuse**: When masscan has already discovered ports for a host, HyperScan-First reuses them instead of re-scanning.
+- **Online OUI Vendor Lookup**: When local arp-scan/netdiscover return "Unknown" vendor, RedAudit now falls back to macvendors.com API for MAC vendor enrichment.
+- **Basic sqlmap Integration**: Added `run_sqlmap()` to vulnerability scanning for automatic SQL injection detection on web targets. Runs in batch mode with forms crawl and smart scan.
+- **sqlmap Auto-detection**: Added sqlmap to `TOOL_CONFIGS` for automatic version detection and reporting.
+
+### Changed
+
+- **Nmap Command Optimization**: Removed redundant `-sV -sC` flags when `-A` is used (since `-A` already includes them). Applied to both `auditor_scan.py` and `nmap.py`.
+- **Parallel Vuln Tools**: Increased `ThreadPoolExecutor` workers from 3 to 4 to accommodate sqlmap alongside testssl, whatweb, and nikto.
+
+### Fixed
+
+- **Infinite Recursion Bug**: Fixed `hasattr(self, "_hyperscan_prescan_ports")` causing infinite recursion due to custom `__getattr__` in Auditor classes. Changed to `"_hyperscan_prescan_ports" in self.__dict__`.
+
+### Documentation
+
+- **v4.2 Roadmap**: Added planned features: Web App Vuln Scan (full sqlmap/ZAP), Deep Scan separation, Red Team → Agentless data pass, Wizard UX improvements, HyperScan naming cleanup, Session log enhancement.
+
+### Installer
+
+- **sqlmap**: Added to `EXTRA_PKGS` in `redaudit_install.sh` for automatic installation.
+
 ## [4.0.4] - 2026-01-05
 
 ### Fixed
