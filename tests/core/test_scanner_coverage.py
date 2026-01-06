@@ -1081,7 +1081,7 @@ class TestScannerNmapArguments(unittest.TestCase):
 
         args_full = get_nmap_arguments("completo")
         self.assertIn("-p-", args_full)
-        self.assertIn("-sC", args_full)
+        # -sC is redundant with -A, so we only check for -A
         self.assertIn("-A", args_full)
         self.assertNotIn("--open", args_full)
 
