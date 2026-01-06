@@ -233,8 +233,8 @@ def hyperscan_tcp_sweep_sync(
 
 def hyperscan_full_port_sweep(
     target_ip: str,
-    batch_size: int = 1000,  # Reduced from 5000 to avoid 'Too many open files'
-    timeout: float = 0.5,  # Slightly increased for reliability
+    batch_size: int = 64,  # Very conservative to work with default ulimit (1024 FDs)
+    timeout: float = 0.5,
     logger=None,
     progress_callback: Optional[HyperScanProgressCallback] = None,
 ) -> List[int]:
@@ -242,13 +242,13 @@ def hyperscan_full_port_sweep(
     v4.1: Scan ALL 65,535 TCP ports on a single host using async batches.
 
     This is the core of the HyperScan-First optimization. By probing all ports
-    with fast async connections (~60-90s), we can then run nmap only on the
+    with fast async connections (~2-3min), we can then run nmap only on the
     discovered open ports, eliminating the slow -p- full scan.
 
     Args:
         target_ip: Single IP address to scan
-        batch_size: Concurrent connections (default 1000, safe for ulimit)
-        timeout: Per-connection timeout in seconds (0.5s is reliable)
+        batch_size: Concurrent connections (default 64, conservative for shared ulimit)
+        timeout: Per-connection timeout in seconds
         logger: Optional logger
         progress_callback: Optional callback(completed, total, desc) for progress
 
@@ -271,30 +271,41 @@ def hyperscan_full_port_sweep(
         )
 
     start_time = time.time()
+    open_ports: List[int] = []
 
-    # v4.1 fix: Use new event loop to avoid conflicts with ThreadPoolExecutor
+    # v4.1 fix: Use new event loop with proper cleanup to avoid FD exhaustion
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        try:
-            results = loop.run_until_complete(
-                hyperscan_tcp_sweep(
-                    targets=[target_ip],
-                    ports=all_ports,
-                    batch_size=batch_size,
-                    timeout=timeout,
-                    logger=logger,
-                    progress_callback=progress_callback,
-                )
+        results = loop.run_until_complete(
+            hyperscan_tcp_sweep(
+                targets=[target_ip],
+                ports=all_ports,
+                batch_size=batch_size,
+                timeout=timeout,
+                logger=logger,
+                progress_callback=progress_callback,
             )
-        finally:
-            loop.close()
+        )
+        open_ports = sorted(results.get(target_ip, []))
     except Exception as e:
         if logger:
             logger.warning("HyperScan FULL failed for %s: %s", target_ip, e)
-        return []
+        open_ports = []
+    finally:
+        # Ensure loop is properly closed to release file descriptors
+        if loop is not None:
+            try:
+                loop.run_until_complete(loop.shutdown_asyncgens())
+            except Exception:
+                pass
+            try:
+                loop.close()
+            except Exception:
+                pass
+            asyncio.set_event_loop(None)
 
-    open_ports = sorted(results.get(target_ip, []))
     duration = time.time() - start_time
 
     if logger:
