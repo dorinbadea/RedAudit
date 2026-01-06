@@ -29,6 +29,9 @@ from redaudit.core.scanner.traffic import (
     capture_traffic_snippet,
     start_background_capture,
     stop_background_capture,
+    merge_pcap_files,
+    organize_pcap_files,
+    finalize_pcap_artifacts,
 )
 
 from redaudit.core.scanner.status import (
@@ -71,6 +74,9 @@ __all__ = [
     "capture_traffic_snippet",
     "start_background_capture",
     "stop_background_capture",
+    "merge_pcap_files",
+    "organize_pcap_files",
+    "finalize_pcap_artifacts",
     "finalize_host_status",
     "output_has_identity",
     "extract_vendor_mac",

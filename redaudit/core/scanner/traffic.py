@@ -9,7 +9,7 @@ import re
 import subprocess
 import ipaddress
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from redaudit.utils.constants import (
     TRAFFIC_CAPTURE_DEFAULT_DURATION,
@@ -283,5 +283,209 @@ def stop_background_capture(
                     result["tshark_summary"] = summary
         except Exception as exc:
             result["tshark_error"] = str(exc)
+
+    return result
+
+
+def merge_pcap_files(
+    output_dir: str,
+    session_id: str,
+    extra_tools: Dict,
+    logger=None,
+    dry_run: Optional[bool] = None,
+) -> Optional[str]:
+    """
+    Merge all individual PCAP files into a single consolidated capture.
+
+    v4.3: PCAP management improvement - consolidates captures for easier analysis.
+
+    Args:
+        output_dir: Directory containing individual PCAP files
+        session_id: Session identifier for naming the merged file
+        extra_tools: Dict with tool paths (needs 'mergecap' or 'tshark')
+        logger: Optional logger
+        dry_run: If True, skip actual merge
+
+    Returns:
+        Path to merged PCAP file, or None if merge failed/skipped
+    """
+    import shutil
+    import glob
+
+    if _is_dry_run(dry_run):
+        if logger:
+            logger.info("[dry-run] skipping PCAP merge")
+        return None
+
+    # Find mergecap (part of Wireshark suite)
+    mergecap = extra_tools.get("mergecap") or shutil.which("mergecap")
+    if not mergecap:
+        if logger:
+            logger.debug("mergecap not found, skipping PCAP consolidation")
+        return None
+
+    # Find all individual PCAP files
+    pcap_pattern = os.path.join(output_dir, "traffic_*.pcap")
+    pcap_files = sorted(glob.glob(pcap_pattern))
+
+    if len(pcap_files) < 2:
+        if logger:
+            logger.debug("Less than 2 PCAP files found, skipping merge")
+        return None
+
+    # Create merged file
+    merged_filename = f"full_capture_{session_id}.pcap"
+    merged_file = os.path.join(output_dir, merged_filename)
+
+    cmd = [mergecap, "-w", merged_file] + pcap_files
+
+    try:
+        runner = _make_runner(logger=logger, dry_run=dry_run, timeout=60.0)
+        res = runner.run(
+            cmd,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=60.0,
+        )
+
+        if res.returncode == 0 and os.path.exists(merged_file):
+            # Set secure permissions
+            try:
+                os.chmod(merged_file, 0o600)
+            except Exception:
+                pass
+
+            if logger:
+                logger.info(
+                    "Merged %d PCAP files into %s",
+                    len(pcap_files),
+                    merged_filename,
+                )
+            return merged_file
+        else:
+            if logger:
+                error_msg = res.stderr or res.stdout or "Unknown error"
+                logger.warning("PCAP merge failed: %s", error_msg[:200])
+            return None
+
+    except Exception as exc:
+        if logger:
+            logger.warning("PCAP merge error: %s", exc)
+        return None
+
+
+def organize_pcap_files(
+    output_dir: str,
+    merged_file: Optional[str] = None,
+    logger=None,
+) -> Optional[str]:
+    """
+    Move individual PCAP files to a raw_captures subdirectory.
+
+    v4.3: PCAP management improvement - keeps output directory clean.
+
+    Args:
+        output_dir: Main output directory
+        merged_file: Path to merged file (to exclude from move)
+        logger: Optional logger
+
+    Returns:
+        Path to raw_captures directory, or None if no files moved
+    """
+    import shutil
+    import glob
+
+    # Find individual PCAP files
+    pcap_pattern = os.path.join(output_dir, "traffic_*.pcap")
+    pcap_files = glob.glob(pcap_pattern)
+
+    if not pcap_files:
+        return None
+
+    # Create subdirectory
+    raw_dir = os.path.join(output_dir, "raw_captures")
+    try:
+        os.makedirs(raw_dir, exist_ok=True)
+    except Exception as exc:
+        if logger:
+            logger.warning("Failed to create raw_captures directory: %s", exc)
+        return None
+
+    moved_count = 0
+    for pcap_file in pcap_files:
+        # Don't move the merged file
+        if merged_file and os.path.abspath(pcap_file) == os.path.abspath(merged_file):
+            continue
+
+        try:
+            dest = os.path.join(raw_dir, os.path.basename(pcap_file))
+            shutil.move(pcap_file, dest)
+            moved_count += 1
+        except Exception as exc:
+            if logger:
+                logger.debug("Failed to move %s: %s", pcap_file, exc)
+
+    if moved_count > 0 and logger:
+        logger.info("Moved %d PCAP files to raw_captures/", moved_count)
+
+    return raw_dir if moved_count > 0 else None
+
+
+def finalize_pcap_artifacts(
+    output_dir: str,
+    session_id: str,
+    extra_tools: Dict,
+    logger=None,
+    dry_run: Optional[bool] = None,
+) -> Dict[str, Any]:
+    """
+    Finalize PCAP artifacts: merge individual files and organize into subdirectory.
+
+    v4.3: Single entry point for PCAP post-processing.
+
+    Args:
+        output_dir: Main output directory
+        session_id: Session identifier for naming
+        extra_tools: Dict with tool paths
+        logger: Optional logger
+        dry_run: If True, skip actual operations
+
+    Returns:
+        Dict with 'merged_file' and 'raw_captures_dir' paths (may be None)
+    """
+    result: Dict[str, Any] = {
+        "merged_file": None,
+        "raw_captures_dir": None,
+        "individual_count": 0,
+    }
+
+    import glob
+
+    # Count individual files before processing
+    pcap_pattern = os.path.join(output_dir, "traffic_*.pcap")
+    pcap_files = glob.glob(pcap_pattern)
+    result["individual_count"] = len(pcap_files)
+
+    if not pcap_files:
+        return result
+
+    # Step 1: Merge files
+    merged_file = merge_pcap_files(
+        output_dir=output_dir,
+        session_id=session_id,
+        extra_tools=extra_tools,
+        logger=logger,
+        dry_run=dry_run,
+    )
+    result["merged_file"] = merged_file
+
+    # Step 2: Organize into subdirectory
+    raw_dir = organize_pcap_files(
+        output_dir=output_dir,
+        merged_file=merged_file,
+        logger=logger,
+    )
+    result["raw_captures_dir"] = raw_dir
 
     return result

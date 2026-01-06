@@ -904,6 +904,31 @@ class InteractiveNetworkAuditor:
 
             self.config["rate_limit_delay"] = self.rate_limit_delay
             generate_summary(self.results, self.config, all_hosts, results, self.scan_start_time)
+
+            # v4.3: Finalize PCAP artifacts (merge and organize)
+            output_dir = self.config.get("_actual_output_dir") or self.config.get("output_dir")
+            if output_dir and not self.interrupted:
+                try:
+                    from redaudit.core.scanner.traffic import finalize_pcap_artifacts
+
+                    session_id = ts_folder.replace("-", "").replace("_", "")
+                    pcap_result = finalize_pcap_artifacts(
+                        output_dir=output_dir,
+                        session_id=session_id,
+                        extra_tools=self.extra_tools,
+                        logger=self.logger,
+                        dry_run=self.config.get("dry_run"),
+                    )
+                    if pcap_result.get("merged_file"):
+                        self.results["pcap_summary"] = {
+                            "merged_file": os.path.basename(pcap_result["merged_file"]),
+                            "raw_captures_dir": "raw_captures",
+                            "individual_count": pcap_result.get("individual_count", 0),
+                        }
+                except Exception as pcap_err:
+                    if self.logger:
+                        self.logger.debug("PCAP finalization skipped: %s", pcap_err)
+
             self.save_results(partial=self.interrupted)
             self.show_results()
 
