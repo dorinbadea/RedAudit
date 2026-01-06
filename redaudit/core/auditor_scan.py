@@ -1692,17 +1692,26 @@ class AuditorScan:
                 done = 0
 
                 if use_rich and total > 0:
+                    # v4.2: Multi-bar progress for DeepScan (consistent with host scan)
                     progress = self.ui.get_standard_progress(transient=False)
                     if progress:
                         with progress:
-                            initial_detail = self._get_ui_detail()
-                            task = progress.add_task(
-                                f"[cyan]Deep Scan ({total} hosts)",
-                                total=total,
-                                detail=initial_detail,
-                            )
+                            # Track per-host start times and tasks
+                            host_tasks = {}  # future -> (task_id, ip, start_time)
+                            for fut, ip in futures.items():
+                                task_id = progress.add_task(
+                                    f"[cyan]  {ip}",
+                                    total=100,
+                                    start=True,
+                                )
+                                host_tasks[fut] = (task_id, ip, time.time())
+
                             pending = set(futures)
-                            last_detail = initial_detail
+                            last_heartbeat = time.time()
+                            start_t = time.time()
+                            # Deep scan typically takes longer, use generous estimate for bar pacing
+                            deep_timeout_est = 120  # Nominal estimate for UI pacing
+
                             while pending:
                                 if self.interrupted:
                                     for f in pending:
@@ -1710,23 +1719,48 @@ class AuditorScan:
                                     break
 
                                 completed, pending = wait(
-                                    pending, timeout=0.25, return_when=FIRST_COMPLETED
+                                    pending, timeout=0.5, return_when=FIRST_COMPLETED
                                 )
 
-                                detail = self._get_ui_detail()
-                                if detail != last_detail:
-                                    progress.update(task, detail=detail)
-                                    last_detail = detail
+                                now = time.time()
+                                if now - last_heartbeat >= 60.0:
+                                    elapsed = int(now - start_t)
+                                    mins, secs = divmod(elapsed, 60)
+                                    self.ui.print_status(
+                                        f"Deep Scan... {done}/{total} ({mins}:{secs:02d})",
+                                        "INFO",
+                                        force=True,
+                                    )
+                                    last_heartbeat = now
+
+                                # Update progress for pending hosts
+                                for pending_fut in pending:
+                                    if pending_fut in host_tasks:
+                                        task_id, ip, host_start = host_tasks[pending_fut]
+                                        elapsed_host = now - host_start
+                                        # Cap at 95% until complete
+                                        pct = min(95, int((elapsed_host / deep_timeout_est) * 100))
+                                        progress.update(task_id, completed=pct)
 
                                 for fut in completed:
-                                    host_ip = futures.get(fut)
+                                    if fut not in host_tasks:
+                                        continue
+                                    task_id, host_ip, _ = host_tasks[fut]
                                     done += 1
-                                    progress.update(
-                                        task,
-                                        advance=1,
-                                        description=f"[cyan]Deep Scan: {host_ip}",
-                                        detail=last_detail,
-                                    )
+                                    try:
+                                        fut.result()
+                                        progress.update(
+                                            task_id,
+                                            completed=100,
+                                            description=f"[green]✅ {host_ip}",
+                                        )
+                                    except Exception as e:
+                                        self.logger.error(f"Deep scan error for {host_ip}: {e}")
+                                        progress.update(
+                                            task_id,
+                                            completed=100,
+                                            description=f"[red]❌ {host_ip}",
+                                        )
                 else:
                     # Fallback loop
                     for fut in as_completed(futures):
