@@ -26,6 +26,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from redaudit.core.command_runner import CommandRunner
 from redaudit.utils.dry_run import is_dry_run
+from redaudit.utils.oui_lookup import lookup_vendor_online
 
 ProgressCallback = Callable[[str, int, int], None]
 
@@ -350,13 +351,23 @@ def netdiscover_scan(
     for line in out.splitlines():
         parts = line.split()
         if len(parts) >= 2 and re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", parts[0]):
+            mac = parts[1] if len(parts) > 1 else None
+            # Vendor is everything after the first few columns
+            vendor = " ".join(parts[4:]) if len(parts) > 4 else None
+            # v4.1: Enrich Unknown vendors via online OUI lookup
+            if mac and (not vendor or "unknown" in vendor.lower()):
+                try:
+                    online_vendor = lookup_vendor_online(mac)
+                    if online_vendor:
+                        vendor = online_vendor
+                except Exception:
+                    pass
             host = {
                 "ip": parts[0],
-                "mac": parts[1] if len(parts) > 1 else None,
+                "mac": mac,
             }
-            # Vendor is everything after the first few columns
-            if len(parts) > 4:
-                host["vendor"] = " ".join(parts[4:])
+            if vendor:
+                host["vendor"] = vendor
             result["hosts"].append(host)
 
     return result
@@ -417,12 +428,22 @@ def arp_scan_active(
         if len(parts) >= 2:
             ip_match = re.match(r"^(\d{1,3}(?:\.\d{1,3}){3})$", parts[0].strip())
             if ip_match:
+                mac = parts[1].strip() if len(parts) > 1 else None
+                vendor = parts[2].strip() if len(parts) > 2 else None
+                # v4.1: Enrich Unknown vendors via online OUI lookup
+                if mac and (not vendor or "unknown" in vendor.lower()):
+                    try:
+                        online_vendor = lookup_vendor_online(mac)
+                        if online_vendor:
+                            vendor = online_vendor
+                    except Exception:
+                        pass
                 host = {
                     "ip": ip_match.group(1),
-                    "mac": parts[1].strip() if len(parts) > 1 else None,
+                    "mac": mac,
                 }
-                if len(parts) > 2:
-                    host["vendor"] = parts[2].strip()
+                if vendor:
+                    host["vendor"] = vendor
                 result["hosts"].append(host)
 
     return result
