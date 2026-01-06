@@ -143,11 +143,14 @@ async def hyperscan_tcp_sweep(
     timeout: float = DEFAULT_TCP_TIMEOUT,
     logger=None,
     progress_callback=None,
+    mode: str = "auto",
 ) -> Dict[str, List[int]]:
     """
     Parallel TCP port sweep using asyncio batch scanning.
 
     Scans thousands of ports simultaneously for ultra-fast discovery.
+
+    v4.3: Added mode parameter for SYN scan support.
 
     Args:
         targets: List of IP addresses to scan
@@ -156,6 +159,7 @@ async def hyperscan_tcp_sweep(
         timeout: Connection timeout in seconds
         logger: Optional logger
         progress_callback: Optional callback(completed, total, desc) for progress
+        mode: Scan mode - 'auto', 'connect', or 'syn' (v4.3)
 
     Returns:
         Dict mapping IP -> list of open ports
@@ -163,6 +167,39 @@ async def hyperscan_tcp_sweep(
     if not targets or not ports:
         return {}
 
+    # v4.3: Mode selection
+    use_syn = False
+    if mode in ("syn", "auto"):
+        try:
+            from redaudit.core.syn_scanner import is_syn_scan_available, syn_sweep_batch
+
+            available, reason = is_syn_scan_available()
+            if mode == "syn":
+                if not available:
+                    if logger:
+                        logger.warning(
+                            "SYN scan requested but unavailable (%s), falling back to connect",
+                            reason,
+                        )
+                else:
+                    use_syn = True
+            elif mode == "auto" and available:
+                use_syn = True
+                if logger:
+                    logger.info("HyperScan: Using SYN mode (root + scapy available)")
+        except ImportError:
+            if mode == "syn" and logger:
+                logger.warning("SYN scan unavailable: syn_scanner module missing")
+
+    # Use SYN scan if selected
+    if use_syn:
+        try:
+            return await syn_sweep_batch(targets, ports, batch_size, timeout, logger)
+        except Exception as e:
+            if logger:
+                logger.warning("SYN scan failed (%s), falling back to connect", e)
+
+    # Default: TCP connect scan
     start_time = time.time()
     semaphore = asyncio.Semaphore(batch_size)
     results: Dict[str, List[int]] = {ip: [] for ip in targets}
@@ -176,7 +213,7 @@ async def hyperscan_tcp_sweep(
 
     if logger:
         logger.info(
-            "HyperScan TCP: %d targets x %d ports = %d probes",
+            "HyperScan TCP (connect): %d targets x %d ports = %d probes",
             len(targets),
             len(ports),
             total_probes,
@@ -215,9 +252,12 @@ def hyperscan_tcp_sweep_sync(
     timeout: float = DEFAULT_TCP_TIMEOUT,
     logger=None,
     progress_callback: Optional[HyperScanProgressCallback] = None,
+    mode: str = "auto",
 ) -> Dict[str, List[int]]:
     """
     Synchronous wrapper for hyperscan_tcp_sweep.
+
+    v4.3: Added mode parameter for SYN scan support.
     """
     return asyncio.run(
         hyperscan_tcp_sweep(
@@ -227,6 +267,7 @@ def hyperscan_tcp_sweep_sync(
             timeout,
             logger,
             progress_callback=progress_callback,
+            mode=mode,
         )
     )
 
