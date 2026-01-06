@@ -32,11 +32,12 @@ Estas características están aprobadas pero **aún no implementadas** en el có
 
 | Característica | Estado | Descripción |
 | :--- | :--- | :--- |
-| **Separación Deep Scan** | 🚧 Planificado | Extraer Deep Scan de `scan_host_ports()` como fase independiente. Mejor utilización de ThreadPoolExecutor. |
-| **Red Team → Agentless** | 🚧 Planificado | Pasar resultados SMB/LDAP de Red Team a Agentless Verify para evitar re-probing duplicado. |
-| **Wizard UX: Phase 0 auto** | 🚧 Planificado | En perfil Exhaustivo, activar Phase 0 automáticamente sin preguntar. |
-| **Wizard UX: Personalizado** | 🚧 Planificado | Mejorar lógica del wizard "Personalizado" para no redundar preguntas ya respondidas en preestablecidos. |
-| **HyperScan naming cleanup** | 🚧 Planificado | Renombrar: `hyperscan_tcp_probe` → `hyperscan_host_discovery`, `hyperscan_full_port_sweep` → `hyperscan_port_discovery`. |
+| **Separación Deep Scan** | 🚧 Planificado | Extraer Deep Scan de `scan_host_ports()` como fase independiente. |
+| **Red Team → Agentless** | 🚧 Planificado | Pasar resultados SMB/LDAP de Red Team a Agentless Verify. |
+| **Wizard UX: Phase 0 auto** | 🚧 Planificado | En perfil Exhaustivo, activar Phase 0 automáticamente. |
+| **Wizard UX: Personalizado** | 🚧 Planificado | Mejorar lógica del wizard Personalizado. |
+| **HyperScan naming cleanup** | 🚧 Planificado | Renombrar funciones para clarificar propósito. |
+| **Session log mejorado** | 🚧 Planificado | Session log muy escueto vs cli.txt manual. Añadir más detalle. |
 
 ### v4.0 Refactorización Arquitectónica ✅ (Liberado en v3.10.2)
 
