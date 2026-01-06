@@ -18,15 +18,22 @@ Estas características están aprobadas pero **aún no implementadas** en el có
 
 *(No hay elementos de prioridad alta pendientes actualmente)*
 
-### v4.1 Optimizaciones de Rendimiento (Prioridad: Alta)
-
-Optimizaciones siguiendo el patrón "descubrimiento rápido, fingerprint dirigido":
+### v4.1 Optimizaciones de Rendimiento ✅ (En desarrollo)
 
 | Característica | Estado | Descripción |
 | :--- | :--- | :--- |
-| **Descubrimiento HyperScan-First** | 🚧 Planificado | Usar HyperScan (asyncio) para escanear los 65.535 puertos primero (~60-90s), luego ejecutar fingerprinting nmap solo en puertos descubiertos. Reemplaza el enfoque lento actual de nmap -p-. Mejora esperada: 3-4x más rápido. |
-| **Escaneo Vulns Paralelo** | 🚧 Planificado | Ejecutar nikto/testssl/whatweb concurrentemente en lugar de secuencialmente por host. Mejora esperada: 2-3x más rápido en fase de vulnerabilidades web. |
-| **Pre-filtrado Targets Nikto** | 🚧 Planificado | Omitir Nikto en servidores CDN/proxy (Cloudflare, Akamai) basándose en cabecera Server. Reduce falsos positivos en ~50%. |
+| **HyperScan-First Secuencial** | ✅ Hecho | Pre-escaneo de 65.535 puertos por host secuencialmente antes de nmap. Evita agotamiento de file descriptors. batch_size=2000. |
+| **Escaneo Vulns Paralelo** | ✅ Hecho | nikto/testssl/whatweb concurrentemente por host. |
+| **Pre-filtrado Nikto CDN** | ✅ Hecho | Omitir Nikto en Cloudflare/Akamai/AWS CloudFront. |
+| **Reutilización puertos masscan** | ✅ Hecho | Pre-scan usa puertos de masscan si ya estaban descubiertos. |
+| **CVE Lookup reordenado** | ✅ Hecho | CVE correlation movido después de Vuln Scan + Nuclei. |
+
+### v4.2 Optimizaciones Pipeline (Prioridad: Media)
+
+| Característica | Estado | Descripción |
+| :--- | :--- | :--- |
+| **Separación Deep Scan** | 🚧 Planificado | Extraer Deep Scan de `scan_host_ports()` como fase independiente. Mejor utilización de ThreadPoolExecutor. |
+| **Red Team → Agentless** | 🚧 Planificado | Pasar resultados SMB/LDAP de Red Team a Agentless Verify para evitar re-probing duplicado. |
 
 ### v4.0 Refactorización Arquitectónica ✅ (Liberado en v3.10.2)
 
