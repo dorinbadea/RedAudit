@@ -354,6 +354,14 @@ TRANSLATIONS = {
             "Max targets for Red Team modules (default: 50; higher = slower):"
         ),
         "net_discovery_options_saved": "✓ Net Discovery options saved",
+        # v4.2: SQLMap integration
+        "sqlmap_config_q": "Web Application Scan Intensity (sqlmap):",
+        "sqlmap_l1": "Standard (Level 1, Risk 1) — Safe, basic checks",
+        "sqlmap_l3": "Deep (Level 3, Risk 1) — More payloads, header checks",
+        "sqlmap_risk": "Risky (Level 3, Risk 2) — Heavy, time-based SQLi (slower)",
+        "sqlmap_extreme": "Extreme (Level 5, Risk 3) — Max payloads, potentially destructive",
+        "zap_q": "Enable OWASP ZAP? (Requires zap.sh in PATH, slower exection)",
+        "redteam_masscan_q": "Use masscan for initial discovery? (High speed, requires root)",
     },
     "es": {
         "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
@@ -699,6 +707,14 @@ TRANSLATIONS = {
             "Máx. objetivos para módulos Red Team (por defecto: 50; más alto = más lento):"
         ),
         "net_discovery_options_saved": "✓ Opciones de Net Discovery guardadas",
+        # v4.2: Integración SQLMap
+        "sqlmap_config_q": "Intensidad de escaneo Web (sqlmap):",
+        "sqlmap_l1": "Estándar (Nivel 1, Riesgo 1) — Seguro, chequeos básicos",
+        "sqlmap_l3": "Profundo (Nivel 3, Riesgo 1) — Más payloads, headers",
+        "sqlmap_risk": "Arriesgado (Nivel 3, Riesgo 2) — Pesado, SQLi basado en tiempo",
+        "sqlmap_extreme": "Extremo (Nivel 5, Riesgo 3) — Máximos payloads, potencial destrucción",
+        "zap_q": "¿Activar OWASP ZAP? (Requiere zap.sh en PATH, ejecución más lenta)",
+        "redteam_masscan_q": "¿Usar masscan para descubrimiento inicial? (Alta velocidad, requiere root)",
     },
 }
 
