@@ -38,7 +38,7 @@ Estas características están aprobadas pero **aún no implementadas** en el có
 | **Separación Deep Scan** | 🚧 Planificado | Extraer Deep Scan de `scan_host_ports()` como fase independiente. |
 | **Red Team → Agentless** | 🚧 Planificado | Pasar resultados SMB/LDAP de Red Team a Agentless Verify. |
 | **Wizard UX: Phase 0 auto** | 🚧 Planificado | En perfil Exhaustivo, activar Phase 0 automáticamente. |
-| **Wizard UX: Personalizado** | 🚧 Planificado | Mejorar lógica del wizard Personalizado. |
+| **Wizard UX: Personalizado** | 🚧 Planificado | Mejorar lógica del wizard Personalizado. Añadir opción de estrategia de escaneo de puertos (masscan rápido vs HyperScan exhaustivo) sin redundancia. |
 | **HyperScan naming cleanup** | 🚧 Planificado | Renombrar funciones para clarificar propósito. |
 | **Session log mejorado** | 🚧 Planificado | Session log muy escueto vs cli.txt manual. Añadir más detalle. |
 
