@@ -6,7 +6,7 @@
 
 ---
 
-## 🚀 Optimizaciones de Rendimiento
+## Optimizaciones de Rendimiento
 
 ### Pre-escaneo HyperScan-First Secuencial
 
@@ -29,7 +29,7 @@ Cuando masscan ya ha descubierto puertos (p. ej., via flag `--masscan`), HyperSc
 
 ---
 
-## ✨ Nuevas Características
+## Nuevas Características
 
 ### Lookup Online de Fabricante OUI
 
@@ -60,7 +60,7 @@ RedAudit ahora integra **sqlmap** para detección automática de inyección SQL 
 
 ---
 
-## 🔧 Mejoras
+## Mejoras
 
 ### Optimización de Comandos Nmap
 
@@ -77,7 +77,7 @@ Aumentados los workers paralelos de 3 a 4 para acomodar sqlmap junto a testssl, 
 
 ---
 
-## 🐛 Corrección de Errores
+## Corrección de Errores
 
 ### Corrección de Recursión Infinita
 
@@ -87,14 +87,14 @@ Corregido un bug crítico donde `hasattr(self, "_hyperscan_prescan_ports")` caus
 
 ---
 
-## 📚 Documentación
+## Documentación
 
 - Actualizado ROADMAP.es.md con características planificadas para v4.2
 - Añadido Escaneo de Vulns de Apps Web (sqlmap/ZAP) al roadmap
 
 ---
 
-## 🔮 Próximamente en v4.2
+## Próximamente en v4.2
 
 - Integración completa de sqlmap/ZAP para testing comprehensivo de apps web
 - Separación de Deep Scan de `scan_host_ports()`
