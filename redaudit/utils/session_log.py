@@ -15,9 +15,32 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, TextIO
+import logging
+import threading
+
 
 # ANSI escape code pattern for stripping colors
 ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+class SessionLogHandler(logging.Handler):
+    """Logging handler that redirects to SessionLogger."""
+
+    def __init__(self, session_logger: "SessionLogger"):
+        super().__init__()
+        self.session_logger = session_logger
+        self.setFormatter(
+            logging.Formatter(
+                "%(asctime)s [DEBUG] %(filename)s:%(lineno)d - %(message)s", datefmt="%H:%M:%S"
+            )
+        )
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+            self.session_logger.write_direct(msg + "\n")
+        except Exception:
+            self.handleError(record)
 
 
 class SessionLogger:
@@ -59,6 +82,8 @@ class SessionLogger:
         self._mode = (
             (mode or os.environ.get("REDAUDIT_SESSION_LOG_MODE") or "lines").strip().lower()
         )
+        self._file_lock = threading.Lock()
+        self._log_handler: Optional[logging.Handler] = None
 
     def start(self) -> bool:
         """
@@ -88,13 +113,22 @@ class SessionLogger:
             self.original_stderr = sys.stderr
 
             # Create tee streams
-            self.tee_stdout = TeeStream(self.original_stdout, self.log_file, mode=self._mode)
+            self.tee_stdout = TeeStream(
+                self.original_stdout, self.log_file, self._file_lock, mode=self._mode
+            )
             self.tee_stderr = TeeStream(
                 self.original_stderr,
                 self.log_file,
+                self._file_lock,
                 prefix="[stderr] ",
                 mode=self._mode,
             )
+
+            # Hook into RedAudit logger for debug capture
+            logger = logging.getLogger("RedAudit")
+            self._log_handler = SessionLogHandler(self)
+            self._log_handler.setLevel(logging.DEBUG)
+            logger.addHandler(self._log_handler)
 
             # Replace sys streams
             sys.stdout = self.tee_stdout  # type: ignore[assignment]
@@ -138,6 +172,11 @@ class SessionLogger:
             txt_path = self._create_clean_version()
 
             self.active = False
+            # Remove log handler
+            if self._log_handler:
+                logging.getLogger("RedAudit").removeHandler(self._log_handler)
+                self._log_handler = None
+
             return str(txt_path) if txt_path else None
 
         except Exception as e:
@@ -200,6 +239,17 @@ Session Ended: {datetime.now().isoformat()}
         except Exception:
             return None
 
+    def write_direct(self, msg: str) -> None:
+        """Write directly to log file (thread-safe)."""
+        if not self.log_file:
+            return
+        try:
+            with self._file_lock:
+                self.log_file.write(msg)
+                self.log_file.flush()
+        except Exception:
+            pass
+
 
 class TeeStream(io.TextIOBase):
     """
@@ -218,7 +268,13 @@ class TeeStream(io.TextIOBase):
     PROGRESS_PATTERN = re.compile(r"[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏].*━+.*\d+%")
 
     def __init__(
-        self, terminal: TextIO, log_file: TextIO, prefix: str = "", *, mode: str = "lines"
+        self,
+        terminal: TextIO,
+        log_file: TextIO,
+        lock: threading.Lock,
+        prefix: str = "",
+        *,
+        mode: str = "lines",
     ):
         """
         Initialize tee stream.
@@ -226,10 +282,12 @@ class TeeStream(io.TextIOBase):
         Args:
             terminal: Original terminal stream
             log_file: Log file to write to
+            lock: Thread lock for file operations
             prefix: Optional prefix for log entries
         """
         self.terminal = terminal
         self.log_file = log_file
+        self.lock = lock
         self.prefix = prefix
         self.mode = (mode or "lines").strip().lower()
         self._log_buf = ""
@@ -248,13 +306,14 @@ class TeeStream(io.TextIOBase):
 
         # Write to log file
         try:
-            if self.mode == "raw":
-                if self.prefix and data.strip():
-                    self.log_file.write(self.prefix)
-                self.log_file.write(data)
-                self.log_file.flush()
-            else:
-                self._write_lines(data)
+            with self.lock:
+                if self.mode == "raw":
+                    if self.prefix and data.strip():
+                        self.log_file.write(self.prefix)
+                    self.log_file.write(data)
+                    self.log_file.flush()
+                else:
+                    self._write_lines(data)
         except Exception:
             pass  # Don't fail if log write fails
 
@@ -391,9 +450,12 @@ class TeeStream(io.TextIOBase):
         try:
             # Flush pending heartbeat count if any
             if self._heartbeat_count > 1:
-                self.log_file.write(f"  ... (repeated {self._heartbeat_count}x)\n")
-                self._heartbeat_count = 0
-            self.log_file.flush()
+                with self.lock:
+                    self.log_file.write(f"  ... (repeated {self._heartbeat_count}x)\n")
+                    self.log_file.flush()
+            self._heartbeat_count = 0
+            with self.lock:
+                self.log_file.flush()
         except Exception:
             pass
 

@@ -83,6 +83,9 @@ class ConfigurationContext(MutableMapping):
             "windows_verify_enabled": False,
             "windows_verify_max_targets": 20,
             "nuclei_enabled": False,
+            "sqlmap_level": 1,
+            "sqlmap_risk": 1,
+            "zap_enabled": False,
         }
 
     # -------------------------------------------------------------------------
@@ -225,6 +228,16 @@ class ConfigurationContext(MutableMapping):
     def net_discovery_redteam(self) -> bool:
         """Check if red team net discovery is enabled."""
         return bool(self._config.get("net_discovery_redteam", False))
+
+    @property
+    def sqlmap_level(self) -> int:
+        """Get sqlmap level (1-5)."""
+        return int(self._config.get("sqlmap_level", 1) or 1)
+
+    @property
+    def sqlmap_risk(self) -> int:
+        """Get sqlmap risk (1-3)."""
+        return int(self._config.get("sqlmap_risk", 1) or 1)
 
     # -------------------------------------------------------------------------
     # Typed Properties - Thresholds & Limits

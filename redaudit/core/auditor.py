@@ -9,6 +9,7 @@ Main orchestrator class for network auditing operations.
 
 import math
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -350,6 +351,31 @@ class InteractiveNetworkAuditor:
 
         return self.ask_yes_no(self.ui.t("start_audit"), default="yes")
 
+    def _filter_auditor_ips(self, hosts: list) -> list:
+        """
+        Filter out auditor's own IPs from the host list.
+        Uses self.results['network_info'] as the source of truth.
+        """
+        if not self.results.get("network_info"):
+            return hosts
+
+        auditor_ips = {n.get("ip") for n in self.results["network_info"] if n.get("ip")}
+        if not auditor_ips:
+            return hosts
+
+        filtered_hosts = [h for h in hosts if h not in auditor_ips]
+        excluded_count = len(hosts) - len(filtered_hosts)
+
+        if excluded_count > 0:
+            self.ui.print_status(
+                self.ui.t("auditor_ip_excluded", excluded_count),
+                "INFO",
+            )
+            if hasattr(self, "logger") and self.logger:
+                self.logger.info(f"Excluded {excluded_count} self-IPs: {auditor_ips}")
+
+        return filtered_hosts
+
     def run_complete_scan(self):
         """Execute the complete scan workflow."""
         self.scan_start_time = datetime.now()
@@ -483,6 +509,7 @@ class InteractiveNetworkAuditor:
                         "kerberos_realm": self.config.get("net_discovery_kerberos_realm"),
                         "kerberos_userlist": self.config.get("net_discovery_kerberos_userlist"),
                         "active_l2": bool(self.config.get("net_discovery_active_l2", False)),
+                        "use_masscan": self.config.get("net_discovery_masscan", True),
                     }
 
                     # v3.2.3: Add spinner progress for net_discovery phase
@@ -573,7 +600,7 @@ class InteractiveNetworkAuditor:
                         upnp_devices = self.results["net_discovery"].get("upnp_devices", [])
                         tcp_hosts = self.results["net_discovery"].get("hyperscan_tcp_hosts", {})
                         self.ui.print_status(
-                            f"✓ HyperScan: {len(arp_hosts)} ARP, {len(upnp_devices)} IoT/UPNP, {len(tcp_hosts)} TCP hosts ({hyperscan_dur:.1f}s)",
+                            f"✅ HyperScan: {len(arp_hosts)} ARP, {len(upnp_devices)} IoT/UPNP, {len(tcp_hosts)} TCP hosts ({hyperscan_dur:.1f}s)",
                             "OKGREEN",
                         )
                     backdoors = self.results["net_discovery"].get("potential_backdoors", [])
@@ -619,6 +646,31 @@ class InteractiveNetworkAuditor:
                 self.stop_heartbeat()
                 return False
 
+            # v4.2 Fix: Aggressive deduplication of all_hosts to prevent "ghost" duplicates
+            # caused by invisible ANSI codes or whitespace from discovery tools
+            import re
+
+            ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+            unique_map = {}
+            cleaned_hosts = []
+
+            for h in all_hosts:
+                raw = str(h)
+                clean = ansi_escape.sub("", raw).strip()
+                if clean and clean not in unique_map:
+                    unique_map[clean] = True
+                    cleaned_hosts.append(clean)  # Use the clean version
+
+            if len(cleaned_hosts) < len(all_hosts):
+                diff = len(all_hosts) - len(cleaned_hosts)
+                if self.logger:
+                    self.logger.debug(f"Deduplicated {diff} ghost hosts from discovery list.")
+
+            all_hosts = cleaned_hosts
+
+            # v4.3: Auto-exclude Auditor IP
+            all_hosts = self._filter_auditor_ips(all_hosts)
+
             max_val = self.config["max_hosts_value"]
             if max_val != "all" and isinstance(max_val, int):
                 all_hosts = all_hosts[:max_val]
@@ -629,9 +681,22 @@ class InteractiveNetworkAuditor:
             # v4.1: Run HyperScan-First sequentially BEFORE parallel nmap
             # This avoids file descriptor exhaustion by running one at a time
             if not self.interrupted:
-                self._run_hyperscan_prescan(all_hosts)
+                self._run_hyperscan_discovery(all_hosts)
 
             results = self.scan_hosts_concurrent(host_targets)
+
+            # v4.2: Decoupled Deep Scan Phase
+            # We filter hosts that requested deep scan but haven't executed it yet.
+            if not self.interrupted:
+                deep_targets = [
+                    h
+                    for h in results
+                    if hasattr(h, "smart_scan")
+                    and h.smart_scan.get("trigger_deep")
+                    and not h.smart_scan.get("deep_scan_executed")
+                ]
+                if deep_targets:
+                    self.run_deep_scans_concurrent(deep_targets)
 
             # v3.8: Agentless Windows verification (SMB/RDP/LDAP) - opt-in
             if not self.interrupted:
@@ -1213,11 +1278,15 @@ class InteractiveNetworkAuditor:
             # Webhook off by default
             self.config["webhook_url"] = ""
 
-            persisted_low_impact = defaults_for_run.get("low_impact_enrichment")
-            low_impact_default = "yes" if persisted_low_impact else "no"
-            self.config["low_impact_enrichment"] = self.ask_yes_no(
-                self.ui.t("low_impact_enrichment_q"), default=low_impact_default
-            )
+            # v3.10.1: Auto-enable Phase 0 in Exhaustive mode (Goal: maximize information)
+            self.config["low_impact_enrichment"] = True
+
+            # v4.2: Enable web app security tools in Exhaustive (full assessment)
+            if shutil.which("zap.sh"):
+                self.config["zap_enabled"] = True
+            # SQLMap: level 3 = thorough, risk 2 = medium-high (risk 3 = destructive)
+            self.config["sqlmap_level"] = 3
+            self.config["sqlmap_risk"] = 2
 
             # v3.9.0: Ask auditor name and output dir for all profiles
             self._ask_auditor_and_output_dir(defaults_for_run)
@@ -1364,6 +1433,65 @@ class InteractiveNetworkAuditor:
                         self.ui.t("nuclei_q"),
                         default="yes" if defaults_for_run.get("nuclei_enabled") else "no",
                     )
+
+                # v4.2: SQLMap Intensity (Custom profile)
+                # Only ask if vuln scan is enabled
+                if self.config.get("scan_vulnerabilities"):
+                    sql_opts = [
+                        self.ui.t("sqlmap_l1"),
+                        self.ui.t("sqlmap_l3"),
+                        self.ui.t("sqlmap_risk"),
+                        self.ui.t("sqlmap_extreme"),
+                    ]
+                    sql_map_vals = {
+                        0: (1, 1),
+                        1: (3, 1),
+                        2: (3, 2),
+                        3: (5, 3),
+                    }
+                    persisted_level = defaults_for_run.get("sqlmap_level", 1)
+                    persisted_risk = defaults_for_run.get("sqlmap_risk", 1)
+
+                    # Determine default index
+                    def_sql_idx = 0
+                    for idx, (l, r) in sql_map_vals.items():
+                        if l == persisted_level and r == persisted_risk:
+                            def_sql_idx = idx
+                            break
+
+                    def_sql_idx = wizard_state.get("sqlmap_idx", def_sql_idx)
+
+                    sql_choice = self.ask_choice_with_back(
+                        self.ui.t("sqlmap_config_q"),
+                        sql_opts,
+                        def_sql_idx,
+                        step_num=step,
+                        total_steps=TOTAL_STEPS,
+                    )
+
+                    if sql_choice == self.WIZARD_BACK:
+                        # Re-run Step 3 logic (ask Vuln Scan again)
+                        continue
+
+                    wizard_state["sqlmap_idx"] = sql_choice
+                    self.config["sqlmap_level"] = sql_map_vals[sql_choice][0]
+                    self.config["sqlmap_risk"] = sql_map_vals[sql_choice][1]
+
+                    # v4.2: OWASP ZAP (Custom profile)
+                    zap_def_idx = wizard_state.get("zap_idx", 1)  # Default: No
+                    zap_choice = self.ask_choice_with_back(
+                        self.ui.t("zap_q"),
+                        [self.ui.t("yes_option"), self.ui.t("no_option")],
+                        zap_def_idx,
+                        step_num=step,
+                        total_steps=TOTAL_STEPS,
+                    )
+
+                    if zap_choice == self.WIZARD_BACK:
+                        continue
+
+                    wizard_state["zap_idx"] = zap_choice
+                    self.config["zap_enabled"] = zap_choice == 0
 
                 step += 1
                 continue
@@ -1595,6 +1723,17 @@ class InteractiveNetworkAuditor:
                     self.config["net_discovery_kerberos_userlist"] = None
 
                     if self.config["net_discovery_redteam"]:
+                        # v3.10.1: Masscan strategy (if available)
+                        if shutil.which("masscan"):
+                            # Ask strategy
+                            persisted_masscan = defaults_for_run.get("net_discovery_masscan")
+                            default_mz = "yes" if persisted_masscan is not False else "no"
+                            self.config["net_discovery_masscan"] = self.ask_yes_no(
+                                self.ui.t("redteam_masscan_q"), default=default_mz
+                            )
+                        else:
+                            self.config["net_discovery_masscan"] = False
+
                         # L2 Active probing
                         persisted_l2 = defaults_for_run.get("net_discovery_active_l2")
                         self.config["net_discovery_active_l2"] = self.ask_yes_no(

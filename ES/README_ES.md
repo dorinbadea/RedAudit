@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-![Versión](https://img.shields.io/badge/v4.1.0-blue?style=flat-square)
+![Versión](https://img.shields.io/badge/v4.2.0-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -49,10 +49,11 @@ sudo redaudit
 
 | Capacidad | Descripción |
 | :--- | :--- |
-| **Deep Scan Adaptativo** | Escalado en 3 fases (TCP → sonda UDP prioritaria → UDP top-ports) cuando la identidad es débil o ambigua |
+| **Deep Scan Paralelo** | Fase de deep scan totalmente desacoplada ejecutándose en paralelo (hasta 50 hilos) para aceleración masiva |
 | **HyperScan** | Barrido TCP asíncrono + sondas UDP de descubrimiento (incluye broadcast cuando procede) + ARP agresivo |
 | **Descubrimiento de Topología** | Mapeo L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para contexto de red |
 | **Descubrimiento de Red** | Protocolos broadcast (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) para visibilidad L2 |
+| **Seguridad Web App** | Integración de `sqlmap` (SQLi) y `OWASP ZAP` (DAST) para escaneo profundo de aplicaciones web |
 | **Verificación sin agente** | Sondas SMB/RDP/LDAP/SSH/HTTP para pistas de identidad |
 | **Detección Interfaces VPN** | Clasifica endpoints VPN por OUI del fabricante, puertos VPN (500/4500/1194/51820) y patrones de hostname |
 | **Modo Sigiloso** | Timing T1, 1 hilo, retardos 5s+ para entornos sensibles a IDS (`--stealth`) |
@@ -90,19 +91,24 @@ sudo redaudit
 | **Interfaz Bilingüe** | Localización completa Inglés/Español |
 | **Auto-Actualización** | Actualizaciones atómicas staged con rollback automático en caso de fallo |
 
-### Próximamente en v4.1: Descubrimiento HyperScan-First
+### Nuevo en v4.2: Deep Scan Paralelo y Seguridad Web
 
-> **Escaneos completos 3-4x más rápidos** con los mismos resultados ricos.
+> **Aceleración masiva + Seguridad web de nivel empresarial.**
 
-**Nuevo en v4.1:** El orden de escaneo se invierte: HyperScan (el motor async nativo de RedAudit) sondea los 65.535 puertos en ~60-90 segundos, y luego pasa solo los puertos abiertos a nmap para fingerprinting. Esto elimina timeouts en hosts complejos y reduce drásticamente el tiempo de escaneo manteniendo detección completa de servicios. La ejecución secuencial permite batch_size alto (2000) sin problemas de descriptores.
+**Deep Scan Paralelo:** La fase de deep scan está ahora totalmente desacoplada. En lugar de bloquear el hilo principal, los hosts difíciles se delegan a un pool dedicado de hasta 50 hilos en segundo plano. Esto asegura que unos pocos hosts lentos nunca embotellen la auditoría completa.
 
-| Optimización | Beneficio |
+**Seguridad de Aplicaciones Web:**
+
+- **Integración SQLMap:** Pruebas automáticas de inyección SQL para parámetros sospechosos.
+- **OWASP ZAP:** Capacidades DAST completas para aplicaciones web (opcional vía `--zap`).
+
+| Característica | Beneficio |
 |:---|:---|
-| **HyperScan-First** | Barrido TCP async → nmap dirigido (3-4x más rápido) |
-| **Escaneo Vulns Paralelo** | nikto/testssl/whatweb ejecutan concurrentemente (2-3x más rápido) |
-| **Filtrado Inteligente de Resultados** | Filtrado post-escaneo de falsos positivos en CDNs/proxies (~50% menos ruido) |
+| **Deep Scan Paralelo** | Enumeración profunda no bloqueante (hasta 50 hilos) |
+| **Seguridad Web App** | `sqlmap` + `OWASP ZAP` para evaluación profunda de vulnerabilidades web |
+| **Deduplicación Estricta** | Sanitización robusta que previene reportes de hosts duplicados |
 
-Ver [ROADMAP](../docs/ROADMAP.es.md) para más detalles.
+Ver [NOTAS DE LANZAMIENTO](docs/releases/RELEASE_NOTES_v4.2.0_ES.md) para más detalles.
 
 ---
 
@@ -397,6 +403,7 @@ RedAudit orquesta estas herramientas:
 | :--- | :--- | :--- |
 | **Escáner Core** | `nmap`, `python3-nmap` | Escaneo TCP/UDP, detección de servicios/versión, fingerprinting SO |
 | **Reconocimiento Web** | `whatweb`, `curl`, `wget`, `nikto` | Cabeceras HTTP, tecnologías, vulnerabilidades |
+| **Seguridad App Web** | `sqlmap`, `zaproxy` | Escaneo de inyección SQL e integración OWASP ZAP DAST (v4.2+) |
 | **Escáner de Plantillas** | `nuclei` | Escáner de plantillas opcional (habilitar en asistente o con `--nuclei`) |
 | **Inteligencia Exploits** | `searchsploit` | Búsqueda ExploitDB para servicios detectados |
 | **Inteligencia CVE** | NVD API | Correlación CVE para versiones de servicios |

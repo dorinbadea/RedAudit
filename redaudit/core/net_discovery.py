@@ -987,10 +987,12 @@ def _run_redteam_discovery(
 
     target_ips = _gather_redteam_targets(result, max_targets=max_targets)
 
-    masscan = _run_step(
-        "masscan sweep",
-        lambda: _redteam_masscan_sweep(target_networks, tools=tools, logger=logger),
-    )
+    masscan = {}
+    if options.get("use_masscan", True):
+        masscan = _run_step(
+            "masscan sweep",
+            lambda: _redteam_masscan_sweep(target_networks, tools=tools, logger=logger),
+        )
     open_tcp = _index_open_tcp_ports(masscan)
 
     smb_targets = _filter_targets_by_port(target_ips, open_tcp, port=445, fallback_max=15)

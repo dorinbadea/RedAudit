@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-![Version](https://img.shields.io/badge/v4.1.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/v4.2.0-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -53,10 +53,11 @@ sudo redaudit
 
 | Capability | Description |
 |:---|:---|
-| **Adaptive Deep Scan** | 3-phase escalation (TCP → priority UDP probe → UDP top-ports) when identity is weak or hosts are ambiguous |
+| **Parallel Deep Scan** | Fully decoupled deep scan phase running in parallel (up to 50 threads) for massive speedups |
 | **HyperScan** | Async TCP sweep + UDP discovery probes (including broadcast where supported) + aggressive ARP for fast inventory |
 | **Topology Discovery** | L2/L3 mapping (ARP/VLAN/LLDP + gateway/routes) for network context |
 | **Network Discovery** | Broadcast protocols (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) for L2 visibility |
+| **Web App Security** | Integrated `sqlmap` (SQLi) and `OWASP ZAP` (DAST) for deep web application scanning |
 | **Agentless Verification** | Optional SMB/RDP/LDAP/SSH/HTTP probes for identity hints and fingerprints |
 | **VPN Interface Detection** | Classifies VPN endpoints via vendor OUI, VPN ports (500/4500/1194/51820), and hostname patterns |
 | **Stealth Mode** | T1 timing, 1 thread, 5s+ delays for IDS-sensitive environments (`--stealth`) |
@@ -94,19 +95,24 @@ sudo redaudit
 | **Bilingual Interface** | Complete English/Spanish localization |
 | **Auto-Update** | Atomic staged updates with automatic rollback on failure |
 
-### Coming in v4.1: HyperScan-First Discovery
+### New in v4.2: Parallel Deep Scan & Web App Security
 
-> **3-4x faster full scans** with the same rich results.
+> **Massive speedup + Enterprise-grade web security.**
 
-**New in v4.1:** The scan order is inverted: HyperScan (RedAudit's native async engine) probes all 65,535 ports in ~60-90 seconds, then hands only the open ports to nmap for fingerprinting. This eliminates timeouts on complex hosts and dramatically reduces scan time while preserving full service detection. Sequential execution enables safe usage of high batch sizes (2000+) without file descriptor exhaustion.
+**Parallel Deep Scan:** The deep scan phase is now fully decoupled. Instead of blocking the main thread, difficult hosts are offloaded to a dedicated pool of up to 50 background threads. This ensures that a few slow hosts never bottleneck the entire audit.
 
-| Optimization | Benefit |
+**Web Application Security:**
+
+- **SQLMap Integration:** Automatic SQL injection testing for suspect parameters.
+- **OWASP ZAP:** Full DAST capabilities for web applications (optional via `--zap`).
+
+| Feature | Benefit |
 |:---|:---|
-| **HyperScan-First** | Async TCP sweep → targeted nmap (3-4x faster) |
-| **Parallel Vuln Scanning** | nikto/testssl/whatweb run concurrently (2-3x faster) |
-| **Smart Result Filtering** | Post-scan filtering of CDN/proxy false positives (~50% less noise) |
+| **Parallel Deep Scan** | Non-blocking deep enumeration (up to 50 threads) |
+| **Web App Security** | `sqlmap` + `OWASP ZAP` for deep web vulnerability assessment |
+| **Strict Deduplication** | Robust sanitization preventing duplicate host reporting |
 
-See [ROADMAP](docs/ROADMAP.en.md) for details.
+See [RELEASE NOTES](docs/releases/RELEASE_NOTES_v4.2.0.md) for details.
 
 ---
 
@@ -399,6 +405,7 @@ RedAudit orchestrates these tools:
 |:---|:---|:---|
 | **Core Scanner** | `nmap`, `python3-nmap` | TCP/UDP scanning, service/version detection, OS fingerprinting |
 | **Web Recon** | `whatweb`, `curl`, `wget`, `nikto` | HTTP headers, technologies, vulnerabilities |
+| **Web App Security** | `sqlmap`, `zaproxy` | SQL injection scanning and OWASP ZAP DAST integration (v4.2+) |
 | **Template Scanner** | `nuclei` | Optional template scanner (enable via wizard or `--nuclei`) |
 | **Exploit Intel** | `searchsploit` | ExploitDB lookup for detected services |
 | **CVE Intelligence** | NVD API | CVE correlation for service versions |

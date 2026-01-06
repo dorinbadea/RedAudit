@@ -390,8 +390,8 @@ class AuditorVuln:
                         "--crawl=1",  # Crawl 1 level to find forms
                         "--forms",  # Test forms automatically
                         "--smart",  # Smart mode (quick)
-                        "--risk=1",  # Low risk (safe)
-                        "--level=1",  # Quick level
+                        f"--risk={self.config.sqlmap_risk}",
+                        f"--level={self.config.sqlmap_level}",
                         "--timeout=10",  # Fast timeout
                         "--retries=1",
                         "--random-agent",
@@ -425,13 +425,66 @@ class AuditorVuln:
                     self.logger.debug("Sqlmap scan failed for %s", url, exc_info=True)
             return {}
 
-        # Execute tools in parallel (v4.1: added sqlmap)
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        def run_zap():
+            """v4.2: OWASP ZAP integration."""
+            import shutil
+            import os
+
+            # Check if enabled in config
+            if not self.config.get("zap_enabled"):
+                return {}
+
+            zap_path = self.extra_tools.get("zap.sh") or shutil.which("zap.sh")
+            if not zap_path:
+                return {}
+
+            try:
+                self._set_ui_detail(f"[zap] {ip}:{port}")
+                # Create safe filename
+                safe_url = url.replace("://", "_").replace(":", "_").replace("/", "_")
+                report_path = f"/tmp/zap_report_{safe_url}.html"
+
+                runner = CommandRunner(
+                    logger=self.logger,
+                    dry_run=bool(self.config.get("dry_run", False)),
+                    default_timeout=300.0,  # ZAP can be slow
+                    default_retries=0,
+                    backoff_base_s=0.0,
+                )
+
+                # ZAP quick scan command
+                res = runner.run(
+                    [
+                        zap_path,
+                        "-cmd",
+                        "-quickurl",
+                        url,
+                        "-quickout",
+                        report_path,
+                        "-quickprogress",
+                    ],
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                    timeout=300.0,
+                )
+
+                if not res.timed_out:
+                    if os.path.exists(report_path):
+                        return {"zap_report": report_path}
+            except Exception:
+                if self.logger:
+                    self.logger.debug("ZAP scan failed for %s", url, exc_info=True)
+            return {}
+
+        # Execute tools in parallel (v4.1: added sqlmap, zap)
+        with ThreadPoolExecutor(max_workers=5) as executor:
             futures = [
                 executor.submit(run_testssl),
                 executor.submit(run_whatweb),
                 executor.submit(run_nikto),
                 executor.submit(run_sqlmap),
+                executor.submit(run_zap),
             ]
             for future in as_completed(futures):
                 try:

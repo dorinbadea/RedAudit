@@ -353,7 +353,23 @@ TRANSLATIONS = {
         "net_discovery_max_targets_prompt": (
             "Max targets for Red Team modules (default: 50; higher = slower):"
         ),
-        "net_discovery_options_saved": "✓ Net Discovery options saved",
+        "net_discovery_options_saved": "Net Discovery options saved",
+        # v4.2: SQLMap integration
+        "sqlmap_config_q": "Web Application Scan Intensity (sqlmap):",
+        "sqlmap_l1": "Standard (Level 1, Risk 1) — Safe, basic checks",
+        "sqlmap_l3": "Deep (Level 3, Risk 1) — More payloads, header checks",
+        "sqlmap_risk": "Risky (Level 3, Risk 2) — Heavy, time-based SQLi (slower)",
+        "sqlmap_extreme": "Extreme (Level 5, Risk 3) — Max payloads, potentially destructive",
+        "zap_q": "Enable OWASP ZAP? (Requires zap.sh in PATH, slower execution)",
+        "redteam_masscan_q": "Use masscan for initial discovery? (High speed, requires root)",
+        # v4.2: HyperScan/DeepScan i18n
+        "hyperscan_start": "HyperScan-First: Running discovery for {} hosts sequentially...",
+        "hyperscan_complete": "HyperScan-First complete: {} total ports in {:.1f}s",
+        "hyperscan_ports_found": "[{}/{}] {}: found {} open ports",
+        "hyperscan_no_ports": "[{}/{}] {}: no ports detected",
+        "hyperscan_masscan_reuse": "[{}/{}] {}: reusing {} masscan ports",
+        "deep_scan_running": "Running DeepScan on {} hosts...",
+        "auditor_ip_excluded": "ℹ️  Auto-excluded {} auditor IP(s) from target list to prevent self-scanning.",
     },
     "es": {
         "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
@@ -407,7 +423,7 @@ TRANSLATIONS = {
         "wizard_profile_custom": "Personalizado — Control total (8 pasos)",
         "nvd_not_configured_reminder": "⚠️  API key de NVD no configurada. Se omitirá correlación CVE.",
         "nvd_get_key_hint": "   Obtén una key gratis en: https://nvd.nist.gov/developers/request-an-api-key",
-        "exhaustive_mode_applying": "🚀 Aplicando perfil Exhaustivo para máximo descubrimiento...",
+        "exhaustive_mode_applying": "Aplicando perfil Exhaustivo para máximo descubrimiento...",
         "timing_q": "Velocidad de escaneo (ajustar según sensibilidad de la red):",
         "timing_stealth": "Sigiloso — Lento, entornos sensibles a la detección (2s de retardo)",
         "timing_normal": "Normal — Equilibrado (sin retardo)",
@@ -699,6 +715,22 @@ TRANSLATIONS = {
             "Máx. objetivos para módulos Red Team (por defecto: 50; más alto = más lento):"
         ),
         "net_discovery_options_saved": "✓ Opciones de Net Discovery guardadas",
+        # v4.2: Integración SQLMap
+        "sqlmap_config_q": "Intensidad de escaneo Web (sqlmap):",
+        "sqlmap_l1": "Estándar (Nivel 1, Riesgo 1) — Seguro, comprobaciones básicas",
+        "sqlmap_l3": "Profundo (Nivel 3, Riesgo 1) — Más payloads, headers",
+        "sqlmap_risk": "Arriesgado (Nivel 3, Riesgo 2) — Pesado, SQLi basado en tiempo",
+        "sqlmap_extreme": "Extremo (Nivel 5, Riesgo 3) — Máximos payloads, potencial destrucción",
+        "zap_q": "¿Activar OWASP ZAP? (Requiere zap.sh en PATH, ejecución más lenta)",
+        "redteam_masscan_q": "¿Usar masscan para descubrimiento inicial? (Alta velocidad, requiere root)",
+        # v4.2: HyperScan/DeepScan i18n
+        "hyperscan_start": "HyperScan-First: Ejecutando descubrimiento en {} hosts secuencialmente...",
+        "hyperscan_complete": "HyperScan-First completo: {} puertos totales en {:.1f}s",
+        "hyperscan_ports_found": "[{}/{}] {}: {} puertos abiertos encontrados",
+        "hyperscan_no_ports": "[{}/{}] {}: ningún puerto detectado",
+        "hyperscan_masscan_reuse": "[{}/{}] {}: reutilizando {} puertos de masscan",
+        "deep_scan_running": "Ejecutando DeepScan en {} hosts...",
+        "auditor_ip_excluded": "ℹ️  Auto-excluidas {} IP(s) del auditor para evitar auto-escaneo.",
     },
 }
 

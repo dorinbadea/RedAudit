@@ -135,7 +135,7 @@ Al ejecutar `sudo redaudit` en modo interactivo, el asistente pregunta qué perf
 **Caso de uso:** Control total sobre todas las opciones de configuración.
 
 - **Comportamiento**: Wizard completo de 8 pasos con navegación atrás
-- **Preguntas**: Modo de escaneo, hilos/retardo + prompt de Fase 0, vulnerabilidades, CVE, salida/auditor, UDP/topología, discovery/red team, verificación sin agente + webhook
+- **Preguntas**: Modo de escaneo, hilos/retardo + prompt de Fase 0, vulnerabilidades (incl. SQLMap/ZAP), CVE, salida/auditor, UDP/topología, discovery/red team, verificación sin agente + webhook
 - **Ideal para**: Escaneos personalizados con requisitos específicos
 
 ---
@@ -185,6 +185,20 @@ Deshabilitar con `--no-deep-scan`.
 SmartScan usa una puntuación de identidad (umbral por defecto: 3; modo full usa 4) para decidir si escalar.
 
 La clasificación VPN se realiza mediante heurísticas de tipado de activo (MAC/IP de gateway, puertos VPN, patrones de hostname).
+
+**Ejecución Paralela:**
+A partir de v4.2, los deep scans se ejecutan en un pool de hilos dedicado (hasta 50 hilos), desacoplado del bucle principal de descubrimiento. Esto asegura que los escaneos profundos lentos no bloqueen el progreso global.
+
+### Seguridad de Aplicaciones Web (v4.2+)
+
+RedAudit ahora integra herramientas especializadas para evaluación profunda de aplicaciones web:
+
+- **sqlmap**: Prueba automáticamente fallos de inyección SQL en parámetros sospechosos. Configurable vía Perfil de Mago (Niveles 1-5, Riesgos 1-3).
+- **OWASP ZAP**: Escaneo DAST opcional para spidering y escaneo activo. Se activa vía Perfil Custom o config.
+
+### Auto-Exclusión
+
+Las direcciones IP del propio auditor se detectan automáticamente y se excluyen de la lista de objetivos para evitar bucles de auto-escaneo redundantes.
 
 ### Verificación sin agente (Opcional)
 
@@ -416,7 +430,8 @@ RedAudit orquesta (no modifica ni instala):
 | `nmap` | Siempre | `hosts[].ports` |
 | `whatweb` | HTTP/HTTPS detectado | `vulnerabilities[].whatweb` |
 | `nikto` | HTTP/HTTPS + modo full | `vulnerabilities[].nikto_findings` |
-| `sqlmap` | HTTP/HTTPS + modo full (v4.1+) | `vulnerabilities[].sqlmap_findings` |
+| `sqlmap` | HTTP/HTTPS + modo full (v4.2+) | `vulnerabilities[].sqlmap_findings` |
+| `zaproxy` | HTTP/HTTPS + modo full (si habilitado) | `vulnerabilities[].zap_findings` |
 | `testssl.sh` | HTTPS + modo full | `vulnerabilities[].testssl_analysis` |
 | `nuclei` | HTTP/HTTPS + modo full (si está instalado y habilitado) | `vulnerabilities[].nuclei_findings` |
 | `searchsploit` | Servicios con versión detectada | `ports[].known_exploits` |

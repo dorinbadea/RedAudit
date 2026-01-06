@@ -93,11 +93,30 @@ def lookup_vendor_online(mac: str, timeout: float = 2.0) -> Optional[str]:
     return None
 
 
+def is_locally_administered(mac: str) -> bool:
+    """
+    Check if MAC is a Locally Administered Address (LAA).
+    Checks the 2nd least significant bit of the first byte (bit 1).
+    x2, x6, xA, xE
+    """
+    if not mac:
+        return False
+    try:
+        clean = mac.replace(":", "").replace("-", "").replace(".", "")
+        if len(clean) < 2:
+            return False
+        first_byte = int(clean[:2], 16)
+        return (first_byte & 0x02) != 0
+    except ValueError:
+        return False
+
+
 def get_vendor_with_fallback(
     mac: str, local_vendor: Optional[str] = None, online_fallback: bool = True
 ) -> Optional[str]:
     """
     Get vendor name, falling back to online lookup if local is missing.
+    v4.2: Returns "(MAC privado)" for Locally Administered Addresses.
 
     Args:
         mac: MAC address
@@ -107,6 +126,10 @@ def get_vendor_with_fallback(
     Returns:
         Vendor name or None
     """
+    # v4.2: Check Key: Private/Randomized MAC
+    if is_locally_administered(mac):
+        return "(MAC privado)"
+
     # If we already have a vendor, use it
     if local_vendor and local_vendor.strip():
         return local_vendor

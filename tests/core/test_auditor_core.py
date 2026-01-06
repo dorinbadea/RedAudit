@@ -685,7 +685,12 @@ class TestHostPortScan:
         with patch("redaudit.core.auditor_scan.finalize_host_status", return_value=STATUS_UP):
             res = auditor.scan_host_ports("1.1.1.1")
 
-        assert res.os_detected == "Linux"
+        # v4.2: Deep scan is decoupled/deferred.
+        # We assert that it triggered, but "os_detected" won't be set until phase 2.
+        assert res.smart_scan["trigger_deep"] is True
+        # assert res.smart_scan["deep_scan_suggested"] is True
+        # os_detected comes from deep_scan_host() which is not called here
+        # assert res.os_detected == "Linux"
 
     def test_scan_host_ports_missing_host_budget_exhausted(self):
         auditor = MockAuditorScan()

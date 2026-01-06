@@ -122,9 +122,15 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
 
         with patch.object(app.scanner, "run_nmap_scan", return_value=(nm, "")):
             app.deep_scan_host = Mock(return_value={"strategy": "mock", "commands": []})
-            _ = app.scan_host_ports(ip)
+            result = app.scan_host_ports(ip)
 
-        self.assertTrue(app.deep_scan_host.called)
+        # v4.2: Deep scan is decoupled. It is no longer called immediately.
+        # Instead, the host is marked for deferred deep scan.
+        # self.assertTrue(app.deep_scan_host.called)
+        if hasattr(result, "smart_scan"):
+            self.assertTrue(result.smart_scan.get("deep_scan_suggested"))
+        else:
+            self.assertTrue(result.get("smart_scan", {}).get("deep_scan_suggested"))
 
     def test_udp_full_uses_configurable_top_ports(self):
         app = InteractiveNetworkAuditor()

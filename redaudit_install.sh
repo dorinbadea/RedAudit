@@ -77,9 +77,9 @@ else
     MSG_INSTALL="[INFO] Installing/updating RedAudit v${REDAUDIT_VERSION}..."
     MSG_DONE="[OK] Installation completed."
     MSG_USAGE="-> Run 'redaudit' to start."
-    MSG_ALIAS_ADDED="ℹ️ Alias 'redaudit' added to"
-    MSG_ALIAS_EXISTS="ℹ️ Alias 'redaudit' already exists in"
-    MSG_PKGS="📦 Recommended: install the core toolchain (nmap, nuclei, whatweb, nikto, tcpdump, etc.):"
+    MSG_ALIAS_ADDED="[INFO] Alias 'redaudit' added to"
+    MSG_ALIAS_EXISTS="[INFO] Alias 'redaudit' already exists in"
+    MSG_PKGS="[RECOMMENDED] Install the core toolchain (nmap, nuclei, whatweb, nikto, tcpdump, etc.):"
     MSG_TESTSSL_NOTE="Includes testssl.sh install from GitHub (required for TLS deep checks)."
     MSG_ASK="Install now? [Y/n]: "
     MSG_TESTSSL_SKIP="[WARN] testssl.sh not installed. TLS deep checks will be unavailable."
@@ -170,8 +170,71 @@ if [[ ! -f "/usr/local/bin/kerbrute" ]]; then
     else
         echo "[WARN] Failed to download kerbrute from GitHub. Skipping."
     fi
-else
     echo "[OK] kerbrute already installed"
+fi
+
+# -------------------------------------------
+# 2d) Install OWASP ZAP (apt for Kali/Debian, snap for Ubuntu)
+# -------------------------------------------
+
+if ! command -v zap.sh >/dev/null 2>&1 && ! command -v zaproxy >/dev/null 2>&1; then
+    ZAP_INSTALLED=false
+
+    # Try apt first (works on Kali, Debian with backports)
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Intentando instalar ZAP via apt..."
+    else
+        echo "[INFO] Attempting to install ZAP via apt..."
+    fi
+
+    if apt install -y zaproxy 2>/dev/null; then
+        ZAP_INSTALLED=true
+        if [[ "$LANG_CODE" == "es" ]]; then
+            echo "[OK] ZAP instalado via apt"
+        else
+            echo "[OK] ZAP installed via apt"
+        fi
+    else
+        # apt failed (Ubuntu Noble), try snap
+        if [[ "$LANG_CODE" == "es" ]]; then
+            echo "[INFO] apt falló, intentando via snap..."
+        else
+            echo "[INFO] apt failed, trying snap..."
+        fi
+
+        if command -v snap >/dev/null 2>&1; then
+            if snap install zaproxy --classic 2>/dev/null; then
+                ZAP_INSTALLED=true
+                # Create symlink for zap.sh detection
+                if [[ -f "/snap/bin/zaproxy" ]]; then
+                    ln -sf /snap/bin/zaproxy /usr/local/bin/zap.sh 2>/dev/null || true
+                fi
+                if [[ "$LANG_CODE" == "es" ]]; then
+                    echo "[OK] ZAP instalado via snap"
+                else
+                    echo "[OK] ZAP installed via snap"
+                fi
+            fi
+        fi
+    fi
+
+    if ! $ZAP_INSTALLED; then
+        if [[ "$LANG_CODE" == "es" ]]; then
+            echo "[WARN] No se pudo instalar ZAP. Instalación manual requerida."
+            echo "       Ubuntu: sudo snap install zaproxy --classic"
+            echo "       Kali/Debian: sudo apt install zaproxy"
+        else
+            echo "[WARN] Could not install ZAP. Manual installation required."
+            echo "       Ubuntu: sudo snap install zaproxy --classic"
+            echo "       Kali/Debian: sudo apt install zaproxy"
+        fi
+    fi
+else
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[OK] ZAP ya instalado"
+    else
+        echo "[OK] ZAP already installed"
+    fi
 fi
 
 # -------------------------------------------
@@ -310,13 +373,28 @@ fi
 echo ""
 echo "$MSG_DONE"
 
+# Show git commit hash for version confirmation
+GIT_COMMIT=""
+if [[ -d "$SCRIPT_DIR/.git" ]] && command -v git >/dev/null 2>&1; then
+    GIT_COMMIT=$(cd "$SCRIPT_DIR" && git rev-parse --short HEAD 2>/dev/null || echo "")
+fi
+if [[ -n "$GIT_COMMIT" ]]; then
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Commit instalado: $GIT_COMMIT (rama: $(cd "$SCRIPT_DIR" && git branch --show-current 2>/dev/null || echo "unknown"))"
+    else
+        echo "[INFO] Installed commit: $GIT_COMMIT (branch: $(cd "$SCRIPT_DIR" && git branch --show-current 2>/dev/null || echo "unknown"))"
+    fi
+fi
+
 if [[ "$LANG_CODE" == "es" ]]; then
-    echo "👉 IMPORTANTE: Para usar 'redaudit' inmediatamente, ejecuta:"
+    echo ""
+    echo "IMPORTANTE: Para usar 'redaudit' inmediatamente, ejecuta:"
     echo "   $SOURCE_CMD"
     echo ""
     echo "(O simplemente abre una nueva terminal)"
 else
-    echo "👉 IMPORTANT: To use 'redaudit' immediately, run:"
+    echo ""
+    echo "IMPORTANT: To use 'redaudit' immediately, run:"
     echo "   $SOURCE_CMD"
     echo ""
     echo "(Or simply open a new terminal)"

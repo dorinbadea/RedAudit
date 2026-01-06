@@ -7,7 +7,6 @@ from __future__ import annotations
 import importlib
 import ipaddress
 import logging
-import math
 import os
 import random
 import re
@@ -82,7 +81,7 @@ class AuditorScan:
     scanner: NetworkScanner
     ui: Any  # Defined in Auditor subclass, typed as Any to satisfy mypy
     # v4.1: Pre-discovered ports from sequential HyperScan-First phase
-    _hyperscan_prescan_ports: Dict[str, List[int]]
+    _hyperscan_discovery_ports: Dict[str, List[int]]
 
     if TYPE_CHECKING:
 
@@ -124,6 +123,8 @@ class AuditorScan:
             "searchsploit",
             "testssl.sh",
             "nuclei",
+            "sqlmap",
+            "zap.sh",
             # v3.1+: Topology discovery (optional)
             "arp-scan",
             "lldpctl",
@@ -1001,30 +1002,30 @@ class AuditorScan:
         if self.config.get("low_impact_enrichment"):
             phase0_enrichment = self._run_low_impact_enrichment(safe_ip)
 
-        # v4.1: HyperScan-First optimization - now uses prescan results
-        # All HyperScan work happens in _run_hyperscan_prescan() before ThreadPoolExecutor
+        # v4.1: HyperScan-First optimization - now uses discovery results
+        # All HyperScan work happens in _run_hyperscan_discovery() before ThreadPoolExecutor
         is_full_mode = mode_label in ("full", "completo")
         hyperscan_first_enabled = (
             is_full_mode
             and not self.config.get("stealth")
             and not self.config.get("no_hyperscan_first")
         )
-        prescan_ports: List[int] = []
+        discovery_ports: List[int] = []
 
         if hyperscan_first_enabled:
             # Check for pre-discovered ports (use __dict__ to avoid __getattr__ recursion)
-            if "_hyperscan_prescan_ports" in self.__dict__:
-                prescan_ports = self._hyperscan_prescan_ports.get(safe_ip, [])
+            if "_hyperscan_discovery_ports" in self.__dict__:
+                discovery_ports = self._hyperscan_discovery_ports.get(safe_ip, [])
 
-            if prescan_ports:
+            if discovery_ports:
                 # Use pre-discovered ports for nmap fingerprinting (-A includes -sV -sC -O)
-                port_list = ",".join(str(p) for p in prescan_ports)
+                port_list = ",".join(str(p) for p in discovery_ports)
                 args = f"-A -Pn -p {port_list}"
                 timing = self.config.get("nmap_timing")
                 if timing:
                     args = f"-T{timing} {args}"
             else:
-                # No prescan results - fall back to standard nmap scan
+                # No discovery results - fall back to standard nmap scan
                 args = get_nmap_arguments(self.config["scan_mode"], self.config)
 
         self._set_ui_detail(f"[nmap] {safe_ip} ({mode_label})")
@@ -1073,23 +1074,11 @@ class AuditorScan:
                 return host_obj
 
             if safe_ip not in nm.all_hosts():
-                # Host didn't respond to initial scan - do deep scan
+                # v4.2: Deferred deep scan
+                # We mark it for deep scan trigger
                 deep = None
-                if self.config.get("deep_id_scan", True):
-                    budget = self.config.get("deep_scan_budget", 0)
-                    reserved, deep_count = self._reserve_deep_scan_slot(budget)
-                    if not reserved:
-                        if self.logger:
-                            self.logger.info(
-                                self.ui.t(
-                                    "deep_scan_budget_exhausted",
-                                    deep_count,
-                                    budget,
-                                    safe_ip,
-                                )
-                            )
-                    else:
-                        deep = self.deep_scan_host(safe_ip)
+                # But we must update the host object later to indicate pending deep scan
+                pass
                 base = {
                     "ip": safe_ip,
                     "hostname": "",
@@ -1115,6 +1104,14 @@ class AuditorScan:
                 host_obj.deep_scan = result.get("deep_scan") or {}
                 host_obj.phase0_enrichment = result.get("phase0_enrichment") or {}
                 host_obj.raw_nmap_data = {"error": scan_error}
+
+                # v4.2: Mark for decoupled deep scan since initial scan failed
+                host_obj.smart_scan = {
+                    "trigger_deep": True,
+                    "deep_scan_executed": False,
+                    "reason": "initial_scan_no_response",
+                }
+
                 if result.get("os_detected"):
                     host_obj.os_detected = result["os_detected"]
 
@@ -1356,14 +1353,14 @@ class AuditorScan:
                     deep_reasons.append("http_fingerprint_present")
 
             open_tcp_ports = sum(1 for p in ports if p.get("protocol") == "tcp")
-            udp_priority_used = False
+            open_tcp_ports = sum(1 for p in ports if p.get("protocol") == "tcp")
             if (
                 trigger_deep
                 and not self.config.get("stealth_mode")
                 and open_tcp_ports <= 1
                 and identity_score < 2
             ):
-                udp_priority_used = True
+                # udp_priority_used = True
                 udp_identity = self._run_udp_priority_probe(host_record)
                 if udp_identity:
                     identity_score, identity_signals = self._compute_identity_score(host_record)
@@ -1425,61 +1422,10 @@ class AuditorScan:
                             )
 
             if trigger_deep:
-                deep = self.deep_scan_host(safe_ip)
-                if deep:
-                    host_record["deep_scan"] = deep
-                    if deep.get("os_detected"):
-                        host_record["os_detected"] = deep["os_detected"]
-                    host_record["smart_scan"]["deep_scan_executed"] = True
-                    host_record["smart_scan"]["escalation_path"] = " -> ".join(
-                        ["nmap_initial"]
-                        + (["udp_priority"] if udp_priority_used else [])
-                        + ["tcp_aggressive"]
-                    )
-
-                    # v4.0.4: Fallback to HyperScan ports when nmap times out or finds 0 ports
-                    # This handles cases like Metasploitable2 where deep scans timeout
-                    deep_commands = (deep or {}).get("commands", [])
-                    nmap_timed_out = any(
-                        cmd.get("returncode") == 124
-                        or "timeout" in str(cmd.get("error", "")).lower()
-                        for cmd in deep_commands
-                        if "nmap" in str(cmd.get("command", "")).lower()
-                    )
-                    if (nmap_timed_out or len(ports) == 0) and hyperscan_ports:
-                        # Use HyperScan ports as fallback
-                        from redaudit.utils.constants import WEB_LIKELY_PORTS
-
-                        fallback_ports = []
-                        for p in hyperscan_ports:
-                            is_web = p in WEB_LIKELY_PORTS
-                            fallback_ports.append(
-                                {
-                                    "port": p,
-                                    "protocol": "tcp",
-                                    "service": "http" if is_web else "unknown",
-                                    "product": "",
-                                    "version": "",
-                                    "extrainfo": "detected by HyperScan (nmap timeout fallback)",
-                                    "cpe": [],
-                                    "is_web_service": is_web,
-                                }
-                            )
-                            if is_web:
-                                web_count += 1
-                        if fallback_ports:
-                            ports.extend(fallback_ports)
-                            host_record["ports"] = ports
-                            host_record["total_ports_found"] = len(ports)
-                            host_record["web_ports_count"] = web_count
-                            host_record["smart_scan"]["hyperscan_fallback_used"] = True
-                            if self.logger:
-                                self.logger.info(
-                                    "Used HyperScan fallback for %s: %d ports (nmap %s)",
-                                    safe_ip,
-                                    len(fallback_ports),
-                                    "timeout" if nmap_timed_out else "no results",
-                                )
+                # v4.2: Deep scan is now decoupled. Just mark passing the signal.
+                # The orchestrator will run deep_scan_host later.
+                if isinstance(host_record.get("smart_scan"), dict):
+                    host_record["smart_scan"]["deep_scan_suggested"] = True
 
             if total_ports == 0 and self.config.get("deep_id_scan", True):
                 identity_source = host_record.get("deep_scan") or {}
@@ -1598,7 +1544,7 @@ class AuditorScan:
                 pass
             return host_obj
 
-    def _run_hyperscan_prescan(self, host_ips: List[str]) -> Dict[str, List[int]]:
+    def _run_hyperscan_discovery(self, host_ips: List[str]) -> Dict[str, List[int]]:
         """
         v4.1: Run HyperScan-First sequentially on all hosts BEFORE parallel nmap.
 
@@ -1616,9 +1562,9 @@ class AuditorScan:
         if not is_full_mode or self.config.get("stealth") or self.config.get("no_hyperscan_first"):
             return {}
 
-        # Initialize the prescan dict (use __dict__ to avoid __getattr__ recursion)
-        if "_hyperscan_prescan_ports" not in self.__dict__:
-            self._hyperscan_prescan_ports = {}
+        # Initialize the discovery dict (use __dict__ to avoid __getattr__ recursion)
+        if "_hyperscan_discovery_ports" not in self.__dict__:
+            self._hyperscan_discovery_ports = {}
 
         # Check for existing masscan results to reuse
         net_discovery = self.results.get("net_discovery") or {}
@@ -1637,9 +1583,9 @@ class AuditorScan:
                         masscan_ports[ip] = []
                     masscan_ports[ip].append(port)
 
-        prescan_count = len(host_ips)
+        discovery_count = len(host_ips)
         self.ui.print_status(
-            f"⚡ HyperScan-First: Pre-scanning {prescan_count} hosts sequentially...",
+            self.ui.t("hyperscan_start").format(discovery_count),
             "INFO",
         )
 
@@ -1651,9 +1597,11 @@ class AuditorScan:
 
             # Check if masscan already has ports for this host
             if ip in masscan_ports:
-                self._hyperscan_prescan_ports[ip] = sorted(set(masscan_ports[ip]))
+                self._hyperscan_discovery_ports[ip] = sorted(set(masscan_ports[ip]))
                 self.ui.print_status(
-                    f"  [{idx}/{prescan_count}] {ip}: reusing {len(masscan_ports[ip])} masscan ports",
+                    self.ui.t("hyperscan_masscan_reuse").format(
+                        idx, discovery_count, ip, len(masscan_ports[ip])
+                    ),
                     "OKGREEN",
                 )
                 continue
@@ -1666,47 +1614,225 @@ class AuditorScan:
                     timeout=0.5,
                     logger=self.logger,
                 )
-                self._hyperscan_prescan_ports[ip] = ports
+                self._hyperscan_discovery_ports[ip] = ports
                 if ports:
                     self.ui.print_status(
-                        f"  [{idx}/{prescan_count}] {ip}: found {len(ports)} open ports",
+                        self.ui.t("hyperscan_ports_found").format(
+                            idx, discovery_count, ip, len(ports)
+                        ),
                         "OKGREEN",
                     )
                 else:
                     self.ui.print_status(
-                        f"  [{idx}/{prescan_count}] {ip}: no ports detected",
+                        self.ui.t("hyperscan_no_ports").format(idx, discovery_count, ip),
                         "WARNING",
                     )
             except Exception as e:
-                self.logger.warning("HyperScan prescan failed for %s: %s", ip, e)
-                self._hyperscan_prescan_ports[ip] = []  # Empty = fallback to nmap
+                self.logger.warning("HyperScan discovery failed for %s: %s", ip, e)
+                self._hyperscan_discovery_ports[ip] = []  # Empty = fallback to nmap
 
         duration = time.time() - start_time
-        total_ports = sum(len(p) for p in self._hyperscan_prescan_ports.values())
+        total_ports = sum(len(p) for p in self._hyperscan_discovery_ports.values())
         self.ui.print_status(
-            f"✓ HyperScan-First complete: {total_ports} total ports in {duration:.1f}s",
+            self.ui.t("hyperscan_complete").format(total_ports, duration),
             "OKGREEN",
         )
 
-        return self._hyperscan_prescan_ports
+        return self._hyperscan_discovery_ports
+
+    def run_deep_scans_concurrent(self, hosts):
+        """v4.2: Run deep scans concurrently on selected hosts."""
+        if not hosts:
+            return
+
+        self.ui.print_status(self.ui.t("deep_scan_running").format(len(hosts)), "HEADER")
+        workers = int(self.config.get("threads", 1))
+        # Cap at 50 to avoid system exhaustion, but respect aggression
+        workers = max(1, min(50, workers))
+
+        # Try to use rich for better progress visualization
+        use_rich = self.ui.get_progress_console() is not None
+
+        # Deduplicate hosts for Deep Scan
+        unique_map = {}
+        import re
+
+        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+        for h in hosts:
+            if hasattr(h, "ip"):
+                raw_ip = h.ip
+                val = h
+            else:
+                raw_ip = str(h)
+                val = raw_ip
+
+            clean_ip = ansi_escape.sub("", raw_ip).strip()
+            if clean_ip and clean_ip not in unique_map:
+                unique_map[clean_ip] = val
+
+        unique_hosts = [unique_map[ip] for ip in sorted(unique_map.keys())]
+
+        with self._progress_ui():
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = {}
+
+                def _deep_worker(host):
+                    try:
+                        ip = host.ip if hasattr(host, "ip") else str(host)
+                        host_obj = host if hasattr(host, "ip") else None
+
+                        # Mark execution if it's a Host object
+                        if host_obj and hasattr(host_obj, "smart_scan") and host_obj.smart_scan:
+                            host_obj.smart_scan["deep_scan_executed"] = True
+
+                        # Check budget
+                        budget = self.config.get("deep_scan_budget", 0)
+                        reserved, deep_count = self._reserve_deep_scan_slot(budget)
+                        if not reserved:
+                            if self.logger:
+                                self.logger.info(f"Deep scan budget exhausted for {ip}")
+                            return
+
+                        deep = self.deep_scan_host(ip)
+                        if deep and host_obj:
+                            host_obj.deep_scan = deep
+                            if deep.get("os_detected"):
+                                host_obj.os_detected = deep["os_detected"]
+                            # Re-finalize status
+                            host_obj.status = finalize_host_status(host_obj.to_dict())
+                    except Exception as e:
+                        if self.logger:
+                            img_ip = host.ip if hasattr(host, "ip") else str(host)
+                            self.logger.error(f"Deep scan error for {img_ip}: {e}", exc_info=True)
+
+                for h in unique_hosts:
+                    if self.interrupted:
+                        break
+                    fut = executor.submit(_deep_worker, h)
+                    futures[fut] = h.ip
+
+                total = len(futures)
+                done = 0
+
+                if use_rich and total > 0:
+                    # v4.2: Multi-bar progress for DeepScan (consistent with host scan)
+                    progress = self.ui.get_standard_progress(transient=False)
+                    if progress:
+                        with progress:
+                            # Track per-host start times and tasks
+                            host_tasks = {}  # future -> (task_id, ip, start_time)
+                            for fut, ip in futures.items():
+                                task_id = progress.add_task(
+                                    f"[cyan]  {ip}",
+                                    total=100,
+                                    start=True,
+                                )
+                                host_tasks[fut] = (task_id, ip, time.time())
+
+                            pending = set(futures)
+                            last_heartbeat = time.time()
+                            start_t = time.time()
+                            # Deep scan typically takes longer, use generous estimate for bar pacing
+                            deep_timeout_est = 120  # Nominal estimate for UI pacing
+
+                            while pending:
+                                if self.interrupted:
+                                    for f in pending:
+                                        f.cancel()
+                                    break
+
+                                completed, pending = wait(
+                                    pending, timeout=0.5, return_when=FIRST_COMPLETED
+                                )
+
+                                now = time.time()
+                                if now - last_heartbeat >= 60.0:
+                                    elapsed = int(now - start_t)
+                                    mins, secs = divmod(elapsed, 60)
+                                    self.ui.print_status(
+                                        f"Deep Scan... {done}/{total} ({mins}:{secs:02d})",
+                                        "INFO",
+                                        force=True,
+                                    )
+                                    last_heartbeat = now
+
+                                # Update progress for pending hosts
+                                for pending_fut in pending:
+                                    if pending_fut in host_tasks:
+                                        task_id, ip, host_start = host_tasks[pending_fut]
+                                        elapsed_host = now - host_start
+                                        # Cap at 95% until complete
+                                        pct = min(95, int((elapsed_host / deep_timeout_est) * 100))
+                                        progress.update(task_id, completed=pct)
+
+                                for fut in completed:
+                                    if fut not in host_tasks:
+                                        continue
+                                    task_id, host_ip, _ = host_tasks[fut]
+                                    done += 1
+                                    try:
+                                        fut.result()
+                                        progress.update(
+                                            task_id,
+                                            completed=100,
+                                            description=f"[green]✅ {host_ip}",
+                                        )
+                                    except Exception as e:
+                                        self.logger.error(f"Deep scan error for {host_ip}: {e}")
+                                        progress.update(
+                                            task_id,
+                                            completed=100,
+                                            description=f"[red]❌ {host_ip}",
+                                        )
+                else:
+                    # Fallback loop
+                    for fut in as_completed(futures):
+                        if self.interrupted:
+                            for f in futures:
+                                f.cancel()
+                            break
+                        host_ip = futures[fut]
+                        try:
+                            fut.result()
+                        except Exception:
+                            pass
+                        done += 1
+                        if total and done % max(1, total // 10) == 0:
+                            self.ui.print_status(f"Deep Scan: {done}/{total}", "INFO", force=True)
 
     def scan_hosts_concurrent(self, hosts):
         """Scan multiple hosts concurrently with progress bar."""
         self.ui.print_status(self.ui.t("scan_start", len(hosts)), "HEADER")
 
         # v4.0: Deduplicate hosts (handling both str and Host objects)
+        # v4.0: Deduplicate hosts (handling both str and Host objects)
         unique_map = {}
         from redaudit.core.models import Host
+        import re
+
+        # Regex to strip ANSI escape codes
+        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
         for h in hosts:
             if isinstance(h, Host):
-                ip = h.ip
+                raw_ip = h.ip
                 val = h
             else:
-                ip = str(h)
-                val = ip
-            if ip not in unique_map:
-                unique_map[ip] = val
+                raw_ip = str(h)
+                val = raw_ip
+
+            # Sanitization: Strip ANSI codes and whitespace
+            clean_ip = ansi_escape.sub("", raw_ip).strip()
+
+            if clean_ip:
+                if clean_ip in unique_map:
+                    if self.logger:
+                        self.logger.debug(
+                            f"Duplicate host ignored in scan: '{clean_ip}' (raw: {repr(raw_ip)})"
+                        )
+                else:
+                    unique_map[clean_ip] = val
 
         unique_hosts = [unique_map[ip] for ip in sorted(unique_map.keys())]
         results = []
@@ -1719,12 +1845,7 @@ class AuditorScan:
             host_timeout_s = self._scan_mode_host_timeout_s()
 
         # Try to use rich for better progress visualization
-        try:
-            from rich.progress import Progress
-
-            use_rich = True
-        except ImportError:
-            use_rich = False
+        use_rich = self.ui.get_progress_console() is not None
 
         # Keep output quiet from the moment worker threads start.
         with self._progress_ui():
@@ -1746,74 +1867,85 @@ class AuditorScan:
                 done = 0
 
                 if use_rich and total > 0:
-                    # Rich progress bar (quiet UI + timeout-aware upper bound ETA)
-                    with Progress(
-                        *self._progress_columns(
-                            show_detail=True,
-                            show_eta=True,
-                            show_elapsed=True,
-                        ),
-                        console=self._progress_console(),
-                        refresh_per_second=4,
-                    ) as progress:
-                        initial_detail = self._get_ui_detail()
-                        # v3.8.1: Simplified task - no ETA fields
-                        task = progress.add_task(
-                            f"[cyan]{self.ui.t('scanning_hosts')}",
-                            total=total,
-                            detail=initial_detail,
-                        )
-                        pending = set(futures)
-                        last_detail = initial_detail
-                        last_heartbeat = start_t
-                        while pending:
-                            if self.interrupted:
-                                for pending_fut in pending:
-                                    pending_fut.cancel()
-                                break
-
-                            completed, pending = wait(
-                                pending, timeout=0.25, return_when=FIRST_COMPLETED
-                            )
-                            detail = self._get_ui_detail()
-                            if detail != last_detail:
-                                progress.update(task, detail=detail)
-                                last_detail = detail
-
-                            # v3.8.1: Heartbeat every 60s for visibility
-                            now = time.time()
-                            if now - last_heartbeat >= 60.0:
-                                elapsed = int(now - start_t)
-                                mins, secs = divmod(elapsed, 60)
-                                self.ui.print_status(
-                                    f"Escaneando hosts... {done}/{total} ({mins}:{secs:02d} transcurrido)",
-                                    "INFO",
-                                    force=True,
+                    # v4.2: Multi-bar progress - one bar per active host
+                    progress = self.ui.get_standard_progress(transient=False)
+                    if progress:
+                        with progress:
+                            # Track per-host start times and tasks
+                            host_tasks = {}  # future -> (task_id, ip, start_time)
+                            for fut, ip in futures.items():
+                                task_id = progress.add_task(
+                                    f"[cyan]  {ip}",
+                                    total=100,
+                                    start=True,
                                 )
-                                last_heartbeat = now
-                            detail = self._get_ui_detail()
-                            if detail != last_detail:
-                                progress.update(task, detail=detail)
-                                last_detail = detail
+                                # v4.2 fix: Track individual host start time
+                                host_tasks[fut] = (task_id, ip, time.time())
 
-                            for fut in completed:
-                                host_ip = futures.get(fut)
-                                try:
-                                    res = fut.result()
-                                    results.append(res)
-                                except Exception as exc:
-                                    self.logger.error("Worker error for %s: %s", host_ip, exc)
-                                    self.logger.debug(
-                                        "Worker exception details for %s", host_ip, exc_info=True
+                            pending = set(futures)
+                            last_heartbeat = start_t
+                            while pending:
+                                if self.interrupted:
+                                    for pending_fut in pending:
+                                        pending_fut.cancel()
+                                    break
+
+                                completed, pending = wait(
+                                    pending, timeout=0.5, return_when=FIRST_COMPLETED
+                                )
+
+                                now = time.time()
+
+                                # v3.8.1: Heartbeat every 60s for visibility
+                                if now - last_heartbeat >= 60.0:
+                                    elapsed = int(now - start_t)
+                                    mins, secs = divmod(elapsed, 60)
+                                    self.ui.print_status(
+                                        f"{self.ui.t('scanning_hosts')}... {done}/{total} ({mins}:{secs:02d} transcurrido)",
+                                        "INFO",
+                                        force=True,
                                     )
-                                done += 1
-                                # v3.8.1: Simplified progress update - no ETA
-                                progress.update(
-                                    task,
-                                    advance=1,
-                                    description=f"[cyan]{self.ui.t('scanned_host', host_ip)}",
-                                    detail=last_detail,
-                                )
+                                    last_heartbeat = now
+
+                                # Update progress for still-pending hosts
+                                for pending_fut in pending:
+                                    if pending_fut in host_tasks:
+                                        task_id, ip, host_start = host_tasks[pending_fut]
+                                        # v4.2 fix: Use per-host elapsed time
+                                        elapsed_host = now - host_start
+                                        # Cap at 95% until complete
+                                        pct = min(
+                                            95, int((elapsed_host / max(1, host_timeout_s)) * 100)
+                                        )
+                                        progress.update(task_id, completed=pct)
+
+                                for fut in completed:
+                                    if fut not in host_tasks:
+                                        continue
+                                    task_id, host_ip, _ = host_tasks[fut]
+                                    try:
+                                        res = fut.result()
+                                        results.append(res)
+                                        # Mark complete with green
+                                        progress.update(
+                                            task_id,
+                                            completed=100,
+                                            description=f"[green]✅ {host_ip}",
+                                        )
+                                    except Exception as exc:
+                                        self.logger.error("Worker error for %s: %s", host_ip, exc)
+                                        self.logger.debug(
+                                            "Worker exception details for %s",
+                                            host_ip,
+                                            exc_info=True,
+                                        )
+                                        # Mark failed with red
+                                        progress.update(
+                                            task_id,
+                                            completed=100,
+                                            description=f"[red]❌ {host_ip}",
+                                        )
+                                    done += 1
                 else:
                     # Fallback to basic progress (throttled, includes timeout-aware upper bound ETA)
                     for fut in as_completed(futures):
@@ -1856,6 +1988,34 @@ class AuditorScan:
         if self.interrupted or not self.config.get("windows_verify_enabled", False):
             return
 
+        # v4.2: Data Flow Pipeline - Extract findings from previous scans/phases
+        from redaudit.core.agentless_verify import parse_smb_nmap, parse_ldap_rootdse
+
+        for h in host_results:
+            if not isinstance(h, Host):
+                continue
+
+            # Initialize if needed
+            if not h.red_team_findings:
+                h.red_team_findings = {}
+
+            # Check for SMB findings in script output
+            for svc in h.services:
+                if svc.port == 445 and svc.script_output:
+                    # Combine output for parsing
+                    combined_out = "\n".join(svc.script_output.values())
+                    if combined_out:
+                        smb_data = parse_smb_nmap(combined_out)
+                        if smb_data:
+                            h.red_team_findings["smb"] = smb_data
+                # Check for LDAP findings
+                if svc.port in (389, 636) and svc.script_output:
+                    combined_out = "\n".join(svc.script_output.values())
+                    if combined_out:
+                        ldap_data = parse_ldap_rootdse(combined_out)
+                        if ldap_data:
+                            h.red_team_findings["ldap"] = ldap_data
+
         targets = select_agentless_probe_targets(host_results)
         if not targets:
             self.ui.print_status(self.ui.t("windows_verify_none"), "INFO")
@@ -1875,12 +2035,7 @@ class AuditorScan:
         workers = min(4, max(1, int(self.config.get("threads", 1))))
         start_t = time.time()
 
-        try:
-            from rich.progress import Progress
-
-            use_rich = True
-        except ImportError:
-            use_rich = False
+        use_rich = self.ui.get_progress_console() is not None
 
         with self._progress_ui():
             with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -1899,67 +2054,40 @@ class AuditorScan:
                 done = 0
 
                 if use_rich and total > 0:
-                    upper_per_target_s = 60.0
-                    with Progress(
-                        *self._progress_columns(
-                            show_detail=True,
-                            show_eta=True,
-                            show_elapsed=True,
-                        ),
-                        console=self._progress_console(),
-                        refresh_per_second=4,
-                    ) as progress:
-                        task = progress.add_task(
-                            f"[cyan]{self.ui.t('windows_verify_label')}",
-                            total=total,
-                            detail="",
-                            eta_upper=self._format_eta(
-                                upper_per_target_s * math.ceil(total / workers)
-                            ),
-                            eta_est="",
-                        )
-                        pending = set(futures)
-                        while pending:
-                            if self.interrupted:
-                                for pending_fut in pending:
-                                    pending_fut.cancel()
-                                break
-                            completed, pending = wait(
-                                pending, timeout=0.25, return_when=FIRST_COMPLETED
+                    progress = self.ui.get_standard_progress(transient=False)
+                    if progress:
+                        with progress:
+                            task = progress.add_task(
+                                f"[cyan]{self.ui.t('windows_verify_label')}",
+                                total=total,
                             )
-                            for fut in completed:
-                                ip = futures.get(fut)
-                                try:
-                                    res = fut.result()
-                                except Exception as exc:
-                                    res = {"ip": ip, "error": str(exc)}
-                                    if self.logger:
-                                        self.logger.debug(
-                                            "Windows verify failed for %s", ip, exc_info=True
-                                        )
-                                results.append(res)
-                                done += 1
-                                elapsed_s = max(0.001, time.time() - start_t)
-                                rate = done / elapsed_s if done else 0.0
-                                remaining = max(0, total - done)
-                                eta_est_val = (
-                                    self._format_eta(remaining / rate)
-                                    if rate > 0.0 and remaining
-                                    else ""
+                            pending = set(futures)
+                            while pending:
+                                if self.interrupted:
+                                    for pending_fut in pending:
+                                        pending_fut.cancel()
+                                    break
+                                completed, pending = wait(
+                                    pending, timeout=0.25, return_when=FIRST_COMPLETED
                                 )
-                                if ip:
-                                    progress.update(task, detail=f"{ip}")
-                                progress.update(
-                                    task,
-                                    advance=1,
-                                    description=f"[cyan]{self.ui.t('windows_verify_label')} ({done}/{total})",
-                                    eta_upper=self._format_eta(
-                                        upper_per_target_s * math.ceil(remaining / workers)
-                                        if remaining
-                                        else 0
-                                    ),
-                                    eta_est=f"ETA≈ {eta_est_val}" if eta_est_val else "",
-                                )
+                                for fut in completed:
+                                    ip = futures.get(fut)
+                                    try:
+                                        res = fut.result()
+                                    except Exception as exc:
+                                        res = {"ip": ip, "error": str(exc)}
+                                        if self.logger:
+                                            self.logger.debug(
+                                                "Windows verify failed for %s", ip, exc_info=True
+                                            )
+                                    results.append(res)
+                                    done += 1
+
+                                    progress.update(
+                                        task,
+                                        advance=1,
+                                        description=f"[cyan]{self.ui.t('windows_verify_label')} ({done}/{total})",
+                                    )
                 else:
                     for fut in as_completed(futures):
                         if self.interrupted:
