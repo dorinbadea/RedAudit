@@ -1673,9 +1673,7 @@ class InteractiveNetworkAuditor:
                     self.config["net_discovery_kerberos_userlist"] = None
 
                     if self.config["net_discovery_redteam"]:
-                        # v3.10.1: Masscan strategy (if available) - requires root so check is implicit in redteam check?
-                        import shutil
-
+                        # v3.10.1: Masscan strategy (if available)
                         if shutil.which("masscan"):
                             # Ask strategy
                             persisted_masscan = defaults_for_run.get("net_discovery_masscan")
