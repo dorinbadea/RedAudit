@@ -10,6 +10,46 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-01-07
+
+### Añadido
+
+- **Modo SYN de HyperScan**: Escaneo opcional de puertos basado en SYN usando scapy para ~10x más velocidad.
+  - Nuevo flag CLI: `--hyperscan-mode auto|connect|syn`
+  - Nuevo módulo: `redaudit/core/syn_scanner.py` con integración scapy
+  - Modo auto: Intenta SYN si root + scapy disponibles, sino usa connect
+  - Timing Stealth usa modo connect (más sigiloso que SYN)
+  - Integración Wizard: Todos los perfiles (Express/Estándar/Exhaustivo/Personalizado) soportan selección de modo
+
+- **Tooltip de Desglose de Risk Score**: Los reportes HTML ahora muestran componentes detallados del risk score al pasar el ratón.
+  - Componentes: CVSS Máximo, Puntuación Base, Bonus Densidad, Multiplicador Exposición
+  - Nueva función: `calculate_risk_score_with_breakdown()` en `siem.py`
+
+- **Visualización de Identity Score**: Los reportes HTML muestran identity_score con código de colores.
+  - Verde (≥3): Host bien identificado
+  - Amarillo (=2): Parcialmente identificado
+  - Rojo (<2): Identificación débil (disparó deep scan)
+  - Tooltip muestra señales de identidad (hostname, vendor, mac, etc.)
+
+- **Validación CPE de Smart-Check**: Detección mejorada de falsos positivos de Nuclei usando datos CPE.
+  - Nuevas funciones: `parse_cpe_components()`, `validate_cpe_against_template()`, `extract_host_cpes()`
+  - Valida hallazgos contra CPEs del host antes de comprobaciones de cabeceras HTTP
+
+- **Gestión de PCAP**: Nuevas utilidades para organización de archivos PCAP.
+  - `merge_pcap_files()`: Consolida archivos de captura usando mergecap
+  - `organize_pcap_files()`: Mueve capturas raw a subdirectorio
+  - `finalize_pcap_artifacts()`: Orquesta limpieza post-escaneo
+
+### Cambiado
+
+- **Algoritmo de Risk Score**: Refactorizado a cálculo basado en CVSS con desglose de componentes más claro.
+- **Plantillas HTML**: Ambas plantillas EN y ES actualizadas con nuevas columnas y tooltips.
+
+### Documentación
+
+- Actualizadas descripciones de perfiles del wizard con selección de modo HyperScan.
+- Añadidas traducciones i18n (EN/ES) para opciones de modo HyperScan.
+
 ## [4.2.1] - 2026-01-06
 
 ### Corregido

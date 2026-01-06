@@ -10,6 +10,52 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-01-07
+
+### Added
+
+- **HyperScan SYN Mode**: Optional SYN-based port scanning using scapy for ~10x faster discovery.
+  - New CLI flag: `--hyperscan-mode auto|connect|syn`
+  - New module: `redaudit/core/syn_scanner.py` with scapy integration
+  - Auto mode: Tries SYN if root + scapy available, otherwise falls back to connect
+  - Stealth timing uses connect mode (stealthier than SYN)
+  - Wizard integration: All profiles (Express/Standard/Exhaustive/Custom) support mode selection
+
+- **Risk Score Breakdown Tooltip**: HTML reports now show detailed risk score components on hover.
+  - Components: Max CVSS, Base Score, Density Bonus, Exposure Multiplier
+  - New function: `calculate_risk_score_with_breakdown()` in `siem.py`
+
+- **Identity Score Visualization**: HTML reports display identity_score with color coding.
+  - Green (≥3): Well-identified host
+  - Yellow (=2): Partially identified
+  - Red (<2): Weak identification (triggered deep scan)
+  - Tooltip shows identity signals (hostname, vendor, mac, etc.)
+
+- **Smart-Check CPE Validation**: Enhanced Nuclei false positive detection using CPE data.
+  - New functions: `parse_cpe_components()`, `validate_cpe_against_template()`, `extract_host_cpes()`
+  - Cross-validates findings against host CPEs before HTTP header checks
+
+- **PCAP Management**: New utilities for PCAP file organization.
+  - `merge_pcap_files()`: Consolidates capture files using mergecap
+  - `organize_pcap_files()`: Moves raw captures to subdirectory
+  - `finalize_pcap_artifacts()`: Orchestrates post-scan cleanup
+
+### Changed
+
+- **Risk Score Algorithm**: Refactored to CVSS-based calculation with clearer component breakdown.
+- **HTML Templates**: Both EN and ES templates updated with new columns and tooltips.
+
+### Documentation
+
+- Updated wizard profile descriptions with HyperScan mode selection.
+- Added i18n translations (EN/ES) for HyperScan mode options.
+
+## [4.2.1] - 2026-01-06
+
+### Fixed
+
+- Minor documentation and badge fixes.
+
 ## [4.2.0] - 2026-01-06
 
 ### Added

@@ -329,6 +329,7 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | `--diff OLD NEW` | Análisis diferencial entre escaneos |
 | `--html-report` | Generar dashboard HTML interactivo |
 | `--stealth` | Activar temporización paranoica para entornos sensibles a IDS |
+| `--hyperscan-mode MODE` | Modo de descubrimiento HyperScan: `auto`, `connect` o `syn` |
 | `--max-hosts N` | Limitar número de hosts a escanear |
 | `--no-deep-scan` | Deshabilitar deep scan adaptativo |
 | `--no-txt-report` | Omitir generación de informe TXT |

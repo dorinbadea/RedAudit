@@ -331,6 +331,7 @@ redaudit --diff ~/reports/monday.json ~/reports/friday.json
 | `--diff OLD NEW` | Differential analysis between scans |
 | `--html-report` | Generate interactive HTML dashboard |
 | `--stealth` | Enable paranoid timing for IDS-sensitive environments |
+| `--hyperscan-mode MODE` | HyperScan discovery mode: `auto`, `connect`, or `syn` |
 | `--max-hosts N` | Limit number of hosts to scan |
 | `--no-deep-scan` | Disable adaptive deep scan |
 | `--no-txt-report` | Skip TXT report generation |
