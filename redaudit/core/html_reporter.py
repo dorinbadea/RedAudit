@@ -122,6 +122,10 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
         hostname = host.get("hostname") or _get_reverse_dns(host) or "-"
         # Use vendor_hints for hostname-based fallback when MAC vendor missing
         display_vendor = get_best_vendor(mac_vendor, hostname, allow_guess=True) or "-"
+        # v4.3: Extract identity_score and signals from smart_scan
+        smart_scan = host.get("smart_scan", {}) or {}
+        identity_score = smart_scan.get("identity_score", 0)
+        identity_signals = smart_scan.get("identity_signals", [])
         host_table.append(
             {
                 "ip": host.get("ip", ""),
@@ -130,6 +134,8 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
                 "ports_count": len(host.get("ports", [])),
                 "risk_score": host.get("risk_score", 0),
                 "risk_score_breakdown": host.get("risk_score_breakdown", {}),
+                "identity_score": identity_score,
+                "identity_signals": identity_signals,
                 "mac": mac_address,
                 "vendor": display_vendor,
                 "os": host.get("os_detected")

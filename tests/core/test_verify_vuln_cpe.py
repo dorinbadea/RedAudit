@@ -11,7 +11,6 @@ from redaudit.core.verify_vuln import (
     validate_cpe_against_template,
     extract_host_cpes,
     check_nuclei_false_positive,
-    NUCLEI_TEMPLATE_VENDORS,
 )
 
 
