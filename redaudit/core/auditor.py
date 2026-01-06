@@ -351,6 +351,31 @@ class InteractiveNetworkAuditor:
 
         return self.ask_yes_no(self.ui.t("start_audit"), default="yes")
 
+    def _filter_auditor_ips(self, hosts: list) -> list:
+        """
+        Filter out auditor's own IPs from the host list.
+        Uses self.results['network_info'] as the source of truth.
+        """
+        if not self.results.get("network_info"):
+            return hosts
+
+        auditor_ips = {n.get("ip") for n in self.results["network_info"] if n.get("ip")}
+        if not auditor_ips:
+            return hosts
+
+        filtered_hosts = [h for h in hosts if h not in auditor_ips]
+        excluded_count = len(hosts) - len(filtered_hosts)
+
+        if excluded_count > 0:
+            self.ui.print_status(
+                self.ui.t("auditor_ip_excluded", excluded_count),
+                "INFO",
+            )
+            if hasattr(self, "logger") and self.logger:
+                self.logger.info(f"Excluded {excluded_count} self-IPs: {auditor_ips}")
+
+        return filtered_hosts
+
     def run_complete_scan(self):
         """Execute the complete scan workflow."""
         self.scan_start_time = datetime.now()
@@ -642,6 +667,9 @@ class InteractiveNetworkAuditor:
                     self.logger.debug(f"Deduplicated {diff} ghost hosts from discovery list.")
 
             all_hosts = cleaned_hosts
+
+            # v4.3: Auto-exclude Auditor IP
+            all_hosts = self._filter_auditor_ips(all_hosts)
 
             max_val = self.config["max_hosts_value"]
             if max_val != "all" and isinstance(max_val, int):

@@ -10,6 +10,25 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-01-06
+
+### Añadido
+
+- **Escaneo Profundo Paralelo**: Fase de Escaneo Profundo desacoplada con concurrencia total (hasta 50 hilos) y UI multi-barra.
+- **Escaneo de Apps Web**: Integración de `sqlmap` (detección SQLi) y `OWASP ZAP` (spidering) en la fase de vulnerabilidades.
+- **Progreso Multi-barra**: Barras de progreso visuales paralelas para tareas de Escaneo Profundo.
+- **i18n**: Traducciones completas al español para mensajes de estado de HyperScan y Escaneo Profundo.
+
+### Cambiado
+
+- **Pulido de UI**: Emojis de verificación estandarizados a ✅ en toda la CLI.
+- **Configuración Deep Scan**: Eliminados límites artificiales de hilos; ahora respeta la configuración global `--threads`.
+
+### Corregido
+
+- **Hosts Duplicados**: Implementada sanitización agresiva de IPs (limpieza ANSI) en `Auditor` para prevenir duplicados "fantasma".
+- **Glitches de Progreso**: Corregido problema donde HyperScan secuencial reportaba conteos de tareas incorrectos.
+
 ## [4.1.0] - 2026-01-06
 
 ### Añadido

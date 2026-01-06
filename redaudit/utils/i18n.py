@@ -369,6 +369,7 @@ TRANSLATIONS = {
         "hyperscan_no_ports": "[{}/{}] {}: no ports detected",
         "hyperscan_masscan_reuse": "[{}/{}] {}: reusing {} masscan ports",
         "deep_scan_running": "Running DeepScan on {} hosts...",
+        "auditor_ip_excluded": "ℹ️  Auto-excluded {} auditor IP(s) from target list to prevent self-scanning.",
     },
     "es": {
         "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
@@ -729,6 +730,7 @@ TRANSLATIONS = {
         "hyperscan_no_ports": "[{}/{}] {}: ningún puerto detectado",
         "hyperscan_masscan_reuse": "[{}/{}] {}: reutilizando {} puertos de masscan",
         "deep_scan_running": "Ejecutando DeepScan en {} hosts...",
+        "auditor_ip_excluded": "ℹ️  Auto-excluidas {} IP(s) del auditor para evitar auto-escaneo.",
     },
 }
 

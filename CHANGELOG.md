@@ -10,6 +10,25 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-01-06
+
+### Added
+
+- **Parallel Deep Scan**: Decoupled Deep Scan phase running with full concurrency (up to 50 threads) and multi-bar UI.
+- **Web App Scanning**: Integrated `sqlmap` (SQLi detection) and `OWASP ZAP` (spidering) into the vulnerability scan phase.
+- **Multi-bar Progress**: Visual parallel progress bars for Deep Scan tasks.
+- **i18n**: Complete Spanish translations for HyperScan and Deep Scan status messages.
+
+### Changed
+
+- **UI Polish**: Standardized checkmark emojis to ✅ across the CLI.
+- **Deep Scan Config**: Removed artificial thread limits; now respects global `--threads` setting.
+
+### Fixed
+
+- **Duplicated Hosts**: Implemented aggressive IP sanitization (ANSI stripping) in `Auditor` to prevent "ghost" duplicate hosts in scan lists.
+- **Progress Glitches**: Fixed issue where sequential HyperScan would sometimes report incorrect task counts.
+
 ## [4.1.0] - 2026-01-06
 
 ### Added
