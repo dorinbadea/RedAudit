@@ -32,7 +32,7 @@ Estas características están aprobadas pero **aún no implementadas** en el có
 
 | Característica | Estado | Descripción |
 | :--- | :--- | :--- |
-| **Enhanced Parallel Progress UI** | 🚧 Planificado | Barras de progreso multi-hilo elegantes con Rich. Mostrar estado de cada worker en paralelo: Vuln Scan (testssl/nikto/sqlmap/whatweb), nmap fingerprinting, Nuclei. Sin ruido innecesario. |
+| **Enhanced Parallel Progress UI** | 🚧 Planificado | Barras de progreso multi-hilo elegantes con Rich para TODAS las fases paralelas: Vuln Scan (testssl/nikto/sqlmap/whatweb), nmap fingerprinting, Nuclei, **Red Team Scan** (masscan/SMB/LDAP/Kerberos). Sin ruido innecesario, UX limpia. |
 | **MAC Privado Indicator** | 🚧 Planificado | Detectar MACs localmente administrados (bit 2 del primer byte) y mostrar "(MAC privado)" en lugar de "(guess)" para mayor claridad. |
 | **Web App Vuln Scan** | 🚧 Planificado | Integrar sqlmap para detección SQLi y ZAP para XSS en aplicaciones web (JuiceShop, DVWA, etc.). |
 | **Separación Deep Scan** | 🚧 Planificado | Extraer Deep Scan de `scan_host_ports()` como fase independiente. |
