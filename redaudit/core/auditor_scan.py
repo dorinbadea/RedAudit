@@ -1794,20 +1794,21 @@ class AuditorScan:
                 done = 0
 
                 if use_rich and total > 0:
-                    # Rich progress bar (quiet UI + timeout-aware upper bound ETA)
-                    # Rich progress bar (quiet UI + timeout-aware upper bound ETA)
+                    # v4.2: Multi-bar progress - one bar per active host
                     progress = self.ui.get_standard_progress(transient=False)
                     if progress:
                         with progress:
-                            initial_detail = self._get_ui_detail()
-                            # v3.8.1: Simplified task - no ETA fields
-                            task = progress.add_task(
-                                f"[cyan]{self.ui.t('scanning_hosts')}",
-                                total=total,
-                                detail=initial_detail,
-                            )
+                            # Create a task for each submitted host
+                            host_tasks = {}  # future -> task_id
+                            for fut, ip in futures.items():
+                                task_id = progress.add_task(
+                                    f"[cyan]  {ip}",
+                                    total=100,
+                                    start=True,
+                                )
+                                host_tasks[fut] = (task_id, ip)
+
                             pending = set(futures)
-                            last_detail = initial_detail
                             last_heartbeat = start_t
                             while pending:
                                 if self.interrupted:
@@ -1816,12 +1817,8 @@ class AuditorScan:
                                     break
 
                                 completed, pending = wait(
-                                    pending, timeout=0.25, return_when=FIRST_COMPLETED
+                                    pending, timeout=0.5, return_when=FIRST_COMPLETED
                                 )
-                                detail = self._get_ui_detail()
-                                if detail != last_detail:
-                                    progress.update(task, detail=detail)
-                                    last_detail = detail
 
                                 # v3.8.1: Heartbeat every 60s for visibility
                                 now = time.time()
@@ -1829,21 +1826,37 @@ class AuditorScan:
                                     elapsed = int(now - start_t)
                                     mins, secs = divmod(elapsed, 60)
                                     self.ui.print_status(
-                                        f"Escaneando hosts... {done}/{total} ({mins}:{secs:02d} transcurrido)",
+                                        f"{self.ui.t('scanning_hosts')}... {done}/{total} ({mins}:{secs:02d} transcurrido)",
                                         "INFO",
                                         force=True,
                                     )
                                     last_heartbeat = now
-                                detail = self._get_ui_detail()
-                                if detail != last_detail:
-                                    progress.update(task, detail=detail)
-                                    last_detail = detail
+
+                                # Update progress for still-pending hosts (indeterminate spin)
+                                for pending_fut in pending:
+                                    if pending_fut in host_tasks:
+                                        task_id, ip = host_tasks[pending_fut]
+                                        # Advance slightly to show activity
+                                        elapsed_host = int(now - start_t)
+                                        # Cap at 95% until complete
+                                        pct = min(
+                                            95, int((elapsed_host / max(1, host_timeout_s)) * 100)
+                                        )
+                                        progress.update(task_id, completed=pct)
 
                                 for fut in completed:
-                                    host_ip = futures.get(fut)
+                                    if fut not in host_tasks:
+                                        continue
+                                    task_id, host_ip = host_tasks[fut]
                                     try:
                                         res = fut.result()
                                         results.append(res)
+                                        # Mark complete with green
+                                        progress.update(
+                                            task_id,
+                                            completed=100,
+                                            description=f"[green]✅ {host_ip}",
+                                        )
                                     except Exception as exc:
                                         self.logger.error("Worker error for %s: %s", host_ip, exc)
                                         self.logger.debug(
@@ -1851,14 +1864,13 @@ class AuditorScan:
                                             host_ip,
                                             exc_info=True,
                                         )
+                                        # Mark failed with red
+                                        progress.update(
+                                            task_id,
+                                            completed=100,
+                                            description=f"[red]❌ {host_ip}",
+                                        )
                                     done += 1
-                                    # v3.8.1: Simplified progress update - no ETA
-                                    progress.update(
-                                        task,
-                                        advance=1,
-                                        description=f"[cyan]{self.ui.t('scanned_host', host_ip)}",
-                                        detail=last_detail,
-                                    )
                 else:
                     # Fallback to basic progress (throttled, includes timeout-aware upper bound ETA)
                     for fut in as_completed(futures):
