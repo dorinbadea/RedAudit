@@ -43,6 +43,11 @@ TOOL_CONFIGS = {
         "version_args": ["--version"],
         "pattern": r"searchsploit ([\d.]+)",
     },
+    "sqlmap": {
+        "names": ["sqlmap"],
+        "version_args": ["--version"],
+        "pattern": r"sqlmap/([\d.]+)",
+    },
 }
 
 

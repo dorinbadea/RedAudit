@@ -360,12 +360,76 @@ class AuditorVuln:
                     self.logger.debug("Nikto scan failed for %s", url, exc_info=True)
             return {}
 
-        # Execute tools in parallel
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        def run_sqlmap():
+            """v4.1: Basic sqlmap integration for SQLi detection."""
+            sqlmap_path = self.extra_tools.get("sqlmap")
+            if not sqlmap_path:
+                return {}
+
+            # Only run on URLs that might have parameters
+            # For basic scan, just check the base URL with common injectable points
+            try:
+                self._set_ui_detail(f"[sqlmap] {ip}:{port}")
+                runner = CommandRunner(
+                    logger=self.logger,
+                    dry_run=bool(self.config.get("dry_run", False)),
+                    default_timeout=120.0,
+                    default_retries=0,
+                    backoff_base_s=0.0,
+                    redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
+                )
+                # Batch mode, quick scan, forms crawl
+                res = runner.run(
+                    [
+                        sqlmap_path,
+                        "-u",
+                        url,
+                        "--batch",  # Non-interactive
+                        "--crawl=1",  # Crawl 1 level to find forms
+                        "--forms",  # Test forms automatically
+                        "--smart",  # Smart mode (quick)
+                        "--risk=1",  # Low risk (safe)
+                        "--level=1",  # Quick level
+                        "--timeout=10",  # Fast timeout
+                        "--retries=1",
+                        "--random-agent",
+                        "--output-dir=/tmp/sqlmap_output",
+                    ],
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                    timeout=120.0,
+                )
+                if not res.timed_out:
+                    output = str(res.stdout or "")
+                    # Check for SQLi detections
+                    sqli_indicators = [
+                        "is vulnerable",
+                        "injectable",
+                        "Parameter:",
+                        "Type: ",
+                        "sql injection",
+                    ]
+                    findings = []
+                    for line in output.splitlines():
+                        line_lower = line.lower()
+                        if any(ind.lower() in line_lower for ind in sqli_indicators):
+                            findings.append(line.strip()[:200])
+
+                    if findings:
+                        return {"sqlmap_findings": findings[:10]}
+            except Exception:
+                if self.logger:
+                    self.logger.debug("Sqlmap scan failed for %s", url, exc_info=True)
+            return {}
+
+        # Execute tools in parallel (v4.1: added sqlmap)
+        with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [
                 executor.submit(run_testssl),
                 executor.submit(run_whatweb),
                 executor.submit(run_nikto),
+                executor.submit(run_sqlmap),
             ]
             for future in as_completed(futures):
                 try:
