@@ -34,6 +34,7 @@ class AgentlessProbeTarget:
     ldap: bool = False
     ssh_ports: Tuple[int, ...] = ()
     http_ports: Tuple[int, ...] = ()
+    red_team_findings: Dict[str, Any] = None
 
 
 _HTTP_PORT_HINTS = {80, 81, 443, 8000, 8080, 8443, 8888, 9443}
@@ -105,6 +106,9 @@ def select_agentless_probe_targets(
                     ldap=ldap,
                     ssh_ports=tuple(sorted(ssh_ports)[:3]),
                     http_ports=tuple(sorted(http_ports)[:5]),
+                    red_team_findings=(
+                        host.red_team_findings if hasattr(host, "red_team_findings") else {}
+                    ),
                 )
             )
     return targets
@@ -423,18 +427,23 @@ def probe_agentless_services(
     }
 
     if target.smb:
-        rc, out, err = _run_nmap_script(
-            ip,
-            ports="445",
-            scripts="smb-os-discovery,smb2-security-mode,smb-protocols",
-            logger=logger,
-            dry_run=dry_run,
-            proxy_manager=proxy_manager,
-            timeout_s=60.0,
-        )
-        parsed = parse_smb_nmap(out + "\n" + err)
-        parsed["returncode"] = rc
-        result["smb"] = parsed
+        # Check if we already have findings
+        rt_smb = (target.red_team_findings or {}).get("smb")
+        if rt_smb:
+            result["smb"] = rt_smb
+        else:
+            rc, out, err = _run_nmap_script(
+                ip,
+                ports="445",
+                scripts="smb-os-discovery,smb2-security-mode,smb-protocols",
+                logger=logger,
+                dry_run=dry_run,
+                proxy_manager=proxy_manager,
+                timeout_s=60.0,
+            )
+            parsed = parse_smb_nmap(out + "\n" + err)
+            parsed["returncode"] = rc
+            result["smb"] = parsed
 
     if target.rdp:
         rc, out, err = _run_nmap_script(

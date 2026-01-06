@@ -285,6 +285,36 @@ class UIManager:
         except ImportError:
             return None
 
+    def get_standard_progress(self, transient: bool = False):
+        """
+        Get a standardized Rich Progress instance with elegant columns.
+        v4.2: Implements enhanced multi-bar capable UI style.
+        """
+        try:
+            from rich.progress import (
+                BarColumn,
+                Progress,
+                SpinnerColumn,
+                TaskProgressColumn,
+                TextColumn,
+                TimeElapsedColumn,
+                TimeRemainingColumn,
+            )
+
+            return Progress(
+                SpinnerColumn("dots", style="bright_blue"),
+                TextColumn("[bold blue]{task.description}"),
+                BarColumn(bar_width=None, style="blue", complete_style="bright_blue"),
+                TaskProgressColumn(),
+                TimeElapsedColumn(),
+                TimeRemainingColumn(),
+                transient=transient,
+                console=self.get_progress_console(),
+                expand=True,
+            )
+        except ImportError:
+            return None
+
 
 # Convenience function for backward compatibility
 def create_ui_manager(

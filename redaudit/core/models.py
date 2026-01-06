@@ -104,6 +104,7 @@ class Host:
     dns: Dict = field(default_factory=dict)
     cve_summary: Dict = field(default_factory=dict)
     smart_scan: Dict = field(default_factory=dict)
+    red_team_findings: Dict = field(default_factory=dict)
 
     # Raw data preservation (for transition)
     raw_nmap_data: Dict = field(default_factory=dict)
@@ -170,4 +171,5 @@ class Host:
             "dns": self.dns,
             "cve_summary": self.cve_summary,
             "smart_scan": self.smart_scan,
+            "red_team_findings": self.red_team_findings,
         }

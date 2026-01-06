@@ -365,6 +365,7 @@ class AuditorUI:
         return Console(
             file=getattr(sys, "__stdout__", sys.stdout),
             width=self._terminal_width(),
+            force_terminal=True,
         )
 
     def _safe_text_column(self, *args, **kwargs):
