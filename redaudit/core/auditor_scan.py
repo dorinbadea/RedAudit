@@ -1012,8 +1012,8 @@ class AuditorScan:
         prescan_ports: List[int] = []
 
         if hyperscan_first_enabled:
-            # Check for pre-discovered ports from _run_hyperscan_prescan()
-            if hasattr(self, "_hyperscan_prescan_ports"):
+            # Check for pre-discovered ports (use __dict__ to avoid __getattr__ recursion)
+            if "_hyperscan_prescan_ports" in self.__dict__:
                 prescan_ports = self._hyperscan_prescan_ports.get(safe_ip, [])
 
             if prescan_ports:
@@ -1616,8 +1616,8 @@ class AuditorScan:
         if not is_full_mode or self.config.get("stealth") or self.config.get("no_hyperscan_first"):
             return {}
 
-        # Initialize the prescan dict
-        if not hasattr(self, "_hyperscan_prescan_ports"):
+        # Initialize the prescan dict (use __dict__ to avoid __getattr__ recursion)
+        if "_hyperscan_prescan_ports" not in self.__dict__:
             self._hyperscan_prescan_ports = {}
 
         # Check for existing masscan results to reuse
