@@ -452,3 +452,165 @@ def test_scan_vulnerabilities_concurrent_fallback_worker_error(monkeypatch):
     auditor.scan_vulnerabilities_concurrent(host_results)
     assert auditor.statuses
     assert auditor.logger.debug.called
+
+
+# -----------------------------------------------------------------------------
+# v4.1 sqlmap integration tests
+# -----------------------------------------------------------------------------
+
+
+def test_scan_vulnerabilities_web_includes_sqlmap_in_parallel(monkeypatch):
+    """v4.1: Verify that sqlmap is included in vuln tools parallel execution."""
+    auditor = _DummyAuditor()
+    auditor.extra_tools = {
+        "whatweb": "/usr/bin/whatweb",
+        "nikto": "/usr/bin/nikto",
+        "sqlmap": "/usr/bin/sqlmap",
+    }
+    auditor.config["scan_mode"] = "completo"
+
+    # Track which tools were called
+    tools_called = []
+
+    class _TrackingRunner:
+        def __init__(self, **_kwargs):
+            pass
+
+        def run(self, cmd, **_kwargs):
+            tool = cmd[0]
+            tools_called.append(tool)
+            return _DummyResult(stdout="test output")
+
+    monkeypatch.setattr(auditor_vuln, "http_enrichment", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(auditor_vuln, "tls_enrichment", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _TrackingRunner)
+    monkeypatch.setattr(
+        "redaudit.core.verify_vuln.filter_nikto_false_positives", lambda x, *_a, **_k: x
+    )
+
+    host_info = {
+        "ip": "10.0.0.10",
+        "ports": [{"port": 80, "service": "http", "is_web_service": True}],
+    }
+
+    auditor.scan_vulnerabilities_web(host_info)
+
+    # sqlmap should have been called
+    sqlmap_calls = [t for t in tools_called if "sqlmap" in t]
+    assert len(sqlmap_calls) > 0, "sqlmap should be called during vuln scan"
+
+
+def test_sqlmap_shutil_which_fallback(monkeypatch):
+    """v4.1: Verify sqlmap uses shutil.which fallback when not in extra_tools."""
+    auditor = _DummyAuditor()
+    auditor.extra_tools = {}  # Empty - no sqlmap preregistered
+    auditor.config["scan_mode"] = "completo"
+
+    sqlmap_called = []
+
+    class _TrackingRunner:
+        def __init__(self, **_kwargs):
+            pass
+
+        def run(self, cmd, **_kwargs):
+            if "sqlmap" in str(cmd[0]):
+                sqlmap_called.append(cmd)
+            return _DummyResult(stdout="[12:00:00] [INFO] testing parameters")
+
+    # Mock shutil.which to return sqlmap path
+    monkeypatch.setattr(
+        "shutil.which", lambda tool: f"/usr/bin/{tool}" if tool == "sqlmap" else None
+    )
+    monkeypatch.setattr(auditor_vuln, "http_enrichment", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _TrackingRunner)
+    monkeypatch.setattr(
+        "redaudit.core.verify_vuln.filter_nikto_false_positives", lambda x, *_a, **_k: x
+    )
+
+    host_info = {
+        "ip": "10.0.0.11",
+        "ports": [{"port": 80, "service": "http", "is_web_service": True}],
+    }
+
+    auditor.scan_vulnerabilities_web(host_info)
+
+    # sqlmap should have been called via shutil.which fallback
+    assert len(sqlmap_called) > 0, "sqlmap should be called via shutil.which fallback"
+
+
+def test_sqlmap_detects_injection_indicators(monkeypatch):
+    """v4.1: Verify sqlmap findings are captured when SQLi indicators present."""
+    auditor = _DummyAuditor()
+    auditor.extra_tools = {"sqlmap": "/usr/bin/sqlmap"}
+    auditor.config["scan_mode"] = "completo"
+
+    # Simulate sqlmap finding injection
+    sqlmap_output = """
+[12:00:00] [INFO] testing parameter 'id'
+[12:00:01] [INFO] GET parameter 'id' is vulnerable
+[12:00:02] [INFO] Parameter: id (GET)
+    Type: boolean-based blind
+[12:00:03] [INFO] sql injection detected
+"""
+
+    class _SqlmapRunner:
+        def __init__(self, **_kwargs):
+            pass
+
+        def run(self, cmd, **_kwargs):
+            if "sqlmap" in str(cmd[0]):
+                return _DummyResult(stdout=sqlmap_output)
+            return _DummyResult()
+
+    monkeypatch.setattr(auditor_vuln, "http_enrichment", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _SqlmapRunner)
+    monkeypatch.setattr(
+        "redaudit.core.verify_vuln.filter_nikto_false_positives", lambda x, *_a, **_k: x
+    )
+
+    host_info = {
+        "ip": "10.0.0.12",
+        "ports": [{"port": 80, "service": "http", "is_web_service": True}],
+    }
+
+    result = auditor.scan_vulnerabilities_web(host_info)
+    assert result is not None
+    findings = result["vulnerabilities"][0]
+    assert "sqlmap_findings" in findings
+    assert len(findings["sqlmap_findings"]) > 0
+
+
+def test_sqlmap_not_called_when_unavailable(monkeypatch):
+    """v4.1: Verify sqlmap is not called when neither in extra_tools nor shutil.which."""
+    auditor = _DummyAuditor()
+    auditor.extra_tools = {}  # Empty
+    auditor.config["scan_mode"] = "completo"
+
+    tools_called = []
+
+    class _TrackingRunner:
+        def __init__(self, **_kwargs):
+            pass
+
+        def run(self, cmd, **_kwargs):
+            tools_called.append(str(cmd[0]))
+            return _DummyResult()
+
+    # shutil.which returns None for sqlmap
+    monkeypatch.setattr("shutil.which", lambda tool: None)
+    monkeypatch.setattr(auditor_vuln, "http_enrichment", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _TrackingRunner)
+    monkeypatch.setattr(
+        "redaudit.core.verify_vuln.filter_nikto_false_positives", lambda x, *_a, **_k: x
+    )
+
+    host_info = {
+        "ip": "10.0.0.13",
+        "ports": [{"port": 80, "service": "http", "is_web_service": True}],
+    }
+
+    auditor.scan_vulnerabilities_web(host_info)
+
+    # sqlmap should NOT have been called
+    sqlmap_calls = [t for t in tools_called if "sqlmap" in t]
+    assert len(sqlmap_calls) == 0, "sqlmap should not be called when unavailable"

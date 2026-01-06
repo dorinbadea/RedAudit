@@ -34,7 +34,7 @@ Estas características están aprobadas pero **aún no implementadas** en el có
 | :--- | :--- | :--- |
 | **Enhanced Parallel Progress UI** | 🚧 Planificado | Barras de progreso multi-hilo elegantes con Rich para TODAS las fases paralelas: Vuln Scan (testssl/nikto/sqlmap/whatweb), nmap fingerprinting, Nuclei, **Red Team Scan** (masscan/SMB/LDAP/Kerberos). Sin ruido innecesario, UX limpia. |
 | **MAC Privado Indicator** | 🚧 Planificado | Detectar MACs localmente administrados (bit 2 del primer byte) y mostrar "(MAC privado)" en lugar de "(guess)" para mayor claridad. |
-| **Web App Vuln Scan** | 🚧 Planificado | Integrar sqlmap para detección SQLi y ZAP para XSS en aplicaciones web (JuiceShop, DVWA, etc.). |
+| **Web App Vuln Scan** | 🚧 Planificado | Integración completa de sqlmap (`--level=3 --risk=3`) para detección SQLi avanzada y ZAP para XSS en aplicaciones web (JuiceShop, DVWA, etc.). |
 | **Separación Deep Scan** | 🚧 Planificado | Extraer Deep Scan de `scan_host_ports()` como fase independiente. |
 | **Red Team → Agentless** | 🚧 Planificado | Pasar resultados SMB/LDAP de Red Team a Agentless Verify. |
 | **Wizard UX: Phase 0 auto** | 🚧 Planificado | En perfil Exhaustivo, activar Phase 0 automáticamente. |
