@@ -421,6 +421,21 @@ def arp_scan_active(
 
     rc, out, err = _run_cmd(cmd, timeout_s, logger)
 
+    # v4.3: Count and consolidate ARP warnings for didactic feedback
+    # arp-scan emits "WARNING: Mac address to reach destination not found" for L2-unreachable hosts
+    warning_count = 0
+    for line in (err or "").splitlines():
+        if "WARNING" in line and "Mac address" in line:
+            warning_count += 1
+
+    if warning_count > 0:
+        # Store consolidated warning in result for UI formatting
+        result["l2_warnings"] = warning_count
+        result["l2_warning_note"] = (
+            f"{warning_count} hosts detected outside your local network (different subnet/VLAN). "
+            "TCP/UDP scanning will work normally for these hosts."
+        )
+
     # Parse arp-scan output
     # 192.168.178.1	d4:24:dd:07:7c:c5	AVM GmbH
     for line in out.splitlines():
@@ -720,6 +735,7 @@ def discover_networks(
             seen_ips = set()
 
             if tools.get("arp-scan") or shutil.which("arp-scan"):
+                total_l2_warnings = 0
                 for idx, target in enumerate(target_networks, start=1):
                     if len(target_networks) > 1:
                         _progress(
@@ -733,6 +749,20 @@ def discover_networks(
                             all_arp.append(host)
                     if arp_result.get("error"):
                         errors.append(f"arp-scan ({target}): {arp_result['error']}")
+                    # v4.3: Accumulate L2 warnings
+                    total_l2_warnings += arp_result.get("l2_warnings", 0)
+
+                # v4.3: Show consolidated L2 warning (didactic)
+                if total_l2_warnings > 0 and logger:
+                    logger.warning(
+                        "ARP Discovery: %d hosts outside local L2 segment (different subnet/VLAN). "
+                        "TCP/UDP scanning will work normally.",
+                        total_l2_warnings,
+                    )
+                    result["l2_warning_note"] = (
+                        f"{total_l2_warnings} hosts detected outside your local network. "
+                        "TCP/UDP scanning will work normally for these hosts."
+                    )
 
             for idx, target in enumerate(target_networks, start=1):
                 if len(target_networks) > 1:
