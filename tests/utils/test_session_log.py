@@ -16,7 +16,8 @@ class TestTeeStream(unittest.TestCase):
     def test_lines_mode_ignores_partial_writes(self):
         terminal = io.StringIO()
         log = io.StringIO()
-        stream = TeeStream(terminal, log, mode="lines")
+        lock = MagicMock()
+        stream = TeeStream(terminal, log, lock, mode="lines")
 
         stream.write("progress 10%")
         self.assertEqual(log.getvalue(), "")
@@ -28,7 +29,8 @@ class TestTeeStream(unittest.TestCase):
     def test_lines_mode_drops_carriage_return_frames(self):
         terminal = io.StringIO()
         log = io.StringIO()
-        stream = TeeStream(terminal, log, mode="lines")
+        lock = MagicMock()
+        stream = TeeStream(terminal, log, lock, mode="lines")
 
         # Simulate progress redraws that rewrite the same line using carriage returns.
         stream.write("frame1\rframe2\rframe3")
@@ -40,7 +42,8 @@ class TestTeeStream(unittest.TestCase):
     def test_lines_mode_prefixes_stderr_lines(self):
         terminal = io.StringIO()
         log = io.StringIO()
-        stream = TeeStream(terminal, log, prefix="[stderr] ", mode="lines")
+        lock = MagicMock()
+        stream = TeeStream(terminal, log, lock, prefix="[stderr] ", mode="lines")
 
         stream.write("oops\n")
         self.assertEqual(log.getvalue(), "[stderr] oops\n")
@@ -49,7 +52,8 @@ class TestTeeStream(unittest.TestCase):
     def test_raw_mode_logs_every_write(self):
         terminal = io.StringIO()
         log = io.StringIO()
-        stream = TeeStream(terminal, log, mode="raw")
+        lock = MagicMock()
+        stream = TeeStream(terminal, log, lock, mode="raw")
 
         stream.write("a")
         stream.write("b")
@@ -133,7 +137,8 @@ def test_tee_stream_write_raw_mode():
     terminal = MagicMock()
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file, prefix="[test] ", mode="raw")
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock, prefix="[test] ", mode="raw")
     tee.write("test data")
 
     assert log_file.write.called
@@ -146,7 +151,8 @@ def test_tee_stream_write_exception():
     log_file = MagicMock()
     log_file.write.side_effect = IOError("Write failed")
 
-    tee = TeeStream(terminal, log_file, mode="lines")
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock, mode="lines")
     result = tee.write("test\n")
 
     assert result == 5  # Should not raise
@@ -157,7 +163,8 @@ def test_tee_stream_write_lines_empty_data():
     terminal = MagicMock()
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file)
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
     tee._write_lines("")  # Should not raise
 
 
@@ -166,7 +173,8 @@ def test_tee_stream_write_lines_buffer_overflow():
     terminal = MagicMock()
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file)
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
     tee._max_buf = 100
     tee._log_buf = "x" * 200  # Exceed max
     tee._write_lines("more data")
@@ -179,7 +187,8 @@ def test_tee_stream_write_lines_no_lines():
     terminal = MagicMock()
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file)
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
     tee._log_buf = "\n"
     tee._write_lines("")
     # Should handle gracefully
@@ -190,7 +199,8 @@ def test_tee_stream_write_lines_partial_line():
     terminal = MagicMock()
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file)
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
     tee._write_lines("line1\npartial")
 
     assert tee._log_buf == "partial"
@@ -201,7 +211,8 @@ def test_tee_stream_should_skip_line_empty():
     terminal = MagicMock()
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file)
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
     result = tee._should_skip_line("   \n")
 
     assert result is False  # Keep blank lines
@@ -212,7 +223,8 @@ def test_tee_stream_should_skip_line_status_message():
     terminal = MagicMock()
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file)
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
     result = tee._should_skip_line("[OK] Test passed ✓\n")
 
     assert result is False  # Never skip status
@@ -223,7 +235,8 @@ def test_tee_stream_should_skip_line_scan_results():
     terminal = MagicMock()
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file)
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
     result = tee._should_skip_line("Found 5 hosts with 10 ports\n")
 
     assert result is False  # Keep scan results
@@ -234,7 +247,8 @@ def test_tee_stream_should_skip_line_heartbeat_duplicate():
     terminal = MagicMock()
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file)
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
 
     # First heartbeat
     result1 = tee._should_skip_line(
@@ -254,7 +268,8 @@ def test_tee_stream_should_skip_line_progress_minor_change():
     terminal = MagicMock()
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file)
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
 
     # First progress
     result1 = tee._should_skip_line("⠋ Discovery ━━━━━━━━━━ 10%\n")
@@ -270,7 +285,8 @@ def test_tee_stream_flush_with_heartbeat_count():
     terminal = MagicMock()
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file)
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
     tee._heartbeat_count = 5
     tee.flush()
 
@@ -283,7 +299,8 @@ def test_tee_stream_isatty():
     terminal.isatty.return_value = True
     log_file = MagicMock()
 
-    tee = TeeStream(terminal, log_file)
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
     result = tee.isatty()
 
     assert result is True
