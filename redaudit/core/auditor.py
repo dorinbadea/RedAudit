@@ -787,7 +787,7 @@ class InteractiveNetworkAuditor:
                                     nuclei_result = run_nuclei_scan(
                                         targets=nuclei_targets,
                                         output_dir=output_dir,
-                                        severity="medium,high,critical",
+                                        severity="low,medium,high,critical",
                                         timeout=nuclei_timeout_s,
                                         batch_size=batch_size,
                                         progress_callback=lambda c, t, e: self._nuclei_progress_callback(
@@ -902,8 +902,67 @@ class InteractiveNetworkAuditor:
                     if self.logger:
                         self.logger.debug("CVE enrichment failed (best-effort)", exc_info=True)
 
+            # v4.3.1: Re-calculate risk scores with all findings (Nikto/Nuclei/Web)
+            # This ensures risk_score reflects actual vulnerabilities found during scan
+            try:
+                from redaudit.core.siem import calculate_risk_score
+
+                # Map findings to hosts by IP
+                findings_map = {}
+                vulns_data = self.results.get("vulnerabilities", [])
+                for entry in vulns_data:
+                    host_ip = entry.get("host")
+                    if host_ip and entry.get("vulnerabilities"):
+                        if host_ip not in findings_map:
+                            findings_map[host_ip] = []
+                        findings_map[host_ip].extend(entry["vulnerabilities"])
+
+                # Update host records
+                if isinstance(results, list):
+                    for host in results:
+                        # Ensure host is a dict (it might be a Pydantic model in some contexts, but usually dict here)
+                        # If it's an object, we can't easily set findings unless we convert or use setattr
+                        # Assuming dict based on usage in reporter.py
+                        ip = host.get("ip")
+                        if ip and ip in findings_map:
+                            host["findings"] = findings_map[ip]
+
+                        # Recalculate and update
+                        # This works because calculate_risk_score now looks at host["findings"]
+                        new_risk = calculate_risk_score(host)
+                        host["risk_score"] = new_risk
+
+            except Exception as e:
+                if self.logger:
+                    self.logger.warning("Risk score recalculation failed: %s", e)
+
             self.config["rate_limit_delay"] = self.rate_limit_delay
             generate_summary(self.results, self.config, all_hosts, results, self.scan_start_time)
+
+            # v4.3: Finalize PCAP artifacts (merge and organize)
+            output_dir = self.config.get("_actual_output_dir") or self.config.get("output_dir")
+            if output_dir and not self.interrupted:
+                try:
+                    from redaudit.core.scanner.traffic import finalize_pcap_artifacts
+
+                    session_id = ts_folder.replace("-", "").replace("_", "")
+                    pcap_result = finalize_pcap_artifacts(
+                        output_dir=output_dir,
+                        session_id=session_id,
+                        extra_tools=self.extra_tools,
+                        logger=self.logger,
+                        dry_run=self.config.get("dry_run"),
+                    )
+                    if pcap_result.get("merged_file"):
+                        self.results["pcap_summary"] = {
+                            "merged_file": os.path.basename(pcap_result["merged_file"]),
+                            "raw_captures_dir": "raw_captures",
+                            "individual_count": pcap_result.get("individual_count", 0),
+                        }
+                except Exception as pcap_err:
+                    if self.logger:
+                        self.logger.debug("PCAP finalization skipped: %s", pcap_err)
+
             self.save_results(partial=self.interrupted)
             self.show_results()
 
@@ -1188,6 +1247,7 @@ class InteractiveNetworkAuditor:
             # v3.9.0: Ask auditor name and output dir for all profiles
             self._ask_auditor_and_output_dir(defaults_for_run)
             self.rate_limit_delay = 0.0  # Express = always fast
+            self.config["hyperscan_mode"] = "auto"  # v4.3: Fast = auto-detect best mode
             return
 
         # PROFILE 1: Standard - Balance (equivalent to old normal mode)
@@ -1216,6 +1276,11 @@ class InteractiveNetworkAuditor:
             if timing_threads_boost:
                 self.config["threads"] = MAX_THREADS
             self.rate_limit_delay = timing_delay
+            # v4.3: HyperScan mode based on timing
+            if timing_nmap_template == "T1":  # Stealth
+                self.config["hyperscan_mode"] = "connect"  # Connect is stealthier than SYN
+            else:
+                self.config["hyperscan_mode"] = "auto"  # Let it auto-detect
             return
 
         # PROFILE 2: Exhaustive - Maximum discovery (auto-configures everything)
@@ -1293,6 +1358,11 @@ class InteractiveNetworkAuditor:
 
             # Rate limiting - already asked in profile selection loop
             self.rate_limit_delay = timing_delay
+            # v4.3: HyperScan mode based on timing (Stealth = connect, else auto)
+            if timing_nmap_template == "T1":  # Stealth
+                self.config["hyperscan_mode"] = "connect"
+            else:
+                self.config["hyperscan_mode"] = "auto"
             return
 
         # PROFILE 3: Custom - Full wizard with 8 steps (original behavior)
@@ -1393,6 +1463,31 @@ class InteractiveNetworkAuditor:
                 self.config["low_impact_enrichment"] = self.ask_yes_no(
                     self.ui.t("low_impact_enrichment_q"), default=low_impact_default
                 )
+
+                # v4.3: HyperScan mode selection
+                hyperscan_options = [
+                    self.ui.t("hyperscan_auto"),
+                    self.ui.t("hyperscan_connect"),
+                    self.ui.t("hyperscan_syn"),
+                ]
+                persisted_hyperscan = defaults_for_run.get("hyperscan_mode", "auto")
+                hyperscan_idx_map = {"auto": 0, "connect": 1, "syn": 2}
+                default_hs_idx = wizard_state.get(
+                    "hyperscan_idx", hyperscan_idx_map.get(persisted_hyperscan, 0)
+                )
+                hs_choice = self.ask_choice_with_back(
+                    self.ui.t("hyperscan_mode_q"),
+                    hyperscan_options,
+                    default_hs_idx,
+                    step_num=step,
+                    total_steps=TOTAL_STEPS,
+                )
+                if hs_choice == self.WIZARD_BACK:
+                    step -= 1
+                    continue
+
+                wizard_state["hyperscan_idx"] = hs_choice
+                self.config["hyperscan_mode"] = ["auto", "connect", "syn"][hs_choice]
 
                 step += 1
                 continue

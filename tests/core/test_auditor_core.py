@@ -983,7 +983,13 @@ class TestConcurrentScan:
         def side_effect_wait(_pending, *_args, **_kwargs):
             return {fut_ok, fut_err}, set()
 
-        time_calls = iter([0.0, 61.0])
+        def time_gen():
+            yield 0.0
+            yield 61.0
+            while True:
+                yield 62.0
+
+        time_calls = time_gen()
 
         def fake_time():
             return next(time_calls)
@@ -1047,7 +1053,14 @@ class TestConcurrentScan:
         fut_err = MagicMock()
         fut_err.result.side_effect = RuntimeError("boom")
 
-        time_calls = iter([0.0, 5.0, 5.0])
+        def time_gen():
+            yield 0.0
+            yield 5.0
+            yield 5.0
+            while True:
+                yield 6.0
+
+        time_calls = time_gen()
 
         def fake_time():
             return next(time_calls)

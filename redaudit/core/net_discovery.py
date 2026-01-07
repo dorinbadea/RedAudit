@@ -58,6 +58,49 @@ def _run_cmd(
         return -1, "", str(e)
 
 
+def _run_cmd_suppress_stderr(
+    args: List[str],
+    timeout_s: int,
+    logger=None,
+) -> Tuple[int, str, str]:
+    """
+    Execute a command suppressing stderr from being displayed on terminal.
+
+    v4.3: Used for arp-scan which writes warnings directly to tty even when
+    stderr is captured. We capture stderr in memory but don't let it pollute
+    the terminal during progress UI.
+    """
+    import subprocess
+
+    if is_dry_run():
+        if logger:
+            logger.debug(f"[dry-run] {' '.join(args)}")
+        return 0, "", ""
+
+    try:
+        proc = subprocess.run(
+            args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,  # Capture stderr instead of DEVNULL
+            timeout=float(timeout_s),
+            text=True,
+            check=False,
+        )
+        # Return captured stderr for analysis (e.g., counting warnings)
+        # but it won't be printed to terminal
+        return proc.returncode, proc.stdout or "", proc.stderr or ""
+    except subprocess.TimeoutExpired as e:
+        if logger:
+            logger.warning("Command timeout: %s", " ".join(args))
+        return 124, getattr(e, "stdout", "") or "", getattr(e, "stderr", "") or ""
+    except FileNotFoundError:
+        return 127, "", f"Command not found: {args[0]}"
+    except Exception as e:
+        if logger:
+            logger.error(f"Command execution failed: {e}")
+        return -1, "", str(e)
+
+
 def _check_tools() -> Dict[str, bool]:
     """Check availability of discovery tools."""
     return {
@@ -419,7 +462,24 @@ def arp_scan_active(
     # Add retry for better IoT discovery
     cmd.extend(["--retry", "2"])
 
-    rc, out, err = _run_cmd(cmd, timeout_s, logger)
+    # v4.3: Use suppress_stderr to prevent raw warnings from appearing in terminal
+    # arp-scan warnings are captured, counted, and shown as a single consolidated message
+    rc, out, err = _run_cmd_suppress_stderr(cmd, timeout_s, logger)
+
+    # v4.3: Count and consolidate ARP warnings for didactic feedback
+    # arp-scan emits "WARNING: Mac address to reach destination not found" for L2-unreachable hosts
+    warning_count = 0
+    for line in (err or "").splitlines():
+        if "WARNING" in line and "Mac address" in line:
+            warning_count += 1
+
+    if warning_count > 0:
+        # Store consolidated warning in result for UI formatting
+        result["l2_warnings"] = warning_count
+        result["l2_warning_note"] = (
+            f"{warning_count} hosts detected outside your local network (different subnet/VLAN). "
+            "TCP/UDP scanning will work normally for these hosts."
+        )
 
     # Parse arp-scan output
     # 192.168.178.1	d4:24:dd:07:7c:c5	AVM GmbH
@@ -720,6 +780,7 @@ def discover_networks(
             seen_ips = set()
 
             if tools.get("arp-scan") or shutil.which("arp-scan"):
+                total_l2_warnings = 0
                 for idx, target in enumerate(target_networks, start=1):
                     if len(target_networks) > 1:
                         _progress(
@@ -733,6 +794,31 @@ def discover_networks(
                             all_arp.append(host)
                     if arp_result.get("error"):
                         errors.append(f"arp-scan ({target}): {arp_result['error']}")
+                    # v4.3: Accumulate L2 warnings
+                    total_l2_warnings += arp_result.get("l2_warnings", 0)
+
+                # v4.3: Show consolidated L2 warning (didactic)
+                if total_l2_warnings > 0:
+                    warning_msg = (
+                        f"⚠️  ARP Discovery: {total_l2_warnings} hosts detectados fuera de tu red local "
+                        "(subred/VLAN diferente).\n"
+                        "   → Esto es normal si escaneas rangos que incluyen otras redes o el gateway.\n"
+                        "   → El escaneo TCP/UDP funcionará normalmente para estos hosts."
+                    )
+                    # Print to terminal (logger.warning only goes to log file)
+                    from datetime import datetime as dt
+
+                    ts = dt.now().strftime("%H:%M:%S")
+                    print(f"\033[93m[{ts}] [WARN]\033[0m {warning_msg}", flush=True)
+                    if logger:
+                        logger.warning(
+                            "ARP Discovery: %d hosts outside local L2 segment. TCP/UDP will work normally.",
+                            total_l2_warnings,
+                        )
+                    result["l2_warning_note"] = (
+                        f"{total_l2_warnings} hosts detected outside your local network. "
+                        "TCP/UDP scanning will work normally for these hosts."
+                    )
 
             for idx, target in enumerate(target_networks, start=1):
                 if len(target_networks) > 1:
@@ -2223,7 +2309,12 @@ def _redteam_scapy_custom(
 
     try:
         import scapy  # type: ignore
-        from scapy.all import Dot1Q, sniff  # type: ignore
+        from scapy.all import Dot1Q, sniff, conf  # type: ignore
+        import logging
+
+        # 4.3: Suppress scapy warnings
+        conf.verb = 0
+        logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
     except Exception:
         return {"status": "tool_missing", "tool": "scapy"}
 

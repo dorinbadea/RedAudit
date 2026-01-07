@@ -460,6 +460,14 @@ Examples:
         help="Enable additional L2-focused checks that may be noisier (bettercap/scapy sniff; requires root)",
     )
 
+    # v4.3: HyperScan mode selection
+    parser.add_argument(
+        "--hyperscan-mode",
+        choices=["auto", "connect", "syn"],
+        default="auto",
+        help="HyperScan method: auto (default, tries SYN if root), connect (no root), syn (requires root)",
+    )
+
     return parser.parse_args()
 
 
@@ -615,6 +623,8 @@ def configure_from_args(app, args) -> bool:
     app.config["net_discovery_kerberos_userlist"] = args.kerberos_userlist
     app.config["net_discovery_active_l2"] = bool(args.redteam_active_l2)
     app.config["nuclei_enabled"] = bool(getattr(args, "nuclei", False))
+    # v4.3: HyperScan mode
+    app.config["hyperscan_mode"] = getattr(args, "hyperscan_mode", "auto")
     if not isinstance(args.agentless_verify_max_targets, int) or not (
         1 <= args.agentless_verify_max_targets <= 200
     ):

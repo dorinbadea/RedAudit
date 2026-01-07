@@ -370,6 +370,11 @@ TRANSLATIONS = {
         "hyperscan_masscan_reuse": "[{}/{}] {}: reusing {} masscan ports",
         "deep_scan_running": "Running DeepScan on {} hosts...",
         "auditor_ip_excluded": "ℹ️  Auto-excluded {} auditor IP(s) from target list to prevent self-scanning.",
+        # v4.3: HyperScan mode wizard
+        "hyperscan_mode_q": "HyperScan discovery method:",
+        "hyperscan_auto": "Auto — Detect best method (SYN if root, else connect)",
+        "hyperscan_connect": "Connect — Standard TCP (no root required, stealthier)",
+        "hyperscan_syn": "SYN — Raw packets (requires root + scapy, faster)",
     },
     "es": {
         "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
@@ -731,6 +736,11 @@ TRANSLATIONS = {
         "hyperscan_masscan_reuse": "[{}/{}] {}: reutilizando {} puertos de masscan",
         "deep_scan_running": "Ejecutando DeepScan en {} hosts...",
         "auditor_ip_excluded": "ℹ️  Auto-excluidas {} IP(s) del auditor para evitar auto-escaneo.",
+        # v4.3: HyperScan mode wizard
+        "hyperscan_mode_q": "Método de descubrimiento HyperScan:",
+        "hyperscan_auto": "Auto — Detectar mejor método (SYN si root, sino connect)",
+        "hyperscan_connect": "Connect — TCP estándar (no requiere root, más sigiloso)",
+        "hyperscan_syn": "SYN — Paquetes raw (requiere root + scapy, más rápido)",
     },
 }
 

@@ -312,3 +312,14 @@ def test_filter_nuclei_false_positives_with_logger():
     genuine, fps = filter_nuclei_false_positives(findings, logger=logger)
     assert len(fps) == 1
     assert logger.info.called
+
+
+def test_check_nuclei_false_positive_lf_line_endings():
+    """Test header parsing with LF line endings (v4.3.1 fix)."""
+    finding = {
+        "template-id": "CVE-2022-26143",
+        "response": "HTTP/1.1 200 OK\nServer: FRITZ!OS Guest information Server\nDate: Mon, 01 Jan 2026",
+    }
+    is_fp, reason = check_nuclei_false_positive(finding)
+    assert is_fp is True
+    assert "vendor_detected" in reason or "fritz" in reason.lower()

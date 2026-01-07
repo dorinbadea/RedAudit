@@ -59,8 +59,8 @@ def test_configure_scan_interactive_full_flow(monkeypatch, tmp_path):
     app.config["deep_id_scan"] = True
 
     # v3.9.0: First ask_choice is for profile selection (3 = Custom)
-    # Then the wizard steps follow
-    choice_with_back = iter([1, 0, 0, 0, 0, 0, 0])
+    # Then the wizard steps follow. v4.3: Added hyperscan_mode + vulnerability scan step
+    choice_with_back = iter([1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     # First choice is profile (3=Custom), second is redteam mode
     choice = iter([3, 1])
     yes_no = iter([False, False, True, True])

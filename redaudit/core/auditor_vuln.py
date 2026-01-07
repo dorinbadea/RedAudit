@@ -330,11 +330,11 @@ class AuditorVuln:
                     command_wrapper=get_proxy_command_wrapper(getattr(self, "proxy_manager", None)),
                 )
                 res = runner.run(
-                    [self.extra_tools["nikto"], "-h", url, "-maxtime", "120s", "-Tuning", "x"],
+                    [self.extra_tools["nikto"], "-h", url, "-maxtime", "300s"],
                     capture_output=True,
                     check=False,
                     text=True,
-                    timeout=150.0,
+                    timeout=330.0,
                 )
                 if not res.timed_out:
                     output = str(res.stdout or "") or str(res.stderr or "")
@@ -569,11 +569,11 @@ class AuditorVuln:
                     command_wrapper=get_proxy_command_wrapper(getattr(self, "proxy_manager", None)),
                 )
                 res = runner.run(
-                    [self.extra_tools["nikto"], "-h", url, "-maxtime", "120s", "-Tuning", "x"],
+                    [self.extra_tools["nikto"], "-h", url, "-maxtime", "300s"],
                     capture_output=True,
                     check=False,
                     text=True,
-                    timeout=150.0,
+                    timeout=330.0,
                 )
                 if not res.timed_out:
                     output = str(res.stdout or "") or str(res.stderr or "")

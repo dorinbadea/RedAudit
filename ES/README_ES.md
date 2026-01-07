@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-![Versión](https://img.shields.io/badge/v4.2.0-blue?style=flat-square)
+![Versión](https://img.shields.io/badge/v4.3.0-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -91,24 +91,25 @@ sudo redaudit
 | **Interfaz Bilingüe** | Localización completa Inglés/Español |
 | **Auto-Actualización** | Actualizaciones atómicas staged con rollback automático en caso de fallo |
 
-### Nuevo en v4.2: Deep Scan Paralelo y Seguridad Web
+### Nuevo en v4.3: Risk Scoring Empresarial y Optimizaciones H2
 
-> **Aceleración masiva + Seguridad web de nivel empresarial.**
+> **Puntuación más Inteligente + Escaneos más Profundos.**
 
-**Deep Scan Paralelo:** La fase de deep scan está ahora totalmente desacoplada. En lugar de bloquear el hilo principal, los hosts difíciles se delegan a un pool dedicado de hasta 50 hilos en segundo plano. Esto asegura que unos pocos hosts lentos nunca embotellen la auditoría completa.
+**Risk Scoring V2:** El motor de riesgos ahora integra la severidad de los hallazgos (low/med/high/crit) de Nikto y Nuclei en la puntuación final. Un host con cero CVEs pero fallos críticos de configuración (ej. falta de auth) ahora reflejará correctamente un riesgo alto.
 
-**Seguridad de Aplicaciones Web:**
+**Optimización Docker/Deep (H2):**
 
-- **Integración SQLMap:** Pruebas automáticas de inyección SQL para parámetros sospechosos.
-- **OWASP ZAP:** Capacidades DAST completas para aplicaciones web (opcional vía `--zap`).
+- **Nikto**: Timeouts extendidos (5m) y perfiles de tuning completos.
+- **Nuclei**: Añadidos hallazgos de severidad "Low" (ej. fugas de info, paneles expuestos) a la matriz de decisión.
+- **Silencio Scapy**: Supresión de advertencias ARP de bajo nivel para una salida más limpia.
 
 | Característica | Beneficio |
 |:---|:---|
-| **Deep Scan Paralelo** | Enumeración profunda no bloqueante (hasta 50 hilos) |
-| **Seguridad Web App** | `sqlmap` + `OWASP ZAP` para evaluación profunda de vulnerabilidades web |
-| **Deduplicación Estricta** | Sanitización robusta que previene reportes de hosts duplicados |
+| **Risk Scoring V2** | Cálculo de riesgo nivel enterprise fusionando CVEs + Hallazgos |
+| **Optimización H2** | Mayor visibilidad Docker e insights de severidad "Low" |
+| **Supresión de Advertencias** | Salida de terminal más limpia (fixes M1.1 / M2) |
 
-Ver [NOTAS DE LANZAMIENTO](docs/releases/RELEASE_NOTES_v4.2.1_ES.md) para más detalles.
+Ver [NOTAS DE LANZAMIENTO](../docs/releases/RELEASE_NOTES_v4.3.0_ES.md) para más detalles.
 
 ---
 
@@ -329,6 +330,7 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | `--diff OLD NEW` | Análisis diferencial entre escaneos |
 | `--html-report` | Generar dashboard HTML interactivo |
 | `--stealth` | Activar temporización paranoica para entornos sensibles a IDS |
+| `--hyperscan-mode MODE` | Modo de descubrimiento HyperScan: `auto`, `connect` o `syn` |
 | `--max-hosts N` | Limitar número de hosts a escanear |
 | `--no-deep-scan` | Deshabilitar deep scan adaptativo |
 | `--no-txt-report` | Omitir generación de informe TXT |

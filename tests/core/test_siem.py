@@ -70,16 +70,35 @@ class TestSIEM(unittest.TestCase):
         self.assertEqual(score, 0)
 
     def test_calculate_risk_score_with_ports(self):
-        """Test risk score increases with ports."""
-        host = {
+        """Test risk score with exposed ports and CVEs.
+
+        v4.3: New algorithm returns 0 for ports without vulnerabilities.
+        Score only increases with CVEs, exploits, or insecure services.
+        """
+        # Ports without CVEs = low risk (score 0 is intentional)
+        host_clean = {
             "ip": "192.168.1.1",
             "ports": [
                 {"port": 22, "service": "ssh"},
                 {"port": 80, "service": "http"},
             ],
         }
-        score = calculate_risk_score(host)
-        self.assertGreater(score, 0)
+        score_clean = calculate_risk_score(host_clean)
+        self.assertEqual(score_clean, 0)
+
+        # Ports with CVE data should have score > 0
+        host_with_cve = {
+            "ip": "192.168.1.1",
+            "ports": [
+                {
+                    "port": 80,
+                    "service": "http",
+                    "cves": [{"cve_id": "CVE-2021-1234", "cvss_score": 7.5}],
+                },
+            ],
+        }
+        score_with_cve = calculate_risk_score(host_with_cve)
+        self.assertGreater(score_with_cve, 0)
 
     def test_calculate_risk_score_insecure_service(self):
         """Test risk score penalty for insecure services."""
@@ -90,6 +109,46 @@ class TestSIEM(unittest.TestCase):
         score_insecure = calculate_risk_score(host_insecure)
 
         self.assertGreater(score_insecure, score_secure)
+
+    def test_calculate_risk_score_with_breakdown(self):
+        """Test that calculate_risk_score_with_breakdown returns score and breakdown."""
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [
+                {
+                    "port": 80,
+                    "service": "http",
+                    "cves": [{"cve_id": "CVE-2021-1234", "cvss_score": 8.5}],
+                },
+                {"port": 22, "service": "ssh"},
+            ],
+        }
+        result = calculate_risk_score(host)
+        self.assertIsInstance(result, int)
+        self.assertGreater(result, 0)
+
+    def test_calculate_risk_score_with_breakdown_details(self):
+        """Test that breakdown contains expected fields."""
+        from redaudit.core.siem import calculate_risk_score_with_breakdown
+
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [
+                {
+                    "port": 80,
+                    "service": "http",
+                    "cves": [{"cve_id": "CVE-2021-1234", "cvss_score": 9.8}],
+                },
+            ],
+        }
+        result = calculate_risk_score_with_breakdown(host)
+
+        self.assertIn("score", result)
+        self.assertIn("breakdown", result)
+        self.assertEqual(result["breakdown"]["max_cvss"], 9.8)
+        self.assertEqual(result["breakdown"]["exposure_multiplier"], 1.15)
+        self.assertTrue(result["breakdown"]["has_exposed_port"])
+        self.assertGreater(result["score"], 0)
 
     def test_calculate_risk_score_with_exploits(self):
         """Test risk score with known exploits."""
@@ -261,6 +320,21 @@ class TestSIEM(unittest.TestCase):
         self.assertEqual(merged_vuln.get("severity_score"), 70)
         self.assertIn("testssl_analysis", merged_vuln)
 
+    def test_calculate_risk_score_with_unattached_findings(self):
+        """Test risk score calculation from general findings list (v4.3.1)."""
+        host = {
+            "ip": "10.0.0.1",
+            "ports": [],
+            "findings": [
+                {"severity": "critical", "name": "Finding 1"},
+                {"severity": "medium", "name": "Finding 2"},
+            ],
+        }
+        score = calculate_risk_score(host)
+        # Critical = 9.5 -> Base ~95
+        self.assertGreater(score, 90)
+
 
 if __name__ == "__main__":
+    unittest.main()
     unittest.main()

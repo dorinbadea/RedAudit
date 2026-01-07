@@ -32,6 +32,57 @@ def normalize_oui(mac: str) -> str:
     return mac.replace(":", "").replace("-", "").replace(".", "")[:6].upper()
 
 
+# v4.3.1: Offline fallback with local manuf database
+# Loads from redaudit/data/manuf (Wireshark format)
+_OFFLINE_CACHE: Dict[str, str] = {}
+
+
+def _load_offline_db() -> None:
+    """Load OUI database from local file."""
+    import os
+
+    global _OFFLINE_CACHE
+
+    try:
+        # Locate data file relative to this module
+        # utils/oui_lookup.py -> ../data/manuf
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        manuf_path = os.path.join(base_dir, "data", "manuf")
+
+        if not os.path.exists(manuf_path):
+            logger.debug("Local OUI database not found at %s", manuf_path)
+            return
+
+        count = 0
+        with open(manuf_path, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+
+                # Format: OUI<TAB>ShortName<TAB>LongName
+                # 00:00:0C	Cisco	Cisco Systems, Inc
+                parts = line.split("\t")
+                if len(parts) >= 2:
+                    oui_raw = parts[0].strip()
+                    name = parts[2].strip() if len(parts) > 2 else parts[1].strip()
+
+                    # Normalize OUI
+                    oui = normalize_oui(oui_raw)
+                    if len(oui) == 6:
+                        _OFFLINE_CACHE[oui] = name
+                        count += 1
+
+        logger.debug("Loaded %d vendors from local OUI database", count)
+
+    except Exception as e:
+        logger.warning("Failed to load local OUI database: %s", e)
+
+
+# Initialize on module load
+_load_offline_db()
+
+
 def lookup_vendor_online(mac: str, timeout: float = 2.0) -> Optional[str]:
     """
     Lookup vendor via macvendors.com API (free, no API key required).
@@ -54,7 +105,11 @@ def lookup_vendor_online(mac: str, timeout: float = 2.0) -> Optional[str]:
     if len(oui) < 6:
         return None
 
-    # Check cache first
+    # Check offline cache first (optimization + reliability)
+    if oui in _OFFLINE_CACHE:
+        return _OFFLINE_CACHE[oui]
+
+    # Check session cache
     if oui in _VENDOR_CACHE:
         return _VENDOR_CACHE[oui]
 

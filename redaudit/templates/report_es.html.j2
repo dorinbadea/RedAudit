@@ -61,6 +61,10 @@
         .risk-high { color: var(--accent-red); }
         .risk-medium { color: var(--accent-orange); }
         .risk-low { color: var(--accent-green); }
+        .risk-tooltip { cursor: help; text-decoration: underline dotted; }
+        .identity-high { color: var(--accent-green); }
+        .identity-medium { color: var(--accent-yellow); }
+        .identity-low { color: var(--accent-red); }
         .section { margin-bottom: 2rem; }
         .section-title { font-size: 1.2rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
         .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
@@ -316,8 +320,9 @@
                         <th class="sortable" data-col="2">Estado</th>
                         <th class="sortable" data-col="3">Puertos</th>
                         <th class="sortable" data-col="4">Riesgo</th>
-                        <th class="sortable" data-col="5">Tipo de activo</th>
-                        <th class="sortable" data-col="6">OS</th>
+                        <th class="sortable" data-col="5">Identidad</th>
+                        <th class="sortable" data-col="6">Tipo de activo</th>
+                        <th class="sortable" data-col="7">OS</th>
                         <th>MAC</th>
                         <th>Fabricante</th>
                         <th>Tags</th>
@@ -332,12 +337,23 @@
                         <td>{{ host.status }}</td>
                         <td>{{ host.ports_count }}</td>
                         <td>
+                            {% set bd = host.risk_score_breakdown %}
                             {% if host.risk_score >= 70 %}
-                            <span class="risk-high">{{ host.risk_score }}</span>
+                            <span class="risk-high risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} | Base: {{ bd.base_score|default(0) }} | Densidad: +{{ bd.density_bonus|default(0) }} | Exposición: x{{ bd.exposure_multiplier|default(1.0) }}">{{ host.risk_score }}</span>
                             {% elif host.risk_score >= 40 %}
-                            <span class="risk-medium">{{ host.risk_score }}</span>
+                            <span class="risk-medium risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} | Base: {{ bd.base_score|default(0) }} | Densidad: +{{ bd.density_bonus|default(0) }} | Exposición: x{{ bd.exposure_multiplier|default(1.0) }}">{{ host.risk_score }}</span>
                             {% else %}
-                            <span class="risk-low">{{ host.risk_score }}</span>
+                            <span class="risk-low risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} | Base: {{ bd.base_score|default(0) }} | Densidad: +{{ bd.density_bonus|default(0) }} | Exposición: x{{ bd.exposure_multiplier|default(1.0) }}">{{ host.risk_score }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% set signals = host.identity_signals|join(', ') if host.identity_signals else 'ninguna' %}
+                            {% if host.identity_score >= 3 %}
+                            <span class="identity-high risk-tooltip" title="Señales: {{ signals }}">{{ host.identity_score }}</span>
+                            {% elif host.identity_score >= 2 %}
+                            <span class="identity-medium risk-tooltip" title="Señales: {{ signals }}">{{ host.identity_score }}</span>
+                            {% else %}
+                            <span class="identity-low risk-tooltip" title="Señales: {{ signals }}">{{ host.identity_score }}</span>
                             {% endif %}
                         </td>
                         <td>{{ host.asset_type }}</td>

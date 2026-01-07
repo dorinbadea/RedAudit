@@ -92,6 +92,10 @@ def _summarize_net_discovery(net_discovery: Dict[str, Any]) -> Dict[str, Any]:
         "hyperscan_duration": net_discovery.get("hyperscan_duration", 0),
         "errors": (net_discovery.get("errors") or [])[:5],
     }
+    # v4.3: Include network topology notes for didactic warnings
+    l2_note = net_discovery.get("l2_warning_note")
+    if l2_note:
+        summary["network_topology_notes"] = [l2_note]
     summary["counts"] = {
         "dhcp_servers": len(net_discovery.get("dhcp_servers", []) or []),
         "alive_hosts": len(net_discovery.get("alive_hosts", []) or []),

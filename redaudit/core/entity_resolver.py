@@ -469,7 +469,23 @@ def guess_asset_type(host: Dict) -> str:
     # Check vendor
     if any(x in vendor for x in ["sercomm", "sagemcom"]):
         return "router"
-    if any(x in vendor for x in ["apple", "microsoft"]):
+    if any(
+        x in vendor
+        for x in [
+            "apple",
+            "microsoft",
+            "dell",
+            "lenovo",
+            "hp",
+            "hewlett",
+            "msi",
+            "micro-star",
+            "asus",
+            "intel",
+            "acer",
+            "framework",
+        ]
+    ):
         return "workstation"
     if any(x in vendor for x in ["wiz", "philips", "tp-link", "tuya"]):
         return "iot"

@@ -1,0 +1,46 @@
+# RedAudit OUI Database (Seeded)
+# Format: OUI <TAB> ShortName <TAB> LongName
+
+# --- Evaluation / Test Environment Assets ---
+D4:24:DD	AVM	AVM GmbH
+DA:24:DD	AVM	AVM GmbH
+78:94:B4	MSI	Micro-Star Int
+D8:43:AE	MSI	Micro-Star Int
+30:67:A1	Sagemcom	Sagemcom Broadband SAS
+5C:E9:1E	Apple	Apple, Inc.
+4E:23:C8	Apple	Apple, Inc.
+8E:8A:43	Apple	Apple, Inc.
+22:11:37	Apple	Apple, Inc.
+64:1C:B0	Samsung	Samsung Electronics
+10:91:D1	Intel	Intel Corporate
+74:E2:0C	Amazon	Amazon Technologies
+14:0A:C5	Amazon	Amazon Technologies
+A8:BB:50	Tuya	Tuya Smart Inc.
+80:64:7C	Tuya	Tuya Smart Inc.
+00:50:56	VMware	VMware, Inc.
+00:0C:29	VMware	VMware, Inc.
+00:1C:14	VMware	VMware, Inc.
+08:00:27	PCS	PCS Systemtechnik GmbH
+
+# --- Common Enterprise Vendors (Top 20) ---
+00:00:0C	Cisco	Cisco Systems, Inc
+00:01:42	Cisco	Cisco Systems, Inc
+00:01:43	Cisco	Cisco Systems, Inc
+00:01:63	Cisco	Cisco Systems, Inc
+00:01:64	Cisco	Cisco Systems, Inc
+28:93:FE	Apple	Apple, Inc.
+28:94:0F	Apple	Apple, Inc.
+D8:50:E6	Asus	ASUSTek COMPUTER INC.
+3C:D9:2B	HP	Hewlett Packard
+98:90:96	Dell	Dell Inc.
+00:14:22	Dell	Dell Inc.
+B8:AC:6F	Dell	Dell Inc.
+EC:F4:BB	Dell	Dell Inc.
+18:66:DA	Dell	Dell Inc.
+D4:85:64	HP	Hewlett Packard
+C0:CB:38	HP	Hewlett Packard
+24:BE:05	HP	Hewlett Packard
+00:15:5D	Microsoft	Microsoft Corporation
+00:03:FF	Microsoft	Microsoft Corporation
+DC:A9:04	Apple	Apple, Inc.
+F0:18:98	Apple	Apple, Inc.

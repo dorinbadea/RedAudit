@@ -277,3 +277,11 @@ def test_reconcile_assets_logging():
     unified = reconcile_assets([host1, host2], logger=logger)
     assert len(unified) == 1
     logger.info.assert_called()
+
+
+def test_guess_asset_type_workstation_msi_intel():
+    """Test Workstation detection for common PC vendors (MSI, Intel, Dell)."""
+    assert guess_asset_type({"deep_scan": {"vendor": "Micro-Star International"}}) == "workstation"
+    assert guess_asset_type({"deep_scan": {"vendor": "Intel Corp"}}) == "workstation"
+    assert guess_asset_type({"deep_scan": {"vendor": "Dell Inc."}}) == "workstation"
+    assert guess_asset_type({"deep_scan": {"vendor": "HP Inc."}}) == "workstation"
