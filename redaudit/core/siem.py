@@ -497,6 +497,32 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
         elif "ssl" in service and port_number not in (443, 8443):
             max_cvss = max(max_cvss, 5.0)
 
+    # v4.3.1: Include vulnerabilities from Nikto/Nuclei finding dumps (Fix M3)
+    # Ensure findings logic matches calculate_risk_score()
+    findings = host_record.get("findings", [])
+    severity_map = {
+        "critical": 9.5,
+        "high": 8.0,
+        "medium": 5.0,
+        "low": 2.0,
+        "info": 0.0,
+    }
+
+    for finding in findings:
+        severity = str(finding.get("severity", "info")).lower()
+        score = severity_map.get(severity, 0.0)
+
+        # Override with explicit normalized_severity if available
+        norm = finding.get("normalized_severity")
+        if norm and isinstance(norm, (int, float)):
+            score = float(norm)
+
+        if score > 0:
+            max_cvss = max(max_cvss, score)
+            # Only count as 'vuln' for density if it adds risk (Med+)
+            if score >= 4.0:
+                total_vulns += 1
+
     base_score = max_cvss * 10
     density_bonus = 0.0
     if total_vulns > 0:

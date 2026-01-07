@@ -18,8 +18,11 @@ SCAPY_AVAILABLE = False
 try:
     from scapy.all import IP, TCP, sr1, conf as scapy_conf
 
-    # Disable scapy verbosity
+    # Disable scapy verbosity and runtime warnings
     scapy_conf.verb = 0
+    import logging
+
+    logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
     SCAPY_AVAILABLE = True
 except ImportError:
     pass

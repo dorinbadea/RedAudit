@@ -40,9 +40,14 @@ Release notes live under `docs/releases/` for additional context.
   - `organize_pcap_files()`: Moves raw captures to subdirectory
   - `finalize_pcap_artifacts()`: Orchestrates post-scan cleanup
 
+- **Docker/Deep Scan Optimization (H2)**:
+  - **Nikto**: Extended timeouts (5m) and removed tuning constraints for deeper coverage.
+  - **Nuclei**: Included "low" severity findings (e.g., info leaks) in the scan results.
+
 ### Changed
 
-- **Risk Score Algorithm**: Refactored to CVSS-based calculation with clearer component breakdown.
+- **Risk Score Algorithm (V2)**: Refactored to fully integrate findings severity (low/med/high/crit) into the final score. Hosts with critical configuration flaws now accurately reflect High/Critical risk even without CVEs.
+- **Warning Suppression**: Suppressed noisy ARP/Scapy warnings during L2 discovery for cleaner terminal output.
 - **HTML Templates**: Both EN and ES templates updated with new columns and tooltips.
 
 ### Documentation

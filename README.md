@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-![Version](https://img.shields.io/badge/v4.2.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/v4.3.0-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -95,24 +95,25 @@ sudo redaudit
 | **Bilingual Interface** | Complete English/Spanish localization |
 | **Auto-Update** | Atomic staged updates with automatic rollback on failure |
 
-### New in v4.2: Parallel Deep Scan & Web App Security
+### New in v4.3: Enterprise Risk Scoring & H2 Optimizations
 
-> **Massive speedup + Enterprise-grade web security.**
+> **Smarter Scoring + Deeper Scans.**
 
-**Parallel Deep Scan:** The deep scan phase is now fully decoupled. Instead of blocking the main thread, difficult hosts are offloaded to a dedicated pool of up to 50 background threads. This ensures that a few slow hosts never bottleneck the entire audit.
+**Risk Scoring V2:** The risk engine now integrates finding-level severity (low/med/high/crit) from Nikto and Nuclei into the final score. A host with zero CVEs but critical configuration flaws (e.g., missing auth) will now correctly reflect high risk.
 
-**Web Application Security:**
+**Docker/Deep Optimization (H2):**
 
-- **SQLMap Integration:** Automatic SQL injection testing for suspect parameters.
-- **OWASP ZAP:** Full DAST capabilities for web applications (optional via `--zap`).
+- **Nikto**: Extended timeouts (5m) and full tuning profiles.
+- **Nuclei**: Added "Low" severity findings (e.g., info leaks, exposed panels) to the decision matrix.
+- **Scapy Silence**: Suppressed low-level ARP warnings for cleaner output.
 
 | Feature | Benefit |
 |:---|:---|
-| **Parallel Deep Scan** | Non-blocking deep enumeration (up to 50 threads) |
-| **Web App Security** | `sqlmap` + `OWASP ZAP` for deep web vulnerability assessment |
-| **Strict Deduplication** | Robust sanitization preventing duplicate host reporting |
+| **Risk Scoring V2** | Enterprise-grade risk calculation merging CVEs + Findings |
+| **H2 Optimization** | Deeper Docker visibility & "Low" severity insights |
+| **Warning Suppression** | Cleaner terminal output (M1.1 / M2 fixes) |
 
-See [RELEASE NOTES](docs/releases/RELEASE_NOTES_v4.2.1.md) for details.
+See [RELEASE NOTES](docs/releases/RELEASE_NOTES_v4.3.0.md) for details.
 
 ---
 

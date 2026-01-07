@@ -35,14 +35,14 @@ If you discover a security vulnerability in RedAudit, please report it responsib
 ### Supported Versions
 
 | Version | Supported | Status |
-| :--- | :--- | :--- |
-| 3.9.x | Yes | Current stable |
+| 4.3.x | Yes | Current stable |
+| 4.2.x | Yes | Supported |
+| 3.9.x | Yes | Supported |
 | 3.8.x | Yes | Supported |
 | 3.7.x | Yes | Supported |
-| 3.6.x | Yes | Supported |
-| 3.5.x | Security fixes only | Maintenance |
-| 3.4.x | Security fixes only | EOL: June 2026 |
-| < 3.4 | No | EOL |
+| 3.6.x | Security fixes only | Maintenance |
+| 3.5.x | Security fixes only | EOL: June 2026 |
+| < 3.5 | No | EOL |
 
 ---
 

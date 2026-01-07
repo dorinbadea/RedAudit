@@ -1,99 +1,48 @@
-# Notas de Versión v4.3.0
+# Notas de Lanzamiento RedAudit v4.3.0
 
-[![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v4.3.0.md)
+## Risk Scoring Empresarial y Optimizaciones Deep Scan
 
-**Fecha de Lanzamiento**: 2026-01-07
-**Tipo**: Lanzamiento de Funcionalidades
+RedAudit v4.3.0 marca un hito importante en la auditoría "Smart-Check", introduciendo un motor de Risk Scoring reescrito (V2) y capacidades de escaneo significativamente más profundas para entornos contenerizados.
 
-## Novedades Destacadas
+### 🌟 Novedades Principales
 
-### 🚀 Modo SYN de HyperScan
+#### 1. Enterprise Risk Scoring V2
 
-Escaneo opcional de puertos basado en SYN usando scapy para **~10x más velocidad** en redes grandes.
+El motor de cálculo de riesgo ha sido renovado para tratar los **Hallazgos de Configuración** (de Nikto, Nuclei, Zap) como ciudadanos de primera clase junto a los CVEs.
 
-- **Flag CLI**: `--hyperscan-mode auto|connect|syn`
-- **Modo Auto**: Intenta escaneo SYN si se ejecuta como root con scapy instalado, sino usa TCP connect
-- **Modo Connect**: TCP connect estándar (no requiere root, más sigiloso para entornos con IDS)
-- **Modo SYN**: Escaneo con paquetes raw (requiere root + scapy, opción más rápida)
+* **Comportamiento previo**: La puntuación dependía mucho de CVSS/CVEs. Un host con cero CVEs pero un panel de admin expuesto (Hallazgo Crítico) podía recibir una puntuación baja.
+* **Nuevo comportamiento**: Los hallazgos con severidad `high` o `critical` impactan directamente el Bonus de Densidad y el Multiplicador de Exposición. Un host con fallos críticos ahora puntúa correctamente en el rango 80-100 (Alto/Crítico), asegurando una priorización precisa.
 
-**Integración en el Asistente**: Todos los perfiles ahora soportan selección de modo:
+#### 2. Optimización Docker y Deep Scan (H2)
 
-- Express: `auto` (más rápido por defecto)
-- Estándar/Exhaustivo con timing Sigiloso: `connect` (evasión de IDS)
-- Estándar/Exhaustivo con timing Normal/Agresivo: `auto`
-- Personalizado: Elección explícita en el Paso 2
+Hemos optimizado la fase de "Deep Scan" para manejar mejor contenedores Docker y servicios efímeros comunes en stacks modernos:
 
-### 📊 Tooltip de Desglose de Risk Score
+* **Nikto Desencadenado**: Eliminadas las restricciones de tuning por defecto (`-Tuning x`) y aumentado el timeout a 5 minutos (`300s`). Esto asegura que Nikto complete chequeos en apps web complejas.
+* **Nuclei Expandido**: El escáner ahora procesa hallazgos con `severity="low"`, capturando fugas de información críticas (logs expuestos, páginas de estado, .git config) anteriormente filtradas.
 
-Los reportes HTML ahora muestran los componentes detallados del risk score al pasar el ratón:
+#### 3. HyperScan Modo SYN
 
-- Puntuación CVSS Máxima
-- Cálculo de Puntuación Base
-- Bonus de Densidad (por múltiples vulnerabilidades)
-- Multiplicador de Exposición (por puertos expuestos externamente)
+Nuevo modo de escaneo de puertos basado en SYN para usuarios privilegiados:
 
-### 🎯 Visualización de Identity Score
+* **Velocidad**: ~10x más rápido que escaneos connect.
+* **Uso**: Seleccionado automáticamente al ejecutar como root con scapy instalado, o forzar con `--hyperscan-mode syn`.
 
-Los reportes HTML muestran `identity_score` con código de colores:
+### 🛡️ Mejoras
 
-- 🟢 Verde (≥3): Host bien identificado
-- 🟡 Amarillo (=2): Parcialmente identificado
-- 🔴 Rojo (<2): Identificación débil (disparó deep scan)
+* **Supresión de Advertencias**: Limpiada la salida de errores de `arp-scan` y `scapy` (advertencias redundantes de "Mac address not found") para una experiencia de terminal profesional y sin ruido.
+* **Visualización de Identidad**: Los reportes HTML ahora codifican por color el `identity_score` para mostrar claramente qué hosts están plenamente identificados vs. los que requieren revisión manual.
+* **Gestión de PCAP**: Limpieza y organización automatizada de artefactos de captura de paquetes.
 
-El tooltip muestra señales de identidad (hostname, vendor, MAC, etc.)
+### 🐛 Correcciones
 
-### 🔍 Validación CPE de Smart-Check
+* **Validación Smart-Check**: Filtrado de falsos positivos mejorado usando validación cruzada CPE.
+* **Lógica de Riesgo**: Corregida regresión donde hallazgos no-CVE resultaban en riesgo 0.
 
-Detección mejorada de falsos positivos de Nuclei usando datos CPE:
+---
 
-- Nuevas funciones: `parse_cpe_components()`, `validate_cpe_against_template()`, `extract_host_cpes()`
-- Valida hallazgos contra CPEs del host antes de comprobaciones de cabeceras HTTP
-- Reduce falsos positivos cuando el CPE no coincide con el vendor esperado
-
-### 📁 Utilidades de Gestión de PCAP
-
-Nuevas utilidades para organización de archivos PCAP:
-
-- `merge_pcap_files()`: Consolida archivos de captura usando `mergecap`
-- `organize_pcap_files()`: Mueve capturas raw a subdirectorio
-- `finalize_pcap_artifacts()`: Orquesta limpieza post-escaneo
-
-## Cambios Incompatibles
-
-Ninguno. Esta versión es totalmente compatible hacia atrás.
-
-## Nuevas Opciones CLI
-
-| Flag | Descripción |
-|------|-------------|
-| `--hyperscan-mode` | Método de descubrimiento HyperScan: `auto`, `connect` o `syn` |
-
-## Nuevos Archivos
-
-- `redaudit/core/syn_scanner.py` — Módulo de escáner SYN basado en scapy
-
-## Dependencias
-
-**Opcional** (para modo SYN):
-
-- `scapy` — Instalar con `pip install scapy` o `apt install python3-scapy`
-
-## Instrucciones de Actualización
+**Actualizar:**
 
 ```bash
-# Actualización estándar vía auto-update
-redaudit --check-update
-
-# O reinstalación manual
-curl -sL https://raw.githubusercontent.com/dorinbadea/RedAudit/main/redaudit_install.sh | sudo bash
+git pull
+sudo bash redaudit_install.sh
 ```
-
-## Notas de Prueba
-
-- El modo SYN requiere privilegios de root (`sudo redaudit`)
-- Probar en Ubuntu/Debian con scapy instalado para funcionalidad completa
-- El fallback a modo connect funciona sin problemas cuando SYN no está disponible
-
-## Contribuidores
-
-- Dorin Badea ([@dorinbadea](https://github.com/dorinbadea))

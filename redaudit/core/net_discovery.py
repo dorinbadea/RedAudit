@@ -2309,7 +2309,12 @@ def _redteam_scapy_custom(
 
     try:
         import scapy  # type: ignore
-        from scapy.all import Dot1Q, sniff  # type: ignore
+        from scapy.all import Dot1Q, sniff, conf  # type: ignore
+        import logging
+
+        # 4.3: Suppress scapy warnings
+        conf.verb = 0
+        logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
     except Exception:
         return {"status": "tool_missing", "tool": "scapy"}
 

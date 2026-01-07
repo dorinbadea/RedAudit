@@ -1,99 +1,48 @@
-# Release Notes v4.3.0
+# RedAudit v4.3.0 Release Notes
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v4.3.0_ES.md)
+## Enterprise Risk Scoring & Deep Scan Optimizations
 
-**Release Date**: 2026-01-07
-**Type**: Feature Release
+RedAudit v4.3.0 represents a major milestone in "Smart-Check" auditing, introducing a rewritten Risk Scoring engine (V2) and significantly deeper scanning capabilities for containerized environments.
 
-## Highlights
+### 🌟 Headline Features
 
-### 🚀 HyperScan SYN Mode
+#### 1. Enterprise Risk Scoring V2
 
-Optional SYN-based port scanning using scapy for **~10x faster discovery** on large networks.
+The risk calculation engine has been overhauled to treat **Configuration Findings** (from Nikto, Nuclei, Zap) as first-class citizens alongside CVEs.
 
-- **CLI Flag**: `--hyperscan-mode auto|connect|syn`
-- **Auto Mode**: Tries SYN scan if running as root with scapy installed, otherwise falls back to TCP connect
-- **Connect Mode**: Standard TCP connect (no root required, stealthier for IDS-sensitive environments)
-- **SYN Mode**: Raw packet scanning (requires root + scapy, fastest option)
+* **Previous behavior**: Risk score was heavily weighted by CVSS/CVEs. A host with zero CVEs but an exposed admin panel (Critical finding) might receive a low risk score.
+* **New behavior**: Findings with `high` or `critical` severity directly impact the Density Bonus and Exposure Multiplier. A host with critical misconfigurations now correctly scores in the 80-100 (High/Critical) range, ensuring accurate prioritization.
 
-**Wizard Integration**: All profiles now support mode selection:
+#### 2. Docker & Deep Scan Optimization (H2)
 
-- Express: `auto` (fastest by default)
-- Standard/Exhaustive with Stealth timing: `connect` (IDS evasion)
-- Standard/Exhaustive with Normal/Aggressive timing: `auto`
-- Custom: Explicit choice in Step 2
+We've optimized the "Deep Scan" phase to better handle Docker containers and ephemeral services often found in modern stacks:
 
-### 📊 Risk Score Breakdown Tooltip
+* **Nikto Unchained**: Removed default tuning constraints (`-Tuning x`) and increased timeout to 5 minutes (`300s`). This ensures Nikto completes full checks against complex web apps.
+* **Nuclei Expanded**: The scanner now processes findings with `severity="low"`, capturing critical information leaks (e.g., exposed logs, status pages, .git config) that were previously filtered out.
 
-HTML reports now show detailed risk score components on hover:
+#### 3. HyperScan SYN Mode
 
-- Max CVSS Score
-- Base Score calculation
-- Density Bonus (for multiple vulns)
-- Exposure Multiplier (for external-facing ports)
+New optional SYN-based port scanning mode for privileged users:
 
-### 🎯 Identity Score Visualization
+* **Speed**: ~10x faster than connect scans.
+* **Usage**: Automatically selected when running as root with scapy installed, or force with `--hyperscan-mode syn`.
 
-HTML reports display `identity_score` with color coding:
+### 🛡️ Improvements
 
-- 🟢 Green (≥3): Well-identified host
-- 🟡 Yellow (=2): Partially identified
-- 🔴 Red (<2): Weak identification (triggered deep scan)
+* **Warning Suppression**: Cleaned up `arp-scan` and `scapy` error output (redundant "Mac address not found" warnings) for a professional, noise-free terminal experience.
+* **Identity Visualization**: HTML reports now color-code the `identity_score` to clearly show which hosts are fully identified vs. those needing manual review.
+* **PCAP Management**: Automated cleanup and organization of packet capture artifacts.
 
-Tooltip shows identity signals (hostname, vendor, MAC, etc.)
+### 🐛 Fixes
 
-### 🔍 Smart-Check CPE Validation
+* **Smart-Check Validation**: Enhanced false positive filtering using CPE cross-validation.
+* **Broken Risk Logic**: Fixed regression where non-CVE findings resulted in 0 risk score.
 
-Enhanced Nuclei false positive detection using CPE data:
+---
 
-- New functions: `parse_cpe_components()`, `validate_cpe_against_template()`, `extract_host_cpes()`
-- Cross-validates findings against host CPEs before HTTP header checks
-- Reduces false positives when CPE doesn't match expected vendor
-
-### 📁 PCAP Management Utilities
-
-New utilities for PCAP file organization:
-
-- `merge_pcap_files()`: Consolidates capture files using `mergecap`
-- `organize_pcap_files()`: Moves raw captures to subdirectory
-- `finalize_pcap_artifacts()`: Orchestrates post-scan cleanup
-
-## Breaking Changes
-
-None. This release is fully backward compatible.
-
-## New CLI Options
-
-| Flag | Description |
-|------|-------------|
-| `--hyperscan-mode` | HyperScan discovery method: `auto`, `connect`, or `syn` |
-
-## New Files
-
-- `redaudit/core/syn_scanner.py` — Scapy-based SYN scanner module
-
-## Dependencies
-
-**Optional** (for SYN mode):
-
-- `scapy` — Install with `pip install scapy` or `apt install python3-scapy`
-
-## Upgrade Instructions
+**Upgrade:**
 
 ```bash
-# Standard upgrade via auto-update
-redaudit --check-update
-
-# Or manual reinstall
-curl -sL https://raw.githubusercontent.com/dorinbadea/RedAudit/main/redaudit_install.sh | sudo bash
+git pull
+sudo bash redaudit_install.sh
 ```
-
-## Testing Notes
-
-- SYN mode requires root privileges (`sudo redaudit`)
-- Test on Ubuntu/Debian with scapy installed for full functionality
-- Fallback to connect mode works seamlessly when SYN is unavailable
-
-## Contributors
-
-- Dorin Badea ([@dorinbadea](https://github.com/dorinbadea))
