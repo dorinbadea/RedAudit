@@ -1053,30 +1053,16 @@ class TestConcurrentScan:
         fut_err = MagicMock()
         fut_err.result.side_effect = RuntimeError("boom")
 
-        def time_gen():
-            yield 0.0
-            yield 5.0
-            yield 5.0
-            while True:
-                yield 6.0
-
-        time_calls = time_gen()
-
-        def fake_time():
-            return next(time_calls)
-
-        real_import = __import__
-
-        def import_block_rich(name, *args, **kwargs):
-            if name.startswith("rich"):
-                raise ImportError("no rich")
-            return real_import(name, *args, **kwargs)
+        # Mock UI capability to return False/None to trigger fallback path
+        auditor.ui.get_progress_console.return_value = None
 
         with (
-            patch("builtins.__import__", side_effect=import_block_rich),
             patch("redaudit.core.auditor_scan.ThreadPoolExecutor") as mock_executor,
             patch("redaudit.core.auditor_scan.as_completed", return_value=[fut_ok, fut_err]),
-            patch("redaudit.core.auditor_scan.time.time", side_effect=fake_time),
+            patch(
+                "redaudit.core.auditor_scan.wait",
+                return_value=({fut_ok, fut_err}, set()),
+            ),
         ):
             mock_pool = MagicMock()
             mock_executor.return_value.__enter__.return_value = mock_pool
