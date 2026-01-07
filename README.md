@@ -99,11 +99,10 @@ sudo redaudit
 
 > **Smarter Scoring + Deeper Scans.**
 
-**Risk Scoring V2:** The risk engine now integrates finding-level severity (low/med/high/crit) from Nikto and Nuclei into the final score. A host with zero CVEs but critical configuration flaws (e.g., missing auth) will now correctly reflect high risk.
+**Enterprise-Grade Risk Scoring (V2)**: Configuration findings (Nikto/Nuclei) now drive risk scores.
 
-**Docker/Deep Optimization (H2):**
-
-- **Nikto**: Extended timeouts (5m) and full tuning profiles.
+- **HyperScan SYN Mode**: 10x faster port scanning for privileged users.
+- **Docker & Deep Scan Optimizations (H2)**: Unshackled scanners for deep container auditing.s (5m) and full tuning profiles.
 - **Nuclei**: Added "Low" severity findings (e.g., info leaks, exposed panels) to the decision matrix.
 - **Scapy Silence**: Suppressed low-level ARP warnings for cleaner output.
 

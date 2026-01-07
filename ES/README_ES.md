@@ -105,8 +105,9 @@ sudo redaudit
 
 | Característica | Beneficio |
 |:---|:---|
-| **Risk Scoring V2** | Cálculo de riesgo nivel enterprise fusionando CVEs + Hallazgos |
-| **Optimización H2** | Mayor visibilidad Docker e insights de severidad "Low" |
+| **Enterprise Risk Scoring (V2)** | Los hallazgos de configuración ahora impactan la puntuación. |
+| **Modo HyperScan SYN** | Escaneo de puertos 10x más rápido. |
+| **Optimizaciones H2** | Análisis profundo para entornos Docker. e insights de severidad "Low" |
 | **Supresión de Advertencias** | Salida de terminal más limpia (fixes M1.1 / M2) |
 
 Ver [NOTAS DE LANZAMIENTO](../docs/releases/RELEASE_NOTES_v4.3.0_ES.md) para más detalles.
