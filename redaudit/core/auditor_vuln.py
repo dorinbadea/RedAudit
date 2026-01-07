@@ -452,10 +452,12 @@ class AuditorVuln:
             if not zap_path:
                 return {}
 
+            import tempfile
+
             try:
                 _update("zap")
                 safe_url = url.replace("://", "_").replace(":", "_").replace("/", "_")
-                report_path = f"/tmp/zap_report_{safe_url}.html"
+                report_path = os.path.join(tempfile.gettempdir(), f"zap_report_{safe_url}.html")
 
                 runner = CommandRunner(
                     logger=self.logger,

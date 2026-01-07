@@ -1182,15 +1182,9 @@ class TestAgentlessVerification:
         fut_err = MagicMock()
         fut_err.result.side_effect = RuntimeError("boom")
 
-        real_import = __import__
-
-        def import_block_rich(name, *args, **kwargs):
-            if name.startswith("rich"):
-                raise ImportError("no rich")
-            return real_import(name, *args, **kwargs)
+        auditor.ui.get_progress_console.return_value = None
 
         with (
-            patch("builtins.__import__", side_effect=import_block_rich),
             patch(
                 "redaudit.core.auditor_scan.select_agentless_probe_targets",
                 return_value=[target1, target2],
@@ -1201,6 +1195,10 @@ class TestAgentlessVerification:
             ),
             patch("redaudit.core.auditor_scan.as_completed", return_value=[fut_ok, fut_err]),
             patch("redaudit.core.auditor_scan.ThreadPoolExecutor") as mock_exec,
+            patch(
+                "redaudit.core.auditor_scan.wait",
+                return_value=({fut_ok, fut_err}, set()),
+            ),
         ):
             mock_pool = MagicMock()
             mock_exec.return_value.__enter__.return_value = mock_pool
@@ -1208,7 +1206,13 @@ class TestAgentlessVerification:
 
             auditor.run_agentless_verification(host_results)
 
-        assert host_results[0]["agentless_fingerprint"]["http_title"] == "Portal"
+        # Should merge data from successful future
+        h1 = host_results[0]
+        assert h1["agentless_fingerprint"]["os"] == "Windows"  # existing retained
+        assert h1["agentless_fingerprint"]["http_title"] == "Portal"  # merged
+
+        # Should print status because rich is not "available"
+        assert auditor.ui.print_status.called
         assert "agentless" in host_results[0]["smart_scan"]["signals"]
 
 
