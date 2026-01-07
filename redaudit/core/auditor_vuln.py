@@ -164,7 +164,7 @@ class AuditorVuln:
 
         return max(5.0, budget)
 
-    def scan_vulnerabilities_web(self, host_info):
+    def scan_vulnerabilities_web(self, host_info, status_callback=None):
         """Scan web vulnerabilities on a host.
 
         v4.1: Parallelizes testssl, whatweb, and nikto execution per port
@@ -178,6 +178,12 @@ class AuditorVuln:
         ip = host_info["ip"]
         vulns = []
 
+        def _update_status(msg):
+            if status_callback:
+                status_callback(msg)
+            else:
+                self._set_ui_detail(msg)
+
         for p in web_ports:
             port = p["port"]
             service = p["service"].lower()
@@ -188,6 +194,7 @@ class AuditorVuln:
             finding = {"url": url, "port": port}
 
             # HTTP enrichment (always sequential - quick)
+            _update_status(f"[http] {ip}:{port}")
             http_data = http_enrichment(
                 url,
                 self.extra_tools,
@@ -199,6 +206,7 @@ class AuditorVuln:
 
             # TLS enrichment (always sequential - quick)
             if scheme == "https":
+                _update_status(f"[tls] {ip}:{port}")
                 tls_data = tls_enrichment(
                     ip,
                     port,
@@ -215,11 +223,15 @@ class AuditorVuln:
 
             if parallel_vuln_enabled and is_full_mode:
                 # Run testssl, whatweb, nikto concurrently
-                parallel_results = self._run_vuln_tools_parallel(ip, port, url, scheme, finding)
+                parallel_results = self._run_vuln_tools_parallel(
+                    ip, port, url, scheme, finding, status_callback=_update_status
+                )
                 finding.update(parallel_results)
             else:
                 # Sequential fallback (legacy behavior)
-                self._run_vuln_tools_sequential(ip, port, url, scheme, finding)
+                self._run_vuln_tools_sequential(
+                    ip, port, url, scheme, finding, status_callback=_update_status
+                )
 
             if len(finding) > 2:
                 vulns.append(finding)
@@ -227,15 +239,27 @@ class AuditorVuln:
         return {"host": ip, "vulnerabilities": vulns} if vulns else None
 
     def _run_vuln_tools_parallel(
-        self, ip: str, port: int, url: str, scheme: str, finding: Dict[str, Any]
+        self,
+        ip: str,
+        port: int,
+        url: str,
+        scheme: str,
+        finding: Dict[str, Any],
+        status_callback=None,
     ) -> Dict[str, Any]:
         """v4.1: Run testssl, whatweb, nikto in parallel for faster scanning."""
         results: Dict[str, Any] = {}
 
+        def _update(tool_name):
+            if status_callback:
+                status_callback(f"[{tool_name}] {ip}:{port}")
+            else:
+                self._set_ui_detail(f"[{tool_name}] {ip}:{port}")
+
         def run_testssl():
             if scheme != "https" or not self.extra_tools.get("testssl.sh"):
                 return {}
-            self._set_ui_detail(f"[testssl] {ip}:{port}")
+            _update("testssl")
             ssl_analysis = ssl_deep_analysis(
                 ip,
                 port,
@@ -251,7 +275,7 @@ class AuditorVuln:
             if not self.extra_tools.get("whatweb"):
                 return {}
             try:
-                self._set_ui_detail(f"[whatweb] {ip}:{port}")
+                _update("whatweb")
                 runner = CommandRunner(
                     logger=self.logger,
                     dry_run=bool(self.config.get("dry_run", False)),
@@ -282,7 +306,6 @@ class AuditorVuln:
                 return {}
 
             # v4.1: Pre-filter CDN/proxy hosts to reduce false positives
-            # These services return generic responses that trigger many Nikto findings
             CDN_PROXY_INDICATORS = {
                 "cloudflare",
                 "akamai",
@@ -296,12 +319,10 @@ class AuditorVuln:
                 "aws",
             }
 
-            # Check if we already have server header info from http_enrichment
             server_header = str(finding.get("server", "")).lower()
             headers_raw = str(finding.get("headers", "")).lower()
 
             is_cdn_proxy = any(cdn in server_header for cdn in CDN_PROXY_INDICATORS)
-            # Additional checks for CDN-specific headers
             if not is_cdn_proxy:
                 cdn_headers = ["cf-ray", "x-amz-cf-id", "x-akamai", "x-varnish", "x-sucuri"]
                 is_cdn_proxy = any(h in headers_raw for h in cdn_headers)
@@ -317,7 +338,7 @@ class AuditorVuln:
                 return {"nikto_skipped": "cdn_proxy_detected", "nikto_server": server_header[:100]}
 
             try:
-                self._set_ui_detail(f"[nikto] {ip}:{port}")
+                _update("nikto")
                 from redaudit.core.verify_vuln import filter_nikto_false_positives
 
                 runner = CommandRunner(
@@ -361,17 +382,14 @@ class AuditorVuln:
             return {}
 
         def run_sqlmap():
-            """v4.1: Basic sqlmap integration for SQLi detection."""
             import shutil
 
             sqlmap_path = self.extra_tools.get("sqlmap") or shutil.which("sqlmap")
             if not sqlmap_path:
                 return {}
 
-            # Only run on URLs that might have parameters
-            # For basic scan, just check the base URL with common injectable points
             try:
-                self._set_ui_detail(f"[sqlmap] {ip}:{port}")
+                _update("sqlmap")
                 runner = CommandRunner(
                     logger=self.logger,
                     dry_run=bool(self.config.get("dry_run", False)),
@@ -380,19 +398,18 @@ class AuditorVuln:
                     backoff_base_s=0.0,
                     redact_env_keys={"NVD_API_KEY", "GITHUB_TOKEN"},
                 )
-                # Batch mode, quick scan, forms crawl
                 res = runner.run(
                     [
                         sqlmap_path,
                         "-u",
                         url,
-                        "--batch",  # Non-interactive
-                        "--crawl=1",  # Crawl 1 level to find forms
-                        "--forms",  # Test forms automatically
-                        "--smart",  # Smart mode (quick)
+                        "--batch",
+                        "--crawl=1",
+                        "--forms",
+                        "--smart",
                         f"--risk={self.config.sqlmap_risk}",
                         f"--level={self.config.sqlmap_level}",
-                        "--timeout=10",  # Fast timeout
+                        "--timeout=10",
                         "--retries=1",
                         "--random-agent",
                         "--output-dir=/tmp/sqlmap_output",
@@ -404,7 +421,6 @@ class AuditorVuln:
                 )
                 if not res.timed_out:
                     output = str(res.stdout or "")
-                    # Check for SQLi detections
                     sqli_indicators = [
                         "is vulnerable",
                         "injectable",
@@ -426,11 +442,9 @@ class AuditorVuln:
             return {}
 
         def run_zap():
-            """v4.2: OWASP ZAP integration."""
             import shutil
             import os
 
-            # Check if enabled in config
             if not self.config.get("zap_enabled"):
                 return {}
 
@@ -439,20 +453,18 @@ class AuditorVuln:
                 return {}
 
             try:
-                self._set_ui_detail(f"[zap] {ip}:{port}")
-                # Create safe filename
+                _update("zap")
                 safe_url = url.replace("://", "_").replace(":", "_").replace("/", "_")
                 report_path = f"/tmp/zap_report_{safe_url}.html"
 
                 runner = CommandRunner(
                     logger=self.logger,
                     dry_run=bool(self.config.get("dry_run", False)),
-                    default_timeout=300.0,  # ZAP can be slow
+                    default_timeout=300.0,
                     default_retries=0,
                     backoff_base_s=0.0,
                 )
 
-                # ZAP quick scan command
                 res = runner.run(
                     [
                         zap_path,
@@ -477,7 +489,6 @@ class AuditorVuln:
                     self.logger.debug("ZAP scan failed for %s", url, exc_info=True)
             return {}
 
-        # Execute tools in parallel (v4.1: added sqlmap, zap)
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = [
                 executor.submit(run_testssl),
@@ -498,14 +509,27 @@ class AuditorVuln:
         return results
 
     def _run_vuln_tools_sequential(
-        self, ip: str, port: int, url: str, scheme: str, finding: Dict[str, Any]
+        self,
+        ip: str,
+        port: int,
+        url: str,
+        scheme: str,
+        finding: Dict[str, Any],
+        status_callback=None,
     ) -> None:
         """Legacy sequential execution of vuln tools (fallback)."""
+
+        def _update(tool_name):
+            if status_callback:
+                status_callback(f"[{tool_name}] {ip}:{port}")
+            else:
+                self._set_ui_detail(f"[{tool_name}] {ip}:{port}")
+
         # TestSSL deep analysis (only in completo mode)
         if self.config["scan_mode"] == "completo" and self.extra_tools.get("testssl.sh"):
             if scheme == "https":
                 self.current_phase = f"vulns:testssl:{ip}:{port}"
-                self._set_ui_detail(f"[testssl] {ip}:{port}")
+                _update("testssl")
                 self.ui.print_status(
                     f"[testssl] {ip}:{port} → {self.ui.t('testssl_analysis', ip, port)}", "INFO"
                 )
@@ -527,7 +551,7 @@ class AuditorVuln:
         if self.extra_tools.get("whatweb"):
             try:
                 self.current_phase = f"vulns:whatweb:{ip}:{port}"
-                self._set_ui_detail(f"[whatweb] {ip}:{port}")
+                _update("whatweb")
                 runner = CommandRunner(
                     logger=self.logger,
                     dry_run=bool(self.config.get("dry_run", False)),
@@ -556,7 +580,7 @@ class AuditorVuln:
         if self.config["scan_mode"] == "completo" and self.extra_tools.get("nikto"):
             try:
                 self.current_phase = f"vulns:nikto:{ip}:{port}"
-                self._set_ui_detail(f"[nikto] {ip}:{port}")
+                _update("nikto")
                 from redaudit.core.verify_vuln import filter_nikto_false_positives
 
                 runner = CommandRunner(
@@ -605,7 +629,6 @@ class AuditorVuln:
         """Scan vulnerabilities on multiple hosts concurrently with progress bar."""
         normalized_hosts = [self._normalize_host_info(h) for h in (host_results or [])]
         # v4.0.4: Include hosts with HTTP fingerprint even if web_ports_count == 0
-        # This fixes detection gap for hosts where nmap missed web services but HTTP was probed
         web_hosts = [
             h
             for h in normalized_hosts
@@ -616,10 +639,7 @@ class AuditorVuln:
         if not web_hosts:
             return
 
-        # Count total web ports for info
-        total_ports = sum(h.get("web_ports_count", 0) for h in web_hosts)
         budgets = {h["ip"]: self._estimate_vuln_budget_s(h) for h in web_hosts if h.get("ip")}
-        remaining_budget_s = float(sum(budgets.values()))
 
         self.current_phase = "vulns"
         self._set_ui_detail("web vuln scan")
@@ -627,127 +647,116 @@ class AuditorVuln:
         workers = min(3, self.config["threads"])
         workers = max(1, int(workers))
 
-        # Try to use rich for progress visualization
-        try:
-            from rich.progress import Progress
+        # Check for rich capability
+        use_rich = self.ui.get_progress_console() is not None
 
-            use_rich = True
-        except ImportError:
-            use_rich = False
+        # Status tracking for granular detail
+        host_status_map = {}
 
-        # Keep output quiet from the moment worker threads start.
+        def _runner(h):
+            def _cb(msg):
+                host_status_map[h["ip"]] = msg
+
+            return self.scan_vulnerabilities_web(h, status_callback=_cb)
+
         with self._progress_ui():
             with ThreadPoolExecutor(max_workers=workers) as executor:
-                futures = {
-                    executor.submit(self.scan_vulnerabilities_web, h): h["ip"] for h in web_hosts
-                }
+                futures = {}
+                for h in web_hosts:
+                    ip = h["ip"]
+                    futures[executor.submit(_runner, h)] = ip
+                    host_status_map[ip] = "Starting..."
 
                 total = len(futures)
                 done = 0
-                start_t = time.time()
 
                 if use_rich and total > 0:
-                    # Rich progress bar for vulnerability scanning (quiet UI + timeout-aware upper bound ETA)
-                    with Progress(
-                        *self._progress_columns(
-                            show_detail=True,
-                            show_eta=True,
-                            show_elapsed=True,
-                        ),
-                        console=self._progress_console(),
-                        refresh_per_second=4,
-                    ) as progress:
-                        eta_upper_init = self._format_eta(remaining_budget_s / workers)
-                        initial_detail = self._get_ui_detail()
-                        task = progress.add_task(
-                            f"[cyan]Vuln scan ({total_ports} ports)",
-                            total=total,
-                            eta_upper=eta_upper_init,
-                            eta_est="",
-                            detail=initial_detail,
-                        )
-                        pending = set(futures)
-                        last_detail = initial_detail
-                        while pending:
-                            if self.interrupted:
-                                for pending_fut in pending:
-                                    pending_fut.cancel()
-                                break
+                    # v4.3.0: Detailed progress - one bar per host
+                    progress = self.ui.get_standard_progress(transient=False)
+                    if progress:
+                        with progress:
+                            host_tasks = {}
+                            # Create a task for each host
+                            for ip in host_status_map:
+                                task_id = progress.add_task(
+                                    f"[cyan]  {ip}",
+                                    total=100,
+                                    start=True,
+                                    detail="Starting...",
+                                )
+                                host_tasks[ip] = (task_id, time.time())
 
-                            completed, pending = wait(
-                                pending, timeout=0.25, return_when=FIRST_COMPLETED
-                            )
-                            detail = self._get_ui_detail()
-                            if detail != last_detail:
-                                progress.update(task, detail=detail)
-                                last_detail = detail
+                            pending = set(futures)
+                            while pending:
+                                if self.interrupted:
+                                    for pending_fut in pending:
+                                        pending_fut.cancel()
+                                    break
 
-                            for fut in completed:
-                                host_ip = futures[fut]
-                                try:
-                                    res = fut.result()
-                                    if res:
-                                        self.results["vulnerabilities"].append(res)
-                                        vuln_count = len(res.get("vulnerabilities", []))
-                                        if vuln_count > 0 and self.logger:
-                                            self.logger.info(
-                                                "Vulnerabilities recorded on %s", res["host"]
+                                completed, pending = wait(
+                                    pending, timeout=0.25, return_when=FIRST_COMPLETED
+                                )
+
+                                # Update progress details from host_status_map
+                                now = time.time()
+                                for ip, status in host_status_map.items():
+                                    task_id, start_time = host_tasks[ip]
+                                    budget = budgets.get(ip, 300.0)
+                                    elapsed = now - start_time
+                                    # Estimate percentage based on budget (cap 95%)
+                                    pct = min(95, int((elapsed / max(1, budget)) * 100))
+                                    # Update bar: If done, it will be handled in completed loop
+                                    if ip not in [futures[f] for f in completed]:
+                                        progress.update(
+                                            task_id,
+                                            completed=pct,
+                                            detail=f"[yellow]{status}[/]",
+                                        )
+
+                                for fut in completed:
+                                    host_ip = futures[fut]
+                                    task_id, _ = host_tasks[host_ip]
+                                    try:
+                                        res = fut.result()
+                                        if res:
+                                            self.results["vulnerabilities"].append(res)
+                                            vuln_count = len(res.get("vulnerabilities", []))
+                                            count_str = (
+                                                f"({vuln_count} vulns)" if vuln_count else "✓"
                                             )
-                                except Exception as exc:
-                                    self.logger.error("Vuln worker error for %s: %s", host_ip, exc)
-                                    self.logger.debug(
-                                        "Vuln worker exception details for %s",
-                                        host_ip,
-                                        exc_info=True,
-                                    )
-                                done += 1
-                                remaining_budget_s = max(
-                                    0.0, remaining_budget_s - budgets.get(host_ip, 0.0)
-                                )
-                                remaining = max(0, total - done)
-                                elapsed_s = max(0.001, time.time() - start_t)
-                                rate = done / elapsed_s if done else 0.0
-                                eta_est_val = (
-                                    self._format_eta(remaining / rate)
-                                    if rate > 0.0 and remaining
-                                    else ""
-                                )
-                                progress.update(
-                                    task,
-                                    advance=1,
-                                    description=f"[cyan]{self.ui.t('scanned_host', host_ip)}",
-                                    eta_upper=self._format_eta(remaining_budget_s / workers),
-                                    eta_est=f"ETA≈ {eta_est_val}" if eta_est_val else "",
-                                    detail=last_detail,
-                                )
+                                            # Final green update
+                                            progress.update(
+                                                task_id,
+                                                completed=100,
+                                                description=f"[green]✅ {host_ip} {count_str}",
+                                                detail="",
+                                            )
+                                        else:
+                                            progress.update(
+                                                task_id,
+                                                completed=100,
+                                                description=f"[green]✅ {host_ip} (Clean)",
+                                                detail="",
+                                            )
+                                    except Exception as exc:
+                                        self.logger.error(
+                                            "Vuln worker error for %s: %s", host_ip, exc
+                                        )
+                                        progress.update(
+                                            task_id,
+                                            completed=100,
+                                            description=f"[red]❌ {host_ip}",
+                                            detail=str(exc),
+                                        )
+                                    done += 1
                 else:
-                    # Fallback without rich (throttled)
+                    # Fallback without rich
                     for fut in as_completed(futures):
-                        if self.interrupted:
-                            for pending_fut in futures:
-                                pending_fut.cancel()
-                            break
                         host_ip = futures[fut]
                         try:
                             res = fut.result()
                             if res:
                                 self.results["vulnerabilities"].append(res)
                         except Exception as exc:
-                            self.ui.print_status(
-                                self.ui.t("worker_error", exc), "WARNING", force=True
-                            )
                             if self.logger:
-                                self.logger.debug(
-                                    "Vuln worker exception details for %s", host_ip, exc_info=True
-                                )
-                        done += 1
-                        remaining_budget_s = max(
-                            0.0, remaining_budget_s - budgets.get(host_ip, 0.0)
-                        )
-                        if total and done % max(1, total // 10) == 0:
-                            self.ui.print_status(
-                                f"{self.ui.t('progress', done, total)} | ETA≤ {self._format_eta(remaining_budget_s / workers)}",
-                                "INFO",
-                                update_activity=False,
-                                force=True,
-                            )
+                                self.logger.error("Vuln error %s: %s", host_ip, exc)

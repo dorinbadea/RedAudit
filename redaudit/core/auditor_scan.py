@@ -1897,13 +1897,14 @@ class AuditorScan:
                                 now = time.time()
 
                                 # v3.8.1: Heartbeat every 60s for visibility
+                                # v3.8.1: Heartbeat every 60s for visibility
                                 if now - last_heartbeat >= 60.0:
                                     elapsed = int(now - start_t)
                                     mins, secs = divmod(elapsed, 60)
-                                    self.ui.print_status(
-                                        f"{self.ui.t('scanning_hosts')}... {done}/{total} ({mins}:{secs:02d} transcurrido)",
-                                        "INFO",
-                                        force=True,
+                                    # Use progress.console to print safely without breaking the Live display
+                                    progress.console.print(
+                                        f"[grey50]INFO: {self.ui.t('scanning_hosts')}... {done}/{total} ({mins}:{secs:02d} transcurrido)[/]",
+                                        highlight=False,
                                     )
                                     last_heartbeat = now
 
