@@ -1750,11 +1750,8 @@ class AuditorScan:
                                 if now - last_heartbeat >= 60.0:
                                     elapsed = int(now - start_t)
                                     mins, secs = divmod(elapsed, 60)
-                                    self.ui.print_status(
-                                        f"Deep Scan... {done}/{total} ({mins}:{secs:02d})",
-                                        "INFO",
-                                        force=True,
-                                    )
+                                    msg = f"Deep Scan... {done}/{total} ({mins}:{secs:02d})"
+                                    progress.console.print(f"[dim]{msg}[/dim]")
                                     last_heartbeat = now
 
                                 # Update progress for pending hosts
