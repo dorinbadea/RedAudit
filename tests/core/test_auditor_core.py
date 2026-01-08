@@ -1998,6 +1998,7 @@ def test_run_complete_scan_no_setup(tmp_path):
     auditor = InteractiveNetworkAuditor()
     auditor.config["output_dir"] = str(tmp_path)
     auditor.config["target_networks"] = ["1.1.1.0/24"]
+    auditor.config["no_hyperscan_first"] = True
 
     # Mock all heavy dependencies
     with patch(

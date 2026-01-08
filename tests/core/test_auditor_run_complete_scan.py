@@ -140,6 +140,7 @@ def test_run_complete_scan_with_nuclei(tmp_path, monkeypatch):
     app.config["scan_mode"] = "completo"
     app.config["nuclei_enabled"] = True
     app.config["scan_vulnerabilities"] = True
+    app.config["no_hyperscan_first"] = True
     app.config["prevent_sleep"] = False
 
     monkeypatch.setattr(app, "start_heartbeat", lambda: None)
