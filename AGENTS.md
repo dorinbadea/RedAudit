@@ -122,6 +122,25 @@ Optional (also supported in this repo):
 python3 -m unittest discover -s tests
 ```
 
+### Local CI Parity (Multi-Python)
+
+To avoid CI-only failures, run the local CI parity script. It runs pre-commit once and
+executes pytest on each available Python version in the CI matrix.
+
+```bash
+bash scripts/ci_local.sh
+```
+
+Requirements:
+
+- Python 3.9-3.12 available in PATH (`python3.9`, `python3.10`, `python3.11`, `python3.12`).
+- Uses `requirements-dev.lock` and creates venvs under `.venv/ci` (ignored).
+
+Optional environment variables:
+
+- `PYTHON_VERSIONS="3.9 3.10"` to limit which versions run.
+- `RUN_PRECOMMIT=0` or `RUN_TESTS=0` to skip steps.
+
 ### Test Organization (Quality over Quantity)
 
 The test suite prioritizes maintainability over raw coverage numbers:
