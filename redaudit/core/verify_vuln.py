@@ -412,6 +412,7 @@ NUCLEI_TEMPLATE_VENDORS = {
         "expected_vendors": ["mitel", "micollab", "mivoice"],
         "false_positive_vendors": [
             "fritz",
+            "fritz!os",  # v4.4.2: Explicit FRITZ!OS detection
             "avm",
             "netgear",
             "tp-link",
@@ -639,7 +640,6 @@ def check_nuclei_false_positive(
         if isinstance(raw, dict):
             response = raw.get("response", "") or ""
     server_header = ""
-    server_header = ""
     # v4.3.1: Handle both CRLF and LF to ensure Server header is found
     lines = response.splitlines()
     for line in lines:
@@ -696,6 +696,7 @@ def filter_nuclei_false_positives(
     findings: List[Dict],
     host_agentless: Optional[Dict[str, Dict]] = None,
     logger=None,
+    host_records: Optional[List[Dict]] = None,
 ) -> Tuple[List[Dict], List[Dict]]:
     """
     Filter Nuclei findings to separate genuine findings from likely false positives.
@@ -703,10 +704,13 @@ def filter_nuclei_false_positives(
     Unlike Nikto filtering which removes FPs, this returns both lists so the
     auditor can review flagged findings if needed.
 
+    v4.4.2: Added host_records parameter for CPE-based validation.
+
     Args:
         findings: List of Nuclei finding dicts
         host_agentless: Dict mapping IP -> agentless fingerprint data
         logger: Optional logger
+        host_records: Optional list of host records with ports/CPE data
 
     Returns:
         Tuple of (genuine_findings, suspected_fp_findings)
@@ -715,6 +719,13 @@ def filter_nuclei_false_positives(
         return [], []
 
     genuine = []
+    # v4.4.2: Build IP -> host_data map for CPE lookups
+    host_data_map: Dict[str, Dict] = {}
+    if host_records:
+        for hr in host_records:
+            ip = hr.get("ip") if isinstance(hr, dict) else getattr(hr, "ip", None)
+            if ip:
+                host_data_map[ip] = hr if isinstance(hr, dict) else hr.__dict__
     suspected_fps = []
     host_agentless = host_agentless or {}
 
@@ -735,7 +746,9 @@ def filter_nuclei_false_positives(
                 trimmed = trimmed.split(":", 1)[0]
             agentless_data = host_agentless.get(trimmed, {})
 
-        is_fp, reason = check_nuclei_false_positive(finding, agentless_data, logger)
+        # v4.4.2: Pass host_data for CPE-based validation
+        host_data = host_data_map.get(trimmed) if trimmed else None
+        is_fp, reason = check_nuclei_false_positive(finding, agentless_data, logger, host_data)
 
         if is_fp:
             # Mark as suspected FP but don't remove
