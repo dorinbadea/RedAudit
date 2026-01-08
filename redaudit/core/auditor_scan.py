@@ -488,6 +488,10 @@ class AuditorScan:
                 if data:
                     mdns_name = self._extract_mdns_name(data) or "mdns_response"
                     signals["mdns_name"] = mdns_name[:255]
+            except (socket.timeout, TimeoutError):
+                # Expected behavior for most hosts (no mDNS response)
+                if self.logger:
+                    self.logger.debug("Phase0 mDNS probe timed out for %s (expected)", safe_ip)
             finally:
                 try:
                     sock.close()
@@ -2022,7 +2026,16 @@ class AuditorScan:
 
         self.ui.print_status(self.ui.t("windows_verify_start", len(targets)), "HEADER")
 
-        host_index = {h.get("ip"): h for h in host_results if isinstance(h, dict)}
+        host_index = {}
+        for h in host_results:
+            # v4.4.3: Handle both dict and Host objects
+            if isinstance(h, dict):
+                ip = h.get("ip")
+            else:
+                ip = getattr(h, "ip", None)
+            if ip:
+                host_index[ip] = h
+
         results: List[Dict[str, Any]] = []
 
         workers = min(4, max(1, int(self.config.get("threads", 1))))
@@ -2109,7 +2122,6 @@ class AuditorScan:
                             self.ui.print_status(
                                 f"{self.ui.t('windows_verify_label')} {done}/{total} | ETA≈ {eta_est_val}",
                                 "INFO",
-                                update_activity=False,
                                 force=True,
                             )
 
@@ -2118,17 +2130,30 @@ class AuditorScan:
             if not ip or ip not in host_index:
                 continue
             host = host_index[ip]
-            host["agentless_probe"] = res
+
             agentless_fp = summarize_agentless_fingerprint(res)
-            existing_fp = host.get("agentless_fingerprint") or {}
+
+            if isinstance(host, dict):
+                host["agentless_probe"] = res
+                existing_fp = host.get("agentless_fingerprint") or {}
+            else:
+                setattr(host, "agentless_probe", res)
+                existing_fp = getattr(host, "agentless_fingerprint", {}) or {}
+
             if existing_fp:
                 merged = dict(existing_fp)
                 for key, value in (agentless_fp or {}).items():
                     if value not in (None, ""):
                         merged[key] = value
                 agentless_fp = merged
-            host["agentless_fingerprint"] = agentless_fp
-            smart = host.get("smart_scan")
+
+            if isinstance(host, dict):
+                host["agentless_fingerprint"] = agentless_fp
+                smart = host.get("smart_scan")
+            else:
+                setattr(host, "agentless_fingerprint", agentless_fp)
+                smart = getattr(host, "smart_scan", None)
+
             if isinstance(smart, dict) and isinstance(agentless_fp, dict) and agentless_fp:
                 signals = list(smart.get("signals") or [])
                 if "agentless" not in signals:
