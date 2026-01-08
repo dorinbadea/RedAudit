@@ -830,7 +830,10 @@ class InteractiveNetworkAuditor:
                                     if ip and agentless:
                                         host_agentless[ip] = agentless
                                 findings, suspected = filter_nuclei_false_positives(
-                                    findings, host_agentless, self.logger
+                                    findings,
+                                    host_agentless,
+                                    self.logger,
+                                    host_records=results,  # v4.4.2: Pass host data for CPE validation
                                 )
                             except Exception as filter_err:
                                 if self.logger:

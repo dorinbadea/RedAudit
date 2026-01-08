@@ -8,6 +8,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [4.4.2] - 2026-01-08
+
+### Fixed
+
+- **CVE-2022-26143 False Positive on FRITZ!Box Routers**: Fixed critical pipeline integration bug where the Nuclei false positive filter was not receiving host data, causing router endpoints (AVM FRITZ!Box) to be incorrectly flagged as vulnerable to Mitel MiCollab CVE-2022-26143.
+  - Root cause: `filter_nuclei_false_positives()` was not receiving `host_records` parameter in `auditor.py`, preventing CPE-based validation.
+  - Added `fritz!os` to explicit false positive vendor list for improved header matching.
+  - Removed duplicate `server_header` variable assignment in `check_nuclei_false_positive()`.
+  - New parameter: `host_records` in `filter_nuclei_false_positives()` enables full host data flow for accurate validation.
+
 ## [4.4.1] - 2026-01-08
 
 ### Added
