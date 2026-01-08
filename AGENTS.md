@@ -14,6 +14,7 @@ This file is reusable "initial context" for contributors working on RedAudit. Th
 - Wait for CI to be green before merging to `main` (do not force-merge with failing checks).
   Exception: documentation-only changes may merge with owner approval if checks are
   pending/skipped and there are no red failures.
+- **No Emojis**: Do not use emojis in documentation (`.md` files). Maintain a professional, neutral tone.
 
 ## Contributor Workflow Guidelines
 
@@ -76,6 +77,14 @@ Run:
 
 ```bash
 pre-commit run --all-files
+```
+
+### Dependency Setup (Critical)
+
+Before running tests, ensure dev dependencies are installed to avoid missing package errors (e.g., `pytest-asyncio`):
+
+```bash
+pip install -e ".[dev]"
 ```
 
 This repo's `.pre-commit-config.yaml` includes:
@@ -233,7 +242,9 @@ For ES docs, use Spanish (Spain) phrasing (`es-ES`) and avoid LATAM variants.
 
 **Documentation style:**
 
-- Avoid emojis in documentation; use a professional, neutral tone. **Do not use emojis inside documents.**
+**Documentation style:**
+
+- Keep sentences clear and concise.
 - In release notes, use absolute URLs (e.g., `https://github.com/.../blob/vX.Y.Z/...`) for language badge links. Relative links break when viewed from the GitHub release page.
 
 ## Versioning & Release Checklist (SemVer)
@@ -259,7 +270,10 @@ Also update any tests that assert version output (e.g., integration tests).
 - Add a new section to `CHANGELOG.md` and `ES/CHANGELOG_ES.md`
 - Add release notes:
   - `docs/releases/RELEASE_NOTES_vX.Y.Z.md`
+  - `docs/releases/RELEASE_NOTES_vX.Y.Z.md`
   - `docs/releases/RELEASE_NOTES_vX.Y.Z_ES.md`
+- Create Audit Report:
+  - `docs/AUDIT_REPORT_vX.Y.Z.md` (Validating the critical fixes/features)
 
 ### 4) Final verification
 
@@ -293,9 +307,16 @@ git push origin main --tags
 
 Prefer `gh` (GitHub CLI):
 
-```bash
-gh release create vX.Y.Z -t "vX.Y.Z - <title>" -F release_payload.md
-```
+Prefer `gh` (GitHub CLI):
+
+1. **Prepare Payload**:
+   Copy the content from the English release notes (`docs/releases/RELEASE_NOTES_vX.Y.Z.md`) into a temporary file `release_payload.md`.
+
+2. **Create Release**:
+
+   ```bash
+   gh release create vX.Y.Z -t "vX.Y.Z - <title>" -F release_payload.md
+   ```
 
 **CRITICAL**: The GitHub Release **MUST** contain the full text body (payload), not just the title.
 
