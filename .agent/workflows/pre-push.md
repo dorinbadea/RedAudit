@@ -4,10 +4,9 @@ description: CRITICAL - Run pre-commit before ANY push to main
 
 # Pre-Push Quality Gate (MANDATORY)
 
-**BEFORE EVERY `git push` to `main`, you MUST run:**
+**BEFORE EVERY `git push` to `main`, you MUST run (from the repository root):**
 
 ```bash
-cd /Users/dorin/Documents/AntiGravity/RedAudit
 pre-commit run --all-files
 ```
 
@@ -22,8 +21,9 @@ pre-commit run --all-files
 
 1. [ ] `pre-commit run --all-files` passes
 2. [ ] `pip install -r requirements-dev.lock && pip install -e .` (Ensure deps are synced)
-3. [ ] `python3 -m unittest discover -s tests` passes
-4. [ ] `git status` is clean
+3. [ ] `bash scripts/ci_local.sh` passes (Local CI parity)
+4. [ ] `pytest tests/ -v` passes
+5. [ ] `git status` is clean
 
 ## Common Issues
 
