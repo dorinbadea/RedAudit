@@ -32,6 +32,7 @@ RedAudit_*/
 
 # Agent workflows (private)
 .agent/
+!.agent/rules/
 diff_report_*.html
 diff_report_*.md
 *.log

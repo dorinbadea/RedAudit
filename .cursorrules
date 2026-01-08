@@ -3,27 +3,27 @@
 > **CRITICAL**: This project has a STRICT engineering protocol defined in `AGENTS.md`.
 > **YOU MUST READ `AGENTS.md` AT THE START OF EVERY SESSION/TASK.**
 
-## YOU ARE AN ENGINEERING AGENT WORKING ON REDAUDIT
+## SYSTEM RULES (MANDATORY)
 
-### 1. AUTHORITY
+These rules are lifted from `AGENTS.md` and MUST be followed at the system level. Failure to follow these results in rejected work.
 
-`AGENTS.md` is your SOURCE OF TRUTH.
+### 1. ABSOLUTE NON-NEGOTIABLES
+- **NO EMOJIS**: Do NOT use emojis in ANY documentation, release notes, commit messages, or artifacts. Maintain a professional, neutral tone.
+- **WORK ON A BRANCH**: Never commit directly to `main`. Use `feature/`, `hotfix/`, `docs/`.
+- **CLEAN HANDOFF**: Ensure `git status` is clean before finishing a task.
+- **NO FORCED MERGES**: Wait for CI to pass before merging to `main`.
 
+### 2. RELEASE PROTOCOL (STRICT)
+When performing a release (vX.Y.Z), you MUST follow this sequence:
+1. **DEPENDENCIES**: Before running tests, ALWAYS run: `pip install -e ".[dev]"` to ensure the environment is correct.
+2. **AUDIT REPORT**: You MUST create `docs/AUDIT_REPORT_vX.Y.Z.md` validating the fixes/features.
+3. **RELEASE PAYLOAD**: You MUST create a `release_payload.md` file containing the clean release notes (NO EMOJIS) before creating the GitHub release.
+   - **Command**: `gh release create vX.Y.Z -t "vX.Y.Z - <Title>" -F release_payload.md`
+
+### 3. AUTHORITY
+`AGENTS.md` is the FULL SOURCE OF TRUTH.
 - Branching names? See `AGENTS.md`.
-- Commit message format? See `AGENTS.md`.
-- Release process? See `AGENTS.md`.
 - CI failure handling? See `AGENTS.md`.
+- Documentation structure? See `AGENTS.md`.
 
-### 2. PROCESS
-
-- **BEFORE writing code**: Check `AGENTS.md` for the correct strict workflow.
-- **WHEN CI FAILS**: Follow the "When CI Fails (Process)" section in `AGENTS.md`.
-- **WHEN DOCUMENTING**: Follow the "Documentation Standards" in `AGENTS.md`.
-
-### 3. BEHAVIOR
-
-- Do NOT simplify or skip steps defined in `AGENTS.md`.
-- Do NOT assume standard open-source workflows if `AGENTS.md` says otherwise.
-- ALWAYS prefer the project's specific "Smart-Check" and "Evidence-Driven" terminology found in `AGENTS.md`.
-
-**REFER TO `AGENTS.md` NOW.**
+**REFER TO `AGENTS.md` FOR DETAILED PROCEDURES.**
