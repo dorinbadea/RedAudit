@@ -323,3 +323,25 @@ def test_check_nuclei_false_positive_lf_line_endings():
     is_fp, reason = check_nuclei_false_positive(finding)
     assert is_fp is True
     assert "vendor_detected" in reason or "fritz" in reason.lower()
+
+
+def test_filter_nuclei_false_positives_with_host_records():
+    """Test v4.4.2 fix: host_records parameter enables CPE-based validation."""
+    findings = [
+        {
+            "template-id": "CVE-2022-26143",
+            "ip": "192.168.178.1",
+            "response": "HTTP/1.1 200 OK\r\nServer: FRITZ!OS Guest information Server\r\n\r\n{}",
+        }
+    ]
+    host_records = [
+        {
+            "ip": "192.168.178.1",
+            "ports": [{"port": 8189, "cpe": ["cpe:2.3:a:avm:fritz_os:*:*:*:*:*:*:*:*"]}],
+        }
+    ]
+
+    genuine, fps = filter_nuclei_false_positives(findings, host_records=host_records)
+    assert len(fps) == 1
+    assert len(genuine) == 0
+    assert fps[0].get("suspected_false_positive") is True
