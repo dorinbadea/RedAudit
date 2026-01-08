@@ -1,6 +1,6 @@
 # RedAudit v4.4.2 Release Notes
 
-[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/v4.4.2/docs/releases/RELEASE_NOTES_v4.4.2_ES.md)
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/main/docs/releases/RELEASE_NOTES_v4.4.2_ES.md)
 
 **Release Date**: 2026-01-08
 
