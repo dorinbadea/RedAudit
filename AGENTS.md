@@ -233,7 +233,7 @@ For ES docs, use Spanish (Spain) phrasing (`es-ES`) and avoid LATAM variants.
 
 **Documentation style:**
 
-- Avoid emojis in documentation; use a professional, neutral tone.
+- Avoid emojis in documentation; use a professional, neutral tone. **Do not use emojis inside documents.**
 - In release notes, use absolute URLs (e.g., `https://github.com/.../blob/vX.Y.Z/...`) for language badge links. Relative links break when viewed from the GitHub release page.
 
 ## Versioning & Release Checklist (SemVer)
@@ -294,8 +294,14 @@ git push origin main --tags
 Prefer `gh` (GitHub CLI):
 
 ```bash
-gh release create vX.Y.Z -t "vX.Y.Z - <title>" -F docs/releases/RELEASE_NOTES_vX.Y.Z.md
+gh release create vX.Y.Z -t "vX.Y.Z - <title>" -F release_payload.md
 ```
+
+**CRITICAL**: The GitHub Release **MUST** contain the full text body (payload), not just the title.
+
+- Copy the content from the English release notes (`docs/releases/RELEASE_NOTES_vX.Y.Z.md`).
+- **Always** include the language badge at the top pointing to the Spanish version.
+- **Verify** that the release page is not empty after publishing.
 
 When the release notes include an EN->ES badge/link, point it at the tagged file, e.g.:
 
