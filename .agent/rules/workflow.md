@@ -291,8 +291,9 @@ Also update any tests that assert version output (e.g., integration tests).
   - `docs/releases/RELEASE_NOTES_vX.Y.Z.md`
   - `docs/releases/RELEASE_NOTES_vX.Y.Z.md`
   - `docs/releases/RELEASE_NOTES_vX.Y.Z_ES.md`
-- Create Audit Report:
-  - `docs/AUDIT_REPORT_vX.Y.Z.md` (Validating the critical fixes/features)
+- Create Audit Report (PRIVATE - do NOT commit):
+  - `scan_results_private/AUDIT_REPORT_vX.Y.Z.md`
+  - This file contains network-specific data and must never be pushed to the repository.
 
 ### 4) Final verification
 
