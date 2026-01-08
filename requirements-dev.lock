@@ -4,7 +4,9 @@
 #
 #    pip-compile --extra=dev --output-file=requirements-dev.lock pyproject.toml
 #
-black==25.12.0
+black==25.12.0 ; python_version >= "3.10"
+    # via redaudit (pyproject.toml)
+black==24.10.0 ; python_version < "3.10"
     # via redaudit (pyproject.toml)
 certifi==2026.1.4
     # via requests
