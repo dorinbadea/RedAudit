@@ -8,6 +8,15 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [4.4.5] - 2026-01-09
+
+### Mejorado
+
+- **Push de Cobertura de Código**: Alcanzada cobertura del 100% en `topology.py` y >94% en `updater.py`, elevando la cobertura total del proyecto por encima del 90%.
+  - Añadidos escenarios de test robustos para bucles de topología, crashes de red y excepciones de casos borde.
+  - Refactorizados tests del updater con mocking dinámico para mayor estabilidad.
+- **Estabilidad**: Resueltas intervenciones de hooks pre-commit e inconsistencias de formateo en archivos de test.
+
 ## [4.4.4] - 2026-01-09
 
 ### Mejorado
