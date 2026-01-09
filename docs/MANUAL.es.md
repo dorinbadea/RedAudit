@@ -132,6 +132,7 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 
 - **Técnica:** Top 1000 puertos TCP, detección de versiones y SO.
 - **Web:** Revisa cabeceras y tecnologías básicas (WhatWeb).
+- **Autenticación:** Configuración opcional de credenciales SSH/SMB/SNMP.
 - **Ideal para:** Auditorías regulares, validación de políticas.
 
 #### 3. Exhaustive (Profundo / Cumplimiento)
@@ -140,6 +141,7 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 
 - **Técnica:** 65535 puertos TCP, escaneo UDP, scripts de vulnerabilidad (NSE).
 - **Web:** Escaneo completo (Nikto, Nuclei, SSL).
+- **Autenticación:** Configuración opcional de credenciales SSH/SMB/SNMP.
 - **Ideal para:** Pentesting, compliance (PCI-DSS, ISO 27001), validación pre-producción.
 
 #### 4. Custom (A Medida)
@@ -157,7 +159,7 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 
 ### Menú de Autenticación (Fase 4)
 
-Si selecciona un perfil que lo permita (o Custom), el asistente le preguntará:
+Si selecciona los perfiles **Standard**, **Exhaustive** o **Custom**, el asistente le preguntará:
 `¿Desea configurar escaneo autenticado? [s/n]`
 
 Si responde **Sí**, accederá al sub-menú de credenciales:

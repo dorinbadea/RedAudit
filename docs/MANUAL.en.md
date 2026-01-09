@@ -132,6 +132,7 @@ Pre-configured profiles adjust dozens of parameters automatically:
 
 - **Technique:** Top 1000 TCP ports, version and OS detection.
 - **Web:** Checks headers and basic technologies (WhatWeb).
+- **Authentication:** Optional setup for SSH/SMB/SNMP credentials.
 - **Ideal for:** Regular audits, policy validation.
 
 #### 3. Exhaustive (Deep / Compliance)
@@ -140,6 +141,7 @@ Pre-configured profiles adjust dozens of parameters automatically:
 
 - **Technique:** 65535 TCP ports, UDP scanning, vulnerability scripts (NSE).
 - **Web:** Full scan (Nikto, Nuclei, SSL).
+- **Authentication:** Optional setup for SSH/SMB/SNMP credentials.
 - **Ideal for:** Penetration testing, compliance (PCI-DSS, ISO 27001), pre-production validation.
 
 #### 4. Custom (Tailored)
@@ -157,7 +159,7 @@ Pre-configured profiles adjust dozens of parameters automatically:
 
 ### Authentication Menu (Phase 4)
 
-If you select a profile that supports it (or Custom), the wizard will ask:
+If you select **Standard**, **Exhaustive**, or **Custom** profiles, the wizard will ask:
 `Enable authenticated scanning (SSH/SMB)? [y/n]`
 
 If you answer **Yes**, you will enter the credentials sub-menu:
