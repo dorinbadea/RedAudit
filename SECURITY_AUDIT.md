@@ -1,4 +1,4 @@
-# Security Audit (2025-02-14)
+# Security Audit (2026-01-09)
 
 [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](ES/SECURITY_AUDIT_ES.md)
 
@@ -16,9 +16,9 @@
 
 ## Summary
 
-- Status: best-effort internal review.
+- Status: best-effort internal review (v4.4.4).
 - No known critical vulnerabilities identified in the current review.
-- Coverage is high (overall ~93.03% in this run); strong confidence in core logic and most edge cases.
+- Coverage is high (overall ~90%); strong confidence in core logic and most edge cases.
 
 ## Observed Controls
 
@@ -27,6 +27,8 @@
 - Rotating file logs to reduce unbounded growth.
 - Encryption support for reports when cryptography is available.
 - CI uses pre-commit, lint, and tests across Python 3.9-3.12.
+- Smart-Throttle (AIMD) prevents network DoS during scanning.
+- Generator-based targeting prevents memory exhaustion on large networks.
 
 ## Gaps / Limitations
 
@@ -44,4 +46,5 @@
 ## Evidence
 
 - pre-commit: passed.
-- pytest: 2209 passed.
+- pytest: 1465 passed, 1 skipped.
+- Coverage: ~90%.

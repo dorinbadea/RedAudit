@@ -1,47 +1,50 @@
-# Auditoria de Seguridad (2025-02-14)
+# Auditoría de Seguridad (2026-01-09)
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](../SECURITY_AUDIT.md)
 
 ## Alcance
 
-- Revision del codigo y checks automatizados del proyecto RedAudit.
-- Enfoque en manejo de datos, uso de privilegios, ejecucion de procesos y seguridad de salida.
-- Esto no es un pentest ni una auditoria externa.
+- Revisión del código fuente y comprobaciones automatizadas del proyecto RedAudit.
+- Enfoque en manejo de datos, uso de privilegios, ejecución de subprocesos y seguridad de salidas.
+- Esto no es un pentest ni una auditoría externa.
 
-## Metodologia
+## Metodología
 
-- Revision estatica de modulos core y del flujo de orquestacion.
-- Checks locales: `pre-commit run --all-files`.
-- Tests: `.venv/bin/python -m pytest tests/ -v --cov=redaudit --cov-report=term-missing`.
+- Revisión estática de módulos core y flujo de orquestación.
+- Comprobaciones automatizadas locales: `pre-commit run --all-files`.
+- Ejecución de tests: `.venv/bin/python -m pytest tests/ -v --cov=redaudit --cov-report=term-missing`.
 
 ## Resumen
 
-- Estado: revision interna best-effort.
-- No se identificaron vulnerabilidades criticas conocidas en esta revision.
-- Coverage alto (global ~93.03% en esta corrida); alta confianza en logica central y edge cases.
+- Estado: revisión interna best-effort (v4.4.4).
+- No se han identificado vulnerabilidades críticas conocidas en esta revisión.
+- La cobertura es alta (~90%); alta confianza en la lógica core y la mayoría de casos límite.
 
 ## Controles Observados
 
-- Validacion/sanitizacion de IPs y hostnames.
-- Defaults defensivos (dry-run, fallbacks best-effort).
-- Logs con rotacion para evitar crecimiento sin limite.
-- Cifrado de reportes cuando cryptography esta disponible.
-- CI con pre-commit, lint y tests en Python 3.9-3.12.
+- Validación de entrada y helpers de sanitización para IPs/hostnames.
+- Defaults defensivos (soporte dry-run, fallbacks best-effort).
+- Rotación de logs para reducir crecimiento sin límite.
+- Soporte de cifrado para informes cuando cryptography está disponible.
+- CI usa pre-commit, lint y tests en Python 3.9-3.12.
+- Smart-Throttle (AIMD) previene DoS de red durante el escaneo.
+- Targeting basado en generadores previene agotamiento de memoria en redes grandes.
 
-## Brechas / Limitaciones
+## Limitaciones
 
-- Coverage cerca del objetivo; pequena area interactiva (wizard) permanece menos testeada.
-- Sin pentest externo ni threat modeling formal.
-- Dependencias externas (nmap, nikto, nuclei, etc.) no auditadas aqui.
+- La cobertura está cerca del objetivo; el área interactiva (wizard) sigue menos testeada.
+- No se ha realizado pentest externo ni modelado de amenazas.
+- El comportamiento de herramientas externas (nmap, nikto, nuclei, etc.) se asume correcto y no se audita aquí.
 
-## Recomendaciones (Prioridad)
+## Recomendaciones (Priorizadas)
 
-1) Subir coverage en `redaudit/core/*` con tests para paths de error.
-2) Agregar tests explicitos de rotacion de logs y error handling.
-3) Documentar threat model formal y revisarlo trimestralmente.
-4) Revisar dependencias externas de forma periodica.
+1) Aumentar cobertura en `redaudit/core/*` con tests unitarios específicos para paths de error.
+2) Añadir tests explícitos para comportamiento de rotación de logs y manejo de errores.
+3) Documentar un modelo de amenazas formal y revisitar riesgos trimestralmente.
+4) Considerar revisión periódica de dependencias para herramientas externas y paquetes Python.
 
 ## Evidencia
 
-- pre-commit: OK.
-- pytest: 2209 tests OK.
+- pre-commit: passed.
+- pytest: 1465 passed, 1 skipped.
+- Cobertura: ~90%.
