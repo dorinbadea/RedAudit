@@ -1,24 +1,49 @@
-# RedAudit v4.4.4 Release Notes
+# RedAudit v4.5.0 - Authenticated Scanning & Red Team Toolkit
 
-[![Ver en Español](https://img.shields.io/badge/Ver_en-Español-yellow.svg)](https://github.com/dorinbadea/RedAudit/blob/v4.4.4/docs/releases/RELEASE_NOTES_v4.4.4_ES.md)
+[![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v4.5.0_ES.md)
 
-This release focuses on quality and reliability, reaching a milestone of ~90% code coverage. It includes enhanced testing for SIEM integration, SYN scanning, and reporting reliability, ensuring RedAudit remains stable across complex network environments.
+This release completes **Phase 4**, introducing comprehensive Authenticated Scanning capabilities and advanced Red Team modules. RedAudit can now dive deeper into hosts using valid credentials to uncover internal misconfigurations, vulnerabilities, and hardening gaps.
+
+## New Features
+
+### Authenticated Scanning (Phase 4)
+
+RedAudit now supports deep credentialed audits across three major protocols:
+
+- **SSH (Linux/Unix)**:
+  - Retrieves exact Kernel versions, OS distribution, and uptime.
+  - Enumerates installed packages (DEB/RPM).
+  - **Lynis Integration**: Automates remote Lynis audits for CIS/Hardening scoring.
+- **SMB/WMI (Windows)**:
+  - Enumerates OS version, Domain/Workgroup, Shares, and Users.
+  - Checks password policies and Guest access.
+  - Requires `impacket` (optional dependency).
+- **SNMP v3**:
+  - Full support for crypto-agile SNMPv3 (Auth: MD5/SHA, Priv: DES/AES).
+  - Extracts routing tables, interfaces, and system descriptions.
+
+### Red Team Modules
+
+- **Wizard Integration**: A new interactive flow guides users through configuring authentication and Red Team options.
+- **Keyring Support**: Credentials can be securely stored in the system keyring, avoiding plaintext passwords in scripts.
 
 ## Improvements
 
-* **Aggressive Coverage Push**:
-  * Reached **~90% total code coverage**.
-  * **SIEM Reliability**: Expanded tests for `siem.py` covering risk score breakdowns, CEF generation, and tool-specific severity mapping (Nuclei, TestSSL).
-  * **SYN Scanning Robustness**: Added failure path testing for the new Scapy-based SYN scanner.
-  * **Reporting Safety**: Hardened `reporter.py` with tests for file system permission errors and encrypted artifact verification.
-  * **Core Orchestration**: Improved coverage for `auditor.py` and `hyperscan.py` initialization and connection logic.
+- **Interactive Wizard**: Completely redesigned Wizard flow (Step 1-9) with "Go Back" functionality and new Authentication menus.
+- **Documentation**: Comprehensive updates to `MANUAL.md` and `USAGE.md` detailing authenticated workflows.
+- **Stability**: Fixed recursion errors in `AuditorRuntime` and improved test mock sequences.
 
-## Fixes (from v4.4.3 Hotfix)
+## Fixes
 
-* **mDNS Log Noise Suppressed**: Gracefully handle mDNS timeouts.
-* **Agentless Verification Restored**: Fixed data loss bug when handling newer `Host` objects.
-* **SNMP Parsing**: Fixed regex syntax for safer CIDR/SNMP extraction.
+- Resolved `StopIteration` crashes in interactive wizard tests.
+- Fixed type checking errors (Mypy) in auth modules.
+- Corrected circular dependency in `AuditorRuntime`.
 
----
+## Upgrading
 
-**Full Changelog**: [v4.4.2...v4.4.4](https://github.com/dorinbadea/RedAudit/compare/v4.4.2...v4.4.4)
+```bash
+cd RedAudit
+git pull origin main
+# Install new dependencies (impacket, pysnmp)
+pip install -r requirements.txt
+```
