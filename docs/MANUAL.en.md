@@ -393,6 +393,31 @@ Flags verified against `redaudit --help` (v4.5.0):
 | `--encrypt-password PASSWORD` | Password for encryption (or random generated) |
 | `--allow-non-root` | Run without sudo (limited functionality) |
 
+### Authentication (Credentials)
+
+| Flag | Description |
+| :--- | :--- |
+| `--auth-provider {env,keyring}` | Credential storage provider (env vars or system keyring) |
+| `--ssh-user USER` | SSH username for authenticated scanning |
+| `--ssh-key PATH` | Path to SSH private key |
+| `--ssh-key-pass PASSPHRASE` | Passphrase for encrypted SSH private key |
+| `--ssh-trust-keys` | Trust unknown SSH host keys (use with caution) |
+| `--smb-user USER` | SMB/Windows username |
+| `--smb-pass PASSWORD` | SMB/Windows password |
+| `--smb-domain DOMAIN` | SMB/Windows domain |
+| `--snmp-user USER` | SNMP v3 username |
+| `--snmp-auth-proto {SHA,MD5,...}` | SNMP v3 authentication protocol |
+| `--snmp-auth-pass PASSWORD` | SNMP v3 authentication password |
+| `--snmp-priv-proto {AES,DES,...}` | SNMP v3 privacy protocol |
+| `--snmp-priv-pass PASSWORD` | SNMP v3 privacy password |
+| `--lynis` | Run Lynis hardening audit on Linux hosts (requires SSH) |
+
+### HyperScan
+
+| Flag | Description |
+| :--- | :--- |
+| `--hyperscan-mode {auto,connect,syn}` | HyperScan mode: auto (default), connect, or syn |
+
 ### Reporting
 
 | Flag | Description |

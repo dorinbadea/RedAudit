@@ -392,6 +392,31 @@ Flags verificadas contra `redaudit --help` (v4.5.0):
 | `--encrypt-password PASSWORD` | Contraseña para cifrado (o se genera aleatoriamente) |
 | `--allow-non-root` | Ejecutar sin sudo (funcionalidad limitada) |
 
+### Autenticación (Credenciales)
+
+| Flag | Descripción |
+| :--- | :--- |
+| `--auth-provider {env,keyring}` | Proveedor de credenciales (variables de entorno o keyring del sistema) |
+| `--ssh-user USER` | Usuario SSH para escaneo autenticado |
+| `--ssh-key PATH` | Ruta a la clave privada SSH |
+| `--ssh-key-pass PASSPHRASE` | Frase de paso de la clave privada SSH |
+| `--ssh-trust-keys` | Confiar en claves SSH desconocidas (usar con precaución) |
+| `--smb-user USER` | Usuario SMB/Windows |
+| `--smb-pass PASSWORD` | Contraseña SMB/Windows |
+| `--smb-domain DOMAIN` | Dominio SMB/Windows |
+| `--snmp-user USER` | Usuario SNMP v3 |
+| `--snmp-auth-proto {SHA,MD5,...}` | Protocolo de autenticación SNMP v3 |
+| `--snmp-auth-pass PASSWORD` | Contraseña de autenticación SNMP v3 |
+| `--snmp-priv-proto {AES,DES,...}` | Protocolo de privacidad SNMP v3 |
+| `--snmp-priv-pass PASSWORD` | Contraseña de privacidad SNMP v3 |
+| `--lynis` | Ejecutar auditoría de hardening Lynis en hosts Linux (requiere SSH) |
+
+### HyperScan
+
+| Flag | Descripción |
+| :--- | :--- |
+| `--hyperscan-mode {auto,connect,syn}` | Modo HyperScan: auto (defecto), connect o syn |
+
 ### Reportes
 
 | Flag | Descripción |
