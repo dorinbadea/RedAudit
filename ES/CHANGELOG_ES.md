@@ -12,7 +12,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Mejorado
 
-- **Push de Cobertura de Código**: Alcanzada cobertura del 100% en `topology.py` y >94% en `updater.py`, elevando la cobertura total del proyecto por encima del 90%.
+- **Push de Cobertura de Código**: Alcanzada cobertura del 100% en `topology.py` y >94% en `updater.py`, elevando la cobertura total del proyecto a ~89%.
   - Añadidos escenarios de test robustos para bucles de topología, crashes de red y excepciones de casos borde.
   - Refactorizados tests del updater con mocking dinámico para mayor estabilidad.
 - **Estabilidad**: Resueltas intervenciones de hooks pre-commit e inconsistencias de formateo en archivos de test.
