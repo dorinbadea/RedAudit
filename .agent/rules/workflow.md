@@ -5,7 +5,7 @@ description: RedAudit Engineering Workflow
 # RedAudit: Engineering Workflow
 
 > [!IMPORTANT]
-> **Always** read and follow [AGENTS.md](file:///Users/dorin/Documents/AntiGravity/RedAudit/AGENTS.md) at the start of any coding or documentation task. It contains the canonical "Non-Negotiables" and "Contributor Workflow Guidelines" for this project.
+> **Always** read and follow [AGENTS.md](AGENTS.md) at the start of any coding or documentation task. It contains the canonical "Non-Negotiables" and "Contributor Workflow Guidelines" for this project.
 
 ## Key Standards Reminder
 
