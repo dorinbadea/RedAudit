@@ -14,7 +14,7 @@
 
 ## 1. Qué Es (y Qué No Es) RedAudit
 
-RedAudit es un **framework de auditoría de red automatizado** para Linux (familia Debian). Orquesta herramientas externas (`nmap`, `whatweb`, `nikto`, `testssl.sh`, `nuclei`, `searchsploit`) en un pipeline unificado y produce informes estructurados.
+RedAudit es un **framework de auditoria de red automatizado** para Linux (familia Debian). Orquesta un toolchain completo (`nmap`, `nikto`, `nuclei`, `whatweb`, `testssl.sh`, `sqlmap`, `masscan` y mas) en un pipeline unificado y produce informes estructurados.
 
 **Es:**
 
@@ -301,13 +301,13 @@ RedAudit v4.0+ soporta el escaneo autenticado para obtener datos de alta fidelid
 
 ### Prerrequisitos
 
-- **SSH**: Sin dependencias extra.
-- **SMB/WMI**: Requiere `impacket`.
+- **SSH**: Requiere `paramiko` (instalado por el instalador).
+- **SMB/WMI**: Requiere `impacket` (instalado por el instalador).
+- **SNMP v3**: Requiere `pysnmp` (instalado por el instalador).
 
   ```bash
-  pip install impacket
-  # o
-  sudo apt install python3-impacket
+  # Si se necesita instalacion manual:
+  pip install paramiko impacket pysnmp
   ```
 
 ### Configuración
@@ -335,7 +335,7 @@ Las credenciales se usan ÚNICAMENTE para el escaneo y no se almacenan en los re
 
 ## 7. Referencia CLI (Completa)
 
-Flags verificadas contra `redaudit --help` (v4.3.0):
+Flags verificadas contra `redaudit --help` (v4.5.0):
 
 ### Core
 
