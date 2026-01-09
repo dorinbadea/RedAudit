@@ -6,7 +6,7 @@
 
 ### Authenticated Scanning & Red Team Toolkit
 
-This release completes **Phase 4**, introducing comprehensive Authenticated Scanning capabilities and advanced Red Team modules. RedAudit can now dive deeper into hosts using valid credentials to uncover internal misconfigurations, vulnerabilities, and hardening gaps.
+This release completes Phase 4, introducing comprehensive Authenticated Scanning capabilities and advanced Red Team modules. RedAudit can now dive deeper into hosts using valid credentials to uncover internal misconfigurations, vulnerabilities, and hardening gaps.
 
 #### New Features
 
@@ -28,13 +28,18 @@ This release completes **Phase 4**, introducing comprehensive Authenticated Scan
 - Fixed Bandit security findings and Mypy type-checking issues.
 - Fixed pyproject.toml version mismatch.
 
+#### Links
+
+- **English Notes**: [RELEASE_NOTES_v4.5.0.md](https://github.com/dorinbadea/RedAudit/blob/v4.5.0/docs/releases/RELEASE_NOTES_v4.5.0.md)
+- **Spanish Notes**: [RELEASE_NOTES_v4.5.0_ES.md](https://github.com/dorinbadea/RedAudit/blob/v4.5.0/docs/releases/RELEASE_NOTES_v4.5.0_ES.md)
+
 ---
 
 ## Español
 
 ### Escaneo Autenticado & Toolkit Red Team
 
-Esta versión completa la **Fase 4**, introduciendo capacidades integrales de Escaneo Autenticado y módulos avanzados de Red Team. RedAudit ahora puede profundizar en los hosts utilizando credenciales válidas para descubrir configuraciones erróneas internas, vulnerabilidades y brechas de hardening.
+Esta versión completa la Fase 4, introduciendo capacidades integrales de Escaneo Autenticado y módulos avanzados de Red Team. RedAudit ahora puede profundizar en los hosts utilizando credenciales válidas para descubrir configuraciones erróneas internas, vulnerabilidades y brechas de hardening.
 
 #### Nuevas Características
 
@@ -48,10 +53,15 @@ Esta versión completa la **Fase 4**, introduciendo capacidades integrales de Es
 #### Mejoras
 
 - **Asistente Interactivo**: Flujo completamente rediseñado (Pasos 1-9) con funcionalidad "Volver".
-- **Documentación**: Actualización completa de las guías MANUAL y USAGE con flujos de trabajo autenticados.
+- **Documentation**: Actualización completa de las guías MANUAL y USAGE con flujos de trabajo autenticados.
 
 #### Correcciones
 
 - Resueltos cierres inesperados (StopIteration) en pruebas interactivas.
 - Corregidos hallazgos de seguridad Bandit y errores de tipo Mypy.
 - Corregida discrepancia de versión en pyproject.toml.
+
+#### Enlaces
+
+- **Notas en Inglés**: [RELEASE_NOTES_v4.5.0.md](https://github.com/dorinbadea/RedAudit/blob/v4.5.0/docs/releases/RELEASE_NOTES_v4.5.0.md)
+- **Notas en Español**: [RELEASE_NOTES_v4.5.0_ES.md](https://github.com/dorinbadea/RedAudit/blob/v4.5.0/docs/releases/RELEASE_NOTES_v4.5.0_ES.md)
