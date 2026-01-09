@@ -7,7 +7,7 @@ This release focuses on quality and reliability, reaching a milestone of ~90% co
 ## Improvements
 
 * **Aggressive Coverage Push**:
-  * Reached **~90% total code coverage**.
+  * Reached **~90% total code coverage** (up from 89%).
   * **SIEM Reliability**: Expanded tests for `siem.py` covering risk score breakdowns, CEF generation, and tool-specific severity mapping (Nuclei, TestSSL).
   * **SYN Scanning Robustness**: Added failure path testing for the new Scapy-based SYN scanner.
   * **Reporting Safety**: Hardened `reporter.py` with tests for file system permission errors and encrypted artifact verification.

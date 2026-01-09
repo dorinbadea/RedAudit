@@ -543,7 +543,6 @@ class InteractiveNetworkAuditor:
                                     total=100,
                                 )
                                 nd_start_time = time.time()
-                                nd_start_time = time.time()
 
                                 self.results["net_discovery"] = discover_networks(
                                     target_networks=self.config.get("target_networks", []),
@@ -736,75 +735,70 @@ class InteractiveNetworkAuditor:
                             nuclei_timeout_s = 300
                             total_batches = max(1, int(math.ceil(len(nuclei_targets) / batch_size)))
                             progress_start_t = time.time()
-                            with self._progress_ui():
-                                with Progress(
-                                    *self._progress_columns(
-                                        show_detail=True,
-                                        show_eta=True,
-                                        show_elapsed=False,
-                                    ),
-                                    console=self._progress_console(),
-                                    transient=False,
-                                    refresh_per_second=4,
-                                ) as progress:
-                                    task = progress.add_task(
-                                        f"[cyan]Nuclei (0/{total_batches})",
-                                        total=total_batches,
-                                        eta_upper=self._format_eta(
-                                            total_batches * nuclei_timeout_s
-                                        ),
-                                        eta_est="",
-                                        detail=f"{len(nuclei_targets)} targets",
-                                    )
 
-                                    def _nuclei_progress(
-                                        completed: int, total: int, eta: str
-                                    ) -> None:
-                                        try:
-                                            remaining = max(0, total - completed)
-                                            elapsed_s = max(0.001, time.time() - progress_start_t)
-                                            rate = completed / elapsed_s if completed else 0.0
-                                            eta_est_val = (
-                                                self._format_eta(remaining / rate)
-                                                if rate > 0.0 and remaining
-                                                else ""
-                                            )
-                                            progress.update(
-                                                task,
-                                                completed=completed,
-                                                description=f"[cyan]Nuclei ({completed}/{total})",
-                                                eta_upper=self._format_eta(
-                                                    remaining * nuclei_timeout_s if remaining else 0
-                                                ),
-                                                eta_est=(
-                                                    f"ETA≈ {eta_est_val}" if eta_est_val else ""
-                                                ),
-                                                detail=f"batch {completed}/{total}",
-                                            )
-                                        except Exception:
-                                            pass
+                            # v4.4.4: Prevent UI duplication - Progress manages its own Live display
+                            with Progress(
+                                *self._progress_columns(
+                                    show_detail=True,
+                                    show_eta=True,
+                                    show_elapsed=False,
+                                ),
+                                console=self._progress_console(),
+                                transient=False,
+                                refresh_per_second=4,
+                            ) as progress:
+                                task = progress.add_task(
+                                    f"[cyan]Nuclei (0/{total_batches})",
+                                    total=total_batches,
+                                    eta_upper=self._format_eta(total_batches * nuclei_timeout_s),
+                                    eta_est="",
+                                    detail=f"{len(nuclei_targets)} targets",
+                                )
 
-                                    nuclei_result = run_nuclei_scan(
-                                        targets=nuclei_targets,
-                                        output_dir=output_dir,
-                                        severity="low,medium,high,critical",
-                                        timeout=nuclei_timeout_s,
-                                        batch_size=batch_size,
-                                        progress_callback=lambda c, t, e: self._nuclei_progress_callback(
-                                            c,
-                                            t,
-                                            e,
-                                            progress,
+                                def _nuclei_progress(completed: int, total: int, eta: str) -> None:
+                                    try:
+                                        remaining = max(0, total - completed)
+                                        elapsed_s = max(0.001, time.time() - progress_start_t)
+                                        rate = completed / elapsed_s if completed else 0.0
+                                        eta_est_val = (
+                                            self._format_eta(remaining / rate)
+                                            if rate > 0.0 and remaining
+                                            else ""
+                                        )
+                                        progress.update(
                                             task,
-                                            progress_start_t,
-                                            nuclei_timeout_s,
-                                        ),
-                                        use_internal_progress=False,
-                                        logger=self.logger,
-                                        dry_run=bool(self.config.get("dry_run", False)),
-                                        print_status=self.ui.print_status,
-                                        proxy_manager=self.proxy_manager,
-                                    )
+                                            completed=completed,
+                                            description=f"[cyan]Nuclei ({completed}/{total})",
+                                            eta_upper=self._format_eta(
+                                                remaining * nuclei_timeout_s if remaining else 0
+                                            ),
+                                            eta_est=(f"ETA≈ {eta_est_val}" if eta_est_val else ""),
+                                            detail=f"batch {completed}/{total}",
+                                        )
+                                    except Exception:
+                                        pass
+
+                                nuclei_result = run_nuclei_scan(
+                                    targets=nuclei_targets,
+                                    output_dir=output_dir,
+                                    severity="low,medium,high,critical",
+                                    timeout=nuclei_timeout_s,
+                                    batch_size=batch_size,
+                                    progress_callback=lambda c, t, e: self._nuclei_progress_callback(
+                                        c,
+                                        t,
+                                        e,
+                                        progress,
+                                        task,
+                                        progress_start_t,
+                                        nuclei_timeout_s,
+                                    ),
+                                    use_internal_progress=False,
+                                    logger=self.logger,
+                                    dry_run=bool(self.config.get("dry_run", False)),
+                                    print_status=self.ui.print_status,
+                                    proxy_manager=self.proxy_manager,
+                                )
                         except Exception:
                             nuclei_result = run_nuclei_scan(
                                 targets=nuclei_targets,
@@ -2049,6 +2043,9 @@ class InteractiveNetworkAuditor:
     ) -> None:
         """Callback for Net Discovery progress updates."""
         try:
+            # v4.4.4: Keep heartbeat alive during progress updates
+            self._touch_activity()
+
             pct = int((step_index / step_total) * 100) if step_total else 0
             if step_total and step_index >= step_total:
                 pct = min(pct, 99)
@@ -2089,6 +2086,9 @@ class InteractiveNetworkAuditor:
     ) -> None:
         """Callback for Nuclei scan progress updates."""
         try:
+            # v4.4.4: Keep heartbeat alive during progress updates
+            self._touch_activity()
+
             rem = max(0, total - completed)
             ela_s = max(0.001, time.time() - start_time)
             rate = completed / ela_s if completed else 0.0

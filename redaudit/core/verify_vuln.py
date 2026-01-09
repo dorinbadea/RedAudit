@@ -732,17 +732,17 @@ def filter_nuclei_false_positives(
     for finding in findings:
         host_ip = finding.get("ip", "") or finding.get("host", "")
         agentless_data = host_agentless.get(host_ip, {})
+        trimmed = host_ip
         if not agentless_data and isinstance(host_ip, str) and host_ip:
-            trimmed = host_ip
-            if "://" in trimmed:
+            if "://" in host_ip:
                 try:
                     from urllib.parse import urlparse
 
-                    parsed = urlparse(trimmed)
-                    trimmed = parsed.hostname or trimmed
+                    parsed = urlparse(host_ip)
+                    trimmed = parsed.hostname or host_ip
                 except Exception:
                     pass
-            if trimmed.count(":") == 1:
+            if isinstance(trimmed, str) and trimmed.count(":") == 1:
                 trimmed = trimmed.split(":", 1)[0]
             agentless_data = host_agentless.get(trimmed, {})
 

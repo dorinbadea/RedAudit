@@ -8,7 +8,17 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
-## [4.4.1] - 2026-01-08
+## [4.4.4] - 2026-01-09
+
+### Mejorado
+
+- **Push de Cobertura de Código**: Incrementada significativamente la cobertura de tests en módulos core (alcanzada ~90% de cobertura total).
+  - Añadidos tests específicos para `siem.py` (desglose de riesgo, mapeo de severidad por herramienta, generación CEF).
+  - Añadidos tests para `syn_scanner.py` (rutas de integración con scapy, fallos de sockets raw).
+  - Añadidos tests para `reporter.py` (fallos en creación de archivos, verificación de resultados cifrados).
+  - Añadidos tests para `auditor.py` e `hyperscan.py` (rutas de inicialización, lógica de conexión).
+
+## [4.4.3] - 2026-01-08
 
 ### Añadido
 

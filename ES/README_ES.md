@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-![Versión](https://img.shields.io/badge/versión-v4.4.3-blue?style=flat-square)
+![Versión](https://img.shields.io/badge/versión-v4.4.4-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://imgshields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -116,7 +116,7 @@ sudo redaudit
 | **Optimizaciones H2** | Análisis profundo para entornos Docker. e insights de severidad "Low" |
 | **Supresión de Advertencias** | Salida de terminal más limpia (fixes M1.1 / M2) |
 
-Ver [NOTAS DE LANZAMIENTO](../docs/releases/RELEASE_NOTES_v4.3.3_ES.md) para más detalles.
+Ver [NOTAS DE LANZAMIENTO](../docs/releases/RELEASE_NOTES_v4.4.4_ES.md) para más detalles.
 
 ---
 

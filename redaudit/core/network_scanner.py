@@ -415,7 +415,7 @@ class NetworkScanner:
             (PortScanner or None, error message string if any)
         """
         if is_dry_run(self.config.get("dry_run")):
-            return None, "dry_run"
+            return None, ""
         if shutil.which("nmap") is None:
             return None, "nmap_not_available"
         if nmap is None:
