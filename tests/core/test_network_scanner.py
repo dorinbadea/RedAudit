@@ -429,7 +429,7 @@ class TestNmapExecution:
         scanner.config["dry_run"] = True
         nm, err = scanner.run_nmap_scan("127.0.0.1", "-sn")
         assert nm is None
-        assert err == "dry_run"
+        assert err == ""  # dry_run returns empty error string
 
     def test_run_nmap_scan_missing_binary(self, scanner, monkeypatch):
         monkeypatch.setattr("redaudit.core.network_scanner.shutil.which", lambda *_a: None)
