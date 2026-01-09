@@ -20,7 +20,7 @@ RedAudit is an **automated network auditing framework** for authorized assessmen
 
 Instead of running every tool against every host, RedAudit escalates scanning only when identity remains weak or signals are ambiguous, reducing noise while preserving coverage for hard-to-identify devices.
 
-It orchestrates standard tools (`nmap`, `nikto`, `nuclei` when available) and applies **Smart-Check** verification to reduce false positives before reporting.
+It orchestrates a comprehensive toolchain (nmap, nikto, nuclei, whatweb, testssl.sh, sqlmap, masscan, and more) and applies **Smart-Check** verification to reduce false positives before reporting.
 
 **Use cases**: Defensive hardening, penetration test scoping, change tracking between assessments.
 
