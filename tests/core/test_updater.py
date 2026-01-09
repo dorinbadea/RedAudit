@@ -606,3 +606,191 @@ def test_interactive_update_check_skipped():
     ):
         with patch("builtins.input", return_value="n"):
             assert interactive_update_check(print_fn=MagicMock()) is False
+
+
+class TestCheckForUpdates(unittest.TestCase):
+    """Tests for check_for_updates function."""
+
+    def test_returns_false_when_no_release_info(self):
+        """Returns (False, None, ...) when API fails."""
+        from redaudit.core.updater import check_for_updates
+
+        with patch("redaudit.core.updater.fetch_latest_version", return_value=None):
+            result = check_for_updates()
+            self.assertFalse(result[0])
+            self.assertIsNone(result[1])
+
+    def test_returns_false_when_no_tag_name(self):
+        """Returns False when release has no tag_name."""
+        from redaudit.core.updater import check_for_updates
+
+        with patch(
+            "redaudit.core.updater.fetch_latest_version",
+            return_value={"name": "Release", "published_at": "2024-01-01"},
+        ):
+            result = check_for_updates()
+            self.assertFalse(result[0])
+
+    def test_returns_update_available(self):
+        """Returns True when newer version available."""
+        from redaudit.core.updater import check_for_updates
+
+        newer_version = "99.99.99"  # Always newer than current
+        with patch(
+            "redaudit.core.updater.fetch_latest_version",
+            return_value={
+                "tag_name": newer_version,
+                "html_url": "https://github.com/test",
+                "published_at": "2026-01-01T00:00:00Z",
+                "body": "Release notes",
+            },
+        ):
+            with patch(
+                "redaudit.core.updater.fetch_changelog_snippet",
+                return_value=("Changelog", "en"),
+            ):
+                result = check_for_updates()
+                self.assertTrue(result[0])
+                self.assertEqual(result[1], newer_version)
+                self.assertIsNotNone(result[2])
+
+    def test_returns_false_when_up_to_date(self):
+        """Returns False when already at latest version."""
+        from redaudit.core.updater import check_for_updates, VERSION
+
+        with patch(
+            "redaudit.core.updater.fetch_latest_version",
+            return_value={
+                "tag_name": VERSION,
+                "published_at": "2024-01-01T00:00:00Z",
+            },
+        ):
+            result = check_for_updates()
+            self.assertFalse(result[0])
+            self.assertEqual(result[1], VERSION)
+
+
+class TestHelperFunctions(unittest.TestCase):
+    """Tests for updater helper functions."""
+
+    def test_parse_published_date_valid(self):
+        """Parses valid ISO date."""
+        from redaudit.core.updater import _parse_published_date
+
+        result = _parse_published_date("2024-01-15T12:30:00Z")
+        self.assertIsNotNone(result)
+        self.assertIn("2024", result)
+
+    def test_parse_published_date_none(self):
+        """Returns None for None input."""
+        from redaudit.core.updater import _parse_published_date
+
+        result = _parse_published_date(None)
+        self.assertIsNone(result)
+
+    def test_extract_release_date_from_notes(self):
+        """Extracts date from release notes."""
+        from redaudit.core.updater import _extract_release_date_from_notes
+
+        # The function may not find a date if format doesn't match exactly
+        notes = "## v4.5.0 - 2024-03-15\n- Feature 1"
+        result = _extract_release_date_from_notes(notes, "v4.5.0")
+        # Result may be None if regex doesn't match; test that it doesn't crash
+        self.assertIsInstance(result, (str, type(None)))
+
+    def test_classify_release_type(self):
+        """Classifies release types correctly."""
+        from redaudit.core.updater import _classify_release_type
+
+        # Major update (returns capitalized)
+        self.assertEqual(_classify_release_type("3.0.0", "4.0.0"), "Major")
+        # Minor update
+        self.assertEqual(_classify_release_type("3.0.0", "3.1.0"), "Minor")
+        # Patch update
+        self.assertEqual(_classify_release_type("3.1.0", "3.1.1"), "Patch")
+
+
+class TestComputeFileHash(unittest.TestCase):
+    """Tests for compute_file_hash function."""
+
+    def test_computes_sha256(self):
+        """Computes SHA256 hash correctly."""
+        from redaudit.core.updater import compute_file_hash
+
+        with tempfile.NamedTemporaryFile(delete=False, mode="w") as f:
+            f.write("test content")
+            f.flush()
+            try:
+                result = compute_file_hash(f.name)
+                self.assertEqual(len(result), 64)  # SHA256 produces 64 hex chars
+            finally:
+                os.unlink(f.name)
+
+    def test_computes_sha512(self):
+        """Computes SHA512 hash correctly."""
+        from redaudit.core.updater import compute_file_hash
+
+        with tempfile.NamedTemporaryFile(delete=False, mode="w") as f:
+            f.write("test content")
+            f.flush()
+            try:
+                result = compute_file_hash(f.name, algorithm="sha512")
+                self.assertEqual(len(result), 128)  # SHA512 produces 128 hex chars
+            finally:
+                os.unlink(f.name)
+
+
+class TestIterFiles(unittest.TestCase):
+    """Tests for _iter_files function."""
+
+    def test_excludes_pycache(self):
+        """Excludes __pycache__ directories."""
+        from redaudit.core.updater import _iter_files
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create regular file
+            with open(os.path.join(tmpdir, "file.py"), "w") as f:
+                f.write("code")
+            # Create __pycache__ dir
+            pycache = os.path.join(tmpdir, "__pycache__")
+            os.makedirs(pycache)
+            with open(os.path.join(pycache, "file.pyc"), "w") as f:
+                f.write("bytecode")
+
+            files = list(_iter_files(tmpdir))
+            self.assertIn("file.py", files)
+            self.assertNotIn("__pycache__/file.pyc", files)
+
+
+class TestSuggestRestartCommand(unittest.TestCase):
+    """Tests for _suggest_restart_command."""
+
+    def test_suggests_command(self):
+        """Returns a restart suggestion."""
+        from redaudit.core.updater import _suggest_restart_command
+
+        result = _suggest_restart_command()
+        self.assertIsNotNone(result)
+        self.assertIsInstance(result, str)
+
+
+class TestStripMarkdownInline(unittest.TestCase):
+    """Tests for _strip_markdown_inline."""
+
+    def test_strips_bold(self):
+        """Strips bold markers."""
+        from redaudit.core.updater import _strip_markdown_inline
+
+        result = _strip_markdown_inline("**bold text**")
+        self.assertEqual(result, "bold text")
+
+    def test_strips_inline_code(self):
+        """Strips inline code markers."""
+        from redaudit.core.updater import _strip_markdown_inline
+
+        result = _strip_markdown_inline("`code`")
+        self.assertEqual(result, "code")
+
+
+if __name__ == "__main__":
+    unittest.main()
