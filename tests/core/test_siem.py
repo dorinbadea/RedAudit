@@ -334,7 +334,380 @@ class TestSIEM(unittest.TestCase):
         # Critical = 9.5 -> Base ~95
         self.assertGreater(score, 90)
 
+    def test_calculate_severity_empty_string(self):
+        """Test severity returns info for empty finding."""
+        result = calculate_severity("")
+        self.assertEqual(result, "info")
+
+    def test_calculate_severity_none(self):
+        """Test severity returns info for None finding."""
+        result = calculate_severity(None)
+        self.assertEqual(result, "info")
+
+    def test_calculate_severity_benign_nikto_metadata(self):
+        """Test severity ignores Nikto metadata lines."""
+        finding = "+ Target IP: 192.168.1.1"
+        result = calculate_severity(finding)
+        self.assertEqual(result, "info")
+
+        finding2 = "+ Start Time: 2024-01-01 12:00:00"
+        result2 = calculate_severity(finding2)
+        self.assertEqual(result2, "info")
+
+
+class TestClassifyFindingCategory(unittest.TestCase):
+    """Tests for classify_finding_category function."""
+
+    def test_classify_empty_returns_surface(self):
+        """Empty text returns surface category."""
+        from redaudit.core.siem import classify_finding_category
+
+        result = classify_finding_category("")
+        self.assertEqual(result, "surface")
+
+        result_none = classify_finding_category(None)
+        self.assertEqual(result_none, "surface")
+
+    def test_classify_vuln_category(self):
+        """Vulnerability keywords return vuln category."""
+        from redaudit.core.siem import classify_finding_category
+
+        result = classify_finding_category("CVE-2021-12345 SQL injection")
+        self.assertEqual(result, "vuln")
+
+    def test_classify_auth_category(self):
+        """Authentication keywords return auth category."""
+        from redaudit.core.siem import classify_finding_category
+
+        result = classify_finding_category("default credentials detected")
+        self.assertEqual(result, "auth")
+
+    def test_classify_crypto_category(self):
+        """Crypto keywords return crypto category."""
+        from redaudit.core.siem import classify_finding_category
+
+        result = classify_finding_category("weak cipher suite detected")
+        self.assertEqual(result, "crypto")
+
+
+class TestIsRfc1918Address(unittest.TestCase):
+    """Tests for is_rfc1918_address function."""
+
+    def test_private_10_network(self):
+        """10.x.x.x is RFC-1918 private."""
+        from redaudit.core.siem import is_rfc1918_address
+
+        result = is_rfc1918_address("10.0.0.1")
+        self.assertTrue(result)
+
+    def test_private_172_network(self):
+        """172.16.x.x is RFC-1918 private."""
+        from redaudit.core.siem import is_rfc1918_address
+
+        result = is_rfc1918_address("172.16.0.1")
+        self.assertTrue(result)
+
+    def test_private_192_network(self):
+        """192.168.x.x is RFC-1918 private."""
+        from redaudit.core.siem import is_rfc1918_address
+
+        result = is_rfc1918_address("192.168.1.1")
+        self.assertTrue(result)
+
+    def test_public_address(self):
+        """Public IP is not RFC-1918."""
+        from redaudit.core.siem import is_rfc1918_address
+
+        result = is_rfc1918_address("8.8.8.8")
+        self.assertFalse(result)
+
+    def test_invalid_address(self):
+        """Invalid IP returns False."""
+        from redaudit.core.siem import is_rfc1918_address
+
+        result = is_rfc1918_address("not-an-ip")
+        self.assertFalse(result)
+
+
+class TestDetectNiktoFalsePositives(unittest.TestCase):
+    """Tests for detect_nikto_false_positives function."""
+
+    def test_no_headers_returns_empty(self):
+        """Returns empty when no headers available."""
+        from redaudit.core.siem import detect_nikto_false_positives
+
+        vuln = {"nikto_findings": ["X-Content-Type-Options not set"]}
+        result = detect_nikto_false_positives(vuln)
+        self.assertEqual(result, [])
+
+    def test_detects_xcto_false_positive(self):
+        """Detects X-Content-Type-Options false positive."""
+        from redaudit.core.siem import detect_nikto_false_positives
+
+        vuln = {
+            "nikto_findings": ["X-Content-Type-Options header not set"],
+            "curl_headers": "X-Content-Type-Options: nosniff",
+        }
+        result = detect_nikto_false_positives(vuln)
+        self.assertEqual(len(result), 1)
+        self.assertIn("X-Content-Type-Options", result[0])
+
+    def test_detects_xfo_false_positive(self):
+        """Detects X-Frame-Options false positive."""
+        from redaudit.core.siem import detect_nikto_false_positives
+
+        vuln = {
+            "nikto_findings": ["X-Frame-Options header not present"],
+            "wget_headers": "X-Frame-Options: DENY",
+        }
+        result = detect_nikto_false_positives(vuln)
+        self.assertEqual(len(result), 1)
+        self.assertIn("X-Frame-Options", result[0])
+
+    def test_detects_hsts_false_positive(self):
+        """Detects HSTS false positive."""
+        from redaudit.core.siem import detect_nikto_false_positives
+
+        vuln = {
+            "nikto_findings": ["Strict-Transport-Security header not defined"],
+            "curl_headers": "Strict-Transport-Security: max-age=31536000",
+        }
+        result = detect_nikto_false_positives(vuln)
+        self.assertEqual(len(result), 1)
+        self.assertIn("HSTS", result[0])
+
+
+class TestGenerateCefLine(unittest.TestCase):
+    """Tests for generate_cef_line function."""
+
+    def test_basic_cef_generation(self):
+        """Generates valid CEF line."""
+        from redaudit.core.siem import generate_cef_line
+
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [{"port": 22}, {"port": 80}],
+            "status": "completed",
+        }
+        result = generate_cef_line(host)
+        self.assertTrue(result.startswith("CEF:0|"))
+        self.assertIn("src=192.168.1.1", result)
+        self.assertIn("spt=2", result)
+        self.assertIn("cs1=completed", result)
+
+    def test_cef_with_hostname(self):
+        """CEF includes hostname when available."""
+        from redaudit.core.siem import generate_cef_line
+
+        host = {
+            "ip": "192.168.1.1",
+            "hostname": "testhost.local",
+            "ports": [],
+            "status": "completed",
+        }
+        result = generate_cef_line(host)
+        self.assertIn("shost=testhost.local", result)
+
+    def test_cef_with_mac_address(self):
+        """CEF includes MAC when available in deep_scan."""
+        from redaudit.core.siem import generate_cef_line
+
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [],
+            "status": "up",
+            "deep_scan": {"mac_address": "AA:BB:CC:DD:EE:FF"},
+        }
+        result = generate_cef_line(host)
+        self.assertIn("smac=AA:BB:CC:DD:EE:FF", result)
+
+
+class TestRiskScoreEdgeCases(unittest.TestCase):
+    """Tests for calculate_risk_score edge cases."""
+
+    def test_risk_score_telnet_service(self):
+        """Telnet service increases risk score."""
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [{"port": 23, "service": "telnet"}],
+        }
+        score = calculate_risk_score(host)
+        # Telnet = 9.0 CVSS -> Base ~90
+        self.assertGreaterEqual(score, 90)
+
+    def test_risk_score_ftp_service(self):
+        """FTP service increases risk score."""
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [{"port": 21, "service": "ftp"}],
+        }
+        score = calculate_risk_score(host)
+        # FTP = 7.5 CVSS -> Base ~75
+        self.assertGreaterEqual(score, 70)
+
+    def test_risk_score_ssl_on_non_standard_port(self):
+        """SSL on non-standard port increases risk."""
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [{"port": 8080, "service": "ssl/http"}],
+        }
+        score = calculate_risk_score(host)
+        # Should have some risk for non-standard SSL
+        self.assertGreater(score, 0)
+
+    def test_risk_score_with_known_exploits(self):
+        """Known exploits increase risk score."""
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [
+                {
+                    "port": 80,
+                    "service": "http",
+                    "known_exploits": ["exploit-1", "exploit-2"],
+                }
+            ],
+        }
+        score = calculate_risk_score(host)
+        # Exploits = 8.0 CVSS
+        self.assertGreaterEqual(score, 75)
+
+    def test_risk_score_findings_with_normalized_severity(self):
+        """Findings with normalized_severity override severity string."""
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [],
+            "findings": [
+                {"severity": "low", "normalized_severity": 9.5, "name": "Critical finding"},
+            ],
+        }
+        score = calculate_risk_score(host)
+        # normalized_severity 9.5 should give high score (~95)
+        self.assertGreaterEqual(score, 90)
+
+
+class TestEnrichVulnerabilityFalsePositives(unittest.TestCase):
+    """Tests for false positive detection in enrich_vulnerability_severity."""
+
+    def test_enrich_degrades_severity_on_header_fp(self):
+        """Should degrade severity when cross-validation detects false positive."""
+        vuln = {
+            "nikto_findings": ["Missing X-Frame-Options header not present"],
+            "curl_headers": "X-Frame-Options: DENY",
+            "port": 80,
+        }
+        result = enrich_vulnerability_severity(vuln, asset_id="test123")
+        # Should detect FP and degrade to info
+        self.assertEqual(result.get("severity"), "info")
+        self.assertIn("potential_false_positives", result)
+
+    def test_enrich_empty_category_returns_surface(self):
+        """Empty vuln_record gets surface category."""
+        vuln = {"port": 80}
+        result = enrich_vulnerability_severity(vuln, asset_id="test123")
+        self.assertEqual(result.get("category"), "surface")
+
+
+class TestCalculateRiskScoreWithBreakdown(unittest.TestCase):
+    """Tests for calculate_risk_score_with_breakdown function."""
+
+    def test_breakdown_returns_dict_with_components(self):
+        """Should return score plus breakdown details."""
+        from redaudit.core.siem import calculate_risk_score_with_breakdown
+
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [{"port": 23, "service": "telnet"}],
+        }
+        result = calculate_risk_score_with_breakdown(host)
+        self.assertIn("score", result)
+        self.assertIn("breakdown", result)
+        self.assertIn("max_cvss", result["breakdown"])
+        self.assertIn("base_score", result["breakdown"])
+        self.assertIn("exposure_multiplier", result["breakdown"])
+
+    def test_breakdown_with_findings(self):
+        """Processes findings in breakdown calculation."""
+        from redaudit.core.siem import calculate_risk_score_with_breakdown
+
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [{"port": 80, "service": "http"}],
+            "findings": [
+                {"severity": "critical", "name": "Finding 1"},
+                {"severity": "high", "name": "Finding 2"},
+            ],
+        }
+        result = calculate_risk_score_with_breakdown(host)
+        # Breakdown should include findings processing
+        self.assertIn("score", result)
+        self.assertIn("breakdown", result)
+        self.assertIn("total_vulns", result["breakdown"])
+
+    def test_breakdown_exposure_multiplier_on_common_ports(self):
+        """Exposure multiplier applied for external-facing ports."""
+        from redaudit.core.siem import calculate_risk_score_with_breakdown
+
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [
+                {"port": 80, "service": "http", "cves": [{"cve_id": "CVE-1", "cvss_score": 7.0}]},
+            ],
+        }
+        result = calculate_risk_score_with_breakdown(host)
+        # Port 80 is external-facing
+        self.assertEqual(result["breakdown"]["exposure_multiplier"], 1.15)
+
+
+class TestGenerateHostTagsEdgeCases(unittest.TestCase):
+    """Edge case tests for generate_host_tags."""
+
+    def test_tags_with_asset_type(self):
+        """Tags include asset type tags."""
+        host = {"ip": "192.168.1.1", "ports": []}
+        tags = generate_host_tags(host, asset_type="router")
+        self.assertIn("network", tags)
+        self.assertIn("infrastructure", tags)
+
+    def test_tags_with_rdp_service(self):
+        """RDP service adds admin tag."""
+        host = {"ip": "192.168.1.1", "ports": [{"port": 3389, "service": "rdp"}]}
+        tags = generate_host_tags(host)
+        self.assertIn("remote-access", tags)
+
+
+class TestGenerateFindingId(unittest.TestCase):
+    """Tests for generate_finding_id function."""
+
+    def test_finding_id_is_deterministic(self):
+        """Same inputs produce same finding_id."""
+        from redaudit.core.siem import generate_finding_id
+
+        id1 = generate_finding_id(
+            asset_id="abc123",
+            scanner="nikto",
+            port=80,
+            protocol="tcp",
+            signature="CVE-2021-1234",
+            title="Test Finding",
+        )
+        id2 = generate_finding_id(
+            asset_id="abc123",
+            scanner="nikto",
+            port=80,
+            protocol="tcp",
+            signature="CVE-2021-1234",
+            title="Test Finding",
+        )
+        self.assertEqual(id1, id2)
+
+    def test_finding_id_different_inputs(self):
+        """Different inputs produce different finding_id."""
+        from redaudit.core.siem import generate_finding_id
+
+        id1 = generate_finding_id("a", "nikto", 80, "tcp", "sig1", "title")
+        id2 = generate_finding_id("b", "nikto", 80, "tcp", "sig1", "title")
+        self.assertNotEqual(id1, id2)
+
 
 if __name__ == "__main__":
-    unittest.main()
     unittest.main()
