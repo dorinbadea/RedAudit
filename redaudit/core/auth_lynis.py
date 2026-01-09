@@ -62,7 +62,7 @@ class LynisScanner:
             if use_portable:
                 logger.info("Lynis not found, attempting portable install...")
                 if self.install_lynis_temp():
-                    lynis_cmd = "/tmp/lynis/lynis"
+                    lynis_cmd = "/tmp/lynis/lynis"  # nosec B108
                 else:
                     return None
             else:

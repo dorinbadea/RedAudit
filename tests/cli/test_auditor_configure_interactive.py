@@ -60,39 +60,17 @@ def test_configure_scan_interactive_full_flow(monkeypatch, tmp_path):
 
     # v3.9.0: First ask_choice is for profile selection (3 = Custom)
     # Then the wizard steps follow. v4.3: Added hyperscan_mode + vulnerability scan step
-    # Sequence: ScanMode(1), Hyperscan(0), Vuln(0), SQLMap(0), ZAP(0), CVE(0), UDP(0), Topo(0), NetDisc(0), Auth(1=No) + Padding
-    choice_with_back = iter([1, 0, 0, 0, 0, 0, 0, 0, 0, 1] + [0] * 50)
+    # Sequence: ScanMode(1), Hyperscan(0), Vuln(0), SQLMap(0), ZAP(0), CVE(0), UDP(0), Topo(0), NetDisc(0), AuthMethod(0) + Padding
+    choice_with_back = iter([1, 0, 0, 0, 0, 0, 0, 0, 0, 0] + [0] * 50)
     # First choice is profile (3=Custom), second is redteam mode
     choice = iter([3, 1] + [0] * 50)
-    # yes_no sequence:
-    # 1. SSH config? (False)
-    # 2. SMB config? (False)
-    # 3. SNMP config? (False)
-    # 4. Save Keyring? (skipped if no auth)
-    # 5. RedTeam? (False) - wait, let's trace:
-    #   Audit Profile -> Custom (3)
-    #   Mode -> RedTeam (1) -> implies RedTeam enabled? No, RedTeam is separate toggle usually?
-    #   Wait, wizard flow:
-    #   1. Profile
-    #   2. Details (Name, Dir, Network)
-    #   3. Auth (SSH, SMB, SNMP - 3 questions)
-    #   4. Discovery Options (RedTeam max targets?)
-    #   5. Confirm start?
-
-    # Original iter: [False, False, True, True]
-    # Let's see what they matched.
-    # Likely: [Net Discovery?, Vuln Scan?, NVD?, Start?] depends on custom flow.
-
-    # Updated flow in wizard.py:
-    # _configure_auth_interactive called.
-    #   Ask SSH? -> No
-    #   Ask SMB? -> No
-    #   Ask SNMP? -> No
-
-    # Then standard custom flow continues.
-
-    # We need to prepend 3 False/No answers for Auth.
-    yes_no = iter([False, False, True, True] + [False] * 10)
+    # yes_no sequence for Standard profile (choice 1):
+    # 1. Low impact enrichment? (False)
+    # 2. Configure SSH? (False)
+    # 3. Configure SMB? (False)
+    # 4. Configure SNMP? (False)
+    # 5. Start scan? (True)
+    yes_no = iter([False, False, False, False, True] + [False] * 50)
     numbers = iter(["all", 4, 10] + [5] * 10)
 
     monkeypatch.setattr(app, "print_status", lambda *_a, **_k: None)
@@ -134,10 +112,16 @@ def test_configure_scan_interactive_standard_profile(monkeypatch, tmp_path):
     # Select Standard profile (index 1), then timing Normal (index 1)
     choice_iter = iter([1, 1])
     monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: next(choice_iter))
-    monkeypatch.setattr(app, "ask_yes_no", lambda *_a, **_k: False)
-    monkeypatch.setattr("redaudit.core.auditor.get_default_reports_base_dir", lambda: str(tmp_path))
     # v3.9.0: Mock input() for auditor_name and output_dir prompts
     input_iter = iter(["", ""])  # Accept defaults for both
+    # v4.5.0: Standard profile now asks for Auth configuration (SSH, SMB, SNMP)
+    # and low impact enrichment.
+    # 1. Low impact? No
+    # 2. SSH? No
+    # 3. SMB? No
+    # 4. SNMP? No
+    yes_no_iter = iter([False, False, False, False] + [False] * 10)
+    monkeypatch.setattr(app, "ask_yes_no", lambda *_a, **_k: next(yes_no_iter))
     monkeypatch.setattr("builtins.input", lambda *_a, **_k: next(input_iter))
 
     app._configure_scan_interactive({})
@@ -311,9 +295,19 @@ def test_wizard_express_profile():
 def test_wizard_standard_profile_normal_timing():
     """Test Standard profile with Normal timing (profile 1, timing 1)."""
     auditor = MockWizardAuditor()
-    # first call returns 1 (Standard), second returns 1 (Normal)
-    with patch.object(auditor, "ask_choice", side_effect=[1, 1]):
-        with patch.object(auditor, "ask_yes_no", return_value=True):
+    # 1. Profile = 1 (Standard)
+    # 2. Timing = 1 (Normal)
+    # 3. Auth Method = 0 (Key)
+    with patch.object(auditor, "ask_choice", side_effect=[1, 1, 0, 0, 0]):
+        # 1. Low impact? True
+        # 2. SSH? True
+        # 3. SMB? False
+        # 4. SNMP? False
+        # 5. Save Keyring? False
+        # 6. Start scan? True
+        with patch.object(
+            auditor, "ask_yes_no", side_effect=[True, True, False, False, False, True] + [True] * 10
+        ):
             with patch.object(auditor, "ask_num", return_value=10):
                 with patch("builtins.input", return_value=""):
                     auditor._configure_scan_interactive({})
@@ -343,9 +337,16 @@ def test_wizard_custom_profile():
 def test_wizard_exhaustive_profile():
     """Test Exhaustive profile configuration (profile 2)."""
     auditor = MockWizardAuditor()
-    # profile 2 = Exhaustive
-    with patch.object(auditor, "ask_choice", side_effect=[2, 2]):
-        with patch("builtins.input", return_value=""):
-            auditor._configure_scan_interactive({})
-            assert auditor.config["scan_mode"] == "completo"
-            assert auditor.config["scan_vulnerabilities"] is True
+    # 1. Profile = 2 (Exhaustive)
+    # 2. Timing = 2 (Aggressive)
+    # 3. Auth Method = 0 (Key)
+    with patch.object(auditor, "ask_choice", side_effect=[2, 2, 0]):
+        # 1. Low impact? True (auto-enabled usually, but wizard asks if not auto)
+        # 2. SSH? True
+        # 3. SMB? False
+        # 4. SNMP? False
+        with patch.object(auditor, "ask_yes_no", side_effect=[True, True, False, False]):
+            with patch("builtins.input", return_value=""):
+                auditor._configure_scan_interactive({})
+                assert auditor.config["scan_mode"] == "completo"
+                assert auditor.config["scan_vulnerabilities"] is True

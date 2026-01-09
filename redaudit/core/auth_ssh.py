@@ -99,8 +99,9 @@ class SSHScanner:
         self._client = self._paramiko.SSHClient()  # type: ignore
         self._client.load_system_host_keys()  # type: ignore
 
+        assert self._client is not None
         if self.trust_unknown_keys:
-            self._client.set_missing_host_key_policy(self._paramiko.AutoAddPolicy())  # type: ignore
+            self._client.set_missing_host_key_policy(self._paramiko.AutoAddPolicy())  # nosec B507
         else:
             self._client.set_missing_host_key_policy(self._paramiko.RejectPolicy())  # type: ignore
 
@@ -194,8 +195,9 @@ class SSHScanner:
 
         cmd_timeout = timeout or self.timeout
 
+        assert self._client is not None
         try:
-            stdin, stdout, stderr = self._client.exec_command(  # type: ignore
+            stdin, stdout, stderr = self._client.exec_command(  # nosec B601
                 command, timeout=cmd_timeout
             )
             exit_code = stdout.channel.recv_exit_status()
