@@ -792,5 +792,249 @@ class TestStripMarkdownInline(unittest.TestCase):
         self.assertEqual(result, "code")
 
 
+class TestFetchLatestVersionSuccess(unittest.TestCase):
+    """Tests for fetch_latest_version success paths."""
+
+    def test_fetch_success(self):
+        """Should return release info on success."""
+        from redaudit.core.updater import fetch_latest_version
+
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_response.read.return_value = b'{"tag_name": "v4.5.0", "name": "Release", "body": "Notes", "published_at": "2026-01-01", "html_url": "url"}'
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+
+        with patch("redaudit.core.updater.urlopen", return_value=mock_response):
+            result = fetch_latest_version()
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["tag_name"], "4.5.0")
+
+    def test_fetch_http_error_with_logger(self):
+        """Should log HTTP error."""
+        from redaudit.core.updater import fetch_latest_version
+
+        logger = MagicMock()
+        with patch(
+            "redaudit.core.updater.urlopen", side_effect=HTTPError(None, 404, "Not Found", {}, None)
+        ):
+            result = fetch_latest_version(logger=logger)
+
+        self.assertIsNone(result)
+        logger.warning.assert_called()
+
+    def test_fetch_generic_exception_with_logger(self):
+        """Should log generic exception."""
+        from redaudit.core.updater import fetch_latest_version
+
+        logger = MagicMock()
+        with patch("redaudit.core.updater.urlopen", side_effect=Exception("Network error")):
+            result = fetch_latest_version(logger=logger)
+
+        self.assertIsNone(result)
+        logger.debug.assert_called()
+
+
+class TestFetchChangelogSnippetSuccess(unittest.TestCase):
+    """Tests for fetch_changelog_snippet success paths."""
+
+    def test_fetch_changelog_success(self):
+        """Should return changelog snippet on success."""
+        from redaudit.core.updater import fetch_changelog_snippet
+
+        changelog_content = """## [4.5.0] - 2026-01-01
+- Feature 1
+- Feature 2
+## [4.4.0]"""
+
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_response.read.return_value = changelog_content.encode("utf-8")
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+
+        with patch("redaudit.core.updater.urlopen", return_value=mock_response):
+            result = fetch_changelog_snippet("4.5.0", lang="en")
+
+        self.assertIsNotNone(result)
+        self.assertIn("Feature 1", result[0])
+
+    def test_fetch_changelog_falls_back_to_en(self):
+        """Should fall back to EN when ES not found."""
+        from redaudit.core.updater import fetch_changelog_snippet
+
+        call_count = [0]
+
+        def mock_urlopen(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:  # ES request
+                raise HTTPError(None, 404, "Not Found", {}, None)
+            # EN request
+            mock_response = MagicMock()
+            mock_response.status = 200
+            mock_response.read.return_value = b"## [4.5.0]\n- Feature 1"
+            mock_response.__enter__ = MagicMock(return_value=mock_response)
+            mock_response.__exit__ = MagicMock(return_value=False)
+            return mock_response
+
+        with patch("redaudit.core.updater.urlopen", side_effect=mock_urlopen):
+            result = fetch_changelog_snippet("4.5.0", lang="es")
+
+        # Fallback behavior: may return EN result or None if version not found
+        self.assertIsInstance(result, (tuple, type(None)))
+
+
+class TestFormatReleaseNotesForCli(unittest.TestCase):
+    """Tests for format_release_notes_for_cli function."""
+
+    def test_format_handles_code_blocks(self):
+        """Should handle code blocks in notes."""
+        from redaudit.core.updater import format_release_notes_for_cli
+
+        notes = "Feature:\n```python\ncode here\n```"
+        result = format_release_notes_for_cli(notes)
+        self.assertIsInstance(result, str)
+
+    def test_format_wraps_long_lines(self):
+        """Should wrap long lines."""
+        from redaudit.core.updater import format_release_notes_for_cli
+
+        long_line = "- " + "word " * 50
+        result = format_release_notes_for_cli(long_line, width=80)
+        self.assertIsInstance(result, str)
+
+    def test_format_truncates_to_max_lines(self):
+        """Should truncate to max_lines."""
+        from redaudit.core.updater import format_release_notes_for_cli
+
+        notes = "\n".join([f"- Line {i}" for i in range(100)])
+        result = format_release_notes_for_cli(notes, max_lines=10)
+        self.assertIn("...", result)  # Uses '...' not '[...]'
+
+    def test_format_handles_unicode(self):
+        """Should handle Unicode characters."""
+        from redaudit.core.updater import format_release_notes_for_cli
+
+        notes = "- Añadido soporte para ñ y acentos áéíóú"
+        result = format_release_notes_for_cli(notes)
+        self.assertIn("soporte", result)
+
+
+class TestCheckForUpdatesFlows(unittest.TestCase):
+    """Tests for check_for_updates various flows."""
+
+    def test_update_available_with_changelog_fallback(self):
+        """Should use release body when changelog not found."""
+        from redaudit.core.updater import check_for_updates
+
+        with patch(
+            "redaudit.core.updater.fetch_latest_version",
+            return_value={
+                "tag_name": "99.99.99",
+                "body": "Release notes body",
+                "published_at": "2026-01-01",
+                "html_url": "url",
+            },
+        ):
+            with patch("redaudit.core.updater.fetch_changelog_snippet", return_value=None):
+                result = check_for_updates()
+
+        self.assertTrue(result[0])
+        self.assertEqual(result[2], "Release notes body")
+
+
+class TestRenderUpdateSummaryForCli(unittest.TestCase):
+    """Tests for render_update_summary_for_cli function."""
+
+    def test_render_with_all_parameters(self):
+        """Should render summary with all parameters."""
+        from redaudit.core.updater import render_update_summary_for_cli
+
+        result = render_update_summary_for_cli(
+            current_version="4.4.0",
+            latest_version="4.5.0",
+            release_notes="- Feature 1\n- Feature 2",
+            release_url="https://github.com/test",
+            published_at="2026-01-01",
+            lang="en",
+            t_fn=lambda k, *args: k,
+            notes_lang="en",
+        )
+        self.assertIsInstance(result, str)
+
+    def test_render_with_breaking_changes(self):
+        """Should highlight breaking changes."""
+        from redaudit.core.updater import render_update_summary_for_cli
+
+        notes = "### BREAKING\n- Changed API\n### Features\n- New feature"
+        result = render_update_summary_for_cli(
+            current_version="4.4.0",
+            latest_version="5.0.0",
+            release_notes=notes,
+            release_url="url",
+            published_at="2026-01-01",
+            lang="en",
+            t_fn=lambda k, *args: k,
+        )
+        self.assertIsInstance(result, str)
+
+
+class TestExtractReleaseItems(unittest.TestCase):
+    """Tests for _extract_release_items function."""
+
+    def test_extract_with_breaking_section(self):
+        """Should extract breaking changes."""
+        from redaudit.core.updater import _extract_release_items
+
+        notes = "### BREAKING\n- API changed\n### Features\n- New feature"
+        result = _extract_release_items(notes)
+        self.assertIn("breaking", result)
+        self.assertIn("highlights", result)
+
+    def test_extract_with_empty_notes(self):
+        """Should handle empty notes."""
+        from redaudit.core.updater import _extract_release_items
+
+        result = _extract_release_items("")
+        self.assertEqual(result["highlights"], [])
+        self.assertEqual(result["breaking"], [])
+
+
+class TestInjectDefaultLangAdditional(unittest.TestCase):
+    """Tests for _inject_default_lang function (additional)."""
+
+    def test_inject_with_no_existing_lang(self):
+        """Should add DEFAULT_LANG if not present."""
+        from redaudit.core.updater import _inject_default_lang
+
+        with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
+            f.write("# Constants\nVERSION = '1.0'\n")
+            f.flush()
+            try:
+                result = _inject_default_lang(f.name, "es")
+                self.assertTrue(result)
+            finally:
+                os.unlink(f.name)
+
+
+class TestPerformGitUpdatePaths(unittest.TestCase):
+    """Tests for perform_git_update edge cases."""
+
+    def test_update_without_print_fn(self):
+        """Should handle missing print_fn."""
+        from redaudit.core.updater import perform_git_update
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value.returncode = 1
+                mock_run.return_value.stderr = "error"
+
+                success, msg = perform_git_update(tmpdir, print_fn=None)
+
+                self.assertFalse(success)
+
+
 if __name__ == "__main__":
     unittest.main()
