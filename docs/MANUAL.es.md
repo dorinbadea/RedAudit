@@ -14,7 +14,7 @@
 
 ## 1. Qué Es (y Qué No Es) RedAudit
 
-RedAudit es un **framework de auditoria de red automatizado** para Linux (familia Debian). Orquesta un toolchain completo (`nmap`, `nikto`, `nuclei`, `whatweb`, `testssl.sh`, `sqlmap`, `masscan` y mas) en un pipeline unificado y produce informes estructurados.
+RedAudit es un **framework de auditoría de red automatizado** para Linux (familia Debian). Orquesta un toolchain completo (`nmap`, `nikto`, `nuclei`, `whatweb`, `testssl.sh`, `sqlmap`, `masscan` y más) en un pipeline unificado y produce informes estructurados.
 
 **Es:**
 

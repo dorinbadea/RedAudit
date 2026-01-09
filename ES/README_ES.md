@@ -16,7 +16,7 @@ RedAudit es un **framework de auditoría de red automatizada** para evaluaciones
 
 En lugar de ejecutar todas las herramientas contra todos los hosts, RedAudit escala solo cuando la identidad es débil o las señales son ambiguas, reduciendo ruido sin perder cobertura en entornos complejos.
 
-Orquesta un toolchain completo (nmap, nikto, nuclei, whatweb, testssl.sh, sqlmap, masscan y mas) y aplica verificacion **Smart-Check** para reducir falsos positivos antes de reportar.
+Orquesta un toolchain completo (nmap, nikto, nuclei, whatweb, testssl.sh, sqlmap, masscan y más) y aplica verificación **Smart-Check** para reducir falsos positivos antes de reportar.
 
 **Casos de uso**: Hardening defensivo, acotación de pentests, seguimiento de cambios entre evaluaciones.
 
