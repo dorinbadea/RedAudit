@@ -398,6 +398,11 @@ TRANSLATIONS = {
         "auth_snmp_user_prompt": "SNMP v3 Username",
         "auth_snmp_auth_proto_q": "Auth Protocol:",
         "auth_snmp_priv_proto_q": "Privacy Protocol:",
+        # v4.5.0: Authenticated scanning orchestration
+        "auth_scan_no_hosts": "No SSH-enabled hosts found for authenticated scanning.",
+        "auth_scan_starting": "Authenticated scan: {} SSH hosts with stored credentials...",
+        "auth_scan_complete": "Authenticated scan complete: {} SSH, {} Lynis audits",
+        "auth_ssh_configure_q": "Configure SSH credentials?",
     },
     "es": {
         "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
@@ -786,6 +791,11 @@ TRANSLATIONS = {
         "auth_snmp_user_prompt": "Nombre de usuario SNMP v3",
         "auth_snmp_auth_proto_q": "Protocolo de Autenticación:",
         "auth_snmp_priv_proto_q": "Protocolo de Privacidad:",
+        # v4.5.0: Authenticated scanning orchestration
+        "auth_scan_no_hosts": "No se encontraron hosts con SSH para escaneo autenticado.",
+        "auth_scan_starting": "Escaneo autenticado: {} hosts SSH con credenciales guardadas...",
+        "auth_scan_complete": "Escaneo autenticado completo: {} SSH, {} auditorías Lynis",
+        "auth_ssh_configure_q": "¿Configurar credenciales SSH?",
     },
 }
 

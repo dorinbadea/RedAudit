@@ -907,6 +907,10 @@ class InteractiveNetworkAuditor:
                     if self.logger:
                         self.logger.debug("CVE enrichment failed (best-effort)", exc_info=True)
 
+            # v4.5.0: Phase 4 - Authenticated Scanning (SSH/Lynis)
+            if self.config.get("auth_enabled") and not self.interrupted:
+                self._run_authenticated_scans(results)
+
             # v4.3.1: Re-calculate risk scores with all findings (Nikto/Nuclei/Web)
             # This ensures risk_score reflects actual vulnerabilities found during scan
             try:
@@ -1005,6 +1009,131 @@ class InteractiveNetworkAuditor:
             self.stop_heartbeat()
 
         return not self.interrupted
+
+    # ---------- Phase 4: Authenticated Scanning (v4.5.0) ----------
+
+    def _run_authenticated_scans(self, hosts: list) -> None:
+        """
+        Execute authenticated scans on eligible hosts using SSH/Lynis.
+
+        Args:
+            hosts: List of host dictionaries from the scan results.
+        """
+        from redaudit.core.auth_ssh import SSHScanner, SSHConnectionError
+        from redaudit.core.auth_lynis import LynisScanner
+        from redaudit.core.credentials import Credential
+
+        ssh_user = self.config.get("auth_ssh_user")
+        ssh_pass = self.config.get("auth_ssh_pass")
+        ssh_key = self.config.get("auth_ssh_key")
+        ssh_key_pass = self.config.get("auth_ssh_key_pass")
+
+        if not ssh_user:
+            if self.logger:
+                self.logger.debug("Authenticated scan skipped: no SSH user configured")
+            return
+
+        # Build credential object
+        cred = Credential(
+            username=ssh_user,
+            password=ssh_pass,
+            private_key=ssh_key,
+            private_key_passphrase=ssh_key_pass,
+        )
+
+        # Find hosts with SSH port (22) open
+        def has_ssh_port(host: dict) -> bool:
+            ports = host.get("ports", [])
+            if isinstance(ports, list):
+                for p in ports:
+                    if isinstance(p, dict) and p.get("port") == 22:
+                        return True
+                    elif isinstance(p, int) and p == 22:
+                        return True
+            return False
+
+        ssh_hosts = [h for h in hosts if isinstance(h, dict) and has_ssh_port(h)]
+
+        if not ssh_hosts:
+            self.ui.print_status(self.ui.t("auth_scan_no_hosts"), "INFO")
+            return
+
+        self.ui.print_status(self.ui.t("auth_scan_starting", len(ssh_hosts)), "INFO")
+
+        auth_summary: Dict[str, Any] = {
+            "enabled": True,
+            "targets": len(ssh_hosts),
+            "completed": 0,
+            "ssh_success": 0,
+            "lynis_success": 0,
+            "errors": [],
+        }
+
+        for host in ssh_hosts:
+            if self.interrupted:
+                break
+
+            ip = host.get("ip")
+            if not ip:
+                continue
+
+            try:
+                scanner = SSHScanner(cred, timeout=30, trust_unknown_keys=True)
+                scanner.connect(ip)
+
+                # Gather basic host info via SSH
+                host_info = scanner.gather_host_info()
+                host["auth_ssh"] = {
+                    "os_name": host_info.os_name,
+                    "os_version": host_info.os_version,
+                    "kernel": host_info.kernel,
+                    "hostname": host_info.hostname,
+                    "packages_count": len(host_info.packages),
+                    "services_count": len(host_info.services),
+                    "users_count": len(host_info.users),
+                }
+                auth_summary["ssh_success"] += 1
+
+                # Run Lynis audit if possible
+                try:
+                    lynis = LynisScanner(scanner)
+                    lynis_result = lynis.run_audit(use_portable=True)
+                    if lynis_result:
+                        host["auth_lynis"] = {
+                            "hardening_index": lynis_result.hardening_index,
+                            "warnings_count": len(lynis_result.warnings or []),
+                            "suggestions_count": len(lynis_result.suggestions or []),
+                            "tests_performed": lynis_result.tests_performed,
+                        }
+                        auth_summary["lynis_success"] += 1
+                except Exception as lynis_err:
+                    if self.logger:
+                        self.logger.debug("Lynis scan failed on %s: %s", ip, lynis_err)
+
+                scanner.close()
+                auth_summary["completed"] += 1
+                self.ui.print_status(f"[OK] {ip}: SSH auth success", "OK")
+
+            except SSHConnectionError as e:
+                auth_summary["errors"].append({"ip": ip, "error": str(e)})
+                self.ui.print_status(f"[WARN] {ip}: SSH failed - {e}", "WARNING")
+                if self.logger:
+                    self.logger.debug("SSH auth failed on %s: %s", ip, e)
+
+            except Exception as e:
+                auth_summary["errors"].append({"ip": ip, "error": str(e)})
+                if self.logger:
+                    self.logger.warning("Auth scan error on %s: %s", ip, e)
+
+        self.results["auth_scan"] = auth_summary
+        self.ui.print_status(
+            self.ui.t(
+                "auth_scan_complete",
+                auth_summary["ssh_success"],
+                auth_summary["lynis_success"],
+            ),
+            "OK",
+        )
 
     # ---------- Subprocess management (C1 fix) ----------
 
