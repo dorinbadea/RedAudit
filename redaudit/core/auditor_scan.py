@@ -691,6 +691,12 @@ class AuditorScan:
             trigger_deep = True
             deep_reasons.append("identity_weak")
 
+        # v4.5.15: Ghost Identity - If we have NO ports but identity is weak,
+        # force deep scan to discover hidden/filtered services (UDP, etc.)
+        if total_ports == 0 and identity_is_weak:
+            trigger_deep = True
+            deep_reasons.append("ghost_identity")
+
         if (
             identity_score >= identity_threshold
             and not suspicious
@@ -1319,7 +1325,8 @@ class AuditorScan:
                             self.ui.t("auth_scan_start", safe_ip, ssh_credential.username), "INFO"
                         )
 
-                    trust_keys = self.config.get("auth_ssh_trust_keys", False)
+                    # v4.5.15: Default to True for automated scanning environments
+                    trust_keys = self.config.get("auth_ssh_trust_keys", True)
                     timeout = self.config.get("timeout", 30)
 
                     ssh_scanner = SSHScanner(
