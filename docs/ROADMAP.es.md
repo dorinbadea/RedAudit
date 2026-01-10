@@ -177,6 +177,7 @@ Ideas consideradas pero rechazadas para mantener el foco del proyecto.
 | **Framework de Explotación** | Fuera de alcance. RedAudit es para *auditoría* y *descubrimiento*, no explotación armada (como Metasploit). |
 | **Soporte Nativo Windows** | Demasiado complejo debido a requisitos de sockets raw. Usar WSL2 o Docker. |
 | **Generación Reporte PDF** | Añade dependencias pesadas (LaTeX/ReportLab). Se prefiere salida JSON/HTML para flujos modernos. |
+| **Escaneo Distribuido** | Demasiado complejo (FastAPI/Redis). RedAudit es una herramienta CLI táctica, no una plataforma SaaS. Arquitectura rechazada. |
 
 ---
 

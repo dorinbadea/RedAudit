@@ -95,7 +95,7 @@ Focus: Removing bottlenecks for large corporate networks.
 | :--- | :--- | :--- |
 | **Generator-based Targeting** | ✅ Done | Switch from list-based targeting to generator-based streaming. prevents memory spike when loading large subnets (/16). |
 | **Streaming JSON Report** | ✅ Done | Optimized `auditor_scan.py` host collection to avoid list materialization on large networks. |
-| **Distributed Scanning** | ✅ Done | Completed Design Document for Controller/Worker architecture. |
+
 | **AsyncIO Migration** | 🚧 Deferred | Full migration to AsyncIO deferred to v5.0 based on feasibility study. |
 | **Smart-Throttle (Adaptive Congestion)** | ✅ Done | AIMD-based dynamic batch size adjustment (Smart-Throttle). Detects network stress/packet loss and auto-throttles scans to prevent DoS. [View Spec](design/smart_throttle_spec.md) |
 
@@ -185,6 +185,7 @@ Ideas considered but rejected to maintain project focus.
 | **Active Exploitation Framework** | Out of scope. RedAudit is for *auditing* and *discovery*, not weaponized exploitation (like Metasploit). |
 | **Native Windows Support** | Too complex due to raw socket requirements. Use WSL2 or Docker on Windows. |
 | **PDF Report Generation** | Adds heavy dependencies (LaTeX/ReportLab). JSON/HTML output is preferred for modern workflows. |
+| **Distributed Scanning** | Too complex (FastAPI/Redis). RedAudit is a tactical CLI tool, not a SaaS platform. Architecture rejected. |
 
 ---
 
