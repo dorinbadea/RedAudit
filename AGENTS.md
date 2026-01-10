@@ -296,7 +296,22 @@ Keep version consistent across the repo. Version may be stored/used in one or mo
 
 Also update any tests that assert version output (e.g., integration tests).
 
-### 3) Update release documentation
+### 3) Create Release Artifacts ("Payload")
+
+1. **Release Notes Files**:
+    - Create `docs/releases/RELEASE_NOTES_vX.Y.Z.md` (EN) and `..._ES.md` (ES).
+    - **Language Badges**: MUST use the standard design:
+      - EN: `[![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](...)`
+      - ES: `[![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](...)`
+    - Use **Absolute URLs** for badge links.
+2. **Commit & Push**:
+    - Commit notes and version bumps.
+    - Tag `vX.Y.Z`.
+    - Push branch and tag.
+3. **Publish on GitHub**:
+    - Immediately verify the GitHub Release page.
+    - If empty, populate it using `gh release edit vX.Y.Z --notes-file docs/releases/RELEASE_NOTES_vX.Y.Z.md`.
+    - **NEVER leave a Release page empty.**
 
 - Add a new section to `CHANGELOG.md` and `ES/CHANGELOG_ES.md`
 - Add release notes:
