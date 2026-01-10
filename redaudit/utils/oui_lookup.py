@@ -41,8 +41,6 @@ def _load_offline_db() -> None:
     """Load OUI database from local file."""
     import os
 
-    global _OFFLINE_CACHE
-
     try:
         # Locate data file relative to this module
         # utils/oui_lookup.py -> ../data/manuf
@@ -198,5 +196,4 @@ def get_vendor_with_fallback(
 
 def clear_cache() -> None:
     """Clear the vendor cache (useful for testing)."""
-    global _VENDOR_CACHE
     _VENDOR_CACHE.clear()
