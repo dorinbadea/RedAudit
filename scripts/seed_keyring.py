@@ -63,6 +63,16 @@ def main():
         print("Run: pip3 install keyring")
         sys.exit(1)
 
+    # v4.5.7: Warn if not running as root, because RedAudit usually runs as root
+    import os
+
+    if os.geteuid() != 0:
+        print("[WARN] You are running this script as a NON-ROOT user.")
+        print("       If you run RedAudit with 'sudo', it cannot see these credentials.")
+        print("       Recommended: sudo python3 scripts/seed_keyring.py")
+        print("       (Continuing anyway...)")
+        print("-" * 65)
+
     print("RedAudit Keyring Credential Seeder - Lab Seguridad (Spray Mode)")
     print("=" * 65)
 

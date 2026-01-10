@@ -8,6 +8,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [4.5.7] - 2026-01-10
+
+### Fixed
+
+- **Credential Loading (Sudo Context)**: Fixed an issue where credentials seeded by a regular user were not visible to `sudo redaudit`.
+  - **Updater**: Auto-seed now runs as root during update (preserving `sudo` context).
+  - **Seeder Script**: Added warning if run as non-root to prevent confusion.
+- **CI/Test Stability**: Added robust integration tests for credential loading flow (`tests/core/test_credentials_loading_flow.py`).
+
 ## [4.5.6] - 2026-01-10
 
 ### Added

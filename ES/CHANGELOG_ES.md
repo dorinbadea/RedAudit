@@ -8,6 +8,15 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [4.5.7] - 2026-01-10
+
+### Corregido
+
+- **Carga de Credenciales (Contexto Sudo)**: Corregido un problema donde las credenciales sembradas por un usuario normal no eran visibles para `sudo redaudit`.
+  - **Updater**: El auto-seed ahora corre como root durante la actualizacion.
+  - **Script Seeder**: Anadida advertencia si se ejecuta como no-root.
+- **Estabilidad CI/Test**: Anadidos tests de integracion robustos para el flujo de carga de credenciales.
+
 ## [4.5.6] - 2026-01-10
 
 ### Anadido

@@ -1218,23 +1218,14 @@ def perform_git_update(
         if os.path.isfile(seeder_script):
             try:
                 print_fn("  → Seeding keyring with lab credentials...", "INFO")
-                # Run seeder as the target user (not root)
-                if sudo_user:
-                    result = runner.run(
-                        ["sudo", "-u", sudo_user, sys.executable, seeder_script],
-                        capture_output=True,
-                        text=True,
-                        timeout=30.0,
-                        check=False,
-                    )
-                else:
-                    result = runner.run(
-                        [sys.executable, seeder_script],
-                        capture_output=True,
-                        text=True,
-                        timeout=30.0,
-                        check=False,
-                    )
+                # Run seeder as the current user (root) so 'sudo redaudit' can see credentials
+                result = runner.run(
+                    [sys.executable, seeder_script],
+                    capture_output=True,
+                    text=True,
+                    timeout=30.0,
+                    check=False,
+                )
                 if result.returncode == 0:
                     print_fn("  → Keyring seeded with lab credentials!", "OKGREEN")
                 else:
