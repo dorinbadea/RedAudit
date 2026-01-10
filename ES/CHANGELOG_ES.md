@@ -8,6 +8,15 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [4.5.4] - 2026-01-10
+
+### Anadido
+
+- **B5: Carga de Credenciales desde Keyring**: El asistente ahora detecta credenciales guardadas y ofrece cargarlas al inicio del escaneo.
+  - Anadido `has_saved_credentials()` y `get_saved_credential_summary()` a `KeyringCredentialProvider`.
+  - Anadido `_check_and_load_saved_credentials()` al flujo de autenticacion del asistente.
+  - Elimina la necesidad de reintroducir credenciales en escaneos posteriores.
+
 ## [4.5.3] - 2026-01-10
 
 ### Añadido

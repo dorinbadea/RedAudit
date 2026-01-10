@@ -8,12 +8,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [4.5.4] - 2026-01-10
+
+### Added
+
+- **B5: Credential Loading from Keyring**: Wizard now detects saved credentials and offers to load them at scan start.
+  - Added `has_saved_credentials()` and `get_saved_credential_summary()` to `KeyringCredentialProvider`.
+  - Added `_check_and_load_saved_credentials()` to wizard authentication flow.
+  - Eliminates need to re-enter credentials for subsequent scans.
+
 ## [4.5.3] - 2026-01-10
 
 ### Added
 
 - **Secure Credential Storage (Keyring)**: `keyring` package now included as core dependency for secure credential storage via OS keychain (Linux Secret Service, macOS Keychain, Windows Credential Vault).
   - Added to main dependencies and installer (`python3-keyring` apt + pip).
+
+- **B5: Credential Loading from Keyring**: Wizard now detects saved credentials and offers to load them at scan start.
+  - Added `has_saved_credentials()` and `get_saved_credential_summary()` to `KeyringCredentialProvider`.
+  - Added `_check_and_load_saved_credentials()` to wizard authentication flow.
 
 ### Fixed
 
