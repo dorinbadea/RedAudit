@@ -1106,7 +1106,12 @@ class InteractiveNetworkAuditor:
             if self.interrupted:
                 break
 
-            ip = host.get("ip")
+            # Safe handling for both Dict and Host objects
+            if isinstance(host, dict):
+                ip = host.get("ip")
+            else:
+                ip = getattr(host, "ip", None)
+
             if not ip:
                 continue
 
@@ -1135,7 +1140,8 @@ class InteractiveNetworkAuditor:
             try:
                 # Gather basic host info via SSH
                 host_info = scanner.gather_host_info()
-                host["auth_ssh"] = {
+
+                auth_data = {
                     "os_name": host_info.os_name,
                     "os_version": host_info.os_version,
                     "kernel": host_info.kernel,
@@ -1145,6 +1151,14 @@ class InteractiveNetworkAuditor:
                     "users_count": len(host_info.users),
                     "credential_user": working_cred.username if working_cred else None,
                 }
+
+                if isinstance(host, dict):
+                    host["auth_ssh"] = auth_data
+                else:
+                    # Host object (use auth_scan field)
+                    if not hasattr(host, "auth_scan") or host.auth_scan is None:
+                        host.auth_scan = {}
+                    host.auth_scan["ssh"] = auth_data
                 auth_summary["ssh_success"] += 1
 
                 # Run Lynis audit if possible

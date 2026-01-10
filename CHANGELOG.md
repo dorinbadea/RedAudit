@@ -8,6 +8,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [4.5.13] - 2026-01-10
+
+### Fixed
+
+- **Critical**: Resolved `AttributeError: 'Host' object has no attribute 'get'` in Authenticated Scanning phase. The scanner now correctly handles Host objects when accessing IP and storing SSH results.
+- **Docs**: Updated `LAB_SETUP` guides with language badges and clearer distinctions between Victim Lab (Docker supported) and Auditor Machine (Native Linux recommended).
+
 ## [4.5.12] - 2026-01-10
 
 ### Fixed
