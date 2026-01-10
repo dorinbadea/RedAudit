@@ -1,14 +1,25 @@
 # Configuración del Laboratorio RedAudit
 
+[![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](LAB_SETUP.md)
+
 Esta guía explica cómo configurar el **Laboratorio de Pruebas RedAudit** usando Docker. Este entorno imita una red real con varias máquinas vulnerables, sistemas SCADA, Active Directory y dispositivos IoT.
 
 El laboratorio corresponde a las credenciales proporcionadas en `scripts/seed_keyring.py`.
 
 ## Requisitos Previos
 
-- **SO Host**: Linux (Ubuntu/Debian recomendado) o macOS
+### 1. El Laboratorio (Entorno Víctima)
+
+- **SO Host**: Linux (Ubuntu/Debian recomendado), macOS o Windows (con Docker Desktop)
 - **Docker**: Debe estar instalado y ejecutándose (`sudo systemctl start docker`)
 - **Python 3**: Para ejecutar el seeder de credenciales
+
+### 2. El Auditor (RedAudit)
+
+RedAudit está diseñado para ejecutarse en una **máquina física dedicada** o **Máquina Virtual** (VMware/VirtualBox) con Linux (Kali/Debian/Ubuntu).
+
+- **Nativo/VM (Recomendado)**: Usa el script `redaudit_install.sh` en un sistema Linux/VM (con red en modo puente/bridge) para visibilidad L2 completa.
+- **Docker (Opcional)**: RedAudit tiene una [versión Dockerizada](DOCKER.es.md), pero en Windows/macOS/Docker se limita a la red local "bridge" (sin visibilidad L2/ARP externa). Ver [DOCKER.es.md](DOCKER.es.md).
 
 ## Nota sobre Validacion en Mundo Real
 
