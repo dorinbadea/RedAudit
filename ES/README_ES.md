@@ -127,7 +127,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 3. **Resolución de Entidad**: Consolidación basada en identidad de dispositivos multi-interfaz (heurística).
 4. **Filtrado Inteligente**: Reducción de ruido vía verificación consciente del contexto (`verify_vuln.py`).
 
-![Vista General del Sistema](../docs/images/system_overview_es.png)
+![Vista General del Sistema](../docs/images/system_overview_v4.5_es.png)
 
 ### Lógica de Escaneo Adaptativo
 

@@ -130,7 +130,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 3. **Entity Resolution**: Identity-Based consolidation of multi-interface devices (heuristic).
 4. **Smart Filtering**: Reducing noise via context-aware verification (`verify_vuln.py`).
 
-![System Overview](docs/images/system_overview_en.png)
+![System Overview](docs/images/system_overview_v4.5_en.png)
 
 ### Adaptive Scanning Logic
 
