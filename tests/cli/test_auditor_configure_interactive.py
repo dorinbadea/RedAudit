@@ -30,6 +30,10 @@ class MockWizardAuditor(InteractiveNetworkAuditor):
         return default
 
     def ask_choice_with_back(self, q, opts, default=0, **kwargs):
+        if q == "auth_mode_q":
+            return -1
+        if q == "auth_scan_q":
+            return 1  # No
         return default
 
     def _ask_auditor_and_output_dir(self, defaults):
@@ -60,8 +64,9 @@ def test_configure_scan_interactive_full_flow(monkeypatch, tmp_path):
 
     # v3.9.0: First ask_choice is for profile selection (3 = Custom)
     # Then the wizard steps follow. v4.3: Added hyperscan_mode + vulnerability scan step
-    # Sequence: ScanMode(1), Hyperscan(0), Vuln(0), SQLMap(0), ZAP(0), CVE(0), UDP(0), Topo(0), NetDisc(0), AuthMethod(0) + Padding
-    choice_with_back = iter([1, 0, 0, 0, 0, 0, 0, 0, 0, 0] + [0] * 50)
+    # Sequence: ScanMode(1), Hyperscan(0), Vuln(0), SQLMap(0), ZAP(0), CVE(0), UDP(0), Topo(0), NetDisc(0), AuthScan(1-No)
+    # Changing last 0 to 1 to disable Auth Scan and avoid dealing with credential inputs in this test
+    choice_with_back = iter([1, 0, 0, 0, 0, 0, 0, 0, 0, 1] + [0] * 50)
     # First choice is profile (3=Custom), second is redteam mode
     choice = iter([3, 1] + [0] * 50)
     # yes_no sequence for Standard profile (choice 1):
@@ -79,7 +84,12 @@ def test_configure_scan_interactive_full_flow(monkeypatch, tmp_path):
     monkeypatch.setattr(app, "ask_webhook_url", lambda *_a, **_k: "")
     monkeypatch.setattr(app, "ask_net_discovery_options", lambda *_a, **_k: {"dns_zone": "corp"})
 
-    monkeypatch.setattr(app, "ask_choice_with_back", lambda *_a, **_k: next(choice_with_back))
+    def smart_ask_choice_with_back(q, *args, **kwargs):
+        if q == "auth_mode_q":
+            return -1  # Go back/cancel auth config to avoid hanging on getpass
+        return next(choice_with_back)
+
+    monkeypatch.setattr(app, "ask_choice_with_back", smart_ask_choice_with_back)
     monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: next(choice))
     monkeypatch.setattr(app, "ask_yes_no", lambda *_a, **_k: next(yes_no))
     monkeypatch.setattr(app, "ask_number", lambda *_a, **_k: next(numbers))

@@ -486,6 +486,8 @@ class Wizard:
         step_header = ""
         if step_num > 0 and total_steps > 0:
             step_header = f"[{step_num}/{total_steps}] "
+        else:
+            step_header = ""
 
         # Add "< Volver" / "< Go Back" as the last option (only if not first step)
         back_label = self.ui.t("wizard_go_back")
@@ -771,7 +773,7 @@ class Wizard:
 
     # ---------- v4.0: Authenticated Scanning ----------
 
-    def ask_auth_config(self) -> dict:
+    def ask_auth_config(self, skip_intro: bool = False) -> dict:
         """
         Interactive authentication setup for Phase 4.
 
@@ -797,7 +799,10 @@ class Wizard:
             "auth_save_keyring": False,
         }
 
-        if not self.ask_yes_no(self.ui.t("auth_scan_q"), default="no"):
+        if skip_intro:
+            # Assumed yes
+            pass
+        elif not self.ask_yes_no(self.ui.t("auth_scan_q"), default="no"):
             return auth_config
 
         auth_config["auth_enabled"] = True
@@ -807,7 +812,19 @@ class Wizard:
             self.ui.t("auth_mode_universal"),
             self.ui.t("auth_mode_advanced"),
         ]
-        mode_choice = self.ask_choice(self.ui.t("auth_mode_q"), mode_opts, 0)
+        # v4.5.1: Use back-aware menu to avoid trapping user
+        mode_choice = self.ask_choice_with_back(
+            self.ui.t("auth_mode_q"),
+            mode_opts,
+            0,
+            step_num=2,  # Arbitrary step number to show "Back"
+            total_steps=2,
+        )
+
+        if mode_choice == self.WIZARD_BACK:
+            # User chose to go back -> disable auth and return (cancellation)
+            auth_config["auth_enabled"] = False
+            return auth_config
 
         if mode_choice == 0:
             # Universal mode: collect simple user/pass pairs

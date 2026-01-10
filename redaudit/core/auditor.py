@@ -2114,72 +2114,21 @@ class InteractiveNetworkAuditor:
                 wizard_state["auth_idx"] = choice
 
                 if choice == 0:
-                    # User
-                    default_user = self.config.get("auth_ssh_user") or "root"
-                    u = input(
-                        f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('auth_ssh_user_prompt')} [{default_user}]: "
-                    ).strip()
-                    self.config["auth_ssh_user"] = u if u else default_user
+                    # Yes - Configure Authentication via Wizard
+                    # v4.5.1: Use shared wizard logic (Phase 4.1 Multi-Credential)
+                    auth_cfg = self.ask_auth_config(skip_intro=True)
 
-                    # Method
-                    method_opts = [
-                        self.ui.t("auth_method_key"),
-                        self.ui.t("auth_method_pass"),
-                    ]
-                    # Default: key if present, else pass if present, else key
-                    def_method = 0
-                    if not self.config.get("auth_ssh_key") and self.config.get("auth_ssh_pass"):
-                        def_method = 1
+                    if not auth_cfg.get("auth_enabled"):
+                        # User backed out of configuration details -> re-ask Step 8
+                        continue
 
-                    m_choice = self.ask_choice(self.ui.t("auth_method_q"), method_opts, def_method)
-
-                    if m_choice == 0:
-                        # Key
-                        default_key = self.config.get("auth_ssh_key") or expand_user_path(
-                            "~/.ssh/id_rsa"
-                        )
-                        k = input(
-                            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('auth_ssh_key_prompt')} [{default_key}]: "
-                        ).strip()
-                        self.config["auth_ssh_key"] = expand_user_path(k if k else default_key)
-                        self.config["auth_ssh_pass"] = None
-
-                        # Passphrase for key?
-                        import getpass
-
-                        print(
-                            f"{self.ui.colors['OKBLUE']}SSH Key Passphrase (optional):{self.ui.colors['ENDC']}"
-                        )
-                        try:
-                            kp = getpass.getpass(
-                                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} Passphrase (empty for none): "
-                            )
-                            self.config["auth_ssh_key_pass"] = kp if kp else None
-                        except Exception:
-                            pass
-
-                    else:
-                        # Password
-                        import getpass
-
-                        print(
-                            f"{self.ui.colors['OKBLUE']}{self.ui.t('auth_ssh_pass_hint')}:{self.ui.colors['ENDC']}"
-                        )
-                        try:
-                            pwd = getpass.getpass(
-                                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} Password: "
-                            )
-                            self.config["auth_ssh_pass"] = pwd
-                        except Exception:
-                            pass
-
-                    # Save to keyring?
-                    if self.ask_yes_no(self.ui.t("auth_save_keyring_q"), default="no"):
-                        self.config["auth_save_keyring"] = True
+                    self.config.update(auth_cfg)
 
                 else:
                     # Disabled
+                    self.config["auth_enabled"] = False
                     self.config["auth_ssh_user"] = None
+                    self.config["auth_credentials"] = []
 
                 step += 1
                 continue
