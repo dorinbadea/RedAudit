@@ -96,7 +96,7 @@ Focus: Removing bottlenecks for large corporate networks.
 | **Generator-based Targeting** | ✅ Done | Switch from list-based targeting to generator-based streaming. prevents memory spike when loading large subnets (/16). |
 | **Streaming JSON Report** | ✅ Done | Optimized `auditor_scan.py` host collection to avoid list materialization on large networks. |
 | **Distributed Scanning** | ✅ Done | Completed Design Document for Controller/Worker architecture. |
-| **AsyncIO Migration** | ✅ Done | Completed Feasibility Investigation. Deferred full migration to v5.0. |
+| **AsyncIO Migration** | 🚧 Deferred | Full migration to AsyncIO deferred to v5.0 based on feasibility study. |
 | **Smart-Throttle (Adaptive Congestion)** | ✅ Done | AIMD-based dynamic batch size adjustment (Smart-Throttle). Detects network stress/packet loss and auto-throttles scans to prevent DoS. [View Spec](design/smart_throttle_spec.md) |
 
 ### Phase 7: UX Polish & Cosmetics (Priority: Low)

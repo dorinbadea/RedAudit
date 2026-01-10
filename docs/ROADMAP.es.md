@@ -88,6 +88,7 @@ Foco: Eliminar cuellos de botella en grandes redes corporativas.
 | :--- | :--- | :--- |
 | **Targeting basado en Generadores** | ✅ Hecho (v4.4.0) | Refactorizado HyperScan para usar generadores lazy. Evita picos de memoria en subredes grandes (/16). |
 | **Reporte JSON en Streaming** | 🚧 Planificado | Escritura incremental para reportes >500MB. |
+| **Migración AsyncIO** | 🚧 Aplazado | Migración completa a AsyncIO aplazada a v5.0 tras estudio de viabilidad. |
 | **Smart-Throttle (AIMD)** | ✅ Hecho (v4.4.0) | Control de congestión adaptativo AIMD en HyperScan. Ajusta batch_size dinámicamente. |
 
 ### Fase 7: Pulido UX y Cosméticos (Prioridad: Baja)
