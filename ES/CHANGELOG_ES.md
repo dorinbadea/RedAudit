@@ -8,28 +8,6 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
-## [4.5.2] - 2026-01-09
-
-### Añadido
-
-- **Escaneo Autenticado (SSH)**: Interrogación profunda de hosts Linux (Kernel, Paquetes, Uptime).
-- **Escaneo Autenticado (SMB/WMI)**: Enumeración de Windows (SO, Dominio, Recursos compartidos, Usuarios) vía `impacket`.
-- **Escaneo Autenticado (SNMP v3)**: Auditoría segura de dispositivos de red con protocolos Auth/Priv.
-- **Integración con Lynis**: Ejecución remota de auditorías de hardening vía SSH.
-- **Asistente Interactivo**: Nuevo Paso 8 para la configuración de Autenticación.
-- **Integración con Keyring**: Almacenamiento seguro para credenciales de escaneo.
-
-### Cambiado
-
-- **Asistente (Wizard)**: Flujo de 9 pasos actualizado para acomodar opciones de autenticación.
-- **Documentación**: Actualizaciones completas en las guías MANUAL y USAGE.
-
-### Corregido
-
-- **RecursionError**: en `AuditorRuntime.__getattr__`.
-- **Tests**: Varias correcciones para iteradores Mock en pruebas del asistente.
-- **Mypy**: Mejoras de seguridad de tipos en módulos de autenticación.
-
 ## [4.5.2] - 2026-01-10
 
 ### Añadido
@@ -50,6 +28,28 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Arreglado
 
 - **Autenticación**: Corregida lógica legada en `auditor.py` que ignoraba la configuración del asistente.
+
+## [4.5.0] - 2026-01-09
+
+### Añadido
+
+- **Escaneo Autenticado (SSH)**: Interrogación profunda de hosts Linux (Kernel, Paquetes, Uptime).
+- **Escaneo Autenticado (SMB/WMI)**: Enumeración de Windows (SO, Dominio, Recursos compartidos, Usuarios) vía `impacket`.
+- **Escaneo Autenticado (SNMP v3)**: Auditoría segura de dispositivos de red con protocolos Auth/Priv.
+- **Integración con Lynis**: Ejecución remota de auditorías de hardening vía SSH.
+- **Asistente Interactivo**: Nuevo Paso 8 para la configuración de Autenticación.
+- **Integración con Keyring**: Almacenamiento seguro para credenciales de escaneo.
+
+### Cambiado
+
+- **Asistente (Wizard)**: Flujo de 9 pasos actualizado para acomodar opciones de autenticación.
+- **Documentación**: Actualizaciones completas en las guías MANUAL y USAGE.
+
+### Corregido
+
+- **RecursionError**: en `AuditorRuntime.__getattr__`.
+- **Tests**: Varias correcciones para iteradores Mock en pruebas del asistente.
+- **Mypy**: Mejoras de seguridad de tipos en módulos de autenticación.
 
 ## [4.4.5] - 2026-01-09
 

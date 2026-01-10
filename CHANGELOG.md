@@ -30,6 +30,28 @@ Release notes live under `docs/releases/` for additional context.
 - **Authentication**: Fixed critical logic gap where `auditor.py` legacy code ignored wizard-configured credentials.
   - Now uses unified `ask_auth_config` entry point for both interactive and programmatic flows.
 
+## [4.5.0] - 2026-01-09
+
+### Added
+
+- **Authenticated Scanning (SSH)**: Deep interrogation of Linux hosts (Kernel, Packages, Uptime).
+- **Authenticated Scanning (SMB/WMI)**: Windows enumeration (OS, Domain, Shares, Users) via `impacket`.
+- **Authenticated Scanning (SNMP v3)**: Secure network device auditing with Auth/Priv protocols.
+- **Lynis Integration**: Remote execution of hardening audits via SSH.
+- **Interactive Wizard**: New Step 8 for Authentication configuration.
+- **Keyring Integration**: Secure storage for scan credentials.
+
+### Changed
+
+- **Wizard**: Updated flow to 9 steps to accommodate authentication options.
+- **Docs**: Comprehensive updates to MANUAL and USAGE guides.
+
+### Fixed
+
+- **RecursionError**: in `AuditorRuntime.__getattr__`.
+- **Tests**: Various fixes for Mock iterators in wizard tests.
+- **Mypy**: Type safety improvements in Auth modules.
+
 ## [4.4.5] - 2026-01-09
 
 ### Improved
@@ -166,28 +188,6 @@ Release notes live under `docs/releases/` for additional context.
 
 - Updated wizard profile descriptions with HyperScan mode selection.
 - Added i18n translations (EN/ES) for HyperScan mode options.
-
-## [4.5.0] - 2026-01-09
-
-### Added
-
-- **Authenticated Scanning (SSH)**: Deep interrogation of Linux hosts (Kernel, Packages, Uptime).
-- **Authenticated Scanning (SMB/WMI)**: Windows enumeration (OS, Domain, Shares, Users) via `impacket`.
-- **Authenticated Scanning (SNMP v3)**: Secure network device auditing with Auth/Priv protocols.
-- **Lynis Integration**: Remote execution of hardening audits via SSH.
-- **Interactive Wizard**: New Step 8 for Authentication configuration.
-- **Keyring Integration**: Secure storage for scan credentials.
-
-### Changed
-
-- **Wizard**: Updated flow to 9 steps to accommodate authentication options.
-- **Docs**: Comprehensive updates to MANUAL and USAGE guides.
-
-### Fixed
-
-- **RecursionError**: in `AuditorRuntime.__getattr__`.
-- **Tests**: Various fixes for Mock iterators in wizard tests.
-- **Mypy**: Type safety improvements in Auth modules.
 
 ## [4.2.1] - 2026-01-06
 
