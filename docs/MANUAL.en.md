@@ -411,6 +411,75 @@ Flags verified against `redaudit --help` (v4.5.0):
 | `--snmp-priv-proto {AES,DES,...}` | SNMP v3 privacy protocol |
 | `--snmp-priv-pass PASSWORD` | SNMP v3 privacy password |
 | `--lynis` | Run Lynis hardening audit on Linux hosts (requires SSH) |
+| `--credentials-file PATH` | JSON file with credentials list (auto-detects protocol) |
+| `--generate-credentials-template` | Generate empty credentials template and exit |
+
+#### Multi-Credential Support (Universal)
+
+RedAudit supports **universal credential spraying**: you provide username/password pairs without specifying the protocol, and RedAudit automatically detects which protocol to use based on open ports discovered during scanning.
+
+**How it works:**
+
+1. You configure credentials via the wizard (Universal mode) or `--credentials-file`
+2. RedAudit scans the network and discovers open ports
+3. For each host, it maps open ports to protocols:
+   - Port 22 → SSH
+   - Port 445/139 → SMB
+   - Port 161 → SNMP
+   - Port 3389 → RDP
+   - Port 5985/5986 → WinRM
+4. It tries each credential until one succeeds (max 3 attempts per host to avoid lockouts)
+
+**Legacy Mode (Single SSH/SMB):**
+
+If you need to use a specific SSH key or a single credential pair for a specific protocol (e.g., legacy behavior), select **Advanced** mode in the wizard or use the specific flags (`--ssh-user`, `--ssh-key`, etc.). These will take precedence for that protocol or serve as a fallback if universal credentials fail.
+
+**Using the wizard (recommended):**
+
+```
+? Enable authenticated scanning? [y/n]: y
+Credential configuration mode:
+  [0] Universal (simple): auto-detect protocol
+  [1] Advanced: configure SSH/SMB/SNMP separately
+> 0
+
+--- Credential 1 ---
+? Username: admin
+? Password (hidden): ****
+? Add another credential? [y/n]: y
+
+--- Credential 2 ---
+? Username: root
+? Password (hidden): ****
+? Add another credential? [y/n]: n
+
+Configured 2 credentials for automatic protocol detection.
+```
+
+**Using a credentials file:**
+
+```bash
+# Generate template
+redaudit --generate-credentials-template
+
+# Edit ~/.redaudit/credentials.json
+{
+  "credentials": [
+    {"user": "admin", "pass": "admin123"},
+    {"user": "root", "pass": "toor"},
+    {"user": "administrator", "pass": "P@ssw0rd", "domain": "WORKGROUP"}
+  ]
+}
+
+# Run scan with credentials
+sudo redaudit -t 192.168.1.0/24 --credentials-file ~/.redaudit/credentials.json --yes
+```
+
+**Security considerations:**
+
+- Credentials files are saved with `0600` permissions (owner-only read/write)
+- Passwords are never logged in reports
+- Use keyring for production environments (`--auth-provider keyring`)
 
 ### HyperScan
 

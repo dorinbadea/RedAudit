@@ -486,6 +486,8 @@ class Wizard:
         step_header = ""
         if step_num > 0 and total_steps > 0:
             step_header = f"[{step_num}/{total_steps}] "
+        else:
+            step_header = ""
 
         # Add "< Volver" / "< Go Back" as the last option (only if not first step)
         back_label = self.ui.t("wizard_go_back")
@@ -771,12 +773,17 @@ class Wizard:
 
     # ---------- v4.0: Authenticated Scanning ----------
 
-    def ask_auth_config(self) -> dict:
+    def ask_auth_config(self, skip_intro: bool = False) -> dict:
         """
         Interactive authentication setup for Phase 4.
+
+        Refactored in Phase 4.1.1 to offer two modes:
+        - Universal: Simple user/pass pairs, auto-detect protocol
+        - Advanced: Per-protocol configuration (SSH key, SMB domain, SNMP v3)
         """
-        auth_config = {
+        auth_config: dict = {
             "auth_enabled": False,
+            "auth_credentials": [],  # Universal credentials list
             "auth_ssh_user": None,
             "auth_ssh_key": None,
             "auth_ssh_pass": None,
@@ -784,22 +791,129 @@ class Wizard:
             "auth_smb_user": None,
             "auth_smb_pass": None,
             "auth_smb_domain": None,
+            "auth_snmp_user": None,
+            "auth_snmp_auth_proto": None,
+            "auth_snmp_auth_pass": None,
+            "auth_snmp_priv_proto": None,
+            "auth_snmp_priv_pass": None,
             "auth_save_keyring": False,
         }
 
-        if not self.ask_yes_no(self.ui.t("auth_scan_q"), default="no"):
+        if skip_intro:
+            # Assumed yes
+            pass
+        elif not self.ask_yes_no(self.ui.t("auth_scan_q"), default="no"):
             return auth_config
 
         auth_config["auth_enabled"] = True
+
+        # Mode selection: Universal vs Advanced
+        mode_opts = [
+            self.ui.t("auth_mode_universal"),
+            self.ui.t("auth_mode_advanced"),
+        ]
+        # v4.5.1: Use back-aware menu to avoid trapping user
+        mode_choice = self.ask_choice_with_back(
+            self.ui.t("auth_mode_q"),
+            mode_opts,
+            0,
+            step_num=2,  # Arbitrary step number to show "Back"
+            total_steps=2,
+        )
+
+        if mode_choice == self.WIZARD_BACK:
+            # User chose to go back -> disable auth and return (cancellation)
+            auth_config["auth_enabled"] = False
+            return auth_config
+
+        if mode_choice == 0:
+            # Universal mode: collect simple user/pass pairs
+            # Show protocol detection hint
+            print(
+                f"\n{self.ui.colors['OKBLUE']}"
+                f"{self.ui.t('auth_protocol_hint')}"
+                f"{self.ui.colors['ENDC']}"
+            )
+            auth_config["auth_credentials"] = self._collect_universal_credentials()
+        else:
+            # Advanced mode: per-protocol configuration
+            self._collect_advanced_credentials(auth_config)
+
+        # Keyring option
+        if (
+            auth_config.get("auth_credentials")
+            or auth_config.get("auth_ssh_pass")
+            or auth_config.get("auth_smb_pass")
+        ):
+            if self.ask_yes_no(self.ui.t("auth_save_keyring_q"), default="no"):
+                auth_config["auth_save_keyring"] = True
+
+        return auth_config
+
+    def _collect_universal_credentials(self) -> list:
+        """Collect universal credentials (user/pass pairs)."""
+        import getpass
+
+        credentials: list = []
+        cred_num = 1
+
+        print(
+            f"\n{self.ui.colors['OKBLUE']}--- "
+            f"{self.ui.t('auth_cred_number') % cred_num} "
+            f"---{self.ui.colors['ENDC']}"
+        )
+
+        while True:
+            user = input(
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self.ui.t('auth_cred_user_prompt')}: "
+            ).strip()
+
+            if not user:
+                break
+
+            try:
+                password = getpass.getpass(
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self.ui.t('auth_cred_pass_prompt')}: "
+                )
+            except Exception:
+                password = ""
+
+            credentials.append({"user": user, "pass": password})
+
+            if not self.ask_yes_no(self.ui.t("auth_add_another"), default="no"):
+                break
+
+            cred_num += 1
+            print(
+                f"\n{self.ui.colors['OKBLUE']}--- "
+                f"{self.ui.t('auth_cred_number') % cred_num} "
+                f"---{self.ui.colors['ENDC']}"
+            )
+
+        if credentials:
+            print(
+                f"\n{self.ui.colors['GREEN']}"
+                f"{self.ui.t('auth_creds_summary') % len(credentials)}"
+                f"{self.ui.colors['ENDC']}"
+            )
+
+        return credentials
+
+    def _collect_advanced_credentials(self, auth_config: dict) -> None:
+        """Collect per-protocol credentials (SSH, SMB, SNMP v3)."""
+        import getpass
 
         # 1. SSH
         if self.ask_yes_no(self.ui.t("auth_ssh_configure_q"), default="yes"):
             print(f"\n{self.ui.colors['OKBLUE']}--- SSH ---{self.ui.colors['ENDC']}")
             default_user = "root"
             u = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('auth_ssh_user_prompt')} [{default_user}]: "
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self.ui.t('auth_ssh_user_prompt')} [{default_user}]: "
             ).strip()
-            auth_config["auth_ssh_user"] = u if u else default_user  # type: ignore[assignment]
+            auth_config["auth_ssh_user"] = u if u else default_user
 
             method_opts = [
                 self.ui.t("auth_method_key"),
@@ -808,24 +922,22 @@ class Wizard:
             choice = self.ask_choice(self.ui.t("auth_method_q"), method_opts, 0)
 
             if choice == 0:
-                # Key
                 default_key = "~/.ssh/id_rsa"
                 k = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('auth_ssh_key_prompt')} [{default_key}]: "
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self.ui.t('auth_ssh_key_prompt')} [{default_key}]: "
                 ).strip()
-                auth_config["auth_ssh_key"] = expand_user_path(k if k else default_key)  # type: ignore[assignment]
+                auth_config["auth_ssh_key"] = expand_user_path(k if k else default_key)
             else:
-                # Password
-                import getpass
-
                 print(
-                    f"{self.ui.colors['OKBLUE']}{self.ui.t('auth_ssh_pass_hint')}:{self.ui.colors['ENDC']}"
+                    f"{self.ui.colors['OKBLUE']}"
+                    f"{self.ui.t('auth_ssh_pass_hint')}:{self.ui.colors['ENDC']}"
                 )
                 try:
                     pwd = getpass.getpass(
                         f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} Password: "
                     )
-                    auth_config["auth_ssh_pass"] = pwd  # type: ignore[assignment]
+                    auth_config["auth_ssh_pass"] = pwd
                 except Exception:
                     pass
 
@@ -834,26 +946,26 @@ class Wizard:
             print(f"\n{self.ui.colors['OKBLUE']}--- SMB ---{self.ui.colors['ENDC']}")
             default_user = "Administrator"
             u = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('auth_smb_user_prompt')} [{default_user}]: "
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self.ui.t('auth_smb_user_prompt')} [{default_user}]: "
             ).strip()
-            auth_config["auth_smb_user"] = u if u else default_user  # type: ignore[assignment]
+            auth_config["auth_smb_user"] = u if u else default_user
 
-            default_domain = ""
             d = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('auth_smb_domain_prompt')} [{default_domain}]: "
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self.ui.t('auth_smb_domain_prompt')} []: "
             ).strip()
-            auth_config["auth_smb_domain"] = d if d else None  # type: ignore[assignment]
-
-            import getpass
+            auth_config["auth_smb_domain"] = d if d else None
 
             print(
-                f"{self.ui.colors['OKBLUE']}{self.ui.t('auth_smb_pass_hint')}:{self.ui.colors['ENDC']}"
+                f"{self.ui.colors['OKBLUE']}"
+                f"{self.ui.t('auth_smb_pass_hint')}:{self.ui.colors['ENDC']}"
             )
             try:
                 pwd = getpass.getpass(
                     f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} Password: "
                 )
-                auth_config["auth_smb_pass"] = pwd  # type: ignore[assignment]
+                auth_config["auth_smb_pass"] = pwd
             except Exception:
                 pass
 
@@ -861,44 +973,31 @@ class Wizard:
         if self.ask_yes_no(self.ui.t("auth_snmp_configure_q"), default="no"):
             print(f"\n{self.ui.colors['OKBLUE']}--- SNMP v3 ---{self.ui.colors['ENDC']}")
             u = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('auth_snmp_user_prompt')}: "
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self.ui.t('auth_snmp_user_prompt')}: "
             ).strip()
-            auth_config["auth_snmp_user"] = u  # type: ignore[assignment]
+            auth_config["auth_snmp_user"] = u
 
-            # Auth Protocol
             auth_protos = ["SHA", "MD5", "SHA224", "SHA256", "SHA384", "SHA512"]
             a_idx = self.ask_choice(self.ui.t("auth_snmp_auth_proto_q"), auth_protos, 0)
-            auth_config["auth_snmp_auth_proto"] = auth_protos[a_idx]  # type: ignore[assignment]
-
-            # Auth Pass
-            import getpass
+            auth_config["auth_snmp_auth_proto"] = auth_protos[a_idx]
 
             try:
                 auth_pass = getpass.getpass(
                     f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} Auth Key: "
                 )
-                auth_config["auth_snmp_auth_pass"] = auth_pass  # type: ignore[assignment]
+                auth_config["auth_snmp_auth_pass"] = auth_pass
             except Exception:
                 pass
 
-            # Privacy Protocol
             priv_protos = ["AES", "DES", "AES192", "AES256", "3DES"]
             p_idx = self.ask_choice(self.ui.t("auth_snmp_priv_proto_q"), priv_protos, 0)
-            auth_config["auth_snmp_priv_proto"] = priv_protos[p_idx]  # type: ignore[assignment]
+            auth_config["auth_snmp_priv_proto"] = priv_protos[p_idx]
 
-            # Privacy Pass
             try:
                 priv_pass = getpass.getpass(
                     f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} Priv Key: "
                 )
-                auth_config["auth_snmp_priv_pass"] = priv_pass  # type: ignore[assignment]
+                auth_config["auth_snmp_priv_pass"] = priv_pass
             except Exception:
                 pass
-
-        # Keyring
-        if auth_config.get("auth_ssh_pass") or auth_config.get("auth_smb_pass"):
-            if self.ask_yes_no(self.ui.t("auth_save_keyring_q"), default="no"):
-                auth_config["auth_save_keyring"] = True  # type: ignore[assignment]
-                auth_config["auth_save_keyring"] = True
-
-        return auth_config

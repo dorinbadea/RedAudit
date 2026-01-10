@@ -410,6 +410,75 @@ Flags verificadas contra `redaudit --help` (v4.5.0):
 | `--snmp-priv-proto {AES,DES,...}` | Protocolo de privacidad SNMP v3 |
 | `--snmp-priv-pass PASSWORD` | Contraseña de privacidad SNMP v3 |
 | `--lynis` | Ejecutar auditoría de hardening Lynis en hosts Linux (requiere SSH) |
+| `--credentials-file PATH` | Fichero JSON con lista de credenciales (detecta protocolo automáticamente) |
+| `--generate-credentials-template` | Generar plantilla de credenciales vacía y salir |
+
+#### Soporte Multi-Credencial (Universal)
+
+RedAudit soporta **credential spraying universal**: proporcionas pares usuario/contraseña sin especificar el protocolo, y RedAudit detecta automáticamente qué protocolo usar basándose en los puertos abiertos descubiertos durante el escaneo.
+
+**Cómo funciona:**
+
+1. Configuras credenciales mediante el asistente (modo Universal) o `--credentials-file`
+2. RedAudit escanea la red y descubre puertos abiertos
+3. Para cada host, mapea puertos abiertos a protocolos:
+   - Puerto 22 → SSH
+   - Puerto 445/139 → SMB
+   - Puerto 161 → SNMP
+   - Puerto 3389 → RDP
+   - Puerto 5985/5986 → WinRM
+4. Prueba cada credencial hasta que una funcione (máx. 3 intentos por host para evitar bloqueos)
+
+**Modo Legado (SSH/SMB Individual):**
+
+Si necesitas utilizar una clave SSH específica o un par de credenciales único para un protocolo (comportamiento legado), selecciona el modo **Avanzado** en el asistente o usa los flags específicos (`--ssh-user`, `--ssh-key`, etc.). Estos tendrán preferencia para ese protocolo o servirán como respaldo si las credenciales universales fallan.
+
+**Usando el asistente (recomendado):**
+
+```
+? ¿Habilitar escaneo autenticado? [s/n]: s
+Modo de configuración de credenciales:
+  [0] Universal (simple): detectar protocolo automáticamente
+  [1] Avanzado: configurar SSH/SMB/SNMP por separado
+> 0
+
+--- Credencial 1 ---
+? Usuario: admin
+? Contraseña (oculta): ****
+? ¿Añadir otra credencial? [s/n]: s
+
+--- Credencial 2 ---
+? Usuario: root
+? Contraseña (oculta): ****
+? ¿Añadir otra credencial? [s/n]: n
+
+Configuradas 2 credenciales para detección automática de protocolo.
+```
+
+**Usando un fichero de credenciales:**
+
+```bash
+# Generar plantilla
+redaudit --generate-credentials-template
+
+# Editar ~/.redaudit/credentials.json
+{
+  "credentials": [
+    {"user": "admin", "pass": "admin123"},
+    {"user": "root", "pass": "toor"},
+    {"user": "administrator", "pass": "P@ssw0rd", "domain": "WORKGROUP"}
+  ]
+}
+
+# Ejecutar escaneo con credenciales
+sudo redaudit -t 192.168.1.0/24 --credentials-file ~/.redaudit/credentials.json --yes
+```
+
+**Consideraciones de seguridad:**
+
+- Los ficheros de credenciales se guardan con permisos `0600` (solo lectura/escritura del propietario)
+- Las contraseñas nunca se registran en los informes
+- Usar keyring para entornos de producción (`--auth-provider keyring`)
 
 ### HyperScan
 

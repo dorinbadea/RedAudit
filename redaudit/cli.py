@@ -546,6 +546,19 @@ Examples:
         help="Enable Lynis hardening audit on authenticaticated Linux hosts (requires SSH)",
     )
 
+    # v4.5.1: Multi-credential support
+    parser.add_argument(
+        "--credentials-file",
+        type=str,
+        metavar="PATH",
+        help="JSON file with credentials list for universal auth (auto-detects protocol)",
+    )
+    parser.add_argument(
+        "--generate-credentials-template",
+        action="store_true",
+        help="Generate empty credentials template (~/.redaudit/credentials.json) and exit",
+    )
+
     # v4.3: HyperScan mode selection
     parser.add_argument(
         "--hyperscan-mode",
@@ -732,6 +745,26 @@ def configure_from_args(app, args) -> bool:
     # v4.3: Lynis
     app.config["lynis_enabled"] = bool(getattr(args, "lynis", False))
 
+    # v4.5.1: Multi-credential support
+    credentials_file = getattr(args, "credentials_file", None)
+    if credentials_file:
+        try:
+            from redaudit.core.credentials_manager import CredentialsManager
+
+            creds_mgr = CredentialsManager()
+            creds_mgr.load_from_file(expand_user_path(credentials_file))
+            app.config["auth_credentials"] = [
+                {"user": c.user, "pass": c.password} for c in creds_mgr.credentials
+            ]
+            app.config["auth_enabled"] = True
+            app.print_status(f"Loaded {len(creds_mgr.credentials)} credentials", "OKGREEN")
+        except FileNotFoundError:
+            app.print_status(f"Credentials file not found: {credentials_file}", "FAIL")
+            return False
+        except Exception as e:
+            app.print_status(f"Error loading credentials: {e}", "FAIL")
+            return False
+
     # v4.3: HyperScan mode
     app.config["hyperscan_mode"] = getattr(args, "hyperscan_mode", "auto")
     if not isinstance(args.agentless_verify_max_targets, int) or not (
@@ -782,6 +815,16 @@ def main():
 
         for key in list(COLORS.keys()):
             COLORS[key] = ""
+
+    # v4.5.1: Generate credentials template and exit
+    if getattr(args, "generate_credentials_template", False):
+        from redaudit.core.credentials_manager import CredentialsManager
+
+        template_path = os.path.expanduser("~/.redaudit/credentials.json")
+        CredentialsManager.generate_template(template_path)
+        print(f"Credentials template generated: {template_path}")
+        print("Edit this file with your credentials, then use --credentials-file to load.")
+        sys.exit(0)
 
     # v3.0: Handle --diff mode (no scan, just comparison) - does not require root
     if args.diff:

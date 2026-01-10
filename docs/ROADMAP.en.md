@@ -26,6 +26,15 @@ Enable credential-based enumeration for deeper audit coverage.
 | **P4.4 SNMP v3 Support** | ✅ Done (v4.5.0) | Add SNMPv3 auth (noAuthNoPriv, authNoPriv, authPriv). |
 | **P4.5 Lynis Integration** | ✅ Done (v4.5.0) | Remote Linux CIS hardening checks via SSH. |
 
+### Phase 4.1.1: Multi-Credential Support (Priority: High) (In Progress)
+
+| Task | Status | Description |
+| :--- | :--- | :--- |
+| **CredentialsManager** | Done | Universal credential spraying with auto-protocol detection. |
+| **Wizard Multi-Credential** | In Progress | Refactored ask_auth_config() with universal vs advanced modes. |
+| **CLI --credentials-file** | Planned | Load credentials from JSON file. |
+| **Template Generator** | Planned | `--generate-credentials-template` for empty JSON template. |
+
 ### v4.4 Code Coverage & Stability (Priority: High) ✅
 
 | Feature | Status | Description |
