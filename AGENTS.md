@@ -67,7 +67,7 @@ This file is reusable "initial context" for contributors working on RedAudit. Th
   - `chore(pre-commit): apply formatting fixes`
 - Group commits by intent:
   1) code fix/feature, 2) tests, 3) docs, 4) release bump/notes, 5) formatting-only (if needed).
-- **Cleanup**: After merging to `main` and pushing, explicitly delete the local and remote feature branch (e.g., `git branch -d feature/xyz` and `git push origin --delete feature/xyz`).
+- **Cleanup (CI Hygiene)**: After merging to `main` and pushing, you **MUST** explicitly delete both the local and remote feature branch (e.g., `git push origin --delete feature/xyz`). Stale branches clutter the CI dashboard and are unacceptable.
 
 ## Local Quality Gate (Must Pass Before Merge)
 
@@ -322,6 +322,9 @@ pytest tests/ -v
 git tag -a vX.Y.Z -m "RedAudit vX.Y.Z"
 git push origin main --tags
 ```
+
+> [!WARNING]
+> **Pushing tags is NOT enough.** `git push --tags` creates the pointer but leaves the GitHub Release page empty. You **MUST** complete step 6.
 
 ### 6) GitHub Release
 
