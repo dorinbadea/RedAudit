@@ -1535,6 +1535,25 @@ class TestDeepScanDecision:
         should_trigger, reasons = result
         assert isinstance(should_trigger, bool)
 
+    def test_should_trigger_deep_ghost_identity(self):
+        """v4.5.15: Test deep scan triggers on zero ports with weak identity.
+
+        This is the "Ghost Identity" scenario where a host has no open ports
+        detected but identity signals suggest a real device (e.g., SNMP sysDescr).
+        """
+        auditor = MockAuditorScan()
+        result = auditor._should_trigger_deep(
+            total_ports=0,  # Zero ports - the key condition
+            any_version=False,
+            suspicious=False,
+            device_type_hints=[],
+            identity_score=3,  # Below threshold
+            identity_threshold=4,
+        )
+        should_trigger, reasons = result
+        assert should_trigger is True
+        assert "ghost_identity" in reasons
+
 
 # =============================================================================
 # UDP Priority Probe Tests

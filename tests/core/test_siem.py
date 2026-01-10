@@ -215,6 +215,20 @@ class TestSIEM(unittest.TestCase):
         self.assertIn("deep-scanned", tags)
         self.assertIn("mac-identified", tags)
 
+    def test_generate_host_tags_deep_scanned_not_executed(self):
+        """v4.5.16: Test tag NOT added when deep scan was not executed."""
+        # deep_scan dict exists but deep_scan_executed is False
+        host = {
+            "ip": "192.168.1.1",
+            "ports": [],
+            "deep_scan": {"mac_address": "AA:BB:CC:DD:EE:FF"},
+            "smart_scan": {"deep_scan_executed": False},
+        }
+        tags = generate_host_tags(host)
+        self.assertNotIn("deep-scanned", tags)
+        # mac-identified also requires deep_scan_executed
+        self.assertNotIn("mac-identified", tags)
+
     def test_build_ecs_event(self):
         """Test ECS event object generation."""
         event = build_ecs_event("completo", "00:05:30")
