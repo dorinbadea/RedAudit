@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "redaudit"
-version = "4.5.2"
+version = "4.5.3"
 description = "CLI tool for structured network auditing and hardening on Kali/Debian systems"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -43,6 +43,7 @@ dependencies = [
     "requests>=2.31.0",
     "jinja2>=3.1.0",
     "rich>=13.0.0",
+    "keyring>=24.0.0",  # Secure credential storage via OS keychain
 ]
 
 [project.optional-dependencies]

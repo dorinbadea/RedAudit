@@ -93,7 +93,7 @@ echo "$MSG_INSTALL"
 # 2) Dependencies
 # -------------------------------------------
 
-EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4 nuclei whatweb nikto sqlmap traceroute"
+EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 python3-keyring exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4 nuclei whatweb nikto sqlmap traceroute"
 
 echo ""
 echo "$MSG_PKGS"
@@ -116,9 +116,9 @@ fi
 if $INSTALL; then
     apt update && apt install -y $EXTRA_PKGS || { echo "$MSG_APT_ERR"; exit 1; }
 
-    # Python packages for authenticated scanning (Phase 4: SSH/SMB/SNMP)
+    # Python packages for authenticated scanning (Phase 4: SSH/SMB/SNMP + Keyring)
     echo "[INFO] Installing Python packages for authenticated scanning..."
-    pip3 install --quiet paramiko impacket pysnmp || echo "[WARN] pip install failed (optional auth packages)"
+    pip3 install --quiet paramiko impacket pysnmp keyring || echo "[WARN] pip install failed (optional auth packages)"
 
     # -------------------------------------------
     # 2b) Install testssl.sh from GitHub
