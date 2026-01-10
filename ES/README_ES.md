@@ -164,7 +164,7 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
                                        ▼
                     ┌──────────────────────────────────────┐
                     │      DEEP PHASE 1: TCP Agresivo      │
-                    │      nmap -p- -A -sV --open          │
+                    │      nmap -p- -A --open              │
                     └──────────────────┬───────────────────┘
                                        │
                           ┌────────────┴────────────┐

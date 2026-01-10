@@ -837,7 +837,6 @@ class AuditorScan:
             cmd_p1 = [
                 "nmap",
                 "-A",
-                "-sV",
                 "-Pn",
                 "-p-",
                 "--open",

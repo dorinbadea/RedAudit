@@ -168,7 +168,7 @@ RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runt
                                        ▼
                     ┌──────────────────────────────────────┐
                     │      DEEP PHASE 1: Aggressive TCP    │
-                    │      nmap -p- -A -sV --open          │
+                    │      nmap -p- -A --open              │
                     └──────────────────┬───────────────────┘
                                        │
                           ┌────────────┴────────────┐
