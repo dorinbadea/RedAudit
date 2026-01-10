@@ -8,6 +8,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [4.5.11] - 2026-01-10
+
+### Fixed
+
+- **Universal Installer Compatibility**:
+  - Made `python3-pysnmp` installation optional/warn-only in the APT step. This prevents the installer from aborting on distributions that removed this package (e.g., Ubuntu Noble 24.04).
+  - Fixed a duplicated apt installation line in `redaudit_install.sh`.
+
 ## [4.5.10] - 2026-01-10
 
 ### Improved
