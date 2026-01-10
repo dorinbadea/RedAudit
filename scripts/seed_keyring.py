@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-RedAudit Keyring Credential Seeder - Lab Seguridad
----------------------------------------------------
+RedAudit Keyring Credential Seeder - Lab Seguridad (Spray Mode)
+----------------------------------------------------------------
 Run this script ONCE on your Ubuntu/MSI system to pre-populate the keyring
-with lab credentials. After running, the wizard will detect and offer
-to load them automatically.
+with ALL lab credentials. RedAudit will spray these credentials across targets.
 
 Usage:
     python3 scripts/seed_keyring.py
@@ -16,26 +15,40 @@ import json
 import sys
 
 # ============================================================================
-# LAB CREDENTIALS - RedAudit Docker Lab (Phase 4)
+# ALL LAB CREDENTIALS - RedAudit Docker Lab (Phase 4)
+# Format: (username, password, domain, target_hint)
 # ============================================================================
 
-# SSH Credentials (target-ssh-lynis @ 172.20.0.20)
-SSH_USER = "auditor"
-SSH_PASS = "redaudit"
-SSH_KEY = None
-SSH_KEY_PASS = None
+# SSH Credentials (spray list)
+SSH_CREDENTIALS = [
+    ("auditor", "redaudit", "172.20.0.20 target-ssh-lynis"),
+    ("msfadmin", "msfadmin", "172.20.0.11 metasploitable"),
+    ("openplc", "openplc", "172.20.0.50 openplc-scada"),
+]
 
-# SMB/Windows Credentials (samba-ad @ 172.20.0.60, REDAUDIT.LOCAL domain)
-SMB_USER = "Administrator"
-SMB_PASS = "P@ssw0rd123"
-SMB_DOMAIN = "REDAUDIT"
+# SMB/Windows Credentials (spray list)
+SMB_CREDENTIALS = [
+    ("Administrator", "P@ssw0rd123", "REDAUDIT", "172.20.0.60 samba-ad"),
+    ("docker", "", None, "172.20.0.30 target-windows"),
+    ("msfadmin", "msfadmin", None, "172.20.0.11 metasploitable"),
+]
 
-# SNMP v3 Credentials (target-snmp @ 172.20.0.40)
+# SNMP v3 Credentials
 SNMP_USER = "admin-snmp"
 SNMP_AUTH_PROTO = "SHA"
 SNMP_AUTH_PASS = "auth_pass_123"
 SNMP_PRIV_PROTO = "AES"
 SNMP_PRIV_PASS = "priv_pass_456"
+
+# Web/HTTP Credentials (for reference - not stored in keyring)
+WEB_CREDENTIALS = [
+    ("admin@juice-sh.op", "pwned", "172.20.0.10 juiceshop"),
+    ("admin", "password", "172.20.0.12 dvwa"),
+    ("guest", "guest", "172.20.0.13 webgoat"),
+    ("bee", "bug", "172.20.0.15 bwapp"),
+    ("admin", "admin", "172.20.0.70 iot-camera"),
+    ("admin", "1234", "172.20.0.71 iot-router"),
+]
 
 # ============================================================================
 # DO NOT EDIT BELOW THIS LINE
@@ -50,62 +63,75 @@ def main():
         print("Run: pip3 install keyring")
         sys.exit(1)
 
-    print("RedAudit Keyring Credential Seeder - Lab Seguridad")
-    print("=" * 50)
+    print("RedAudit Keyring Credential Seeder - Lab Seguridad (Spray Mode)")
+    print("=" * 65)
 
     count = 0
 
-    # SSH
-    if SSH_USER:
-        keyring.set_password("redaudit-ssh", "default:username", SSH_USER)
-        secret_data = {}
-        if SSH_PASS:
-            secret_data["password"] = SSH_PASS
-        if SSH_KEY_PASS:
-            secret_data["key_passphrase"] = SSH_KEY_PASS
-        if secret_data:
-            keyring.set_password("redaudit-ssh", "default:secret", json.dumps(secret_data))
-        if SSH_KEY:
-            keyring.set_password("redaudit-ssh", "default:key", SSH_KEY)
-        print(f"[OK] SSH: {SSH_USER} (for 172.20.0.20 target-ssh-lynis)")
-        count += 1
+    # SSH - Store as spray list in JSON
+    if SSH_CREDENTIALS:
+        # Primary credential (default)
+        primary = SSH_CREDENTIALS[0]
+        keyring.set_password("redaudit-ssh", "default:username", primary[0])
+        secret_data = {"password": primary[1]}
+        keyring.set_password("redaudit-ssh", "default:secret", json.dumps(secret_data))
 
-    # SMB
-    if SMB_USER:
-        keyring.set_password("redaudit-smb", "default:username", SMB_USER)
-        secret_data = {}
-        if SMB_PASS:
-            secret_data["password"] = SMB_PASS
-        if secret_data:
-            keyring.set_password("redaudit-smb", "default:secret", json.dumps(secret_data))
-        if SMB_DOMAIN:
-            keyring.set_password("redaudit-smb", "default:domain", SMB_DOMAIN)
-        print(f"[OK] SMB: {SMB_USER}@{SMB_DOMAIN} (for 172.20.0.60 samba-ad)")
-        count += 1
+        # Store full spray list
+        spray_list = [{"user": u, "pass": p, "hint": h} for u, p, h in SSH_CREDENTIALS]
+        keyring.set_password("redaudit-ssh", "spray:list", json.dumps(spray_list))
+
+        print(f"[OK] SSH Primary: {primary[0]} ({primary[2]})")
+        for u, p, h in SSH_CREDENTIALS[1:]:
+            print(f"     SSH Spray:   {u} ({h})")
+        count += len(SSH_CREDENTIALS)
+
+    # SMB - Store as spray list in JSON
+    if SMB_CREDENTIALS:
+        # Primary credential (default)
+        primary = SMB_CREDENTIALS[0]
+        keyring.set_password("redaudit-smb", "default:username", primary[0])
+        secret_data = {"password": primary[1]}
+        keyring.set_password("redaudit-smb", "default:secret", json.dumps(secret_data))
+        if primary[2]:
+            keyring.set_password("redaudit-smb", "default:domain", primary[2])
+
+        # Store full spray list
+        spray_list = [
+            {"user": u, "pass": p, "domain": d, "hint": h} for u, p, d, h in SMB_CREDENTIALS
+        ]
+        keyring.set_password("redaudit-smb", "spray:list", json.dumps(spray_list))
+
+        domain_str = f"@{primary[2]}" if primary[2] else ""
+        print(f"[OK] SMB Primary: {primary[0]}{domain_str} ({primary[3]})")
+        for u, p, d, h in SMB_CREDENTIALS[1:]:
+            domain_str = f"@{d}" if d else ""
+            print(f"     SMB Spray:   {u}{domain_str} ({h})")
+        count += len(SMB_CREDENTIALS)
 
     # SNMP v3
     if SNMP_USER:
         keyring.set_password("redaudit-snmp", "default:username", SNMP_USER)
-        # Store SNMP auth/priv in secret blob
-        snmp_secret = {}
-        if SNMP_AUTH_PASS:
-            snmp_secret["auth_pass"] = SNMP_AUTH_PASS
-            snmp_secret["auth_proto"] = SNMP_AUTH_PROTO
-        if SNMP_PRIV_PASS:
-            snmp_secret["priv_pass"] = SNMP_PRIV_PASS
-            snmp_secret["priv_proto"] = SNMP_PRIV_PROTO
-        if snmp_secret:
-            keyring.set_password("redaudit-snmp", "default:secret", json.dumps(snmp_secret))
-        print(f"[OK] SNMP: {SNMP_USER} ({SNMP_AUTH_PROTO}/{SNMP_PRIV_PROTO}) (for 172.20.0.40)")
+        snmp_secret = {
+            "auth_pass": SNMP_AUTH_PASS,
+            "auth_proto": SNMP_AUTH_PROTO,
+            "priv_pass": SNMP_PRIV_PASS,
+            "priv_proto": SNMP_PRIV_PROTO,
+        }
+        keyring.set_password("redaudit-snmp", "default:secret", json.dumps(snmp_secret))
+        print(f"[OK] SNMP: {SNMP_USER} ({SNMP_AUTH_PROTO}/{SNMP_PRIV_PROTO})")
         count += 1
 
-    print("=" * 50)
+    print("=" * 65)
     print(f"Stored {count} credential(s) in system keyring.")
     print("")
-    print("Credentials ready for:")
-    print("  - SSH:  172.20.0.20 (target-ssh-lynis) -> auditor:redaudit")
-    print("  - SMB:  172.20.0.60 (samba-ad)         -> Administrator@REDAUDIT")
-    print("  - SNMP: 172.20.0.40 (target-snmp)      -> admin-snmp (SHA/AES)")
+    print("Spray Mode Enabled:")
+    print(f"  - SSH:  {len(SSH_CREDENTIALS)} credentials")
+    print(f"  - SMB:  {len(SMB_CREDENTIALS)} credentials")
+    print("  - SNMP: 1 credential")
+    print("")
+    print("Web credentials (reference only - not in keyring):")
+    for u, p, h in WEB_CREDENTIALS:
+        print(f"  - {h}: {u}")
     print("")
     print("Next: Start a scan and the wizard will offer to load these.")
 
