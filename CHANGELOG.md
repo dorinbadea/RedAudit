@@ -8,6 +8,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [Unreleased]
+
+### Added
+
+- **Multi-Credential Support (Phase 4.1.1)**:
+  - Added `Universal` authentication mode in wizard and `--credentials-file` flag support.
+  - Automatic protocol detection (SSH/SMB/SNMP/RDP/WinRM) based on open ports.
+  - Added `CredentialsManager` for secure credential handling and template generation (`--generate-credentials-template`).
+  - Added "Zero-Context Audit" fixes: `ask_choice_with_back` for safe menu navigation and refactored `auditor.py` to use shared auth logic.
+
+### Changed
+
+- **Wizard**:
+  - Refactored Authentication workflow to support `Universal` vs `Advanced` modes.
+  - Added "Go Back" (`<`) navigation support to critical menus to prevent user entrapment.
+  - Added UI hints for protocol detection strategy.
+
+### Fixed
+
+- **Authentication**: Fixed critical logic gap where `auditor.py` legacy code ignored wizard-configured credentials.
+  - Now uses unified `ask_auth_config` entry point for both interactive and programmatic flows.
+
 ## [4.4.5] - 2026-01-09
 
 ### Improved

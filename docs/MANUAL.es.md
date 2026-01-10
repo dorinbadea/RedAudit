@@ -429,6 +429,10 @@ RedAudit soporta **credential spraying universal**: proporcionas pares usuario/c
    - Puerto 5985/5986 → WinRM
 4. Prueba cada credencial hasta que una funcione (máx. 3 intentos por host para evitar bloqueos)
 
+**Modo Legado (SSH/SMB Individual):**
+
+Si necesitas utilizar una clave SSH específica o un par de credenciales único para un protocolo (comportamiento legado), selecciona el modo **Avanzado** en el asistente o usa los flags específicos (`--ssh-user`, `--ssh-key`, etc.). Estos tendrán preferencia para ese protocolo o servirán como respaldo si las credenciales universales fallan.
+
 **Usando el asistente (recomendado):**
 
 ```

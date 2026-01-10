@@ -430,6 +430,10 @@ RedAudit supports **universal credential spraying**: you provide username/passwo
    - Port 5985/5986 → WinRM
 4. It tries each credential until one succeeds (max 3 attempts per host to avoid lockouts)
 
+**Legacy Mode (Single SSH/SMB):**
+
+If you need to use a specific SSH key or a single credential pair for a specific protocol (e.g., legacy behavior), select **Advanced** mode in the wizard or use the specific flags (`--ssh-user`, `--ssh-key`, etc.). These will take precedence for that protocol or serve as a fallback if universal credentials fail.
+
 **Using the wizard (recommended):**
 
 ```
