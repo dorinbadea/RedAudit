@@ -411,6 +411,8 @@ Flags verified against `redaudit --help` (v4.5.0):
 | `--snmp-priv-proto {AES,DES,...}` | SNMP v3 privacy protocol |
 | `--snmp-priv-pass PASSWORD` | SNMP v3 privacy password |
 | `--lynis` | Run Lynis hardening audit on Linux hosts (requires SSH) |
+| `--credentials-file PATH` | JSON file with credentials list (auto-detects protocol) |
+| `--generate-credentials-template` | Generate empty credentials template and exit |
 
 ### HyperScan
 
