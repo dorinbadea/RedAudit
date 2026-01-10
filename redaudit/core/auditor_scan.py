@@ -2180,7 +2180,7 @@ class AuditorScan:
                                     mins, secs = divmod(elapsed, 60)
                                     # Use progress.console to print safely without breaking the Live display
                                     progress.console.print(
-                                        f"[grey50]INFO: {self.ui.t('scanning_hosts')}... {done}/{total} ({mins}:{secs:02d} transcurrido)[/]",
+                                        f"[cyan][INFO][/cyan] {self.ui.t('scanning_hosts')}... {done}/{total} ({mins}:{secs:02d} elapsed)",
                                         highlight=False,
                                     )
                                     last_heartbeat = now

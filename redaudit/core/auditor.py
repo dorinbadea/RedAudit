@@ -1066,17 +1066,26 @@ class InteractiveNetworkAuditor:
             )
 
         # Find hosts with SSH port (22) open
-        def has_ssh_port(host: dict) -> bool:
-            ports = host.get("ports", [])
+        def has_ssh_port(host) -> bool:
+            """Check if host has SSH port 22 open. Handles both dict and Host objects."""
+            # Get ports from dict or object
+            if isinstance(host, dict):
+                ports = host.get("ports", [])
+            else:
+                ports = getattr(host, "ports", []) or []
+
             if isinstance(ports, list):
                 for p in ports:
                     if isinstance(p, dict) and p.get("port") == 22:
                         return True
                     elif isinstance(p, int) and p == 22:
                         return True
+                    # Handle Port objects (Pydantic models)
+                    elif hasattr(p, "port") and getattr(p, "port", None) == 22:
+                        return True
             return False
 
-        ssh_hosts = [h for h in hosts if isinstance(h, dict) and has_ssh_port(h)]
+        ssh_hosts = [h for h in hosts if has_ssh_port(h)]
 
         if not ssh_hosts:
             self.ui.print_status(self.ui.t("auth_scan_no_hosts"), "INFO")

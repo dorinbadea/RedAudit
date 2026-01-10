@@ -744,7 +744,7 @@ class AuditorVuln:
 
                                             vuln_count = len(findings)
                                             count_str = (
-                                                f"({vuln_count} vulns)" if vuln_count else "✓"
+                                                f"({vuln_count} vulns)" if vuln_count else "Clean"
                                             )
                                             # Final green update
                                             progress.update(
@@ -771,6 +771,13 @@ class AuditorVuln:
                                             detail=str(exc),
                                         )
                                     done += 1
+
+                            # v4.5.3: Ensure all progress bars are at 100% after loop completes
+                            for ip, (task_id, _) in host_tasks.items():
+                                try:
+                                    progress.update(task_id, completed=100)
+                                except Exception:
+                                    pass
                 else:
                     # Fallback without rich
                     for fut in as_completed(futures):
