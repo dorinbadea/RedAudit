@@ -8,6 +8,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [4.5.10] - 2026-01-10
+
+### Mejorado
+
+- **Robustez del Instalador**:
+  - Añadido `python3-pysnmp` a dependencias APT (preferido sobre pip en sistemas Debian).
+  - Eliminado `--quiet` de la instalación de pip para exponer errores si falla la instalación de paquetes.
+
 ## [4.5.9] - 2026-01-10
 
 ### Corregido
