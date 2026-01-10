@@ -140,12 +140,7 @@ RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runt
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│       PHASE 0: HyperScan / Masscan Reuse (Optional)         │
-│       Feeds discovered ports to Phase 1 (Speed/Stealth)     │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
+
 ┌─────────────────────────────────────────────────────────────┐
 │           PHASE 1: Nmap profile based on scan mode          │
 │          fast/normal/full define the base scan              │
