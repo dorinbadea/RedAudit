@@ -1,6 +1,6 @@
 # Release v4.5.14
 
-[![Ver en Español](https://img.shields.io/badge/lang-es-red)](https://github.com/dorinbadea/RedAudit/blob/v4.5.14/docs/releases/RELEASE_NOTES_v4.5.14_ES.md)
+[![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/v4.5.14/docs/releases/RELEASE_NOTES_v4.5.14_ES.md)
 
 ## Summary
 
