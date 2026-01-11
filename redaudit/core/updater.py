@@ -19,6 +19,7 @@ import hashlib
 import subprocess
 import tempfile
 import textwrap
+from pathlib import Path
 from typing import Optional, Tuple, Dict, List, Any
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
@@ -718,6 +719,47 @@ def _inject_default_lang(constants_file: str, lang: str) -> bool:
         return False
 
 
+def _ensure_version_file(
+    package_dir: str,
+    target_version: str,
+    *,
+    print_fn=None,
+    logger=None,
+) -> bool:
+    """
+    Ensure the package VERSION file matches the target version.
+
+    Returns True on success, False if an error occurs.
+    """
+    version_path = os.path.join(package_dir, "VERSION")
+    try:
+        existing = None
+        if os.path.isfile(version_path):
+            existing = Path(version_path).read_text(encoding="utf-8").strip()
+
+        if existing != target_version:
+            Path(version_path).write_text(f"{target_version}\n", encoding="utf-8")
+            if print_fn:
+                if existing:
+                    print_fn(
+                        f"  → VERSION mismatch ({existing}); forcing {target_version}",
+                        "WARNING",
+                    )
+                else:
+                    print_fn(f"  → VERSION missing; writing {target_version}", "WARNING")
+            if logger:
+                logger.warning(
+                    "VERSION mismatch (%s); forcing %s", existing or "missing", target_version
+                )
+        return True
+    except Exception as exc:
+        if print_fn:
+            print_fn(f"  → Could not update VERSION file: {exc}", "WARNING")
+        if logger:
+            logger.warning("Could not update VERSION file: %s", exc)
+        return False
+
+
 def perform_git_update(
     repo_path: str,
     lang: str = "en",
@@ -790,6 +832,23 @@ def perform_git_update(
             print_fn(f"  → [dry-run] would update to {target_ref} from GitHub", "INFO")
             print_fn("  → [dry-run] skipping git clone/install steps", "INFO")
             return (True, "Dry-run: update skipped")
+
+        # Require sudo when running from the system install wrapper.
+        if os.geteuid() != 0:
+            active_bin = ""
+            if sys.argv:
+                argv0 = sys.argv[0]
+                if os.path.isabs(argv0):
+                    active_bin = os.path.realpath(argv0)
+                elif os.path.basename(argv0) == "redaudit":
+                    resolved = shutil.which(argv0)
+                    if resolved:
+                        active_bin = os.path.realpath(resolved)
+            if active_bin == "/usr/local/bin/redaudit":
+                return (
+                    False,
+                    t_fn("update_requires_root_install"),
+                )
 
         # Step 1: Determine target commit for the current version tag
         try:
@@ -902,6 +961,12 @@ def perform_git_update(
             )
 
         print_fn("  → Clone complete and verified!", "OKGREEN")
+        _ensure_version_file(
+            os.path.join(clone_path, "redaudit"),
+            target_version,
+            print_fn=print_fn,
+            logger=logger,
+        )
 
         # Step 2: Run install script with user's language
         install_script = os.path.join(clone_path, "redaudit_install.sh")
@@ -977,6 +1042,12 @@ def perform_git_update(
 
             print_fn(f"  → Staging new files: {staged_install_path}", "INFO")
             shutil.copytree(source_module, staged_install_path)
+            _ensure_version_file(
+                staged_install_path,
+                target_version,
+                print_fn=print_fn,
+                logger=logger,
+            )
 
             # Inject language preference into staged copy
             staged_constants = os.path.join(staged_install_path, "utils", "constants.py")
@@ -1097,6 +1168,12 @@ def perform_git_update(
                 staged_home_path, "redaudit", "utils", "constants.py"
             )
             _inject_default_lang(staged_home_constants, lang)
+            _ensure_version_file(
+                os.path.join(staged_home_path, "redaudit"),
+                target_version,
+                print_fn=print_fn,
+                logger=logger,
+            )
 
             # Validate staged home copy
             staged_key_file = os.path.join(staged_home_path, "redaudit", "__init__.py")

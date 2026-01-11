@@ -34,6 +34,7 @@ from redaudit.core.updater import (  # noqa: E402
     format_release_notes_for_cli,
     get_repo_path,
     interactive_update_check,
+    _ensure_version_file,
     _inject_default_lang,
     _extract_release_items,
     _pause_for_restart_terminal,
@@ -131,6 +132,35 @@ class TestInjectDefaultLang(unittest.TestCase):
                 content = f.read()
 
             self.assertIn('DEFAULT_LANG = "en"', content)
+
+
+class TestEnsureVersionFile(unittest.TestCase):
+
+    def test_writes_missing_version_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            package_dir = os.path.join(tmpdir, "redaudit")
+            os.makedirs(package_dir, exist_ok=True)
+
+            ok = _ensure_version_file(package_dir, "4.6.5")
+
+            self.assertTrue(ok)
+            version_path = os.path.join(package_dir, "VERSION")
+            with open(version_path, "r", encoding="utf-8") as f:
+                self.assertEqual(f.read().strip(), "4.6.5")
+
+    def test_overwrites_mismatched_version_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            package_dir = os.path.join(tmpdir, "redaudit")
+            os.makedirs(package_dir, exist_ok=True)
+            version_path = os.path.join(package_dir, "VERSION")
+            with open(version_path, "w", encoding="utf-8") as f:
+                f.write("4.6.3\n")
+
+            ok = _ensure_version_file(package_dir, "4.6.4")
+
+            self.assertTrue(ok)
+            with open(version_path, "r", encoding="utf-8") as f:
+                self.assertEqual(f.read().strip(), "4.6.4")
 
 
 class TestReleaseNotesFormatting(unittest.TestCase):

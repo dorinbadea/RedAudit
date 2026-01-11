@@ -54,18 +54,18 @@ def _read_pyproject_version() -> Optional[str]:
 
 
 def _resolve_version() -> str:
-    # 1) Preferred: installed package metadata (pip/venv/CI).
+    # 1) Script-based install or source tree: packaged VERSION file.
+    file_version = _read_packaged_version_file()
+    if file_version:
+        return file_version
+
+    # 2) Installed package metadata (pip/venv/CI).
     try:
         from importlib.metadata import version as _get_version
 
         return _get_version("redaudit")
     except Exception:
         pass
-
-    # 2) Script-based install fallback: packaged VERSION file.
-    file_version = _read_packaged_version_file()
-    if file_version:
-        return file_version
 
     # 3) Dev/source fallback: parse pyproject if available.
     pyproject_version = _read_pyproject_version()

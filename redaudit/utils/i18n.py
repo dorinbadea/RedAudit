@@ -243,6 +243,10 @@ TRANSLATIONS = {
             "Could not verify local changes in {}. Update aborted for safety."
         ),
         "update_requires_root": "Update check requires sudo/root (or run with --skip-update-check).",
+        "update_requires_root_install": (
+            "System install update requires sudo/root. Re-run with sudo to update "
+            "/usr/local/bin/redaudit."
+        ),
         # NVD API Key configuration (v3.0.1)
         "nvd_key_set_cli": "✓ NVD API key set from command line",
         "nvd_key_invalid": "⚠️  Invalid NVD API key format",
@@ -656,6 +660,10 @@ TRANSLATIONS = {
             "No se pudieron verificar cambios locales en {}. Actualización abortada por seguridad."
         ),
         "update_requires_root": "La comprobación de actualizaciones requiere sudo/root (o usa --skip-update-check).",
+        "update_requires_root_install": (
+            "La actualización del sistema requiere sudo/root. Vuelve a ejecutar con sudo para "
+            "actualizar /usr/local/bin/redaudit."
+        ),
         # Configuración de API Key de NVD (v3.0.1)
         "nvd_key_set_cli": "✓ API key de NVD establecida desde línea de comandos",
         "nvd_key_invalid": "⚠️  Formato de API key de NVD inválido",

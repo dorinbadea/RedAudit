@@ -8,6 +8,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [v4.6.5] - 2026-01-11
+
+### Corregido
+
+- **Updater**: Forzar `VERSION` al tag objetivo durante la actualización para evitar banners obsoletos.
+- **Resolución de versión**: Priorizar `VERSION` empaquetado sobre metadata instalada para evitar sombras de pip.
+- **Flujo de actualización**: Bloquear actualizaciones del sistema sin sudo para `/usr/local/bin/redaudit` y evitar instalaciones parciales.
+
 ### v4.6.3 (2026-01-11)
 
 - **UX**: Añadido prompt "Trust HyperScan" faltante en el Asistente (Paso 2).
