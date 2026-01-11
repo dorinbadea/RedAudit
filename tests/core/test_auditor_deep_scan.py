@@ -168,6 +168,43 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
         self.assertIn("--top-ports", full_udp_cmd)
         self.assertIn("222", full_udp_cmd)
 
+    def test_trust_hyperscan_quiet_host_uses_sanity_check(self):
+        """v4.6.2: Quiet hosts with trust_hyperscan should use sanity check (top-1000) not -p-."""
+        app = InteractiveNetworkAuditor()
+        app.print_status = lambda *_args, **_kwargs: None
+        app.config["trust_hyperscan"] = True
+
+        # Mock empty discovery ports (mute host)
+        trusted_ports = []
+        ip = "192.168.1.99"
+
+        with patch("redaudit.core.auditor_scan.start_background_capture", return_value=None):
+            with patch("redaudit.core.auditor_scan.stop_background_capture", return_value=None):
+                with patch("redaudit.core.auditor_scan.output_has_identity", return_value=False):
+                    with patch(
+                        "redaudit.core.auditor_scan.extract_vendor_mac", return_value=(None, None)
+                    ):
+                        with patch("redaudit.core.auditor_scan.run_udp_probe", return_value=[]):
+                            with patch(
+                                "redaudit.core.auditor_scan.get_neighbor_mac", return_value=None
+                            ):
+                                with patch(
+                                    "redaudit.core.auditor_scan.run_nmap_command"
+                                ) as mock_run:
+                                    mock_run.return_value = {
+                                        "stdout": "",
+                                        "stderr": "",
+                                        "returncode": 0,
+                                    }
+
+                                    app.deep_scan_host(ip, trusted_ports=trusted_ports)
+
+                                    # Verify called with --top-ports 1000
+                                    args = mock_run.call_args[0][0]  # First arg is cmd list
+                                    self.assertIn("--top-ports", args)
+                                    self.assertIn("1000", args)
+                                    self.assertNotIn("-p-", args)
+
 
 if __name__ == "__main__":
     unittest.main()

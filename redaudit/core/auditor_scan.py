@@ -856,36 +856,45 @@ class AuditorScan:
 
             # v4.6.0: Trust HyperScan Optimization
             # If enabled and we have discovery ports, use them instead of -p-
-            if self.config.get("trust_hyperscan") and trusted_ports and len(trusted_ports) > 0:
-                port_list = ",".join(map(str, trusted_ports))
-                # Replace -p- with specific ports
-                cmd_p1[1] = "-p"
-                cmd_p1.insert(2, port_list)  # Insert port list after -p
-                # We need to remove the original -p- (which was index 1) - wait,
-                # cmd_p1 was ["nmap", "-p-", "--open", ...]
-                # Wait, original construction:
-                # cmd_p1 = ["nmap", "-A", "-Pn", "-p-", "--open", ...]
-                # Actually, looking at lines 846-855:
-                # cmd_p1 = ["nmap", "-A", "-Pn", "-p-", "--open", "--version-intensity", "9", safe_ip]
-                # Index of -p- is 3
-                cmd_p1[3] = (
-                    f"-p{port_list}"  # nmap allows -p80,443 without space if we want, or separate args
-                )
-                # Let's rebuild cleanly
-                cmd_p1 = [
-                    "nmap",
-                    "-A",
-                    "-Pn",
-                    f"-p{port_list}",
-                    "--open",
-                    "--version-intensity",
-                    "9",
-                    safe_ip,
-                ]
-                self.ui.print_status(
-                    f"⚡ Trust HyperScan active: Scanning {len(trusted_ports)} ports instead of 65k",
-                    "OKBLUE",
-                )
+            # v4.6.2: Handle "Mute" hosts (0 ports). If untrusted -> -p- (def). If trusted -> top-1000 sanity check.
+            if self.config.get("trust_hyperscan"):
+                if trusted_ports is not None:
+                    # Case A: Ports found (Speed++)
+                    if len(trusted_ports) > 0:
+                        port_list = ",".join(map(str, trusted_ports))
+                        cmd_p1 = [
+                            "nmap",
+                            "-A",
+                            "-Pn",
+                            f"-p{port_list}",
+                            "--open",
+                            "--version-intensity",
+                            "9",
+                            safe_ip,
+                        ]
+                        self.ui.print_status(
+                            f"⚡ Trust HyperScan active: Scanning {len(trusted_ports)} ports instead of 65k",
+                            "OKBLUE",
+                        )
+                    # Case B: No ports found (Sanity Check)
+                    else:
+                        # Scan top 1000 ports to be safe, but fast (skip 64k empty ports)
+                        cmd_p1 = [
+                            "nmap",
+                            "-A",
+                            "-Pn",
+                            "--top-ports",
+                            "1000",
+                            "--open",
+                            "--version-intensity",
+                            "9",
+                            safe_ip,
+                        ]
+                        self.ui.print_status(
+                            "⚡ Trust HyperScan active: 0 ports found, sanity checking top-1000",
+                            "OKBLUE",
+                        )
+
             self.ui.print_status(
                 self.ui.t("deep_identity_cmd", safe_ip, " ".join(cmd_p1), "120-180"), "WARNING"
             )

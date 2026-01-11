@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [v4.6.2] - 2026-01-11
+
+### Added
+
+- **Trust HyperScan Optimization (Quiet Hosts)**: Now handles "mute" hosts (0 ports) intelligently. Instead of falling back to a full 65k port scan, it performs a sanity check on top 1000 ports if "Trust HyperScan" is enabled.
+
 ## [4.6.0] - 2026-01-11
 
 ### Added
