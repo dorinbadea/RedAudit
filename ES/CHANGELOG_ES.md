@@ -8,6 +8,12 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [v4.6.6] - 2026-01-11
+
+### Cambiado
+
+- **UX**: Añadido el prompt "Trust HyperScan" en el perfil Exhaustivo (defecto: No).
+
 ## [v4.6.5] - 2026-01-11
 
 ### Corregido
