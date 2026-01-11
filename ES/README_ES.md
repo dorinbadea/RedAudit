@@ -271,13 +271,25 @@ Después de instalar, recarga la configuración de tu shell:
 
 **O simplemente abre una nueva ventana de terminal.**
 
-### Verificación Post-Instalación
+### Verificacion Post-Instalacion
 
 ```bash
-which redaudit            # Debería devolver: /usr/local/bin/redaudit
-redaudit --version        # Debería mostrar la versión actual
-bash redaudit_verify.sh   # Verificación completa de integridad
+which redaudit            # Deberia devolver: /usr/local/bin/redaudit
+redaudit --version        # Deberia mostrar la version actual
+bash redaudit_verify.sh   # Verificacion completa de integridad
 ```
+
+### Actualizar RedAudit
+
+Despues de descargar nuevo codigo, vuelve a ejecutar el instalador:
+
+```bash
+cd RedAudit
+git pull origin main
+sudo bash redaudit_install.sh -y   # -y para modo no interactivo
+```
+
+> **Nota para Ubuntu 24.04+ (Noble):** El instalador usa paquetes del sistema (`python3-*`) en lugar de pip, evitando errores de `externally-managed-environment`. **No** uses `pip install` directamente en estos sistemas.
 
 ---
 

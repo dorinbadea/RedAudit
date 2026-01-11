@@ -281,6 +281,18 @@ redaudit --version        # Should show current version
 bash redaudit_verify.sh   # Full integrity check
 ```
 
+### Updating RedAudit
+
+After pulling new code, re-run the installer to apply changes:
+
+```bash
+cd RedAudit
+git pull origin main
+sudo bash redaudit_install.sh -y   # -y for non-interactive mode
+```
+
+> **Note for Ubuntu 24.04+ (Noble):** The installer uses system packages (`python3-*`) instead of pip, avoiding `externally-managed-environment` errors. Do **not** use `pip install` directly on these systems.
+
 ---
 
 ## Usage

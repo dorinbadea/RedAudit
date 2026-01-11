@@ -841,33 +841,43 @@ class AuditorScan:
         try:
             # v4.5.17: Smart infrastructure detection for optimized deep scan
             # Uses existing signals instead of hardcoded vendor list
+            # IMPORTANT: Suspicious hosts ALWAYS get full -p- scan
             is_infra_device = False
+            is_suspicious = False
             infra_signals = []
             host_obj = self.scanner.get_or_create_host(safe_ip)
 
             if host_obj:
+                # Check if host is flagged as suspicious (from smart_scan)
+                smart_scan = getattr(host_obj, "smart_scan", {}) or {}
+                reasons = smart_scan.get("reasons", []) or []
+                if "suspicious_service" in reasons or smart_scan.get("suspicious_service"):
+                    is_suspicious = True
+
                 # Signal 1: Device type hints from initial scan
                 hints = getattr(host_obj, "device_type_hints", []) or []
                 infra_hints = {"router", "gateway", "network_device", "firewall", "switch"}
                 if any(h in infra_hints for h in hints):
-                    is_infra_device = True
                     infra_signals.append("device_type")
 
-                # Signal 2: Infrastructure services detected
+                # Signal 2: Infrastructure services detected (DNS, DHCP, etc.)
                 services = getattr(host_obj, "services", []) or []
                 infra_services = {"dns", "dhcp", "snmp", "tftp", "ntp", "sip", "upnp", "ssdp"}
                 for svc in services:
                     svc_name = (svc.get("name") or "").lower() if isinstance(svc, dict) else ""
                     if any(inf_svc in svc_name for inf_svc in infra_services):
-                        is_infra_device = True
                         infra_signals.append(f"service:{svc_name}")
                         break
 
-                # Signal 3: High port count (>10 ports) suggests network device
+                # Signal 3: High port count (>15 ports) suggests network device
+                # (conservative threshold to avoid false positives on suspicious hosts)
                 ports = getattr(host_obj, "ports", []) or []
-                if len(ports) > 10:
-                    is_infra_device = True
+                if len(ports) > 15:
                     infra_signals.append(f"high_ports:{len(ports)}")
+
+                # Only mark as infrastructure if we have signals AND host is NOT suspicious
+                if infra_signals and not is_suspicious:
+                    is_infra_device = True
 
             if is_infra_device:
                 # Infrastructure device: use top-ports 1000 with shorter timeout (2 min vs 6+ min)
