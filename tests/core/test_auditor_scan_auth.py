@@ -20,6 +20,8 @@ from redaudit.core.credentials import Credential
 
 # Minimal test class that mixes in AuditorScan
 class TestAuditor(AuditorScan):
+    __test__ = False
+
     def __init__(self, config=None):
         self.config = config or {}
         self.ui = MagicMock()

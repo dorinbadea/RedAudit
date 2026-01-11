@@ -326,7 +326,15 @@ class TestTopologyRunCmdDirect(unittest.TestCase):
             with patch(
                 "redaudit.core.topology.asyncio.get_running_loop", side_effect=RuntimeError()
             ):
-                with patch("redaudit.core.topology.asyncio.run", side_effect=Exception("crash")):
+
+                def _raise_runtime_error(coro, *_args, **_kwargs):
+                    try:
+                        coro.close()
+                    except Exception:
+                        pass
+                    raise Exception("crash")
+
+                with patch("redaudit.core.topology.asyncio.run", side_effect=_raise_runtime_error):
                     logger = MagicMock()
                     discover_topology([], [], logger=logger)
                     logger.warning.assert_called()
