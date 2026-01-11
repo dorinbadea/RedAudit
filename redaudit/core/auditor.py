@@ -1590,8 +1590,9 @@ class InteractiveNetworkAuditor:
                 self.config["hyperscan_mode"] = "connect"
             else:
                 self.config["hyperscan_mode"] = "auto"
-            self.config["trust_hyperscan"] = (
-                False  # v4.6.0: Exhaustive = Paranoid (check everything)
+            self.config["trust_hyperscan"] = self.ask_yes_no(
+                self.ui.t("trust_hyperscan_q"),
+                default="no",
             )
             return
 
