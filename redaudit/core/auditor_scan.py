@@ -1105,23 +1105,22 @@ class AuditorScan:
             and not self.config.get("stealth")
             and not self.config.get("no_hyperscan_first")
         )
+
+        # v4.5.17: Always check for HyperScan ports (for port preservation, even if not in full mode)
         discovery_ports: List[int] = []
+        if "_hyperscan_discovery_ports" in self.__dict__:
+            discovery_ports = self._hyperscan_discovery_ports.get(safe_ip, [])
 
-        if hyperscan_first_enabled:
-            # Check for pre-discovered ports (use __dict__ to avoid __getattr__ recursion)
-            if "_hyperscan_discovery_ports" in self.__dict__:
-                discovery_ports = self._hyperscan_discovery_ports.get(safe_ip, [])
-
-            if discovery_ports:
-                # Use pre-discovered ports for nmap fingerprinting (-A includes -sV -sC -O)
-                port_list = ",".join(str(p) for p in discovery_ports)
-                args = f"-A -Pn -p {port_list}"
-                timing = self.config.get("nmap_timing")
-                if timing:
-                    args = f"-T{timing} {args}"
-            else:
-                # No discovery results - fall back to standard nmap scan
-                args = get_nmap_arguments(self.config["scan_mode"], self.config)
+        if hyperscan_first_enabled and discovery_ports:
+            # Use pre-discovered ports for nmap fingerprinting (-A includes -sV -sC -O)
+            port_list = ",".join(str(p) for p in discovery_ports)
+            args = f"-A -Pn -p {port_list}"
+            timing = self.config.get("nmap_timing")
+            if timing:
+                args = f"-T{timing} {args}"
+        else:
+            # No discovery results or not in full mode - fall back to standard nmap scan
+            args = get_nmap_arguments(self.config["scan_mode"], self.config)
 
         self._set_ui_detail(f"[nmap] {safe_ip} ({mode_label})")
         self.logger.debug("Nmap scan %s %s", safe_ip, args)
