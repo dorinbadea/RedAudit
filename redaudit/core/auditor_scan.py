@@ -839,23 +839,76 @@ class AuditorScan:
         )
 
         try:
-            # Phase 1: Aggressive TCP
-            cmd_p1 = [
-                "nmap",
-                "-A",
-                "-Pn",
-                "-p-",
-                "--open",
-                "--version-intensity",
-                "9",
-                safe_ip,
-            ]
+            # v4.5.17: Smart infrastructure detection for optimized deep scan
+            # Uses existing signals instead of hardcoded vendor list
+            is_infra_device = False
+            infra_signals = []
+            host_obj = self.scanner.get_or_create_host(safe_ip)
+
+            if host_obj:
+                # Signal 1: Device type hints from initial scan
+                hints = getattr(host_obj, "device_type_hints", []) or []
+                infra_hints = {"router", "gateway", "network_device", "firewall", "switch"}
+                if any(h in infra_hints for h in hints):
+                    is_infra_device = True
+                    infra_signals.append("device_type")
+
+                # Signal 2: Infrastructure services detected
+                services = getattr(host_obj, "services", []) or []
+                infra_services = {"dns", "dhcp", "snmp", "tftp", "ntp", "sip", "upnp", "ssdp"}
+                for svc in services:
+                    svc_name = (svc.get("name") or "").lower() if isinstance(svc, dict) else ""
+                    if any(inf_svc in svc_name for inf_svc in infra_services):
+                        is_infra_device = True
+                        infra_signals.append(f"service:{svc_name}")
+                        break
+
+                # Signal 3: High port count (>10 ports) suggests network device
+                ports = getattr(host_obj, "ports", []) or []
+                if len(ports) > 10:
+                    is_infra_device = True
+                    infra_signals.append(f"high_ports:{len(ports)}")
+
+            if is_infra_device:
+                # Infrastructure device: use top-ports 1000 with shorter timeout (2 min vs 6+ min)
+                deep_obj["strategy"] = "adaptive_v2.8_infra"
+                deep_obj["infra_signals"] = infra_signals
+                cmd_p1 = [
+                    "nmap",
+                    "-A",
+                    "-Pn",
+                    "--top-ports",
+                    "1000",
+                    "--open",
+                    "--version-intensity",
+                    "5",
+                    safe_ip,
+                ]
+                timeout_p1 = 120  # 2 minutes for infrastructure devices
+                self.ui.print_status(
+                    f"[deep] {safe_ip} (infrastructure device detected: {', '.join(infra_signals)})",
+                    "INFO",
+                )
+            else:
+                # Standard device: full port scan
+                cmd_p1 = [
+                    "nmap",
+                    "-A",
+                    "-Pn",
+                    "-p-",
+                    "--open",
+                    "--version-intensity",
+                    "9",
+                    safe_ip,
+                ]
+                timeout_p1 = DEEP_SCAN_TIMEOUT
+
             self.ui.print_status(
                 self.ui.t("deep_identity_cmd", safe_ip, " ".join(cmd_p1), "120-180"), "WARNING"
             )
             rec1 = run_nmap_command(
                 cmd_p1,
-                DEEP_SCAN_TIMEOUT,
+                timeout_p1,
                 safe_ip,
                 deep_obj,
                 logger=self.logger,
