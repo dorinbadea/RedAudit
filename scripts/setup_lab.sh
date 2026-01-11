@@ -76,11 +76,13 @@ install_targets() {
 
     # === PHASE 4 GROUP (SSH, SMB, SNMP, AD, SCADA, IoT) ===
 
-    # .20 SSH Target (Ubuntu with synced password)
+    # .20 SSH Target (linuxserver/openssh-server with password auth)
     echo -e "${YELLOW}[*] Installing target-ssh-lynis (.20)...${NC}"
     docker run -d --name target-ssh-lynis --net "$LAB_NET" --ip 172.20.0.20 \
-        -e SSH_ENABLE=true -e USER_PASSWORD=redaudit -e USER_NAME=auditor \
-        rastasheep/ubuntu-sshd >/dev/null 2>&1 || echo "target-ssh-lynis exists"
+        -e PUID=1000 -e PGID=1000 \
+        -e USER_NAME=auditor -e USER_PASSWORD=redaudit \
+        -e PASSWORD_ACCESS=true \
+        linuxserver/openssh-server >/dev/null 2>&1 || echo "target-ssh-lynis exists"
 
     # .30 SMB Server (elswork/samba with correct syntax)
     echo -e "${YELLOW}[*] Installing target-windows (.30) - SMB Server...${NC}"

@@ -1174,12 +1174,37 @@ class AuditorScan:
                 deep = None
                 # But we must update the host object later to indicate pending deep scan
                 pass
+
+                # v4.5.16: Preserve HyperScan-discovered ports when nmap doesn't find host
+                preserved_ports = []
+                if discovery_ports:
+                    for mp in discovery_ports:
+                        preserved_ports.append(
+                            {
+                                "port": mp,
+                                "protocol": "tcp",
+                                "service": "hyperscan-discovered",
+                                "product": "",
+                                "version": "",
+                                "extrainfo": "(Port found by HyperScan, not confirmed by nmap)",
+                                "cpe": [],
+                                "is_web_service": mp in (80, 443, 8080, 8443, 3000, 8000),
+                            }
+                        )
+                    if self.logger:
+                        self.logger.info(
+                            "Host %s not in nmap results, preserving %d HyperScan ports: %s",
+                            safe_ip,
+                            len(discovery_ports),
+                            discovery_ports[:10],
+                        )
+
                 base = {
                     "ip": safe_ip,
                     "hostname": "",
-                    "ports": [],
-                    "web_ports_count": 0,
-                    "total_ports_found": 0,
+                    "ports": preserved_ports,
+                    "web_ports_count": sum(1 for p in preserved_ports if p.get("is_web_service")),
+                    "total_ports_found": len(preserved_ports),
                 }
                 if self.config.get("low_impact_enrichment"):
                     base["phase0_enrichment"] = phase0_enrichment or {}

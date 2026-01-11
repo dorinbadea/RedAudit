@@ -114,10 +114,12 @@ docker run -d --name bwapp --net lab_seguridad --ip 172.20.0.15 raesene/bwapp
 ### Grupo Phase 4 (SSH, SMB, SNMP, AD, SCADA)
 
 ```bash
-# .20 SSH con contrasena sincronizada
+# .20 SSH con autenticacion por contrasena (linuxserver/openssh-server)
 docker run -d --name target-ssh-lynis --net lab_seguridad --ip 172.20.0.20 \
-  -e SSH_ENABLE=true -e USER_PASSWORD=redaudit -e USER_NAME=auditor \
-  rastasheep/ubuntu-sshd
+  -e PUID=1000 -e PGID=1000 \
+  -e USER_NAME=auditor -e USER_PASSWORD=redaudit \
+  -e PASSWORD_ACCESS=true \
+  linuxserver/openssh-server
 
 # .30 Servidor SMB (elswork/samba - requiere volumen + args runtime)
 sudo mkdir -p /srv/lab_smb/Public
