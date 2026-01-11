@@ -355,7 +355,8 @@ def test_wizard_exhaustive_profile():
         # 2. SSH? True
         # 3. SMB? False
         # 4. SNMP? False
-        with patch.object(auditor, "ask_yes_no", side_effect=[True, True, False, False]):
+        # 5. Trust HyperScan? False (default in Exhaustive)
+        with patch.object(auditor, "ask_yes_no", side_effect=[True, True, False, False, False]):
             with patch("builtins.input", return_value=""):
                 auditor._configure_scan_interactive({})
                 assert auditor.config["scan_mode"] == "completo"
