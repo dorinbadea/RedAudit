@@ -195,6 +195,16 @@ class TestSIEM(unittest.TestCase):
         self.assertIn("web", tags)
         self.assertIn("http", tags)
 
+    def test_generate_host_tags_web_ports_count(self):
+        """Test tag generation when web_ports_count is present."""
+        host = {
+            "ip": "192.168.1.10",
+            "ports": [],
+            "web_ports_count": 1,
+        }
+        tags = generate_host_tags(host)
+        self.assertIn("web", tags)
+
     def test_generate_host_tags_database(self):
         """Test tag generation for database server."""
         host = {"ip": "192.168.1.1", "ports": [{"port": 3306, "service": "mysql"}]}

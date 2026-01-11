@@ -8,6 +8,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [v4.6.8] - 2026-01-12
+
+### Corregido
+
+- **Progreso Vulns**: No actualizar barras de progreso de hosts ya finalizados para evitar movimientos engañosos.
+- **Tags Web**: Añadir la etiqueta `web` cuando existe `web_ports_count`, aunque falten flags de puerto.
+
 ## [v4.6.7] - 2026-01-11
 
 ### Corregido

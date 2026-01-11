@@ -8,6 +8,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [v4.6.8] - 2026-01-12
+
+### Fixed
+
+- **Vuln Progress**: Stop updating progress bars after a host finishes to avoid misleading movement.
+- **Web Tags**: Add the `web` tag when `web_ports_count` is present, even if port flags are missing.
+
 ## [v4.6.7] - 2026-01-11
 
 ### Fixed

@@ -97,9 +97,10 @@ Mejoras menores identificadas durante la validación Gold Master de v4.4.0.
 
 | Tarea | Estado | Descripción |
 | :--- | :--- | :--- |
-| **P7.1 Completitud Barras de Progreso** | Planificado | Asegurar que las barras de vuln scan lleguen al 100% incluso cuando los objetivos dan timeout. |
+| **P7.1 Completitud Barras de Progreso** | Hecho (v4.6.8) | Evitar que las barras de vuln scan se actualicen tras finalizar un host para no confundir. |
 | **P7.2 Visibilidad Timeout Nikto** | Planificado | Mostrar indicador "timeout" en lugar de progreso estancado cuando Nikto excede el umbral. |
 | **P7.3 Reporte JSON en Streaming** | Planificado | Escritura incremental para reportes >500MB en redes muy grandes. |
+| **P7.4 Backfill de Tag Web** | Hecho (v4.6.8) | Añadir la etiqueta `web` cuando existe `web_ports_count` aunque falten flags de puerto. |
 
 ---
 

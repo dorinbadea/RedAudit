@@ -105,9 +105,10 @@ Minor improvements identified during v4.4.0 Gold Master validation.
 
 | Task | Status | Description |
 | :--- | :--- | :--- |
-| **P7.1 Progress Bar Completion** | Planned | Ensure vuln scan progress bars reach 100% even when targets timeout. |
+| **P7.1 Progress Bar Completion** | Done (v4.6.8) | Stop updating vuln scan progress after a host finishes to prevent misleading movement. |
 | **P7.2 Nikto Timeout Visibility** | Planned | Show "timeout" indicator instead of stalled progress when Nikto exceeds threshold. |
 | **P7.3 Streaming JSON Report** | Planned | Incremental write for reports >500MB on very large networks. |
+| **P7.4 Web Tag Backfill** | Done (v4.6.8) | Add the `web` tag when `web_ports_count` is present even if port flags are missing. |
 
 ---
 

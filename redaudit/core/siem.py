@@ -601,6 +601,10 @@ def generate_host_tags(host_record: Dict, asset_type: Optional[str] = None) -> L
         if port.get("is_web_service"):
             tags.add("web")
 
+    # Add web tag if web ports were detected but ports lack web flags
+    if host_record.get("web_ports_count", 0) > 0:
+        tags.add("web")
+
     # Add status-based tags
     status = host_record.get("status", "")
     if status == "filtered":

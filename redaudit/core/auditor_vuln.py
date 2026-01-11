@@ -697,6 +697,7 @@ class AuditorVuln:
                                 host_tasks[ip] = (task_id, time.time())
 
                             pending = set(futures)
+                            completed_hosts = set()
                             while pending:
                                 if self.interrupted:
                                     for pending_fut in pending:
@@ -706,22 +707,24 @@ class AuditorVuln:
                                 completed, pending = wait(
                                     pending, timeout=0.25, return_when=FIRST_COMPLETED
                                 )
+                                completed_ips = {futures[f] for f in completed}
 
                                 # Update progress details from host_status_map
                                 now = time.time()
                                 for ip, status in host_status_map.items():
+                                    if ip in completed_hosts or ip in completed_ips:
+                                        continue
                                     task_id, start_time = host_tasks[ip]
                                     budget = budgets.get(ip, 300.0)
                                     elapsed = now - start_time
                                     # Estimate percentage based on budget (cap 95%)
                                     pct = min(95, int((elapsed / max(1, budget)) * 100))
                                     # Update bar: If done, it will be handled in completed loop
-                                    if ip not in [futures[f] for f in completed]:
-                                        progress.update(
-                                            task_id,
-                                            completed=pct,
-                                            detail=f"[yellow]{status}[/]",
-                                        )
+                                    progress.update(
+                                        task_id,
+                                        completed=pct,
+                                        detail=f"[yellow]{status}[/]",
+                                    )
 
                                 for fut in completed:
                                     host_ip = futures[fut]
@@ -760,6 +763,7 @@ class AuditorVuln:
                                                 description=f"[green]✅ {host_ip} (Clean)",
                                                 detail="",
                                             )
+                                        completed_hosts.add(host_ip)
                                     except Exception as exc:
                                         self.logger.error(
                                             "Vuln worker error for %s: %s", host_ip, exc
@@ -770,6 +774,7 @@ class AuditorVuln:
                                             description=f"[red]❌ {host_ip}",
                                             detail=str(exc),
                                         )
+                                        completed_hosts.add(host_ip)
                                     done += 1
 
                             # v4.5.3: Ensure all progress bars are at 100% after loop completes
