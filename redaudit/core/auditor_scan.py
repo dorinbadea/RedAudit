@@ -86,12 +86,16 @@ class AuditorScan:
     interrupted: bool
     scanner: NetworkScanner
     ui: Any  # Defined in Auditor subclass, typed as Any to satisfy mypy
+    proxy_manager: Any  # Defined in Auditor subclass
     # v4.1: Pre-discovered ports from sequential HyperScan-First phase
     _hyperscan_discovery_ports: Dict[str, List[int]]
 
     if TYPE_CHECKING:
 
         def _coerce_text(self, value: object) -> str:
+            raise NotImplementedError
+
+        def _set_ui_detail(self, detail: str) -> None:
             raise NotImplementedError
 
     # v4.0: Authenticated Scanning Helpers
@@ -823,7 +827,7 @@ class AuditorScan:
 
         self.current_phase = f"deep:{safe_ip}"
         self._set_ui_detail(f"[deep] {safe_ip} tcp")
-        deep_obj = {"strategy": "adaptive_v2.8", "commands": []}
+        deep_obj: Dict[str, Any] = {"strategy": "adaptive_v2.8", "commands": []}
 
         self.ui.print_status(
             self.ui.t("deep_identity_start", safe_ip, self.ui.t("deep_strategy_adaptive")),
@@ -885,7 +889,7 @@ class AuditorScan:
             self.ui.print_status(
                 self.ui.t("deep_identity_cmd", safe_ip, " ".join(cmd_p1), "120-180"), "WARNING"
             )
-            rec1 = run_nmap_command(
+            rec1: Dict[str, Any] = run_nmap_command(
                 cmd_p1,
                 DEEP_SCAN_TIMEOUT,
                 safe_ip,
