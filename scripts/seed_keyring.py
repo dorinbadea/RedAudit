@@ -28,7 +28,7 @@ SSH_CREDENTIALS = [
 
 # SMB/Windows Credentials (spray list)
 SMB_CREDENTIALS = [
-    ("Administrator", "P@ssw0rd123", "REDAUDIT", "172.20.0.60 samba-ad"),  # nosec
+    ("Administrator", "P@ssw0rd123", "REDAUDITAD.LABORATORIO.LAN", "172.20.0.60 samba-ad"),  # nosec
     ("docker", "password123", None, "172.20.0.30 target-windows"),
     ("msfadmin", "msfadmin", None, "172.20.0.11 metasploitable"),  # nosec
 ]

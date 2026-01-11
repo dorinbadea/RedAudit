@@ -7,7 +7,7 @@
 # This script sets up the "lab_seguridad" Docker environment used for testing RedAudit.
 # Network: 172.20.0.0/24
 #
-# Updated: 2026-01-10 - Phase 4 verified commands
+# Updated: 2026-01-11 - Verified working commands from real deployment
 
 LAB_NET="lab_seguridad"
 LAB_SUBNET="172.20.0.0/24"
@@ -82,11 +82,15 @@ install_targets() {
         -e SSH_ENABLE=true -e USER_PASSWORD=redaudit -e USER_NAME=auditor \
         rastasheep/ubuntu-sshd >/dev/null 2>&1 || echo "target-ssh-lynis exists"
 
-    # .30 SMB Simulator (replaces heavy Windows 11)
-    echo -e "${YELLOW}[*] Installing target-windows (.30) - SMB Simulator...${NC}"
+    # .30 SMB Server (elswork/samba with correct syntax)
+    echo -e "${YELLOW}[*] Installing target-windows (.30) - SMB Server...${NC}"
+    sudo mkdir -p /srv/lab_smb/Public 2>/dev/null
+    sudo chown -R "$(id -u):$(id -g)" /srv/lab_smb 2>/dev/null
     docker run -d --name target-windows --net "$LAB_NET" --ip 172.20.0.30 \
-        -e USER="docker" -e PASS="password123" \
-        dperson/samba -u "docker;password123" -s "Public;/tmp;yes;no;yes;all;none" \
+        -v /srv/lab_smb/Public:/share/public \
+        elswork/samba \
+        -u "$(id -u):$(id -g):docker:docker:password123" \
+        -s "Public:/share/public:rw:docker" \
         >/dev/null 2>&1 || echo "target-windows exists"
 
     # .40 SNMP v3 Target
@@ -105,12 +109,20 @@ install_targets() {
     docker run -d --name conpot-ics --net "$LAB_NET" --ip 172.20.0.51 \
         honeynet/conpot:latest >/dev/null 2>&1 || echo "conpot-ics exists"
 
-    # .60 Samba AD (Active Directory with unique realm/domain)
-    echo -e "${YELLOW}[*] Installing samba-ad (.60) - Takes 3-5 min to provision...${NC}"
-    docker run -d --name samba-ad --net "$LAB_NET" --ip 172.20.0.60 \
-        --hostname dc1 --privileged \
-        -e REALM=AD.LAB.LOCAL -e DOMAIN=REDAUDITAD \
-        -e ADMIN_PASSWORD=P@ssw0rd123 -e DNS_FORWARDER=8.8.8.8 \
+    # .60 Samba AD DC (nowsci/samba-domain with correct env vars)
+    echo -e "${YELLOW}[*] Installing samba-ad (.60) - AD DC (takes 3-5 min)...${NC}"
+    docker volume create samba_ad_data >/dev/null 2>&1
+    docker volume create samba_ad_cfg >/dev/null 2>&1
+    docker run -d --name samba-ad --hostname dc1 --privileged \
+        --net "$LAB_NET" --ip 172.20.0.60 \
+        -e "DOMAIN=REDAUDITAD.LABORATORIO.LAN" \
+        -e "DOMAINPASS=P@ssw0rd123" \
+        -e "HOSTIP=172.20.0.60" \
+        -e "DNSFORWARDER=8.8.8.8" \
+        -v samba_ad_data:/var/lib/samba \
+        -v samba_ad_cfg:/etc/samba/external \
+        --dns 172.20.0.60 --dns 8.8.8.8 \
+        --dns-search redauditad.laboratorio.lan \
         nowsci/samba-domain >/dev/null 2>&1 || echo "samba-ad exists"
 
     # .70 IoT Camera (GoAhead RCE)
@@ -143,12 +155,14 @@ stop_lab() {
 
 remove_lab() {
     check_docker
-    echo -e "${RED}[!] WARNING: This will remove all lab containers.${NC}"
+    echo -e "${RED}[!] WARNING: This will remove all lab containers and volumes.${NC}"
     read -p "Are you sure? [y/N] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         docker rm -f $(docker ps -aq --filter "network=$LAB_NET") 2>/dev/null
         docker network rm "$LAB_NET" 2>/dev/null
+        docker volume rm samba_ad_data samba_ad_cfg 2>/dev/null
+        sudo rm -rf /srv/lab_smb 2>/dev/null
         echo -e "${GREEN}[OK] Lab removed.${NC}"
     fi
 }

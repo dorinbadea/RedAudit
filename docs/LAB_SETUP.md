@@ -90,11 +90,11 @@ done
 | **.14** | `hackazon` | E-commerce | `admin` | `admin` | SQLi, XSS |
 | **.15** | `bwapp` | Web | `bee` | `bug` | Buggy App |
 | **.20** | `target-ssh-lynis` | Ubuntu Hardened | `auditor` | `redaudit` | SSH Compliance |
-| **.30** | `target-windows` | SMB Simulator | `docker` | `password123` | Port 445 |
+| **.30** | `target-windows` | SMB Server | `docker` | `password123` | Port 445 |
 | **.40** | `target-snmp` | SNMP v3 | `admin-snmp` | `auth_pass_123` | SHA/AES |
 | **.50** | `openplc-scada` | SCADA | `openplc` | `openplc` | Modbus TCP |
 | **.51** | `conpot-ics` | ICS Honeypot | *(anon)* | *(anon)* | S7/Modbus |
-| **.60** | `samba-ad` | Active Directory | `Administrator` | `P@ssw0rd123` | `AD.LAB.LOCAL` |
+| **.60** | `samba-ad` | Active Directory DC | `Administrator` | `P@ssw0rd123` | `REDAUDITAD.LABORATORIO.LAN` |
 | **.70** | `iot-camera` | IoT Camera | `admin` | `admin` | GoAhead RCE |
 | **.71** | `iot-router` | IoT Router | `admin` | `password` | Web/IoT |
 
@@ -119,10 +119,14 @@ docker run -d --name target-ssh-lynis --net lab_seguridad --ip 172.20.0.20 \
   -e SSH_ENABLE=true -e USER_PASSWORD=redaudit -e USER_NAME=auditor \
   rastasheep/ubuntu-sshd
 
-# .30 SMB Simulator (replaces heavy Windows 11)
+# .30 SMB Server (elswork/samba - requires volume + runtime args)
+sudo mkdir -p /srv/lab_smb/Public
+sudo chown -R "$(id -u):$(id -g)" /srv/lab_smb
 docker run -d --name target-windows --net lab_seguridad --ip 172.20.0.30 \
-  -e USER="docker" -e PASS="password123" \
-  dperson/samba -u "docker;password123" -s "Public;/tmp;yes;no;yes;all;none"
+  -v /srv/lab_smb/Public:/share/public \
+  elswork/samba \
+  -u "$(id -u):$(id -g):docker:docker:password123" \
+  -s "Public:/share/public:rw:docker"
 
 # .40 SNMP v3
 docker run -d --name target-snmp --net lab_seguridad --ip 172.20.0.40 polinux/snmpd
@@ -132,11 +136,19 @@ docker run -d --name openplc-scada --net lab_seguridad --ip 172.20.0.50 \
   -p 8443:8443 ghcr.io/autonomy-logic/openplc-runtime:latest
 docker run -d --name conpot-ics --net lab_seguridad --ip 172.20.0.51 honeynet/conpot:latest
 
-# .60 Samba AD (unique realm/domain to avoid provisioning errors)
-docker run -d --name samba-ad --net lab_seguridad --ip 172.20.0.60 \
-  --hostname dc1 --privileged \
-  -e REALM=AD.LAB.LOCAL -e DOMAIN=REDAUDITAD \
-  -e ADMIN_PASSWORD=P@ssw0rd123 -e DNS_FORWARDER=8.8.8.8 \
+# .60 Samba AD DC (requires volumes and correct env vars)
+docker volume create samba_ad_data
+docker volume create samba_ad_cfg
+docker run -d --name samba-ad --hostname dc1 --privileged \
+  --net lab_seguridad --ip 172.20.0.60 \
+  -e "DOMAIN=REDAUDITAD.LABORATORIO.LAN" \
+  -e "DOMAINPASS=P@ssw0rd123" \
+  -e "HOSTIP=172.20.0.60" \
+  -e "DNSFORWARDER=8.8.8.8" \
+  -v samba_ad_data:/var/lib/samba \
+  -v samba_ad_cfg:/etc/samba/external \
+  --dns 172.20.0.60 --dns 8.8.8.8 \
+  --dns-search redauditad.laboratorio.lan \
   nowsci/samba-domain
 
 # .70-.71 IoT
