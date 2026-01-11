@@ -280,6 +280,27 @@ def test_tee_stream_should_skip_line_progress_minor_change():
     assert result2 is True  # Skip minor change
 
 
+def test_tee_stream_should_skip_line_progress_bar_duplicate():
+    """Test _should_skip_line with repeated rich progress bars."""
+    terminal = MagicMock()
+    log_file = MagicMock()
+
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
+
+    line = "✅ 192.168.178.24 ━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:00:03 0:00:00\n"
+    result1 = tee._should_skip_line(line)
+    assert result1 is False  # Keep first occurrence
+
+    result2 = tee._should_skip_line(line)
+    assert result2 is True  # Skip duplicate
+
+    result3 = tee._should_skip_line(
+        "192.168.178.24 ━━━━━━━━━━━━━━━━━━━━━━━━━ 95% 0:00:10 0:00:00\n"
+    )
+    assert result3 is False  # Keep pct change
+
+
 def test_tee_stream_flush_with_heartbeat_count():
     """Test flush with heartbeat count (lines 394-395)."""
     terminal = MagicMock()

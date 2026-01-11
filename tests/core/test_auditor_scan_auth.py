@@ -49,6 +49,7 @@ class TestPhase4Scanning(unittest.TestCase):
 
         # Setup Config
         self.auditor.config = {
+            "auth_enabled": True,
             "auth_ssh_user": "root",
             "auth_ssh_key": "/tmp/key",
             "auth_ssh_trust_keys": True,
@@ -156,6 +157,7 @@ class TestPhase4Scanning(unittest.TestCase):
 
         # Setup Config
         self.auditor.config = {
+            "auth_enabled": True,
             "auth_smb_user": "admin",
             "auth_smb_pass": "pass123",
             "timeout": 5,
@@ -225,6 +227,7 @@ class TestPhase4Scanning(unittest.TestCase):
 
         # Setup Config
         self.auditor.config = {
+            "auth_enabled": True,
             "auth_snmp_user": "snmpuser",
             "auth_snmp_pass": "auth123",  # or auth proto/pass
             "timeout": 5,
@@ -285,6 +288,7 @@ class TestPhase4Scanning(unittest.TestCase):
 
         # Config
         self.auditor.config = {
+            "auth_enabled": True,
             "auth_ssh_user": "root",
             "auth_ssh_key": "/tmp/key",
             "auth_ssh_trust_keys": True,

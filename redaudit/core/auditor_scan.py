@@ -1399,10 +1399,14 @@ class AuditorScan:
                     )
 
             # v4.0: Authenticated Scanning Integration (Phase 4)
-            # Check if we have credentials for this host (CLI/Wizard or stored)
-            ssh_credential = self._resolve_ssh_credential(safe_ip)
+            # Guard auth lookups to avoid keyring stalls when auth is disabled.
+            auth_enabled = bool(self.config.get("auth_enabled"))
+            ssh_credential = None
+            if auth_enabled:
+                # Check if we have credentials for this host (CLI/Wizard or stored)
+                ssh_credential = self._resolve_ssh_credential(safe_ip)
 
-            if ssh_credential:
+            if auth_enabled and ssh_credential:
                 # Check for open SSH port (22 or service name "ssh")
                 ssh_port = 22
                 ssh_open = False
@@ -1499,9 +1503,11 @@ class AuditorScan:
                 smb_open = any(s.port == 445 and s.state == "open" for s in host_obj.services)
 
             # Resolve credentials
-            smb_credential = self._resolve_smb_credential(safe_ip)
+            smb_credential = None
+            if auth_enabled:
+                smb_credential = self._resolve_smb_credential(safe_ip)
 
-            if smb_open and smb_credential:
+            if auth_enabled and smb_open and smb_credential:
                 try:
                     from redaudit.core.auth_smb import SMBScanner
 
@@ -1557,9 +1563,11 @@ class AuditorScan:
                     for s in host_obj.services
                 )
 
-            snmp_credential = self._resolve_snmp_credential(safe_ip)
+            snmp_credential = None
+            if auth_enabled:
+                snmp_credential = self._resolve_snmp_credential(safe_ip)
 
-            if snmp_open and snmp_credential:
+            if auth_enabled and snmp_open and snmp_credential:
                 try:
                     from redaudit.core.auth_snmp import SNMPScanner
 

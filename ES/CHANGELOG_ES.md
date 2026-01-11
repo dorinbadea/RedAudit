@@ -8,6 +8,13 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [v4.6.7] - 2026-01-11
+
+### Corregido
+
+- **Escaneos Auth**: Evitar consultas de credenciales en keyring durante el escaneo de puertos si la autenticación está desactivada.
+- **Logs de sesión**: Deduplicadas las barras de progreso para reducir ruido.
+
 ## [v4.6.6] - 2026-01-11
 
 ### Cambiado

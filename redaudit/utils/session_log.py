@@ -14,7 +14,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, TextIO
+from typing import Dict, Optional, TextIO, Tuple
 import logging
 import threading
 
@@ -266,6 +266,10 @@ class TeeStream(io.TextIOBase):
         r"\[\d{2}:\d{2}:\d{2}\] \[INFO\] .*(en progreso|in progress).*\(\d+:\d+"
     )
     PROGRESS_PATTERN = re.compile(r"[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏].*━+.*\d+%")
+    PROGRESS_BAR_PATTERN = re.compile(
+        r"(?:✅|❌)?\s*(?P<host>\d{1,3}(?:\.\d{1,3}){3})?.*?[━─]+.*?(?P<pct>\d+)%"
+    )
+    TIMESTAMP_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2} ")
 
     def __init__(
         self,
@@ -297,6 +301,7 @@ class TeeStream(io.TextIOBase):
         self._last_progress_pct = -1
         self._last_progress_phase = ""
         self._heartbeat_count = 0
+        self._progress_host_pct: Dict[Tuple[str, str], int] = {}
 
     def write(self, data: str) -> int:
         """Write to both streams."""
@@ -376,6 +381,24 @@ class TeeStream(io.TextIOBase):
         stripped = line.strip()
         if not stripped:
             return False  # Keep blank lines
+        cleaned = ANSI_ESCAPE.sub("", stripped)
+
+        # Filter duplicate rich progress-bar redraws per host/pct.
+        if not self.TIMESTAMP_PATTERN.match(cleaned):
+            progress_bar = self.PROGRESS_BAR_PATTERN.search(cleaned)
+            if progress_bar:
+                host = progress_bar.group("host") or ""
+                pct_str = progress_bar.group("pct")
+                pct_val = int(pct_str) if pct_str else -1
+                status = (
+                    "complete" if "✅" in cleaned else "fail" if "❌" in cleaned else "progress"
+                )
+                if host:
+                    key = (host, status)
+                    last_pct = self._progress_host_pct.get(key)
+                    if last_pct == pct_val:
+                        return True
+                    self._progress_host_pct[key] = pct_val
 
         # ALWAYS keep: status messages with [OK], [WARN], [FAIL], [INFO] that have results
         if any(tag in stripped for tag in ["[OK]", "[WARN]", "[FAIL]", "✓", "✅", "⚠️", "❌"]):
