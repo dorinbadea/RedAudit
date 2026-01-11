@@ -1461,6 +1461,7 @@ class InteractiveNetworkAuditor:
             self._ask_auditor_and_output_dir(defaults_for_run)
             self.rate_limit_delay = 0.0  # Express = always fast
             self.config["hyperscan_mode"] = "auto"  # v4.3: Fast = auto-detect best mode
+            self.config["trust_hyperscan"] = True  # v4.6.0: Max speed
             return
 
         # PROFILE 1: Standard - Balance (equivalent to old normal mode)
@@ -1499,6 +1500,7 @@ class InteractiveNetworkAuditor:
                 self.config["hyperscan_mode"] = "connect"  # Connect is stealthier than SYN
             else:
                 self.config["hyperscan_mode"] = "auto"  # Let it auto-detect
+            self.config["trust_hyperscan"] = True  # v4.6.0: Trust discovery for efficiency
             return
 
         # PROFILE 2: Exhaustive - Maximum discovery (auto-configures everything)
@@ -1585,6 +1587,9 @@ class InteractiveNetworkAuditor:
                 self.config["hyperscan_mode"] = "connect"
             else:
                 self.config["hyperscan_mode"] = "auto"
+            self.config["trust_hyperscan"] = (
+                False  # v4.6.0: Exhaustive = Paranoid (check everything)
+            )
             return
 
         # PROFILE 3: Custom - Full wizard with 8 steps (original behavior)
@@ -1710,6 +1715,13 @@ class InteractiveNetworkAuditor:
 
                 wizard_state["hyperscan_idx"] = hs_choice
                 self.config["hyperscan_mode"] = ["auto", "connect", "syn"][hs_choice]
+
+                # v4.6.0: Trust HyperScan (optimization)
+                # Ask if we should trust discovery results to speed up deep scans
+                self.config["trust_hyperscan"] = self.ask_yes_no(
+                    self.ui.t("trust_hyperscan_q"),
+                    default="yes" if defaults_for_run.get("trust_hyperscan") else "no",
+                )
 
                 step += 1
                 continue
