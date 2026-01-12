@@ -10,6 +10,17 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.10] - 2026-01-12
+
+### Added
+
+- **Wizard Targets**: Manual target entry accepts comma-separated CIDR/IP/range values and normalizes ranges to CIDR blocks.
+- **CLI Targets**: Accept IP ranges and normalize single IPs to /32 for consistent scanning.
+
+### Changed
+
+- **Docs**: Updated README/usage/manual and cleaned roadmap ordering with emoji removal.
+
 ## [v4.6.9] - 2026-01-12
 
 ### Changed

@@ -10,6 +10,17 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.10] - 2026-01-12
+
+### Añadido
+
+- **Objetivos Wizard**: La entrada manual acepta valores CIDR/IP/rango separados por comas y normaliza rangos a bloques CIDR.
+- **Objetivos CLI**: Acepta rangos IP y normaliza IPs individuales a /32 para un escaneo consistente.
+
+### Cambiado
+
+- **Docs**: README/uso/manual actualizados y roadmap reordenado con eliminación de emojis.
+
 ## [v4.6.9] - 2026-01-12
 
 ### Cambiado
