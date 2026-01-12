@@ -291,6 +291,16 @@ def guess_asset_type(host: Dict) -> str:
 
     port_nums = {p.get("port") for p in ports if p.get("port")}
     http_hint = f"{http_title} {http_server}".strip()
+    media_signal = any(
+        token in svc
+        for svc in port_services
+        for token in ("chromecast", "castv2", "google cast", "dlna", "airplay")
+    )
+    if not media_signal and port_nums & {8008, 8009}:
+        media_signal = True
+    if not media_signal and http_hint:
+        if any(token in http_hint for token in ("chromecast", "cast", "smart tv")):
+            media_signal = True
 
     # Generic gateway hint: mark default gateway as router when known.
     if host.get("is_default_gateway") is True:
@@ -364,9 +374,7 @@ def guess_asset_type(host: Dict) -> str:
     if any(x in hostname_base for x in ["iphone", "ipad", "phone"]):
         return "mobile"
     if "android" in hostname_base:
-        if port_nums & {8008, 8009} or any(
-            token in http_hint for token in ("chromecast", "cast", "ssdp", "iot", "smart tv")
-        ):
+        if media_signal or any(token in http_hint for token in ("ssdp", "iot")):
             return "media"
         return "mobile"
     if any(x in hostname_base for x in ["macbook", "imac", "laptop", "desktop", "workstation"]):
@@ -410,6 +418,8 @@ def guess_asset_type(host: Dict) -> str:
     if isinstance(device_hints, list):
         normalized_hints = {str(hint).lower() for hint in device_hints if hint}
         if "router" in normalized_hints:
+            if media_signal:
+                return "media"
             return "router"
         if "printer" in normalized_hints:
             return "printer"
@@ -426,6 +436,8 @@ def guess_asset_type(host: Dict) -> str:
 
     # Check agentless HTTP hints when hostname is missing.
     if http_hint:
+        if "juice shop" in http_hint or "owasp juice shop" in http_hint:
+            return "server"
         if any(
             token in http_hint
             for token in (
@@ -453,11 +465,7 @@ def guess_asset_type(host: Dict) -> str:
                 return "switch"
 
     # Check service/product fingerprints for media devices.
-    if any(
-        token in svc
-        for svc in port_services
-        for token in ("chromecast", "castv2", "google cast", "dlna", "airplay")
-    ):
+    if media_signal:
         return "media"
 
     # OS-based hints (best-effort).
@@ -468,6 +476,8 @@ def guess_asset_type(host: Dict) -> str:
 
     # Check vendor
     if any(x in vendor for x in ["sercomm", "sagemcom"]):
+        if media_signal:
+            return "media"
         return "router"
     if any(
         x in vendor

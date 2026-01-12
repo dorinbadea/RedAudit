@@ -109,6 +109,28 @@ class TestEntityResolver(unittest.TestCase):
         }
         self.assertEqual(guess_asset_type(host), "media")
 
+    def test_guess_asset_type_media_over_router_hint(self):
+        """Media signals should override generic router hints."""
+        host = {
+            "hostname": "",
+            "ports": [
+                {"port": 8008, "service": "http", "product": "Google Chromecast httpd"},
+                {"port": 8009, "service": "castv2", "product": "Ninja Sphere Chromecast driver"},
+            ],
+            "device_type_hints": ["router"],
+            "deep_scan": {"vendor": "Sagemcom Broadband SAS"},
+        }
+        self.assertEqual(guess_asset_type(host), "media")
+
+    def test_guess_asset_type_server_from_juice_shop_title(self):
+        """Web apps with known titles should resolve to server."""
+        host = {
+            "hostname": "",
+            "ports": [{"port": 3000, "service": "http"}],
+            "agentless_fingerprint": {"http_title": "OWASP Juice Shop"},
+        }
+        self.assertEqual(guess_asset_type(host), "server")
+
     def test_create_unified_single_host(self):
         """Test unified asset creation for single host."""
         host = {

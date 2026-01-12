@@ -1053,14 +1053,19 @@ def _write_output_manifest(
     scanner_versions = results.get("scanner_versions", {}) or {}
     redaudit_version = results.get("version") or scanner_versions.get("redaudit", "")
 
-    raw_findings = (results.get("summary", {}) or {}).get("vulns_found_raw")
+    summary = results.get("summary", {}) or {}
+    raw_findings = summary.get("vulns_found_raw")
+    nuclei_partial = bool(
+        summary.get("nuclei_partial") or (results.get("nuclei") or {}).get("partial")
+    )
+    effective_partial = bool(partial or nuclei_partial)
     manifest: Dict[str, Any] = {
         "schema_version": results.get("schema_version", ""),
         "generated_at": results.get("generated_at", datetime.now().isoformat()),
         "timestamp": results.get("timestamp", ""),
         "timestamp_end": results.get("timestamp_end", ""),
         "session_id": results.get("session_id", ""),
-        "partial": bool(partial),
+        "partial": effective_partial,
         "encryption_enabled": bool(encryption_enabled),
         "redaudit_version": redaudit_version,
         "scanner_versions": scanner_versions,

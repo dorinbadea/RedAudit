@@ -111,8 +111,9 @@ El asistente interactivo es la forma recomendada de usar RedAudit. Le guía paso
 
 1. **Inicio y Actualizaciones:** Al ejecutar `sudo redaudit`, la herramienta verifica automáticamente si hay nuevas versiones (a menos que use `--skip-update-check`).
 2. **Selección de Perfil:** Elija un preset o configure manualmente.
-3. **Configuración de Autenticación:** (Nuevo en v4.0) Configure credenciales SSH/SMB/SNMP para auditorías profundas.
-4. **Confirmación:** Revise el resumen antes de iniciar.
+3. **Selección de Objetivos:** Elija redes detectadas o introduzca objetivos manuales; el asistente muestra los objetivos normalizados con hosts estimados.
+4. **Configuración de Autenticación:** (Nuevo en v4.0) Configure credenciales SSH/SMB/SNMP para auditorías profundas.
+5. **Confirmación:** Revise el resumen antes de iniciar.
 
 ### Perfiles de Escaneo
 

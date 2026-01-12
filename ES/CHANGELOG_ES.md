@@ -10,6 +10,23 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.13] - 2026-01-12
+
+### Añadido
+
+- **Objetivos en el Wizard**: Mostrar objetivos normalizados con hosts estimados antes de ejecutar.
+
+### Mejorado
+
+- **Progreso de Nuclei**: Mostrar avance por objetivos dentro de cada batch para evitar barras congeladas.
+- **Progreso de Vulns**: Mostrar estado explícito de timeout de Nikto cuando supera su presupuesto.
+
+### Corregido
+
+- **Clasificación de Activos**: Servicios tipo Chromecast sobrescriben pistas genéricas de router en dispositivos multimedia.
+- **Identidad Web**: Reconocer títulos de OWASP Juice Shop como activos de tipo servidor.
+- **Manifiesto de Ejecución**: Marcar `run_manifest.json` como parcial cuando hay timeouts en Nuclei.
+
 ## [v4.6.12] - 2026-01-12
 
 ### Mejorado

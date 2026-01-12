@@ -27,6 +27,26 @@ In the same output directory, RedAudit can also generate flat export files optim
 
 These exports are generated only when report encryption is **disabled**, to avoid creating plaintext artifacts alongside encrypted reports.
 
+### Run Manifest (run_manifest.json) (v3.1+)
+
+Run manifest metadata used to inventory output artifacts for automation pipelines.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `schema_version` | string | Schema version for the manifest payload |
+| `generated_at` | string | Manifest generation timestamp (ISO 8601) |
+| `timestamp` | string | Scan start timestamp (best-effort) |
+| `timestamp_end` | string | Scan end timestamp (best-effort) |
+| `session_id` | string | Scan session UUID |
+| `partial` | boolean | True when the run was interrupted or any tool reported partial output (e.g., Nuclei timeouts) |
+| `encryption_enabled` | boolean | Whether report encryption was enabled |
+| `redaudit_version` | string | RedAudit version |
+| `scanner_versions` | object | External tool versions captured at runtime |
+| `targets` | array | Target networks or IP ranges |
+| `counts` | object | Summary counts for hosts, findings, and PCAPs |
+| `counts.findings_raw` | integer | (Optional) Raw findings count before normalization |
+| `artifacts` | array | List of files with relative `path` and `size_bytes` |
+
 ## Schema Definition
 
 ### Root Object

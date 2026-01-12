@@ -441,6 +441,9 @@ class AuditorVuln:
                     text=True,
                     timeout=330.0,
                 )
+                if res.timed_out:
+                    _update("nikto timeout")
+                    return {"nikto_timeout": True}
                 if not res.timed_out:
                     output = str(res.stdout or "") or str(res.stderr or "")
                     if output:
@@ -689,6 +692,9 @@ class AuditorVuln:
                     text=True,
                     timeout=330.0,
                 )
+                if res.timed_out:
+                    _update("nikto timeout")
+                    finding["nikto_timeout"] = True
                 if not res.timed_out:
                     output = str(res.stdout or "") or str(res.stderr or "")
                     if output:

@@ -81,6 +81,7 @@ sudo apt install python3-nmap python3-cryptography python3-netifaces
 - **Check**: Look for the `[deep]` marker in the CLI output.
 - **Timeouts**: Host scans are bounded by nmap `--host-timeout` and are aborted if exceeded. If you still see long stalls,
   check `session_logs/session_*.log` under the output directory to identify the active tool.
+- **Nikto visibility**: When Nikto exceeds its timeout, the progress detail shows `nikto timeout` and the scan continues.
 
 ### 6b. System sleep / screen blanking during long scans (v3.5+)
 

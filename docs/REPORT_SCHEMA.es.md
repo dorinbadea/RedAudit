@@ -27,6 +27,26 @@ En el mismo directorio de salida, RedAudit también puede generar archivos plano
 
 Estas exportaciones se generan solo cuando el cifrado de informes está **desactivado**, para evitar crear artefactos en texto plano junto a informes cifrados.
 
+### Manifiesto de Ejecución (run_manifest.json) (v3.1+)
+
+Metadatos del manifiesto usados para inventariar artefactos de salida en pipelines de automatización.
+
+| Campo | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `schema_version` | string | Versión de esquema del manifiesto |
+| `generated_at` | string | Marca de tiempo de generación del manifiesto (ISO 8601) |
+| `timestamp` | string | Marca de tiempo de inicio del escaneo (best-effort) |
+| `timestamp_end` | string | Marca de tiempo de fin del escaneo (best-effort) |
+| `session_id` | string | UUID de la sesión de escaneo |
+| `partial` | boolean | True cuando la ejecución fue interrumpida o alguna herramienta reportó salida parcial (ej.: timeouts de Nuclei) |
+| `encryption_enabled` | boolean | Indica si el cifrado de informes estaba activado |
+| `redaudit_version` | string | Versión de RedAudit |
+| `scanner_versions` | object | Versiones de herramientas externas capturadas en tiempo de ejecución |
+| `targets` | array | Redes objetivo o rangos IP |
+| `counts` | object | Conteos de hosts, hallazgos y PCAPs |
+| `counts.findings_raw` | integer | (Opcional) Conteo bruto de hallazgos antes de normalizar |
+| `artifacts` | array | Lista de archivos con `path` relativo y `size_bytes` |
+
 ## Definición del Esquema
 
 ### Objeto Raíz

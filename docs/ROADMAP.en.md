@@ -23,14 +23,14 @@ These items are ordered chronologically and include delivered, planned, and defe
 | **Quick HTTP Identity Probe** | Done | Short HTTP/HTTPS probe on quiet hosts to resolve identity early. |
 | **Nuclei Partial Reporting** | Done | Mark partial runs and record timeout/failed batch indexes in reports. |
 | **Nuclei Batch Heartbeat** | Done (v4.6.11) | Keep progress updates during long batches to show activity and elapsed time. |
-| **Nuclei Intra-batch Progress** | Done (v4.6.12) | Show time-based progress movement inside each batch to avoid frozen bars. |
+| **Nuclei Target Progress** | Done (v4.6.13) | Show target-based progress within batches to avoid frozen bars. |
 | **HTTP Identity Source Guard** | Done (v4.6.11) | Treat UPnP-only titles as hints and avoid forcing web scans or identity scoring. |
+| **Wizard Target Normalization Summary** | Done (v4.6.13) | Show normalized targets with estimated host counts before execution. |
 
 ### v4.7 Audit Follow-ups (Priority: High)
 
 | Feature | Status | Description |
 | :--- | :--- | :--- |
-| **Wizard Target Normalization Summary** | Planned | Show the normalized target list (CIDR/IP/range expansions) before execution. |
 | **Escalation Reason Counters** | Planned | Report why deep scans triggered (identity score, ambiguity, manual override). |
 | **Smart-Check Documentation Clarification** | Planned | Align docs with the actual signal cross-checking behavior. |
 
@@ -55,7 +55,7 @@ Minor improvements identified during v4.4.0 Gold Master validation.
 | Task | Status | Description |
 | :--- | :--- | :--- |
 | **P7.1 Progress Bar Completion** | Done (v4.6.8) | Stop updating vuln scan progress after a host finishes to prevent misleading movement. |
-| **P7.2 Nikto Timeout Visibility** | Planned | Show "timeout" indicator instead of stalled progress when Nikto exceeds threshold. |
+| **P7.2 Nikto Timeout Visibility** | Done (v4.6.13) | Show a timeout indicator instead of stalled progress when Nikto exceeds its threshold. |
 | **P7.3 Streaming JSON Report** | Planned | Incremental write for reports >500MB on very large networks. |
 | **P7.4 Web Tag Backfill** | Done (v4.6.8) | Add the `web` tag when `web_ports_count` is present even if port flags are missing. |
 

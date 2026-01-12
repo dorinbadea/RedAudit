@@ -7,6 +7,7 @@ GPLv3 License
 Main orchestrator class for network auditing operations.
 """
 
+import ipaddress
 import math
 import os
 import shutil
@@ -162,6 +163,31 @@ class InteractiveNetworkAuditor:
         """Display configuration summary."""
         show_config_summary(self.config, self.ui.t, self.ui.colors)
 
+    def _show_target_summary(self) -> None:
+        targets = self.config.get("target_networks") or []
+        if not isinstance(targets, list) or not targets:
+            return
+        summaries = []
+        total_hosts = 0
+        for token in targets:
+            token_str = str(token).strip()
+            if not token_str:
+                continue
+            try:
+                net = ipaddress.ip_network(token_str, strict=False)
+                count = int(net.num_addresses)
+                total_hosts += count
+                summaries.append(f"{token_str} (~{count})")
+            except ValueError:
+                summaries.append(token_str)
+        if summaries:
+            self.ui.print_status(
+                self.ui.t("targets_normalized", ", ".join(summaries)),
+                "INFO",
+            )
+            if total_hosts:
+                self.ui.print_status(self.ui.t("targets_total", total_hosts), "INFO")
+
     def show_results(self):
         """Display final results summary."""
         show_results_summary(self.results, self.ui.t, self.ui.colors, self.config["output_dir"])
@@ -295,6 +321,7 @@ class InteractiveNetworkAuditor:
         else:
             self._configure_scan_interactive(defaults_for_run)
 
+        self._show_target_summary()
         self.show_config_summary()
 
         if auto_start:
@@ -733,7 +760,8 @@ class InteractiveNetworkAuditor:
 
                             batch_size = 25
                             nuclei_timeout_s = 300
-                            total_batches = max(1, int(math.ceil(len(nuclei_targets) / batch_size)))
+                            total_targets = len(nuclei_targets)
+                            total_batches = max(1, int(math.ceil(total_targets / batch_size)))
                             progress_start_t = time.time()
 
                             # v4.4.4: Prevent UI duplication - Progress manages its own Live display
@@ -748,11 +776,11 @@ class InteractiveNetworkAuditor:
                                 refresh_per_second=4,
                             ) as progress:
                                 task = progress.add_task(
-                                    f"[cyan]Nuclei (0/{total_batches})",
-                                    total=total_batches,
+                                    f"[cyan]Nuclei (0/{total_targets})",
+                                    total=total_targets,
                                     eta_upper=self._format_eta(total_batches * nuclei_timeout_s),
                                     eta_est="",
-                                    detail=f"{len(nuclei_targets)} targets",
+                                    detail=f"{total_targets} targets",
                                 )
 
                                 def _nuclei_progress(completed: int, total: int, eta: str) -> None:
@@ -792,6 +820,8 @@ class InteractiveNetworkAuditor:
                                         task,
                                         progress_start_t,
                                         nuclei_timeout_s,
+                                        total_targets,
+                                        batch_size,
                                         detail=d,
                                     ),
                                     use_internal_progress=False,
@@ -2375,6 +2405,8 @@ class InteractiveNetworkAuditor:
         task: Any,
         start_time: float,
         timeout: int,
+        total_targets: int,
+        batch_size: int,
         *,
         detail: Optional[str] = None,
     ) -> None:
@@ -2383,16 +2415,23 @@ class InteractiveNetworkAuditor:
             # v4.4.4: Keep heartbeat alive during progress updates
             self._touch_activity()
 
-            rem = max(0, total - completed)
+            approx_targets = int(round(float(completed) * max(1, int(batch_size))))
+            approx_targets = max(0, min(int(total_targets), approx_targets))
+            remaining_batches = max(0.0, float(total) - float(completed))
+            remaining_targets = max(0, int(total_targets) - approx_targets)
             ela_s = max(0.001, time.time() - start_time)
-            rate = completed / ela_s if completed else 0.0
-            eta_est_v = self._format_eta(rem / rate) if rate > 0.0 and rem else ""
+            rate = approx_targets / ela_s if approx_targets else 0.0
+            eta_est_v = (
+                self._format_eta(remaining_targets / rate)
+                if rate > 0.0 and remaining_targets
+                else ""
+            )
             detail_text = detail or f"batch {completed}/{total}"
             progress.update(
                 task,
-                completed=completed,
-                description=f"[cyan]Nuclei ({completed}/{total})",
-                eta_upper=self._format_eta(rem * timeout if rem else 0),
+                completed=approx_targets,
+                description=f"[cyan]Nuclei ({approx_targets}/{total_targets})",
+                eta_upper=self._format_eta(remaining_batches * timeout if remaining_batches else 0),
                 eta_est=f"ETA≈ {eta_est_v}" if eta_est_v else "",
                 detail=detail_text,
             )
