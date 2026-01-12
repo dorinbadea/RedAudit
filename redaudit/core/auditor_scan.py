@@ -1855,9 +1855,10 @@ class AuditorScan:
 
             agentless_fp = host_record.get("agentless_fingerprint") or {}
             http_source = str(agentless_fp.get("http_source") or "")
-            has_http_identity = bool(
-                agentless_fp.get("http_title") or agentless_fp.get("http_server")
-            ) and http_source != "upnp"
+            has_http_identity = (
+                bool(agentless_fp.get("http_title") or agentless_fp.get("http_server"))
+                and http_source != "upnp"
+            )
             if (
                 web_count > 0
                 and self.config.get("deep_id_scan", True)
@@ -1904,9 +1905,10 @@ class AuditorScan:
             device_type_hints = host_record.get("device_type_hints") or []
             agentless_fp = host_record.get("agentless_fingerprint") or {}
             http_source = str(agentless_fp.get("http_source") or "")
-            has_http_identity = bool(
-                agentless_fp.get("http_title") or agentless_fp.get("http_server")
-            ) and http_source != "upnp"
+            has_http_identity = (
+                bool(agentless_fp.get("http_title") or agentless_fp.get("http_server"))
+                and http_source != "upnp"
+            )
             identity_evidence = bool(
                 has_http_identity
                 or agentless_fp.get("device_type")
@@ -1975,9 +1977,10 @@ class AuditorScan:
             # This fixes the detection gap where hosts passing identity threshold skip vuln scan
             agentless_fp = host_record.get("agentless_fingerprint") or {}
             http_source = str(agentless_fp.get("http_source") or "")
-            has_http_identity = bool(
-                agentless_fp.get("http_title") or agentless_fp.get("http_server")
-            ) and http_source != "upnp"
+            has_http_identity = (
+                bool(agentless_fp.get("http_title") or agentless_fp.get("http_server"))
+                and http_source != "upnp"
+            )
             if has_http_identity:
                 if web_count == 0:
                     web_count = 1  # Ensure host is included in web vulnerability scanning
