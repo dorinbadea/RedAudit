@@ -88,6 +88,9 @@ def run_nuclei_scan(
         "findings": [],
         "raw_output_file": None,
         "error": None,
+        "partial": False,
+        "timeout_batches": [],
+        "failed_batches": [],
     }
 
     if not result["nuclei_available"]:
@@ -134,7 +137,16 @@ def run_nuclei_scan(
         batches = [targets[i : i + size] for i in range(0, len(targets), size)]
         total_batches = len(batches)
 
-        def _build_cmd(targets_path: str, out_path: str) -> List[str]:
+        def _build_cmd(
+            targets_path: str,
+            out_path: str,
+            rate_limit_override: Optional[int],
+        ) -> List[str]:
+            effective_rate = (
+                int(rate_limit_override)
+                if isinstance(rate_limit_override, int) and rate_limit_override > 0
+                else int(rate_limit)
+            )
             cmd = [
                 "nuclei",
                 "-l",
@@ -145,7 +157,7 @@ def run_nuclei_scan(
                 "-severity",
                 severity,
                 "-rate-limit",
-                str(rate_limit),
+                str(effective_rate),
                 "-silent",  # Reduce noise
                 "-nc",  # No color
             ]
@@ -179,7 +191,16 @@ def run_nuclei_scan(
 
         batch_durations: List[float] = []
 
-        def _run_one_batch(batch_idx: int, batch_targets: List[str]) -> None:
+        timed_out_batches: set[int] = set()
+        failed_batches: set[int] = set()
+
+        def _run_one_batch(
+            batch_idx: int,
+            batch_targets: List[str],
+            *,
+            allow_retry: bool = True,
+            rate_limit_override: Optional[int] = None,
+        ) -> None:
             batch_start = time.time()
             with tempfile.TemporaryDirectory(prefix="nuclei_tmp_", dir=output_dir) as tmpdir:
                 batch_targets_file = os.path.join(tmpdir, f"targets_{batch_idx}.txt")
@@ -189,11 +210,31 @@ def run_nuclei_scan(
                     for t in batch_targets:
                         f_targets.write(f"{t}\n")
 
-                cmd = _build_cmd(batch_targets_file, batch_output_file)
+                cmd = _build_cmd(batch_targets_file, batch_output_file, rate_limit_override)
                 res = runner.run(cmd, capture_output=True, text=True, timeout=float(timeout))
+                timed_out = bool(getattr(res, "timed_out", False))
+                if timed_out:
+                    timed_out_batches.add(batch_idx)
+                    if allow_retry and len(batch_targets) > 1:
+                        mid = max(1, len(batch_targets) // 2)
+                        reduced_rate = max(25, int((rate_limit_override or rate_limit) / 2))
+                        _run_one_batch(
+                            batch_idx,
+                            batch_targets[:mid],
+                            allow_retry=False,
+                            rate_limit_override=reduced_rate,
+                        )
+                        _run_one_batch(
+                            batch_idx,
+                            batch_targets[mid:],
+                            allow_retry=False,
+                            rate_limit_override=reduced_rate,
+                        )
+                        return
+                    failed_batches.add(batch_idx)
 
                 # Append JSONL output to the consolidated file, if present.
-                if os.path.exists(batch_output_file):
+                if os.path.exists(batch_output_file) and not (timed_out and allow_retry):
                     with (
                         open(batch_output_file, "r", encoding="utf-8", errors="ignore") as fin,
                         open(output_file, "a", encoding="utf-8") as fout,
@@ -280,7 +321,15 @@ def run_nuclei_scan(
                     )
                 _run_one_batch(idx, batch)
 
-        result["success"] = os.path.exists(output_file)
+        if timed_out_batches:
+            result["partial"] = True
+            result["timeout_batches"] = sorted(timed_out_batches)
+        if failed_batches:
+            result["failed_batches"] = sorted(failed_batches)
+            if not result.get("error"):
+                result["error"] = "timeout"
+
+        result["success"] = os.path.exists(output_file) and not failed_batches
         result["raw_output_file"] = output_file if os.path.exists(output_file) else None
 
         if os.path.exists(output_file):

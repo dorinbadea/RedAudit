@@ -19,6 +19,7 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from redaudit.core.agentless_verify import (
+    _fingerprint_device_from_http,
     probe_agentless_services,
     select_agentless_probe_targets,
     summarize_agentless_fingerprint,
@@ -669,6 +670,7 @@ class AuditorScan:
         device_type_hints: List[str],
         identity_score: int,
         identity_threshold: int,
+        identity_evidence: bool,
     ) -> Tuple[bool, List[str]]:
         trigger_deep = False
         deep_reasons: List[str] = []
@@ -685,7 +687,7 @@ class AuditorScan:
         if 0 < total_ports <= 3 and identity_is_weak:
             trigger_deep = True
             deep_reasons.append("low_visibility")
-        if total_ports > 0 and not any_version:
+        if total_ports > 0 and not any_version and not identity_evidence:
             trigger_deep = True
             deep_reasons.append("no_version_info")
         if "router" in device_type_hints or "network_device" in device_type_hints:
@@ -707,7 +709,7 @@ class AuditorScan:
             identity_score >= identity_threshold
             and not suspicious
             and total_ports <= 20
-            and any_version
+            and (any_version or identity_evidence)
         ):
             trigger_deep = False
             deep_reasons.append("identity_strong")
@@ -1848,8 +1850,48 @@ class AuditorScan:
                             if extra.get("ssl_cert"):
                                 port_info["ssl_cert"] = extra["ssl_cert"]
 
+            agentless_fp = host_record.get("agentless_fingerprint") or {}
+            if (
+                web_count > 0
+                and self.config.get("deep_id_scan", True)
+                and not agentless_fp.get("http_title")
+                and not agentless_fp.get("http_server")
+                and not any_version
+            ):
+                web_ports = [p.get("port") for p in ports if p.get("is_web_service")]
+                web_ports = [p for p in web_ports if isinstance(p, int)][:5]
+                if web_ports:
+                    http_probe = http_identity_probe(
+                        safe_ip,
+                        self.extra_tools,
+                        ports=web_ports,
+                        dry_run=bool(self.config.get("dry_run", False)),
+                        logger=self.logger,
+                        proxy_manager=self.proxy_manager,
+                    )
+                    if http_probe:
+                        agentless_fp = host_record.setdefault("agentless_fingerprint", {})
+                        if http_probe.get("http_title") and not agentless_fp.get("http_title"):
+                            agentless_fp["http_title"] = str(http_probe["http_title"])[:256]
+                        if http_probe.get("http_server") and not agentless_fp.get("http_server"):
+                            agentless_fp["http_server"] = str(http_probe["http_server"])[:256]
+                        title = str(agentless_fp.get("http_title") or "")
+                        server = str(agentless_fp.get("http_server") or "")
+                        if title or server:
+                            fp = _fingerprint_device_from_http(title, server)
+                            for key in ("device_vendor", "device_model", "device_type"):
+                                if fp.get(key) and not agentless_fp.get(key):
+                                    agentless_fp[key] = fp[key]
+
             identity_score, identity_signals = self._compute_identity_score(host_record)
             device_type_hints = host_record.get("device_type_hints") or []
+            agentless_fp = host_record.get("agentless_fingerprint") or {}
+            identity_evidence = bool(
+                agentless_fp.get("http_title")
+                or agentless_fp.get("http_server")
+                or agentless_fp.get("device_type")
+                or agentless_fp.get("device_vendor")
+            )
 
             if self.logger:
                 self.logger.debug(
@@ -1874,6 +1916,7 @@ class AuditorScan:
                 device_type_hints=device_type_hints,
                 identity_score=identity_score,
                 identity_threshold=identity_threshold,
+                identity_evidence=identity_evidence,
             )
 
             # v4.0.4: Use HyperScan results to override deep scan decision
@@ -1939,6 +1982,13 @@ class AuditorScan:
                 if udp_identity:
                     identity_score, identity_signals = self._compute_identity_score(host_record)
                     device_type_hints = host_record.get("device_type_hints") or []
+                    agentless_fp = host_record.get("agentless_fingerprint") or {}
+                    identity_evidence = bool(
+                        agentless_fp.get("http_title")
+                        or agentless_fp.get("http_server")
+                        or agentless_fp.get("device_type")
+                        or agentless_fp.get("device_vendor")
+                    )
                     trigger_deep, deep_reasons = self._should_trigger_deep(
                         total_ports=total_ports,
                         any_version=any_version,
@@ -1946,6 +1996,7 @@ class AuditorScan:
                         device_type_hints=device_type_hints,
                         identity_score=identity_score,
                         identity_threshold=identity_threshold,
+                        identity_evidence=identity_evidence,
                     )
                     if identity_score >= identity_threshold:
                         trigger_deep = False

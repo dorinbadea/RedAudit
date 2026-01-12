@@ -851,6 +851,14 @@ class InteractiveNetworkAuditor:
                             "success": bool(nuclei_result.get("success")),
                             "error": nuclei_result.get("error"),
                         }
+                        if nuclei_result.get("partial"):
+                            nuclei_summary["partial"] = True
+                            timeout_batches = nuclei_result.get("timeout_batches") or []
+                            failed_batches = nuclei_result.get("failed_batches") or []
+                            if timeout_batches:
+                                nuclei_summary["timeout_batches"] = timeout_batches
+                            if failed_batches:
+                                nuclei_summary["failed_batches"] = failed_batches
                         if suspected:
                             nuclei_summary["suspected"] = [
                                 {
@@ -880,6 +888,17 @@ class InteractiveNetworkAuditor:
                                 )
                         else:
                             self.ui.print_status(self.ui.t("nuclei_no_findings"), "INFO")
+                        if nuclei_result.get("partial"):
+                            timeout_batches = nuclei_result.get("timeout_batches") or []
+                            failed_batches = nuclei_result.get("failed_batches") or []
+                            self.ui.print_status(
+                                self.ui.t(
+                                    "nuclei_partial",
+                                    len(timeout_batches),
+                                    len(failed_batches),
+                                ),
+                                "WARNING",
+                            )
                 except Exception as e:
                     if self.logger:
                         self.logger.warning("Nuclei scan failed: %s", e, exc_info=True)
