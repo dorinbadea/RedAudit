@@ -111,8 +111,9 @@ The interactive wizard is the recommended way to use RedAudit. It guides you ste
 
 1. **Startup & Updates:** Upon running `sudo redaudit`, the tool automatically checks for new versions (unless `--skip-update-check` is used).
 2. **Profile Selection:** Choose a preset or configure manually.
-3. **Authentication Setup:** (New in v4.0) Configure SSH/SMB/SNMP credentials for deep audits.
-4. **Confirmation:** Review the summary before starting.
+3. **Target Selection:** Choose detected networks or enter manual targets; the wizard shows normalized targets with estimated host counts.
+4. **Authentication Setup:** (New in v4.0) Configure SSH/SMB/SNMP credentials for deep audits.
+5. **Confirmation:** Review the summary before starting.
 
 ### Scan Profiles
 

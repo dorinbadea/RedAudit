@@ -23,14 +23,14 @@ Estos elementos están ordenados cronológicamente e incluyen trabajo entregado,
 | **Sonda HTTP Rápida de Identidad** | Hecho | Sonda HTTP/HTTPS breve en hosts silenciosos para resolver identidad antes. |
 | **Reporte Parcial de Nuclei** | Hecho | Marcar ejecuciones parciales y registrar lotes con timeout/fallidos en el informe. |
 | **Latido por Batch de Nuclei** | Hecho (v4.6.11) | Mantener actualizaciones de progreso durante lotes largos para mostrar actividad y tiempo transcurrido. |
-| **Progreso Intra-batch de Nuclei** | Hecho (v4.6.12) | Mostrar avance basado en tiempo dentro de cada batch para evitar barras congeladas. |
+| **Progreso por Objetivos de Nuclei** | Hecho (v4.6.13) | Mostrar avance basado en objetivos dentro de cada batch para evitar barras congeladas. |
 | **Guardia de Origen de Identidad HTTP** | Hecho (v4.6.11) | Tratar títulos solo UPnP como pistas y evitar forzar escaneo web o score de identidad. |
+| **Resumen de normalización de objetivos en el wizard** | Hecho (v4.6.13) | Mostrar objetivos normalizados con hosts estimados antes de ejecutar. |
 
 ### v4.7 Seguimiento de Auditoría (Prioridad: Alta)
 
 | Característica | Estado | Descripción |
 | :--- | :--- | :--- |
-| **Resumen de normalización de objetivos en el wizard** | Planificado | Mostrar la lista normalizada de objetivos (CIDR/IP/rango) antes de ejecutar. |
 | **Contadores de motivos de escalado** | Planificado | Reportar por qué se disparó el deep scan (identity score, ambigüedad, override manual). |
 | **Aclaración documental de Smart-Check** | Planificado | Alinear la documentación con el comportamiento real de verificación por señales. |
 
@@ -55,7 +55,7 @@ Mejoras menores identificadas durante la validación Gold Master de v4.4.0.
 | Tarea | Estado | Descripción |
 | :--- | :--- | :--- |
 | **P7.1 Completitud Barras de Progreso** | Hecho (v4.6.8) | Evitar que las barras de vuln scan se actualicen tras finalizar un host para no confundir. |
-| **P7.2 Visibilidad Timeout Nikto** | Planificado | Mostrar indicador "timeout" en lugar de progreso estancado cuando Nikto excede el umbral. |
+| **P7.2 Visibilidad Timeout Nikto** | Hecho (v4.6.13) | Mostrar indicador "timeout" en lugar de progreso estancado cuando Nikto excede el umbral. |
 | **P7.3 Reporte JSON en Streaming** | Planificado | Escritura incremental para reportes >500MB en redes muy grandes. |
 | **P7.4 Backfill de Tag Web** | Hecho (v4.6.8) | Añadir la etiqueta `web` cuando existe `web_ports_count` aunque falten flags de puerto. |
 

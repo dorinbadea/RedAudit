@@ -33,6 +33,8 @@
 - [ ] Proyector/pantalla para demo en vivo
 - [ ] Rúbrica impresa (Sección 5)
 
+Sugerencia para el instructor: Al iniciar escaneos, muestra el resumen de objetivos normalizados (hosts estimados) para reforzar la validación de alcance.
+
 ---
 
 ## 2. Conceptos Clave para Enseñar

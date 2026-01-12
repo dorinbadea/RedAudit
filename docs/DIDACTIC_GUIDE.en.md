@@ -33,6 +33,8 @@
 - [ ] Projector/screen for live demo
 - [ ] Printed rubric (Section 5)
 
+Instructor tip: When launching scans, point to the normalized target summary (estimated host counts) to reinforce scope validation.
+
 ---
 
 ## 2. Core Teaching Concepts
