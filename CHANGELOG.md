@@ -10,6 +10,23 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.13] - 2026-01-12
+
+### Added
+
+- **Wizard Targets**: Show normalized targets with estimated host counts before execution.
+
+### Improved
+
+- **Nuclei Progress**: Track target-based progress within batches to avoid frozen bars.
+- **Vuln Progress**: Display explicit Nikto timeout status when it exceeds its budget.
+
+### Fixed
+
+- **Asset Classification**: Chromecast-style services override generic router hints for media devices.
+- **Web Identity**: Recognize OWASP Juice Shop titles as server-class assets.
+- **Run Manifest**: Mark `run_manifest.json` as partial when Nuclei timeouts occur.
+
 ## [v4.6.12] - 2026-01-12
 
 ### Improved
