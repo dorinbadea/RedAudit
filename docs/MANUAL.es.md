@@ -278,6 +278,7 @@ RedAudit ahora integra herramientas especializadas para evaluación profunda de 
 ### Ejecuciones Parciales de Nuclei
 
 Cuando los lotes de Nuclei agotan tiempo, la ejecución se marca como parcial y el informe incluye los índices de lotes con timeout y fallidos.
+Durante lotes largos, la CLI muestra el progreso por batch con tiempo transcurrido para confirmar actividad.
 
 ### Auto-Exclusión
 

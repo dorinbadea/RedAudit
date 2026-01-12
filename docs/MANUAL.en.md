@@ -278,6 +278,7 @@ RedAudit now integrates specialized tools for deep web application assessment:
 ### Nuclei Partial Runs
 
 When Nuclei batch scans time out, the run is marked as partial and the report includes timeout and failed batch indexes.
+During long batches, the CLI shows batch progress with elapsed time so operators can confirm activity.
 
 ### Auto-Exclusion
 
