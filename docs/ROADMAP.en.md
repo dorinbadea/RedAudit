@@ -23,6 +23,7 @@ These items are ordered chronologically and include delivered, planned, and defe
 | **Quick HTTP Identity Probe** | Done | Short HTTP/HTTPS probe on quiet hosts to resolve identity early. |
 | **Nuclei Partial Reporting** | Done | Mark partial runs and record timeout/failed batch indexes in reports. |
 | **Nuclei Batch Heartbeat** | Done (v4.6.11) | Keep progress updates during long batches to show activity and elapsed time. |
+| **Nuclei Intra-batch Progress** | Done (v4.6.12) | Show time-based progress movement inside each batch to avoid frozen bars. |
 | **HTTP Identity Source Guard** | Done (v4.6.11) | Treat UPnP-only titles as hints and avoid forcing web scans or identity scoring. |
 
 ### v4.7 Audit Follow-ups (Priority: High)

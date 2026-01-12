@@ -2368,7 +2368,7 @@ class InteractiveNetworkAuditor:
 
     def _nuclei_progress_callback(
         self,
-        completed: int,
+        completed: float,
         total: int,
         eta: str,
         progress: Any,

@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.12] - 2026-01-12
+
+### Mejorado
+
+- **Progreso de Nuclei**: Mostrar avance basado en tiempo dentro de cada batch, con tiempo transcurrido, para evitar barras congeladas.
+
 ## [v4.6.11] - 2026-01-12
 
 ### Añadido

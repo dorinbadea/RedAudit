@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.12] - 2026-01-12
+
+### Improved
+
+- **Nuclei Progress**: Show time-based progress movement within each batch, including elapsed time, to avoid frozen bars.
+
 ## [v4.6.11] - 2026-01-12
 
 ### Added
