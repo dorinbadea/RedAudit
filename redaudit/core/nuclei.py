@@ -13,12 +13,17 @@ import shutil
 import tempfile
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Protocol, cast
 
 from redaudit.core.command_runner import CommandRunner
 from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.utils.dry_run import is_dry_run
 from redaudit.core.verify_vuln import check_nuclei_false_positive
+
+
+class NucleiProgressCallback(Protocol):
+    def __call__(self, completed: int, total: int, eta: str, detail: str = "") -> None:
+        pass
 
 
 def is_nuclei_available() -> bool:
@@ -58,7 +63,7 @@ def run_nuclei_scan(
     rate_limit: int = 150,
     timeout: int = 300,
     batch_size: int = 25,
-    progress_callback: Optional[Callable[[int, int, str, str], None]] = None,
+    progress_callback: Optional[NucleiProgressCallback] = None,
     use_internal_progress: bool = True,
     logger=None,
     dry_run: bool = False,
@@ -183,7 +188,8 @@ def run_nuclei_scan(
                 progress_callback(completed, total, eta, detail)
             except TypeError:
                 try:
-                    progress_callback(completed, total, eta)
+                    legacy_cb = cast(Callable[[int, int, str], None], progress_callback)
+                    legacy_cb(completed, total, eta)
                 except Exception:
                     pass
             except Exception:
