@@ -149,6 +149,29 @@ def test_scan_vulnerabilities_web_basic_https():
     assert finding["tls"] == "ok"
 
 
+def test_scan_vulnerabilities_web_propagates_http_server():
+    app = _make_app()
+    app.config["scan_mode"] = "normal"
+    app.extra_tools = {}
+
+    host_info = {
+        "ip": "10.0.0.9",
+        "ports": [{"port": 80, "service": "http", "is_web_service": True}],
+    }
+
+    headers = "HTTP/1.1 200 OK\nServer: TestSrv\n"
+    with patch(
+        "redaudit.core.auditor_vuln.http_enrichment",
+        return_value={"curl_headers": headers},
+    ):
+        result = app.scan_vulnerabilities_web(host_info)
+
+    assert result["host"] == "10.0.0.9"
+    agentless = host_info.get("agentless_fingerprint") or {}
+    assert agentless.get("http_server") == "TestSrv"
+    assert agentless.get("http_source") == "enrichment"
+
+
 def test_scan_vulnerabilities_web_no_web_ports():
     auditor = _DummyAuditor()
     auditor.config["scan_mode"] = "normal"
@@ -407,6 +430,27 @@ def test_scan_vulnerabilities_concurrent_rich_interrupted(monkeypatch):
 def test_scan_vulnerabilities_concurrent_no_web_hosts():
     auditor = _DummyAuditor()
     auditor.scan_vulnerabilities_concurrent([{"ip": "10.0.0.4", "web_ports_count": 0}])
+
+
+def test_scan_vulnerabilities_concurrent_skips_upnp_http_only(monkeypatch):
+    auditor = _DummyAuditor()
+    called = []
+
+    def _fake_scan(host, **_kwargs):
+        called.append(host["ip"])
+        return {"host": host["ip"], "vulnerabilities": []}
+
+    monkeypatch.setattr(auditor, "scan_vulnerabilities_web", _fake_scan)
+
+    host_results = [
+        {
+            "ip": "10.0.0.8",
+            "web_ports_count": 0,
+            "agentless_fingerprint": {"http_title": "UPnP Device", "http_source": "upnp"},
+        }
+    ]
+    auditor.scan_vulnerabilities_concurrent(host_results)
+    assert not called
 
 
 def test_scan_vulnerabilities_concurrent_fallback_interrupt(monkeypatch):

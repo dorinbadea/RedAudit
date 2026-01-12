@@ -194,6 +194,18 @@ def test_identity_score_with_discovery_hints(scanner):
     assert "hypervisor" in hints
 
 
+def test_identity_score_skips_upnp_http_source(scanner):
+    host = {
+        "agentless_fingerprint": {
+            "http_title": "UPnP Device",
+            "http_source": "upnp",
+        }
+    }
+    score, reasons = scanner.compute_identity_score(host)
+    assert "http_probe" not in reasons
+    assert score == 0
+
+
 class TestDeepScanDecision:
     """Test deep scan trigger logic."""
 
