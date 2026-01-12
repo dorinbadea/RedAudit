@@ -1546,6 +1546,7 @@ class TestDeepScanDecision:
             device_type_hints=[],
             identity_score=20,
             identity_threshold=50,
+            identity_evidence=False,
         )
         # Returns tuple (should_trigger, reasons)
         should_trigger, reasons = result
@@ -1561,6 +1562,7 @@ class TestDeepScanDecision:
             device_type_hints=["server"],
             identity_score=80,
             identity_threshold=50,
+            identity_evidence=False,
         )
         # Returns tuple (should_trigger, reasons)
         should_trigger, reasons = result
@@ -1576,6 +1578,7 @@ class TestDeepScanDecision:
             device_type_hints=[],
             identity_score=60,
             identity_threshold=50,
+            identity_evidence=False,
         )
         # Returns tuple (should_trigger, reasons)
         should_trigger, reasons = result
@@ -1595,6 +1598,7 @@ class TestDeepScanDecision:
             device_type_hints=[],
             identity_score=3,  # Below threshold
             identity_threshold=4,
+            identity_evidence=False,
         )
         should_trigger, reasons = result
         assert should_trigger is True
