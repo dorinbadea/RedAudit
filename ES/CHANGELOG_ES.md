@@ -10,6 +10,8 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.9] - 2026-01-12
+
 ### Cambiado
 
 - **Deep Scan**: Usa evidencia HTTP (título/servidor) y tipo de dispositivo para evitar deep scans innecesarios cuando la identidad ya es fuerte.

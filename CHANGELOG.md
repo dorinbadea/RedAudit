@@ -10,6 +10,8 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.9] - 2026-01-12
+
 ### Changed
 
 - **Deep Scan**: Use HTTP title/server and device-type evidence to avoid unnecessary deep scans when identity is already strong.
