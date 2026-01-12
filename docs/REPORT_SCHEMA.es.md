@@ -106,9 +106,12 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `findings_total` | integer | Hallazgos Nuclei totales antes de filtrar falsos positivos |
 | `findings_suspected` | integer | Hallazgos Nuclei marcados como falsos positivos sospechados |
 | `suspected` | array | (Opcional) Lista mínima de sospechosos (template_id/matched_at/fp_reason) |
-| `success` | boolean | Si Nuclei generó archivo de salida |
+| `success` | boolean | Archivo de salida generado y sin lotes fallidos |
+| `partial` | boolean | (Opcional) Uno o más lotes con timeout; resultados incompletos |
+| `timeout_batches` | array | (Opcional) Índices de lotes con timeout |
+| `failed_batches` | array | (Opcional) Índices de lotes fallidos tras reintento |
 | `output_file` | string | Ruta relativa al archivo de salida (best-effort) |
-| `error` | string | Error si Nuclei falló (best-effort) |
+| `error` | string | Error si Nuclei falló (best-effort, p. ej., timeout) |
 
 ### Config Snapshot (v3.7+)
 

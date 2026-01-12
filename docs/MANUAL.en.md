@@ -235,6 +235,7 @@ When enabled (default), RedAudit performs additional scanning on hosts where ini
 - Fewer than 3 open ports found (when identity is weak)
 - Services identified as `unknown` or `tcpwrapped`
 - MAC/vendor information not obtained
+- No version info and no strong identity evidence (HTTP title/server or device-type hints)
 - **VPN Gateway Detection**: Host shares the MAC address with the gateway but has a different IP (virtual interface)
 
 **Behavior:**
@@ -243,7 +244,7 @@ When enabled (default), RedAudit performs additional scanning on hosts where ini
 1. Phase 1: Aggressive TCP (`-A -p- -sV -Pn`)
 2. Phase 2a: Priority UDP probe (17 common ports including 500/4500)
 3. Phase 2b: UDP top-ports (`--udp-ports`) when mode is `full` and identity is still weak
-4. Quiet hosts with vendor hints and zero open ports may get a short HTTP/HTTPS probe on common paths
+4. Quiet hosts with vendor hints and zero open ports may get a short HTTP/HTTPS probe on common paths to resolve identity early
 
 Disable with `--no-deep-scan`.
 
@@ -272,6 +273,11 @@ RedAudit now integrates specialized tools for deep web application assessment:
 
 - **sqlmap**: Automatically tests for SQL injection flaws on suspect parameters. Configurable via Custom Profile (Levels 1-5, Risks 1-3).
 - **OWASP ZAP**: Optional DAST scanning for spidering and active scanning. Enabled via Custom Profile or config.
+  - Both tools are skipped on infrastructure devices when identity evidence indicates router/switch/AP class hosts.
+
+### Nuclei Partial Runs
+
+When Nuclei batch scans time out, the run is marked as partial and the report includes timeout and failed batch indexes.
 
 ### Auto-Exclusion
 

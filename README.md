@@ -18,7 +18,7 @@
 
 RedAudit is an **automated network auditing framework** for authorized assessments. It coordinates discovery, identity resolution, and vulnerability checks with evidence-driven escalation, then consolidates results into structured reports (JSON, TXT, HTML, plus JSONL exports).
 
-Instead of running every tool against every host, RedAudit escalates scanning only when identity remains weak or signals are ambiguous, reducing noise while preserving coverage for hard-to-identify devices.
+Instead of running every tool against every host, RedAudit escalates scanning only when identity remains weak or signals are ambiguous, reducing noise while preserving coverage for hard-to-identify devices. HTTP title/server hints and device-type fingerprints help avoid unnecessary deep scans and heavy web-app scanners on infrastructure devices.
 
 It orchestrates a comprehensive toolchain (nmap, nikto, nuclei, whatweb, testssl.sh, sqlmap, masscan, and more) and applies **Smart-Check** verification to reduce false positives before reporting.
 
@@ -61,7 +61,7 @@ sudo redaudit
 | **Smart-Throttle** | AIMD-based adaptive congestion control that prevents packet loss by dynamically sizing scan batches |
 | **Topology Discovery** | L2/L3 mapping (ARP/VLAN/LLDP + gateway/routes) for network context |
 | **Network Discovery** | Broadcast protocols (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) for L2 visibility |
-| **Web App Security** | Integrated `sqlmap` (SQLi) and `OWASP ZAP` (DAST) for deep web application scanning |
+| **Web App Security** | Integrated `sqlmap` (SQLi) and `OWASP ZAP` (DAST) for deep web application scanning, with infra-aware gating |
 | **Agentless Verification** | Optional SMB/RDP/LDAP/SSH/HTTP probes for identity hints and fingerprints |
 | **VPN Interface Detection** | Classifies VPN endpoints via vendor OUI, VPN ports (500/4500/1194/51820), and hostname patterns |
 | **Stealth Mode** | T1 timing, 1 thread, 5s+ delays for IDS-sensitive environments (`--stealth`) |
@@ -72,7 +72,7 @@ sudo redaudit
 |:---|:---|
 | **CVE Correlation** | NVD API 2.0 with CPE 2.3 matching and 7-day cache |
 | **Exploit Lookup** | Automatic ExploitDB (`searchsploit`) queries for detected services |
-| **Template Scanning** | Nuclei templates with best-effort false-positive checks (header/vendor/title hints) |
+| **Template Scanning** | Nuclei templates with best-effort false-positive checks (header/vendor/title hints) and partial timeout reporting |
 | **Smart-Check Filter** | 3-layer false positive reduction (Content-Type, size, magic bytes) |
 | **Network Leak Hints** | Flags multiple DHCP-advertised subnets/VLANs as potential hidden networks |
 
@@ -210,9 +210,9 @@ In **full/completo** mode, the base profile is already aggressive, so deep ident
 - Low visibility (few open ports) only when identity score is below the threshold
 - Suspicious services (`unknown`, `tcpwrapped`)
 - Missing MAC/vendor/hostname
-- No version info (identity score below the threshold)
+- No version info when identity evidence is still weak (title/server/device-type hints)
 - Filtered or no-response ports (deep scan fallback)
-- Quiet hosts with vendor hints may get a short HTTP/HTTPS title/meta/heading probe on common ports
+- Quiet hosts with vendor hints may get a short HTTP/HTTPS title/meta/heading probe on common ports to resolve identity early
 
 **Result**: Faster scans than always-on UDP, while preserving identity for IoT, filtered services, and legacy devices.
 

@@ -187,7 +187,16 @@ sudo apt update && sudo apt install nbtscan netdiscover fping avahi-utils snmp l
 sudo apt update && sudo apt install nuclei
 ```
 
-### 12c. testssl.sh not found / TLS deep checks skipped (v3.6.1+)
+### 12c. Nuclei partial run / timeout batches
+
+**Symptom**: Reports show `nuclei.partial: true` with timeout or failed batches.
+**Cause**: Nuclei batch runs exceeded the per-batch timeout.
+**Resolution**:
+
+- Reduce the number of HTTP targets or rerun with fewer subnets.
+- Lower the Nuclei rate limit or increase the timeout in config if needed.
+
+### 12d. testssl.sh not found / TLS deep checks skipped (v3.6.1+)
 
 **Symptom**: TLS deep checks are skipped or you never see TestSSL output in findings.
 **Cause**: `testssl.sh` is not installed or not in the expected path.

@@ -80,9 +80,9 @@ Scanning every host with full UDP (-p- -sU) would take hours. RedAudit uses **he
 
 | Condition | Reasoning |
 |:---|:---|
-| Identity score below threshold (e.g., missing MAC/vendor/hostname, no CPE/banner, weak HTTP/agentless signals) | Identity remains weak |
+| Identity score below threshold (e.g., missing MAC/vendor/hostname, no CPE/banner, weak HTTP title/server or agentless signals) | Identity remains weak |
 | ≤3 open ports **and** identity is weak | Low visibility, needs extra probing |
-| Service fingerprint weak (`unknown`, `tcpwrapped`, or no version info) | Identity ambiguous or filtered |
+| Service fingerprint weak (`unknown`, `tcpwrapped`, or no version info without HTTP identity evidence) | Identity ambiguous or filtered |
 | >8 open ports **or** network-device hints | Complex host or infrastructure, worth deeper enumeration |
 
 **Where in code:** Conditions in [`scan_host_ports()`](../redaudit/core/auditor_scan.py)

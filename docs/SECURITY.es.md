@@ -135,6 +135,7 @@ Los usuarios deben tratar el archivo de configuración como sensible. La clave A
 - **Alcance del proxy**: `--proxy` depende de `proxychains4` y solo envuelve tráfico TCP (connect); UDP/ARP/ICMP y escaneos raw no se proxifican
 - **Huella de red**: Los escaneos generan tráfico significativo
 - **Recon opcional**: `--net-discovery` / `--redteam` pueden invocar tooling broadcast/L2 adicional (best-effort; solo con autorización explícita)
+- **Escaneo de apps selectivo**: sqlmap/ZAP se omiten en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP
 
 ## 10. Seguridad en Red Team y Reconocimiento Activo
 

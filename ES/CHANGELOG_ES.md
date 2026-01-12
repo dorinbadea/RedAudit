@@ -8,6 +8,17 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [Unreleased]
+
+### Cambiado
+
+- **Deep Scan**: Usa evidencia HTTP (título/servidor) y tipo de dispositivo para evitar deep scans innecesarios cuando la identidad ya es fuerte.
+- **Escaneo Apps Web**: Omitir sqlmap/ZAP en UIs de infraestructura cuando la identidad indica router/switch/AP.
+
+### Corregido
+
+- **Reporte Nuclei**: Marcar ejecuciones parciales cuando hay timeouts de lotes y exponer índices de lotes con timeout/fallidos en el informe.
+
 ## [v4.6.8] - 2026-01-12
 
 ### Corregido

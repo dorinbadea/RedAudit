@@ -108,9 +108,12 @@ Appears only when Nuclei scanning is enabled and available.
 | `findings_total` | integer | Total Nuclei findings before false-positive filtering |
 | `findings_suspected` | integer | Nuclei findings flagged as suspected false positives |
 | `suspected` | array | (Optional) Minimal list of suspected findings (template_id/matched_at/fp_reason) |
-| `success` | boolean | If Nuclei generated output file |
+| `success` | boolean | Output file generated and no failed batches |
+| `partial` | boolean | (Optional) One or more batches timed out; results may be incomplete |
+| `timeout_batches` | array | (Optional) Batch indexes that timed out |
+| `failed_batches` | array | (Optional) Batch indexes that failed after retry |
 | `output_file` | string | Relative path to output file (best-effort) |
-| `error` | string | Error if Nuclei failed (best-effort) |
+| `error` | string | Error if Nuclei failed (best-effort, e.g., timeout) |
 
 ### Config Snapshot (v3.7+)
 

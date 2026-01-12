@@ -14,7 +14,7 @@
 
 RedAudit v4.6.0 - Framework de Auditoría de Seguridad Avanzada automatizada** para evaluaciones autorizadas. Coordina descubrimiento, resolución de identidad y comprobaciones de vulnerabilidades con escalado basado en evidencias, y consolida resultados en informes estructurados (JSON, TXT, HTML y exportaciones JSONL).
 
-En lugar de ejecutar todas las herramientas contra todos los hosts, RedAudit escala solo cuando la identidad es débil o las señales son ambiguas, reduciendo ruido sin perder cobertura en entornos complejos.
+En lugar de ejecutar todas las herramientas contra todos los hosts, RedAudit escala solo cuando la identidad es débil o las señales son ambiguas, reduciendo ruido sin perder cobertura en entornos complejos. Las pistas HTTP (título/servidor) y el tipo de dispositivo ayudan a evitar deep scans innecesarios y escáneres web pesados en infraestructura.
 
 Orquesta un toolchain completo (nmap, nikto, nuclei, whatweb, testssl.sh, sqlmap, masscan y más) y aplica verificación **Smart-Check** para reducir falsos positivos antes de reportar.
 
@@ -57,7 +57,7 @@ sudo redaudit
 | **Smart-Throttle** | Control de congestión adaptativo (AIMD) que previene la pérdida de paquetes ajustando dinámicamente los lotes de escaneo |
 | **Descubrimiento de Topología** | Mapeo L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para contexto de red |
 | **Descubrimiento de Red** | Protocolos broadcast (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) para visibilidad L2 |
-| **Seguridad Web App** | Integración de `sqlmap` (SQLi) y `OWASP ZAP` (DAST) para escaneo profundo de aplicaciones web |
+| **Seguridad Web App** | Integración de `sqlmap` (SQLi) y `OWASP ZAP` (DAST) para escaneo profundo de aplicaciones web, con gating de infraestructura |
 | **Verificación sin agente** | Sondas SMB/RDP/LDAP/SSH/HTTP para pistas de identidad |
 | **Detección Interfaces VPN** | Clasifica endpoints VPN por OUI del fabricante, puertos VPN (500/4500/1194/51820) y patrones de hostname |
 | **Modo Sigiloso** | Timing T1, 1 hilo, retardos 5s+ para entornos sensibles a IDS (`--stealth`) |
@@ -68,7 +68,7 @@ sudo redaudit
 | :--- | :--- |
 | **Correlación CVE** | NVD API 2.0 con matching CPE 2.3 y caché de 7 días |
 | **Búsqueda de Exploits** | Consultas automáticas a ExploitDB (`searchsploit`) para servicios detectados |
-| **Escaneo de Plantillas** | Plantillas Nuclei con comprobaciones best-effort de falsos positivos (cabeceras/fabricante/título) |
+| **Escaneo de Plantillas** | Plantillas Nuclei con comprobaciones best-effort de falsos positivos (cabeceras/fabricante/título) y reporte de timeout parcial |
 | **Filtro Smart-Check** | Reducción de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |
 | **Indicios de Fuga de Red** | Señala múltiples subredes/VLANs anunciadas por DHCP como posibles redes ocultas |
 
@@ -207,9 +207,9 @@ sigue siendo débil o hay señales sospechosas.
 - Pocos puertos abiertos (≤3) solo si la identidad está por debajo del umbral
 - Servicios sospechosos (`unknown`, `tcpwrapped`)
 - Falta de MAC/fabricante/nombre de host
-- Sin versión de servicio (identidad por debajo del umbral)
+- Sin versión de servicio cuando la evidencia de identidad sigue siendo débil (título/servidor/tipo)
 - Puertos filtrados o sin respuesta (fallback)
-- Hosts silenciosos con fabricante detectado pueden recibir una sonda HTTP/HTTPS breve de título/metadatos/cabeceras en puertos habituales
+- Hosts silenciosos con fabricante detectado pueden recibir una sonda HTTP/HTTPS breve de título/metadatos/cabeceras en puertos habituales para resolver identidad antes
 
 **Resultado**: Escaneos más rápidos que UDP siempre activo, manteniendo calidad de detección para IoT, servicios filtrados
 y equipos legacy.

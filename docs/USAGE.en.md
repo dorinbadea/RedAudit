@@ -181,6 +181,10 @@ Grouped by operational function. Verified against the current codebase.
 | `--no-vuln-scan` | Skip Nikto/Web vulnerability scanning |
 | `--cve-lookup` | Correlate services with NVD CVE data |
 
+Notes:
+- Web app scanners (sqlmap/ZAP) are skipped on infrastructure UIs when identity evidence indicates router/switch/AP devices.
+- Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.
+
 ### Security & Privacy
 
 | Flag | Description |

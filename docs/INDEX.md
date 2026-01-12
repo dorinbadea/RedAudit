@@ -1,6 +1,6 @@
 # RedAudit Documentation
 
-**RedAudit** is an automated network auditing framework for Linux that orchestrates industry-standard tools (`nmap`, `whatweb`, `nikto`, `testssl.sh`, `nuclei`, `searchsploit`) into a concurrent pipeline. It supports **defensive hardening** and **authorized offensive assessments**, with deterministic, structured output.
+**RedAudit** is an automated network auditing framework for Linux that orchestrates industry-standard tools (`nmap`, `whatweb`, `nikto`, `testssl.sh`, `nuclei`, `searchsploit`) into a concurrent pipeline. It supports **defensive hardening** and **authorized offensive assessments**, with deterministic, structured output. Nuclei runs report partial timeouts, and web app scanners are gated when infrastructure identities are detected.
 
 ## Main Documentation
 

@@ -187,7 +187,16 @@ sudo apt update && sudo apt install nbtscan netdiscover fping avahi-utils snmp l
 sudo apt update && sudo apt install nuclei
 ```
 
-### 12c. testssl.sh no encontrado / checks TLS profundos omitidos (v3.6.1+)
+### 12c. Nuclei parcial / lotes con timeout
+
+**Síntoma**: Los reportes muestran `nuclei.partial: true` con lotes en timeout o fallidos.
+**Causa**: Los lotes de Nuclei superaron el timeout por lote.
+**Solución**:
+
+- Reducir el número de objetivos HTTP o reintentar con menos subredes.
+- Bajar el rate limit de Nuclei o aumentar el timeout en la configuración.
+
+### 12d. testssl.sh no encontrado / checks TLS profundos omitidos (v3.6.1+)
 
 **Síntoma**: Los checks TLS profundos se omiten o no aparece salida de TestSSL en los hallazgos.
 **Causa**: `testssl.sh` no está instalado o no está en la ruta esperada.
