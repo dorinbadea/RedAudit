@@ -14,6 +14,15 @@ Este documento describe el roadmap técnico, verifica las capacidades ya impleme
 
 Estas características están aprobadas pero **aún no implementadas** en el código base.
 
+### v4.6 Fidelidad de Escaneo y Control de Tiempo (Hecho)
+
+| Característica | Estado | Descripción |
+| :--- | :--- | :--- |
+| **Gating de Apps Web por Infraestructura** | Hecho | Omitir sqlmap/ZAP en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP. |
+| **Evidencia de Identidad en Deep Scan** | Hecho | Título/servidor HTTP y tipo de dispositivo evitan deep scan cuando la identidad ya es fuerte. |
+| **Sonda HTTP Rápida de Identidad** | Hecho | Sonda HTTP/HTTPS breve en hosts silenciosos para resolver identidad antes. |
+| **Reporte Parcial de Nuclei** | Hecho | Marcar ejecuciones parciales y registrar lotes con timeout/fallidos en el informe. |
+
 ### v4.4 Cobertura de Código y Estabilidad (Prioridad: Alta) ✅
 
 | Característica | Estado | Descripción |

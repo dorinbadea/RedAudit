@@ -8,6 +8,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [Unreleased]
+
+### Changed
+
+- **Deep Scan**: Use HTTP title/server and device-type evidence to avoid unnecessary deep scans when identity is already strong.
+- **Web App Scanning**: Skip sqlmap/ZAP on infrastructure UIs when identity indicates router/switch/AP devices.
+
+### Fixed
+
+- **Nuclei Reporting**: Mark partial runs when batches time out and surface timeout/failed batch indexes in reports.
+
 ## [v4.6.8] - 2026-01-12
 
 ### Fixed

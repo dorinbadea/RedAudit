@@ -235,6 +235,7 @@ Cuando está habilitado (por defecto), RedAudit realiza escaneos adicionales en 
 - Menos de 3 puertos abiertos encontrados (cuando la identidad es débil)
 - Servicios identificados como `unknown` o `tcpwrapped`
 - Información MAC/fabricante no obtenida
+- Sin versión de servicio y sin evidencia fuerte de identidad (título/servidor o tipo de dispositivo)
 - **Detección de Gateway VPN**: El host comparte la dirección MAC con el gateway pero tiene una IP diferente (interfaz virtual)
 
 **Comportamiento:**
@@ -243,7 +244,7 @@ Cuando está habilitado (por defecto), RedAudit realiza escaneos adicionales en 
 1. Fase 1: TCP agresivo (`-A -p- -sV -Pn`)
 2. Fase 2a: Sonda UDP prioritaria (17 puertos comunes incluyendo 500/4500)
 3. Fase 2b: UDP top-ports (`--udp-ports`) cuando el modo es `full` y la identidad sigue débil
-4. Hosts silenciosos con fabricante detectado y cero puertos abiertos pueden recibir una sonda HTTP/HTTPS breve en rutas habituales
+4. Hosts silenciosos con fabricante detectado y cero puertos abiertos pueden recibir una sonda HTTP/HTTPS breve en rutas habituales para resolver identidad antes
 
 Deshabilitar con `--no-deep-scan`.
 
@@ -272,6 +273,11 @@ RedAudit ahora integra herramientas especializadas para evaluación profunda de 
 
 - **sqlmap**: Prueba automáticamente fallos de inyección SQL en parámetros sospechosos. Configurable vía Perfil de Mago (Niveles 1-5, Riesgos 1-3).
 - **OWASP ZAP**: Escaneo DAST opcional para spidering y escaneo activo. Se activa vía Perfil Custom o config.
+  - Ambas herramientas se omiten en dispositivos de infraestructura cuando la evidencia de identidad indica router/switch/AP.
+
+### Ejecuciones Parciales de Nuclei
+
+Cuando los lotes de Nuclei agotan tiempo, la ejecución se marca como parcial y el informe incluye los índices de lotes con timeout y fallidos.
 
 ### Auto-Exclusión
 

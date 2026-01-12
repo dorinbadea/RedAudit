@@ -188,6 +188,10 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | `--no-vuln-scan` | Omitir escaneo de vulnerabilidades Web/Nikto |
 | `--cve-lookup` | Correlar servicios con datos CVE NVD |
 
+Notas:
+- Los escáneres de aplicaciones web (sqlmap/ZAP) se omiten en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP.
+- Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los reportes.
+
 ### Seguridad y Privacidad
 
 | Flag | Descripción |

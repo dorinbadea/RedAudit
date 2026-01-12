@@ -14,6 +14,15 @@ This document outlines the technical roadmap, verifies implemented capabilities,
 
 These features are approved but **not yet implemented** in the codebase.
 
+### v4.6 Scan Fidelity & Time Control (Done)
+
+| Feature | Status | Description |
+| :--- | :--- | :--- |
+| **Infra-Aware Web App Gating** | Done | Skip sqlmap/ZAP on infrastructure UIs when identity evidence indicates router/switch/AP devices. |
+| **Deep Scan Identity Evidence** | Done | HTTP title/server and device-type hints suppress deep scan when identity is already strong. |
+| **Quick HTTP Identity Probe** | Done | Short HTTP/HTTPS probe on quiet hosts to resolve identity early. |
+| **Nuclei Partial Reporting** | Done | Mark partial runs and record timeout/failed batch indexes in reports. |
+
 ### v4.4 Code Coverage & Stability (Priority: High) ✅
 
 | Feature | Status | Description |

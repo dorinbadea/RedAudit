@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Tuple
 
 from redaudit.core.command_runner import CommandRunner
 from redaudit.core.proxy import get_proxy_command_wrapper
+from redaudit.core.identity_utils import match_infra_keyword
 from redaudit.utils.dry_run import is_dry_run
 
 # File extensions that suggest sensitive/binary content
@@ -430,37 +431,6 @@ NUCLEI_TEMPLATE_VENDORS = {
     },
 }
 
-# Common router/device vendors that often trigger CVE false positives
-COMMON_INFRASTRUCTURE_VENDORS = frozenset(
-    [
-        "fritz",
-        "avm",
-        "netgear",
-        "tp-link",
-        "asus",
-        "linksys",
-        "d-link",
-        "ubiquiti",
-        "mikrotik",
-        "cisco",
-        "aruba",
-        "fortinet",
-        "pfsense",
-        "openwrt",
-        "synology",
-        "qnap",
-        "hikvision",
-        "dahua",
-        "axis",
-        "zyxel",
-        "huawei",
-        "samsung",
-        "philips",
-        "sonos",
-        "roku",
-    ]
-)
-
 
 def parse_cpe_components(cpe_string: str) -> Dict[str, str]:
     """
@@ -541,9 +511,9 @@ def validate_cpe_against_template(
                 return True, f"cpe_matches_fp_vendor:{fpv}"
 
         # Check against infrastructure devices
-        for infra in COMMON_INFRASTRUCTURE_VENDORS:
-            if infra in vendor or infra in product:
-                return True, f"cpe_is_infrastructure:{infra}"
+        infra_hit = match_infra_keyword(f"{vendor} {product}")
+        if infra_hit:
+            return True, f"cpe_is_infrastructure:{infra_hit}"
 
     return False, "cpe_no_match"
 
@@ -683,11 +653,11 @@ def check_nuclei_false_positive(
             return True, f"fp_vendor_detected:{fp_vendor}"
 
     # Check against common infrastructure devices
-    for infra_vendor in COMMON_INFRASTRUCTURE_VENDORS:
-        if infra_vendor in identifiers:
-            # Only flag if none of the expected vendors are present
-            if not any(v in identifiers for v in expected):
-                return True, f"infrastructure_device:{infra_vendor}"
+    infra_hit = match_infra_keyword(identifiers)
+    if infra_hit:
+        # Only flag if none of the expected vendors are present
+        if not any(v in identifiers for v in expected):
+            return True, f"infrastructure_device:{infra_hit}"
 
     return False, "no_fp_indicators"
 

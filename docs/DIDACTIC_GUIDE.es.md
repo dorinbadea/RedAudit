@@ -80,9 +80,9 @@ Escanear cada host con UDP completo (-p- -sU) tomaría horas. RedAudit usa **heu
 
 | Condición | Razonamiento |
 |:---|:---|
-| Puntuación de identidad por debajo del umbral (p. ej., falta de MAC/fabricante/nombre de host, sin CPE/banner, señales HTTP/sin agente débiles) | Identidad sigue débil |
+| Puntuación de identidad por debajo del umbral (p. ej., falta de MAC/fabricante/nombre de host, sin CPE/banner, señales HTTP de título/servidor o sin agente débiles) | Identidad sigue débil |
 | ≤3 puertos abiertos **y** la identidad es débil | Baja visibilidad, requiere sondeo extra |
-| Fingerprint de servicio débil (`unknown`, `tcpwrapped` o sin versión) | Identidad ambigua o filtrada |
+| Fingerprint de servicio débil (`unknown`, `tcpwrapped` o sin versión sin evidencia HTTP) | Identidad ambigua o filtrada |
 | >8 puertos abiertos **o** pistas de dispositivo de red | Host complejo o infraestructura, merece enumeración adicional |
 
 **Ubicación en código:** Condiciones en [`scan_host_ports()`](../redaudit/core/auditor_scan.py)

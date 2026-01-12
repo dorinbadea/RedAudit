@@ -440,6 +440,7 @@ class TestDeepScan:
         """Test deep_scan_host when identity found in phase 1."""
         auditor = MockAuditorScan()
         auditor.config["output_dir"] = "/tmp"
+        rec1 = {"stdout": "22/tcp open ssh OpenSSH 8.9\n", "timeout": False}
 
         with (
             patch("redaudit.core.auditor_scan.extract_vendor_mac", return_value=(None, None)),
@@ -449,10 +450,7 @@ class TestDeepScan:
                 return_value={"proc": "foo"},
             ),
             patch("redaudit.core.auditor_scan.stop_background_capture"),
-            patch(
-                "redaudit.core.auditor_scan.run_nmap_command",
-                return_value={"stdout": "Scan Output", "timeout": False},
-            ),
+            patch("redaudit.core.auditor_scan.run_nmap_command", return_value=rec1),
             patch("redaudit.core.auditor_scan.run_udp_probe", return_value=[]),
             patch("redaudit.core.auditor_scan.output_has_identity", return_value=True),
         ):
@@ -462,7 +460,7 @@ class TestDeepScan:
     def test_deep_scan_host_sets_identity_fields(self):
         auditor = MockAuditorScan()
         auditor.config["output_dir"] = "/tmp"
-        rec1 = {"stdout": "", "stderr": "", "returncode": 0}
+        rec1 = {"stdout": "80/tcp open http Apache 2.4.25\n", "stderr": "", "returncode": 0}
 
         with (
             patch("redaudit.core.auditor_scan.start_background_capture", return_value=None),
@@ -480,6 +478,54 @@ class TestDeepScan:
         assert deep["vendor"] == "VendorX"
         assert deep["os_detected"] == "Linux"
         assert deep.get("phase2_skipped") is True
+
+    def test_deep_scan_host_runs_udp_when_no_ports(self):
+        auditor = MockAuditorScan()
+        auditor.config["output_dir"] = "/tmp"
+        rec1 = {"stdout": "Host is up", "stderr": "", "returncode": 0}
+
+        with (
+            patch("redaudit.core.auditor_scan.start_background_capture", return_value=None),
+            patch("redaudit.core.auditor_scan.stop_background_capture", return_value=None),
+            patch("redaudit.core.auditor_scan.run_nmap_command", return_value=rec1),
+            patch("redaudit.core.auditor_scan.output_has_identity", return_value=True),
+            patch("redaudit.core.auditor_scan.extract_vendor_mac", return_value=(None, None)),
+            patch("redaudit.core.auditor_scan.extract_os_detection", return_value=None),
+            patch("redaudit.core.auditor_scan.run_udp_probe", return_value=[]),
+        ):
+            deep = auditor.deep_scan_host("192.168.1.200")
+
+        assert deep.get("phase2_skipped") is None
+        assert "udp_priority_probe" in deep
+
+    def test_run_deep_scans_merges_ports(self):
+        auditor = MockAuditorScan()
+        auditor.config["threads"] = 1
+        auditor._hyperscan_discovery_ports = {}
+
+        host = Host(ip="192.168.1.50")
+        deep = {
+            "strategy": "adaptive_v2.8",
+            "commands": [],
+            "ports": [
+                {
+                    "port": 22,
+                    "protocol": "tcp",
+                    "service": "ssh",
+                    "product": "OpenSSH",
+                    "version": "8.9",
+                    "extrainfo": "",
+                    "cpe": [],
+                    "is_web_service": False,
+                }
+            ],
+        }
+
+        with patch.object(auditor, "deep_scan_host", return_value=deep):
+            auditor.run_deep_scans_concurrent([host])
+
+        assert host.total_ports_found == 1
+        assert host.ports[0]["port"] == 22
 
     def test_deep_scan_host_udp_quick_with_neighbor_vendor(self):
         auditor = MockAuditorScan()
@@ -1500,6 +1546,7 @@ class TestDeepScanDecision:
             device_type_hints=[],
             identity_score=20,
             identity_threshold=50,
+            identity_evidence=False,
         )
         # Returns tuple (should_trigger, reasons)
         should_trigger, reasons = result
@@ -1515,6 +1562,7 @@ class TestDeepScanDecision:
             device_type_hints=["server"],
             identity_score=80,
             identity_threshold=50,
+            identity_evidence=False,
         )
         # Returns tuple (should_trigger, reasons)
         should_trigger, reasons = result
@@ -1530,6 +1578,7 @@ class TestDeepScanDecision:
             device_type_hints=[],
             identity_score=60,
             identity_threshold=50,
+            identity_evidence=False,
         )
         # Returns tuple (should_trigger, reasons)
         should_trigger, reasons = result
@@ -1549,6 +1598,7 @@ class TestDeepScanDecision:
             device_type_hints=[],
             identity_score=3,  # Below threshold
             identity_threshold=4,
+            identity_evidence=False,
         )
         should_trigger, reasons = result
         assert should_trigger is True

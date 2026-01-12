@@ -19,6 +19,7 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from redaudit.core.agentless_verify import (
+    _fingerprint_device_from_http,
     probe_agentless_services,
     select_agentless_probe_targets,
     summarize_agentless_fingerprint,
@@ -669,6 +670,7 @@ class AuditorScan:
         device_type_hints: List[str],
         identity_score: int,
         identity_threshold: int,
+        identity_evidence: bool,
     ) -> Tuple[bool, List[str]]:
         trigger_deep = False
         deep_reasons: List[str] = []
@@ -685,7 +687,7 @@ class AuditorScan:
         if 0 < total_ports <= 3 and identity_is_weak:
             trigger_deep = True
             deep_reasons.append("low_visibility")
-        if total_ports > 0 and not any_version:
+        if total_ports > 0 and not any_version and not identity_evidence:
             trigger_deep = True
             deep_reasons.append("no_version_info")
         if "router" in device_type_hints or "network_device" in device_type_hints:
@@ -707,7 +709,7 @@ class AuditorScan:
             identity_score >= identity_threshold
             and not suspicious
             and total_ports <= 20
-            and any_version
+            and (any_version or identity_evidence)
         ):
             trigger_deep = False
             deep_reasons.append("identity_strong")
@@ -807,6 +809,149 @@ class AuditorScan:
         if unit == "h":
             return float(val) * 3600.0
         return None
+
+    @staticmethod
+    def _split_nmap_product_version(rest: str) -> Tuple[str, str, str]:
+        rest = str(rest or "").strip()
+        if not rest:
+            return "", "", ""
+        extra = ""
+        idx = rest.find(" (")
+        if idx == -1 and rest.startswith("("):
+            idx = 0
+        if idx >= 0:
+            extra = rest[idx:].strip()
+            rest = rest[:idx].strip()
+        tokens = rest.split()
+        product = rest
+        version = ""
+        if tokens:
+            version_idx = None
+            for i, tok in enumerate(tokens):
+                if any(ch.isdigit() for ch in tok):
+                    version_idx = i
+                    break
+            if version_idx is not None:
+                product = " ".join(tokens[:version_idx]) or tokens[0]
+                version = tokens[version_idx]
+                if version_idx + 1 < len(tokens):
+                    tail = " ".join(tokens[version_idx + 1 :])
+                    extra = f"{tail} {extra}".strip()
+        return product.strip(), version.strip(), extra.strip()
+
+    def _parse_nmap_open_ports(self, text: str) -> List[Dict[str, Any]]:
+        if not text:
+            return []
+        ports: List[Dict[str, Any]] = []
+        for raw_line in str(text).splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("PORT") or line.startswith("Nmap "):
+                continue
+            match = re.match(
+                r"^(\d+)/(tcp|udp)\s+(open|open\|filtered)\s+(\S+)(?:\s+(.*))?$",
+                line,
+                re.IGNORECASE,
+            )
+            if not match:
+                continue
+            port = int(match.group(1))
+            protocol = match.group(2).lower()
+            service = match.group(4) or ""
+            rest = match.group(5) or ""
+            product, version, extrainfo = self._split_nmap_product_version(rest)
+            is_web = is_web_service(service)
+            if not is_web:
+                from redaudit.utils.constants import WEB_LIKELY_PORTS
+
+                if port in WEB_LIKELY_PORTS:
+                    is_web = True
+            ports.append(
+                {
+                    "port": port,
+                    "protocol": protocol,
+                    "service": service,
+                    "product": product,
+                    "version": version,
+                    "extrainfo": extrainfo,
+                    "cpe": [],
+                    "is_web_service": is_web,
+                }
+            )
+        return ports
+
+    @staticmethod
+    def _merge_port_record(base: Dict[str, Any], incoming: Dict[str, Any]) -> Dict[str, Any]:
+        merged = dict(base)
+        for key in ("service", "product", "version", "extrainfo"):
+            base_val = str(merged.get(key) or "").strip()
+            incoming_val = incoming.get(key)
+            if not base_val or base_val in ("unknown", "tcpwrapped", "hyperscan-discovered"):
+                if incoming_val:
+                    merged[key] = incoming_val
+        if incoming.get("cpe"):
+            base_cpe = merged.get("cpe") or []
+            incoming_cpe = incoming.get("cpe") or []
+            merged["cpe"] = sorted({*base_cpe, *incoming_cpe})
+        if incoming.get("is_web_service"):
+            merged["is_web_service"] = True
+        return merged
+
+    def _merge_ports(
+        self,
+        existing: List[Dict[str, Any]],
+        incoming: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        merged: Dict[Tuple[int, str], Dict[str, Any]] = {}
+        for port in existing or []:
+            try:
+                key = (int(port.get("port")), str(port.get("protocol") or "tcp"))
+            except Exception:
+                continue
+            merged[key] = dict(port)
+        for port in incoming or []:
+            try:
+                key = (int(port.get("port")), str(port.get("protocol") or "tcp"))
+            except Exception:
+                continue
+            if key in merged:
+                merged[key] = self._merge_port_record(merged[key], port)
+            else:
+                merged[key] = dict(port)
+        return [merged[k] for k in sorted(merged.keys())]
+
+    @staticmethod
+    def _merge_services_from_ports(host_obj: Host, ports: List[Dict[str, Any]]) -> None:
+        if not host_obj or not hasattr(host_obj, "services"):
+            return
+        existing = {(s.port, s.protocol): s for s in (host_obj.services or [])}
+        for port in ports or []:
+            try:
+                key = (int(port.get("port")), str(port.get("protocol") or "tcp"))
+            except Exception:
+                continue
+            if key in existing:
+                svc = existing[key]
+                if svc.name in ("", "unknown") and port.get("service"):
+                    svc.name = port.get("service") or svc.name
+                if not svc.product and port.get("product"):
+                    svc.product = port.get("product") or svc.product
+                if not svc.version and port.get("version"):
+                    svc.version = port.get("version") or svc.version
+                if not svc.extrainfo and port.get("extrainfo"):
+                    svc.extrainfo = port.get("extrainfo") or svc.extrainfo
+                if not svc.cpe and port.get("cpe"):
+                    svc.cpe = port.get("cpe") or svc.cpe
+                continue
+            svc_obj = Service(
+                port=port.get("port", 0),
+                protocol=port.get("protocol") or "tcp",
+                name=port.get("service") or "unknown",
+                product=port.get("product") or "",
+                version=port.get("version") or "",
+                extrainfo=port.get("extrainfo") or "",
+                cpe=port.get("cpe") or [],
+            )
+            host_obj.add_service(svc_obj)
 
     def deep_scan_host(self, host_ip, trusted_ports: List[int] = None):
         """
@@ -908,6 +1053,9 @@ class AuditorScan:
                 proxy_manager=self.proxy_manager,
             )
 
+            deep_ports: List[Dict[str, Any]] = self._parse_nmap_open_ports(rec1.get("stdout", ""))
+            has_open_ports = bool(deep_ports)
+
             # Check for Identity
             has_identity = output_has_identity([rec1])
             mac, vendor = extract_vendor_mac(rec1.get("stdout", ""))
@@ -923,7 +1071,7 @@ class AuditorScan:
                 deep_obj["os_detected"] = os_detected
 
             # Phase 2: UDP scanning (Intelligent strategy)
-            if has_identity:
+            if has_identity and has_open_ports:
                 self.ui.print_status(self.ui.t("deep_scan_skip"), "OKGREEN")
                 deep_obj["phase2_skipped"] = True
             else:
@@ -980,6 +1128,30 @@ class AuditorScan:
                     "timeout_seconds": udp_probe_timeout,
                     "results": udp_probe,
                 }
+                responded_ports = [
+                    p.get("port") for p in udp_probe if p.get("state") == "responded"
+                ]
+                for port in responded_ports:
+                    service_name = "udp-probe"
+                    try:
+                        service_name = socket.getservbyport(int(port), "udp")
+                    except Exception:
+                        pass
+                    deep_ports = self._merge_ports(
+                        deep_ports,
+                        [
+                            {
+                                "port": port,
+                                "protocol": "udp",
+                                "service": service_name,
+                                "product": "",
+                                "version": "",
+                                "extrainfo": "",
+                                "cpe": [],
+                                "is_web_service": False,
+                            }
+                        ],
+                    )
 
                 # Extract MAC from neighbor cache if not found yet (LAN best-effort).
                 if not mac:
@@ -1000,8 +1172,8 @@ class AuditorScan:
 
                 # Phase 2b: Full UDP scan (only if mode is 'full' and still no identity)
                 # v2.9: Optimized to use top-ports instead of full 65535 port scan
-                has_identity_now = output_has_identity(deep_obj.get("commands", []))
-                if udp_mode == UDP_SCAN_MODE_FULL and not has_identity_now and not mac:
+                has_ports_now = bool(deep_ports)
+                if udp_mode == UDP_SCAN_MODE_FULL and not has_ports_now:
                     udp_top_ports = self.config.get("udp_top_ports", UDP_TOP_PORTS)
                     if not isinstance(udp_top_ports, int) or not (50 <= udp_top_ports <= 500):
                         udp_top_ports = UDP_TOP_PORTS
@@ -1039,6 +1211,9 @@ class AuditorScan:
                             deep_obj["mac_address"] = m2b
                         if v2b:
                             deep_obj["vendor"] = v2b
+                    deep_ports = self._merge_ports(
+                        deep_ports, self._parse_nmap_open_ports(rec2b.get("stdout", ""))
+                    )
                     if "os_detected" not in deep_obj:
                         os2b = extract_os_detection(
                             f"{self._coerce_text(rec2b.get('stdout'))}\n{self._coerce_text(rec2b.get('stderr'))}"
@@ -1057,6 +1232,10 @@ class AuditorScan:
                     deep_obj["pcap_capture"] = pcap_result
 
         total_dur = sum(c.get("duration_seconds", 0) for c in deep_obj["commands"])
+        if deep_ports:
+            deep_obj["ports"] = deep_ports
+            deep_obj["web_ports_count"] = sum(1 for p in deep_ports if p.get("is_web_service"))
+            deep_obj["total_ports_found"] = len(deep_ports)
         self.ui.print_status(self.ui.t("deep_identity_done", safe_ip, total_dur), "OKGREEN")
         return deep_obj
 
@@ -1671,8 +1850,48 @@ class AuditorScan:
                             if extra.get("ssl_cert"):
                                 port_info["ssl_cert"] = extra["ssl_cert"]
 
+            agentless_fp = host_record.get("agentless_fingerprint") or {}
+            if (
+                web_count > 0
+                and self.config.get("deep_id_scan", True)
+                and not agentless_fp.get("http_title")
+                and not agentless_fp.get("http_server")
+                and not any_version
+            ):
+                web_ports = [p.get("port") for p in ports if p.get("is_web_service")]
+                web_ports = [p for p in web_ports if isinstance(p, int)][:5]
+                if web_ports:
+                    http_probe = http_identity_probe(
+                        safe_ip,
+                        self.extra_tools,
+                        ports=web_ports,
+                        dry_run=bool(self.config.get("dry_run", False)),
+                        logger=self.logger,
+                        proxy_manager=self.proxy_manager,
+                    )
+                    if http_probe:
+                        agentless_fp = host_record.setdefault("agentless_fingerprint", {})
+                        if http_probe.get("http_title") and not agentless_fp.get("http_title"):
+                            agentless_fp["http_title"] = str(http_probe["http_title"])[:256]
+                        if http_probe.get("http_server") and not agentless_fp.get("http_server"):
+                            agentless_fp["http_server"] = str(http_probe["http_server"])[:256]
+                        title = str(agentless_fp.get("http_title") or "")
+                        server = str(agentless_fp.get("http_server") or "")
+                        if title or server:
+                            fp = _fingerprint_device_from_http(title, server)
+                            for key in ("device_vendor", "device_model", "device_type"):
+                                if fp.get(key) and not agentless_fp.get(key):
+                                    agentless_fp[key] = fp[key]
+
             identity_score, identity_signals = self._compute_identity_score(host_record)
             device_type_hints = host_record.get("device_type_hints") or []
+            agentless_fp = host_record.get("agentless_fingerprint") or {}
+            identity_evidence = bool(
+                agentless_fp.get("http_title")
+                or agentless_fp.get("http_server")
+                or agentless_fp.get("device_type")
+                or agentless_fp.get("device_vendor")
+            )
 
             if self.logger:
                 self.logger.debug(
@@ -1697,6 +1916,7 @@ class AuditorScan:
                 device_type_hints=device_type_hints,
                 identity_score=identity_score,
                 identity_threshold=identity_threshold,
+                identity_evidence=identity_evidence,
             )
 
             # v4.0.4: Use HyperScan results to override deep scan decision
@@ -1762,6 +1982,13 @@ class AuditorScan:
                 if udp_identity:
                     identity_score, identity_signals = self._compute_identity_score(host_record)
                     device_type_hints = host_record.get("device_type_hints") or []
+                    agentless_fp = host_record.get("agentless_fingerprint") or {}
+                    identity_evidence = bool(
+                        agentless_fp.get("http_title")
+                        or agentless_fp.get("http_server")
+                        or agentless_fp.get("device_type")
+                        or agentless_fp.get("device_vendor")
+                    )
                     trigger_deep, deep_reasons = self._should_trigger_deep(
                         total_ports=total_ports,
                         any_version=any_version,
@@ -1769,6 +1996,7 @@ class AuditorScan:
                         device_type_hints=device_type_hints,
                         identity_score=identity_score,
                         identity_threshold=identity_threshold,
+                        identity_evidence=identity_evidence,
                     )
                     if identity_score >= identity_threshold:
                         trigger_deep = False
@@ -1829,6 +2057,7 @@ class AuditorScan:
                 identity_source = host_record.get("deep_scan") or {}
                 has_identity_hint = bool(
                     identity_source.get("vendor")
+                    or identity_source.get("mac_address")
                     or host_record.get("hostname")
                     or host_record.get("device_type_hints")
                 )
@@ -2099,6 +2328,15 @@ class AuditorScan:
                             host_obj.deep_scan = deep
                             if deep.get("os_detected"):
                                 host_obj.os_detected = deep["os_detected"]
+                            deep_ports = deep.get("ports") or []
+                            if deep_ports:
+                                merged_ports = self._merge_ports(host_obj.ports or [], deep_ports)
+                                host_obj.ports = merged_ports
+                                host_obj.total_ports_found = len(merged_ports)
+                                host_obj.web_ports_count = sum(
+                                    1 for p in merged_ports if p.get("is_web_service")
+                                )
+                                self._merge_services_from_ports(host_obj, deep_ports)
                             # Re-finalize status
                             host_obj.status = finalize_host_status(host_obj.to_dict())
                     except Exception as e:

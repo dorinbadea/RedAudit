@@ -9,6 +9,7 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Tuple
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.core.identity_utils import is_infra_identity
 from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.core.scanner import http_enrichment, ssl_deep_analysis, tls_enrichment
 
@@ -73,6 +74,42 @@ class AuditorVuln:
         if isinstance(host_info, Host):
             return host_info.to_dict()
         return host_info
+
+    @staticmethod
+    def _extract_server_header(headers: str) -> str:
+        if not headers:
+            return ""
+        for line in str(headers).splitlines():
+            if line.lower().startswith("server:"):
+                return line.split(":", 1)[1].strip()
+        return ""
+
+    def _should_run_app_scans(
+        self, host_info: Dict[str, Any], finding: Dict[str, Any]
+    ) -> Tuple[bool, str]:
+        if self.config.get("scan_mode") != "completo":
+            return False, "mode_not_full"
+
+        agentless = host_info.get("agentless_fingerprint") or {}
+        device_type = str(agentless.get("device_type") or "")
+        host_device_type = str(host_info.get("device_type") or "")
+        device_type_hints = host_info.get("device_type_hints") or []
+
+        title = str(agentless.get("http_title") or "")
+        server = str(agentless.get("http_server") or finding.get("server") or "")
+        vendor = str(agentless.get("device_vendor") or host_info.get("vendor") or "")
+        model = str(agentless.get("device_model") or "")
+        combined = f"{title} {server} {vendor} {model}"
+
+        is_infra, reason = is_infra_identity(
+            device_type=device_type,
+            device_type_hints=[host_device_type, *device_type_hints],
+            text=combined,
+        )
+        if is_infra:
+            return False, reason or "infra_identity"
+
+        return True, ""
 
     def _merge_nuclei_findings(self, findings: List[Dict[str, Any]]) -> int:
         if not findings:
@@ -203,6 +240,19 @@ class AuditorVuln:
                 proxy_manager=getattr(self, "proxy_manager", None),
             )
             finding.update(http_data)
+            headers_raw = "\n".join(
+                [
+                    str(http_data.get("curl_headers") or ""),
+                    str(http_data.get("wget_headers") or ""),
+                ]
+            ).strip()
+            if headers_raw:
+                finding["headers"] = headers_raw[:2000]
+                server_header = self._extract_server_header(headers_raw)
+                if server_header:
+                    finding["server"] = server_header[:200]
+
+            app_scan_allowed, app_scan_reason = self._should_run_app_scans(host_info, finding)
 
             # TLS enrichment (always sequential - quick)
             if scheme == "https":
@@ -224,7 +274,14 @@ class AuditorVuln:
             if parallel_vuln_enabled and is_full_mode:
                 # Run testssl, whatweb, nikto concurrently
                 parallel_results = self._run_vuln_tools_parallel(
-                    ip, port, url, scheme, finding, status_callback=_update_status
+                    ip,
+                    port,
+                    url,
+                    scheme,
+                    finding,
+                    status_callback=_update_status,
+                    app_scan_allowed=app_scan_allowed,
+                    app_scan_reason=app_scan_reason,
                 )
                 finding.update(parallel_results)
             else:
@@ -246,6 +303,9 @@ class AuditorVuln:
         scheme: str,
         finding: Dict[str, Any],
         status_callback=None,
+        *,
+        app_scan_allowed: bool = True,
+        app_scan_reason: str = "",
     ) -> Dict[str, Any]:
         """v4.1: Run testssl, whatweb, nikto in parallel for faster scanning."""
         results: Dict[str, Any] = {}
@@ -387,6 +447,8 @@ class AuditorVuln:
             sqlmap_path = self.extra_tools.get("sqlmap") or shutil.which("sqlmap")
             if not sqlmap_path:
                 return {}
+            if not app_scan_allowed:
+                return {"sqlmap_skipped": app_scan_reason or "policy"}
 
             try:
                 _update("sqlmap")
@@ -451,6 +513,8 @@ class AuditorVuln:
             zap_path = self.extra_tools.get("zap.sh") or shutil.which("zap.sh")
             if not zap_path:
                 return {}
+            if not app_scan_allowed:
+                return {"zap_skipped": app_scan_reason or "policy"}
 
             import tempfile
 

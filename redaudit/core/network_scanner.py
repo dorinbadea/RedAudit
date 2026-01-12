@@ -229,6 +229,11 @@ class NetworkScanner:
         if agentless.get("http_title") or agentless.get("http_server"):
             score += 1
             signals.append("http_probe")
+        agentless_type = str(agentless.get("device_type") or "").strip().lower()
+        if agentless_type:
+            device_type_hints.append(agentless_type)
+            score += 1
+            signals.append("device_type")
 
         phase0 = host_record.get("phase0_enrichment") or {}
         if phase0.get("dns_reverse"):

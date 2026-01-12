@@ -78,6 +78,7 @@ Report encryption is handled via the `cryptography` library to ensure confidenti
 - **Artifact Permissions**: RedAudit enforces `0o600` (read/write by owner only) on generated artifacts (reports, HTML/playbooks, JSONL export views, externalized evidence) to reduce leakage to other users on the same system.
 - **Encrypted Mode Safety**: When report encryption is enabled, RedAudit avoids generating additional plaintext artifacts (HTML/JSONL/playbooks/summary/manifests and externalized evidence) alongside `.enc` reports.
 - **Jitter Rate-Limiting**: Configurable rate limiting with ±30% random variance to evade threshold-based IDS and behavioral analysis.
+- **Selective App Scanning**: SQLmap/ZAP are skipped on infrastructure UIs (router/switch/AP class) when identity evidence indicates non-application endpoints.
 - **HyperScan Discovery**: Async TCP/UDP/ARP discovery can reduce nmap invocations when enabled (net discovery).
 - **Heartbeat**: Background monitoring ensures process integrity without requiring interactive shell access.
 - **Credentials File Security**: The universal credentials file (e.g., `~/.redaudit/credentials.json`) is strictly validated. It MUST have `0600` permissions (read/write only by owner); otherwise, RedAudit refuses to load it (v4.5.2+).
