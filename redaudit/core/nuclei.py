@@ -22,7 +22,7 @@ from redaudit.core.verify_vuln import check_nuclei_false_positive
 
 
 class NucleiProgressCallback(Protocol):
-    def __call__(self, completed: int, total: int, eta: str, detail: str = "") -> None:
+    def __call__(self, completed: float, total: int, eta: str, detail: str = "") -> None:
         pass
 
 
@@ -181,14 +181,14 @@ def run_nuclei_scan(
             s = sec % 60
             return f"{h:d}:{m:02d}:{s:02d}" if h else f"{m:d}:{s:02d}"
 
-        def _emit_progress(completed: int, total: int, eta: str, detail: str = "") -> None:
+        def _emit_progress(completed: float, total: int, eta: str, detail: str = "") -> None:
             if progress_callback is None:
                 return
             try:
                 progress_callback(completed, total, eta, detail)
             except TypeError:
                 try:
-                    legacy_cb = cast(Callable[[int, int, str], None], progress_callback)
+                    legacy_cb = cast(Callable[[float, int, str], None], progress_callback)
                     legacy_cb(completed, total, eta)
                 except Exception:
                     pass
@@ -256,11 +256,17 @@ def run_nuclei_scan(
                     heartbeat_s = 10.0
                     while not done.wait(timeout=heartbeat_s):
                         elapsed = time.time() - batch_start
+                        timeout_s = max(1.0, float(timeout))
+                        frac = min(elapsed / timeout_s, 0.95)
+                        completed = (batch_idx - 1) + frac
+                        completed = min(float(total_batches) - 0.01, max(0.0, completed))
+                        eta_batch = _format_eta(max(0.0, timeout_s - elapsed))
                         detail = (
                             f"batch {batch_idx}/{total_batches} running "
                             f"{_format_eta(elapsed)} elapsed"
                         )
-                        _emit_progress(batch_idx - 1, total_batches, "", detail)
+                        eta_label = f"ETA≈ {eta_batch}" if eta_batch != "--:--" else ""
+                        _emit_progress(completed, total_batches, eta_label, detail)
                     if err_holder.get("exc"):
                         raise err_holder["exc"]
                     res = res_holder.get("res")
