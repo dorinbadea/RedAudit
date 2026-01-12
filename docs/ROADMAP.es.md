@@ -23,6 +23,7 @@ Estos elementos están ordenados cronológicamente e incluyen trabajo entregado,
 | **Sonda HTTP Rápida de Identidad** | Hecho | Sonda HTTP/HTTPS breve en hosts silenciosos para resolver identidad antes. |
 | **Reporte Parcial de Nuclei** | Hecho | Marcar ejecuciones parciales y registrar lotes con timeout/fallidos en el informe. |
 | **Latido por Batch de Nuclei** | Hecho (v4.6.11) | Mantener actualizaciones de progreso durante lotes largos para mostrar actividad y tiempo transcurrido. |
+| **Progreso Intra-batch de Nuclei** | Hecho (v4.6.12) | Mostrar avance basado en tiempo dentro de cada batch para evitar barras congeladas. |
 | **Guardia de Origen de Identidad HTTP** | Hecho (v4.6.11) | Tratar títulos solo UPnP como pistas y evitar forzar escaneo web o score de identidad. |
 
 ### v4.7 Seguimiento de Auditoría (Prioridad: Alta)
