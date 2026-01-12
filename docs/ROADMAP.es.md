@@ -23,6 +23,28 @@ Estos elementos están ordenados cronológicamente e incluyen trabajo entregado,
 | **Sonda HTTP Rápida de Identidad** | Hecho | Sonda HTTP/HTTPS breve en hosts silenciosos para resolver identidad antes. |
 | **Reporte Parcial de Nuclei** | Hecho | Marcar ejecuciones parciales y registrar lotes con timeout/fallidos en el informe. |
 
+### v4.7 Seguimiento de Auditoría (Prioridad: Alta)
+
+| Característica | Estado | Descripción |
+| :--- | :--- | :--- |
+| **Resumen de normalización de objetivos en el wizard** | Planificado | Mostrar la lista normalizada de objetivos (CIDR/IP/rango) antes de ejecutar. |
+| **Contadores de motivos de escalado** | Planificado | Reportar por qué se disparó el deep scan (identity score, ambigüedad, override manual). |
+| **Aclaración documental de Smart-Check** | Planificado | Alinear la documentación con el comportamiento real de verificación por señales. |
+
+### v4.7 Seguimiento de Auditoría (Prioridad: Media)
+
+| Característica | Estado | Descripción |
+| :--- | :--- | :--- |
+| **Modo de pinning de dependencias** | Planificado | Opcional: tags/commits fijados para herramientas externas instaladas desde git. |
+| **Diagrama de transiciones de fase** | Planificado | Diagrama conciso de la lógica de escalado en fases 1-3. |
+| **Etiquetado de no-respuesta** | Planificado | Distinguir errores transitorios de hosts silenciosos en reportes. |
+
+### v4.7 Seguimiento de Auditoría (Aplazado)
+
+| Característica | Estado | Descripción |
+| :--- | :--- | :--- |
+| **Refactor de auditor.py** | Aplazado | Separar orquestación y lógica de decisión solo si desbloquea tests o corrige fallos. |
+
 ### Fase 7: Pulido UX y Cosméticos (Prioridad: Baja)
 
 Mejoras menores identificadas durante la validación Gold Master de v4.4.0.
