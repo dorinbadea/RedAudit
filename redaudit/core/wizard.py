@@ -897,6 +897,20 @@ class Wizard:
             import subprocess
             from pathlib import Path
 
+            extra_env = {}
+            try:
+                import pwd
+
+                user_info = pwd.getpwnam(invoking_user)
+                runtime_dir = f"/run/user/{user_info.pw_uid}"
+                bus_path = os.path.join(runtime_dir, "bus")
+                if os.path.isdir(runtime_dir):
+                    extra_env["XDG_RUNTIME_DIR"] = runtime_dir
+                if os.path.exists(bus_path):
+                    extra_env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={bus_path}"
+            except Exception:
+                extra_env = {}
+
             package_root = Path(__file__).resolve().parents[1]
             script = (
                 "import json, os, sys, logging\n"
@@ -935,6 +949,10 @@ class Wizard:
                 invoking_user,
                 "env",
                 f"REDAUDIT_PYTHONPATH={package_root}",
+            ]
+            for key, value in extra_env.items():
+                cmd.append(f"{key}={value}")
+            cmd += [
                 sys.executable,
                 "-c",
                 script,
