@@ -814,20 +814,18 @@ class Wizard:
             "auth_save_keyring": False,
         }
 
-        if skip_intro:
-            # Assumed yes
-            pass
-        else:
+        if not skip_intro:
             # v4.5.17: Ask about auth scanning FIRST, before keyring access
             # This avoids unnecessary keyring password prompts when user doesn't want auth scanning
             if not self.ask_yes_no(self.ui.t("auth_scan_q"), default="no"):
                 return auth_config
 
-            # v4.5.3: Check for saved credentials in keyring (only if user wants auth)
-            loaded_from_keyring = self._check_and_load_saved_credentials(auth_config)
-            if loaded_from_keyring:
-                # Credentials loaded from keyring, enable auth and skip manual setup
-                auth_config["auth_enabled"] = True
+        # v4.5.3: Check for saved credentials in keyring (only if user wants auth)
+        loaded_from_keyring = self._check_and_load_saved_credentials(auth_config)
+        if loaded_from_keyring:
+            # Credentials loaded from keyring, allow optional manual additions
+            auth_config["auth_enabled"] = True
+            if not self.ask_yes_no(self.ui.t("auth_add_more_q"), default="no"):
                 return auth_config
 
         auth_config["auth_enabled"] = True
@@ -847,7 +845,9 @@ class Wizard:
         )
 
         if mode_choice == self.WIZARD_BACK:
-            # User chose to go back -> disable auth and return (cancellation)
+            # User chose to go back -> disable auth unless keyring already loaded
+            if loaded_from_keyring:
+                return auth_config
             auth_config["auth_enabled"] = False
             return auth_config
 
@@ -859,14 +859,19 @@ class Wizard:
                 f"{self.ui.t('auth_protocol_hint')}"
                 f"{self.ui.colors['ENDC']}"
             )
-            creds = self._collect_universal_credentials()
+            existing_creds = list(auth_config.get("auth_credentials") or [])
+            creds = self._collect_universal_credentials(start_index=len(existing_creds) + 1)
             if creds is None:
+                if loaded_from_keyring:
+                    return auth_config
                 auth_config["auth_enabled"] = False
                 return auth_config
-            auth_config["auth_credentials"] = creds
+            auth_config["auth_credentials"] = existing_creds + creds
         else:
             # Advanced mode: per-protocol configuration
             if self._collect_advanced_credentials(auth_config):
+                if loaded_from_keyring:
+                    return auth_config
                 auth_config["auth_enabled"] = False
                 return auth_config
 
@@ -1064,12 +1069,12 @@ class Wizard:
             logging.getLogger(__name__).debug("Keyring check failed: %s", e)
             return False
 
-    def _collect_universal_credentials(self) -> Optional[list]:
+    def _collect_universal_credentials(self, start_index: int = 1) -> Optional[list]:
         """Collect universal credentials (user/pass pairs)."""
         import getpass
 
         credentials: list = []
-        cred_num = 1
+        cred_num = max(1, int(start_index))
 
         self.ui.print_status(self.ui.t("auth_cancel_hint"), "WARNING")
         print(

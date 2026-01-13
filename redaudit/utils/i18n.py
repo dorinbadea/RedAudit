@@ -61,7 +61,7 @@ TRANSLATIONS = {
         "wizard_profile_express": "Express — Quick, minimal questions",
         "wizard_profile_standard": "Standard — Balance of time and depth",
         "wizard_profile_exhaustive": "Exhaustive — Maximum discovery (auto-configures everything)",
-        "wizard_profile_custom": "Custom — Full control (8 steps)",
+        "wizard_profile_custom": "Custom — Full control (9 steps)",
         "nvd_not_configured_reminder": "⚠️  NVD API key not configured. CVE correlation will be skipped.",
         "nvd_get_key_hint": "   Get a free key at: https://nvd.nist.gov/developers/request-an-api-key",
         "exhaustive_mode_applying": "🚀 Applying Exhaustive profile for maximum discovery...",
@@ -409,6 +409,7 @@ TRANSLATIONS = {
         "auth_saved_creds_found_invoking": "Saved credentials found in keyring for user {0}:",
         "auth_load_saved_q": "Load saved credentials?",
         "auth_loaded_creds": "Loaded {0} credential(s) from keyring.",
+        "auth_add_more_q": "Add more credentials?",
         # v4.3: SNMP v3
         "auth_snmp_configure_q": "Configure SNMP v3 credentials (network devices)?",
         "auth_snmp_user_prompt": "SNMP v3 Username",
@@ -483,7 +484,7 @@ TRANSLATIONS = {
         "wizard_profile_express": "Express — Rápido, mínimas preguntas",
         "wizard_profile_standard": "Estándar — Balance de tiempo y profundidad",
         "wizard_profile_exhaustive": "Exhaustivo — Máximo descubrimiento (auto-configura todo)",
-        "wizard_profile_custom": "Personalizado — Control total (8 pasos)",
+        "wizard_profile_custom": "Personalizado — Control total (9 pasos)",
         "nvd_not_configured_reminder": "⚠️  API key de NVD no configurada. Se omitirá correlación CVE.",
         "nvd_get_key_hint": "   Obtén una key gratis en: https://nvd.nist.gov/developers/request-an-api-key",
         "exhaustive_mode_applying": "Aplicando perfil Exhaustivo para máximo descubrimiento...",
@@ -832,6 +833,7 @@ TRANSLATIONS = {
         "auth_saved_creds_found_invoking": "Credenciales guardadas encontradas en keyring para el usuario {0}:",
         "auth_load_saved_q": "¿Cargar credenciales guardadas?",
         "auth_loaded_creds": "Cargadas {0} credencial(es) desde keyring.",
+        "auth_add_more_q": "¿Añadir más credenciales?",
         # v4.3: SNMP v3
         "auth_snmp_configure_q": "¿Configurar credenciales SNMP v3 (dispositivos de red)?",
         "auth_snmp_user_prompt": "Nombre de usuario SNMP v3",
