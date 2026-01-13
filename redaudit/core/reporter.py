@@ -399,6 +399,25 @@ def generate_summary(
             multi_interface = sum(1 for a in unified if a.get("interface_count", 1) > 1)
             summary["unified_asset_count"] = len(unified)
             summary["multi_interface_devices"] = multi_interface
+            # Propagate unified identity back into host entries for consistent reporting.
+            asset_by_ip = {}
+            for asset in unified:
+                for iface in asset.get("interfaces", []) or []:
+                    ip = (iface or {}).get("ip")
+                    if ip:
+                        asset_by_ip[ip] = asset
+            for host in hosts:
+                asset = asset_by_ip.get(host.get("ip"))
+                if not asset:
+                    continue
+                if not host.get("asset_name"):
+                    host["asset_name"] = asset.get("asset_name")
+                if not host.get("interfaces"):
+                    host["interfaces"] = asset.get("interfaces")
+                if not host.get("interface_count"):
+                    host["interface_count"] = asset.get("interface_count")
+                if not host.get("asset_type"):
+                    host["asset_type"] = asset.get("asset_type")
 
     # v3.2.2b: Populate hidden_networks for SIEM/AI pipelines
     # This detects IPs leaked in headers/redirects outside target networks

@@ -142,6 +142,9 @@ def run_nuclei_scan(
             size = 25
         batches = [targets[i : i + size] for i in range(0, len(targets), size)]
         total_batches = len(batches)
+        total_targets = len(targets)
+        completed_targets = 0.0
+        max_progress_targets = 0.0
 
         def _build_cmd(
             targets_path: str,
@@ -221,6 +224,7 @@ def run_nuclei_scan(
             allow_retry: bool = True,
             rate_limit_override: Optional[int] = None,
         ) -> None:
+            nonlocal completed_targets, max_progress_targets
             batch_start = time.time()
             with tempfile.TemporaryDirectory(prefix="nuclei_tmp_", dir=output_dir) as tmpdir:
                 batch_targets_file = os.path.join(tmpdir, f"targets_{batch_idx}.txt")
@@ -258,15 +262,19 @@ def run_nuclei_scan(
                         elapsed = time.time() - batch_start
                         timeout_s = max(1.0, float(timeout))
                         frac = min(elapsed / timeout_s, 0.95)
-                        completed = (batch_idx - 1) + frac
-                        completed = min(float(total_batches) - 0.01, max(0.0, completed))
+                        current = completed_targets + (frac * len(batch_targets))
+                        current = min(float(total_targets), max(0.0, current))
+                        if current < max_progress_targets:
+                            current = max_progress_targets
+                        else:
+                            max_progress_targets = current
                         eta_batch = _format_eta(max(0.0, timeout_s - elapsed))
                         detail = (
                             f"batch {batch_idx}/{total_batches} running "
                             f"{_format_eta(elapsed)} elapsed"
                         )
                         eta_label = f"ETA≈ {eta_batch}" if eta_batch != "--:--" else ""
-                        _emit_progress(completed, total_batches, eta_label, detail)
+                        _emit_progress(current, total_targets, eta_label, detail)
                     if err_holder.get("exc"):
                         raise err_holder["exc"]
                     res = res_holder.get("res")
@@ -313,6 +321,9 @@ def run_nuclei_scan(
                     result["error"] = str(res.stderr)[:500]
 
             batch_durations.append(time.time() - batch_start)
+            completed_targets += len(batch_targets)
+            if completed_targets > max_progress_targets:
+                max_progress_targets = completed_targets
 
         if progress_callback is not None:
             # External progress management (preferred when another rich Live/Progress is active).
@@ -321,7 +332,12 @@ def run_nuclei_scan(
                 avg = (sum(batch_durations) / len(batch_durations)) if batch_durations else 0.0
                 remaining = max(0, total_batches - idx)
                 eta = _format_eta(avg * remaining) if avg > 0 else "--:--"
-                _emit_progress(idx, total_batches, f"ETA≈ {eta}", f"batch {idx}/{total_batches}")
+                _emit_progress(
+                    min(float(total_targets), max_progress_targets),
+                    total_targets,
+                    f"ETA≈ {eta}",
+                    f"batch {idx}/{total_batches}",
+                )
         elif use_internal_progress:
             # Rich progress UI (best-effort)
             try:

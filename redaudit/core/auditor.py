@@ -2420,8 +2420,15 @@ class InteractiveNetworkAuditor:
             # v4.4.4: Keep heartbeat alive during progress updates
             self._touch_activity()
 
-            approx_targets = int(round(float(completed) * max(1, int(batch_size))))
             total_targets_i = max(0, int(total_targets))
+            total_hint = max(0, int(total)) if total is not None else 0
+            if total_targets_i <= 0:
+                total_targets_i = total_hint
+            use_batch_units = bool(total_targets_i and total_hint and total_hint != total_targets_i)
+            if use_batch_units:
+                approx_targets = int(round(float(completed) * max(1, int(batch_size))))
+            else:
+                approx_targets = int(round(float(completed)))
             approx_targets = max(0, min(total_targets_i, approx_targets))
             detail_text = detail or f"batch {completed}/{total}"
             is_running = isinstance(detail_text, str) and "running" in detail_text
