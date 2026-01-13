@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.17] - 2026-01-13
+
+### Corregido
+
+- **Keyring con sudo**: Preservar el contexto de DBus al cargar el keyring del usuario invocador para mostrar credenciales guardadas.
+
 ## [v4.6.16] - 2026-01-13
 
 ### Mejorado

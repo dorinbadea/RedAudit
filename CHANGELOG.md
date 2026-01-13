@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.17] - 2026-01-13
+
+### Fixed
+
+- **Keyring Under Sudo**: Preserve DBus context when loading the invoking user's keyring to surface saved credentials.
+
 ## [v4.6.16] - 2026-01-13
 
 ### Improved
