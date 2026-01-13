@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - NVD Module Tests
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 Tests for redaudit/core/nvd.py

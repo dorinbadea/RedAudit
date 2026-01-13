@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - CLI Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 Command-line interface and argument parsing.

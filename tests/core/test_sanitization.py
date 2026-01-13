@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Input Sanitization Tests
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

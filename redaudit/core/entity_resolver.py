@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Entity Resolution Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v2.9: Asset reconciliation module for identifying and merging duplicate host entries

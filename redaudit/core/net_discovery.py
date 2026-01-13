@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Enhanced Network Discovery Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.2: Active discovery of guest networks, hidden VLANs, and additional network segments.

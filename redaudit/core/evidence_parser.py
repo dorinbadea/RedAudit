@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Evidence Parser Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.1: Parse and structure tool output for SIEM/AI consumption.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Topology Discovery Tests
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 Unit tests for redaudit/core/topology.py (best-effort topology discovery).

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Differential Analysis Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.0: Compare two JSON reports and generate delta analysis.

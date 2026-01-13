@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - OUI Lookup Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.6.1: Online fallback for MAC vendor lookup when local OUI database is incomplete.

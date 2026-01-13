@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Configuration Management Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.0.1: Persistent configuration for NVD API key and other settings.
