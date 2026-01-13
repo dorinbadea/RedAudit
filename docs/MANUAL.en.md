@@ -131,7 +131,7 @@ Pre-configured profiles adjust dozens of parameters automatically:
 
 **Goal:** Identify common services and obvious vulnerabilities.
 
-- **Technique:** Top 1000 TCP ports, version and OS detection.
+- **Technique:** Top 100 TCP ports (`-F`), version and OS detection.
 - **Web:** Checks headers and basic technologies (WhatWeb).
 - **Authentication:** Optional setup for SSH/SMB/SNMP credentials.
 - **Ideal for:** Regular audits, policy validation.
@@ -150,7 +150,8 @@ Pre-configured profiles adjust dozens of parameters automatically:
 **Goal:** Full control.
 
 - **Allows configuring:**
-  - **Nmap Mode:** Fast/Normal/Full/Stealth.
+  - **Nmap Mode:** Fast/Normal/Full.
+  - **Timing:** Stealth/Normal/Aggressive.
   - **Performance:** Threads (1-16) and Rate Limit (seconds between requests).
   - **Topology & Discovery:** Enable/disable L2 mapping and discovery protocols (mDNS, UPnP, etc.).
   - **UDP:** Enable UDP scanning (slow but thorough).

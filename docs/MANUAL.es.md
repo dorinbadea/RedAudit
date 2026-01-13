@@ -131,7 +131,7 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 
 **Objetivo:** Identificar servicios comunes y vulnerabilidades obvias.
 
-- **Técnica:** Top 1000 puertos TCP, detección de versiones y SO.
+- **Técnica:** Top 100 puertos TCP (`-F`), detección de versiones y SO.
 - **Web:** Revisa cabeceras y tecnologías básicas (WhatWeb).
 - **Autenticación:** Configuración opcional de credenciales SSH/SMB/SNMP.
 - **Ideal para:** Auditorías regulares, validación de políticas.
@@ -150,7 +150,8 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 **Objetivo:** Control total.
 
 - **Permite configurar:**
-  - **Modo Nmap:** Fast/Normal/Full/Stealth.
+  - **Modo Nmap:** Fast/Normal/Full.
+  - **Temporización:** Sigiloso/Normal/Agresivo.
   - **Rendimiento:** Hilos (1-16) y Rate Limit (segundos entre peticiones).
   - **Topología & Discovery:** Activar/desactivar mapeo L2 y protocolos de descubrimiento (mDNS, UPnP, etc.).
   - **UDP:** Activar escaneo UDP (lento pero exhaustivo).
