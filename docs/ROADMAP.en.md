@@ -26,6 +26,7 @@ These items are ordered chronologically and include delivered, planned, and defe
 | **Nuclei Target Progress** | Done (v4.6.13) | Show target-based progress within batches to avoid frozen bars. |
 | **Nuclei Progress Stability** | Done (v4.6.15) | Keep target progress monotonic across batch retries/timeouts. |
 | **Nuclei Timeout Hardening** | Done (v4.6.16) | Adaptive batch timeouts and recursive splits to reduce partial runs. |
+| **Sudo Keyring Context** | Done (v4.6.17) | Preserve DBus context when loading saved credentials under sudo. |
 | **Host Report Alignment** | Done (v4.6.15) | Backfill host entries with unified asset names/interfaces for consistency. |
 | **HTTP Identity Source Guard** | Done (v4.6.11) | Treat UPnP-only titles as hints and avoid forcing web scans or identity scoring. |
 | **Wizard Target Normalization Summary** | Done (v4.6.13) | Show normalized targets with estimated host counts before execution. |

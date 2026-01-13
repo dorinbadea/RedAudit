@@ -26,6 +26,7 @@ Estos elementos están ordenados cronológicamente e incluyen trabajo entregado,
 | **Progreso por Objetivos de Nuclei** | Hecho (v4.6.13) | Mostrar avance basado en objetivos dentro de cada batch para evitar barras congeladas. |
 | **Estabilidad del progreso de Nuclei** | Hecho (v4.6.15) | Mantener el avance de objetivos sin retrocesos durante reintentos/timeouts. |
 | **Endurecimiento de timeouts Nuclei** | Hecho (v4.6.16) | Timeouts adaptativos por lote y divisiones recursivas para reducir ejecuciones parciales. |
+| **Contexto de keyring con sudo** | Hecho (v4.6.17) | Preservar el contexto de DBus al cargar credenciales guardadas bajo sudo. |
 | **Alineación de informes de hosts** | Hecho (v4.6.15) | Rellenar hosts con nombres/interfaces unificados para consistencia. |
 | **Guardia de Origen de Identidad HTTP** | Hecho (v4.6.11) | Tratar títulos solo UPnP como pistas y evitar forzar escaneo web o score de identidad. |
 | **Resumen de normalización de objetivos en el wizard** | Hecho (v4.6.13) | Mostrar objetivos normalizados con hosts estimados antes de ejecutar. |
