@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.16] - 2026-01-13
+
+### Improved
+
+- **Nuclei Reliability**: Adaptive batch timeouts, recursive splits, and optional per-request timeout/retries to reduce partial runs.
+
 ## [v4.6.15] - 2026-01-13
 
 ### Improved

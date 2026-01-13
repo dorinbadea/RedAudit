@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.16] - 2026-01-13
+
+### Mejorado
+
+- **Fiabilidad de Nuclei**: Timeouts adaptativos por lote, divisiones recursivas y timeout/reintentos por peticion para reducir ejecuciones parciales.
+
 ## [v4.6.15] - 2026-01-13
 
 ### Mejorado
