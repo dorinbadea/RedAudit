@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Main Auditor Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 Main orchestrator class for network auditing operations.
@@ -1650,7 +1650,7 @@ class InteractiveNetworkAuditor:
             return
 
         # PROFILE 3: Custom - Full wizard with 8 steps (original behavior)
-        # v3.8.1: Wizard step machine for "< Volver" / "< Go Back" navigation
+        # v3.8.1: Wizard step machine for "Cancel" navigation
         TOTAL_STEPS = 9
         step = 1
 
