@@ -10,6 +10,17 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.18] - 2026-01-13
+
+### Added
+
+- **SSH Credential Spray**: Try all credentials from keyring spray list until authentication succeeds. Enables single spray list for networks with multiple SSH auth requirements.
+
+### Fixed
+
+- **Nuclei Partial Output**: Persist partial findings when batches timeout at maximum split depth instead of leaving output empty.
+- **NVD URL Encoding**: URL-encode keyword search parameters to fix queries with spaces.
+
 ## [v4.6.17] - 2026-01-13
 
 ### Fixed

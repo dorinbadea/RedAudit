@@ -2152,3 +2152,86 @@ class TestLowImpactEnrichment(unittest.TestCase):
                         signals = self.auditor._run_low_impact_enrichment("192.168.1.3")
 
         assert signals.get("snmp_sysDescr") == "My Router v1.0"
+
+
+# =============================================================================
+# SSH Credential Spray Tests (v4.6.18)
+# =============================================================================
+
+
+class TestSSHCredentialSpray:
+    """Tests for _resolve_all_ssh_credentials method (v4.6.18)."""
+
+    def test_resolve_all_ssh_credentials_cli_override(self):
+        """Test that CLI credentials override keyring spray list."""
+        auditor = MockAuditorScan()
+        auditor.config["auth_ssh_user"] = "cliuser"
+        auditor.config["auth_ssh_pass"] = "clipass"
+        auditor.config["auth_ssh_key"] = None
+
+        result = auditor._resolve_all_ssh_credentials("192.168.1.1")
+        assert len(result) == 1
+        assert result[0].username == "cliuser"
+        assert result[0].password == "clipass"
+
+    def test_resolve_all_ssh_credentials_uses_provider(self):
+        """Test that spray list is read from provider when no CLI creds."""
+        auditor = MockAuditorScan()
+        auditor.config["auth_ssh_user"] = None
+
+        # Mock provider with get_all_credentials
+        mock_provider = MagicMock()
+        mock_creds = [
+            MagicMock(username="user1", password="pass1"),
+            MagicMock(username="user2", password="pass2"),
+        ]
+        mock_provider.get_all_credentials.return_value = mock_creds
+        auditor._credential_provider_instance = mock_provider
+
+        result = auditor._resolve_all_ssh_credentials("192.168.1.1")
+        assert len(result) == 2
+        assert result[0].username == "user1"
+        assert result[1].username == "user2"
+        mock_provider.get_all_credentials.assert_called_with("ssh")
+
+    def test_resolve_all_ssh_credentials_fallback_single(self):
+        """Test fallback to single credential when provider lacks get_all_credentials."""
+        auditor = MockAuditorScan()
+        auditor.config["auth_ssh_user"] = None
+
+        # Mock provider without get_all_credentials
+        mock_provider = MagicMock(spec=["get_credential"])
+        mock_cred = MagicMock(username="fallback")
+        mock_provider.get_credential.return_value = mock_cred
+        auditor._credential_provider_instance = mock_provider
+
+        result = auditor._resolve_all_ssh_credentials("192.168.1.1")
+        assert len(result) == 1
+        assert result[0].username == "fallback"
+
+    def test_resolve_all_ssh_credentials_empty(self):
+        """Test empty result when no credentials available."""
+        auditor = MockAuditorScan()
+        auditor.config["auth_ssh_user"] = None
+
+        # Mock provider returning empty
+        mock_provider = MagicMock()
+        mock_provider.get_all_credentials.return_value = []
+        auditor._credential_provider_instance = mock_provider
+
+        result = auditor._resolve_all_ssh_credentials("192.168.1.1")
+        assert result == []
+
+    def test_resolve_all_ssh_credentials_with_key(self):
+        """Test CLI credentials with SSH key."""
+        auditor = MockAuditorScan()
+        auditor.config["auth_ssh_user"] = "keyuser"
+        auditor.config["auth_ssh_pass"] = None
+        auditor.config["auth_ssh_key"] = "/path/to/key"
+        auditor.config["auth_ssh_key_pass"] = "keypass"
+
+        result = auditor._resolve_all_ssh_credentials("192.168.1.1")
+        assert len(result) == 1
+        assert result[0].username == "keyuser"
+        assert result[0].private_key == "/path/to/key"
+        assert result[0].private_key_passphrase == "keypass"

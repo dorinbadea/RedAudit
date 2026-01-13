@@ -137,6 +137,42 @@ class AuditorScan:
         # 2. Provider
         return self.credential_provider.get_credential(host, "ssh")
 
+    def _resolve_all_ssh_credentials(self, host: str) -> list:
+        """
+        Resolve ALL SSH credentials for spray mode.
+
+        Returns list of Credential objects to try in order.
+        If CLI provides explicit credential, that is returned as single-item list.
+        Otherwise, returns all credentials from keyring spray list.
+
+        v4.6.18: Added for credential spraying support.
+        """
+
+        # 1. Global Config (CLI/Wizard) overrides - return as single credential
+        user = self.config.get("auth_ssh_user")
+        key = self.config.get("auth_ssh_key")
+        password = self.config.get("auth_ssh_pass")
+        key_pass = self.config.get("auth_ssh_key_pass")
+
+        if user and (key or password):
+            return [
+                Credential(
+                    username=user,
+                    password=password,
+                    private_key=key,
+                    private_key_passphrase=key_pass,
+                )
+            ]
+
+        # 2. Provider - get all credentials from spray list
+        provider = self.credential_provider
+        if hasattr(provider, "get_all_credentials"):
+            return provider.get_all_credentials("ssh")
+
+        # Fallback: single credential from provider
+        cred = provider.get_credential(host, "ssh")
+        return [cred] if cred else []
+
     def _resolve_smb_credential(self, host: str) -> Optional[Credential]:
         """Resolve SMB/Windows credential for host."""
         user = self.config.get("auth_smb_user")
@@ -1581,14 +1617,15 @@ class AuditorScan:
                     )
 
             # v4.0: Authenticated Scanning Integration (Phase 4)
+            # v4.6.18: Credential spraying - try all credentials until one works
             # Guard auth lookups to avoid keyring stalls when auth is disabled.
             auth_enabled = bool(self.config.get("auth_enabled"))
-            ssh_credential = None
+            ssh_credentials = []
             if auth_enabled:
-                # Check if we have credentials for this host (CLI/Wizard or stored)
-                ssh_credential = self._resolve_ssh_credential(safe_ip)
+                # Get ALL credentials for spray mode
+                ssh_credentials = self._resolve_all_ssh_credentials(safe_ip)
 
-            if auth_enabled and ssh_credential:
+            if auth_enabled and ssh_credentials:
                 # Check for open SSH port (22 or service name "ssh")
                 ssh_port = 22
                 ssh_open = False
@@ -1608,75 +1645,105 @@ class AuditorScan:
                             break
 
                 if ssh_open:
-                    if hasattr(self, "ui") and self.ui:
-                        self.ui.print_status(
-                            self.ui.t("auth_scan_start", safe_ip, ssh_credential.username), "INFO"
-                        )
-
                     # v4.5.15: Default to True for automated scanning environments
                     trust_keys = self.config.get("auth_ssh_trust_keys", True)
                     timeout = self.config.get("timeout", 30)
 
-                    ssh_scanner = SSHScanner(
-                        ssh_credential,
-                        timeout=int(timeout) if timeout else 30,
-                        trust_unknown_keys=trust_keys,
-                    )
+                    # v4.6.18: Spray all credentials until one succeeds
+                    ssh_auth_success = False
+                    last_error = None
 
-                    try:
-                        if ssh_scanner.connect(safe_ip, port=ssh_port):
-                            if hasattr(self, "ui") and self.ui:
-                                self.ui.print_status(self.ui.t("auth_scan_connected"), "OKBLUE")
+                    for ssh_credential in ssh_credentials:
+                        if ssh_auth_success:
+                            break  # Already authenticated with a previous credential
 
-                            info = ssh_scanner.gather_host_info()
-                            host_obj.auth_scan = asdict(info)
+                        if hasattr(self, "ui") and self.ui:
+                            self.ui.print_status(
+                                self.ui.t("auth_scan_start", safe_ip, ssh_credential.username),
+                                "INFO",
+                            )
 
-                            # Merge high-fidelity OS detection
-                            if info.os_name and info.os_name != "unknown":
-                                host_obj.os_detected = f"{info.os_name} {info.os_version}".strip()
+                        ssh_scanner = SSHScanner(
+                            ssh_credential,
+                            timeout=int(timeout) if timeout else 30,
+                            trust_unknown_keys=trust_keys,
+                        )
 
-                            # v4.3: Lynis Integration
-                            should_run_lynis = self.config.get("lynis_enabled")
-                            is_linux = "linux" in (info.os_name or "").lower()
+                        try:
+                            if ssh_scanner.connect(safe_ip, port=ssh_port):
+                                ssh_auth_success = True
+                                if hasattr(self, "ui") and self.ui:
+                                    self.ui.print_status(self.ui.t("auth_scan_connected"), "OKBLUE")
 
-                            if should_run_lynis and is_linux:
-                                try:
-                                    from redaudit.core.auth_lynis import LynisScanner
+                                info = ssh_scanner.gather_host_info()
+                                host_obj.auth_scan = asdict(info)
 
-                                    if hasattr(self, "ui") and self.ui:
-                                        self.ui.print_status(
-                                            self.ui.t("auth_scan_start", safe_ip, "Lynis"), "INFO"
-                                        )
+                                # Merge high-fidelity OS detection
+                                if info.os_name and info.os_name != "unknown":
+                                    host_obj.os_detected = (
+                                        f"{info.os_name} {info.os_version}".strip()
+                                    )
 
-                                    lynis = LynisScanner(ssh_scanner)
-                                    l_res = lynis.run_audit(use_portable=True)
+                                # v4.3: Lynis Integration
+                                should_run_lynis = self.config.get("lynis_enabled")
+                                is_linux = "linux" in (info.os_name or "").lower()
 
-                                    if l_res:
-                                        if not host_obj.auth_scan:
-                                            host_obj.auth_scan = {}
-                                        host_obj.auth_scan["lynis_hardening_index"] = (
-                                            l_res.hardening_index
-                                        )
+                                if should_run_lynis and is_linux:
+                                    try:
+                                        from redaudit.core.auth_lynis import LynisScanner
+
                                         if hasattr(self, "ui") and self.ui:
                                             self.ui.print_status(
-                                                f"Lynis Index: {l_res.hardening_index}", "OKBLUE"
+                                                self.ui.t("auth_scan_start", safe_ip, "Lynis"),
+                                                "INFO",
                                             )
 
-                                except Exception as e:
-                                    if self.logger:
-                                        self.logger.error("Lynis audit failed: %s", e)
+                                        lynis = LynisScanner(ssh_scanner)
+                                        l_res = lynis.run_audit(use_portable=True)
 
-                            ssh_scanner.close()
-                    except SSHConnectionError as e:
+                                        if l_res:
+                                            if not host_obj.auth_scan:
+                                                host_obj.auth_scan = {}
+                                            host_obj.auth_scan["lynis_hardening_index"] = (
+                                                l_res.hardening_index
+                                            )
+                                            if hasattr(self, "ui") and self.ui:
+                                                self.ui.print_status(
+                                                    f"Lynis Index: {l_res.hardening_index}",
+                                                    "OKBLUE",
+                                                )
+
+                                    except Exception as e:
+                                        if self.logger:
+                                            self.logger.error("Lynis audit failed: %s", e)
+
+                                ssh_scanner.close()
+                        except SSHConnectionError as e:
+                            last_error = str(e)
+                            # Don't warn yet - try next credential
+                            if self.logger:
+                                self.logger.debug(
+                                    "SSH auth failed for %s with %s: %s",
+                                    safe_ip,
+                                    ssh_credential.username,
+                                    e,
+                                )
+                        except Exception as e:
+                            last_error = str(e)
+                            if self.logger:
+                                self.logger.debug(
+                                    "Auth scan error on %s with %s: %s",
+                                    safe_ip,
+                                    ssh_credential.username,
+                                    e,
+                                )
+
+                    # If all credentials failed, report the last error
+                    if not ssh_auth_success and last_error:
                         if hasattr(self, "ui") and self.ui:
-                            self.ui.print_status(self.ui.t("auth_scan_failed", str(e)), "WARN")
-                        host_obj.auth_scan = {"error": str(e)}
-                    except Exception as e:
-                        if self.logger:
-                            self.logger.error(
-                                "Auth scan error on %s: %s", safe_ip, e, exc_info=True
-                            )
-                        host_obj.auth_scan = {"error": str(e)}
+                            self.ui.print_status(self.ui.t("auth_scan_failed", last_error), "WARN")
+                            self.ui.print_status(f"{safe_ip}: SSH auth failed (all creds)", "WARN")
+                        host_obj.auth_scan = {"error": last_error}
 
             # v4.2: SMB/WMI Authenticated Scan (Impacket)
             # Check port 445 (SMB) - Prefer 445 over 139 for modern Windows

@@ -10,6 +10,17 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.18] - 2026-01-13
+
+### Anadido
+
+- **Spray de Credenciales SSH**: Probar todas las credenciales de la lista spray en keyring hasta autenticar exitosamente. Permite una sola lista para redes con distintos requisitos de autenticacion SSH.
+
+### Corregido
+
+- **Salida Parcial de Nuclei**: Persistir hallazgos parciales cuando los lotes hacen timeout a maxima profundidad de division recursiva, en lugar de dejar la salida vacia.
+- **Codificacion URL NVD**: Codificar parametros de busqueda con espacios para evitar errores de URL.
+
 ## [v4.6.17] - 2026-01-13
 
 ### Corregido

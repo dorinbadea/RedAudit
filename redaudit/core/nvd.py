@@ -21,6 +21,8 @@ from urllib.error import URLError, HTTPError
 
 from redaudit.utils.constants import VERSION
 
+from urllib.parse import quote as urlquote
+
 # Import config module for API key management
 try:
     from redaudit.utils.config import get_nvd_api_key as config_get_nvd_api_key
@@ -209,7 +211,7 @@ def query_nvd(
     # Build query URL
     params = []
     if keyword:
-        params.append(f"keywordSearch={keyword}")
+        params.append(f"keywordSearch={urlquote(keyword, safe='')}")
     if cpe_name:
         params.append(f"cpeName={cpe_name}")
 

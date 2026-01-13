@@ -379,7 +379,9 @@ def run_nuclei_scan(
                     failed_batches.add(batch_idx)
 
                 # Append JSONL output to the consolidated file, if present.
-                if os.path.exists(batch_output_file) and not (timed_out and allow_retry):
+                # Copy partial output unless we timed out AND will actually retry.
+                can_retry = allow_retry and len(batch_targets) > 1 and split_depth < max_split_depth
+                if os.path.exists(batch_output_file) and not (timed_out and can_retry):
                     with (
                         open(batch_output_file, "r", encoding="utf-8", errors="ignore") as fin,
                         open(output_file, "a", encoding="utf-8") as fout,

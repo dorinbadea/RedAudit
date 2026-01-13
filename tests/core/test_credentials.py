@@ -248,6 +248,102 @@ class TestKeyringCredentialProvider(unittest.TestCase):
         result = provider.get_saved_credential_summary()
         self.assertEqual(result, [])
 
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_get_all_credentials_reads_spray_list(self, mock_init):
+        """Test that get_all_credentials reads spray:list from keyring."""
+        import json
+
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+
+        # Mock spray list with multiple credentials
+        spray_list = [
+            {"user": "auditor", "pass": "redaudit", "hint": "172.20.0.20"},
+            {"user": "msfadmin", "pass": "msfadmin", "hint": "172.20.0.11"},
+            {"user": "root", "pass": "toor", "hint": "generic"},
+        ]
+        provider._keyring.get_password.side_effect = lambda svc, key: {
+            ("redaudit-ssh", "spray:list"): json.dumps(spray_list),
+        }.get((svc, key))
+
+        result = provider.get_all_credentials("ssh")
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0].username, "auditor")
+        self.assertEqual(result[0].password, "redaudit")
+        self.assertEqual(result[1].username, "msfadmin")
+        self.assertEqual(result[2].username, "root")
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_get_all_credentials_fallback_to_default(self, mock_init):
+        """Test that get_all_credentials falls back to default when no spray list."""
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+
+        # No spray list, only default credential
+        provider._keyring.get_password.side_effect = lambda svc, key: {
+            ("redaudit-ssh", "spray:list"): None,
+            ("redaudit-ssh", "default:username"): "defaultuser",
+            ("redaudit-ssh", "default:secret"): '{"password": "defaultpass"}',
+        }.get((svc, key))
+
+        result = provider.get_all_credentials("ssh")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].username, "defaultuser")
+        self.assertEqual(result[0].password, "defaultpass")
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_get_all_credentials_empty_when_no_creds(self, mock_init):
+        """Test that get_all_credentials returns empty list when nothing found."""
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+
+        # Nothing in keyring
+        provider._keyring.get_password.return_value = None
+
+        result = provider.get_all_credentials("ssh")
+        self.assertEqual(result, [])
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_get_all_credentials_handles_invalid_json(self, mock_init):
+        """Test that get_all_credentials handles invalid JSON gracefully."""
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+
+        # Invalid JSON in spray list, should fall back to default
+        provider._keyring.get_password.side_effect = lambda svc, key: {
+            ("redaudit-ssh", "spray:list"): "{invalid json",
+            ("redaudit-ssh", "default:username"): "fallbackuser",
+            ("redaudit-ssh", "default:secret"): '{"password": "fallbackpass"}',
+        }.get((svc, key))
+
+        result = provider.get_all_credentials("ssh")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].username, "fallbackuser")
+
+    def test_get_all_credentials_keyring_unavailable_uses_env(self):
+        """Test that get_all_credentials uses env fallback when keyring unavailable."""
+        with patch("builtins.__import__", side_effect=ImportError("No module")):
+            provider = KeyringCredentialProvider()
+            self.assertFalse(provider._keyring_available)
+
+        # Set env var and test fallback
+        with patch.dict(
+            os.environ,
+            {"REDAUDIT_SSH_USER": "envuser", "REDAUDIT_SSH_PASS": "envpass"},
+            clear=False,
+        ):
+            result = provider.get_all_credentials("ssh")
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0].username, "envuser")
+
 
 class TestGetCredentialProvider(unittest.TestCase):
     """Tests for the get_credential_provider factory function."""

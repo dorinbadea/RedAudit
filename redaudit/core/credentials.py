@@ -285,6 +285,62 @@ class KeyringCredentialProvider(CredentialProvider):
 
         return summary
 
+    def get_all_credentials(self, protocol: str) -> list:
+        """
+        Get all credentials for a protocol, including spray list.
+
+        Returns list with default credential first, then any spray list entries.
+        This enables credential spraying across hosts with different auth.
+
+        Args:
+            protocol: Protocol name (ssh, smb, snmp)
+
+        Returns:
+            List of Credential objects. Empty list if none found.
+        """
+        from typing import List
+
+        credentials: List[Credential] = []
+
+        if not self._keyring_available:
+            # Fallback: try to get single credential from env
+            cred = self._fallback.get_credential("", protocol)
+            if cred:
+                credentials.append(cred)
+            return credentials
+
+        service_name = f"redaudit-{protocol}"
+
+        # First, try to read spray list (JSON array)
+        try:
+            spray_json = self._keyring.get_password(service_name, "spray:list")
+            if spray_json:
+                spray_list = json.loads(spray_json)
+                for entry in spray_list:
+                    if isinstance(entry, dict):
+                        user = entry.get("user", "")
+                        password = entry.get("pass", "")
+                        domain = entry.get("domain")
+                        hint = entry.get("hint", "")
+                        if user:
+                            cred = Credential(
+                                username=user,
+                                password=password,
+                                domain=domain,
+                            )
+                            credentials.append(cred)
+                            logger.debug("Loaded spray credential: %s (%s)", user, hint)
+        except (json.JSONDecodeError, Exception) as e:
+            logger.debug("Failed to parse spray list for %s: %s", protocol, e)
+
+        # If no spray list, fall back to default credential
+        if not credentials:
+            default_cred = self.get_credential("", protocol)
+            if default_cred:
+                credentials.append(default_cred)
+
+        return credentials
+
     def store_credential(self, target: str, protocol: str, credential: Credential) -> bool:
         """Store credential in OS keyring."""
         if not self._keyring_available:
