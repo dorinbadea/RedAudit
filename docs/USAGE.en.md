@@ -27,6 +27,18 @@ The wizard prints normalized targets with estimated host counts before you confi
 sudo redaudit
 ```
 
+**Wizard modes (short):**
+
+- **fast**: Discovery only, lowest noise, fastest.
+- **normal**: Top ports, balanced time vs coverage (recommended default).
+- **full**: All ports + scripts + web tools, slowest and noisiest.
+
+**Timing presets (wizard):**
+
+- **Stealth**: Slowest, lowest noise.
+- **Normal**: Balanced speed and reliability.
+- **Aggressive**: Fastest, more noise; can miss slow/filtered services.
+
 ### Fast Inventory (LAN)
 
 ```bash

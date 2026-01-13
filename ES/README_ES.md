@@ -320,6 +320,8 @@ El asistente te guía por la selección de objetivo y el perfil de auditoría. O
 
 La Fase 0 de enriquecimiento de bajo impacto es un prompt opt-in en todos los perfiles (por defecto desactivada).
 
+El modo de escaneo (`fast`/`normal`/`full`) controla la cobertura y la profundidad; el preset de temporización (Sigiloso/Normal/Agresivo) controla la rapidez y el ruido. Para detalles completos, ver `docs/MANUAL.es.md`.
+
 El asistente cubre:
 
 1. **Selección de objetivo**: Elige una subred local o introduce objetivos CIDR/IP/rango

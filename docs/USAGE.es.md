@@ -24,6 +24,18 @@ Navegación paso a paso con opción "Cancelar" (v4.0.1+). La configuración de w
 sudo redaudit
 ```
 
+**Modos del asistente (resumen):**
+
+- **fast**: Solo discovery, mínimo ruido, el más rápido.
+- **normal**: Puertos principales, equilibrio tiempo/cobertura (recomendado).
+- **full**: Todos los puertos + scripts + herramientas web, el más lento y ruidoso.
+
+**Presets de velocidad (wizard):**
+
+- **Sigiloso**: El más lento y con menos ruido.
+- **Normal**: Equilibrio entre velocidad y fiabilidad.
+- **Agresivo**: El más rápido, más ruido; puede perder servicios lentos/filtrados.
+
 ### Inventario rápido (LAN)
 
 ```bash

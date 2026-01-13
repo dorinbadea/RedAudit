@@ -223,9 +223,23 @@ Si responde **Sí**, accederá al sub-menú de credenciales:
 | `normal` | Top 100 puertos (`-F`), detección de versiones | whatweb, searchsploit |
 | `full` | Los 65535 puertos, scripts, detección de SO | whatweb, nikto, testssl.sh, nuclei (instalado y habilitado explícitamente), searchsploit |
 
+**Guía (beneficios/riesgos):**
+
+- **fast**: Mínimo ruido y más rápido. Ideal para inventario o entornos frágiles; sin detalle de servicios.
+- **normal**: Equilibrio entre tiempo y cobertura. Recomendado como opción por defecto en la mayoría de LAN.
+- **full**: Máxima cobertura e identidad más profunda. Mayor duración y más ruido; puede estresar dispositivos frágiles.
+
 **Comportamiento de timeout:** Los escaneos de host están limitados por el `--host-timeout` de nmap del modo elegido
 (full: 300s). RedAudit aplica un timeout duro y marca el host como sin respuesta si se supera, manteniendo el escaneo
 fluido en dispositivos IoT/embebidos.
+
+### Presets de Velocidad (Wizard)
+
+La velocidad controla la agresividad del scheduling (timing de nmap y comportamiento de hilos).
+
+- **Sigiloso**: El más lento y con menos ruido. Útil en redes sensibles a la detección.
+- **Normal**: Equilibrio entre velocidad y fiabilidad. Buena opción por defecto.
+- **Agresivo**: El más rápido y más ruidoso. Puede perder servicios lentos/filtrados y aumentar falsos negativos en enlaces ruidosos.
 
 ### Deep Scan Adaptativo
 

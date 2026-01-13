@@ -322,6 +322,8 @@ The wizard offers 4 audit profiles:
 
 Phase 0 low-impact enrichment is an opt-in wizard prompt across all profiles (default off).
 
+Scan mode (`fast`/`normal`/`full`) controls coverage and depth; timing preset (Stealth/Normal/Aggressive) controls speed and noise. For full details, see `docs/MANUAL.en.md`.
+
 The wizard covers:
 
 1. **Target Selection**: Choose a local subnet or enter manual CIDR/IP/range targets
