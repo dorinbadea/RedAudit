@@ -763,6 +763,10 @@ class InteractiveNetworkAuditor:
                             total_targets = len(nuclei_targets)
                             total_batches = max(1, int(math.ceil(total_targets / batch_size)))
                             progress_start_t = time.time()
+                            self._nuclei_progress_state = {
+                                "total_targets": int(total_targets),
+                                "max_targets": 0,
+                            }
 
                             # v4.4.4: Prevent UI duplication - Progress manages its own Live display
                             with Progress(
@@ -1649,13 +1653,14 @@ class InteractiveNetworkAuditor:
             )
             return
 
-        # PROFILE 3: Custom - Full wizard with 8 steps (original behavior)
+        # PROFILE 3: Custom - Full wizard with 9 steps (original behavior)
         # v3.8.1: Wizard step machine for "Cancel" navigation
         TOTAL_STEPS = 9
         step = 1
 
         # Store choices for navigation (allows going back and reusing previous values)
         wizard_state: Dict = {}
+        self.ui.print_status(self.ui.t("wizard_custom_intro"), "INFO")
 
         while step <= TOTAL_STEPS:
             # ═══════════════════════════════════════════════════════════════════
@@ -1915,55 +1920,9 @@ class InteractiveNetworkAuditor:
                 continue
 
             # ═══════════════════════════════════════════════════════════════════
-            # STEP 5: Output Directory
+            # STEP 5: UDP & Topology
             # ═══════════════════════════════════════════════════════════════════
             elif step == 5:
-                self.ui.print_status(f"[{step}/{TOTAL_STEPS}] " + self.ui.t("output_dir"), "INFO")
-
-                auditor_default = wizard_state.get(
-                    "auditor_name",
-                    (
-                        defaults_for_run.get("auditor_name")
-                        if isinstance(defaults_for_run, dict)
-                        else ""
-                    ),
-                )
-                auditor_default = auditor_default or ""
-                auditor_prompt = self.ui.t("auditor_name_q")
-                auditor_name = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {auditor_prompt} "
-                    f"[{auditor_default}]: "
-                ).strip()
-                if not auditor_name:
-                    auditor_name = auditor_default
-                auditor_name = auditor_name.strip()
-                self.config["auditor_name"] = auditor_name if auditor_name else None
-                wizard_state["auditor_name"] = self.config["auditor_name"] or ""
-
-                default_reports = get_default_reports_base_dir()
-                persisted_output = defaults_for_run.get("output_dir")
-                if isinstance(persisted_output, str) and persisted_output.strip():
-                    default_reports = expand_user_path(persisted_output.strip())
-
-                out_dir = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('output_dir')} "
-                    f"[{default_reports}]: "
-                ).strip()
-                if not out_dir:
-                    out_dir = default_reports
-                self.config["output_dir"] = expand_user_path(out_dir)
-
-                # TXT and HTML always on
-                self.config["save_txt_report"] = True
-                self.config["save_html_report"] = True
-
-                step += 1
-                continue
-
-            # ═══════════════════════════════════════════════════════════════════
-            # STEP 6: UDP & Topology
-            # ═══════════════════════════════════════════════════════════════════
-            elif step == 6:
                 # UDP configuration (only for non-rapido modes with deep scan)
                 if self.config["scan_mode"] != "rapido" and self.config.get("deep_id_scan"):
                     udp_modes = [self.ui.t("udp_mode_quick"), self.ui.t("udp_mode_full")]
@@ -2054,9 +2013,9 @@ class InteractiveNetworkAuditor:
                 continue
 
             # ═══════════════════════════════════════════════════════════════════
-            # STEP 7: Net Discovery & Red Team
+            # STEP 6: Net Discovery & Red Team
             # ═══════════════════════════════════════════════════════════════════
-            elif step == 7:
+            elif step == 6:
                 nd_options = [
                     self.ui.t("yes_option") + " — DHCP/NetBIOS/mDNS/UPNP",
                     self.ui.t("no_option"),
@@ -2178,11 +2137,11 @@ class InteractiveNetworkAuditor:
                 continue
 
             # ═══════════════════════════════════════════════════════════════════
-            # STEP 8: Authenticated Scanning (Phase 4)
+            # STEP 7: Authenticated Scanning (Phase 4)
             # ═══════════════════════════════════════════════════════════════════
-            elif step == 8:
+            elif step == 7:
                 auth_options = [
-                    self.ui.t("yes_option") + " — SSH",
+                    self.ui.t("yes_option") + " — " + self.ui.t("auth_scan_opt"),
                     self.ui.t("no_option"),
                 ]
                 # Default: No, unless cli arg provided
@@ -2211,7 +2170,7 @@ class InteractiveNetworkAuditor:
                     auth_cfg = self.ask_auth_config(skip_intro=True)
 
                     if not auth_cfg.get("auth_enabled"):
-                        # User backed out of configuration details -> re-ask Step 8
+                        # User backed out of configuration details -> re-ask Step 7
                         continue
 
                     self.config.update(auth_cfg)
@@ -2226,9 +2185,9 @@ class InteractiveNetworkAuditor:
                 continue
 
             # ═══════════════════════════════════════════════════════════════════
-            # STEP 9: Windows Verification & Webhook
+            # STEP 8: Windows Verification
             # ═══════════════════════════════════════════════════════════════════
-            elif step == 9:
+            elif step == 8:
                 win_options = [
                     self.ui.t("yes_option") + " — SMB/RDP/LDAP/SSH/HTTP",
                     self.ui.t("no_option"),
@@ -2264,6 +2223,52 @@ class InteractiveNetworkAuditor:
                     )
                 else:
                     self.config["windows_verify_enabled"] = False
+
+                step += 1
+                continue
+
+            # ═══════════════════════════════════════════════════════════════════
+            # STEP 9: Output Directory & Webhook
+            # ═══════════════════════════════════════════════════════════════════
+            elif step == 9:
+                self.ui.print_status(f"[{step}/{TOTAL_STEPS}] " + self.ui.t("output_dir"), "INFO")
+
+                auditor_default = wizard_state.get(
+                    "auditor_name",
+                    (
+                        defaults_for_run.get("auditor_name")
+                        if isinstance(defaults_for_run, dict)
+                        else ""
+                    ),
+                )
+                auditor_default = auditor_default or ""
+                auditor_prompt = self.ui.t("auditor_name_q")
+                auditor_name = input(
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {auditor_prompt} "
+                    f"[{auditor_default}]: "
+                ).strip()
+                if not auditor_name:
+                    auditor_name = auditor_default
+                auditor_name = auditor_name.strip()
+                self.config["auditor_name"] = auditor_name if auditor_name else None
+                wizard_state["auditor_name"] = self.config["auditor_name"] or ""
+
+                default_reports = get_default_reports_base_dir()
+                persisted_output = defaults_for_run.get("output_dir")
+                if isinstance(persisted_output, str) and persisted_output.strip():
+                    default_reports = expand_user_path(persisted_output.strip())
+
+                out_dir = input(
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('output_dir')} "
+                    f"[{default_reports}]: "
+                ).strip()
+                if not out_dir:
+                    out_dir = default_reports
+                self.config["output_dir"] = expand_user_path(out_dir)
+
+                # TXT and HTML always on
+                self.config["save_txt_report"] = True
+                self.config["save_html_report"] = True
 
                 # Webhook configuration
                 webhook_url = self.ask_webhook_url()
@@ -2415,8 +2420,31 @@ class InteractiveNetworkAuditor:
             # v4.4.4: Keep heartbeat alive during progress updates
             self._touch_activity()
 
-            approx_targets = int(round(float(completed) * max(1, int(batch_size))))
-            approx_targets = max(0, min(int(total_targets), approx_targets))
+            total_targets_i = max(0, int(total_targets))
+            total_hint = max(0, int(total)) if total is not None else 0
+            if total_targets_i <= 0:
+                total_targets_i = total_hint
+            use_batch_units = bool(total_targets_i and total_hint and total_hint != total_targets_i)
+            if use_batch_units:
+                approx_targets = int(round(float(completed) * max(1, int(batch_size))))
+            else:
+                approx_targets = int(round(float(completed)))
+            approx_targets = max(0, min(total_targets_i, approx_targets))
+            detail_text = detail or f"batch {completed}/{total}"
+            is_running = isinstance(detail_text, str) and "running" in detail_text
+            if is_running and total_targets_i > 0:
+                approx_targets = min(approx_targets, total_targets_i - 1)
+
+            # Prevent regressions when batches are retried/split (timeouts can reset progress).
+            state = getattr(self, "_nuclei_progress_state", None)
+            if not isinstance(state, dict) or state.get("total_targets") != total_targets_i:
+                state = {"total_targets": total_targets_i, "max_targets": 0}
+                self._nuclei_progress_state = state
+            max_seen = int(state.get("max_targets") or 0)
+            if approx_targets < max_seen:
+                approx_targets = max_seen
+            else:
+                state["max_targets"] = approx_targets
             remaining_batches = max(0.0, float(total) - float(completed))
             remaining_targets = max(0, int(total_targets) - approx_targets)
             ela_s = max(0.001, time.time() - start_time)
@@ -2426,7 +2454,6 @@ class InteractiveNetworkAuditor:
                 if rate > 0.0 and remaining_targets
                 else ""
             )
-            detail_text = detail or f"batch {completed}/{total}"
             progress.update(
                 task,
                 completed=approx_targets,

@@ -183,7 +183,7 @@ Once the lab is running (`status` shows UP):
    sudo redaudit -t 172.20.0.0/24
    ```
 
-4. **Wizard**: The wizard will detect the network and offer to load the saved credentials.
+4. **Wizard**: The wizard will detect the network, offer to load saved credentials, and then ask if you want to add more.
 
 ## Troubleshooting
 

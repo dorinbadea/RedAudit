@@ -10,6 +10,16 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.15] - 2026-01-13
+
+### Improved
+
+- **Nuclei Progress Stability**: Keep target progress monotonic across batch retries and timeouts.
+
+### Fixed
+
+- **Host Report Consistency**: Populate `hosts[].asset_name` and `hosts[].interfaces` from unified assets.
+
 ## [v4.6.14] - 2026-01-13
 
 ### Added

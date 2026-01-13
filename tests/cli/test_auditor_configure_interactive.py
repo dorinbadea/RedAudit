@@ -64,7 +64,8 @@ def test_configure_scan_interactive_full_flow(monkeypatch, tmp_path):
 
     # v3.9.0: First ask_choice is for profile selection (3 = Custom)
     # Then the wizard steps follow. v4.3: Added hyperscan_mode + vulnerability scan step
-    # Sequence: ScanMode(1), Hyperscan(0), Vuln(0), SQLMap(0), ZAP(0), CVE(0), UDP(0), Topo(0), NetDisc(0), AuthScan(1-No)
+    # Sequence: ScanMode(1), Hyperscan(0), Vuln(0), SQLMap(0), ZAP(0), CVE(0),
+    # UDP(0), Topo(0), NetDisc(0), AuthScan(1-No), WindowsVerify(0)
     # Changing last 0 to 1 to disable Auth Scan and avoid dealing with credential inputs in this test
     choice_with_back = iter([1, 0, 0, 0, 0, 0, 0, 0, 0, 1] + [0] * 50)
     # First choice is profile (3=Custom), second is redteam mode
@@ -96,10 +97,10 @@ def test_configure_scan_interactive_full_flow(monkeypatch, tmp_path):
 
     inputs = iter(
         [
-            "Auditor Name",
-            str(tmp_path / "reports"),
             "EXAMPLE.COM",
             str(tmp_path / "users.txt"),
+            "Auditor Name",
+            str(tmp_path / "reports"),
         ]
     )
     monkeypatch.setattr(builtins, "input", lambda *_a, **_k: next(inputs))

@@ -10,6 +10,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.15] - 2026-01-13
+
+### Mejorado
+
+- **Estabilidad del progreso de Nuclei**: Mantener el avance de objetivos sin retrocesos durante reintentos y timeouts.
+
+### Corregido
+
+- **Consistencia de hosts en informes**: Rellenar `hosts[].asset_name` y `hosts[].interfaces` desde assets unificados.
+
 ## [v4.6.14] - 2026-01-13
 
 ### Añadido

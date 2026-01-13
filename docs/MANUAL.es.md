@@ -131,7 +131,7 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 
 **Objetivo:** Identificar servicios comunes y vulnerabilidades obvias.
 
-- **Técnica:** Top 1000 puertos TCP, detección de versiones y SO.
+- **Técnica:** Top 100 puertos TCP (`-F`), detección de versiones y SO.
 - **Web:** Revisa cabeceras y tecnologías básicas (WhatWeb).
 - **Autenticación:** Configuración opcional de credenciales SSH/SMB/SNMP.
 - **Ideal para:** Auditorías regulares, validación de políticas.
@@ -150,7 +150,8 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 **Objetivo:** Control total.
 
 - **Permite configurar:**
-  - **Modo Nmap:** Fast/Normal/Full/Stealth.
+  - **Modo Nmap:** Fast/Normal/Full.
+  - **Temporización:** Sigiloso/Normal/Agresivo.
   - **Rendimiento:** Hilos (1-16) y Rate Limit (segundos entre peticiones).
   - **Topología & Discovery:** Activar/desactivar mapeo L2 y protocolos de descubrimiento (mDNS, UPnP, etc.).
   - **UDP:** Activar escaneo UDP (lento pero exhaustivo).
@@ -223,9 +224,23 @@ Si responde **Sí**, accederá al sub-menú de credenciales:
 | `normal` | Top 100 puertos (`-F`), detección de versiones | whatweb, searchsploit |
 | `full` | Los 65535 puertos, scripts, detección de SO | whatweb, nikto, testssl.sh, nuclei (instalado y habilitado explícitamente), searchsploit |
 
+**Guía (beneficios/riesgos):**
+
+- **fast**: Mínimo ruido y más rápido. Ideal para inventario o entornos frágiles; sin detalle de servicios.
+- **normal**: Equilibrio entre tiempo y cobertura. Recomendado como opción por defecto en la mayoría de LAN.
+- **full**: Máxima cobertura e identidad más profunda. Mayor duración y más ruido; puede estresar dispositivos frágiles.
+
 **Comportamiento de timeout:** Los escaneos de host están limitados por el `--host-timeout` de nmap del modo elegido
 (full: 300s). RedAudit aplica un timeout duro y marca el host como sin respuesta si se supera, manteniendo el escaneo
 fluido en dispositivos IoT/embebidos.
+
+### Presets de Velocidad (Wizard)
+
+La velocidad controla la agresividad del scheduling (timing de nmap y comportamiento de hilos).
+
+- **Sigiloso**: El más lento y con menos ruido. Útil en redes sensibles a la detección.
+- **Normal**: Equilibrio entre velocidad y fiabilidad. Buena opción por defecto.
+- **Agresivo**: El más rápido y más ruidoso. Puede perder servicios lentos/filtrados y aumentar falsos negativos en enlaces ruidosos.
 
 ### Deep Scan Adaptativo
 
@@ -322,7 +337,7 @@ RedAudit v4.0+ soporta el escaneo autenticado para obtener datos de alta fidelid
 
 #### Interactivo (Wizard)
 
-Cuando se pregunte "¿Habilitar escaneo autenticado (SSH/SMB)?", seleccione Sí. Podrá configurar credenciales SSH y/o SMB. Los ajustes se pueden guardar en un anillo de claves seguro o archivo de configuración.
+Cuando se pregunte "¿Habilitar escaneo autenticado (SSH/SMB)?", seleccione Sí. Si hay credenciales guardadas, el asistente ofrece cargarlas primero y luego pregunta si deseas añadir más. Los ajustes se pueden guardar en un anillo de claves seguro o archivo de configuración.
 
 #### Argumentos CLI
 

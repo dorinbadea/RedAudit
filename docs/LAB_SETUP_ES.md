@@ -183,7 +183,7 @@ Una vez que el laboratorio este funcionando (`status` muestra UP):
    sudo redaudit -t 172.20.0.0/24
    ```
 
-4. **Asistente**: El asistente detectara la red y ofrecera cargar las credenciales guardadas.
+4. **Asistente**: El asistente detectara la red, ofrecera cargar credenciales guardadas y luego preguntara si deseas anadir mas.
 
 ## Solución de Problemas
 

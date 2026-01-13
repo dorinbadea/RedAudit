@@ -131,7 +131,7 @@ Pre-configured profiles adjust dozens of parameters automatically:
 
 **Goal:** Identify common services and obvious vulnerabilities.
 
-- **Technique:** Top 1000 TCP ports, version and OS detection.
+- **Technique:** Top 100 TCP ports (`-F`), version and OS detection.
 - **Web:** Checks headers and basic technologies (WhatWeb).
 - **Authentication:** Optional setup for SSH/SMB/SNMP credentials.
 - **Ideal for:** Regular audits, policy validation.
@@ -150,7 +150,8 @@ Pre-configured profiles adjust dozens of parameters automatically:
 **Goal:** Full control.
 
 - **Allows configuring:**
-  - **Nmap Mode:** Fast/Normal/Full/Stealth.
+  - **Nmap Mode:** Fast/Normal/Full.
+  - **Timing:** Stealth/Normal/Aggressive.
   - **Performance:** Threads (1-16) and Rate Limit (seconds between requests).
   - **Topology & Discovery:** Enable/disable L2 mapping and discovery protocols (mDNS, UPnP, etc.).
   - **UDP:** Enable UDP scanning (slow but thorough).
@@ -223,9 +224,23 @@ If you answer **Yes**, you will enter the credentials sub-menu:
 | `normal` | Top 100 ports (`-F`), version detection | whatweb, searchsploit (if available) |
 | `full` | All 65535 ports, scripts, OS detection | whatweb, nikto, testssl.sh, nuclei (installed and explicitly enabled), searchsploit |
 
+**Guidance (benefits/risks):**
+
+- **fast**: Lowest noise and fastest. Best for inventory-only sweeps or fragile environments; no service detail.
+- **normal**: Balanced time vs. coverage. Recommended default for most LAN audits.
+- **full**: Maximum coverage and deeper identity work. Longest runtime and highest noise; may stress fragile devices.
+
 **Timeout behavior:** Host scans are bounded by the nmap `--host-timeout` for the selected mode (full: 300s). RedAudit
 enforces a hard timeout and marks the host as no-response if it is exceeded, keeping scans responsive on IoT/embedded
 devices.
+
+### Timing Presets (Wizard)
+
+Timing controls how aggressively RedAudit schedules work (nmap timing + thread behavior).
+
+- **Stealth**: Slowest, lowest noise. Best for detection-sensitive networks.
+- **Normal**: Balanced speed and reliability. Good default for most networks.
+- **Aggressive**: Fastest and noisiest. Can miss slow/filtered services and may increase false negatives on noisy links.
 
 ### Adaptive Deep Scan
 
@@ -323,7 +338,7 @@ RedAudit v4.0+ supports authenticated scanning to retrieve high-fidelity data fr
 
 #### Interactive (Wizard)
 
-When prompted "Enable authenticated scanning (SSH/SMB)?", select Yes. You can then configure SSH and/or SMB credentials. The settings can be saved to a secure keyring or configuration file.
+When prompted "Enable authenticated scanning (SSH/SMB)?", select Yes. If saved credentials are detected, the wizard offers to load them first and then asks if you want to add more. The settings can be saved to a secure keyring or configuration file.
 
 #### CLI Arguments
 

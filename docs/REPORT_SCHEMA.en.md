@@ -430,6 +430,14 @@ Enrichment is performed only for services with detected version information (or 
 | `cve_summary.total` | integer | Total CVEs across all ports |
 | `cve_summary.critical` | integer | Count of ports with max severity CRITICAL |
 | `cve_summary.high` | integer | Count of ports with max severity HIGH |
+| `asset_name` | string | (Optional) Consolidated asset name from entity resolution |
+| `asset_type` | string | (Optional) Asset classification (router, server, workstation, iot, etc.) |
+| `interfaces` | array | (Optional) Consolidated interface list for the asset |
+| `interfaces[].ip` | string | Interface IP address |
+| `interfaces[].mac` | string | (Optional) Interface MAC address |
+| `interfaces[].hostname` | string | (Optional) Hostname hint for the interface |
+| `interfaces[].type` | string | Interface type label |
+| `interface_count` | integer | (Optional) Number of interfaces detected for the asset |
 
 ### DNS Object (Optional)
 
