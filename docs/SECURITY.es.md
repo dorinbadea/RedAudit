@@ -171,7 +171,7 @@ RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `
 
 ## 11. Seguridad en Dashboard HTML y Webhooks (v3.3+)
 
-### Reportes HTML (`--html-report`)
+### Informes HTML (`--html-report`)
 
 - **Offline/Air-gap**: El informe embebe el CSS, pero las gráficas cargan Chart.js desde un CDN. En entornos aislados el HTML abre; las gráficas pueden no renderizar sin esa dependencia.
 - **Sin Rastreo Remoto**: No se incluyen analíticas ni píxeles de seguimiento.

@@ -6,7 +6,7 @@
 
 ## Mejoras de Calidad de Auditoría
 
-Este hotfix se centra en **reducir falsos positivos** y **alinear conteos** entre CLI y reportes.
+Este hotfix se centra en **reducir falsos positivos** y **alinear conteos** entre CLI y informes.
 
 ### Filtrado de Falsos Positivos en Nuclei
 

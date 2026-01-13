@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Reporter Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 Report generation and saving functionality.

@@ -43,7 +43,7 @@ Limpiada la salida de errores de `arp-scan` y `scapy` (advertencias redundantes 
 
 ### Visualización de Identidad
 
-Los reportes HTML ahora codifican por color el `identity_score` para mostrar claramente qué hosts están plenamente identificados vs. los que requieren revisión manual.
+Los informes HTML ahora codifican por color el `identity_score` para mostrar claramente qué hosts están plenamente identificados vs. los que requieren revisión manual.
 
 ### Gestión de PCAP
 

@@ -118,7 +118,7 @@ Complete bilingual documentation (English/Spanish):
 
 #### Highlights v3.1.0 (incluido)
 
-- **Exportaciones JSONL**: `findings.jsonl`, `assets.jsonl` y `summary.json` auto-generados para pipelines SIEM/IA (cuando el cifrado de reportes está desactivado).
+- **Exportaciones JSONL**: `findings.jsonl`, `assets.jsonl` y `summary.json` auto-generados para pipelines SIEM/IA (cuando el cifrado de informes está desactivado).
 - **IDs de hallazgo**: Hashes determinísticos para deduplicación/correlación entre escaneos.
 - **Clasificación por categoría**: surface/misconfig/crypto/auth/info-leak/vuln.
 - **Severidad normalizada**: Escala 0-10 estilo CVSS con severidad original preservada.
@@ -129,7 +129,7 @@ Complete bilingual documentation (English/Spanish):
 
 - **Soporte IPv6**: Escaneo completo de redes IPv6 con flag `-6` automático.
 - **Correlación CVE (NVD)**: Inteligencia de vulnerabilidades via NIST NVD API con caché de 7 días.
-- **Análisis diferencial**: Comparación de dos reportes JSON para detectar cambios.
+- **Análisis diferencial**: Comparación de dos informes JSON para detectar cambios.
 - **Proxy Chains (SOCKS5)**: Soporte de pivoting via wrapper proxychains.
 - **Validación Magic Byte**: Detección mejorada de falsos positivos con verificación de firmas.
 
@@ -177,7 +177,7 @@ redaudit/core/
 |:---|:---|
 | `--ipv6` | Activa modo solo IPv6 |
 | `--proxy URL` | Proxy SOCKS5 para pivoting |
-| `--diff OLD NEW` | Compara dos reportes JSON |
+| `--diff OLD NEW` | Compara dos informes JSON |
 | `--cve-lookup` | Activa correlación CVE vía NVD |
 | `--nvd-key KEY` | API key NVD para rate limits más rápidos |
 | `--udp-ports N` | Número de top puertos UDP para identidad (50-500) |

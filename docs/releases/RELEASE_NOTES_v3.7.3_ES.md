@@ -6,7 +6,7 @@
 
 ## Resumen
 
-RedAudit v3.7.3 es un release patch enfocado en **confiabilidad del escaneo** y **precisión de reportes**, especialmente
+RedAudit v3.7.3 es un release patch enfocado en **confiabilidad del escaneo** y **precisión de informes**, especialmente
 para redes mixtas con routers e IoT.
 
 ## Corregido
@@ -18,9 +18,9 @@ para redes mixtas con routers e IoT.
 
 ### Continuidad de Identidad de Hosts
 
-- Si Nmap falla, RedAudit usa datos MAC/vendor de topología/vecinos para mantener la identidad del host en reportes.
+- Si Nmap falla, RedAudit usa datos MAC/vendor de topología/vecinos para mantener la identidad del host en informes.
 
-### Precisión de Reportes
+### Precisión de Informes
 
 - "Hosts Descubiertos" ahora deduplica objetivos para reflejar el conjunto único real.
 

@@ -215,7 +215,7 @@ flowchart TD
 
 ---
 
-### Lab 3: Reto de Integración de Reportes (60 min)
+### Lab 3: Reto de Integración de Informes (60 min)
 
 **Objetivo:** Ingestar la salida de RedAudit en un sistema tipo SIEM.
 

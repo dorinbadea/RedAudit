@@ -23,11 +23,11 @@ Payloads UDP específicos por protocolo para detección automática de dispositi
 | Tuya/SmartLife | 6666, 6667 | Varios IoT |
 | CoAP/Matter | 5683 | Dispositivos Matter |
 
-Los dispositivos se etiquetan automáticamente con `asset_type: iot` en los reportes.
+Los dispositivos se etiquetan automáticamente con `asset_type: iot` en los informes.
 
 ### Fallback de Hostname por DNS Reverso
 
-Los reportes HTML ahora muestran hostnames de dispositivos IoT desde DNS reverso cuando el hostname estándar está vacío (ej: `wiz-9df9a6.fritz.box`).
+Los informes HTML ahora muestran hostnames de dispositivos IoT desde DNS reverso cuando el hostname estándar está vacío (ej: `wiz-9df9a6.fritz.box`).
 
 ---
 

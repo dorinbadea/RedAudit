@@ -2,7 +2,7 @@
 # mypy: disable-error-code="attr-defined"
 """
 RedAudit - Wizard UI Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.6: Extracted from auditor.py for better code organization.
@@ -14,7 +14,7 @@ import sys
 import platform
 import re
 import shutil
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from redaudit.utils.constants import (
     VERSION,
@@ -25,7 +25,7 @@ from redaudit.utils.constants import (
     UDP_SCAN_MODE_QUICK,
     UDP_TOP_PORTS,
 )
-from redaudit.utils.paths import expand_user_path, get_default_reports_base_dir
+from redaudit.utils.paths import expand_user_path, get_default_reports_base_dir, get_invoking_user
 from redaudit.utils.dry_run import is_dry_run
 from redaudit.utils.targets import parse_target_tokens
 
@@ -296,11 +296,12 @@ class Wizard:
             (self.ui.t("yes_option"), "OKGREEN"),
             (self.ui.t("no_default"), "FAIL"),
             (self.ui.t("no_option"), "FAIL"),
-            (self.ui.t("wizard_go_back"), "OKBLUE"),
+            (self.ui.t("wizard_go_back"), "WARNING"),
+            (self.ui.t("go_back"), "WARNING"),
         )
         for label, color in labels:
             if label and stripped.startswith(label):
-                return f"{self.ui.colors[color]}{option}{self.ui.colors['ENDC']}"
+                return f"{self.ui.colors.get(color, '')}{option}{self.ui.colors['ENDC']}"
         return option
 
     def show_main_menu(self) -> int:
@@ -445,7 +446,8 @@ class Wizard:
         print(f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {question}")
         for i, opt in enumerate(options):
             marker = f"{self.ui.colors['BOLD']}>{self.ui.colors['ENDC']}" if i == default else " "
-            print(f"  {marker} {i + 1}. {opt}")
+            opt_display = self._format_menu_option(opt)
+            print(f"  {marker} {i + 1}. {opt_display}")
         while True:
             try:
                 ans = input(
@@ -464,8 +466,13 @@ class Wizard:
                 self.signal_handler(None, None)
                 sys.exit(0)
 
-    # v3.8.1: Navigation-aware choice with "Go Back" option
+    # v3.8.1: Navigation-aware choice with "Cancel" option
     WIZARD_BACK = -1  # Sentinel value for "go back"
+
+    def _is_cancel_input(self, value: str) -> bool:
+        if not value:
+            return False
+        return value.strip().lower() in {"cancel", "cancelar", "c"}
 
     def ask_choice_with_back(
         self,
@@ -477,7 +484,7 @@ class Wizard:
         total_steps: int = 0,
     ) -> int:
         """
-        Ask to choose from a list of options with a "< Volver" (Go Back) option.
+        Ask to choose from a list of options with a "Cancel" option.
 
         Returns:
             int: Selected index (0 to len(options)-1), or WIZARD_BACK (-1) if user chose to go back.
@@ -489,7 +496,7 @@ class Wizard:
         else:
             step_header = ""
 
-        # Add "< Volver" / "< Go Back" as the last option (only if not first step)
+        # Add "Cancel" as the last option (only if not first step)
         back_label = self.ui.t("wizard_go_back")
         show_back = step_num > 1  # Don't show back on first step
         display_options = list(options) + ([back_label] if show_back else [])
@@ -508,7 +515,8 @@ class Wizard:
         print(f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {step_header}{question}")
         for i, opt in enumerate(display_options):
             marker = f"{self.ui.colors['BOLD']}>{self.ui.colors['ENDC']}" if i == default else " "
-            print(f"  {marker} {i + 1}. {opt}")
+            opt_display = self._format_menu_option(opt)
+            print(f"  {marker} {i + 1}. {opt_display}")
 
         while True:
             try:
@@ -518,8 +526,10 @@ class Wizard:
                 ).strip()
                 if ans == "":
                     return default
-                # Support "0" or "b" or "back" for going back
-                if show_back and ans.lower() in ("0", "b", "back", "volver", "<"):
+                # Support common "back/cancel" inputs in text fallback
+                if show_back and (
+                    ans.lower() in ("0", "b", "back", "volver", "<") or self._is_cancel_input(ans)
+                ):
                     return self.WIZARD_BACK
                 try:
                     idx = int(ans) - 1
@@ -849,10 +859,16 @@ class Wizard:
                 f"{self.ui.t('auth_protocol_hint')}"
                 f"{self.ui.colors['ENDC']}"
             )
-            auth_config["auth_credentials"] = self._collect_universal_credentials()
+            creds = self._collect_universal_credentials()
+            if creds is None:
+                auth_config["auth_enabled"] = False
+                return auth_config
+            auth_config["auth_credentials"] = creds
         else:
             # Advanced mode: per-protocol configuration
-            self._collect_advanced_credentials(auth_config)
+            if self._collect_advanced_credentials(auth_config):
+                auth_config["auth_enabled"] = False
+                return auth_config
 
         # Keyring option
         if (
@@ -864,6 +880,98 @@ class Wizard:
                 auth_config["auth_save_keyring"] = True
 
         return auth_config
+
+    def _load_keyring_from_invoking_user(self, invoking_user: str) -> Optional[dict]:
+        if not invoking_user:
+            return None
+        if shutil.which("sudo") is None:
+            return None
+
+        try:
+            import json
+            import subprocess
+            from pathlib import Path
+
+            package_root = Path(__file__).resolve().parents[1]
+            script = (
+                "import json, os, sys, logging\n"
+                "logging.disable(logging.CRITICAL)\n"
+                "root = os.environ.get('REDAUDIT_PYTHONPATH')\n"
+                "if root:\n"
+                "    sys.path.insert(0, root)\n"
+                "from redaudit.core.credentials import KeyringCredentialProvider\n"
+                "provider = KeyringCredentialProvider()\n"
+                "summary = provider.get_saved_credential_summary()\n"
+                "creds = []\n"
+                "for protocol, username in summary:\n"
+                "    cred = provider.get_credential('default', protocol.lower())\n"
+                "    if not cred:\n"
+                "        continue\n"
+                "    creds.append({\n"
+                "        'protocol': protocol,\n"
+                "        'username': cred.username,\n"
+                "        'password': cred.password,\n"
+                "        'private_key': cred.private_key,\n"
+                "        'private_key_passphrase': cred.private_key_passphrase,\n"
+                "        'domain': cred.domain,\n"
+                "        'snmp_auth_proto': cred.snmp_auth_proto,\n"
+                "        'snmp_auth_pass': cred.snmp_auth_pass,\n"
+                "        'snmp_priv_proto': cred.snmp_priv_proto,\n"
+                "        'snmp_priv_pass': cred.snmp_priv_pass,\n"
+                "    })\n"
+                "payload = {'summary': summary, 'creds': creds}\n"
+                "sys.stdout.write(json.dumps(payload))\n"
+            )
+
+            cmd = [
+                "sudo",
+                "-H",
+                "-u",
+                invoking_user,
+                "env",
+                f"REDAUDIT_PYTHONPATH={package_root}",
+                sys.executable,
+                "-c",
+                script,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            if result.returncode != 0:
+                return None
+            payload_raw = result.stdout.strip()
+            if not payload_raw:
+                return None
+            payload = json.loads(payload_raw)
+            if not isinstance(payload, dict):
+                return None
+            return payload
+        except Exception:
+            return None
+
+    def _apply_keyring_credentials(self, auth_config: dict, credentials: list[dict]) -> int:
+        loaded = 0
+        for cred in credentials:
+            if not isinstance(cred, dict):
+                continue
+            protocol = str(cred.get("protocol", "")).upper()
+            if protocol == "SSH":
+                auth_config["auth_ssh_user"] = cred.get("username")
+                auth_config["auth_ssh_pass"] = cred.get("password")
+                auth_config["auth_ssh_key"] = cred.get("private_key")
+                auth_config["auth_ssh_key_pass"] = cred.get("private_key_passphrase")
+                loaded += 1
+            elif protocol == "SMB":
+                auth_config["auth_smb_user"] = cred.get("username")
+                auth_config["auth_smb_pass"] = cred.get("password")
+                auth_config["auth_smb_domain"] = cred.get("domain")
+                loaded += 1
+            elif protocol == "SNMP":
+                auth_config["auth_snmp_user"] = cred.get("username")
+                auth_config["auth_snmp_auth_proto"] = cred.get("snmp_auth_proto")
+                auth_config["auth_snmp_auth_pass"] = cred.get("snmp_auth_pass")
+                auth_config["auth_snmp_priv_proto"] = cred.get("snmp_priv_proto")
+                auth_config["auth_snmp_priv_pass"] = cred.get("snmp_priv_pass")
+                loaded += 1
+        return loaded
 
     def _check_and_load_saved_credentials(self, auth_config: dict) -> bool:
         """
@@ -879,47 +987,74 @@ class Wizard:
 
             provider = KeyringCredentialProvider()
             summary = provider.get_saved_credential_summary()
+            invoking_user = get_invoking_user()
+            invoking_payload = None
+            using_invoking_user = False
+
+            if not summary and invoking_user:
+                invoking_payload = self._load_keyring_from_invoking_user(invoking_user)
+                summary_raw = (
+                    invoking_payload.get("summary", [])
+                    if isinstance(invoking_payload, dict)
+                    else []
+                )
+                summary = []
+                for item in summary_raw:
+                    if isinstance(item, (list, tuple)) and len(item) == 2:
+                        summary.append((item[0], item[1]))
+                using_invoking_user = bool(summary)
 
             if not summary:
                 return False
 
             # Show saved credentials
-            print(
-                f"\n{self.ui.colors['OKGREEN']}"
-                f"{self.ui.t('auth_saved_creds_found')}"
-                f"{self.ui.colors['ENDC']}"
+            found_msg = (
+                self.ui.t("auth_saved_creds_found_invoking", invoking_user)
+                if using_invoking_user
+                else self.ui.t("auth_saved_creds_found")
             )
+            print(f"\n{self.ui.colors['OKGREEN']}{found_msg}{self.ui.colors['ENDC']}")
             for protocol, username in summary:
                 print(f"  - {protocol}: {username}")
 
             # Ask to load
             if self.ask_yes_no(self.ui.t("auth_load_saved_q"), default="yes"):
-                # Load credentials into auth_config
-                for protocol, username in summary:
-                    cred = provider.get_credential("default", protocol.lower())
-                    if cred:
-                        if protocol == "SSH":
-                            auth_config["auth_ssh_user"] = cred.username
-                            auth_config["auth_ssh_pass"] = cred.password
-                            auth_config["auth_ssh_key"] = cred.private_key
-                            auth_config["auth_ssh_key_pass"] = cred.private_key_passphrase
-                        elif protocol == "SMB":
-                            auth_config["auth_smb_user"] = cred.username
-                            auth_config["auth_smb_pass"] = cred.password
-                            auth_config["auth_smb_domain"] = cred.domain
-                        elif protocol == "SNMP":
-                            auth_config["auth_snmp_user"] = cred.username
-                            auth_config["auth_snmp_auth_proto"] = cred.snmp_auth_proto
-                            auth_config["auth_snmp_auth_pass"] = cred.snmp_auth_pass
-                            auth_config["auth_snmp_priv_proto"] = cred.snmp_priv_proto
-                            auth_config["auth_snmp_priv_pass"] = cred.snmp_priv_pass
+                loaded_count = 0
+                if using_invoking_user and isinstance(invoking_payload, dict):
+                    creds = invoking_payload.get("creds", [])
+                    if isinstance(creds, list):
+                        loaded_count = self._apply_keyring_credentials(auth_config, creds)
+                else:
+                    for protocol, username in summary:
+                        cred = provider.get_credential("default", protocol.lower())
+                        if cred:
+                            if protocol == "SSH":
+                                auth_config["auth_ssh_user"] = cred.username
+                                auth_config["auth_ssh_pass"] = cred.password
+                                auth_config["auth_ssh_key"] = cred.private_key
+                                auth_config["auth_ssh_key_pass"] = cred.private_key_passphrase
+                                loaded_count += 1
+                            elif protocol == "SMB":
+                                auth_config["auth_smb_user"] = cred.username
+                                auth_config["auth_smb_pass"] = cred.password
+                                auth_config["auth_smb_domain"] = cred.domain
+                                loaded_count += 1
+                            elif protocol == "SNMP":
+                                auth_config["auth_snmp_user"] = cred.username
+                                auth_config["auth_snmp_auth_proto"] = cred.snmp_auth_proto
+                                auth_config["auth_snmp_auth_pass"] = cred.snmp_auth_pass
+                                auth_config["auth_snmp_priv_proto"] = cred.snmp_priv_proto
+                                auth_config["auth_snmp_priv_pass"] = cred.snmp_priv_pass
+                                loaded_count += 1
 
-                print(
-                    f"{self.ui.colors['OKGREEN']}"
-                    f"{self.ui.t('auth_loaded_creds').format(len(summary))}"
-                    f"{self.ui.colors['ENDC']}\n"
-                )
-                return True
+                if loaded_count:
+                    print(
+                        f"{self.ui.colors['OKGREEN']}"
+                        f"{self.ui.t('auth_loaded_creds').format(loaded_count)}"
+                        f"{self.ui.colors['ENDC']}\n"
+                    )
+                    return True
+                return False
 
             return False
         except Exception as e:
@@ -929,13 +1064,14 @@ class Wizard:
             logging.getLogger(__name__).debug("Keyring check failed: %s", e)
             return False
 
-    def _collect_universal_credentials(self) -> list:
+    def _collect_universal_credentials(self) -> Optional[list]:
         """Collect universal credentials (user/pass pairs)."""
         import getpass
 
         credentials: list = []
         cred_num = 1
 
+        self.ui.print_status(self.ui.t("auth_cancel_hint"), "WARNING")
         print(
             f"\n{self.ui.colors['OKBLUE']}--- "
             f"{self.ui.t('auth_cred_number') % cred_num} "
@@ -947,6 +1083,10 @@ class Wizard:
                 f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                 f"{self.ui.t('auth_cred_user_prompt')}: "
             ).strip()
+
+            if self._is_cancel_input(user):
+                self.ui.print_status(self.ui.t("config_cancel"), "WARNING")
+                return None
 
             if not user:
                 break
@@ -980,9 +1120,11 @@ class Wizard:
 
         return credentials
 
-    def _collect_advanced_credentials(self, auth_config: Dict) -> None:
+    def _collect_advanced_credentials(self, auth_config: Dict) -> bool:
         """Collect advanced credentials."""
         import getpass
+
+        self.ui.print_status(self.ui.t("auth_cancel_hint"), "WARNING")
 
         # 1. SSH
         if self.ask_yes_no(self.ui.t("auth_ssh_configure_q"), default="yes"):
@@ -992,6 +1134,9 @@ class Wizard:
                 f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                 f"{self.ui.t('auth_ssh_user_prompt')} [{default_user}]: "
             ).strip()
+            if self._is_cancel_input(u):
+                self.ui.print_status(self.ui.t("config_cancel"), "WARNING")
+                return True
             auth_config["auth_ssh_user"] = u if u else default_user
 
             method_opts = [
@@ -1028,6 +1173,9 @@ class Wizard:
                 f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                 f"{self.ui.t('auth_smb_user_prompt')} [{default_user}]: "
             ).strip()
+            if self._is_cancel_input(u):
+                self.ui.print_status(self.ui.t("config_cancel"), "WARNING")
+                return True
             auth_config["auth_smb_user"] = u if u else default_user
 
             d = input(
@@ -1055,6 +1203,9 @@ class Wizard:
                 f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                 f"{self.ui.t('auth_snmp_user_prompt')}: "
             ).strip()
+            if self._is_cancel_input(u):
+                self.ui.print_status(self.ui.t("config_cancel"), "WARNING")
+                return True
             auth_config["auth_snmp_user"] = u
 
             auth_protos = ["SHA", "MD5", "SHA224", "SHA256", "SHA384", "SHA512"]
@@ -1080,3 +1231,4 @@ class Wizard:
                 auth_config["auth_snmp_priv_pass"] = priv_pass
             except Exception:
                 pass
+        return False

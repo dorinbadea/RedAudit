@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Webhook Alerting Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.3: Send real-time alerts to external services (Slack, Teams, PagerDuty, etc.)

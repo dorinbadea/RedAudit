@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - HTML Report Generator
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.3: Generate interactive HTML reports with Bootstrap + Chart.js.

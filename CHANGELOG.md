@@ -10,6 +10,21 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.14] - 2026-01-13
+
+### Added
+
+- **Auth Wizard Cancel**: Allow canceling credential prompts to exit auth setup cleanly.
+
+### Improved
+
+- **Wizard Navigation Label**: Rename "Go Back" to "Cancel" and use warning color for navigation entries.
+
+### Fixed
+
+- **Keyring Under Sudo**: Detect saved credentials from the invoking user when running with sudo.
+- **Report Footer Year**: Update HTML report license footer to 2026.
+
 ## [v4.6.13] - 2026-01-12
 
 ### Added

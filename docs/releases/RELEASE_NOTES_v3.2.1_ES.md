@@ -21,7 +21,7 @@ El CLI ahora presenta un menú principal profesional cuando se ejecuta sin argum
 
 - **[1] Iniciar Auditoría (Wizard)**: Lanza el asistente de configuración estándar.
 - **[2] Buscar Actualizaciones**: Comprueba manualmente nuevas versiones.
-- **[3] Diff Reportes (JSON)**: Nueva interfaz para comparar dos reportes de escaneo anteriores.
+- **[3] Diff Informes (JSON)**: Nueva interfaz para comparar dos informes de escaneo anteriores.
 - **[0] Salir**: Salida limpia.
 
 ### 2. Flujo de Topología Simplificado
@@ -59,7 +59,7 @@ Un nuevo módulo de post-procesamiento detecta automáticamente **Redes Ocultas 
 
 - **Análisis de Redirecciones**: Investiga cabeceras `Location` que apuntan a IPs privadas fuera del rango de escaneo.
 - **Análisis de Contenido**: Revisa `Content-Security-Policy` y mensajes de error.
-- **Reporte**: Marca automáticamente estos hallazgos como "Potential Hidden Networks" en el informe final, facilitando el pivoting profesional.
+- **Informe**: Marca automáticamente estos hallazgos como "Potential Hidden Networks" en el informe final, facilitando el pivoting profesional.
 
 ---
 

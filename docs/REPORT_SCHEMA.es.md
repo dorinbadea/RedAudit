@@ -1,4 +1,4 @@
-# Esquema de Reportes RedAudit
+# Esquema de Informes RedAudit
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](REPORT_SCHEMA.en.md)
 

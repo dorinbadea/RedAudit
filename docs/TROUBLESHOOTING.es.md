@@ -190,7 +190,7 @@ sudo apt update && sudo apt install nuclei
 
 ### 12c. Nuclei parcial / lotes con timeout
 
-**Síntoma**: Los reportes muestran `nuclei.partial: true` con lotes en timeout o fallidos.
+**Síntoma**: Los informes muestran `nuclei.partial: true` con lotes en timeout o fallidos.
 **Causa**: Los lotes de Nuclei superaron el timeout por lote.
 **Solución**:
 
@@ -218,7 +218,7 @@ sudo bash redaudit_install.sh
 - Verificar que no haya filtrado MAC en el switch/interfaz.
 - Seleccionar interfaz explícitamente: `--net-discovery-interface eth0`.
 
-### 14. Fallo al Generar Reporte HTML (v3.3)
+### 14. Fallo al Generar Informe HTML (v3.3)
 
 **Síntoma**: "Error generating HTML report" o el archivo de informe tiene 0 bytes.
 **Causa**:

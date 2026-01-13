@@ -33,7 +33,7 @@ Esta versión principal desacopla la fase de Escaneo Profundo para una ejecució
 
 ## Correcciones
 
-- Solucionado el reporte de hosts duplicados en CLI y reportes HTML.
+- Solucionado el informe de hosts duplicados en CLI y informes HTML.
 - Solucionada la infrautilización de hilos en redes pequeñas.
 - Corregidas referencias heredadas a "prescan" en la documentación.
 

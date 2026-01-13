@@ -111,7 +111,7 @@ Verifica que la imagen está descargada:
 docker images | grep redaudit
 ```
 
-## macOS - 4. Crear Carpeta de Reportes
+## macOS - 4. Crear Carpeta de Informes
 
 ```bash
 mkdir ~/RedAudit-Reports
@@ -153,7 +153,7 @@ docker run -it --rm \
 
 *Nota: El asistente mostrará la red interna de Docker (172.17.x.x). Debes introducir manualmente tu red real.*
 
-## macOS - 7. Ver Reportes
+## macOS - 7. Ver Informes
 
 ```bash
 open ~/RedAudit-Reports/report.html
@@ -202,7 +202,7 @@ Verifica:
 docker images | Select-String redaudit
 ```
 
-## 4. Crear Carpeta de Reportes
+## 4. Crear Carpeta de Informes
 
 ```powershell
 mkdir C:\RedAudit-Reports
@@ -234,7 +234,7 @@ docker run -it --rm -v C:\RedAudit-Reports:/reports ghcr.io/dorinbadea/redaudit:
 docker run -it --rm -v C:\RedAudit-Reports:/reports ghcr.io/dorinbadea/redaudit:latest --lang es
 ```
 
-## Windows - 7. Ver Reportes
+## Windows - 7. Ver Informes
 
 Abre el Explorador de Archivos → Navega a `C:\RedAudit-Reports` → Haz doble clic en `report.html`
 

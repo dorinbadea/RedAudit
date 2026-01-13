@@ -72,7 +72,7 @@ Las referencias a archivos PCAP ahora son portables:
 }
 ```
 
-Los reportes pueden moverse entre sistemas sin romper las referencias a archivos.
+Los informes pueden moverse entre sistemas sin romper las referencias a archivos.
 
 ### Timeout TestSSL Configurable
 
@@ -86,11 +86,11 @@ Por defecto aumentado de 60s a 90s para acomodar configuraciones SSL complejas.
 
 ### Constante de Versión de Schema
 
-Nueva constante `SCHEMA_VERSION` en `constants.py` separa el versionado del schema de reportes del versionado de la aplicación:
+Nueva constante `SCHEMA_VERSION` en `constants.py` separa el versionado del schema de informes del versionado de la aplicación:
 
 ```python
 VERSION = "3.1.4"        # Versión de aplicación
-SCHEMA_VERSION = "3.1"   # Versión de schema de reportes
+SCHEMA_VERSION = "3.1"   # Versión de schema de informes
 ```
 
 ---
@@ -106,7 +106,7 @@ SCHEMA_VERSION = "3.1"   # Versión de schema de reportes
 
 ---
 
-## Nuevos Campos en Reportes
+## Nuevos Campos en Informes
 
 | Campo | Ubicación | Descripción |
 |-------|-----------|-------------|

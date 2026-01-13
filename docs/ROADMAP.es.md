@@ -21,7 +21,7 @@ Estos elementos están ordenados cronológicamente e incluyen trabajo entregado,
 | **Gating de Apps Web por Infraestructura** | Hecho | Omitir sqlmap/ZAP en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP. |
 | **Evidencia de Identidad en Deep Scan** | Hecho | Título/servidor HTTP y tipo de dispositivo evitan deep scan cuando la identidad ya es fuerte. |
 | **Sonda HTTP Rápida de Identidad** | Hecho | Sonda HTTP/HTTPS breve en hosts silenciosos para resolver identidad antes. |
-| **Reporte Parcial de Nuclei** | Hecho | Marcar ejecuciones parciales y registrar lotes con timeout/fallidos en el informe. |
+| **Informe Parcial de Nuclei** | Hecho | Marcar ejecuciones parciales y registrar lotes con timeout/fallidos en el informe. |
 | **Latido por Batch de Nuclei** | Hecho (v4.6.11) | Mantener actualizaciones de progreso durante lotes largos para mostrar actividad y tiempo transcurrido. |
 | **Progreso por Objetivos de Nuclei** | Hecho (v4.6.13) | Mostrar avance basado en objetivos dentro de cada batch para evitar barras congeladas. |
 | **Guardia de Origen de Identidad HTTP** | Hecho (v4.6.11) | Tratar títulos solo UPnP como pistas y evitar forzar escaneo web o score de identidad. |
@@ -40,7 +40,7 @@ Estos elementos están ordenados cronológicamente e incluyen trabajo entregado,
 | :--- | :--- | :--- |
 | **Modo de pinning de dependencias** | Planificado | Opcional: tags/commits fijados para herramientas externas instaladas desde git. |
 | **Diagrama de transiciones de fase** | Planificado | Diagrama conciso de la lógica de escalado en fases 1-3. |
-| **Etiquetado de no-respuesta** | Planificado | Distinguir errores transitorios de hosts silenciosos en reportes. |
+| **Etiquetado de no-respuesta** | Planificado | Distinguir errores transitorios de hosts silenciosos en informes. |
 
 ### v4.7 Seguimiento de Auditoría (Aplazado)
 
@@ -56,8 +56,9 @@ Mejoras menores identificadas durante la validación Gold Master de v4.4.0.
 | :--- | :--- | :--- |
 | **P7.1 Completitud Barras de Progreso** | Hecho (v4.6.8) | Evitar que las barras de vuln scan se actualicen tras finalizar un host para no confundir. |
 | **P7.2 Visibilidad Timeout Nikto** | Hecho (v4.6.13) | Mostrar indicador "timeout" en lugar de progreso estancado cuando Nikto excede el umbral. |
-| **P7.3 Reporte JSON en Streaming** | Planificado | Escritura incremental para reportes >500MB en redes muy grandes. |
+| **P7.3 Informe JSON en Streaming** | Planificado | Escritura incremental para informes >500MB en redes muy grandes. |
 | **P7.4 Backfill de Tag Web** | Hecho (v4.6.8) | Añadir la etiqueta `web` cuando existe `web_ports_count` aunque falten flags de puerto. |
+| **P7.5 Cancelar en el wizard** | Hecho (v4.6.14) | Cambia "Volver" por "Cancelar" (color de advertencia) y permite cancelar prompts de credenciales. |
 
 ### v4.4 Cobertura de Código y Estabilidad (Prioridad: Alta)
 
@@ -75,7 +76,7 @@ Foco: Eliminar cuellos de botella en grandes redes corporativas.
 | Característica | Estado | Descripción |
 | :--- | :--- | :--- |
 | **Targeting basado en Generadores** | Hecho (v4.4.0) | Refactorizado HyperScan para usar generadores lazy. Evita picos de memoria en subredes grandes (/16). |
-| **Reporte JSON en Streaming** | Hecho | Optimizado `auditor_scan.py` para evitar materializar listas en redes grandes. |
+| **Informe JSON en Streaming** | Hecho | Optimizado `auditor_scan.py` para evitar materializar listas en redes grandes. |
 | **Migración AsyncIO** | Aplazado | Migración completa a AsyncIO aplazada a v5.0 tras estudio de viabilidad. |
 | **Smart-Throttle (AIMD)** | Hecho (v4.4.0) | Control de congestión adaptativo AIMD en HyperScan. Ajusta batch_size dinámicamente. |
 
@@ -162,12 +163,12 @@ Funcionalidades presentes en versiones con `redaudit --version` >= v3.6.0, con r
 | **Pack de Firmas IoT** | v3.9.5 | `redaudit/core/udp_probe.py`, `redaudit/core/hyperscan.py`. Payloads UDP específicos para WiZ, Yeelight, Tuya/SmartLife, CoAP/Matter. |
 | **Selector de Perfil del Wizard** | v3.9.0 | `redaudit/core/auditor.py`. Express/Estándar/Exhaustivo presets + modo Custom. |
 | **Modos de Temporización Reales** | v3.9.0 | `redaudit/core/scanner/nmap.py`, `redaudit/core/auditor_scan.py`. Aplica nmap `-T1`/`-T4`/`-T5` con ajustes de delay/threads. |
-| **Reportes HTML Mejorados** | v3.9.0 | `redaudit/templates/report*.html.j2`. Hallazgos expandibles, análisis smart scan, playbooks, evidencia. |
+| **Informes HTML Mejorados** | v3.9.0 | `redaudit/templates/report*.html.j2`. Hallazgos expandibles, análisis smart scan, playbooks, evidencia. |
 | **Detección FPs Nuclei** | v3.9.0 | `redaudit/core/verify_vuln.py`. Mapeo server header vs CPE para marcar FPs. |
 | **Consistencia de Colores** | v3.8.4 | `redaudit/core/auditor.py`. Usa Rich console.print() cuando el progreso está activo para asegurar colores correctos. |
 | **Identidad del Auditor** | v3.8.3 | `redaudit/core/wizard.py`. Prompt del asistente para nombre del auditor, visible en informes TXT/HTML. |
 | **Informes HTML Bilingües** | v3.8.3 | `redaudit/core/reporter.py`. Cuando el idioma es ES, se genera `report_es.html` junto al HTML principal. |
-| **Navegación del Asistente** | v3.8.1 | `redaudit/core/wizard.py`. Opción "< Volver" en menús del asistente para navegación paso a paso. |
+| **Navegación del Asistente** | v3.8.1 | `redaudit/core/wizard.py`. Opción "Cancelar" en menús del asistente para navegación paso a paso. |
 | **Watermark HTML** | v3.8.2 | `redaudit/templates/report.html.j2`. Footer profesional con GPLv3, autor y enlace a GitHub. |
 | **Webhooks Interactivos** | v3.7.0 | `redaudit/core/wizard.py`. Configura Slack/Teams directamente en el asistente. |
 | **Asistente: Net Discovery Avanzado** | v3.7.0 | `redaudit/core/wizard.py`. Configura SNMP/DNS/Targets interactivamente. |
@@ -211,7 +212,7 @@ Ideas consideradas pero rechazadas para mantener el foco del proyecto.
 | **GUI Web (Controlador)** | Incrementa superficie de ataque y peso. RedAudit está diseñado como herramienta CLI "headless" para automatización. |
 | **Framework de Explotación** | Fuera de alcance. RedAudit es para *auditoría* y *descubrimiento*, no explotación armada (como Metasploit). |
 | **Soporte Nativo Windows** | Demasiado complejo debido a requisitos de sockets raw. Usar WSL2 o Docker. |
-| **Generación Reporte PDF** | Añade dependencias pesadas (LaTeX/ReportLab). Se prefiere salida JSON/HTML para flujos modernos. |
+| **Generación Informe PDF** | Añade dependencias pesadas (LaTeX/ReportLab). Se prefiere salida JSON/HTML para flujos modernos. |
 | **Escaneo Distribuido** | Demasiado complejo (FastAPI/Redis). RedAudit es una herramienta CLI táctica, no una plataforma SaaS. Arquitectura rechazada. |
 
 ---

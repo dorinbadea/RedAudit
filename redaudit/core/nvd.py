@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - NVD CVE Correlation Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.0: Query NIST NVD API 2.0 for vulnerability correlation.

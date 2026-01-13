@@ -10,6 +10,21 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.14] - 2026-01-13
+
+### Añadido
+
+- **Cancelar en el asistente de autenticación**: Permite cancelar los prompts de credenciales para salir de la configuración de auth.
+
+### Mejorado
+
+- **Etiqueta de navegación**: Cambia "Volver" por "Cancelar" y usa color de advertencia en la navegación.
+
+### Corregido
+
+- **Keyring con sudo**: Detecta credenciales guardadas del usuario que invoca al ejecutar con sudo.
+- **Fecha en informes**: Actualiza el footer de licencia HTML a 2026.
+
 ## [v4.6.13] - 2026-01-12
 
 ### Añadido
@@ -68,7 +83,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Corregido
 
-- **Reporte Nuclei**: Marcar ejecuciones parciales cuando hay timeouts de lotes y exponer índices de lotes con timeout/fallidos en el informe.
+- **Informe Nuclei**: Marcar ejecuciones parciales cuando hay timeouts de lotes y exponer índices de lotes con timeout/fallidos en el informe.
 
 ## [v4.6.8] - 2026-01-12
 
@@ -360,7 +375,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Corregido
 
-- **Integridad de Datos**: Los hallazgos de vulnerabilidades (Nikto, etc.) ahora se adjuntan correctamente a los objetos `Host` en memoria. Esto corrige el problema donde las vulnerabilidades faltaban en los reportes JSON y los Risk Scores eran 0 a pesar de encontrar debilidades.
+- **Integridad de Datos**: Los hallazgos de vulnerabilidades (Nikto, etc.) ahora se adjuntan correctamente a los objetos `Host` en memoria. Esto corrige el problema donde las vulnerabilidades faltaban en los informes JSON y los Risk Scores eran 0 a pesar de encontrar debilidades.
 - **UI UX**: Corregido un glitch visual donde el mensaje de estado "heartbeat" ("Net Discovery en progreso...") duplicaba líneas de IP en el wizard. Ahora imprime de forma segura en la consola de progreso.
 
 ## [4.3.2] - 2026-01-08
@@ -390,11 +405,11 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Timing Stealth usa modo connect (más sigiloso que SYN)
   - Integración Wizard: Todos los perfiles (Express/Estándar/Exhaustivo/Personalizado) soportan selección de modo
 
-- **Tooltip de Desglose de Risk Score**: Los reportes HTML ahora muestran componentes detallados del risk score al pasar el ratón.
+- **Tooltip de Desglose de Risk Score**: Los informes HTML ahora muestran componentes detallados del risk score al pasar el ratón.
   - Componentes: CVSS Máximo, Puntuación Base, Bonus Densidad, Multiplicador Exposición
   - Nueva función: `calculate_risk_score_with_breakdown()` en `siem.py`
 
-- **Visualización de Identity Score**: Los reportes HTML muestran identity_score con código de colores.
+- **Visualización de Identity Score**: Los informes HTML muestran identity_score con código de colores.
   - Verde (≥3): Host bien identificado
   - Amarillo (=2): Parcialmente identificado
   - Rojo (<2): Identificación débil (disparó deep scan)
@@ -563,7 +578,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Cambiado
 
 - **Refactorización**: Lógica de escaneo heredada basada en herencia reemplazada por escáner compuesto.
-- **Reportes**: `reporter.py` actualizado para serializar objetos `Host` para reportes JSON/HTML.
+- **Informes**: `reporter.py` actualizado para serializar objetos `Host` para informes JSON/HTML.
 - **Testing**: Limpieza mayor de la suite de pruebas, asegurando verificación lógica (48/48 pruebas core pasando).
 
 ### Eliminado
@@ -601,7 +616,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Corregido
 
 - **Enriquecimiento Neighbor Cache**: Las direcciones MAC descubiertas vía neighbor cache pasivo (ARP/NDP) ahora disparan un lookup OUI online.
-- **Consistencia de Hostname**: Consolidación de búsquedas DNS reversas de Fase 0 (bajo impacto) en el registro de host canónico, asegurando visualización consistente en todos los reportes (HTML/TXT) y lógica de resolución de entidades.
+- **Consistencia de Hostname**: Consolidación de búsquedas DNS reversas de Fase 0 (bajo impacto) en el registro de host canónico, asegurando visualización consistente en todos los informes (HTML/TXT) y lógica de resolución de entidades.
 - **Flujo de Datos**: Corregidas brechas donde datos de enriquecimiento de bajo impacto no se propagaban completamente a los consumidores posteriores.
 
 ## [3.10.0] - 2026-01-01 (Gobernanza SmartScan y Fase 0)
@@ -649,7 +664,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Corregido
 
 - **Falsos positivos de Nuclei**: Los sospechosos se filtran antes de consolidar hallazgos, con conteo expuesto en el resumen de Nuclei.
-- **Conteo de vulns web**: Summary/manifest ahora exponen conteo raw vs consolidado para evitar desajustes entre CLI y reportes.
+- **Conteo de vulns web**: Summary/manifest ahora exponen conteo raw vs consolidado para evitar desajustes entre CLI y informes.
 - **Títulos JSONL**: Añadido `descriptive_title` en findings.jsonl para mejor visualización downstream.
 
 ### Mejorado
@@ -685,7 +700,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - **Yeelight** (puertos 1982, 55443): Payload comando discovery
   - **Tuya/SmartLife** (puertos 6666, 6667): Sondas específicas de protocolo
   - **CoAP/Matter** (puerto 5683): Payload GET .well-known/core
-- **Fallback de Hostname por DNS Reverso**: Los reportes HTML ahora muestran hostnames de dispositivos IoT desde DNS reverso cuando el hostname estándar está vacío
+- **Fallback de Hostname por DNS Reverso**: Los informes HTML ahora muestran hostnames de dispositivos IoT desde DNS reverso cuando el hostname estándar está vacío
 
 ### Fixed
 
@@ -698,7 +713,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 - **Pistas de dominio DHCP**: El parseo de Domain Name/Domain Search ahora tolera prefijos de Nmap (`|`, `|_`, indentacion) y captura dominios internos de forma fiable.
 - **Nombres NetBIOS**: El parseo de nbstat en Nmap ahora recorta puntuacion final para evitar ruido en inventario (ej: `SERVER01,`).
 
-## [3.9.3] - 2025-12-27 (Hotfix de consolidacion de reportes)
+## [3.9.3] - 2025-12-27 (Hotfix de consolidacion de informes)
 
 ### Fixed
 
@@ -711,14 +726,14 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - **Deteccion de version en instalacion script**: Acepta sufijos con letra como `3.9.1a` en `redaudit/VERSION` para evitar `0.0.0-dev` tras auto-update.
 
-## [3.9.1a] - 2025-12-27 (Hotfix de Reportes)
+## [3.9.1a] - 2025-12-27 (Hotfix de Informes)
 
 ### Fixed
 
-- **Títulos en reportes HTML ES**: El regex ahora localiza correctamente títulos de hallazgos comunes en `report_es.html`.
+- **Títulos en informes HTML ES**: El regex ahora localiza correctamente títulos de hallazgos comunes en `report_es.html`.
 - **Metadatos en summary.json**: Se añadieron `scan_mode_cli`, `options` compacto y alias `severity_counts` para dashboards.
 
-## [3.9.0] - 2025-12-27 (Selector de Perfiles y Reportes Mejorados)
+## [3.9.0] - 2025-12-27 (Selector de Perfiles y Informes Mejorados)
 
 ### Añadido
 
@@ -740,7 +755,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - **Recordatorio de API Key NVD**: El wizard muestra un recordatorio con enlace para obtener la API key cuando se omite correlación CVE.
 
-- **Reporte HTML Mejorado** (para auditores profesionales):
+- **Informe HTML Mejorado** (para auditores profesionales):
   - **Hallazgos Expandibles**: Click en cualquier hallazgo para ver observaciones técnicas (`parsed_observations`)
   - **Sección Smart Scan Analysis**: Muestra exactamente por qué se dispararon los deep scans (ej: `suspicious_service`, `many_ports`)
   - **Sección Playbooks de Remediación**: Grid visual de playbooks generados con IPs objetivo
@@ -753,7 +768,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Corregido
 
 - **Timing de nmap no aplicado**: La configuración `nmap_timing` no se pasaba a `get_nmap_arguments()`, por lo que Sigiloso/Normal/Agresivo no tenía efecto en la ejecución real de nmap.
-- **Playbooks no aparecían en reporte HTML**: Los playbooks se generaban DESPUÉS del reporte HTML, resultando en una sección vacía. Ahora se generan antes.
+- **Playbooks no aparecían en informe HTML**: Los playbooks se generaban DESPUÉS del informe HTML, resultando en una sección vacía. Ahora se generan antes.
 
 ### Cambiado
 
@@ -787,7 +802,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Corrige archivos de log excesivamente grandes cuando el terminal se captura externamente (ej. comando `script`).
   - Aplicado a las 9 barras de progreso en módulos auditor, hyperscan, nuclei.
 
-## [3.8.7] - 2025-12-23 (Correcciones de reportes y clasificación)
+## [3.8.7] - 2025-12-23 (Correcciones de informes y clasificación)
 
 ### Corregido
 
@@ -825,7 +840,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Documentación
 
-- Manuales y esquema de reportes actualizados para incluir las pistas del probe HTTP.
+- Manuales y esquema de informes actualizados para incluir las pistas del probe HTTP.
 
 ## [3.8.4] - 2025-12-21 (Verificación sin Agente y Corrección de Colores)
 
@@ -838,11 +853,11 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - **Colores de estado durante progreso**: Corregido el problema donde los mensajes `[INFO]` aparecían sin color cuando la barra de progreso Rich estaba activa. Ahora usa Rich console.print con markup adecuado (`bright_blue` para INFO, `green` para OK, `yellow` para WARN, `red` para FAIL) asegurando colores consistentes en todo momento.
 
-## [3.8.3] - 2025-12-21 (Wizard y UX de reportes)
+## [3.8.3] - 2025-12-21 (Wizard y UX de informes)
 
 ### Añadido
 
-- **Identidad del auditor**: Prompt en el wizard para el nombre del auditor, reflejado en reportes TXT/HTML.
+- **Identidad del auditor**: Prompt en el wizard para el nombre del auditor, reflejado en informes TXT/HTML.
 - **HTML bilingüe**: Cuando el idioma es ES, se genera `report_es.html` junto al HTML principal.
 
 ### Corregido
@@ -859,7 +874,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Añadido
 
-- **Watermark HTML**: Footer profesional en reportes HTML con licencia GPLv3, autor (Dorin Badea) y enlace a GitHub.
+- **Watermark HTML**: Footer profesional en informes HTML con licencia GPLv3, autor (Dorin Badea) y enlace a GitHub.
 
 ### Corregido
 
@@ -898,7 +913,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 - **SmartScan Modo Completo**: El modo escaneo completo ya no desactiva heurísticas de deep scan; usa threshold de identidad más alto (4 vs 3) para descubrimiento más exhaustivo.
 - **SmartScan Infraestructura de Red**: Routers y dispositivos de red ahora siempre activan deep scan para mapeo completo de infraestructura.
 
-## [3.7.3] - 2025-12-20 (Confiabilidad del escaneo y precisión de reportes)
+## [3.7.3] - 2025-12-20 (Confiabilidad del escaneo y precisión de informes)
 
 ### Corregido
 
@@ -907,8 +922,8 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 - **Timeout por modo**: Si no se define `--host-timeout`, el fallback respeta el modo de escaneo (completo = 300s) para
   evitar cortes prematuros.
 - **Fallback de identidad por topología**: Si Nmap falla, se usa MAC/vendor de topología/vecinos para mantener la
-  identidad del host en los reportes.
-- **Conteo de reportes**: "Hosts Descubiertos" ahora deduplica objetivos para reflejar el conjunto único real.
+  identidad del host en los informes.
+- **Conteo de informes**: "Hosts Descubiertos" ahora deduplica objetivos para reflejar el conjunto único real.
 
 ## [3.7.2] - 2025-12-19 (Hotfix UX y Progreso)
 
@@ -1068,7 +1083,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Corregido
 
-- **Directorio de salida por defecto (sudo)**: Los reportes ahora se guardan por defecto en la carpeta Documentos del usuario que invoca `sudo` (en lugar de `/root`).
+- **Directorio de salida por defecto (sudo)**: Los informes ahora se guardan por defecto en la carpeta Documentos del usuario que invoca `sudo` (en lugar de `/root`).
 - **Expansión de `~` (sudo)**: `--output ~/...` y los defaults persistidos que usan `~` ahora se expanden contra el usuario invocador bajo `sudo`.
 - **Propietario de archivos**: `chown` best-effort del directorio de salida al usuario invocador para evitar artefactos propiedad de root en el home del usuario.
 
@@ -1092,7 +1107,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Añadido
 
-- **Dashboard HTML Interactivo** (`--html-report`): Genera reportes HTML standalone con Bootstrap + Chart.js.
+- **Dashboard HTML Interactivo** (`--html-report`): Genera informes HTML standalone con Bootstrap + Chart.js.
   - Tema oscuro con estética premium
   - Gráfico donut de distribución de severidad y gráfico de barras Top 10 puertos
   - Tablas ordenables de hosts y hallazgos
@@ -1100,7 +1115,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Columnas de MAC y vendor en tabla de hosts
   - Autocontenido: funciona offline, sin dependencias externas en runtime
 
-- **Reporte Visual de Diff HTML** (`--diff`): Compara dos escaneos con salida visual lado a lado.
+- **Informe Visual de Diff HTML** (`--diff`): Compara dos escaneos con salida visual lado a lado.
   - Nueva plantilla: `redaudit/templates/diff.html.j2`
   - Nueva función: `format_diff_html()` en `diff.py`
   - Resaltados: hosts nuevos (verde), hosts eliminados (rojo), puertos cambiados (amarillo)
@@ -1115,7 +1130,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Cambiado
 
-- **reporter.py**: Ahora genera reporte HTML automáticamente cuando se usa el flag `--html-report`.
+- **reporter.py**: Ahora genera informe HTML automáticamente cuando se usa el flag `--html-report`.
 - **reporter.py**: Envía alertas webhook tras completar el escaneo cuando se provee `--webhook URL`.
 - **cli.py**: Añadidos flags `--html-report` y `--webhook URL`.
 - **pyproject.toml**: Directorio de templates incluido en package data.
@@ -1177,7 +1192,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Corregido
 
 - **Descubrimiento de Dispositivos IoT**: Escaneos anteriores solo encontraban 3 de 10+ dispositivos debido al modo ARP pasivo y timeouts cortos.
-- **Sincronización JSON hidden_networks**: Las IPs de redes filtradas ahora correctamente populan `hidden_networks` y `leaked_networks_cidr` en JSON para pipelines SIEM/AI (antes solo aparecía en el reporte de texto).
+- **Sincronización JSON hidden_networks**: Las IPs de redes filtradas ahora correctamente populan `hidden_networks` y `leaked_networks_cidr` en JSON para pipelines SIEM/AI (antes solo aparecía en el informe de texto).
 
 ## [3.2.2] - 2025-12-16 (Producción Hardening)
 
@@ -1228,7 +1243,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Añadido
 
-- **Descubrimiento de Red Mejorado (v3.2)**: Nuevo bloque `net_discovery` en reportes con descubrimiento DHCP/NetBIOS/mDNS/UPNP/ARP/fping y análisis de VLANs candidatas (`--net-discovery`).
+- **Descubrimiento de Red Mejorado (v3.2)**: Nuevo bloque `net_discovery` en informes con descubrimiento DHCP/NetBIOS/mDNS/UPNP/ARP/fping y análisis de VLANs candidatas (`--net-discovery`).
 - **Recon Red Team (con guardas)**: Recon opt-in bajo `--redteam` con best-effort SNMP/SMB/RPC/LDAP/Kerberos/DNS + señales L2 pasivas en `net_discovery.redteam`.
 - **Nuevos flags de tuning**: `--net-discovery-interface`, `--redteam-max-targets`, `--snmp-community`, `--dns-zone`, `--kerberos-realm`, `--kerberos-userlist`, `--redteam-active-l2`.
 
@@ -1244,12 +1259,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 - **Extracción de fingerprint de SO**: Nueva función `extract_os_detection()` captura info de SO estructurada desde salida Nmap
 - **Cross-validación Nikto**: `detect_nikto_false_positives()` compara hallazgos de Nikto con cabeceras curl/wget para detectar contradicciones
 - **Ajuste de severidad RFC-1918**: `is_rfc1918_address()` reduce severidad para divulgación de IP interna en redes privadas
-- **Constante de versión de schema**: Nueva constante `SCHEMA_VERSION` separada de `VERSION` para versionado de schema de reportes
+- **Constante de versión de schema**: Nueva constante `SCHEMA_VERSION` separada de `VERSION` para versionado de schema de informes
 
 ### Cambiado
 
 - **Timeout de TestSSL**: Por defecto aumentado de 60s a 90s, ahora configurable vía parámetro `timeout`
-- **Rutas PCAP**: Los reportes usan rutas relativas (`pcap_file`) para portabilidad, con `pcap_file_abs` para uso interno
+- **Rutas PCAP**: Los informes usan rutas relativas (`pcap_file`) para portabilidad, con `pcap_file_abs` para uso interno
 - **siem.py**: `enrich_vulnerability_severity()` añade campos `severity_note` y `potential_false_positives` cuando aplica
 
 ## [3.1.3] - 2025-12-15 (UDP y topología asíncronos)
@@ -1289,13 +1304,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Cambiado
 
 - **Deep Scan UDP Fase 2b**: Usa `--top-ports N` configurable y registra `udp_top_ports` en el output de deep scan
-- **Esquema de Reporte**: Añadido bloque opcional `topology` en el reporte raíz (cuando está activado)
+- **Esquema de Informe**: Añadido bloque opcional `topology` en el informe raíz (cuando está activado)
 
 ## [3.1.0] - 2025-12-14 (SIEM y pipelines de IA)
 
 ### Añadido
 
-- **Vistas de exportación JSONL**: Archivos planos auto-generados para ingesta SIEM/IA (cuando el cifrado de reportes está desactivado)
+- **Vistas de exportación JSONL**: Archivos planos auto-generados para ingesta SIEM/IA (cuando el cifrado de informes está desactivado)
   - `findings.jsonl` - Un hallazgo por línea
   - `assets.jsonl` - Un activo por línea
   - `summary.json` - Resumen compacto para dashboards
@@ -1322,12 +1337,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 - **Versiones de escáneres**: Tracking de proveniencia de herramientas
   - Nuevo módulo: `redaudit/core/scanner_versions.py`
   - Detecta: nmap, nikto, testssl, whatweb, searchsploit
-  - Añadido al reporte como objeto `scanner_versions`
+  - Añadido al informe como objeto `scanner_versions`
 
 ### Cambiado
 
 - **Versión de esquema**: Actualizada de 2.0 a 3.1
-- **Metadatos de reporte**: Añadido timestamp `generated_at`
+- **Metadatos de informe**: Añadido timestamp `generated_at`
 - **Versión**: Actualizada a 3.1.0
 
 ---
@@ -1362,9 +1377,9 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Añadido
 
-- **Visibilidad de PCAP**: El resumen final incluye un contador de PCAP; los reportes TXT incluyen la ruta del PCAP cuando se captura.
+- **Visibilidad de PCAP**: El resumen final incluye un contador de PCAP; los informes TXT incluyen la ruta del PCAP cuando se captura.
 - **Claridad del TXT**: Secciones de deep scan incluyen conteos de comandos (identity-only vs deep scan ejecutado).
-- **Reporting CVE (TXT)**: Cuando hay enriquecimiento CVE, los reportes TXT incluyen resúmenes de CVE y conteos por puerto.
+- **Reporting CVE (TXT)**: Cuando hay enriquecimiento CVE, los informes TXT incluyen resúmenes de CVE y conteos por puerto.
 
 ### Cambiado
 
@@ -1428,7 +1443,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Caché de 7 días para uso offline y cumplimiento de rate limit
   - Flags CLI: `--nvd-key`, `--cve-lookup`
 
-- **Análisis diferencial**: Comparar reportes de escaneo
+- **Análisis diferencial**: Comparar informes de escaneo
   - Nuevo módulo: `redaudit/core/diff.py`
   - Identifica hosts nuevos, hosts eliminados y cambios de puertos
   - Genera salida JSON y Markdown
@@ -1510,7 +1525,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - **Organización de PCAP**: PCAPs ahora se guardan dentro de la carpeta de resultados con timestamp
   - Carpeta creada ANTES de iniciar el escaneo (`_actual_output_dir`)
-  - Todos los outputs (reportes + PCAPs) consolidados en un solo directorio
+  - Todos los outputs (informes + PCAPs) consolidados en un solo directorio
   - Corrige el problema donde PCAPs se guardaban en el directorio padre
 
 - **Optimización de tamaño PCAP**: Reduce captura de ilimitada a 200 paquetes
@@ -1519,7 +1534,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - tcpdump se detiene automáticamente tras 200 paquetes
 
 - **Directorio de salida por defecto**: Cambia de `~/RedAuditReports` a `~/Documents/RedAuditReports`
-  - Reportes guardados por defecto en Documents del usuario
+  - Informes guardados por defecto en Documents del usuario
   - Ubicación más intuitiva
 
 - **Versión**: Actualizada a 2.8.1
@@ -1574,10 +1589,10 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Flag CLI: `--skip-update-check` para desactivar
   - Traducciones para mensajes de update en inglés y español
 
-- **Carpetas de reportes con timestamp (Fase 6)**: Estructura organizada
-  - Reportes guardados en subcarpetas: `RedAudit_YYYY-MM-DD_HH-MM-SS/`
+- **Carpetas de informes con timestamp (Fase 6)**: Estructura organizada
+  - Informes guardados en subcarpetas: `RedAudit_YYYY-MM-DD_HH-MM-SS/`
   - Cada sesión tiene su propio directorio
-  - PCAPs y reportes organizados juntos
+  - PCAPs y informes organizados juntos
 
 ### Cambiado
 
@@ -1612,7 +1627,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Finaliza estado tras todos los enriquecimientos
 
 - Actualización de `reporter.py`:
-  - Crea subcarpetas con timestamp para reportes
+  - Crea subcarpetas con timestamp para informes
 
 ---
 
@@ -1626,7 +1641,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Hasta 500 checks concurrentes con batching configurable
   - Parsing de rangos: `1-1024`, `22,80,443`, o combinado `1-100,443,8080-8090`
 
-- **Salida compatible con SIEM (A5)**: Reportes JSON mejorados para Elastic y otros SIEM
+- **Salida compatible con SIEM (A5)**: Informes JSON mejorados para Elastic y otros SIEM
   - Nuevos campos: `schema_version`, `event_type`, `session_id`, `timestamp_end`
   - Metadatos del escáner: nombre, versión, modo
   - Array `targets` para escaneos multi-red
@@ -1667,7 +1682,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - **Integración SearchSploit**: Lookup automático en ExploitDB para servicios con versión detectada
   - Consulta `searchsploit` para exploits conocidos cuando se identifica producto+versión
-  - Resultados visibles en reportes JSON y TXT
+  - Resultados visibles en informes JSON y TXT
   - Timeout: 10s por consulta
   - Corre en todos los modos (fast/normal/full)
   - Nueva función: `exploit_lookup()` en `redaudit/core/scanner.py`
@@ -1680,9 +1695,9 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Nueva función: `ssl_deep_analysis()` en `redaudit/core/scanner.py`
 
 - **Mejoras de reporting**:
-  - Reportes TXT muestran exploits conocidos por servicio
-  - Reportes TXT muestran hallazgos de vulnerabilidad de TestSSL
-  - Reportes JSON incluyen automáticamente todos los campos nuevos
+  - Informes TXT muestran exploits conocidos por servicio
+  - Informes TXT muestran hallazgos de vulnerabilidad de TestSSL
+  - Informes JSON incluyen automáticamente todos los campos nuevos
 
 - **Internacionalización**: Traducciones EN/ES para features nuevas:
   - `exploits_found` - Notificaciones de descubrimiento de exploits
@@ -1712,7 +1727,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
   - `redaudit/core/auditor.py` - Orquestador principal
   - `redaudit/core/crypto.py` - Utilidades de cifrado/descifrado
   - `redaudit/core/network.py` - Detección de redes
-  - `redaudit/core/reporter.py` - Generación de reportes
+  - `redaudit/core/reporter.py` - Generación de informes
   - `redaudit/core/scanner.py` - Lógica de escaneo
   - `redaudit/utils/constants.py` - Constantes con nombre
   - `redaudit/utils/i18n.py` - Internacionalización
@@ -1723,7 +1738,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 
 - **Nuevas suites de tests**:
   - `tests/test_network.py` - Tests de detección de red con mocking
-  - `tests/test_reporter.py` - Tests de generación de reportes y permisos de fichero
+  - `tests/test_reporter.py` - Tests de generación de informes y permisos de fichero
 - **Entry point del paquete**: Soporte `python -m redaudit`
 
 ### Cambiado
@@ -1753,7 +1768,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 
 ### Añadido
 
-- **Seguridad de permisos de ficheros**: Reportes usan permisos seguros (0o600 - lectura/escritura solo para owner)
+- **Seguridad de permisos de ficheros**: Informes usan permisos seguros (0o600 - lectura/escritura solo para owner)
 - **Tests de integración**: Suite completa (`test_integration.py`)
 - **Tests de cifrado**: Cobertura completa de cifrado (`test_encryption.py`)
 
@@ -1775,7 +1790,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 ### Seguridad
 
 - **Validación de entrada**: Toda entrada del usuario validada por tipo y longitud
-- **Permisos de ficheros**: Todos los reportes generados usan permisos seguros (0o600)
+- **Permisos de ficheros**: Todos los informes generados usan permisos seguros (0o600)
 - **Manejo de errores**: Mejor manejo de excepciones reduce filtración de información
 
 ## [2.4.0] - 2025-12-07 (Adaptive Deep Scan)
@@ -1789,7 +1804,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 ### Cambiado
 
 - **Heartbeat**: Mensajería más profesional ("Nmap is still running") para reducir ansiedad durante escaneos largos.
-- **Reporting**: Añade campos `vendor` y `mac_address` en reportes JSON/TXT.
+- **Reporting**: Añade campos `vendor` y `mac_address` en informes JSON/TXT.
 - **Versión**: Actualizada a 2.4.0
 
 ## [2.3.1] - 2024-05-20 (Hardening de seguridad)
@@ -1797,7 +1812,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 ### Añadido
 
 - **Hardening de seguridad**: Sanitización estricta de inputs (IPs, hostnames, interfaces) para prevenir command injection.
-- **Cifrado de reportes**: Cifrado AES-128 opcional (Fernet) para reportes generados; incluye helper `redaudit_decrypt.py`.
+- **Cifrado de informes**: Cifrado AES-128 opcional (Fernet) para informes generados; incluye helper `redaudit_decrypt.py`.
 - **Rate limiting**: Retardo configurable entre escaneos concurrentes para operaciones más sigilosas.
 - **Logging profesional**: Logger rotativo en `~/.redaudit/logs/` para audit trail y debugging.
 - **Truncado de puertos**: Truncado automático si >50 puertos en un host, reduciendo ruido.

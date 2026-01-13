@@ -14,7 +14,7 @@ RedAudit v3.3.0 representa un salto significativo en usabilidad y conciencia ope
 
 ### 1. Dashboard HTML Interactivo (`--html-report`)
 
-Anteriormente, los analistas tenían que parsear JSON o leer archivos de texto estáticos. v3.3 introduce un reporte HTML interactivo y autocontenido:
+Anteriormente, los analistas tenían que parsear JSON o leer archivos de texto estáticos. v3.3 introduce un informe HTML interactivo y autocontenido:
 
 - **Cero Dependencias**: No requiere JS/CSS externo; seguro para redes aisladas (air-gapped).
 - **Visualización de Datos**: Gráficos para distribución de SO, desglose de Severidad y Top Puertos.
@@ -31,7 +31,7 @@ Para flujos de trabajo DevSecOps y monitoreo continuo, RedAudit ahora puede envi
 
 ### 3. Análisis Diferencial Visual (`--diff` con HTML)
 
-El motor diferencial introducido en v3.0 ha sido mejorado. El comando `--diff old.json new.json` ahora produce un reporte HTML visual resaltando:
+El motor diferencial introducido en v3.0 ha sido mejorado. El comando `--diff old.json new.json` ahora produce un informe HTML visual resaltando:
 
 - **Nuevos Hallazgos**: Marcados en Rojo.
 - **Problemas Resueltos**: Marcados en Verde.

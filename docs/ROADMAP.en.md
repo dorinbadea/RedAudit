@@ -58,6 +58,7 @@ Minor improvements identified during v4.4.0 Gold Master validation.
 | **P7.2 Nikto Timeout Visibility** | Done (v4.6.13) | Show a timeout indicator instead of stalled progress when Nikto exceeds its threshold. |
 | **P7.3 Streaming JSON Report** | Planned | Incremental write for reports >500MB on very large networks. |
 | **P7.4 Web Tag Backfill** | Done (v4.6.8) | Add the `web` tag when `web_ports_count` is present even if port flags are missing. |
+| **P7.5 Wizard Cancel UX** | Done (v4.6.14) | Rename "Go Back" to "Cancel" (warning color) and allow canceling auth credential prompts. |
 
 ### v4.4 Code Coverage & Stability (Priority: High)
 
@@ -174,7 +175,7 @@ Features present in releases where `redaudit --version` >= v3.6.0, with verifica
 | **Status Color Consistency** | v3.8.4 | `redaudit/core/auditor.py`. Uses Rich console.print() when progress is active to ensure colors display correctly. |
 | **Auditor Identity** | v3.8.3 | `redaudit/core/wizard.py`. Wizard prompt for auditor name, surfaced in TXT/HTML reports. |
 | **Bilingual HTML Reports** | v3.8.3 | `redaudit/core/reporter.py`. When language is ES, `report_es.html` is generated alongside the default HTML report. |
-| **Wizard Navigation** | v3.8.1 | `redaudit/core/wizard.py`. "<Go Back" option in wizard menus for step-by-step navigation. |
+| **Wizard Navigation** | v3.8.1 | `redaudit/core/wizard.py`. "Cancel" option in wizard menus for step-by-step navigation. |
 | **HTML Report Watermark** | v3.8.2 | `redaudit/templates/report.html.j2`. Professional footer with GPLv3, author, and GitHub link. |
 | **Interactive Webhooks** | v3.7.0 | `redaudit/core/wizard.py`. Configure Slack/Teams directly in wizard. |
 | **Advanced Net Discovery Wizard** | v3.7.0 | `redaudit/core/wizard.py`. Configure SNMP/DNS/Targets interactively. |

@@ -18,7 +18,7 @@ Ejecuta estos comandos para comenzar de inmediato.
 
 ### Asistente Interactivo (Recomendado para primera vez)
 
-Navegación paso a paso con opción "< Volver" (v4.0.1+). La configuración de webhooks y opciones de descubrimiento está disponible en el asistente; las exportaciones SIEM se generan automáticamente cuando el cifrado está desactivado. La Fase 0 de bajo impacto puede activarse desde el asistente (por defecto desactivada) o con `--low-impact-enrichment`. La entrada manual de objetivos admite valores CIDR, IP o rango separados por comas. El asistente muestra los objetivos normalizados con hosts estimados antes de confirmar el inicio.
+Navegación paso a paso con opción "Cancelar" (v4.0.1+). La configuración de webhooks y opciones de descubrimiento está disponible en el asistente; las exportaciones SIEM se generan automáticamente cuando el cifrado está desactivado. La Fase 0 de bajo impacto puede activarse desde el asistente (por defecto desactivada) o con `--low-impact-enrichment`. La entrada manual de objetivos admite valores CIDR, IP o rango separados por comas. El asistente muestra los objetivos normalizados con hosts estimados antes de confirmar el inicio.
 
 ```bash
 sudo redaudit
@@ -176,7 +176,7 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | `--snmp-priv-proto {AES,DES...}` | Protocolo Privacidad SNMPv3 |
 | `--lynis` | Habilitar auditoría de hardening con Lynis (requiere SSH) |
 
-### Reportes e Integración
+### Informes e Integración
 
 | Flag | Descripción |
 | :--- | :--- |
@@ -190,7 +190,7 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 
 Notas:
 - Los escáneres de aplicaciones web (sqlmap/ZAP) se omiten en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP.
-- Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los reportes.
+- Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
 
 ### Seguridad y Privacidad
 

@@ -1,4 +1,4 @@
-# Notas de Versión v3.8.7 — Correcciones de reportes y clasificación
+# Notas de Versión v3.8.7 — Correcciones de informes y clasificación
 
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.8.7.md)
 
@@ -6,7 +6,7 @@
 
 ## Resumen
 
-Este hotfix mejora la precisión de los reportes corrigiendo la atribución de fuentes de vulnerabilidades y la clasificación del estado de host. También mejora el probe HTTP en hosts silenciosos y refina el tipo de activo para dispositivos media y hosts Android.
+Este hotfix mejora la precisión de los informes corrigiendo la atribución de fuentes de vulnerabilidades y la clasificación del estado de host. También mejora el probe HTTP en hosts silenciosos y refina el tipo de activo para dispositivos media y hosts Android.
 
 ---
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Playbook Generator Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.4: Generate actionable remediation playbooks per finding type.

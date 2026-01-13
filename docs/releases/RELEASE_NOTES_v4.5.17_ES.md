@@ -11,7 +11,7 @@ Esta versión resuelve problemas críticos relacionados con la consistencia lóg
 
 ## Corregido
 
-- **Lógica de Escaneo (BUG-01):** Solucionado un problema donde los puertos descubiertos por HyperScan a veces se sobrescribían si el escaneo posterior de Nmap devolvía cero puertos confirmados (debido a timeouts o filtrado agresivo). Ahora, los puertos de HyperScan siempre se preservan en el reporte final.
+- **Lógica de Escaneo (BUG-01):** Solucionado un problema donde los puertos descubiertos por HyperScan a veces se sobrescribían si el escaneo posterior de Nmap devolvía cero puertos confirmados (debido a timeouts o filtrado agresivo). Ahora, los puertos de HyperScan siempre se preservan en el informe final.
 - **Rendimiento Deep Scan (UX-03):** Solucionados tiempos de escaneo extremadamente lentos (25+ minutos) para FritzBox y otros routers.
   - **Cambio Lógico:** Dispositivos de infraestructura (routers, gateways) con **identidad fuerte** (score >= 3, fabricante conocido, versión detectada, <= 20 puertos) ahora alcanzan correctamente el umbral `identity_strong` y omiten la fase redundante de Deep Scan.
   - **Red de Seguridad:** Hosts marcados como "sospechosos" o con identidad débil **SIEMPRE** recibirán el barrido completo de 65,535 puertos (`-p-`), preservando la filosofía de seguridad estricta de RedAudit.

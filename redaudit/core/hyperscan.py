@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - HyperScan Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.2.3: Fast parallel discovery using asyncio batch scanning.

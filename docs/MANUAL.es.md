@@ -337,7 +337,7 @@ sudo redaudit -t 192.168.1.50 --smb-user Administrator --smb-pass "WinPass123" -
 
 ### Nota de Seguridad
 
-Las credenciales se usan ÚNICAMENTE para el escaneo y no se almacenan en los reportes. Si se usa la integración con `keyring`, se almacenan en el anillo de claves del sistema.
+Las credenciales se usan ÚNICAMENTE para el escaneo y no se almacenan en los informes. Si se usa la integración con `keyring`, se almacenan en el anillo de claves del sistema.
 
 ---
 
@@ -494,7 +494,7 @@ sudo redaudit -t 192.168.1.0/24 --credentials-file ~/.redaudit/credentials.json 
 | :--- | :--- |
 | `--hyperscan-mode {auto,connect,syn}` | Modo HyperScan: auto (defecto), connect o syn |
 
-### Reportes
+### Informes
 
 | Flag | Descripción |
 | :--- | :--- |
@@ -577,7 +577,7 @@ Cuando se usa `--encrypt`:
 **Descifrado:**
 
 ```bash
-python3 redaudit_decrypt.py /ruta/a/reporte.json.enc
+python3 redaudit_decrypt.py /ruta/a/informe.json.enc
 ```
 
 ---
@@ -649,7 +649,7 @@ Ver [TROUBLESHOOTING.es.md](TROUBLESHOOTING.es.md) para referencia completa de e
 
 RedAudit orquesta (no modifica ni instala):
 
-| Herramienta | Condición de Invocación | Campo del Reporte |
+| Herramienta | Condición de Invocación | Campo del Informe |
 | :--- | :--- | :--- |
 | `nmap` | Siempre | `hosts[].ports` |
 | `whatweb` | HTTP/HTTPS detectado | `vulnerabilities[].whatweb` |

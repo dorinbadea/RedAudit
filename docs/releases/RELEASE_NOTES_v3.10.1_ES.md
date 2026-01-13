@@ -27,7 +27,7 @@ Las direcciones MAC descubiertas vía `ip neigh` (neighbor cache pasivo) ahora d
 
 Los lookups DNS reverse de Fase 0 (bajo impacto) almacenados en `phase0_enrichment.dns_reverse` ahora se consolidan en el campo canónico `host.dns.reverse` si está vacío. Esto asegura:
 
-- Visualización consistente del hostname en reportes HTML y TXT
+- Visualización consistente del hostname en informes HTML y TXT
 - Resolución de entidades correcta usando todas las fuentes de hostname disponibles
 - Mejor puntuación de identidad para decisiones de SmartScan
 
@@ -36,7 +36,7 @@ Los lookups DNS reverse de Fase 0 (bajo impacto) almacenados en `phase0_enrichme
 Corregidas brechas donde los datos de enriquecimiento de bajo impacto no se propagaban a consumidores posteriores:
 
 - `entity_resolver.py`: Ahora usa `phase0_enrichment.dns_reverse` como fallback
-- `reporter.py`: El reporte TXT usa el nuevo helper `_get_hostname_fallback()`
+- `reporter.py`: El informe TXT usa el nuevo helper `_get_hostname_fallback()`
 - `html_reporter.py`: Usa `get_best_vendor()` para visualización de vendor con fallback de hostname
 
 ## Pruebas

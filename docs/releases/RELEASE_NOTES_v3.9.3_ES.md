@@ -6,7 +6,7 @@
 
 ## Highlights
 
-Este hotfix mejora la **fidelidad de reportes** y los **titulos de hallazgos**.
+Este hotfix mejora la **fidelidad de informes** y los **titulos de hallazgos**.
 
 ---
 

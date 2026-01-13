@@ -60,9 +60,32 @@ class TestWizardAuthNavigation:
 
         with patch.object(wizard, "ask_yes_no", return_value=True):
             with patch.object(wizard, "ask_choice_with_back", return_value=1):  # Advanced
-                with patch.object(wizard, "_collect_advanced_credentials") as mock_advanced:
+                with patch.object(
+                    wizard, "_collect_advanced_credentials", return_value=False
+                ) as mock_advanced:
 
                     config = wizard.ask_auth_config()
 
                     assert config["auth_enabled"] is True
                     mock_advanced.assert_called_once()
+
+    def test_auth_config_universal_cancel(self):
+        """Test cancelling during Universal credential collection disables auth."""
+        wizard = MockWizard()
+
+        with patch.object(wizard, "ask_yes_no", return_value=True):
+            with patch.object(wizard, "ask_choice_with_back", return_value=0):
+                with patch.object(wizard, "_collect_universal_credentials", return_value=None):
+                    config = wizard.ask_auth_config()
+                    assert config["auth_enabled"] is False
+                    assert config["auth_credentials"] == []
+
+    def test_auth_config_advanced_cancel(self):
+        """Test cancelling during Advanced credential collection disables auth."""
+        wizard = MockWizard()
+
+        with patch.object(wizard, "ask_yes_no", return_value=True):
+            with patch.object(wizard, "ask_choice_with_back", return_value=1):
+                with patch.object(wizard, "_collect_advanced_credentials", return_value=True):
+                    config = wizard.ask_auth_config()
+                    assert config["auth_enabled"] is False

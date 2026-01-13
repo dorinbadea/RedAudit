@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - JSONL Exporter Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.1: Generate flat JSONL exports for SIEM/AI pipelines.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Proxy Support Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.0: SOCKS5 proxy integration for pivoting and internal network scanning.

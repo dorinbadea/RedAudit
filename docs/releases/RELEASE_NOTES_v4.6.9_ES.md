@@ -1,6 +1,6 @@
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/v4.6.9/docs/releases/RELEASE_NOTES_v4.6.9.md)
 
-# RedAudit v4.6.9 - Gating por Identidad y Reporte Parcial de Nuclei
+# RedAudit v4.6.9 - Gating por Identidad y Informe Parcial de Nuclei
 
 ## Summary
 
@@ -16,7 +16,7 @@ Esta version reduce tiempos en dispositivos de infraestructura sin perder eviden
 
 - La decision de deep scan considera evidencia HTTP (titulo/servidor) y tipo de dispositivo para evitar escalados innecesarios.
 - El escaneo de apps web (sqlmap/ZAP) se omite en UIs de infraestructura cuando la identidad indica router/switch/AP.
-- Documentacion actualizada en README, manuales, uso, troubleshooting, security y esquema de reporte.
+- Documentacion actualizada en README, manuales, uso, troubleshooting, security y esquema de informe.
 
 ## Fixed
 

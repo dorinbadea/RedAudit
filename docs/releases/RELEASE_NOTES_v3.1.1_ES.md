@@ -24,7 +24,7 @@ Este release es compatible hacia atrás con v3.1.0 y no requiere pasos de migrac
 
 ### 1. Descubrimiento de topología (Best-Effort)
 
-- Nuevo bloque `topology` en el objeto raíz del reporte JSON cuando está activado.
+- Nuevo bloque `topology` en el objeto raíz del informe JSON cuando está activado.
 - Nuevos flags CLI:
   - `--topology` (activar)
   - `--no-topology` (desactivar, anulando defaults persistentes)
@@ -59,5 +59,5 @@ Este release es compatible hacia atrás con v3.1.0 y no requiere pasos de migrac
 - **Notas para GitHub Release**: [GitHub Release Draft](DRAFT_TEMPLATE.md)
 - **Manual (EN)**: [docs/MANUAL.es.md](../MANUAL.es.md)
 - **Manual (ES)**: [docs/MANUAL.es.md](../MANUAL.es.md)
-- **Esquema de reporte (EN)**: [docs/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
-- **Esquema de reporte (ES)**: [docs/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
+- **Esquema de informe (EN)**: [docs/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
+- **Esquema de informe (ES)**: [docs/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)

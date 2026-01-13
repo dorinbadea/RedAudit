@@ -29,7 +29,7 @@ Hemos reescrito la lógica de expansión de objetivos para usar **evaluación pe
 
 ## Mejoras
 
-- **Optimización de Memoria en Reportes**: Refactorizado `_collect_discovery_hosts` para filtrar y procesar hosts más eficientemente durante escaneos grandes.
+- **Optimización de Memoria en Informes**: Refactorizado `_collect_discovery_hosts` para filtrar y procesar hosts más eficientemente durante escaneos grandes.
 - **Ajustes UI**: Mejorada la estabilidad de la barra de progreso para evitar que mensajes de "latido" rompan el diseño visual.
 - **Experiencia de Desarrollador**: Añadido `requirements.lock` e instrucciones para instalación reproducible basada en pip.
 

@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-[![Version](https://img.shields.io/badge/version-4.6.13-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.6.14-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://imgshields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -68,11 +68,11 @@ sudo redaudit
 | :--- | :--- |
 | **Correlación CVE** | NVD API 2.0 con matching CPE 2.3 y caché de 7 días |
 | **Búsqueda de Exploits** | Consultas automáticas a ExploitDB (`searchsploit`) para servicios detectados |
-| **Escaneo de Plantillas** | Plantillas Nuclei con comprobaciones best-effort de falsos positivos (cabeceras/fabricante/título) y reporte de timeout parcial |
+| **Escaneo de Plantillas** | Plantillas Nuclei con comprobaciones best-effort de falsos positivos (cabeceras/fabricante/título) y informe de timeout parcial |
 | **Filtro Smart-Check** | Reducción de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |
 | **Indicios de Fuga de Red** | Señala múltiples subredes/VLANs anunciadas por DHCP como posibles redes ocultas |
 
-### Reportes e Integración
+### Informes e Integración
 
 | Capacidad | Descripción |
 | :--- | :--- |
@@ -80,7 +80,7 @@ sudo redaudit
 | **Playbooks de Remediación** | Guías Markdown auto-generadas por host/categoría |
 | **Análisis Diferencial** | Compara informes JSON para rastrear cambios en la red |
 | **Exportaciones SIEM-Ready** | JSONL con scoring de riesgo y hash de observables para deduplicación |
-| **Cifrado de Reportes** | AES-128-CBC (Fernet) con derivación PBKDF2-HMAC-SHA256 |
+| **Cifrado de Informes** | AES-128-CBC (Fernet) con derivación PBKDF2-HMAC-SHA256 |
 
 ### Operaciones
 
@@ -493,7 +493,7 @@ redaudit/
 │   ├── entity_resolver.py  # Consolidación de activos / Smart-Check
 │   ├── evidence_parser.py  # Helpers de parsing de evidencia
 │   ├── reporter.py         # Salida JSON/TXT/HTML/JSONL
-│   ├── html_reporter.py    # Renderizador de reportes HTML
+│   ├── html_reporter.py    # Renderizador de informes HTML
 │   ├── jsonl_exporter.py   # Exportación JSONL para SIEM
 │   ├── siem.py             # Integración SIEM (Alineado a ECS)
 │   ├── diff.py             # Análisis diferencial
@@ -505,7 +505,7 @@ redaudit/
 │   ├── verify_vuln.py      # Filtro de falsos positivos Smart-Check
 │   ├── credentials_manager.py # Gestión de credenciales múltiples
 │   └── updater.py          # Sistema de auto-actualización
-├── templates/              # Plantillas de reportes HTML
+├── templates/              # Plantillas de informes HTML
 └── utils/                  # Utilidades (i18n, config, constants)
 ```
 
@@ -568,4 +568,4 @@ RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**. Cons
 
 ---
 
-[Documentación Completa](../docs/INDEX.md) | [Esquema de Reporte](../docs/REPORT_SCHEMA.es.md) | [Especificaciones de Seguridad](../docs/SECURITY.es.md)
+[Documentación Completa](../docs/INDEX.md) | [Esquema de Informe](../docs/REPORT_SCHEMA.es.md) | [Especificaciones de Seguridad](../docs/SECURITY.es.md)
