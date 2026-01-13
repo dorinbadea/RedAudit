@@ -1,6 +1,6 @@
 # RedAudit: Engineering Workflow (Agent Prompt)
 
-This file is reusable "initial context" for contributors working on RedAudit. The goal is a clean timeline, consistent docs, reliable releases, and no surprises in CI.
+This file is the canonical operating guide for collaborators (human or non-human agents) working on RedAudit. Treat it as the single source of truth for workflow, release hygiene, and documentation integrity. The goal is a clean timeline, consistent docs, reliable releases, and no surprises in CI.
 
 ## Non-Negotiables
 
@@ -15,6 +15,18 @@ This file is reusable "initial context" for contributors working on RedAudit. Th
   Exception: documentation-only changes may merge with owner approval if checks are
   pending/skipped and there are no red failures.
 - **No Emojis**: Do not use emojis in documentation (`.md` files). Maintain a professional, neutral tone.
+
+## Workflow Overview (Default Path)
+
+1. Create a branch; never commit directly to `main`.
+2. Keep scope minimal and fix root causes; avoid unrelated refactors.
+3. Update code, tests, and docs together; keep EN/ES in sync when behavior changes.
+4. Keep versions aligned: update version sources, README/ES README version strings and badges, changelog, roadmap, and release notes when required.
+5. Run `pre-commit run --all-files` and `pytest tests/ -v` (or `scripts/ci_local.sh` for CI parity).
+6. Merge only with approval; tag and publish the release with a full payload body.
+7. Clean up branches and ensure `git status` is clean.
+
+See the **Versioning & Release Checklist** section for detailed steps and commands.
 
 ## Contributor Workflow Guidelines
 
@@ -44,7 +56,7 @@ This file is reusable "initial context" for contributors working on RedAudit. Th
 
 - Review CLI output, session logs, and HTML/JSON reports for inconsistencies or weak identification.
 - When a host only has vendor data and zero open ports, consider a light HTTP/HTTPS probe on common ports
-  (short timeouts, opt-in config) to capture a title or server header for model identification.
+  (short timeouts, opt-in config) to capture a title or server header for device identification.
 - Log improvement ideas in the roadmap or issues and document behavior changes in EN/ES docs.
 
 ### Frontend/UI Work
@@ -269,9 +281,8 @@ When changing behavior/UX, update the relevant docs in both EN/ES (flat docs str
 - release notes: `docs/releases/RELEASE_NOTES_vX.Y.Z*.md`
 
 Make sure menu text, flags, defaults, and examples match the code.
+Keep version strings and version badges in sync wherever they appear.
 For ES docs, use Spanish (Spain) phrasing (`es-ES`) and avoid LATAM variants.
-
-**Documentation style:**
 
 **Documentation style:**
 
@@ -315,7 +326,6 @@ Also update any tests that assert version output (e.g., integration tests).
 
 - Add a new section to `CHANGELOG.md` and `ES/CHANGELOG_ES.md`
 - Add release notes:
-  - `docs/releases/RELEASE_NOTES_vX.Y.Z.md`
   - `docs/releases/RELEASE_NOTES_vX.Y.Z.md`
   - `docs/releases/RELEASE_NOTES_vX.Y.Z_ES.md`
 - Create Audit Report (PRIVATE - do NOT commit):
