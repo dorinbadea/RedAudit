@@ -136,7 +136,7 @@ class TestPhase4Integration(unittest.TestCase):
                 1
             ] * 5  # Padding
 
-            # Inputs: Name, OutputDir, SSH User, SSH Key
+            # Inputs: SSH User, SSH Key, Name, OutputDir
             # We need to match the calls.
             # If yes_no enables SSH, it asks User, Key path (if method 0), Passphrase (getpass)
             # Method selection is ask_choice.
@@ -146,7 +146,7 @@ class TestPhase4Integration(unittest.TestCase):
             # 2. Output Dir
             # 3. SSH User
             # 4. SSH Key Path
-            mock_input.side_effect = ["Tester", "/tmp", "root", "/tmp/key"]
+            mock_input.side_effect = ["root", "/tmp/key", "Tester", "/tmp"]
 
             # Run with patched shutil and getpass
             with (

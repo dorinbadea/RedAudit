@@ -954,14 +954,12 @@ class TestWizardRedTeam(unittest.TestCase):
                 True,  # Kerberos
                 False,  # Advanced Net Discovery
                 False,  # Webhook
-                True,  # Save defaults
-                True,  # Start audit
             ]
             + [False] * 10  # Safe padding
         )
 
         with (
-            patch("builtins.input", side_effect=["", "", "", "/tmp/users.txt"]),
+            patch("builtins.input", side_effect=["", "/tmp/users.txt", "", ""]),
             patch("redaudit.core.auditor.os.geteuid", return_value=0),
             patch("shutil.which", return_value="/usr/bin/mocktool"),
             patch("redaudit.core.auditor.is_nuclei_available", return_value=True),
