@@ -10,6 +10,21 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.14] - 2026-01-13
+
+### Añadido
+
+- **Cancelar en el asistente de autenticación**: Permite cancelar los prompts de credenciales para salir de la configuración de auth.
+
+### Mejorado
+
+- **Etiqueta de navegación**: Cambia "Volver" por "Cancelar" y usa color de advertencia en la navegación.
+
+### Corregido
+
+- **Keyring con sudo**: Detecta credenciales guardadas del usuario que invoca al ejecutar con sudo.
+- **Fecha en informes**: Actualiza el footer de licencia HTML a 2026.
+
 ## [v4.6.13] - 2026-01-12
 
 ### Añadido
