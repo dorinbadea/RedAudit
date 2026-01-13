@@ -26,6 +26,38 @@ class NucleiProgressCallback(Protocol):
         pass
 
 
+_NUCLEI_HELP_CACHE: Optional[str] = None
+
+
+def _get_nuclei_help_text(runner: CommandRunner) -> str:
+    global _NUCLEI_HELP_CACHE
+    if _NUCLEI_HELP_CACHE is not None:
+        return _NUCLEI_HELP_CACHE
+    try:
+        res = runner.run(["nuclei", "-h"], capture_output=True, text=True, timeout=5.0)
+        stdout = (
+            res.stdout.decode("utf-8", errors="replace")
+            if isinstance(res.stdout, bytes)
+            else str(res.stdout or "")
+        )
+        stderr = (
+            res.stderr.decode("utf-8", errors="replace")
+            if isinstance(res.stderr, bytes)
+            else str(res.stderr or "")
+        )
+        _NUCLEI_HELP_CACHE = f"{stdout}\n{stderr}".strip()
+    except Exception:
+        _NUCLEI_HELP_CACHE = ""
+    return _NUCLEI_HELP_CACHE
+
+
+def _nuclei_supports_flag(flag: str, runner: CommandRunner) -> bool:
+    text = _get_nuclei_help_text(runner)
+    if not text:
+        return False
+    return flag in text
+
+
 def is_nuclei_available() -> bool:
     """Check if nuclei is installed and available."""
     return shutil.which("nuclei") is not None
@@ -63,6 +95,8 @@ def run_nuclei_scan(
     rate_limit: int = 150,
     timeout: int = 300,
     batch_size: int = 25,
+    request_timeout: Optional[int] = None,
+    retries: Optional[int] = None,
     progress_callback: Optional[NucleiProgressCallback] = None,
     use_internal_progress: bool = True,
     logger=None,
@@ -80,6 +114,8 @@ def run_nuclei_scan(
         templates: Path to custom templates directory (optional)
         rate_limit: Requests per second (default: 150)
         timeout: Scan timeout in seconds (default: 300)
+        request_timeout: Per-request timeout in seconds (optional)
+        retries: Request retries (optional)
         logger: Optional logger
         dry_run: If True, print command but don't execute
         print_status: Optional status print function
@@ -135,6 +171,16 @@ def run_nuclei_scan(
             dry_run=dry_run,
             command_wrapper=get_proxy_command_wrapper(proxy_manager),
         )
+        request_timeout_s = (
+            int(request_timeout) if isinstance(request_timeout, int) and request_timeout > 0 else 10
+        )
+        if request_timeout_s < 3:
+            request_timeout_s = 3
+        if request_timeout_s > 60:
+            request_timeout_s = 60
+        retries_val = int(retries) if isinstance(retries, int) and retries >= 0 else 1
+        if retries_val > 3:
+            retries_val = 3
 
         # Run in batches to provide real progress/ETA on long scans.
         size = int(batch_size) if isinstance(batch_size, int) else 25
@@ -145,6 +191,7 @@ def run_nuclei_scan(
         total_targets = len(targets)
         completed_targets = 0.0
         max_progress_targets = 0.0
+        max_split_depth = 6
 
         def _build_cmd(
             targets_path: str,
@@ -170,6 +217,22 @@ def run_nuclei_scan(
                 "-silent",  # Reduce noise
                 "-nc",  # No color
             ]
+            timeout_flag = None
+            if request_timeout_s > 0:
+                if _nuclei_supports_flag("-timeout", runner):
+                    timeout_flag = "-timeout"
+                elif _nuclei_supports_flag("--timeout", runner):
+                    timeout_flag = "--timeout"
+            if timeout_flag:
+                cmd.extend([timeout_flag, str(request_timeout_s)])
+            retries_flag = None
+            if retries_val >= 0:
+                if _nuclei_supports_flag("-retries", runner):
+                    retries_flag = "-retries"
+                elif _nuclei_supports_flag("--retries", runner):
+                    retries_flag = "--retries"
+            if retries_flag:
+                cmd.extend([retries_flag, str(retries_val)])
             if templates:
                 cmd.extend(["-t", templates])
             return cmd
@@ -223,9 +286,15 @@ def run_nuclei_scan(
             *,
             allow_retry: bool = True,
             rate_limit_override: Optional[int] = None,
+            split_depth: int = 0,
         ) -> None:
             nonlocal completed_targets, max_progress_targets
             batch_start = time.time()
+            base_timeout = float(timeout) if isinstance(timeout, (int, float)) else 300.0
+            target_budget = float(request_timeout_s) * len(batch_targets) * 2
+            batch_timeout_s = max(60.0, target_budget)
+            if base_timeout > 0:
+                batch_timeout_s = min(base_timeout, batch_timeout_s)
             with tempfile.TemporaryDirectory(prefix="nuclei_tmp_", dir=output_dir) as tmpdir:
                 batch_targets_file = os.path.join(tmpdir, f"targets_{batch_idx}.txt")
                 batch_output_file = os.path.join(tmpdir, f"output_{batch_idx}.json")
@@ -241,7 +310,7 @@ def run_nuclei_scan(
                 def _execute() -> None:
                     try:
                         res_holder["res"] = runner.run(
-                            cmd, capture_output=True, text=True, timeout=float(timeout)
+                            cmd, capture_output=True, text=True, timeout=batch_timeout_s
                         )
                     except BaseException as exc:
                         err_holder["exc"] = exc
@@ -260,7 +329,7 @@ def run_nuclei_scan(
                     heartbeat_s = 10.0
                     while not done.wait(timeout=heartbeat_s):
                         elapsed = time.time() - batch_start
-                        timeout_s = max(1.0, float(timeout))
+                        timeout_s = max(1.0, float(batch_timeout_s))
                         frac = min(elapsed / timeout_s, 0.95)
                         current = completed_targets + (frac * len(batch_targets))
                         current = min(float(total_targets), max(0.0, current))
@@ -288,23 +357,25 @@ def run_nuclei_scan(
                     raise RuntimeError("Nuclei batch did not return a result")
                 timed_out = bool(getattr(res, "timed_out", False))
                 if timed_out:
-                    timed_out_batches.add(batch_idx)
-                    if allow_retry and len(batch_targets) > 1:
+                    if allow_retry and len(batch_targets) > 1 and split_depth < max_split_depth:
                         mid = max(1, len(batch_targets) // 2)
                         reduced_rate = max(25, int((rate_limit_override or rate_limit) / 2))
                         _run_one_batch(
                             batch_idx,
                             batch_targets[:mid],
-                            allow_retry=False,
+                            allow_retry=True,
                             rate_limit_override=reduced_rate,
+                            split_depth=split_depth + 1,
                         )
                         _run_one_batch(
                             batch_idx,
                             batch_targets[mid:],
-                            allow_retry=False,
+                            allow_retry=True,
                             rate_limit_override=reduced_rate,
+                            split_depth=split_depth + 1,
                         )
                         return
+                    timed_out_batches.add(batch_idx)
                     failed_batches.add(batch_idx)
 
                 # Append JSONL output to the consolidated file, if present.

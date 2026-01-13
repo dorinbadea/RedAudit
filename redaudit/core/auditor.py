@@ -760,6 +760,8 @@ class InteractiveNetworkAuditor:
 
                             batch_size = 25
                             nuclei_timeout_s = 300
+                            nuclei_request_timeout_s = 10
+                            nuclei_retries = 1
                             total_targets = len(nuclei_targets)
                             total_batches = max(1, int(math.ceil(total_targets / batch_size)))
                             progress_start_t = time.time()
@@ -816,6 +818,8 @@ class InteractiveNetworkAuditor:
                                     severity="low,medium,high,critical",
                                     timeout=nuclei_timeout_s,
                                     batch_size=batch_size,
+                                    request_timeout=nuclei_request_timeout_s,
+                                    retries=nuclei_retries,
                                     progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
                                         c,
                                         t,
@@ -840,6 +844,8 @@ class InteractiveNetworkAuditor:
                                 output_dir=output_dir,
                                 severity="medium,high,critical",
                                 timeout=300,
+                                request_timeout=10,
+                                retries=1,
                                 logger=self.logger,
                                 dry_run=bool(self.config.get("dry_run", False)),
                                 print_status=self.ui.print_status,
