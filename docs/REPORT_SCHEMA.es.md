@@ -425,6 +425,14 @@ El enriquecimiento solo se realiza para servicios con información de versión d
 | `cve_summary.total` | integer | Total de CVEs en todos los puertos |
 | `cve_summary.critical` | integer | Número de puertos con severidad máxima CRITICAL |
 | `cve_summary.high` | integer | Número de puertos con severidad máxima HIGH |
+| `asset_name` | string | (Opcional) Nombre consolidado del activo (entity resolution) |
+| `asset_type` | string | (Opcional) Clasificación del activo (router, servidor, workstation, iot, etc.) |
+| `interfaces` | array | (Opcional) Lista consolidada de interfaces del activo |
+| `interfaces[].ip` | string | IP de la interfaz |
+| `interfaces[].mac` | string | (Opcional) MAC de la interfaz |
+| `interfaces[].hostname` | string | (Opcional) Pista de hostname para la interfaz |
+| `interfaces[].type` | string | Etiqueta del tipo de interfaz |
+| `interface_count` | integer | (Opcional) Número de interfaces detectadas |
 
 ### Objeto DNS (Opcional)
 

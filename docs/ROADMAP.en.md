@@ -24,6 +24,8 @@ These items are ordered chronologically and include delivered, planned, and defe
 | **Nuclei Partial Reporting** | Done | Mark partial runs and record timeout/failed batch indexes in reports. |
 | **Nuclei Batch Heartbeat** | Done (v4.6.11) | Keep progress updates during long batches to show activity and elapsed time. |
 | **Nuclei Target Progress** | Done (v4.6.13) | Show target-based progress within batches to avoid frozen bars. |
+| **Nuclei Progress Stability** | Done (v4.6.15) | Keep target progress monotonic across batch retries/timeouts. |
+| **Host Report Alignment** | Done (v4.6.15) | Backfill host entries with unified asset names/interfaces for consistency. |
 | **HTTP Identity Source Guard** | Done (v4.6.11) | Treat UPnP-only titles as hints and avoid forcing web scans or identity scoring. |
 | **Wizard Target Normalization Summary** | Done (v4.6.13) | Show normalized targets with estimated host counts before execution. |
 
