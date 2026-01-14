@@ -130,6 +130,51 @@ SERVICE_TAGS = {
     "vnc": ["remote-access", "desktop"],
 }
 
+# v4.6.19: Known vulnerable service versions with backdoors or critical vulns
+# Format: regex pattern -> (CVE-ID, severity, description)
+KNOWN_VULNERABLE_SERVICES = {
+    r"vsftpd[/ ]2\.3\.4": (
+        "CVE-2011-2523",
+        "critical",
+        "vsftpd 2.3.4 backdoor - Remote code execution via :) trigger",
+    ),
+    r"unreal(ircd)?[/ ]?3\.2\.8\.1": (
+        "CVE-2010-2075",
+        "critical",
+        "UnrealIRCd 3.2.8.1 backdoor - Remote code execution via DEBUG command",
+    ),
+    r"proftpd[/ ]1\.3\.3[a-c]": (
+        "CVE-2010-4221",
+        "critical",
+        "ProFTPD 1.3.3a-c Telnet IAC buffer overflow",
+    ),
+    r"samba[/ ]3\.0\.(2[0-5]|[0-9])": (
+        "CVE-2007-2447",
+        "critical",
+        "Samba 3.0.0-3.0.25 username map script RCE",
+    ),
+    r"distccd": (
+        "CVE-2004-2687",
+        "high",
+        "distcc daemon allows arbitrary command execution",
+    ),
+    r"java rmi": (
+        "JAVA-RMI-DESER",
+        "high",
+        "Java RMI registry - potential deserialization vulnerability",
+    ),
+    r"apache[/ ]2\.2\.[0-8]\\b": (
+        "CVE-2011-3192",
+        "high",
+        "Apache 2.2.0-2.2.8 Range header DoS vulnerability",
+    ),
+    r"openssh[/ ][1-4]\\.": (
+        "OPENSSH-OLD",
+        "medium",
+        "OpenSSH version < 5.0 has known vulnerabilities",
+    ),
+}
+
 # v3.1: Finding categories for classification
 FINDING_CATEGORIES = {
     "surface": ["open port", "exposed", "listening", "service detected"],
@@ -188,6 +233,39 @@ FINDING_CATEGORIES = {
         "command injection",
     ],
 }
+
+
+def detect_known_vulnerable_services(banner: str) -> List[Dict]:
+    """
+    Detect known vulnerable services from banner text.
+
+    v4.6.19: Checks service banners against KNOWN_VULNERABLE_SERVICES patterns.
+
+    Args:
+        banner: Service banner or version string
+
+    Returns:
+        List of detected vulnerabilities, each with cve_id, severity, description
+    """
+    if not banner:
+        return []
+
+    banner_lower = banner.lower()
+    detected = []
+
+    for pattern, (cve_id, severity, description) in KNOWN_VULNERABLE_SERVICES.items():
+        if re.search(pattern, banner_lower, re.IGNORECASE):
+            detected.append(
+                {
+                    "cve_id": cve_id,
+                    "severity": severity,
+                    "description": description,
+                    "matched_pattern": pattern,
+                    "banner_excerpt": banner[:100],
+                }
+            )
+
+    return detected
 
 
 def generate_finding_id(
@@ -970,6 +1048,56 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
         title=primary_finding[:100] if primary_finding else url,
     )
 
+    # v4.6.19: Add confirmed_exploitable flag for findings with CVE or Nuclei validation
+    has_cve = bool(cve_ids) or "cve-" in primary_finding.lower()
+    has_nuclei = source == "nuclei" or bool(template_id)
+    has_known_exploit = bool(vuln_record.get("known_exploits"))
+    enriched["confirmed_exploitable"] = has_cve or has_nuclei or has_known_exploit
+
+    # v4.6.19: Calculate priority_score for finding ordering
+    # Higher = more critical (0-100 scale)
+    priority = enriched["severity_score"]  # Base from severity
+
+    # Boost for confirmed exploitable findings
+    if enriched["confirmed_exploitable"]:
+        priority += 20
+
+    # Boost for CVE findings (evidence of real vulnerability)
+    if has_cve:
+        priority += 10
+
+    # Penalty for likely false positives
+    if enriched.get("potential_false_positives"):
+        priority -= 30
+
+    # Penalty for low-value header findings
+    if enriched.get("category") == "misconfig":
+        priority -= 10
+
+    enriched["priority_score"] = max(0, min(100, priority))
+
+    # v4.6.19: Add confidence_score (0.0-1.0) for report quality
+    # Higher = more confident the finding is real and actionable
+    confidence = 0.5  # Base confidence
+
+    # Boost for confirmed sources
+    if enriched["confirmed_exploitable"]:
+        confidence += 0.3
+    if has_cve:
+        confidence += 0.1
+    if vuln_record.get("testssl_analysis"):
+        confidence += 0.1  # TestSSL findings are high-confidence
+
+    # Penalty for potential false positives
+    if enriched.get("potential_false_positives"):
+        confidence -= 0.4
+
+    # Slight boost for cross-validated (not FP'd) findings
+    if enriched.get("verified") is True:
+        confidence += 0.1
+
+    enriched["confidence_score"] = round(max(0.0, min(1.0, confidence)), 2)
+
     return enriched
 
 
@@ -1227,3 +1355,34 @@ def consolidate_findings(vulnerabilities: List[Dict]) -> List[Dict]:
         for host in host_order
         if host in consolidated
     ]
+
+
+def get_top_critical_findings(findings: List[Dict], limit: int = 5) -> List[Dict]:
+    """
+    Get the top N most critical findings sorted by priority_score.
+
+    v4.6.19: Used for "Top Critical Findings" summary in reports.
+
+    Args:
+        findings: List of enriched finding dictionaries
+        limit: Maximum number of findings to return (default 5)
+
+    Returns:
+        List of top findings sorted by priority_score descending
+    """
+    if not findings:
+        return []
+
+    # Filter to only confirmed exploitable or high-severity findings
+    critical = [
+        f for f in findings if f.get("confirmed_exploitable") or f.get("severity_score", 0) >= 70
+    ]
+
+    # Sort by priority_score descending, then severity_score
+    sorted_findings = sorted(
+        critical,
+        key=lambda f: (f.get("priority_score", 0), f.get("severity_score", 0)),
+        reverse=True,
+    )
+
+    return sorted_findings[:limit]

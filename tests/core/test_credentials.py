@@ -226,13 +226,17 @@ class TestKeyringCredentialProvider(unittest.TestCase):
         # Mock: Only SSH has credentials
         provider._keyring.get_password.side_effect = lambda svc, key: {
             ("redaudit-ssh", "default:username"): "auditor",
+            ("redaudit-ssh", "spray:list"): None,
             ("redaudit-smb", "default:username"): None,
+            ("redaudit-smb", "spray:list"): None,
             ("redaudit-snmp", "default:username"): None,
+            ("redaudit-snmp", "spray:list"): None,
         }.get((svc, key))
 
         result = provider.get_saved_credential_summary()
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0], ("SSH", "auditor"))
+        # v4.6.19: Now returns 3-tuple with spray_count
+        self.assertEqual(result[0], ("SSH", "auditor", 0))
 
     @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
     def test_get_saved_credential_summary_empty(self, mock_init):

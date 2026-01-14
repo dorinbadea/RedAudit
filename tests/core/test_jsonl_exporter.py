@@ -102,8 +102,9 @@ class TestJsonlExporter(unittest.TestCase):
         self.assertEqual(_extract_title(vuln), "Known Vulnerability: CVE-2024-1234")
 
     def test_extract_title_fallbacks(self):
+        # v4.6.19: Updated fallback text from "Web Service" to "HTTP Service"
         vuln = {"port": 443, "url": "https://example.com"}
-        self.assertEqual(_extract_title(vuln), "Web Service Finding on Port 443")
+        self.assertEqual(_extract_title(vuln), "HTTP Service Finding on Port 443")
 
         vuln = {"port": 22}
         self.assertEqual(_extract_title(vuln), "Service Finding on Port 22")

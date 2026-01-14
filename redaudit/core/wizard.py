@@ -922,7 +922,9 @@ class Wizard:
                 "provider = KeyringCredentialProvider()\n"
                 "summary = provider.get_saved_credential_summary()\n"
                 "creds = []\n"
-                "for protocol, username in summary:\n"
+                "for item in summary:\n"
+                "    protocol = item[0] if len(item) > 0 else ''\n"
+                "    username = item[1] if len(item) > 1 else ''\n"
                 "    cred = provider.get_credential('default', protocol.lower())\n"
                 "    if not cred:\n"
                 "        continue\n"
@@ -1037,8 +1039,12 @@ class Wizard:
                 else self.ui.t("auth_saved_creds_found")
             )
             print(f"\n{self.ui.colors['OKGREEN']}{found_msg}{self.ui.colors['ENDC']}")
-            for protocol, username in summary:
-                print(f"  - {protocol}: {username}")
+            for item in summary:
+                protocol = item[0] if len(item) > 0 else ""
+                username = item[1] if len(item) > 1 else ""
+                spray_count = item[2] if len(item) > 2 else 0
+                spray_info = f" (+{spray_count} spray)" if spray_count > 0 else ""
+                print(f"  - {protocol}: {username}{spray_info}")
 
             # Ask to load
             if self.ask_yes_no(self.ui.t("auth_load_saved_q"), default="yes"):
@@ -1048,7 +1054,9 @@ class Wizard:
                     if isinstance(creds, list):
                         loaded_count = self._apply_keyring_credentials(auth_config, creds)
                 else:
-                    for protocol, username in summary:
+                    for item in summary:
+                        protocol = item[0] if len(item) > 0 else ""
+                        username = item[1] if len(item) > 1 else ""
                         cred = provider.get_credential("default", protocol.lower())
                         if cred:
                             if protocol == "SSH":

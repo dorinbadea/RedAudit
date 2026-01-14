@@ -267,8 +267,11 @@ class KeyringCredentialProvider(CredentialProvider):
         """
         Get a summary of saved credentials for display.
 
+        v4.6.19: Now includes spray list count.
+
         Returns:
-            List of tuples (protocol, username) for each saved credential.
+            List of tuples (protocol, username, spray_count) for each saved credential.
+            spray_count is 0 if only default credential, >0 if spray list exists.
         """
         if not self._keyring_available:
             return []
@@ -278,8 +281,21 @@ class KeyringCredentialProvider(CredentialProvider):
             service_name = f"redaudit-{protocol}"
             try:
                 username = self._keyring.get_password(service_name, "default:username")
-                if username:
-                    summary.append((protocol.upper(), username))
+                spray_count = 0
+
+                # Check for spray list
+                try:
+                    spray_json = self._keyring.get_password(service_name, "spray:list")
+                    if spray_json:
+                        spray_list = json.loads(spray_json)
+                        if isinstance(spray_list, list):
+                            spray_count = len(spray_list)
+                except (json.JSONDecodeError, Exception):
+                    pass
+
+                if username or spray_count > 0:
+                    display_user = username or "(spray only)"
+                    summary.append((protocol.upper(), display_user, spray_count))
             except Exception:
                 pass
 
