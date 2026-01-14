@@ -1011,5 +1011,95 @@ class TestBackdoorIntegration(unittest.TestCase):
         self.assertNotIn("detected_backdoors", port)
 
 
+class TestXFrameOptionsSeverity(unittest.TestCase):
+    """v4.6.21: Tests for X-Frame-Options severity override."""
+
+    def test_anti_clickjacking_nikto_text_is_low(self):
+        """Nikto anti-clickjacking finding should be low, not high."""
+        from redaudit.core.siem import calculate_severity
+
+        finding = "The anti-clickjacking X-Frame-Options header is not present."
+        self.assertEqual(calculate_severity(finding), "low")
+
+    def test_missing_x_frame_options_is_low(self):
+        """Missing X-Frame-Options should be low."""
+        from redaudit.core.siem import calculate_severity
+
+        self.assertEqual(calculate_severity("Missing X-Frame-Options header"), "low")
+
+    def test_x_frame_not_present_is_low(self):
+        """X-Frame-Options not present variant should be low."""
+        from redaudit.core.siem import calculate_severity
+
+        self.assertEqual(calculate_severity("X-Frame-Options header is not present"), "low")
+
+
+class TestIoTLwIPRiskCapping(unittest.TestCase):
+    """v4.6.21: Tests for IoT lwIP false positive detection."""
+
+    def test_iot_with_many_ports_capped_at_30(self):
+        """IoT device with >20 ports should have risk capped at 30 (lwIP false positive)."""
+        from redaudit.core.siem import calculate_risk_score
+
+        host = {
+            "asset_type": "iot",
+            "ports": [{"port": i} for i in range(50)],
+        }
+        self.assertEqual(calculate_risk_score(host), 30)
+
+    def test_iot_with_few_ports_not_capped(self):
+        """IoT device with few ports should calculate normally."""
+        from redaudit.core.siem import calculate_risk_score
+
+        host = {
+            "asset_type": "iot",
+            "ports": [{"port": 80}],
+        }
+        self.assertEqual(calculate_risk_score(host), 0)
+
+    def test_lwip_os_detected_triggers_cap(self):
+        """Device with lwIP in os_detected should be capped."""
+        from redaudit.core.siem import calculate_risk_score
+
+        host = {
+            "os_detected": "lwIP 1.4.0",
+            "ports": [{"port": i} for i in range(25)],
+        }
+        self.assertEqual(calculate_risk_score(host), 30)
+
+
+class TestFTPCVEInjection(unittest.TestCase):
+    """v4.6.22: Tests for FTP CVE injection to port.cves."""
+
+    def test_vsftpd_backdoor_injects_cve_to_port_cves(self):
+        """vsftpd 2.3.4 should inject CVE-2011-2523 into port.cves."""
+        from redaudit.core.siem import calculate_risk_score
+
+        port = {
+            "port": 21,
+            "service": "ftp",
+            "product": "vsftpd",
+            "version": "2.3.4",
+        }
+        host = {"ports": [port]}
+        calculate_risk_score(host)
+
+        self.assertIn("cves", port)
+        cve_ids = [c.get("cve_id") for c in port["cves"]]
+        self.assertIn("CVE-2011-2523", cve_ids)
+
+    def test_cve_injection_includes_cvss_score(self):
+        """Injected CVE should have CVSS score 9.8."""
+        from redaudit.core.siem import calculate_risk_score
+
+        port = {"port": 21, "service": "ftp", "product": "vsftpd", "version": "2.3.4"}
+        host = {"ports": [port]}
+        calculate_risk_score(host)
+
+        cve = next((c for c in port.get("cves", []) if c.get("cve_id") == "CVE-2011-2523"), None)
+        self.assertIsNotNone(cve)
+        self.assertEqual(cve.get("cvss_score"), 9.8)
+
+
 if __name__ == "__main__":
     unittest.main()

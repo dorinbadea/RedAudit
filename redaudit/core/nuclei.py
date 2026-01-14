@@ -287,12 +287,16 @@ def run_nuclei_scan(
             allow_retry: bool = True,
             rate_limit_override: Optional[int] = None,
             split_depth: int = 0,
+            retry_attempt: int = 0,  # v4.6.23: Simple retry before split
         ) -> None:
             nonlocal completed_targets, max_progress_targets
             batch_start = time.time()
             base_timeout = float(timeout) if isinstance(timeout, (int, float)) else 300.0
             target_budget = float(request_timeout_s) * len(batch_targets) * 2
             batch_timeout_s = max(60.0, target_budget)
+            # v4.6.23: Extend timeout on retry attempt
+            if retry_attempt > 0:
+                batch_timeout_s = batch_timeout_s * 1.5
             if base_timeout > 0:
                 batch_timeout_s = min(base_timeout, batch_timeout_s)
             with tempfile.TemporaryDirectory(prefix="nuclei_tmp_", dir=output_dir) as tmpdir:
@@ -357,6 +361,23 @@ def run_nuclei_scan(
                     raise RuntimeError("Nuclei batch did not return a result")
                 timed_out = bool(getattr(res, "timed_out", False))
                 if timed_out:
+                    # v4.6.23: Simple retry with extended timeout before splitting
+                    if allow_retry and retry_attempt == 0:
+                        if print_status:
+                            print_status(
+                                f"[nuclei] batch {batch_idx} timed out, retrying with extended timeout...",
+                                "WARN",
+                            )
+                        _run_one_batch(
+                            batch_idx,
+                            batch_targets,
+                            allow_retry=True,
+                            rate_limit_override=rate_limit_override,
+                            split_depth=split_depth,
+                            retry_attempt=1,
+                        )
+                        return
+                    # If retry also timed out, try splitting
                     if allow_retry and len(batch_targets) > 1 and split_depth < max_split_depth:
                         mid = max(1, len(batch_targets) // 2)
                         reduced_rate = max(25, int((rate_limit_override or rate_limit) / 2))
@@ -366,6 +387,7 @@ def run_nuclei_scan(
                             allow_retry=True,
                             rate_limit_override=reduced_rate,
                             split_depth=split_depth + 1,
+                            retry_attempt=0,
                         )
                         _run_one_batch(
                             batch_idx,
@@ -373,6 +395,7 @@ def run_nuclei_scan(
                             allow_retry=True,
                             rate_limit_override=reduced_rate,
                             split_depth=split_depth + 1,
+                            retry_attempt=0,
                         )
                         return
                     timed_out_batches.add(batch_idx)
