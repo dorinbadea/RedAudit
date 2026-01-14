@@ -10,6 +10,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.23] - 2026-01-14
+
+### Anadido
+
+- **Reintento Nuclei en Timeout**: En primer timeout, reintenta batch con timeout 1.5x antes de dividir. Reduce fallos en redes lentas.
+- **Cobertura de Tests**: Anadidos 8 tests nuevos para funcionalidades v4.6.21-23 (X-Frame-Options, IoT lwIP, inyeccion CVE FTP).
+
 ## [v4.6.22] - 2026-01-14
 
 ### Anadido

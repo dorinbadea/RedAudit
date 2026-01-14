@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.23] - 2026-01-14
+
+### Added
+
+- **Nuclei Retry on Timeout**: On first timeout, retry batch with 1.5x timeout before splitting. Reduces false failures on slow networks.
+- **Test Coverage**: Added 8 new tests for v4.6.21-23 features (X-Frame-Options, IoT lwIP, FTP CVE injection).
+
 ## [v4.6.22] - 2026-01-14
 
 ### Added
