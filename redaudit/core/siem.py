@@ -73,6 +73,34 @@ SEVERITY_KEYWORDS = {
     "low": ["cookie", "header", "missing", "deprecated", "outdated"],
 }
 
+# v4.6.19: Specific severity overrides for common Nikto/scanner findings
+# These patterns are checked FIRST and override the generic keyword matching.
+# Regex patterns (case-insensitive) mapped to severity level.
+SEVERITY_OVERRIDES = {
+    "low": [
+        r"missing.*x-frame-options",
+        r"missing.*x-content-type",
+        r"missing.*strict-transport-security",
+        r"missing.*content-security-policy",
+        r"clickjacking",
+        r"httponly.*flag",
+        r"secure.*flag.*cookie",
+        r"anti-clickjacking.*header",
+        r"x-xss-protection",
+    ],
+    "info": [
+        r"etag.*inode",
+        r"server\s*banner",
+        r"version\s*disclosed",
+        r"x-powered-by",
+        r"uncommon\s*header",
+        r"items\s*checked.*error",
+        r"no\s*cgi\s*directories",
+        r"root\s*page.*redirects",
+        r"allowed\s*http\s*methods",
+    ],
+}
+
 # Asset type to tags mapping
 ASSET_TYPE_TAGS = {
     "router": ["network", "infrastructure", "gateway"],
@@ -243,6 +271,13 @@ def calculate_severity(finding: str) -> str:
     )
     if any(s in finding_lower for s in benign_substrings):
         return "info"
+
+    # v4.6.19: Check specific severity overrides FIRST (regex patterns)
+    # These take precedence over generic keyword matching for common Nikto findings.
+    for level in ["info", "low"]:  # Check info first, then low
+        for pattern in SEVERITY_OVERRIDES.get(level, []):
+            if re.search(pattern, finding_lower):
+                return level
 
     def keyword_matches(keyword: str) -> bool:
         kw = (keyword or "").lower()

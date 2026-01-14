@@ -384,6 +384,43 @@ class TestSIEM(unittest.TestCase):
         result2 = calculate_severity(finding2)
         self.assertEqual(result2, "info")
 
+    # v4.6.19: Tests for SEVERITY_OVERRIDES patterns
+    def test_calculate_severity_etag_inode_leak(self):
+        """ETag inode leak should be info, not low."""
+        finding = "+ ETag inode leak detected on /index.html"
+        result = calculate_severity(finding)
+        self.assertEqual(result, "info")
+
+    def test_calculate_severity_xpoweredby_disclosure(self):
+        """X-Powered-By disclosure should be info."""
+        finding = "+ X-Powered-By: PHP/5.4.0"
+        result = calculate_severity(finding)
+        self.assertEqual(result, "info")
+
+    def test_calculate_severity_uncommon_header(self):
+        """Uncommon header findings should be info."""
+        finding = "+ Uncommon header 'x-recruiting' found"
+        result = calculate_severity(finding)
+        self.assertEqual(result, "info")
+
+    def test_calculate_severity_clickjacking_risk(self):
+        """Clickjacking risk should be low, not high."""
+        finding = "+ Anti-clickjacking header missing (potential clickjacking)"
+        result = calculate_severity(finding)
+        self.assertEqual(result, "low")
+
+    def test_calculate_severity_httponly_flag(self):
+        """Missing httponly flag should be low."""
+        finding = "+ Cookie PHPSESSID created without the httponly flag"
+        result = calculate_severity(finding)
+        self.assertEqual(result, "low")
+
+    def test_calculate_severity_items_checked(self):
+        """Nikto scan summary should be info."""
+        finding = "+ 6544 items checked: 0 error(s) and 1 item(s) reported"
+        result = calculate_severity(finding)
+        self.assertEqual(result, "info")
+
 
 class TestClassifyFindingCategory(unittest.TestCase):
     """Tests for classify_finding_category function."""
