@@ -10,6 +10,22 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.20] - 2026-01-14
+
+### Anadido
+
+- **Flag de Timeout para Nuclei**: Nuevo flag CLI `--nuclei-timeout` para configurar el timeout de batch (defecto 300s). Util para redes Docker/lentas donde el timeout por defecto causa escaneos parciales.
+
+### Corregido
+
+- **Deteccion de Backdoor vsftpd 2.3.4**: Corregida la deteccion de CVE-2011-2523 combinando campos service+product+version+banner en `calculate_risk_score`.
+- **Consistencia de Titulos**: La exportacion JSONL ahora usa `descriptive_title` para ambos campos `title` y `descriptive_title`, coincidiendo con el comportamiento del reporte HTML.
+- **Generacion Unificada de Titulos**: Consolidadas las funciones `_extract_title` de `jsonl_exporter` y `html_reporter` en un unico `extract_finding_title` en `siem.py`, eliminando 170 lineas de codigo duplicado.
+
+### Mejorado
+
+- **Calidad de Codigo**: Anadido `extract_finding_title` con cadena de fallback adecuada: descriptive_title, template_id de Nuclei, CVE IDs, parsed_observations, nikto_findings, fallback basado en puerto.
+
 ## [v4.6.19] - 2026-01-14
 
 ### Anadido
