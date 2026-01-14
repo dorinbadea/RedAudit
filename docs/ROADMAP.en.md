@@ -30,6 +30,12 @@ These items are ordered chronologically and include delivered, planned, and defe
 | **Host Report Alignment** | Done (v4.6.15) | Backfill host entries with unified asset names/interfaces for consistency. |
 | **HTTP Identity Source Guard** | Done (v4.6.11) | Treat UPnP-only titles as hints and avoid forcing web scans or identity scoring. |
 | **Wizard Target Normalization Summary** | Done (v4.6.13) | Show normalized targets with estimated host counts before execution. |
+| **SSH Credential Spray** | Done (v4.6.18) | Try all credentials in spray list until success. Enables unified credential lists. |
+| **Finding Prioritization** | Done (v4.6.19) | New `priority_score` (0-100) and `confirmed_exploitable` fields for better vulnerability ranking. |
+| **Classic Backdoor Detection** | Done (v4.6.19) | Automatic banner detection for `vsftpd 2.3.4`, `UnrealIRCd 3.2.8.1`, and other known backdoors. |
+| **Report Confidence Score** | Done (v4.6.19) | `confidence_score` (0.0-1.0) based on cross-validation (Nuclei+CVE) to reduce false positives. |
+| **Improved Finding Titles** | Done (v4.6.19) | Descriptive titles ("SSL Hostname Mismatch", "Missing HSTS") with better fallback logic. |
+| **Wizard Spray Counter** | Done (v4.6.19) | Display `(+N spray)` in credential summary for better visibility. |
 
 ### v4.7 Audit Follow-ups (Priority: High)
 

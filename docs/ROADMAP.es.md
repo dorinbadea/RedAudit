@@ -30,6 +30,13 @@ Estos elementos están ordenados cronológicamente e incluyen trabajo entregado,
 | **Alineación de informes de hosts** | Hecho (v4.6.15) | Rellenar hosts con nombres/interfaces unificados para consistencia. |
 | **Guardia de Origen de Identidad HTTP** | Hecho (v4.6.11) | Tratar títulos solo UPnP como pistas y evitar forzar escaneo web o score de identidad. |
 | **Resumen de normalización de objetivos en el wizard** | Hecho (v4.6.13) | Mostrar objetivos normalizados con hosts estimados antes de ejecutar. |
+| **P7.5 Cancelar en el wizard** | Hecho (v4.6.14) | Cambia "Volver" por "Cancelar" (color de advertencia) y permite cancelar prompts de credenciales. |
+| **Spray de Credenciales SSH** | Hecho (v4.6.18) | Probar todas las credenciales de la lista spray hasta autenticar. Permite listas de claves/passwords unificadas. |
+| **Priorización de Hallazgos** | Hecho (v4.6.19) | Nuevos campos `priority_score` (0-100) y `confirmed_exploitable` para ranking superior de vulnerabilidades críticas (CVE/Exploits). |
+| **Detección Clásica de Backdoors** | Hecho (v4.6.19) | Detección automática en banner de `vsftpd 2.3.4`, `UnrealIRCd 3.2.8.1` y otros backdoors históricos conocidos. |
+| **Puntuación de Confianza de Reporte** | Hecho (v4.6.19) | Score de confianza (`confidence_score` 0.0-1.0) basado en validación cruzada (Nuclei+CVE) y redução de falsos positivos. |
+| **Mejora de Títulos de Hallazgos** | Hecho (v4.6.19) | Títulos más descriptivos ("SSL Hostname Mismatch", "Missing HSTS") en lugar de genéricos, con mejor lógica de fallback. |
+| **Contador de Spray en Wizard** | Hecho (v4.6.19) | Visualización `(+N spray)` en el resumen de credenciales guardadas para mayor claridad. |
 
 ### v4.7 Seguimiento de Auditoría (Prioridad: Alta)
 
