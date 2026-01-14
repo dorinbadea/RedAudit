@@ -1,5 +1,7 @@
 # Release Notes v4.6.20
 
+[![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](RELEASE_NOTES_v4.6.20_ES.md)
+
 **Release Date**: 2026-01-14
 
 ## Summary
