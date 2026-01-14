@@ -21,10 +21,10 @@ class TestWizardCredentialLoading(unittest.TestCase):
         """Test the full flow: credentials exist -> offer -> user accepts -> load."""
         mock_provider = mock_provider_cls.return_value
 
-        # 1. Setup mock credentials summary
+        # 1. Setup mock credentials summary (v4.6.19: 3-tuple format)
         mock_provider.get_saved_credential_summary.return_value = [
-            ("SSH", "auditor"),
-            ("SMB", "admin"),
+            ("SSH", "auditor", 0),
+            ("SMB", "admin", 0),
         ]
 
         # 2. Setup mock credentials retrieval
@@ -61,7 +61,7 @@ class TestWizardCredentialLoading(unittest.TestCase):
     def test_check_and_load_saved_credentials_declined(self, mock_provider_cls):
         """Test flow: credentials exist -> offer -> user declines."""
         mock_provider = mock_provider_cls.return_value
-        mock_provider.get_saved_credential_summary.return_value = [("SSH", "auditor")]
+        mock_provider.get_saved_credential_summary.return_value = [("SSH", "auditor", 0)]
 
         # User says NO
         self.wizard.ask_yes_no = MagicMock(return_value=False)
