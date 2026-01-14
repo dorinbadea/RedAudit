@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.21] - 2026-01-14
+
+### Fixed
+
+- **X-Frame-Options Severity**: Added `anti-clickjacking.*x-frame-options` and `x-frame-options.*not present` patterns to SEVERITY_OVERRIDES. Nikto findings now correctly classified as Low instead of High.
+- **IoT lwIP False Positive**: Added heuristic in `calculate_risk_score` to detect IoT devices with >20 open ports (lwIP stack responds SYN-ACK to all probes). Risk capped at 30 for manual review.
+
 ## [v4.6.20] - 2026-01-14
 
 ### Added

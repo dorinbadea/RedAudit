@@ -10,6 +10,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.21] - 2026-01-14
+
+### Corregido
+
+- **Severidad X-Frame-Options**: Anadidos patrones `anti-clickjacking.*x-frame-options` y `x-frame-options.*not present` a SEVERITY_OVERRIDES. Hallazgos de Nikto ahora correctamente clasificados como Low en lugar de High.
+- **Falso Positivo IoT lwIP**: Anadida heuristica en `calculate_risk_score` para detectar dispositivos IoT con >20 puertos abiertos (stack lwIP responde SYN-ACK a todos los probes). Riesgo limitado a 30 para revision manual.
+
 ## [v4.6.20] - 2026-01-14
 
 ### Anadido
