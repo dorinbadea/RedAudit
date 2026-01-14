@@ -130,6 +130,51 @@ SERVICE_TAGS = {
     "vnc": ["remote-access", "desktop"],
 }
 
+# v4.6.19: Known vulnerable service versions with backdoors or critical vulns
+# Format: regex pattern -> (CVE-ID, severity, description)
+KNOWN_VULNERABLE_SERVICES = {
+    r"vsftpd[/ ]2\.3\.4": (
+        "CVE-2011-2523",
+        "critical",
+        "vsftpd 2.3.4 backdoor - Remote code execution via :) trigger",
+    ),
+    r"unreal(ircd)?[/ ]?3\.2\.8\.1": (
+        "CVE-2010-2075",
+        "critical",
+        "UnrealIRCd 3.2.8.1 backdoor - Remote code execution via DEBUG command",
+    ),
+    r"proftpd[/ ]1\.3\.3[a-c]": (
+        "CVE-2010-4221",
+        "critical",
+        "ProFTPD 1.3.3a-c Telnet IAC buffer overflow",
+    ),
+    r"samba[/ ]3\.0\.(2[0-5]|[0-9])": (
+        "CVE-2007-2447",
+        "critical",
+        "Samba 3.0.0-3.0.25 username map script RCE",
+    ),
+    r"distccd": (
+        "CVE-2004-2687",
+        "high",
+        "distcc daemon allows arbitrary command execution",
+    ),
+    r"java rmi": (
+        "JAVA-RMI-DESER",
+        "high",
+        "Java RMI registry - potential deserialization vulnerability",
+    ),
+    r"apache[/ ]2\.2\.[0-8]\\b": (
+        "CVE-2011-3192",
+        "high",
+        "Apache 2.2.0-2.2.8 Range header DoS vulnerability",
+    ),
+    r"openssh[/ ][1-4]\\.": (
+        "OPENSSH-OLD",
+        "medium",
+        "OpenSSH version < 5.0 has known vulnerabilities",
+    ),
+}
+
 # v3.1: Finding categories for classification
 FINDING_CATEGORIES = {
     "surface": ["open port", "exposed", "listening", "service detected"],
@@ -188,6 +233,39 @@ FINDING_CATEGORIES = {
         "command injection",
     ],
 }
+
+
+def detect_known_vulnerable_services(banner: str) -> List[Dict]:
+    """
+    Detect known vulnerable services from banner text.
+
+    v4.6.19: Checks service banners against KNOWN_VULNERABLE_SERVICES patterns.
+
+    Args:
+        banner: Service banner or version string
+
+    Returns:
+        List of detected vulnerabilities, each with cve_id, severity, description
+    """
+    if not banner:
+        return []
+
+    banner_lower = banner.lower()
+    detected = []
+
+    for pattern, (cve_id, severity, description) in KNOWN_VULNERABLE_SERVICES.items():
+        if re.search(pattern, banner_lower, re.IGNORECASE):
+            detected.append(
+                {
+                    "cve_id": cve_id,
+                    "severity": severity,
+                    "description": description,
+                    "matched_pattern": pattern,
+                    "banner_excerpt": banner[:100],
+                }
+            )
+
+    return detected
 
 
 def generate_finding_id(

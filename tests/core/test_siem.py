@@ -886,5 +886,62 @@ class TestGetTopCriticalFindings(unittest.TestCase):
         self.assertTrue(result[0]["confirmed_exploitable"])
 
 
+class TestDetectKnownVulnerableServices(unittest.TestCase):
+    """v4.6.19: Tests for detect_known_vulnerable_services function."""
+
+    def test_detects_vsftpd_backdoor(self):
+        """Detects vsftpd 2.3.4 backdoor."""
+        from redaudit.core.siem import detect_known_vulnerable_services
+
+        banner = "220 (vsFTPd 2.3.4)"
+        result = detect_known_vulnerable_services(banner)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["cve_id"], "CVE-2011-2523")
+        self.assertEqual(result[0]["severity"], "critical")
+
+    def test_detects_unrealircd_backdoor(self):
+        """Detects UnrealIRCd 3.2.8.1 backdoor."""
+        from redaudit.core.siem import detect_known_vulnerable_services
+
+        banner = "UnrealIRCd 3.2.8.1"
+        result = detect_known_vulnerable_services(banner)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["cve_id"], "CVE-2010-2075")
+        self.assertEqual(result[0]["severity"], "critical")
+
+    def test_detects_samba_rce(self):
+        """Detects Samba 3.0.x username map script RCE."""
+        from redaudit.core.siem import detect_known_vulnerable_services
+
+        banner = "Samba 3.0.20-Debian"
+        result = detect_known_vulnerable_services(banner)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["cve_id"], "CVE-2007-2447")
+
+    def test_returns_empty_for_safe_version(self):
+        """Safe versions return empty list."""
+        from redaudit.core.siem import detect_known_vulnerable_services
+
+        banner = "vsftpd 3.0.3"
+        result = detect_known_vulnerable_services(banner)
+        self.assertEqual(result, [])
+
+    def test_returns_empty_for_empty_banner(self):
+        """Empty banner returns empty list."""
+        from redaudit.core.siem import detect_known_vulnerable_services
+
+        result = detect_known_vulnerable_services("")
+        self.assertEqual(result, [])
+
+    def test_detects_distcc(self):
+        """Detects distcc daemon."""
+        from redaudit.core.siem import detect_known_vulnerable_services
+
+        banner = "distccd v1 ((GNU) 4.2.4)"
+        result = detect_known_vulnerable_services(banner)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["cve_id"], "CVE-2004-2687")
+
+
 if __name__ == "__main__":
     unittest.main()
