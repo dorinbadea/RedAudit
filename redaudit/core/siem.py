@@ -1076,6 +1076,28 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
 
     enriched["priority_score"] = max(0, min(100, priority))
 
+    # v4.6.19: Add confidence_score (0.0-1.0) for report quality
+    # Higher = more confident the finding is real and actionable
+    confidence = 0.5  # Base confidence
+
+    # Boost for confirmed sources
+    if enriched["confirmed_exploitable"]:
+        confidence += 0.3
+    if has_cve:
+        confidence += 0.1
+    if vuln_record.get("testssl_analysis"):
+        confidence += 0.1  # TestSSL findings are high-confidence
+
+    # Penalty for potential false positives
+    if enriched.get("potential_false_positives"):
+        confidence -= 0.4
+
+    # Slight boost for cross-validated (not FP'd) findings
+    if enriched.get("verified") is True:
+        confidence += 0.1
+
+    enriched["confidence_score"] = round(max(0.0, min(1.0, confidence)), 2)
+
     return enriched
 
 

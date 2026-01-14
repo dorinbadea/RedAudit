@@ -78,6 +78,10 @@ def export_findings_jsonl(results: Dict, output_path: str) -> int:
                     "url": vuln.get("url", ""),
                     "severity": vuln.get("severity", "info"),
                     "normalized_severity": vuln.get("normalized_severity", 0.0),
+                    # v4.6.19: New quality fields
+                    "confidence_score": vuln.get("confidence_score", 0.5),
+                    "priority_score": vuln.get("priority_score", 0),
+                    "confirmed_exploitable": vuln.get("confirmed_exploitable", False),
                     "category": vuln.get("category", "surface"),
                     "title": _extract_title(vuln),
                     "descriptive_title": descriptive_title,
@@ -323,12 +327,28 @@ def _extract_title(vuln: Dict) -> str:
 
     v3.1.4: Generate human-readable titles based on finding type
     instead of generic "Finding on URL" messages.
+    v4.6.19: Improved title generation with more patterns and better fallbacks.
     """
     import re
 
     obs = vuln.get("parsed_observations", [])
+    port = vuln.get("port", 0)
 
-    # Generate descriptive title based on observations
+    # 1. If we have a template_id from Nuclei, use it
+    template_id = vuln.get("template_id", "")
+    if template_id:
+        # Clean up template ID for display
+        if template_id.upper().startswith("CVE-"):
+            return f"Nuclei: {template_id.upper()}"
+        nice_name = template_id.replace("-", " ").replace("_", " ").title()
+        return f"Nuclei: {nice_name}"
+
+    # 2. If we have CVE IDs, prioritize them
+    cve_ids = vuln.get("cve_ids", [])
+    if cve_ids and isinstance(cve_ids, list) and cve_ids[0]:
+        return f"Known Vulnerability: {cve_ids[0].upper()}"
+
+    # 3. Generate descriptive title based on observations
     for observation in obs:
         obs_lower = observation.lower()
 
@@ -349,8 +369,12 @@ def _extract_title(vuln: Dict) -> str:
             return "SSL Certificate Expired"
         if "self-signed" in obs_lower or "self signed" in obs_lower:
             return "Self-Signed SSL Certificate"
+        if "beast" in obs_lower:
+            return "BEAST Vulnerability (SSL/TLS)"
+        if "poodle" in obs_lower:
+            return "POODLE Vulnerability (SSL 3.0)"
 
-        # CVE references
+        # CVE references in observations
         if "cve-" in obs_lower:
             match = re.search(r"(cve-\d{4}-\d+)", obs_lower)
             if match:
@@ -361,12 +385,24 @@ def _extract_title(vuln: Dict) -> str:
             return "Internal IP Address Disclosed in Headers"
         if "server banner" in obs_lower and "no banner" not in obs_lower:
             return "Server Version Disclosed in Banner"
+        if "directory listing" in obs_lower or "index of" in obs_lower:
+            return "Directory Listing Enabled"
+        if "etag" in obs_lower and "inode" in obs_lower:
+            return "ETag Inode Disclosure"
 
-    # Fallback to URL-based title with port
+        # HTTP methods
+        if "put method" in obs_lower or "delete method" in obs_lower:
+            return "Dangerous HTTP Methods Enabled"
+
+    # 4. Improved fallback based on available info
+    source = vuln.get("source", "") or (vuln.get("original_severity", {}) or {}).get("tool", "")
     url = vuln.get("url", "")
-    port = vuln.get("port", 0)
 
+    if source == "testssl":
+        return f"SSL/TLS Configuration Issue on Port {port}"
+    if source == "nikto" and url:
+        return f"Web Security Finding on Port {port}"
     if url:
-        return f"Web Service Finding on Port {port}"
+        return f"HTTP Service Finding on Port {port}"
 
     return f"Service Finding on Port {port}"

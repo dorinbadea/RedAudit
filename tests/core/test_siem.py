@@ -943,5 +943,38 @@ class TestDetectKnownVulnerableServices(unittest.TestCase):
         self.assertEqual(result[0]["cve_id"], "CVE-2004-2687")
 
 
+class TestConfidenceScore(unittest.TestCase):
+    """v4.6.19: Tests for confidence_score field."""
+
+    def test_confidence_score_with_cve(self):
+        """CVE findings should have high confidence."""
+        vuln = {
+            "url": "http://192.168.1.1/",
+            "cve_ids": ["CVE-2021-1234"],
+            "nikto_findings": ["SQL injection CVE-2021-1234"],
+        }
+        result = enrich_vulnerability_severity(vuln)
+        self.assertGreater(result.get("confidence_score", 0), 0.8)
+
+    def test_confidence_score_with_false_positive(self):
+        """False positives should have low confidence."""
+        vuln = {
+            "url": "http://192.168.1.1/",
+            "nikto_findings": ["X-Frame-Options header not present"],
+            "curl_headers": "X-Frame-Options: DENY",  # Proves FP
+        }
+        result = enrich_vulnerability_severity(vuln)
+        self.assertLess(result.get("confidence_score", 1), 0.3)
+
+    def test_confidence_score_baseline(self):
+        """Generic findings should have baseline confidence."""
+        vuln = {
+            "url": "http://192.168.1.1/",
+            "nikto_findings": ["Some generic finding"],
+        }
+        result = enrich_vulnerability_severity(vuln)
+        self.assertEqual(result.get("confidence_score", 0), 0.5)
+
+
 if __name__ == "__main__":
     unittest.main()
