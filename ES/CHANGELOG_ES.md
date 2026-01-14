@@ -10,6 +10,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.22] - 2026-01-14
+
+### Anadido
+
+- **Etiquetado CVE FTP**: Backdoors detectados (vsftpd 2.3.4, etc.) ahora inyectan registros CVE en `port.cves` para propagacion automatica a JSONL.
+- **Spray de Credenciales SMB**: Prueba todas las credenciales SMB del keyring hasta que una funcione, igual que SSH. Usa nuevo metodo `_resolve_all_smb_credentials()`.
+
 ## [v4.6.21] - 2026-01-14
 
 ### Corregido

@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.22] - 2026-01-14
+
+### Added
+
+- **FTP CVE Tagging**: Detected backdoors (vsftpd 2.3.4, etc.) now inject CVE records into `port.cves` for automatic JSONL propagation.
+- **SMB Credential Spray**: Try all keyring SMB credentials until one succeeds, matching SSH spray pattern. Uses new `_resolve_all_smb_credentials()` method.
+
 ## [v4.6.21] - 2026-01-14
 
 ### Fixed
