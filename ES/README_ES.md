@@ -4,7 +4,7 @@
 
 [![Version](https://img.shields.io/badge/version-4.6.23-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
-![Licencia](https://imgshields.io/badge/GPLv3-green?style=flat-square)
+![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
 ![Cobertura](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dorinbadea/81671a8fffccee81ca270f14d094e5a1/raw/redaudit-coverage.json&style=flat-square)
 
@@ -388,7 +388,7 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | `--credentials-file` | Cargar múltiples credenciales desde JSON |
 | `--lynis` | Habilitar auditoría de hardening Lynis (Linux/SSH) |
 
-Ver `redaudit --help` o [USAGE.es.md](docs/USAGE.es.md) para la lista completa. de opciones.
+Ver `redaudit --help` o [USAGE.es.md](docs/USAGE.es.md) para la lista completa de opciones.
 
 ---
 
@@ -505,7 +505,7 @@ redaudit/
 │   ├── proxy.py            # Manejo de proxy
 │   ├── scanner_versions.py # Detección de versiones de herramientas externas
 │   ├── verify_vuln.py      # Filtro de falsos positivos Smart-Check
-│   ├── credentials_manager.py # Gestión de credenciales múltiples
+│   ├── credentials.py      # Proveedor de credenciales (keyring/env/file)
 │   └── updater.py          # Sistema de auto-actualización
 ├── templates/              # Plantillas de informes HTML
 └── utils/                  # Utilidades (i18n, config, constants)

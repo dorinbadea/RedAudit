@@ -111,7 +111,7 @@ sudo redaudit
 **Enterprise-Grade Risk Scoring (V2)**: Configuration findings (Nikto/Nuclei) now drive risk scores.
 
 - **HyperScan SYN Mode**: 10x faster port scanning for privileged users.
-- **Docker & Deep Scan Optimizations (H2)**: Unshackled scanners for deep container auditing.s (5m) and full tuning profiles.
+- **Docker & Deep Scan Optimizations (H2)**: Unshackled scanners for deep container auditing with extended timeouts (5m) and full tuning profiles.
 - **Nuclei**: Added "Low" severity findings (e.g., info leaks, exposed panels) to the decision matrix.
 - **Scapy Silence**: Suppressed low-level ARP warnings for cleaner output.
 
@@ -507,7 +507,7 @@ redaudit/
 │   ├── proxy.py            # Proxy handling
 │   ├── scanner_versions.py # External tool version detection
 │   ├── verify_vuln.py      # Smart-Check false positive filter
-│   ├── credentials_manager.py # Multi-credential management
+│   ├── credentials.py      # Credential provider (keyring/env/file)
 │   └── updater.py          # Auto-update system
 ├── templates/              # HTML report templates
 └── utils/                  # Utilities (i18n, config, constants)
