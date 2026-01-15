@@ -38,12 +38,21 @@ Estos elementos están ordenados cronológicamente e incluyen trabajo entregado,
 | **Mejora de Títulos de Hallazgos** | Hecho (v4.6.19) | Títulos más descriptivos ("SSL Hostname Mismatch", "Missing HSTS") en lugar de genéricos, con mejor lógica de fallback. |
 | **Contador de Spray en Wizard** | Hecho (v4.6.19) | Visualización `(+N spray)` en el resumen de credenciales guardadas para mayor claridad. |
 
-### v4.7 Seguimiento de Auditoría (Prioridad: Alta)
+### v4.7 Integracion HyperScan Masscan (Hecho)
 
-| Característica | Estado | Descripción |
+| Caracteristica | Estado | Descripcion |
 | :--- | :--- | :--- |
-| **Contadores de motivos de escalado** | Planificado | Reportar por qué se disparó el deep scan (identity score, ambigüedad, override manual). |
-| **Aclaración documental de Smart-Check** | Planificado | Alinear la documentación con el comportamiento real de verificación por señales. |
+| **Backend Masscan** | Hecho (v4.7.0) | Nuevo `masscan_scanner.py` para descubrimiento de puertos ordenes de magnitud mas rapido. Escanea 10.000 puertos en segundos. |
+| **Fallback Redes Docker** | Hecho (v4.7.1) | Fallback automatico a Scapy cuando Masscan retorna 0 puertos (redes bridge Docker). |
+| **Fix Timeout Nuclei** | Hecho (v4.7.2) | Timeout de command_runner aumentado a 600s para Nuclei (era 60s, causando timeouts de batch). |
+| **Skip 404 API NVD** | Hecho (v4.7.2) | Omitir reintentos en respuestas 404 (CPE no encontrado). Reduce spam de logs. |
+
+### v4.7 Seguimiento de Auditoria (Prioridad: Alta)
+
+| Caracteristica | Estado | Descripcion |
+| :--- | :--- | :--- |
+| **Contadores de motivos de escalado** | Planificado | Reportar por que se disparo el deep scan (identity score, ambiguedad, override manual). |
+| **Aclaracion documental de Smart-Check** | Planificado | Alinear la documentacion con el comportamiento real de verificacion por senales. |
 
 ### v4.7 Seguimiento de Auditoria (Prioridad: Media)
 

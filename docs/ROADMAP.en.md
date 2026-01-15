@@ -37,6 +37,15 @@ These items are ordered chronologically and include delivered, planned, and defe
 | **Improved Finding Titles** | Done (v4.6.19) | Descriptive titles ("SSL Hostname Mismatch", "Missing HSTS") with better fallback logic. |
 | **Wizard Spray Counter** | Done (v4.6.19) | Display `(+N spray)` in credential summary for better visibility. |
 
+### v4.7 HyperScan Masscan Integration (Done)
+
+| Feature | Status | Description |
+| :--- | :--- | :--- |
+| **Masscan Backend** | Done (v4.7.0) | New `masscan_scanner.py` for orders-of-magnitude faster port discovery. Scans top 10,000 ports in seconds. |
+| **Docker Network Fallback** | Done (v4.7.1) | Automatic Scapy fallback when Masscan returns 0 ports (Docker bridge networks). |
+| **Nuclei Timeout Fix** | Done (v4.7.2) | Increased command_runner timeout to 600s for Nuclei (was 60s, causing batch timeouts). |
+| **NVD API 404 Skip** | Done (v4.7.2) | Skip retries on 404 responses (CPE not found). Reduces log spam. |
+
 ### v4.7 Audit Follow-ups (Priority: High)
 
 | Feature | Status | Description |
