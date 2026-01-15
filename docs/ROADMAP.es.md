@@ -107,6 +107,7 @@ Foco: Eliminar cuellos de botella en grandes redes corporativas.
 | **Web App Vuln Scan (sqlmap)** | Hecho (v4.1.0) | Integración `sqlmap` con niveles configurables (level/risk) en wizard. |
 | **Web App Vuln Scan (ZAP)** | Hecho (v4.2.0) | Integración OWASP ZAP para spidering de aplicaciones web. |
 | **Parallel Deep Scan** | Hecho (v4.2.0) | Deep Scan decoupled con concurrencia hasta 50 threads y multi-bar UI. |
+| **Desbloqueo de Hilos** | Hecho (v4.6.29) | Límite global incrementado a 100 hilos para hardware moderno. |
 | **MAC Privado Indicator** | Hecho (v4.2.0) | Detecta MACs localmente administrados (bit 2 del primer byte) y muestra "(MAC privado)". |
 | **Separación Deep Scan** | Hecho (v4.2.0) | Deep Scan extraído de `scan_host_ports()` como fase independiente `run_deep_scans_concurrent()`. |
 | **Red Team → Agentless** | Hecho (v4.2.0) | Hallazgos SMB/LDAP de Red Team pasan a Agentless Verify. |

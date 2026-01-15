@@ -70,7 +70,7 @@ Enfoque en velocidad y máxima recolección de información.
 sudo redaudit -t 192.168.56.101 \
   --mode full \
   --udp-mode full \
-  --threads 16 \
+  --threads 100 \
   --no-prevent-sleep
 ```
 
@@ -139,7 +139,7 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | :--- | :--- |
 | `-t, --target CIDR` | IP, rango o CIDR (soporta lista separada por comas) |
 | `-m, --mode` | `fast` (descubrimiento de hosts), `normal` (top 100), `full` (todos los puertos + scripts/detección de SO) |
-| `-j, --threads N` | Hosts paralelos 1-16 (autodetectado) |
+| `-j, --threads N` | Hosts paralelos 1-100 (autodetectado) |
 | `--rate-limit S` | Retardo entre hosts en segundos (aplica jitter) |
 | `--deep-scan-budget N` | Máximo de hosts elegibles para deep scan agresivo (0 = sin límite) |
 | `--identity-threshold N` | Umbral mínimo de identidad para omitir deep scan |
@@ -201,6 +201,7 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | `--cve-lookup` | Correlar servicios con datos CVE NVD |
 
 Notas:
+
 - Los escáneres de aplicaciones web (sqlmap/ZAP) se omiten en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP.
 - Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
 

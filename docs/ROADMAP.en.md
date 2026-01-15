@@ -111,6 +111,7 @@ Focus: Removing bottlenecks for large corporate networks.
 | **Web App Vuln Scan (sqlmap)** | Done (v4.1.0) | Integrated `sqlmap` with configurable level/risk in wizard. |
 | **Web App Vuln Scan (ZAP)** | Done (v4.2.0) | Integrated OWASP ZAP for web app spidering. |
 | **Parallel Deep Scan** | Done (v4.2.0) | Decoupled Deep Scan with up to 50 threads and multi-bar UI. |
+| **Thread Uncapping** | Done (v4.6.29) | Increased global limits to 100 threads for modern hardware. |
 | **Private MAC Indicator** | Done (v4.2.0) | Detects locally-administered MACs (bit 2 of first byte) and shows "(private MAC)". |
 | **Deep Scan Separation** | Done (v4.2.0) | Deep Scan extracted from `scan_host_ports()` as independent phase `run_deep_scans_concurrent()`. |
 | **Red Team → Agentless** | Done (v4.2.0) | SMB/LDAP findings from Red Team passed to Agentless Verify. |

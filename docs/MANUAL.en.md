@@ -152,7 +152,7 @@ Pre-configured profiles adjust dozens of parameters automatically:
 - **Allows configuring:**
   - **Nmap Mode:** Fast/Normal/Full.
   - **Timing:** Stealth/Normal/Aggressive.
-  - **Performance:** Threads (1-16) and Rate Limit (seconds between requests).
+  - **Performance:** Threads (1-100) and Rate Limit (seconds between requests).
   - **Topology & Discovery:** Enable/disable L2 mapping and discovery protocols (mDNS, UPnP, etc.).
   - **UDP:** Enable UDP scanning (slow but thorough).
   - **Authentication:** Configure credentials for authenticated scanning.
@@ -281,7 +281,7 @@ RedAudit v4.4+ introduces **Smart-Throttle**, an adaptive rate limiting system f
 VPN classification is handled by asset typing heuristics (gateway MAC/IP, VPN ports, hostname patterns) after scanning.
 
 **Parallel Execution:**
-Starting with v4.2, deep scans run in a dedicated thread pool (up to 50 threads), decoupled from the main discovery loop. This ensures that slow deep scans do not block the overall progress.
+Starting with v4.6, deep scans run in a dedicated thread pool (up to 100 threads), decoupled from the main discovery loop. This ensures that slow deep scans do not block the overall progress.
 
 ### Web Application Security (v4.2+)
 

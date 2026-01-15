@@ -134,7 +134,7 @@ A common frustration in auditing is "False Positives" (tools reporting issues th
 **What to explain:**
 Why use different scaling models?
 
-- **Host Scanning (Threading):** Nmap is a blocking process. We use `ThreadPoolExecutor` (2-16 threads, auto-detected based on CPU) so one slow host doesn't block the entire scan.
+- **Host Scanning (Threading):** Nmap is a blocking process. We use `ThreadPoolExecutor` (2-100 threads, auto-detected based on CPU) so one slow host doesn't block the entire scan.
 - **Discovery (Async):** Broadcasting UDP packets (for IoT/Service discovery) is IO-bound. We use `asyncio` in `HyperScan` to blast thousands of tiny packets instantly without creating thousands of OS threads.
 
 **Where in code:**

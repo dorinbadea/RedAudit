@@ -220,12 +220,12 @@ RedAudit usa `ThreadPoolExecutor` de Python para escanear múltiples hosts simul
 
 | Parámetro | Defecto | Rango | Notas |
 | :--- | :--- | :--- | :--- |
-| `--threads` | Autodetectado | 1-16 | Hilos comparten memoria, ejecutan nmap independientemente |
+| `--threads` | Autodetectado | 1-100 | Hilos comparten memoria, ejecutan nmap independientemente |
 | `--rate-limit` | 0 | 0-∞ | Segundos entre hosts (jitter ±30% aplicado) |
 
 **Guía**:
 
-- **Hilos altos (10-16)**: Más rápido, pero más ruido de red. Riesgo de congestión.
+- **Hilos altos (50-100)**: Más rápido, pero más ruido de red. Riesgo de congestión.
 - **Hilos bajos (1-4)**: Más lento, más sigiloso, más amable con redes legacy.
 - **Rate limit >0**: Recomendado para entornos de producción para evitar triggers IDS.
 
@@ -357,7 +357,7 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | :--- | :--- |
 | `-t, --target` | Red(es) objetivo en notación CIDR |
 | `-m, --mode` | Modo de escaneo: `fast` / `normal` / `full` (defecto: normal) |
-| `-j, --threads` | Hilos concurrentes (1-16, autodetectado) |
+| `-j, --threads` | Hilos concurrentes (1-100, autodetectado) |
 | `--rate-limit` | Retardo entre hosts en segundos (jitter ±30%) |
 | `-e, --encrypt` | Cifrar informes con AES-128 |
 | `-o, --output` | Directorio de salida |
@@ -402,7 +402,7 @@ RedAudit aplica plantillas de temporización nmap según tu selección:
 | :--- | :--- | :--- | :--- | :--- |
 | **Stealth** | `-T1` | 1 (forzado por `--stealth`) | 5s+ | Redes sensibles a IDS |
 | **Normal** | `-T4` | Autodetectado (configurable) | 0s | Auditorías estándar (equilibrio velocidad/ruido) |
-| **Agresivo** | `-T5` | Autodetectado (límite 16; configurable) | 0s | Escaneos urgentes en redes confiables |
+| **Agresivo** | `-T5` | Autodetectado (límite 100; configurable) | 0s | Escaneos urgentes en redes confiables |
 
 ### Comportamiento de Escaneo
 

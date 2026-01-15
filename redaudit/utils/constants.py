@@ -137,7 +137,8 @@ DEFAULT_DEEP_SCAN_BUDGET = 0
 # - IDS/IPS triggers from burst traffic patterns
 # - Memory pressure (~50MB per nmap instance)
 # Tested optimal range: 6-12 for most LANs. 16 is a safe ceiling.
-MAX_THREADS = 16
+# v4.6.29: Increased to 100 for modern hardware (Threadripper/M2/M3)
+MAX_THREADS = 100
 MIN_THREADS = 1
 
 

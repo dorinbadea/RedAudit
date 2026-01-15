@@ -55,6 +55,7 @@ from redaudit.utils.constants import (
     DEFAULT_UDP_MODE,
     DEEP_SCAN_TIMEOUT,
     MAX_PORTS_DISPLAY,
+    MAX_THREADS,
     PHASE0_TIMEOUT,
     STATUS_DOWN,
     STATUS_NO_RESPONSE,
@@ -2415,8 +2416,8 @@ class AuditorScan:
 
         self.ui.print_status(self.ui.t("deep_scan_running").format(len(hosts)), "HEADER")
         workers = int(self.config.get("threads", 1))
-        # Cap at 50 to avoid system exhaustion, but respect aggression
-        workers = max(1, min(50, workers))
+        # Cap at MAX_THREADS (100) to avoid system exhaustion, but respect aggression
+        workers = max(1, min(MAX_THREADS, workers))
 
         # Try to use rich for better progress visualization
         use_rich = self.ui.get_progress_console() is not None

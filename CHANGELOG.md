@@ -10,6 +10,17 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.29] - 2026-01-15
+
+### Performance
+
+- **Thread Uncapping**: Increased `MAX_THREADS` from 16 to 100 to utilize modern hardware.
+- **Deep Scan**: Removed 50-thread cap to respect global `MAX_THREADS` limit.
+
+### Fixed
+
+- **Config**: Added missing `nuclei_timeout` to `ConfigurationContext`.
+
 ## [v4.6.28] - 2026-01-15
 
 ### Fixed

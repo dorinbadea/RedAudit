@@ -55,7 +55,7 @@ sudo redaudit -t 10.10.10.5 -m normal --html-report
 sudo redaudit -t 192.168.56.101 \
   --mode full \
   --udp-mode full \
-  --threads 16 \
+  --threads 100 \
   --no-prevent-sleep
 ```
 
@@ -132,7 +132,7 @@ Grouped by operational function. Verified against the current codebase.
 | :--- | :--- |
 | `-t, --target CIDR` | IP, range, or CIDR (comma-separated supported) |
 | `-m, --mode` | `fast` (host discovery), `normal` (top 100), `full` (all ports + scripts/OS detection) |
-| `-j, --threads N` | Parallel hosts 1-16 (Auto-detected) |
+| `-j, --threads N` | Parallel hosts 1-100 (Auto-detected) |
 | `--rate-limit S` | Delay between hosts in seconds (applies jitter) |
 | `--deep-scan-budget N` | Max hosts eligible for aggressive deep scan (0 = unlimited) |
 | `--identity-threshold N` | Minimum identity score to skip deep scan |
@@ -196,6 +196,7 @@ Grouped by operational function. Verified against the current codebase.
 | `--cve-lookup` | Correlate services with NVD CVE data |
 
 Notes:
+
 - Web app scanners (sqlmap/ZAP) are skipped on infrastructure UIs when identity evidence indicates router/switch/AP devices.
 - Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.
 

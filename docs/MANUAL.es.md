@@ -374,7 +374,7 @@ Flags verificadas contra `redaudit --help` (v4.5.2):
 
 | Flag | Descripción |
 | :--- | :--- |
-| `-j, --threads 1-16` | Workers concurrentes por host (autodetectado) |
+| `-j, --threads 1-100` | Workers concurrentes por host (autodetectado) |
 | `--rate-limit SECONDS` | Retardo entre hosts (se aplica jitter ±30%) |
 | `--max-hosts N` | Limitar hosts a escanear |
 | `--no-deep-scan` | Deshabilitar deep scan adaptativo |

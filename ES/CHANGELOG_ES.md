@@ -10,6 +10,17 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.29] - 2026-01-15
+
+### Rendimiento
+
+- **Desbloqueo de Hilos**: Incrementado `MAX_THREADS` de 16 a 100 para aprovechar hardware moderno.
+- **Deep Scan**: Eliminado el límite de 50 hilos para respetar el límite global `MAX_THREADS`.
+
+### Corregido
+
+- **Config**: Añadido `nuclei_timeout` faltante en `ConfigurationContext`.
+
 ## [v4.6.28] - 2026-01-15
 
 ### Corregido
