@@ -763,7 +763,9 @@ class InteractiveNetworkAuditor:
                         try:
                             from rich.progress import Progress
 
-                            batch_size = 25
+                            batch_size = (
+                                10  # v4.6.34: Smaller batches for faster parallel completion
+                            )
                             # v4.6.20: Use configurable timeout from CLI
                             nuclei_timeout_s = self.config.get("nuclei_timeout", 300)
                             nuclei_request_timeout_s = 10

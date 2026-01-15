@@ -1388,9 +1388,14 @@ def _redteam_snmp_walk(
         return {"status": "tool_missing", "tool": "snmpwalk", "hosts": []}
 
     results: List[Dict[str, Any]] = []
-    errors: List[str] = []
 
-    for ip_str in target_ips[:20]:
+    # v4.6.34: Parallel execution
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import threading
+
+    full_lock = threading.Lock()
+
+    def _scan_snmp(ip_str: str) -> Optional[Dict[str, Any]]:
         # Keep it quick and read-only: 1s timeout, 0 retries, system group only.
         cmd = [
             "snmpwalk",
@@ -1408,19 +1413,42 @@ def _redteam_snmp_walk(
         rc, out, err = _run_cmd(cmd, timeout_s=4, logger=logger)
         text = out or ""
         if rc != 0 and not text.strip():
-            if err.strip():
-                errors.append(f"{ip_str}: {err.strip()[:160]}")
-            continue
+            # don't return errors for simple timeouts/unreachables to reduce noise
+            # unless significant error
+            if err.strip() and "timeout" not in err.lower():
+                return {"ip": ip_str, "error": err.strip()[:100]}
+            return None
+
         if "timeout" in (err or "").lower() or "timeout" in text.lower():
-            continue
+            return None
+
         parsed = _parse_snmpwalk(text)
         if parsed:
-            results.append({"ip": ip_str, **parsed})
+            return {"ip": ip_str, **parsed}
         else:
             # Keep a tiny sample for debugging (avoid bloating the report).
             snippet = (text.strip() or err.strip())[:400]
             if snippet:
-                results.append({"ip": ip_str, "raw": snippet})
+                return {"ip": ip_str, "raw": snippet}
+        return None
+
+    targets = target_ips[:20]
+    errors: List[str] = []
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(_scan_snmp, ip): ip for ip in targets}
+        for future in as_completed(futures):
+            try:
+                res = future.result()
+                if res:
+                    if "error" in res:
+                        with full_lock:
+                            errors.append(f"{res['ip']}: {res['error']}")
+                    else:
+                        with full_lock:
+                            results.append(res)
+            except Exception:
+                pass
 
     status = "ok" if results else "no_data"
     payload: Dict[str, Any] = {
@@ -1487,15 +1515,21 @@ def _redteam_smb_enum(
     tool = "enum4linux" if has_enum4linux else "nmap"
     results: List[Dict[str, Any]] = []
 
-    for ip_str in target_ips[:15]:
+    # v4.6.34: Parallel execution to avoid 5+ minute serial blocking
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import threading
+
+    full_lock = threading.Lock()
+
+    def _scan_smb(ip_str: str) -> Optional[Dict[str, Any]]:
         if tool == "enum4linux":
             cmd = ["enum4linux", "-a", ip_str]
             rc, out, err = _run_cmd(cmd, timeout_s=25, logger=logger)
             text = (out or "") + "\n" + (err or "")
             snippet = text.strip()[:1200]
             if not snippet:
-                continue
-            results.append({"ip": ip_str, "tool": "enum4linux", "raw": snippet})
+                return None
+            return {"ip": ip_str, "tool": "enum4linux", "raw": snippet}
         else:
             cmd = [
                 "nmap",
@@ -1509,11 +1543,24 @@ def _redteam_smb_enum(
             text = (out or "") + "\n" + (err or "")
             parsed = _parse_smb_nmap(text)
             if parsed:
-                results.append({"ip": ip_str, "tool": "nmap", **parsed})
+                return {"ip": ip_str, "tool": "nmap", **parsed}
             else:
                 snippet = text.strip()[:800]
                 if snippet:
-                    results.append({"ip": ip_str, "tool": "nmap", "raw": snippet})
+                    return {"ip": ip_str, "tool": "nmap", "raw": snippet}
+        return None
+
+    targets = target_ips[:15]
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(_scan_smb, ip): ip for ip in targets}
+        for future in as_completed(futures):
+            try:
+                res = future.result()
+                if res:
+                    with full_lock:
+                        results.append(res)
+            except Exception:
+                pass
 
     return {"status": "ok" if results else "no_data", "tool": tool, "hosts": results}
 
@@ -1663,14 +1710,20 @@ def _redteam_rpc_enum(
     tool = "rpcclient" if has_rpcclient else "nmap"
     results: List[Dict[str, Any]] = []
 
-    for ip_str in target_ips[:15]:
+    # v4.6.34: Parallel execution to avoid timeouts on large networks
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import threading
+
+    full_lock = threading.Lock()
+
+    def _scan_host(ip_str: str) -> Optional[Dict[str, Any]]:
         if tool == "rpcclient":
             cmd = ["rpcclient", "-U", "", "-N", ip_str, "-c", "srvinfo"]
             rc, out, err = _run_cmd(cmd, timeout_s=12, logger=logger)
             text = (out or "") + "\n" + (err or "")
             snippet = text.strip()
             if not snippet:
-                continue
+                return None
 
             parsed: Dict[str, Any] = {}
             patterns = {
@@ -1685,18 +1738,30 @@ def _redteam_rpc_enum(
                     parsed[key] = m.group(1).strip()[:200]
 
             if parsed:
-                results.append({"ip": ip_str, "tool": "rpcclient", **parsed})
+                return {"ip": ip_str, "tool": "rpcclient", **parsed}
             else:
-                results.append(
-                    {"ip": ip_str, "tool": "rpcclient", "raw": _safe_truncate(snippet, 1200)}
-                )
+                return {"ip": ip_str, "tool": "rpcclient", "raw": _safe_truncate(snippet, 1200)}
         else:
             cmd = ["nmap", "-p", "135", "--script", "msrpc-enum", ip_str]
             rc, out, err = _run_cmd(cmd, timeout_s=20, logger=logger)
             text = (out or "") + "\n" + (err or "")
             snippet = text.strip()
             if snippet:
-                results.append({"ip": ip_str, "tool": "nmap", "raw": _safe_truncate(snippet, 1200)})
+                return {"ip": ip_str, "tool": "nmap", "raw": _safe_truncate(snippet, 1200)}
+        return None
+
+    # Limit targets to 20 to avoid excessive noise, parallelize 8 threads
+    targets = target_ips[:20]
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(_scan_host, ip): ip for ip in targets}
+        for future in as_completed(futures):
+            try:
+                res = future.result()
+                if res:
+                    with full_lock:
+                        results.append(res)
+            except Exception:
+                pass
 
     return {"status": "ok" if results else "no_data", "tool": tool, "hosts": results}
 
@@ -1757,7 +1822,13 @@ def _redteam_ldap_enum(
     tool = "ldapsearch" if has_ldapsearch else "nmap"
     results: List[Dict[str, Any]] = []
 
-    for ip_str in target_ips[:10]:
+    # v4.6.34: Parallel execution to avoid serial blocking
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import threading
+
+    full_lock = threading.Lock()
+
+    def _scan_ldap(ip_str: str) -> Optional[Dict[str, Any]]:
         if tool == "ldapsearch":
             attrs = [
                 "defaultNamingContext",
@@ -1784,26 +1855,39 @@ def _redteam_ldap_enum(
             text = (out or "") + "\n" + (err or "")
             parsed = _parse_ldap_rootdse(text)
             if parsed:
-                results.append({"ip": ip_str, "tool": "ldapsearch", **parsed})
+                return {"ip": ip_str, "tool": "ldapsearch", **parsed}
             else:
                 snippet = text.strip()
                 if snippet:
-                    results.append(
-                        {"ip": ip_str, "tool": "ldapsearch", "raw": _safe_truncate(snippet, 1200)}
-                    )
+                    return {
+                        "ip": ip_str,
+                        "tool": "ldapsearch",
+                        "raw": _safe_truncate(snippet, 1200),
+                    }
         else:
             cmd = ["nmap", "-p", "389,636", "--script", "ldap-rootdse", ip_str]
             rc, out, err = _run_cmd(cmd, timeout_s=18, logger=logger)
             text = (out or "") + "\n" + (err or "")
             parsed = _parse_ldap_rootdse(text)
             if parsed:
-                results.append({"ip": ip_str, "tool": "nmap", **parsed})
+                return {"ip": ip_str, "tool": "nmap", **parsed}
             else:
                 snippet = text.strip()
                 if snippet:
-                    results.append(
-                        {"ip": ip_str, "tool": "nmap", "raw": _safe_truncate(snippet, 1200)}
-                    )
+                    return {"ip": ip_str, "tool": "nmap", "raw": _safe_truncate(snippet, 1200)}
+        return None
+
+    targets = target_ips[:15]
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(_scan_ldap, ip): ip for ip in targets}
+        for future in as_completed(futures):
+            try:
+                res = future.result()
+                if res:
+                    with full_lock:
+                        results.append(res)
+            except Exception:
+                pass
 
     return {"status": "ok" if results else "no_data", "tool": tool, "hosts": results}
 

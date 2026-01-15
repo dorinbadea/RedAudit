@@ -10,6 +10,16 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.34] - 2026-01-15
+
+### Fixed
+
+- **Nuclei**: Fixed Ctrl+C hang during long scans by adding KeyboardInterrupt handler with graceful process termination.
+- **Nuclei**: Reduced batch size from 25 to 10 targets for faster parallel completion and fewer timeouts.
+- **HyperScan**: Fixed persistent 0.5s timeout override; now explicitly uses 1.5s for better port detection accuracy.
+- **HyperScan SYN Contention Fix**: Added `threading.Lock()` to serialize scapy SYN scans, fixing critical regression where parallel workers caused raw socket conflicts (0 ports detected on Docker networks).
+- **Net Discovery**: Parallelized `_redteam_rpc_enum`, `_redteam_snmp_walk`, `_redteam_ldap_enum`, and `_redteam_smb_enum` (enum4linux) to eliminate serial blocking (10+ minute delays on large networks).
+
 ## [v4.6.33] - 2026-01-15
 
 ### Fixed

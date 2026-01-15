@@ -2359,6 +2359,11 @@ class AuditorScan:
         )
 
         # v4.6.31: Parallel HyperScan-First
+        # v4.6.34: Add lock to serialize SYN scans (scapy raw socket contention fix)
+        import threading
+
+        _syn_scan_lock = threading.Lock()
+
         start_time = time.time()
         # Calculate safe concurrency based on estimated FD usage
         # We aim for ~1000 concurrent sockets max to stay safe on macOS/default limits
@@ -2403,12 +2408,34 @@ class AuditorScan:
                 return
 
             # Run HyperScan
+            # v4.6.34: Serialize SYN scans to avoid scapy raw socket contention
+            # When 8+ workers run scapy simultaneously, responses get mixed/lost
             try:
-                w_ports = hyperscan_full_port_sweep(
-                    w_ip,
-                    batch_size=hs_batch_size,
-                    logger=self.logger,
-                )
+                # Check if SYN mode will be used (root + scapy available)
+                try:
+                    from redaudit.core.syn_scanner import is_syn_scan_available
+
+                    syn_available, _ = is_syn_scan_available()
+                except ImportError:
+                    syn_available = False
+
+                if syn_available:
+                    # SYN mode: serialize to avoid raw socket conflicts
+                    with _syn_scan_lock:
+                        w_ports = hyperscan_full_port_sweep(
+                            w_ip,
+                            batch_size=hs_batch_size,
+                            timeout=1.5,
+                            logger=self.logger,
+                        )
+                else:
+                    # TCP connect mode: safe to run in parallel
+                    w_ports = hyperscan_full_port_sweep(
+                        w_ip,
+                        batch_size=hs_batch_size,
+                        timeout=1.5,
+                        logger=self.logger,
+                    )
                 self._hyperscan_discovery_ports[w_ip] = w_ports
                 if w_ports:
                     self.ui.print_status(

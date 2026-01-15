@@ -333,31 +333,43 @@ def run_nuclei_scan(
 
                     worker = threading.Thread(target=_execute_with_flag, daemon=True)
                     worker.start()
-                    heartbeat_s = 10.0
-                    while not done.wait(timeout=heartbeat_s):
-                        elapsed = time.time() - batch_start
-                        timeout_s = max(1.0, float(batch_timeout_s))
-                        frac = min(elapsed / timeout_s, 0.95)
-                        current_local = completed_targets + (frac * len(batch_targets))
-                        current_local = max(0.0, current_local)
+                    heartbeat_s = 2.0
+                    try:
+                        while not done.wait(timeout=heartbeat_s):
+                            elapsed = time.time() - batch_start
+                            timeout_s = max(1.0, float(batch_timeout_s))
+                            frac = min(elapsed / timeout_s, 0.95)
+                            current_local = completed_targets + (frac * len(batch_targets))
+                            current_local = max(0.0, current_local)
 
-                        # Update shared progress view
-                        with scan_lock:
-                            active_batch_progress[batch_idx] = frac * len(batch_targets)
-                            # Aggregate total progress from all workers
-                            aggregated_current = completed_targets + sum(
-                                active_batch_progress.values()
+                            # Update shared progress view
+                            with scan_lock:
+                                active_batch_progress[batch_idx] = frac * len(batch_targets)
+                                # Aggregate total progress from all workers
+                                aggregated_current = completed_targets + sum(
+                                    active_batch_progress.values()
+                                )
+                                max_progress_targets = max(max_progress_targets, aggregated_current)
+                                final_display_val = max_progress_targets
+
+                            eta_batch = _format_eta(max(0.0, timeout_s - elapsed))
+                            detail = (
+                                f"batch {batch_idx}/{total_batches} running "
+                                f"{_format_eta(elapsed)} elapsed"
                             )
-                            max_progress_targets = max(max_progress_targets, aggregated_current)
-                            final_display_val = max_progress_targets
+                            eta_label = f"ETA≈ {eta_batch}" if eta_batch != "--:--" else ""
+                            _emit_progress(final_display_val, total_targets, eta_label, detail)
+                    except KeyboardInterrupt:
+                        # v4.6.34: Handle Ctrl+C gracefully
+                        if logger:
+                            logger.warning("Nuclei batch (thread) interrupted via Ctrl+C")
+                        # Try to kill the runner if possible
+                        try:
+                            runner.run(["pkill", "-f", "nuclei"], check=False, timeout=2.0)
+                        except Exception:
+                            pass
+                        raise
 
-                        eta_batch = _format_eta(max(0.0, timeout_s - elapsed))
-                        detail = (
-                            f"batch {batch_idx}/{total_batches} running "
-                            f"{_format_eta(elapsed)} elapsed"
-                        )
-                        eta_label = f"ETA≈ {eta_batch}" if eta_batch != "--:--" else ""
-                        _emit_progress(final_display_val, total_targets, eta_label, detail)
                     if err_holder.get("exc"):
                         raise err_holder["exc"]
                     res = res_holder.get("res")
