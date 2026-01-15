@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.26] - 2026-01-15
+
+### Fixed
+
+- **Progress Bar Jitter**: Fixed a UI bug where parallel Nuclei batches would overwrite each other's progress, causing the progress bar to jump erratically. Implemented centralized progress aggregation for smooth tracking.
+
 ## [v4.6.25] - 2026-01-15
 
 ### Fixed

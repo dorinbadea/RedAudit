@@ -193,6 +193,7 @@ def run_nuclei_scan(
         max_progress_targets = 0.0
         # v4.6.25: Lock for shared resources (file I/O, stats) in parallel mode
         scan_lock = threading.Lock()
+        active_batch_progress: Dict[int, float] = {}  # Track partial progress per batch
         max_split_depth = 6
 
         def _build_cmd(
@@ -337,19 +338,26 @@ def run_nuclei_scan(
                         elapsed = time.time() - batch_start
                         timeout_s = max(1.0, float(batch_timeout_s))
                         frac = min(elapsed / timeout_s, 0.95)
-                        current = completed_targets + (frac * len(batch_targets))
-                        current = min(float(total_targets), max(0.0, current))
-                        if current < max_progress_targets:
-                            current = max_progress_targets
-                        else:
-                            max_progress_targets = current
+                        current_local = completed_targets + (frac * len(batch_targets))
+                        current_local = max(0.0, current_local)
+
+                        # Update shared progress view
+                        with scan_lock:
+                            active_batch_progress[batch_idx] = frac * len(batch_targets)
+                            # Aggregate total progress from all workers
+                            aggregated_current = completed_targets + sum(
+                                active_batch_progress.values()
+                            )
+                            max_progress_targets = max(max_progress_targets, aggregated_current)
+                            final_display_val = max_progress_targets
+
                         eta_batch = _format_eta(max(0.0, timeout_s - elapsed))
                         detail = (
                             f"batch {batch_idx}/{total_batches} running "
                             f"{_format_eta(elapsed)} elapsed"
                         )
                         eta_label = f"ETA≈ {eta_batch}" if eta_batch != "--:--" else ""
-                        _emit_progress(current, total_targets, eta_label, detail)
+                        _emit_progress(final_display_val, total_targets, eta_label, detail)
                     if err_holder.get("exc"):
                         raise err_holder["exc"]
                     res = res_holder.get("res")
@@ -412,6 +420,8 @@ def run_nuclei_scan(
             with scan_lock:
                 batch_durations.append(time.time() - batch_start)
                 completed_targets += len(batch_targets)
+                # Remove from active progress as it is now fully in completed_targets
+                active_batch_progress.pop(batch_idx, None)
                 if completed_targets > max_progress_targets:
                     max_progress_targets = completed_targets
 

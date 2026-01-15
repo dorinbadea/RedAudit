@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.26] - 2026-01-15
+
+### Corregido
+
+- **Jitter en Barra de Progreso**: Corregido un bug UI donde lotes paralelos de Nuclei sobrescribian el progreso de otros, causando saltos erraticos. Implementada agregacion centralizada de progreso.
+
 ## [v4.6.25] - 2026-01-15
 
 ### Corregido
