@@ -14,7 +14,7 @@ Release notes live under `docs/releases/` for additional context.
 
 ### Fixed
 
-- **Nuclei Timeout**: Increased command_runner timeout for Nuclei from 60s to 600s. Nuclei batch scans were being killed prematurely, causing 100% batch timeout rate.
+- **Nuclei Timeout (Critical)**: Fixed batch timeout minimum in nuclei.py from 60s to 300s, and base timeout from 300s to 600s. The 60s minimum was causing 100% batch timeout rate. Also added nuclei-specific timeout (600s) in command_runner.py as fallback.
 - **NVD API 404**: Skip retries immediately on 404 responses (CPE not found is not retryable). Reduces unnecessary API calls and log spam.
 
 ## [v4.7.1] - 2026-01-15
