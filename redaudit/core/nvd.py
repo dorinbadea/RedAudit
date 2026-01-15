@@ -273,6 +273,11 @@ def query_nvd(
                     return cves
 
         except HTTPError as e:
+            # v4.7.2: 404 = CPE not found, don't retry (wastes time)
+            if e.code == 404:
+                if logger:
+                    logger.debug("NVD API 404: CPE not found, skipping retries")
+                break
             retryable = e.code in (429, 500, 502, 503, 504)
             if logger:
                 logger.warning(

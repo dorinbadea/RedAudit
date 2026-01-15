@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.7.2] - 2026-01-15
+
+### Fixed
+
+- **Nuclei Timeout**: Increased command_runner timeout for Nuclei from 60s to 600s. Nuclei batch scans were being killed prematurely, causing 100% batch timeout rate.
+- **NVD API 404**: Skip retries immediately on 404 responses (CPE not found is not retryable). Reduces unnecessary API calls and log spam.
+
 ## [v4.7.1] - 2026-01-15
 
 ### Fixed
