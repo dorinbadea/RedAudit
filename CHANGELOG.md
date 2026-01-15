@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.30] - 2026-01-15
+
+### Safety
+
+- **Zombie Reaper**: Implemented native `pkill` cleanup to prevent orphaned Nmap/Nuclei processes on interruption.
+- **Resource Audit**: Verified FD safety and thread exception handling.
+
 ## [v4.6.29] - 2026-01-15
 
 ### Performance

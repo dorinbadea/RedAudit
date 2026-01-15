@@ -10,6 +10,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.30] - 2026-01-15
+
+### Seguridad
+
+- **Zombie Reaper**: Implementada limpieza nativa con `pkill` para evitar procesos huérfanos de Nmap/Nuclei.
+- **Auditoría**: Verificada seguridad de descriptores de archivo y manejo de excepciones en hilos.
+
 ## [v4.6.29] - 2026-01-15
 
 ### Rendimiento

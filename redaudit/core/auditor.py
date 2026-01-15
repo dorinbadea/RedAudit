@@ -1280,7 +1280,8 @@ class InteractiveNetworkAuditor:
                 self._active_subprocesses.remove(proc)
 
     def kill_all_subprocesses(self) -> None:
-        """Terminate all tracked subprocesses (nmap, tcpdump, etc.)."""
+        """Terminate all tracked subprocesses and ALL child processes (zombies)."""
+        # 1. Kill tracked (registered) subprocesses
         with self._subprocess_lock:
             for proc in self._active_subprocesses:
                 try:
@@ -1295,6 +1296,23 @@ class InteractiveNetworkAuditor:
                     if self.logger:
                         self.logger.debug("Error killing subprocess: %s", exc, exc_info=True)
             self._active_subprocesses.clear()
+
+        # 2. Zombie Reaper: Kill ANY remaining child processes of this PID
+        # This handles CommandRunner/NetworkScanner processes that weren't explicitly registered.
+        # Works on Linux and macOS.
+        try:
+            current_pid = os.getpid()
+            # pkill -P <PID> kills all children of PID
+            if shutil.which("pkill"):
+                subprocess.run(
+                    ["pkill", "-P", str(current_pid)],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+        except Exception as exc:
+            if self.logger:
+                self.logger.debug("Zombie Reaper failed: %s", exc)
 
     def signal_handler(self, sig, frame):
         """Handle SIGINT (Ctrl+C) with proper cleanup."""
