@@ -406,7 +406,10 @@ def hyperscan_full_port_sweep(
                 timeout_s=30,
                 logger=logger,
             )
-            if open_ports or True:  # Accept even empty result from masscan
+            # v4.7.1: Only return early if masscan found ports
+            # If masscan returns empty (e.g., Docker bridge network issues),
+            # fall back to scapy for accurate detection
+            if open_ports:
                 duration = time.time() - start_time
                 if logger:
                     logger.info(
@@ -416,6 +419,12 @@ def hyperscan_full_port_sweep(
                         duration,
                     )
                 return open_ports
+            else:
+                if logger:
+                    logger.debug(
+                        "masscan found 0 ports on %s, falling back to scapy",
+                        target_ip,
+                    )
     except ImportError:
         if logger:
             logger.debug("masscan_scanner module not available, using fallback")
