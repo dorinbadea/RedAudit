@@ -438,7 +438,7 @@ def run_nuclei_scan(
                         _emit_progress(
                             min(float(total_targets), max_progress_targets),
                             total_targets,
-                            f"ETA~ {eta}",
+                            f"ETA≈ {eta}",
                             f"batch {completed_idx}/{total_batches}",
                         )
                     except Exception as e:
