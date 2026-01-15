@@ -182,10 +182,10 @@ def run_nuclei_scan(
         if retries_val > 3:
             retries_val = 3
 
-        # Run in batches to provide real progress/ETA on long scans.
-        size = int(batch_size) if isinstance(batch_size, int) else 25
+        # v4.6.24: Smaller batches = fewer timeouts, faster completion
+        size = int(batch_size) if isinstance(batch_size, int) else 10
         if size < 1:
-            size = 25
+            size = 10
         batches = [targets[i : i + size] for i in range(0, len(targets), size)]
         total_batches = len(batches)
         total_targets = len(targets)
@@ -361,22 +361,8 @@ def run_nuclei_scan(
                     raise RuntimeError("Nuclei batch did not return a result")
                 timed_out = bool(getattr(res, "timed_out", False))
                 if timed_out:
-                    # v4.6.23: Simple retry with extended timeout before splitting
-                    if allow_retry and retry_attempt == 0:
-                        if print_status:
-                            print_status(
-                                f"[nuclei] batch {batch_idx} timed out, retrying with extended timeout...",
-                                "WARN",
-                            )
-                        _run_one_batch(
-                            batch_idx,
-                            batch_targets,
-                            allow_retry=True,
-                            rate_limit_override=rate_limit_override,
-                            split_depth=split_depth,
-                            retry_attempt=1,
-                        )
-                        return
+                    # v4.6.24: Split immediately on timeout (no extended retry)
+                    # This avoids the infinite retry loop bug
                     # If retry also timed out, try splitting
                     if allow_retry and len(batch_targets) > 1 and split_depth < max_split_depth:
                         mid = max(1, len(batch_targets) // 2)
@@ -422,18 +408,42 @@ def run_nuclei_scan(
                 max_progress_targets = completed_targets
 
         if progress_callback is not None:
-            # External progress management (preferred when another rich Live/Progress is active).
-            for idx, batch in enumerate(batches, start=1):
+            # v4.6.24: Parallel batch execution with ThreadPoolExecutor
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            max_parallel = min(4, max(1, len(batches)))  # Up to 4 parallel batches
+            batch_lock = threading.Lock()
+
+            def _run_batch_wrapper(idx_batch):
+                idx, batch = idx_batch
                 _run_one_batch(idx, batch)
-                avg = (sum(batch_durations) / len(batch_durations)) if batch_durations else 0.0
-                remaining = max(0, total_batches - idx)
-                eta = _format_eta(avg * remaining) if avg > 0 else "--:--"
-                _emit_progress(
-                    min(float(total_targets), max_progress_targets),
-                    total_targets,
-                    f"ETA≈ {eta}",
-                    f"batch {idx}/{total_batches}",
-                )
+                return idx
+
+            with ThreadPoolExecutor(max_workers=max_parallel) as executor:
+                futures = {
+                    executor.submit(_run_batch_wrapper, (idx, batch)): idx
+                    for idx, batch in enumerate(batches, start=1)
+                }
+                for future in as_completed(futures):
+                    try:
+                        completed_idx = future.result()
+                        with batch_lock:
+                            avg = (
+                                (sum(batch_durations) / len(batch_durations))
+                                if batch_durations
+                                else 0.0
+                            )
+                        remaining = max(0, total_batches - completed_idx)
+                        eta = _format_eta(avg * remaining) if avg > 0 else "--:--"
+                        _emit_progress(
+                            min(float(total_targets), max_progress_targets),
+                            total_targets,
+                            f"ETA~ {eta}",
+                            f"batch {completed_idx}/{total_batches}",
+                        )
+                    except Exception as e:
+                        if logger:
+                            logger.warning("Nuclei batch failed: %s", e)
         elif use_internal_progress:
             # Rich progress UI (best-effort)
             try:

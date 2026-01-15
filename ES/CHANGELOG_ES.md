@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.24] - 2026-01-15
+
+### Cambiado
+
+- **Optimizacion Rendimiento Nuclei**: Batch reducido 25->10, corregido bug de reintento infinito, anadida ejecucion paralela hasta 4 batches via ThreadPoolExecutor. Escaneos Nuclei ~4x mas rapidos en redes grandes.
+
 ## [v4.6.23] - 2026-01-14
 
 ### Anadido

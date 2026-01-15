@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.24] - 2026-01-15
+
+### Changed
+
+- **Nuclei Performance Overhaul**: Reduced default batch size 25->10, removed infinite retry loop bug, added up to 4 parallel batch execution via ThreadPoolExecutor. Expect ~4x faster Nuclei scans on large networks.
+
 ## [v4.6.23] - 2026-01-14
 
 ### Added
