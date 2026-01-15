@@ -10,6 +10,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Unreleased]
 
+## [v4.6.25] - 2026-01-15
+
+### Corregido
+
+- **Fix Concurrencia Paralela**: Anadido bloqueo de hilos para E/S de archivos y estadisticas en escaneos Nuclei para prevenir condiciones de carrera.
+- **Paralelismo CLI**: Habilitada ejecucion paralela de lotes para usuarios CLI estandar (barra de progreso Rich).
+
 ## [v4.6.24] - 2026-01-15
 
 ### Cambiado

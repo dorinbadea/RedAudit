@@ -191,6 +191,8 @@ def run_nuclei_scan(
         total_targets = len(targets)
         completed_targets = 0.0
         max_progress_targets = 0.0
+        # v4.6.25: Lock for shared resources (file I/O, stats) in parallel mode
+        scan_lock = threading.Lock()
         max_split_depth = 6
 
         def _build_cmd(
@@ -384,28 +386,34 @@ def run_nuclei_scan(
                             retry_attempt=0,
                         )
                         return
-                    timed_out_batches.add(batch_idx)
-                    failed_batches.add(batch_idx)
+                    with scan_lock:
+                        timed_out_batches.add(batch_idx)
+                        failed_batches.add(batch_idx)
 
                 # Append JSONL output to the consolidated file, if present.
                 # Copy partial output unless we timed out AND will actually retry.
                 can_retry = allow_retry and len(batch_targets) > 1 and split_depth < max_split_depth
                 if os.path.exists(batch_output_file) and not (timed_out and can_retry):
-                    with (
-                        open(batch_output_file, "r", encoding="utf-8", errors="ignore") as fin,
-                        open(output_file, "a", encoding="utf-8") as fout,
-                    ):
-                        for line in fin:
-                            if line.strip():
-                                fout.write(line if line.endswith("\n") else line + "\n")
+                    with scan_lock:
+                        if os.path.exists(batch_output_file):
+                            with (
+                                open(
+                                    batch_output_file, "r", encoding="utf-8", errors="ignore"
+                                ) as fin,
+                                open(output_file, "a", encoding="utf-8") as fout,
+                            ):
+                                for line in fin:
+                                    if line.strip():
+                                        fout.write(line if line.endswith("\n") else line + "\n")
 
                 if res.stderr and "error" in str(res.stderr).lower() and not result["error"]:
                     result["error"] = str(res.stderr)[:500]
 
-            batch_durations.append(time.time() - batch_start)
-            completed_targets += len(batch_targets)
-            if completed_targets > max_progress_targets:
-                max_progress_targets = completed_targets
+            with scan_lock:
+                batch_durations.append(time.time() - batch_start)
+                completed_targets += len(batch_targets)
+                if completed_targets > max_progress_targets:
+                    max_progress_targets = completed_targets
 
         if progress_callback is not None:
             # v4.6.24: Parallel batch execution with ThreadPoolExecutor
@@ -473,21 +481,39 @@ def run_nuclei_scan(
                         total=total_batches,
                         eta="ETA≈ --:--",
                     )
-                    for idx, batch in enumerate(batches, start=1):
+
+                    # v4.6.25: Parallel execution for CLI (Rich) too
+                    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+                    max_parallel = min(4, max(1, len(batches)))
+                    batch_lock = threading.Lock()
+
+                    def _run_batch_wrapper(idx_batch):
+                        idx, batch = idx_batch
                         _run_one_batch(idx, batch)
-                        avg = (
-                            (sum(batch_durations) / len(batch_durations))
-                            if batch_durations
-                            else 0.0
-                        )
-                        remaining = max(0, total_batches - idx)
-                        eta = _format_eta(avg * remaining) if avg > 0 else "--:--"
-                        progress.update(
-                            task,
-                            advance=1,
-                            description=f"[cyan]Nuclei ({idx}/{total_batches})",
-                            eta=f"ETA≈ {eta}",
-                        )
+                        return idx
+
+                    with ThreadPoolExecutor(max_workers=max_parallel) as executor:
+                        futures = {
+                            executor.submit(_run_batch_wrapper, (idx, batch)): idx
+                            for idx, batch in enumerate(batches, start=1)
+                        }
+                        for future in as_completed(futures):
+                            completed_idx = future.result()
+                            with batch_lock:
+                                avg = (
+                                    (sum(batch_durations) / len(batch_durations))
+                                    if batch_durations
+                                    else 0.0
+                                )
+                            remaining = max(0, total_batches - completed_idx)
+                            eta = _format_eta(avg * remaining) if avg > 0 else "--:--"
+                            progress.update(
+                                task,
+                                advance=1,
+                                description=f"[cyan]Nuclei ({completed_idx}/{total_batches})",
+                                eta=f"ETA≈ {eta}",
+                            )
             except Exception:
                 # Fallback: batch-by-batch status
                 for idx, batch in enumerate(batches, start=1):

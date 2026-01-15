@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [v4.6.25] - 2026-01-15
+
+### Fixed
+
+- **Parallel Concurrency Fix**: Added thread locking for shared file I/O and statistics in Nuclei scans to prevent race conditions during parallel execution.
+- **CLI Parallelism**: Enabled parallel batch execution for standard CLI users (Rich progress bar), previously limited to API consumers.
+
 ## [v4.6.24] - 2026-01-15
 
 ### Changed
