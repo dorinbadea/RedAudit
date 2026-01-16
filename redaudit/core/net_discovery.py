@@ -1067,14 +1067,40 @@ def discover_networks(
                         result["arp_hosts"].append(host)
                         existing_ips.add(host.get("ip"))
 
+                # Process UDP devices (IoT)
+                udp_ports_map: Dict[str, List[int]] = {}
                 for device in hyperscan_result.get("udp_devices", []):
+                    ip = device.get("ip")
+                    port = device.get("port")
+                    # Add to upnp_devices for Context
                     result["upnp_devices"].append(
                         {
-                            "ip": device.get("ip"),
+                            "ip": ip,
                             "device": f"IoT ({device.get('protocol', 'unknown')})",
                             "source": "hyperscan_udp",
                         }
                     )
+                    # Track UDP ports
+                    if ip and port:
+
+                        if ip not in udp_ports_map:
+                            udp_ports_map[ip] = []
+                        if port not in udp_ports_map[ip]:
+                            udp_ports_map[ip].append(port)
+
+                    # Ensure host exists in main list
+                    if ip and ip not in existing_ips:
+                        result["arp_hosts"].append(
+                            {
+                                "ip": ip,
+                                "mac": "",  # Unknown yet
+                                "vendor": f"IoT ({device.get('protocol', 'unknown')})",
+                            }
+                        )
+                        existing_ips.add(ip)
+
+                if udp_ports_map:
+                    result["hyperscan_udp_ports"] = udp_ports_map
 
                 if hyperscan_result.get("tcp_hosts"):
                     result["hyperscan_tcp_hosts"] = hyperscan_result["tcp_hosts"]

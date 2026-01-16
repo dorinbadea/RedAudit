@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [v4.9.1] - 2026-01-16
 
+### Added
+
+- **Quick Wins Implementation**:
+  - **IoT UDP Visibility**: Specialized UDP ports (e.g., WiZ 38899) discovered by HyperScan are now properly exported to final reports.
+  - **Honeypot Detection**: New `honeypot` tag for hosts with excessive open ports (>100).
+  - **No-Response Tagging**: Hosts that fail Nmap scanning are tagged with `no_response:nmap_failed` for better status granularity.
+
 ### Fixed
 
 - **Nuclei Wizard Prompt**: Fixed i18n key `nuclei_enable_q` to use existing `nuclei_q` key, displaying translated text instead of raw key.

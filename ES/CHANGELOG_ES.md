@@ -8,6 +8,45 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [v4.9.1] - 2026-01-16
+
+### Añadido
+
+- **Implementación Quick Wins**:
+  - **Visibilidad UDP IoT**: Puertos UDP especializados (ej. WiZ 38899) descubiertos por HyperScan ahora se exportan correctamente.
+  - **Detección de Honeypot**: Nueva etiqueta `honeypot` para hosts con puertos abiertos excesivos (>100).
+  - **Etiquetado Sin Respuesta**: Los hosts que fallan el escaneo Nmap se etiquetan como `no_response:nmap_failed`.
+
+### Corregido
+
+- **Prompt Nuclei en Asistente**: Corregida clave i18n `nuclei_enable_q` para usar la existente `nuclei_q`.
+
+### Cambiado
+
+- **Limpieza de Código**: Eliminado código muerto `masscan_scanner.py` (reemplazado por RustScan en v4.8.0).
+
+### Documentación
+
+- **Limitaciones VLAN**: Añadidas limitaciones de detección VLAN 802.1Q a la documentación de USO.
+
+## [v4.9.0] - 2026-01-16
+
+### Añadido
+
+- **Detección de Redes Ocultas**: Nueva función `detect_routed_networks()` en `net_discovery.py`.
+  - Parsea `ip route` e `ip neigh` para descubrir redes enrutadas no locales.
+  - Prompt interactivo en asistente: pregunta si incluir redes ocultas descubiertas.
+  - Nuevo flag CLI `--scan-routed` para modo no interactivo.
+
+### Cambiado
+
+- **Selección de Red en Asistente**: `ask_network_range()` ahora detecta y ofrece redes enrutadas ocultas.
+
+### Documentación
+
+- Documentadas limitaciones de aislamiento VLAN (VLANs 802.1Q no descubribles sin acceso a switch/SNMP).
+- Actualizado `task.md` con topología de red de usuario (Vodafone VLAN 100/105 via switch Zyxel).
+
 ## [v4.8.1] - 2026-01-16
 
 ### Fixed

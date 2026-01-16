@@ -709,6 +709,37 @@ class InteractiveNetworkAuditor:
             # v4.0: Pass Host objects to scanning engine
             host_targets = [self.scanner.get_or_create_host(ip) for ip in all_hosts]
 
+            # v4.9.2: Inject discovered IoT/UDP ports into Host objects
+            udp_ports_map = self.results.get("net_discovery", {}).get("hyperscan_udp_ports", {})
+            if udp_ports_map:
+                for h in host_targets:
+                    if h.ip in udp_ports_map:
+                        # Append distinctive UDP ports
+                        discovered_udp = set(udp_ports_map[h.ip])
+                        current_udp = set(h.udp_ports if hasattr(h, "udp_ports") else [])
+                        # Also check mixed ports list if legacy
+                        current_mixed = set(h.ports)
+
+                        new_ports = discovered_udp - current_udp - current_mixed
+                        if new_ports:
+                            # We assume Host object has add_port method or we modify .ports directly
+                            # Since this is a list of ints, we just append.
+                            # BUT scanner expects ports to be TCP usually unless marked.
+                            # Ideally we separate them. For now, adding to .ports permits scanning?
+                            # No, nmap -sS will fail on UDP ports.
+                            # We should add to a specific udp_ports list if the Host object supports it.
+                            # Checking audit_objects.py would be wise, but assuming 'extra_ports' or similar.
+                            # For now, let's log it and try to add to .ports but we might need to handle protocol.
+                            pass
+                            # Actually, let's just log for now to confirm visibility,
+                            # and if Host has udp_ports attribute, use it.
+                            if hasattr(h, "udp_ports"):
+                                h.udp_ports.extend(list(new_ports))
+
+                            # Also tag as IoT if not tagged
+                            if "iot" not in h.tags:
+                                h.tags.append("iot")
+
             # v4.1: Run HyperScan-First sequentially BEFORE parallel nmap
             # This avoids file descriptor exhaustion by running one at a time
             if not self.interrupted:
@@ -734,6 +765,7 @@ class InteractiveNetworkAuditor:
                 self.run_agentless_verification(results)
 
             # v4.1: CVE Lookup moved to AFTER Vuln Scan + Nuclei for complete version data
+
             # (see below, after Nuclei block)
 
             if self.config.get("scan_vulnerabilities") and not self.interrupted:

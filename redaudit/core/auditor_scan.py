@@ -1485,6 +1485,7 @@ class AuditorScan:
                 # v4.0: Populate Host model on scan failure (topology only)
                 host_obj = self.scanner.get_or_create_host(safe_ip)
                 host_obj.status = STATUS_NO_RESPONSE
+                host_obj.tags.append("no_response:nmap_failed")
                 host_obj.raw_nmap_data = {"error": scan_error}
                 if deep_meta:
                     host_obj.deep_scan = deep_meta
@@ -1679,6 +1680,15 @@ class AuditorScan:
                             "cpe": [],
                             "is_web_service": mp in (80, 443, 8080, 8443, 3000, 8000),
                         }
+                    )
+
+            # v4.9.x: Quick Win #5 - Honeypot Detection
+            if len(ports) > 100:
+                if "honeypot" not in host_obj.tags:
+                    host_obj.tags.append("honeypot")
+                if self.logger:
+                    self.logger.warning(
+                        "Potential honeypot detected: %s has %d open ports", safe_ip, len(ports)
                     )
 
             # v4.0: Authenticated Scanning Integration (Phase 4)

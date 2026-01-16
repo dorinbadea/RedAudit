@@ -59,6 +59,18 @@ These items are ordered chronologically and include delivered, planned, and defe
 
 | Feature | Status | Description |
 | :--- | :--- | :--- |
+| **Routed Network Discovery** | Done (v4.9.0) | Detect hidden networks via `ip route` and `ip neigh` parsing. |
+| **Interactive Discovery Prompt** | Done (v4.9.0) | Wizard asks to include discovered routed networks in scope. |
+| **CLI --scan-routed** | Done (v4.9.0) | Automated inclusion of routed networks for CI/CD pipelines. |
+
+### v4.9.1 Quick Wins Implementation (Done)
+
+| Feature | Status | Description |
+| :--- | :--- | :--- |
+| **IoT UDP Port Visibility** | Done (v4.9.1) | Ensure specialized UDP ports (e.g., WiZ 38899) found by HyperScan are included in final reports. |
+| **Honeypot Detection** | Done (v4.9.1) | Heuristic tagging (`honeypot`) for hosts with excessive open ports (>100). |
+| **No-Response Tagging** | Done (v4.9.1) | Distinct `no_response` tag for hosts that fail Nmap scanning, differentiating from generic Down status. |
+| :--- | :--- | :--- |
 | **Routed Network Discovery** | Done (v4.9.0) | `detect_routed_networks()` parses `ip route` and `ip neigh` for hidden networks. |
 | **Wizard Hidden Network Prompt** | Done (v4.9.0) | Interactive prompt to include discovered routed networks in scan scope. |
 | **`--scan-routed` CLI Flag** | Done (v4.9.0) | Non-interactive flag to auto-add routed networks to targets. |

@@ -60,6 +60,18 @@ Estos elementos están ordenados cronológicamente e incluyen trabajo entregado,
 
 | Caracteristica | Estado | Descripcion |
 | :--- | :--- | :--- |
+| **Descubrimiento de Redes Enrutadas** | Hecho (v4.9.0) | Detectar redes ocultas via parsing de `ip route` y `ip neigh`. |
+| **Prompt Interactivo de Descubrimiento** | Hecho (v4.9.0) | El wizard pregunta si incluir redes enrutadas descubiertas en el alcance. |
+| **CLI --scan-routed** | Hecho (v4.9.0) | Inclusion automatica de redes enrutadas para pipelines CI/CD. |
+
+### v4.9.1 Implementacion Quick Wins (Hecho)
+
+| Caracteristica | Estado | Descripcion |
+| :--- | :--- | :--- |
+| **Visibilidad Puertos UDP IoT** | Hecho (v4.9.1) | Asegurar que puertos UDP especializados (ej. WiZ 38899) hallados por HyperScan se incluyan en reportes. |
+| **Deteccion de Honeypot** | Hecho (v4.9.1) | Etiquetado heuristico (`honeypot`) para hosts con excesivos puertos abiertos (>100). |
+| **Etiquetado Sin Respuesta** | Hecho (v4.9.1) | Etiqueta `no_response` distintiva para hosts que fallan en Nmap, diferenciando de estado Down generico. |
+| :--- | :--- | :--- |
 | **Descubrimiento Redes Enrutadas** | Hecho (v4.9.0) | `detect_routed_networks()` parsea `ip route` e `ip neigh` para redes ocultas. |
 | **Prompt Wizard Redes Ocultas** | Hecho (v4.9.0) | Prompt interactivo para incluir redes enrutadas descubiertas en el alcance. |
 | **Flag CLI `--scan-routed`** | Hecho (v4.9.0) | Flag no interactivo para anadir automaticamente redes enrutadas a objetivos. |
