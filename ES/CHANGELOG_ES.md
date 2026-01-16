@@ -8,7 +8,11 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
-## [Unreleased]
+## [v4.8.1] - 2026-01-16
+
+### Fixed
+
+- Restaurar pregunta interactiva para activar Nuclei en perfil Exhaustivo (asistente).
 
 ## [v4.8.0] - 2026-01-16
 

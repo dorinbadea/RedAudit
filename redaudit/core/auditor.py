@@ -1621,7 +1621,11 @@ class InteractiveNetworkAuditor:
 
             # v4.8.0: Nuclei OFF by default (use --nuclei to enable)
             # Reason: Slow on web-dense networks, marginal value for network audits
-            self.config["nuclei_enabled"] = False
+            # v4.8.0: Nuclei OFF by default (use --nuclei to enable)
+            # PROMPT: Ask usage for granular control in Exhaustive mode
+            self.config["nuclei_enabled"] = self.ask_yes_no(
+                self.ui.t("nuclei_enable_q"), default="no"
+            )
 
             # NVD/CVE - enable if API key is configured, otherwise show reminder
             if is_nvd_api_key_configured():
