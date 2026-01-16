@@ -8,6 +8,14 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [v4.10.1] - 2026-01-16
+
+### Fixed
+
+- **Enriquecimiento de Hosts Inconsistente**: Solucionado un problema donde los hosts descubiertos vía Seguimiento de Rutas (Topología SNMP) no se enriquecían con datos CVE.
+- **Error de Importación**: Resuelto un potencial `NameError` relacionado con importaciones locales en el módulo auditor.
+- **Limpieza de Código**: Movidas las importaciones locales al nivel superior para mejor mantenibilidad.
+
 ## [v4.10.0] - 2026-01-16
 
 ### Añadido

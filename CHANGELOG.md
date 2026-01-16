@@ -8,6 +8,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [v4.10.1] - 2026-01-16
+
+### Fixed
+
+- **Inconsistent Host Enrichment**: Fixed an issue where hosts discovered via Route Following (SNMP Topology) were not being enriched with CVE data, causing them to appear incomplete in reports compared to primary targets.
+- **Import Error**: Resolved a potential `NameError` related to local imports of `enrich_host_with_cves` in the auditor module.
+- **Code Cleanup**: Moved local imports to top-level for better maintainability and scope visibility.
+
 ## [v4.10.0] - 2026-01-16
 
 ### Added

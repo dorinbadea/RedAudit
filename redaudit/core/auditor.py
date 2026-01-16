@@ -51,6 +51,7 @@ from redaudit.core.reporter import (
     show_config_summary,
     show_results_summary,
 )
+from redaudit.core.nvd import enrich_host_with_cves, get_api_key_from_config
 from redaudit.core.config_context import ConfigurationContext
 from redaudit.core.network_scanner import NetworkScanner
 
@@ -989,8 +990,6 @@ class InteractiveNetworkAuditor:
             # This ensures all version data from nikto/whatweb/testssl/nuclei is available
             if self.config.get("cve_lookup_enabled") and not self.interrupted:
                 try:
-                    from redaudit.core.nvd import enrich_host_with_cves, get_api_key_from_config
-
                     self.ui.print_status("Running CVE correlation (NVD)...", "INFO")
                     # Ensure API key is loaded
                     if not self.config.get("nvd_api_key"):
@@ -1013,7 +1012,7 @@ class InteractiveNetworkAuditor:
 
                 # v4.10: Process SNMP Topology (Routes/ARP) and optionally follow routes
                 if self.config.get("snmp_topology") and not self.interrupted:
-                    self._process_snmp_topology(results)
+                    self._process_snmp_topology(results, api_key=api_key)
 
             # v4.3.1: Re-calculate risk scores with all findings (Nikto/Nuclei/Web)
             # This ensures risk_score reflects actual vulnerabilities found during scan
@@ -1311,7 +1310,7 @@ class InteractiveNetworkAuditor:
 
     # ---------- Subprocess management (C1 fix) ----------
 
-    def _process_snmp_topology(self, hosts: list) -> None:
+    def _process_snmp_topology(self, hosts: list, api_key: Optional[str] = None) -> None:
         """
         Process discovered SNMP topology data (Routes) and optionally scan new networks.
 
@@ -1464,6 +1463,19 @@ class InteractiveNetworkAuditor:
                 # Merge Resuls
                 if isinstance(hosts, list):
                     hosts.extend(new_results)
+
+                # v4.10.1: Enrich new hosts with CVEs for consistency
+                # Since these skipped the main loop, we must enrich them explicitly.
+                if new_results:
+                    self.ui.print_status(
+                        f"Enriching {len(new_results)} new hosts with CVE data...", "INFO"
+                    )
+                    for h in new_results:
+                        try:
+                            # enrich_host_with_cves is available in scope
+                            enrich_host_with_cves(h, api_key=api_key, logger=self.logger)
+                        except Exception:
+                            pass
             else:
                 self.ui.print_status("No new live hosts found in routed networks.", "INFO")
         else:
