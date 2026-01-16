@@ -680,6 +680,103 @@ def upnp_discover(
 
 
 # =============================================================================
+# Routing Discovery (Hidden Networks)
+# =============================================================================
+
+
+def detect_routed_networks(
+    logger=None,
+) -> Dict[str, Any]:
+    """
+    Detect routed networks and gateways via system routing table.
+
+    Parses `ip route` and `ip neigh` to find subnets that are not
+    directly configured on interfaces but are reachable via gateways.
+
+    Returns:
+        {
+            "networks": ["10.0.100.0/24", ...],
+            "gateways": [{"ip": "...", "mac": "...", "interface": "..."}],
+            "error": None
+        }
+    """
+    result: Dict[str, Any] = {"networks": [], "gateways": [], "error": None}
+
+    if not shutil.which("ip"):
+        result["error"] = "ip command not available"
+        return result
+
+    # 1. Parse ip route
+    # default via 192.168.1.1 dev eth0 ...
+    # 10.0.100.0/24 via 192.168.1.1 dev eth0
+    # 192.168.1.0/24 dev eth0 proto kernel scope link src ...
+    rc, out_route, err_route = _run_cmd(["ip", "route", "show"], 5, logger)
+    if rc != 0:
+        result["error"] = f"ip route failed: {err_route}"
+        return result
+
+    networks = set()
+    gateways = set()
+
+    for line in out_route.splitlines():
+        parts = line.split()
+        if not parts:
+            continue
+
+        # Skip default route for network discovery (it's 0.0.0.0/0)
+        if parts[0] == "default":
+            continue
+
+        # Candidate network is usually the first token
+        candidate = parts[0]
+
+        # Valid CIDR check
+        try:
+            if "/" in candidate:
+                ipaddress.ip_network(candidate, strict=False)
+                networks.add(candidate)
+        except ValueError:
+            pass
+
+        # Check for gateway
+        if "via" in parts:
+            try:
+                via_idx = parts.index("via") + 1
+                if via_idx < len(parts):
+                    gw_ip = parts[via_idx]
+                    ipaddress.ip_address(gw_ip)  # Validate IP
+                    gateways.add(gw_ip)
+            except (ValueError, IndexError):
+                pass
+
+    # 2. Parse ip neigh to enrich gateways
+    # 192.168.1.1 dev eth0 lladdr 00:11:22:33:44:55 REACHABLE
+    rc, out_neigh, err_neigh = _run_cmd(["ip", "neigh", "show"], 5, logger)
+
+    gateway_objs = []
+    # If gateways list is empty, treat all router-like neighbors as potential gateways?
+    # For now, we only trust gateways found in routing table or explicitly marked as routers.
+
+    for line in out_neigh.splitlines():
+        parts = line.split()
+        if len(parts) < 5:
+            continue
+
+        ip = parts[0]
+        dev = parts[2] if len(parts) > 2 else ""
+        mac = parts[4] if len(parts) > 4 else ""
+
+        # If this IP was identified as a gateway in routing table
+        if ip in gateways:
+            gateway_objs.append({"ip": ip, "mac": mac, "interface": dev})
+
+    result["networks"] = sorted(list(networks))
+    result["gateways"] = gateway_objs
+
+    return result
+
+
+# =============================================================================
 # Main Discovery Function
 # =============================================================================
 
@@ -710,7 +807,7 @@ def discover_networks(
         Complete net_discovery result object for JSON report
     """
     if protocols is None:
-        protocols = ["dhcp", "fping", "netbios", "mdns", "upnp", "arp", "hyperscan"]
+        protocols = ["dhcp", "fping", "netbios", "mdns", "upnp", "arp", "hyperscan", "routing"]
 
     protocols_norm = [p.strip().lower() for p in protocols if isinstance(p, str) and p.strip()]
     step_total = len(protocols_norm)
@@ -739,6 +836,8 @@ def discover_networks(
         "arp_hosts": [],
         "mdns_services": [],
         "upnp_devices": [],
+        "routing_networks": [],
+        "routing_gateways": [],
         "candidate_vlans": [],
         "errors": errors,
     }
@@ -771,6 +870,15 @@ def discover_networks(
                 local_res["dhcp_servers"] = dhcp_res.get("servers", [])
                 if dhcp_res.get("error"):
                     local_errors.append(f"dhcp: {dhcp_res['error']}")
+
+            elif proto == "routing":
+                _progress("Routing analysis", current_idx)
+                # Routing analysis doesn't need target networks, it inspects system state
+                route_res = detect_routed_networks(logger=logger)
+                local_res["routing_networks"] = route_res.get("networks", [])
+                local_res["routing_gateways"] = route_res.get("gateways", [])
+                if route_res.get("error"):
+                    local_errors.append(f"routing: {route_res['error']}")
 
             elif proto == "fping":
                 _progress("ICMP sweep (fping)", current_idx)

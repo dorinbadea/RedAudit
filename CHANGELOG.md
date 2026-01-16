@@ -8,6 +8,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [v4.9.0] - 2026-01-16
+
+### Added
+
+- **Hidden Network Detection**: New `detect_routed_networks()` in `net_discovery.py`.
+  - Parses `ip route` and `ip neigh` to discover non-local routed networks.
+  - Interactive wizard prompt: asks user to include discovered hidden networks in scan scope.
+  - New CLI flag `--scan-routed` for non-interactive mode (auto-adds routed networks to targets).
+
+### Changed
+
+- **Wizard Network Selection**: `ask_network_range()` now detects and offers hidden routed networks.
+
+### Documentation
+
+- Documented VLAN isolation limitations (802.1Q VLANs not discoverable without SNMP/switch access).
+- Updated `task.md` with user network topology (Vodafone VLAN 100/105 via Zyxel switch).
+
 ## [v4.8.1] - 2026-01-16
 
 ### Fixed

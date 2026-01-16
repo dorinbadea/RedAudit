@@ -269,6 +269,8 @@ TRANSLATIONS = {
         # v3.2+: Network discovery
         "net_discovery_start": "Running enhanced network discovery (DHCP/NetBIOS/mDNS)...",
         "net_discovery_dhcp_found": "✓ Found {} DHCP server(s)",
+        "net_discovery_routed_found": "ℹ️  Found {} hidden routed network(s) via local gateway(s):",
+        "net_discovery_routed_add_q": "Add these hidden networks to the scan scope?",
         "net_discovery_vlans_found": "⚠️  Detected {} potential guest network(s)/VLAN(s)",
         "net_discovery_seed_hosts": "Net Discovery identified {} host(s) to include in the scan",
         "net_discovery_seed_added": "Added {} host(s) missed by ICMP discovery",
@@ -343,7 +345,7 @@ TRANSLATIONS = {
         "nuclei_no_findings": "Nuclei scan completed (no findings)",
         "nuclei_suspected": "Nuclei flagged {} suspected false positive(s)",
         "nuclei_partial": "Nuclei scan partial: {} timeout batch(es), {} failed",
-        "nuclei_q": "Run Nuclei vulnerability scanner (templates)?",
+        "nuclei_q": "Run Nuclei (specialized for HTTP/Web services)?",
         "windows_verify_q": "Enable agentless verification (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Max targets for agentless verification (1-200; higher = slower):",
         # v3.7: Interactive webhooks
@@ -699,6 +701,8 @@ TRANSLATIONS = {
         # v3.2+: Descubrimiento de red
         "net_discovery_start": "Ejecutando Net Discovery mejorado (DHCP/NetBIOS/mDNS)...",
         "net_discovery_dhcp_found": "✓ Encontrado(s) {} servidor(es) DHCP",
+        "net_discovery_routed_found": "ℹ️  Encontrada(s) {} red(es) enrutada(s) oculta(s) vía gateway(s) local(es):",
+        "net_discovery_routed_add_q": "¿Añadir estas redes ocultas al alcance del escaneo?",
         "net_discovery_vlans_found": "⚠️  Detectada(s) {} red(es) de invitados/VLAN(s) potencial(es)",
         "net_discovery_seed_hosts": "Net Discovery identificó {} hosts para incluir en el escaneo",
         "net_discovery_seed_added": "Añadidos {} hosts que no respondieron al ICMP",
@@ -771,7 +775,7 @@ TRANSLATIONS = {
         "nuclei_no_findings": "Escaneo Nuclei completado (sin hallazgos)",
         "nuclei_suspected": "Nuclei marcó {} falso(s) positivo(s) sospechado(s)",
         "nuclei_partial": "Escaneo Nuclei parcial: {} lote(s) con timeout, {} fallidos",
-        "nuclei_q": "¿Ejecutar escáner de vulnerabilidades Nuclei (templates)?",
+        "nuclei_q": "¿Ejecutar Nuclei (especializado para servicios HTTP/Web)?",
         "windows_verify_q": "¿Activar verificación sin agente (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Máximo de objetivos para verificación sin agente (1-200; más alto = más lento):",
         # v3.7: Webhooks interactivos

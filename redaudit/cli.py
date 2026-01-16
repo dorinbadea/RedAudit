@@ -432,6 +432,11 @@ Examples:
         help="Enable network discovery (all, or comma-separated: dhcp,netbios,mdns,upnp,arp,fping)",
     )
     parser.add_argument(
+        "--scan-routed",
+        action="store_true",
+        help="Automatically include discovered discovered routed networks (via local gateways) in scan scope",
+    )
+    parser.add_argument(
         "--redteam",
         action="store_true",
         help="Include Red Team discovery techniques (best-effort, slower/noisier)",
@@ -622,6 +627,8 @@ def configure_from_args(app, args) -> bool:
         app.print_status(app.t("legal_warning_skipped"), "WARNING")
 
     # Parse targets
+    final_targets = []
+
     if args.target:
         targets = [t.strip() for t in args.target.split(",") if t.strip()]
         valid_targets, invalid = parse_target_tokens(targets, MAX_CIDR_LENGTH)
@@ -631,10 +638,36 @@ def configure_from_args(app, args) -> bool:
                     app.print_status(app.t("invalid_target_too_long", bad), "FAIL")
                 else:
                     app.print_status(app.t("invalid_cidr_target", bad), "FAIL")
-        if not valid_targets:
-            app.print_status(app.t("no_valid_targets"), "FAIL")
-            return False
-        app.config["target_networks"] = valid_targets
+        if valid_targets:
+            final_targets.extend(valid_targets)
+
+    # v4.9: Auto-add routed networks if requested
+    if getattr(args, "scan_routed", False):
+        try:
+            from redaudit.core.net_discovery import detect_routed_networks
+
+            routed_res = detect_routed_networks(logger=app.logger)
+            routed_nets = routed_res.get("networks", [])
+
+            # Avoid duplications
+            current_set = set(final_targets)
+            added_count = 0
+            for net in routed_nets:
+                if net not in current_set:
+                    final_targets.append(net)
+                    current_set.add(net)
+                    added_count += 1
+
+            if added_count > 0:
+                app.print_status(
+                    f"Found and added {added_count} hidden routed networks to scope via --scan-routed",
+                    "OKGREEN",
+                )
+        except ImportError:
+            pass
+
+    if final_targets:
+        app.config["target_networks"] = final_targets
     else:
         app.print_status(app.t("target_required_non_interactive"), "FAIL")
         return False

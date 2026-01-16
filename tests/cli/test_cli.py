@@ -28,6 +28,7 @@ class _DummyApp:
         self.rate_limit_delay = 0.0
         self.extra_tools = {}
         self._statuses = []
+        self.logger = MagicMock()
 
     def check_dependencies(self):
         return True
@@ -235,7 +236,8 @@ def test_configure_from_args_target_too_long():
     args = _base_args(target="a" * (MAX_CIDR_LENGTH + 1))
     assert cli.configure_from_args(app, args) is False
     assert any("invalid_target_too_long" in status for status in app._statuses)
-    assert app._statuses[-1] == "no_valid_targets"
+    # With v4.9 flow, we fall through to "target_required_non_interactive" if list is empty
+    assert app._statuses[-1] == "target_required_non_interactive"
 
 
 def test_configure_from_args_expands_output(monkeypatch):
@@ -604,3 +606,21 @@ def test_module_entrypoint_invokes_cli_main():
     with patch("redaudit.cli.main") as mocked:
         runpy.run_module("redaudit.__main__", run_name="__main__")
         mocked.assert_called_once()
+
+
+def test_configure_from_args_scan_routed(monkeypatch):
+    app = _DummyApp()
+    # Provide no targets initially, but use --scan-routed
+    args = _base_args(target=None, scan_routed=True)
+
+    expected_routed = {"networks": ["192.168.50.0/24"]}
+
+    # We must patch the function where it is imported.
+    # Since cli.py does "from redaudit.core.net_discovery import detect_routed_networks" inside the function,
+    # we need to patch the source module.
+    mock_detect = MagicMock(return_value=expected_routed)
+    monkeypatch.setattr("redaudit.core.net_discovery.detect_routed_networks", mock_detect)
+
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["target_networks"] == ["192.168.50.0/24"]
+    assert "Found and added 1 hidden routed networks" in app._statuses[-1]

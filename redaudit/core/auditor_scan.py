@@ -390,6 +390,34 @@ class AuditorScan:
         # v4.0: Use Scanner directly (Populate results for consistency)
         nets = self.scanner.detect_local_networks()
         self.results["network_info"] = nets
+        # v4.9: Detect hidden routed networks (Option C)
+        extra_scope = []
+        try:
+            from redaudit.core.net_discovery import detect_routed_networks
+
+            # Filter local networks from routed results to find "hidden" ones
+            local_cidrs = set()
+            for n in nets:
+                if n.get("network"):
+                    local_cidrs.add(n["network"])
+
+            routed_res = detect_routed_networks(logger=self.logger)
+            routed_nets = routed_res.get("networks", [])
+
+            hidden_nets = [r for r in routed_nets if r not in local_cidrs]
+
+            if hidden_nets:
+                self.ui.print_status(
+                    self.ui.t("net_discovery_routed_found", len(hidden_nets)), "OKGREEN"
+                )
+                for n in hidden_nets:
+                    print(f"  - {n}")
+
+                if self.ask_yes_no(self.ui.t("net_discovery_routed_add_q"), default="yes"):
+                    extra_scope = hidden_nets
+        except ImportError:
+            pass
+
         if nets:
             g = self.ui.colors["OKGREEN"]
             print(f"{g}{self.ui.t('interface_detected')}{self.ui.colors['ENDC']}")
@@ -401,20 +429,29 @@ class AuditorScan:
             opts.append(self.ui.t("manual_entry"))
             opts.append(self.ui.t("scan_all"))
             choice = self.ask_choice(self.ui.t("select_net"), opts)
+
+            selected_nets = []
             if choice == len(opts) - 2:
-                return self.ask_manual_network()
-            if choice == len(opts) - 1:
+                selected_nets = self.ask_manual_network()
+            elif choice == len(opts) - 1:
                 # v3.2.3: Deduplicate networks (same CIDR on multiple
                 # interfaces)
                 seen = set()
-                unique_nets = []
                 for n in nets:
                     cidr = n["network"]
                     if cidr not in seen:
                         seen.add(cidr)
-                        unique_nets.append(cidr)
-                return unique_nets
-            return [nets[choice]["network"]]
+                        selected_nets.append(cidr)
+            else:
+                selected_nets = [nets[choice]["network"]]
+
+            # Merge hidden/routed networks if user accepted them
+            if extra_scope:
+                selected_nets.extend(extra_scope)
+                # Deduplicate again just in case
+                selected_nets = sorted(list(set(selected_nets)))
+
+            return selected_nets
         else:
             self.ui.print_status(self.ui.t("no_nets_auto"), "WARNING")
             return self.ask_manual_network()

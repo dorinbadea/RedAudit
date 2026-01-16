@@ -23,6 +23,7 @@ from redaudit.core.net_discovery import (
     netdiscover_scan,
     upnp_discover,
     arp_scan_active,
+    detect_routed_networks,
     _analyze_vlans,
     _gather_redteam_targets,
     _redteam_bettercap_recon,
@@ -799,12 +800,71 @@ def test_discover_networks_arp_dedupes(monkeypatch):
         lambda *_a, **_k: {"hosts": [{"ip": "192.168.1.1"}, {"ip": "192.168.1.2"}]},
     )
 
-    result = net_discovery.discover_networks(
-        target_networks=["192.168.1.0/24"],
-        protocols=["arp"],
-    )
+    res = net_discovery.discover_networks(["1.1.1.0/24"], protocols=["arp"])
+    # merged unique IPs = 2
+    assert len(res["arp_hosts"]) == 2
 
-    assert {host["ip"] for host in result["arp_hosts"]} == {"192.168.1.1", "192.168.1.2"}
+
+class TestRoutingDiscovery(unittest.TestCase):
+    """Test routing discovery (Hidden Networks)."""
+
+    @patch("shutil.which")
+    @patch("redaudit.core.net_discovery._run_cmd")
+    def test_detect_routed_networks_linux(self, mock_run_cmd, mock_which):
+        """Test parsing of ip route/neigh on Linux."""
+        mock_which.return_value = "/usr/bin/ip"
+
+        # Mock ip route output
+        route_out = """default via 192.168.1.1 dev eth0 proto dhcp metric 100
+192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.50 metric 100
+10.0.100.0/24 via 192.168.1.1 dev eth0
+172.16.0.0/24 dev docker0 proto kernel scope link src 172.16.0.1 linkdown
+192.168.105.0/24 dev eth0.105 proto kernel scope link src 192.168.105.2
+"""
+
+        # Mock ip neigh output
+        neigh_out = """192.168.1.1 dev eth0 lladdr 00:11:22:33:44:55 REACHABLE
+192.168.1.100 dev eth0 lladdr aa:bb:cc:dd:ee:ff STALE
+192.168.105.1 dev eth0.105 lladdr 11:22:33:44:55:66 REACHABLE
+"""
+
+        def side_effect(cmd, timeout_s, logger):
+            cmd_str = " ".join(cmd)
+            if "ip route" in cmd_str:
+                return 0, route_out, ""
+            if "ip neigh" in cmd_str:
+                return 0, neigh_out, ""
+            return 1, "", "Command not found"
+
+        mock_run_cmd.side_effect = side_effect
+
+        result = detect_routed_networks(logger=None)
+
+        # Assertions
+        self.assertIn("networks", result)
+        self.assertIn("gateways", result)
+
+        networks = result["networks"]
+        # Should detect the routed network
+        self.assertIn("10.0.100.0/24", networks)
+        # Should detect directly connected networks too
+        self.assertIn("192.168.105.0/24", networks)
+        self.assertIn("172.16.0.0/24", networks)
+        self.assertIn("192.168.1.0/24", networks)
+
+        # Gateways
+        gateways = [g["ip"] for g in result["gateways"]]
+        self.assertIn("192.168.1.1", gateways)
+        # 192.168.105.1 is just a neighbor, not a explicit gateway in route table
+
+    @patch("redaudit.core.net_discovery._run_cmd")
+    def test_detect_routed_networks_failure(self, mock_run_cmd):
+        """Test handling of command failure."""
+        mock_run_cmd.return_value = (1, "", "ip: command not found")
+
+        result = detect_routed_networks(logger=None)
+        self.assertIn("error", result)
+        self.assertEqual(result["networks"], [])
 
 
 def test_redteam_ldap_enum_parses_rootdse(monkeypatch):

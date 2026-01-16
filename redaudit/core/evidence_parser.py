@@ -339,6 +339,33 @@ def enrich_with_observations(vuln_record: Dict, output_dir: Optional[str] = None
 
     if observations:
         enriched["parsed_observations"] = observations
+
+        # v4.9.0: Auto-extract CVEs from observations (Nikto/TestSSL legacy support)
+        # This ensures SIEMs get structured CVE data even if the tool doesn't provide it natively.
+        found_cves = set(enriched.get("cve_ids", []))
+
+        # 1. Scan normalized observations (fastest)
+        for obs in observations:
+            cve_matches = _CVE_PATTERN.findall(obs)
+            for cve in cve_matches:
+                found_cves.add(cve.upper())
+
+        # 2. Scan raw Nikto findings (source of truth)
+        for line in vuln_record.get("nikto_findings", []):
+            cve_matches = _CVE_PATTERN.findall(str(line))
+            for cve in cve_matches:
+                found_cves.add(cve.upper())
+
+        # 3. Scan raw TestSSL vulnerabilities
+        testssl = vuln_record.get("testssl_analysis", {})
+        for vuln in testssl.get("vulnerabilities", []):
+            cve_matches = _CVE_PATTERN.findall(str(vuln))
+            for cve in cve_matches:
+                found_cves.add(cve.upper())
+
+        if found_cves:
+            enriched["cve_ids"] = sorted(list(found_cves))
+
         if not enriched.get("descriptive_title"):
             title = _derive_descriptive_title(observations)
             if title:
