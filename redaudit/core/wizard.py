@@ -884,6 +884,13 @@ class Wizard:
             if self.ask_yes_no(self.ui.t("auth_save_keyring_q"), default="no"):
                 auth_config["auth_save_keyring"] = True
 
+        # v4.10: SNMP Topology & Route Following (if auth enabled)
+        if auth_config.get("auth_enabled"):
+            if self.ask_yes_no(self.ui.t("snmp_topology_q"), default="no"):
+                auth_config["snmp_topology"] = True
+                if self.ask_yes_no(self.ui.t("follow_routes_q"), default="no"):
+                    auth_config["follow_routes"] = True
+
         return auth_config
 
     def _load_keyring_from_invoking_user(self, invoking_user: str) -> Optional[dict]:

@@ -20,6 +20,7 @@ try:
         ObjectType,
         ObjectIdentity,
         getCmd,
+        nextCmd,
         usmHMACSHAAuthProtocol,
         usmAesCfb128Protocol,
     )
@@ -150,3 +151,185 @@ class SNMPScanner:
         except Exception as e:
             info.error = str(e)
             return info
+
+    def get_topology_info(self, host: str, port: int = 161) -> SNMPHostInfo:
+        """Query system MIBs + Topology (Routes, ARP, Interfaces)."""
+        # First get basic info
+        info = self.get_system_info(host, port)
+        if info.error:
+            return info
+
+        target = UdpTransportTarget((host, port), timeout=self.timeout, retries=self.retries)
+
+        # 1. Get Interfaces (ifTable) .1.3.6.1.2.1.2.2.1
+        info.interfaces = self._walk_interfaces(target)
+
+        # 2. Get Routing Table (ipRouteTable) .1.3.6.1.2.1.4.21
+        info.routes = self._walk_routes(target)
+
+        # 3. Get ARP Table (ipNetToMediaTable) .1.3.6.1.2.1.4.22
+        info.arp_table = self._walk_arp(target)
+
+        return info
+
+    def _walk_oid(self, target, root_oid: str) -> List[List[str]]:
+        """Generic walker, returns list of list of strings for each row."""
+        results = []
+        try:
+            for errorIndication, errorStatus, errorIndex, varBinds in nextCmd(
+                self.snmp_engine,
+                self.user_data,
+                target,
+                ContextData(),
+                ObjectType(ObjectIdentity(root_oid)),
+                lexicographicMode=False,
+            ):
+                if errorIndication or errorStatus:
+                    break
+
+                row = [str(varBind[1]) for varBind in varBinds]
+                results.append(row)
+        except Exception:
+            pass
+        return results
+
+    def _walk_interfaces(self, target) -> List[Dict[str, str]]:
+        # OID: .1.3.6.1.2.1.2.2.1 (ifEntry)
+        interfaces = []
+        cols = [
+            ObjectIdentity("IF-MIB", "ifIndex"),
+            ObjectIdentity("IF-MIB", "ifDescr"),
+            ObjectIdentity("IF-MIB", "ifType"),
+            ObjectIdentity("IF-MIB", "ifPhysAddress"),
+            ObjectIdentity("IF-MIB", "ifOperStatus"),
+        ]
+
+        try:
+            for errorIndication, errorStatus, errorIndex, varBinds in nextCmd(
+                self.snmp_engine,
+                self.user_data,
+                target,
+                ContextData(),
+                *([ObjectType(c) for c in cols]),
+                lexicographicMode=False,
+            ):
+                if errorIndication or errorStatus:
+                    break
+
+                # varBinds match stats order: [0]=idx, [1]=descr, [2]=type, [3]=mac, [4]=status
+                mac_raw = varBinds[3][1]
+                mac_str = ""
+                try:
+                    if hasattr(mac_raw, "asNumbers"):
+                        mac_str = ":".join([f"{x:02x}" for x in mac_raw.asNumbers()])
+                    elif hasattr(mac_raw, "prettyPrint"):
+                        val = mac_raw.prettyPrint()
+                        if val.startswith("0x"):
+                            val = val[2:]
+                        if len(val) == 12:
+                            mac_str = ":".join(val[i : i + 2] for i in range(0, 12, 2))
+                        else:
+                            mac_str = val
+                except Exception:
+                    mac_str = str(mac_raw)
+
+                iface = {
+                    "index": str(varBinds[0][1]),
+                    "descr": str(varBinds[1][1]),
+                    "type": str(varBinds[2][1]),
+                    "mac": mac_str,
+                    "status": str(varBinds[4][1]),
+                }
+                interfaces.append(iface)
+        except Exception as e:
+            logger.debug(f"SNMP Interface walk failed: {e}")
+
+        return interfaces
+
+    def _walk_routes(self, target) -> List[Dict[str, str]]:
+        # ipRouteDest(.1), ipRouteIfIndex(.2), ipRouteNextHop(.7), ipRouteType(.8), ipRouteMask(.11)
+        routes = []
+        cols = [
+            ObjectIdentity("IP-MIB", "ipRouteDest"),
+            ObjectIdentity("IP-MIB", "ipRouteIfIndex"),
+            ObjectIdentity("IP-MIB", "ipRouteNextHop"),
+            ObjectIdentity("IP-MIB", "ipRouteType"),
+            ObjectIdentity("IP-MIB", "ipRouteMask"),
+        ]
+
+        try:
+            for errorIndication, errorStatus, errorIndex, varBinds in nextCmd(
+                self.snmp_engine,
+                self.user_data,
+                target,
+                ContextData(),
+                *([ObjectType(c) for c in cols]),
+                lexicographicMode=False,
+            ):
+                if errorIndication or errorStatus:
+                    continue
+
+                routes.append(
+                    {
+                        "dest": str(varBinds[0][1]),
+                        "if_index": str(varBinds[1][1]),
+                        "next_hop": str(varBinds[2][1]),
+                        "type": str(varBinds[3][1]),
+                        "mask": str(varBinds[4][1]),
+                    }
+                )
+        except Exception as e:
+            logger.debug(f"SNMP Route walk failed: {e}")
+
+        return routes
+
+    def _walk_arp(self, target) -> List[Dict[str, str]]:
+        # ipNetToMediaIfIndex(.1), ipNetToMediaPhysAddress(.2), ipNetToMediaNetAddress(.3), ipNetToMediaType(.4)
+        arp_table = []
+        cols = [
+            ObjectIdentity("IP-MIB", "ipNetToMediaIfIndex"),
+            ObjectIdentity("IP-MIB", "ipNetToMediaPhysAddress"),
+            ObjectIdentity("IP-MIB", "ipNetToMediaNetAddress"),
+            ObjectIdentity("IP-MIB", "ipNetToMediaType"),
+        ]
+
+        try:
+            for errorIndication, errorStatus, errorIndex, varBinds in nextCmd(
+                self.snmp_engine,
+                self.user_data,
+                target,
+                ContextData(),
+                *([ObjectType(c) for c in cols]),
+                lexicographicMode=False,
+            ):
+                if errorIndication or errorStatus:
+                    continue
+
+                mac_raw = varBinds[1][1]
+                mac_str = ""
+                try:
+                    if hasattr(mac_raw, "asNumbers"):
+                        mac_str = ":".join([f"{x:02x}" for x in mac_raw.asNumbers()])
+                    elif hasattr(mac_raw, "prettyPrint"):
+                        val = mac_raw.prettyPrint()
+                        if val.startswith("0x"):
+                            val = val[2:]
+                        if len(val) == 12:
+                            mac_str = ":".join(val[i : i + 2] for i in range(0, 12, 2))
+                        else:
+                            mac_str = val
+                except Exception:
+                    mac_str = str(mac_raw)
+
+                arp_table.append(
+                    {
+                        "if_index": str(varBinds[0][1]),
+                        "mac": mac_str,
+                        "ip": str(varBinds[2][1]),
+                        "type": str(varBinds[3][1]),
+                    }
+                )
+        except Exception as e:
+            logger.debug(f"SNMP ARP walk failed: {e}")
+
+        return arp_table

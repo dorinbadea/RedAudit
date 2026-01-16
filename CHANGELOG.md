@@ -8,6 +8,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [v4.10.0] - 2026-01-16
+
+### Added
+
+- **Advanced L2/L3 Discovery**:
+  - **SNMP Topology**: Authenticated queries for router tables, ARP tables, and interfaces (`--snmp-topology`).
+  - **Route Following**: Automatic scope expansion based on discovered routing tables (`--follow-routes`).
+  - **Passive L2 Discovery**:
+    - **LLDP**: System/Port info via `tcpdump` (macOS/Linux) and `lldpctl`.
+    - **CDP**: Cisco discovery via `tcpdump`.
+    - **VLAN Detection**: 802.1Q tags from `ifconfig`/`ip link` and passive sniffing.
+  - **Wizard Integration**: Interactive prompts for topology and route following settings.
+
+### Fixed
+
+- **Critical**: Resolved `AttributeError: 'set' object has no attribute 'append'` in `Host.tags` handling during HyperScan enhancement.
+
 ## [v4.9.1] - 2026-01-16
 
 ### Added

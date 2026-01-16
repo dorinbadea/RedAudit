@@ -738,7 +738,7 @@ class InteractiveNetworkAuditor:
 
                             # Also tag as IoT if not tagged
                             if "iot" not in h.tags:
-                                h.tags.append("iot")
+                                h.tags.add("iot")
 
             # v4.1: Run HyperScan-First sequentially BEFORE parallel nmap
             # This avoids file descriptor exhaustion by running one at a time
@@ -1010,6 +1010,10 @@ class InteractiveNetworkAuditor:
             # v4.5.0: Phase 4 - Authenticated Scanning (SSH/Lynis)
             if self.config.get("auth_enabled") and not self.interrupted:
                 self._run_authenticated_scans(results)
+
+                # v4.10: Process SNMP Topology (Routes/ARP) and optionally follow routes
+                if self.config.get("snmp_topology") and not self.interrupted:
+                    self._process_snmp_topology(results)
 
             # v4.3.1: Re-calculate risk scores with all findings (Nikto/Nuclei/Web)
             # This ensures risk_score reflects actual vulnerabilities found during scan
@@ -1306,6 +1310,166 @@ class InteractiveNetworkAuditor:
         )
 
     # ---------- Subprocess management (C1 fix) ----------
+
+    def _process_snmp_topology(self, hosts: list) -> None:
+        """
+        Process discovered SNMP topology data (Routes) and optionally scan new networks.
+
+        v4.10: Implements Advanced L2/L3 Discovery.
+        Checks 'auth_scan.routes' for discovered subnets.
+        If --follow-routes is enabled, triggers discovery and scanning on new subnets.
+        """
+        import ipaddress
+
+        discovered_cidrs = set()
+        router_map = {}  # subnet -> router_ip
+
+        # 1. Collect Routes from authorized scans
+        for host in hosts:
+            # Handle both dict and Host objects
+            if isinstance(host, dict):
+                ip = host.get("ip")
+                auth_data = host.get("auth_scan")
+            else:
+                ip = getattr(host, "ip", None)
+                auth_data = getattr(host, "auth_scan", None)
+
+            if not ip or not auth_data or not isinstance(auth_data, dict):
+                continue
+
+            routes = auth_data.get("routes")
+            if not routes:
+                continue
+
+            for route in routes:
+                dest = route.get("dest")
+                mask = route.get("mask")
+                if not dest or not mask:
+                    continue
+
+                # Convert Dest/Mask to CIDR
+                try:
+                    # Skip default routes (0.0.0.0) and loopbacks
+                    if dest == "0.0.0.0" or dest.startswith("127."):
+                        continue
+
+                    # Calculate netmask length
+                    # Simple hack: use ipaddress.IPv4Network(f"{dest}/{mask}")
+                    net = ipaddress.IPv4Network(f"{dest}/{mask}", strict=False)
+
+                    if net.is_global or net.is_private:
+                        # Avoid /32 routes (host routes) unless requested?
+                        # Usually we want subnets. /32 implies a single host.
+                        if net.prefixlen == 32:
+                            continue
+
+                        cidr = str(net)
+                        discovered_cidrs.add(cidr)
+                        if cidr not in router_map:
+                            router_map[cidr] = ip
+
+                except Exception:
+                    continue
+
+        if not discovered_cidrs:
+            return
+
+        # 2. Filter against existing scope
+        existing_scope = []
+        for n in self.config.get("target_networks", []):
+            try:
+                existing_scope.append(ipaddress.IPv4Network(n, strict=False))
+            except Exception:
+                pass
+
+        new_networks = []
+        for cidr in discovered_cidrs:
+            try:
+                candidate = ipaddress.IPv4Network(cidr)
+                # Check if already covered
+                is_covered = False
+                for existing in existing_scope:
+                    # If candidate is subnet of existing, it's covered.
+                    if candidate.subnet_of(existing):
+                        is_covered = True
+                        break
+
+                    # Also check exact match
+                    if candidate == existing:
+                        is_covered = True
+                        break
+
+                if not is_covered:
+                    new_networks.append(cidr)
+            except Exception:
+                pass
+
+        if not new_networks:
+            return
+
+        # 3. Report Findings
+        self.ui.print_status("Start SNMP Topology Analysis", "INFO")
+        self.ui.print_status(f"Discovered {len(new_networks)} new routed networks:", "INFO")
+        for subnet_cidr in new_networks:
+            router = router_map.get(subnet_cidr, "unknown")
+            self.ui.print_status(f"  - {subnet_cidr} (via {router})", "INFO")
+
+        # 4. Follow Routes (if enabled)
+        if self.config.get("follow_routes"):
+            self.ui.print_status(
+                f"Following routes: Scanning {len(new_networks)} new networks...", "INFO"
+            )
+
+            # Prevent infinite recursion: add to scope
+            self.config["target_networks"].extend(new_networks)
+
+            new_hosts_found = []
+
+            # A) Ping Sweep (Net Discovery)
+            with self._progress_ui():  # Wrap in progress if not already?
+                for i, subnet_cidr in enumerate(new_networks):
+                    if self.interrupted:
+                        break
+                    self.ui.print_status(
+                        f"Scanning network {i + 1}/{len(new_networks)}: {subnet_cidr}", "INFO"
+                    )
+                    ips = self.scan_network_discovery(subnet_cidr)
+                    new_hosts_found.extend(ips)
+
+            # Deduplicate
+            unique_ips = list(set(new_hosts_found))
+
+            # Filter already scanned IPs
+            scanned_ips = set()
+            for h in hosts:
+                if isinstance(h, dict):
+                    scanned_ips.add(h.get("ip"))
+                else:
+                    scanned_ips.add(getattr(h, "ip", None))
+
+            targets_to_scan = [ip for ip in unique_ips if ip not in scanned_ips]
+
+            if targets_to_scan:
+                self.ui.print_status(
+                    f"Discovered {len(targets_to_scan)} new hosts. Starting Deep Scan...", "INFO"
+                )
+
+                # B) Port Scan (Phase 2) using existing concurrency logic
+                # Create Host objects
+                new_host_objs = [self.scanner.get_or_create_host(ip) for ip in targets_to_scan]
+
+                # Run Scan
+                new_results = self.scan_hosts_concurrent(new_host_objs)
+
+                # Merge Resuls
+                if isinstance(hosts, list):
+                    hosts.extend(new_results)
+            else:
+                self.ui.print_status("No new live hosts found in routed networks.", "INFO")
+        else:
+            self.ui.print_status(
+                "Use --follow-routes to automatically scan these networks.", "INFO"
+            )
 
     def register_subprocess(self, proc: subprocess.Popen) -> None:
         """Register a subprocess for tracking and cleanup on interruption."""

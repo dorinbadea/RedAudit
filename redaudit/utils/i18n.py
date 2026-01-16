@@ -435,9 +435,12 @@ TRANSLATIONS = {
         "auth_cred_success": "Credential matched: %s@%s",
         "auth_mode_q": "Credential configuration mode:",
         "auth_mode_universal": "Universal (simple): auto-detect protocol",
+        "auth_mode_universal": "Universal (simple): auto-detect protocol",
         "auth_mode_advanced": "Advanced: configure SSH/SMB/SNMP separately",
         "auth_protocol_hint": "Credentials will be tried on: SSH (22), SMB (445), SNMP (161), RDP (3389)",
         "auth_scan_opt": "Authenticated (SSH/SMB/SNMP)",
+        "snmp_topology_q": "Enable SNMP Topology Discovery (Routes/ARP/Interfaces)?",
+        "follow_routes_q": "Automatically follow discovered routes (scan new subnets)?",
         "wizard_custom_intro": "Custom wizard: 9 steps. Use Cancel to go back.",
     },
     "es": {
@@ -867,6 +870,8 @@ TRANSLATIONS = {
         "auth_mode_advanced": "Avanzado: configurar SSH/SMB/SNMP por separado",
         "auth_protocol_hint": "Las credenciales se probarán en: SSH (22), SMB (445), SNMP (161), RDP (3389)",
         "auth_scan_opt": "Autenticado (SSH/SMB/SNMP)",
+        "snmp_topology_q": "¿Activar descubrimiento de topología SNMP (Rutas/ARP/Interfaces)?",
+        "follow_routes_q": "¿Seguir rutas descubiertas automáticamente (escanear nuevas subredes)?",
         "wizard_custom_intro": "Wizard personalizado: 9 pasos. Usa Cancelar para volver.",
     },
 }

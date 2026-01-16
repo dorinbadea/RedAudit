@@ -777,6 +777,194 @@ def detect_routed_networks(
 
 
 # =============================================================================
+# L2 Passive Discovery (LLDP/CDP/VLAN)
+# =============================================================================
+
+
+def detect_local_vlan_tags(
+    interface: Optional[str] = None,
+    logger=None,
+) -> List[int]:
+    """
+    Detect local VLAN tags on the interface (ifconfig/ip output).
+
+    Returns:
+        List of VLAN IDs found (e.g., [100, 105]).
+    """
+    tags = set()
+    if not interface:
+        # Try finding default interface?
+        # For now, if no interface provided, we can't easily guess which one to check for VLANs
+        # effectively without iterating all.
+        return []
+
+    safe_iface = _sanitize_iface(interface)
+    if not safe_iface:
+        return []
+
+    # Method 1: ip -d link show (Linux)
+    if shutil.which("ip"):
+        rc, out, _ = _run_cmd(["ip", "-d", "link", "show", safe_iface], 2, logger)
+        if rc == 0:
+            # Output example: "vlan protocol 802.1Q id 100 <REORDER_HDR>"
+            for line in out.splitlines():
+                m = re.search(r"vlan protocol 802\.1Q id (\d+)", line)
+                if m:
+                    tags.add(int(m.group(1)))
+
+    # Method 2: ifconfig (macOS/BSD)
+    # Output example: "vlan: 100 parent interface: en0"
+    if not tags and shutil.which("ifconfig"):
+        rc, out, _ = _run_cmd(["ifconfig", safe_iface], 2, logger)
+        if rc == 0:
+            for line in out.splitlines():
+                # macOS: vlan: 100 parent interface: en0
+                m = re.search(r"vlan:\s*(\d+)", line)
+                if m:
+                    tags.add(int(m.group(1)))
+
+    return sorted(list(tags))
+
+
+def listen_lldp(
+    interface: str,
+    timeout_s: int = 45,
+    logger=None,
+) -> Dict[str, Any]:
+    """
+    Listen for LLDP packets using tcpdump.
+
+    Requires root.
+
+    Returns:
+        Dict with keys: system_name, port_id, vlan_id, etc.
+    """
+    result = {}
+    if not shutil.which("tcpdump"):
+        return {"error": "tcpdump not found"}
+
+    safe_iface = _sanitize_iface(interface)
+    if not safe_iface:
+        return {"error": f"Invalid interface: {interface}"}
+
+    # Capture 1 packet, verbose, snaplen 1500
+    # Filter: ether proto 0x88cc (LLDP)
+    cmd = [
+        "tcpdump",
+        "-i",
+        safe_iface,
+        "-v",
+        "-s",
+        "1500",
+        "-c",
+        "1",
+        "ether",
+        "proto",
+        "0x88cc",
+    ]
+
+    # This will exit with 0 if packet found, or timeout (124) if not.
+    # _run_cmd kills process on timeout, which is what we want.
+    rc, out, err = _run_cmd(cmd, timeout_s, logger)
+
+    output = out + "\n" + err
+    if "LLDP" not in output:
+        if rc != 0:
+            return {"error": "Timeout or permission denied (requires root)"}
+        return {"error": "No LLDP packets captured"}
+
+    # Parse tcpdump -v output for LLDP
+    # System Name TLV (5), length 18: Switch-01
+    # Port ID TLV (4), length 7: GigabitEthernet1/0/1
+    # VLAN parameters not always decoded by stock tcpdump easily, but we try.
+
+    m_sys = re.search(r"System Name TLV.*?: (.+)", output)
+    if m_sys:
+        result["system_name"] = m_sys.group(1).strip()
+
+    m_port = re.search(r"Port ID TLV.*?: (.+)", output)
+    if m_port:
+        result["port_id"] = m_port.group(1).strip()
+
+    m_desc = re.search(r"System Description TLV.*?: (.+)", output)
+    if m_desc:
+        result["system_desc"] = m_desc.group(1).strip()
+
+    m_mgmt = re.search(r"Management Address TLV.*?: ([\d\.]+)", output)
+    if m_mgmt:
+        result["management_ip"] = m_mgmt.group(1).strip()
+
+    # VLAN ID? tcpdump sometimes shows "802.1Q VLAN ID: 100"
+    m_vlan = re.search(r"VLAN ID: (\d+)", output)
+    if m_vlan:
+        result["vlan_id"] = int(m_vlan.group(1))
+
+    return result
+
+
+def listen_cdp(
+    interface: str,
+    timeout_s: int = 45,
+    logger=None,
+) -> Dict[str, Any]:
+    """
+    Listen for CDP packets using tcpdump.
+
+    Requires root.
+    """
+    result = {}
+    if not shutil.which("tcpdump"):
+        return {"error": "tcpdump not found"}
+
+    safe_iface = _sanitize_iface(interface)
+    if not safe_iface:
+        return {"error": f"Invalid interface: {interface}"}
+
+    # Filter: SNAP header for CDP (0x2000) or multicast dst
+    # tcpdump -v -s 1500 -c 1 ether[20:2] == 0x2000
+    cmd = [
+        "tcpdump",
+        "-i",
+        safe_iface,
+        "-v",
+        "-s",
+        "1500",
+        "-c",
+        "1",
+        "ether[20:2] == 0x2000",
+    ]
+
+    rc, out, err = _run_cmd(cmd, timeout_s, logger)
+    output = out + "\n" + err
+
+    if "CDP" not in output and "Cisco Discovery Protocol" not in output:
+        return {}
+
+    # Parse CDP
+    # Device-ID (0x01), length: 12 bytes: 'Switch-01'
+    # Port-ID (0x03), length: 16 bytes: 'FastEthernet0/1'
+    # Native VLAN ID (0x0a), length: 2 bytes: 100
+
+    m_dev = re.search(r"Device-ID.*?: '([^']+)'", output)
+    if m_dev:
+        result["device_id"] = m_dev.group(1)
+
+    m_port = re.search(r"Port-ID.*?: '([^']+)'", output)
+    if m_port:
+        result["port_id"] = m_port.group(1)
+
+    m_vlan = re.search(r"Native VLAN ID.*?: (\d+)", output)
+    if m_vlan:
+        result["native_vlan"] = int(m_vlan.group(1))
+
+    m_plat = re.search(r"Platform.*?: '([^']+)'", output)
+    if m_plat:
+        result["platform"] = m_plat.group(1)
+
+    return result
+
+
+# =============================================================================
 # Main Discovery Function
 # =============================================================================
 

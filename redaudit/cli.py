@@ -437,6 +437,11 @@ Examples:
         help="Automatically include discovered routed networks (via local gateways) in scan scope",
     )
     parser.add_argument(
+        "--follow-routes",
+        action="store_true",
+        help="Automatically include discovered remote networks (via SNMP/Routing Protocols) in scan scope",
+    )
+    parser.add_argument(
         "--redteam",
         action="store_true",
         help="Include Red Team discovery techniques (best-effort, slower/noisier)",
@@ -566,6 +571,11 @@ Examples:
         type=str,
         metavar="PASSWORD",
         help="SNMP v3 Privacy Password",
+    )
+    auth_group.add_argument(
+        "--snmp-topology",
+        action="store_true",
+        help="Enable deep SNMP topology queries (Routes, ARP) on authenticated devices",
     )
 
     # v4.3: Lynis Integration

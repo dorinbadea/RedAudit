@@ -1918,7 +1918,12 @@ class AuditorScan:
                     self._set_ui_detail(self.ui.t("auth_scan_start", safe_ip, "SNMP"))
 
                     scanner = SNMPScanner(snmp_credential)
-                    info = scanner.get_system_info(safe_ip)
+
+                    if self.config.get("snmp_topology"):
+                        self._set_ui_detail(self.ui.t("auth_scan_start", safe_ip, "SNMP Topology"))
+                        info = scanner.get_topology_info(safe_ip)
+                    else:
+                        info = scanner.get_system_info(safe_ip)
 
                     snmp_data = asdict(info)
                     clean_data = {k: v for k, v in snmp_data.items() if v and v != "unknown"}
