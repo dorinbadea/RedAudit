@@ -14,6 +14,14 @@ Release notes live under `docs/releases/` for additional context.
 
 - Restore interactive Nuclei enable prompt in Exhaustive profile (wizard).
 
+## [v4.8.2] - 2026-01-16
+
+### Fixed
+
+- **RustScan Port Range**: Force scanning of full port range (1-65535) in HyperScan phase.
+  - Previously defaulted to RustScan's top 1000 ports, missing services on non-standard ports.
+  - Added range parameter to `rustscan.py` and `hyperscan.py`.
+
 ## [v4.8.0] - 2026-01-16
 
 ### Added

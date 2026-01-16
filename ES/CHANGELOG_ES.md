@@ -14,6 +14,14 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Restaurar pregunta interactiva para activar Nuclei en perfil Exhaustivo (asistente).
 
+## [v4.8.2] - 2026-01-16
+
+### Corregido
+
+- **Rango de Puertos RustScan**: Forzado escaneo de rango completo (1-65535) en fase HyperScan.
+  - Anteriormente usaba el default de RustScan (top 1000), perdiendo servicios en puertos no estándar.
+  - Añadido parámetro de rango en `rustscan.py` e `hyperscan.py`.
+
 ## [v4.8.0] - 2026-01-16
 
 ### Añadido

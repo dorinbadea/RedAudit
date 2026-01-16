@@ -160,6 +160,7 @@ def run_rustscan_discovery_only(
     target: str,
     *,
     ports: Optional[List[int]] = None,
+    port_range: Optional[str] = None,
     ulimit: int = 5000,
     timeout: float = 120.0,
     logger=None,
@@ -171,6 +172,7 @@ def run_rustscan_discovery_only(
     Args:
         target: IP address or hostname to scan
         ports: Optional list of ports to scan
+        port_range: Optional port range string (e.g. "1-65535")
         ulimit: File descriptor limit for RustScan
         timeout: Maximum time for discovery in seconds
         logger: Optional logger instance
@@ -193,6 +195,8 @@ def run_rustscan_discovery_only(
     if ports:
         port_str = ",".join(str(p) for p in ports)
         cmd.extend(["-p", port_str])
+    elif port_range:
+        cmd.extend(["-r", port_range])
 
     cmd.append("-g")  # Greppable output (just ports)
 

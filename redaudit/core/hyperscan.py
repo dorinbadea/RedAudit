@@ -400,6 +400,7 @@ def hyperscan_full_port_sweep(
                 )
             open_ports, error = run_rustscan_discovery_only(
                 target_ip,
+                port_range="1-65535",  # v4.8.2: Force full range (masscan parity)
                 ulimit=5000,
                 timeout=120.0,
                 logger=logger,
