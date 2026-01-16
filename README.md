@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-[![Version](https://img.shields.io/badge/version-v4.9.1-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-v4.10.1-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -56,7 +56,7 @@ sudo redaudit
 
 | Capability | Description |
 |:---|:---|
-| **Parallel Deep Scan** | Fully decoupled deep scan phase running in parallel (up to 50 threads) for massive speedups |
+| **Parallel Deep Scan** | Fully decoupled deep scan phase running in parallel (up to 100 threads) for massive speedups |
 | **HyperScan** | Async TCP sweep + UDP discovery probes (including broadcast where supported) + aggressive ARP for fast inventory |
 | **Smart-Throttle** | AIMD-based adaptive congestion control that prevents packet loss by dynamically sizing scan batches |
 | **Topology Discovery** | L2/L3 mapping (ARP/VLAN/LLDP + gateway/routes) for network context |
@@ -100,22 +100,17 @@ sudo redaudit
 | **Bilingual Interface** | Complete English/Spanish localization |
 | **Auto-Update** | Atomic staged updates with automatic rollback on failure |
 
-### New in v4.4: Enterprise Scalability & Smart-Throttle
+### Recent Enhancements
 
-> **Massive Scale + Adaptive Speed.**
+**Smart-Throttle:** AIMD-based adaptive congestion control automatically adjusts scan batch sizes based on network conditions, ensuring maximum speed without packet loss.
 
-**Smart-Throttle:** No more manual batch size tuning. RedAudit now "senses" network congestion using an AIMD (Additive Increase, Multiplicative Decrease) algorithm. It throttles down when packets drop and accelerates on stable links, ensuring maximum speed without breaking the target network.
+**Generator-based Targeting:** Stream-processing architecture supports unlimited network sizes (e.g., /8 or /16) without memory exhaustion.
 
-**Generator-based Targeting:** The targeting engine has been rewritten to use streaming generators. You can now feed a `/8` network or millions of random IPs without filling your RAM.
+**Thread Scaling:** Increased `MAX_THREADS` from 16 to 100 (v4.6.29) to fully utilize modern hardware.
 
-**Enterprise-Grade Risk Scoring (V2)**: Configuration findings (Nikto/Nuclei) now drive risk scores.
+**Enterprise-Grade Risk Scoring:** Configuration findings (Nikto/Nuclei) integrated into decision matrix with Low/Medium/High severity mappings.
 
-- **HyperScan SYN Mode**: 10x faster port scanning for privileged users.
-- **Docker & Deep Scan Optimizations (H2)**: Unshackled scanners for deep container auditing with extended timeouts (5m) and full tuning profiles.
-- **Nuclei**: Added "Low" severity findings (e.g., info leaks, exposed panels) to the decision matrix.
-- **Scapy Silence**: Suppressed low-level ARP warnings for cleaner output.
-
-See [RELEASE NOTES](docs/releases/RELEASE_NOTES_v4.4.4.md) for details.
+See [CHANGELOG](CHANGELOG.md) for complete version history.
 
 ---
 
