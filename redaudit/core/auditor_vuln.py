@@ -111,6 +111,44 @@ class AuditorVuln:
 
         return True, ""
 
+    def _should_run_nikto(
+        self, host_info: Dict[str, Any], finding: Dict[str, Any]
+    ) -> Tuple[bool, str]:
+        """v4.12.0: Profile-aware Nikto gating.
+
+        - 'fast' profile: Skip Nikto entirely (quick CVE-only scan)
+        - 'balanced' profile: Skip Nikto on infrastructure devices
+        - 'full' profile: Run Nikto on all web hosts (original behavior)
+        """
+        nuclei_profile = self.config.get("nuclei_profile", "balanced")
+
+        # v4.12.0: Fast profile skips Nikto entirely
+        if nuclei_profile == "fast":
+            return False, "profile_fast"
+
+        # v4.12.0: Balanced profile skips Nikto on infrastructure devices
+        if nuclei_profile == "balanced":
+            agentless = host_info.get("agentless_fingerprint") or {}
+            device_type = str(agentless.get("device_type") or "")
+            host_device_type = str(host_info.get("device_type") or "")
+            device_type_hints = host_info.get("device_type_hints") or []
+
+            title = str(agentless.get("http_title") or "")
+            server = str(agentless.get("http_server") or finding.get("server") or "")
+            vendor = str(agentless.get("device_vendor") or host_info.get("vendor") or "")
+            model = str(agentless.get("device_model") or "")
+            combined = f"{title} {server} {vendor} {model}"
+
+            is_infra, reason = is_infra_identity(
+                device_type=device_type,
+                device_type_hints=[host_device_type, *device_type_hints],
+                text=combined,
+            )
+            if is_infra:
+                return False, f"infra_{reason}"
+
+        return True, ""
+
     def _merge_nuclei_findings(self, findings: List[Dict[str, Any]]) -> int:
         if not findings:
             return 0
@@ -303,6 +341,7 @@ class AuditorVuln:
                     url,
                     scheme,
                     finding,
+                    host_info=host_info,
                     status_callback=_update_status,
                     app_scan_allowed=app_scan_allowed,
                     app_scan_reason=app_scan_reason,
@@ -326,6 +365,7 @@ class AuditorVuln:
         url: str,
         scheme: str,
         finding: Dict[str, Any],
+        host_info: Dict[str, Any] = None,
         status_callback=None,
         *,
         app_scan_allowed: bool = True,
@@ -388,6 +428,14 @@ class AuditorVuln:
         def run_nikto():
             if not self.extra_tools.get("nikto"):
                 return {}
+
+            # v4.12.0: Profile-based Nikto gating
+            if host_info:
+                nikto_allowed, nikto_reason = self._should_run_nikto(host_info, finding)
+                if not nikto_allowed:
+                    if self.logger:
+                        self.logger.info("Skipping Nikto for %s:%d - %s", ip, port, nikto_reason)
+                    return {"nikto_skipped": nikto_reason}
 
             # v4.1: Pre-filter CDN/proxy hosts to reduce false positives
             CDN_PROXY_INDICATORS = {

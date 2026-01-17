@@ -8,6 +8,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [v4.12.0] - 2026-01-17
+
+### Added
+
+- **Profile-Based Tool Gating**: The Nuclei profile (`--profile`) now gates Nikto execution:
+  - `fast`: Skips Nikto entirely for maximum speed.
+  - `balanced`: Skips Nikto on infrastructure devices (routers, switches, APs).
+  - `full`: Runs Nikto on all web hosts (original behavior).
+- **Enhanced Infrastructure Detection**: Improved `is_infra_identity()` to detect more network device patterns (Fritz!Box, MikroTik, Ubiquiti, Synology, QNAP, etc.).
+
+### Changed
+
+- **Performance Optimization**: Vuln scan phase now respects the Nuclei profile to reduce scan time on networks with many infrastructure devices.
+- **Nikto Gating Logic**: Moved from `_should_run_app_scans()` to dedicated `_should_run_nikto()` method for clearer separation of concerns.
+
 ## [v4.11.0] - 2026-01-17
 
 ### Added

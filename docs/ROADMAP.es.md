@@ -16,50 +16,50 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado.
 
 ### v4.7 Seguimiento de Auditoria (Prioridad: Alta)
 
-| Caracteristica | Estado | Descripcion |
-| :--- | :--- | :--- |
-| **Contadores de motivos de escalado** | Planificado | Reportar por que se disparo el deep scan (identity score, ambiguedad, override manual). |
-| **Aclaracion documental de Smart-Check** | Planificado | Alinear la documentacion con el comportamiento real de verificacion por senales. |
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Contadores de Razón de Escalado** | Planeado | Reportar por qué se dispararon los escaneos profundos (puntuación identidad, ambigüedad, manual). |
+| **Clarificación Documentación Smart-Check** | Planeado | Alinear documentación con el comportamiento real de cruce de señales. |
 
 ### v4.7 Seguimiento de Auditoria (Prioridad: Media)
 
-| Caracteristica | Estado | Descripcion |
-| :--- | :--- | :--- |
-| **Abort Budget para Hosts Muertos** | Planificado | Limite configurable de tiempo/intentos para hosts que no responden. Evita cuelgues en hosts inalcanzables. |
-| **Deteccion de Honeypots** | Planificado | Heuristica para detectar hosts que responden a todos los puertos (caracteristica de honeypots). Marcar como sospechoso y limitar escaneo. |
-| **Modo de pinning de dependencias** | Planificado | Opcional: tags/commits fijados para herramientas externas instaladas desde git. |
-| **Diagrama de transiciones de fase** | Planificado | Diagrama conciso de la logica de escalado en fases 1-3. |
-| **Etiquetado de no-respuesta** | Planificado | Distinguir errores transitorios de hosts silenciosos en informes. |
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Presupuesto de Aborto para Hosts Muertos** | Planeado | Límite configurable de tiempo/reintentos para hosts que no responden. Evita colgarse en hosts inalcanzables. |
+| **Detección de Honeypot** | Planeado | Heurística para detectar hosts que responden a todos los puertos (comportamiento honeypot). Marcar como sospechoso y limitar escaneo. |
+| **Modo de Anclaje de Dependencias** | Planeado | Tags/commits anclados opcionales para herramientas externas instaladas desde git. |
+| **Diagrama de Transición de Fase** | Planeado | Añadir un diagrama de estado conciso para la lógica de escalado de fases 1-3. |
+| **Etiquetado de Clasificación Sin Respuesta** | Planeado | Distinguir errores transitorios de hosts silenciosos en los reportes. |
 
 ### v4.7 Seguimiento de Auditoría (Aplazado)
 
-| Característica | Estado | Descripción |
-| :--- | :--- | :--- |
-| **Refactor de auditor.py** | Aplazado | Separar orquestación y lógica de decisión solo si desbloquea tests o corrige fallos. |
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Refactorización de auditor.py** | Diferido | Dividir orquestación y lógica de decisión solo si desbloquea tests o corrige defectos. |
 
 ### Fase 7: Pulido UX y Cosméticos (Prioridad: Baja)
 
 Mejoras menores identificadas durante la validación Gold Master de v4.4.0.
 
 | Tarea | Estado | Descripción |
-| :--- | :--- | :--- |
-| **P7.3 Informe JSON en Streaming** | Planificado | Escritura incremental para informes >500MB en redes muy grandes. |
+|---|---|---|
+| **P7.3 Streaming JSON Report** | Planeado | Escritura incremental para reportes >500MB en redes muy grandes. |
 
 ### Infraestructura (Prioridad: Baja)
 
-| Característica | Estado | Descripción |
-| :--- | :--- | :--- |
-| **Distribución PyPI** | Aplazado | Publicar `pip install redaudit`. Bloqueado por necesidad de testing multiplataforma extensivo. |
-| **Motor de Plugins** | Aplazado | Arquitectura "Plugin-first" para desacoplar el escáner core de las herramientas. |
-| **Migración AsyncIO** | Aplazado | Migración completa a AsyncIO aplazada a v5.0 tras estudio de viabilidad. |
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Distribución PyPI** | Diferido | Publicar `pip install redaudit`. Bloqueado por necesidad de testeo extensivo multiplataforma. |
+| **Motor de Plugins** | Diferido | Arquitectura "Plugin-first" para desacoplar el escáner core de las herramientas. |
+| **Migración AsyncIO** | Diferido | Migración completa a AsyncIO diferida a v5.0 basada en estudio de viabilidad. |
 
 ---
 
 ### Funcionalidades Futuras (v5.0.0)
 
-| Característica | Descripción |
-| :--- | :--- |
-| **Sondas IoT Específicas** | Consultas profundas para protocolos específicos (Tuya, CoAP, propietarios). |
+| Funcionalidad | Descripción |
+|---|---|
+| **Sondas IoT Específicas de Protocolo** | Consultas profundas para protocolos específicos de dispositivos (Tuya, CoAP, propietarios). |
 | **Seguimiento de Fugas (Leak Following)** | Expansión automatizada del alcance basada en cabeceras internas filtradas. |
 | **Auditoría de Pipeline** | Visualización del flujo de descubrimiento (net_discovery -> hyperscan -> smart_scan). |
 
@@ -71,45 +71,45 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 
 ### v4.11 Rendimiento y Visibilidad IoT (Hecho)
 
-| Característica | Estado | Descripción |
-| :--- | :--- | :--- |
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
 | **Perfiles de Escaneo Nuclei** | Hecho (v4.11.0) | Flag `--profile` (full/balanced/fast) para controlar intensidad y velocidad. |
 | **Detección IoT WiZ** | Hecho (v4.11.0) | Sonda UDP especializada (38899) para bombillas inteligentes WiZ. |
-| **Expansión Base de Datos OUI** | Hecho (v4.11.0) | Actualización de MACs a ~39k fabricantes (ingesta Wireshark). |
-| **Optimización Lotes Nuclei** | Hecho (v4.11.0) | Reducción de lote (10) y aumento de timeouts (600s) para redes densas. |
+| **Expansión Base de Datos OUI** | Hecho (v4.11.0) | Macs actualizadas a ~39k fabricantes (ingesta Wireshark). |
+| **Optimización Lotes Nuclei** | Hecho (v4.11.0) | Tamaño de lote reducido (10) y timeouts aumentados (600s) para redes densas. |
 
 ### v4.10 Descubrimiento Avanzado (Hecho)
 
-| Caracteristica | Estado | Descripcion |
-| :--- | :--- | :--- |
-| **Query SNMP a Router** | Hecho (v4.10.0) | Consultar interfaces del router y tablas ARP remotas via `snmpwalk`. |
-| **Descubrimiento LLDP** | Hecho (v4.10.0) | Topologia de switches en redes gestionadas via `lldpctl`. |
-| **Descubrimiento CDP** | Hecho (v4.10.0) | Parseo de Cisco Discovery Protocol para topologias Cisco. |
-| **Deteccion VLAN Tagging** | Hecho (v4.10.0) | Detectar VLANs taggeadas 802.1Q en las interfaces del host auditor vía `ifconfig`/`ip link`. |
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Consulta SNMP Router** | Hecho (v4.10.0) | Consultar interfaces de router y tablas ARP remotas via `snmpwalk`. |
+| **Descubrimiento LLDP** | Hecho (v4.10.0) | Descubrir topología de switch en redes gestionadas via `lldpctl`. |
+| **Descubrimiento CDP** | Hecho (v4.10.0) | Parsing de Cisco Discovery Protocol para topologías basadas en Cisco. |
+| **Detección Etiquetado VLAN** | Hecho (v4.10.0) | Detectar VLANs etiquetadas 802.1Q en interfaces del host auditor via `ifconfig`/`ip link`. |
 
 ### v4.9 Deteccion de Redes Ocultas (Hecho)
 
-| Caracteristica | Estado | Descripcion |
-| :--- | :--- | :--- |
-| **Descubrimiento de Redes Enrutadas** | Hecho (v4.9.0) | Detectar redes ocultas via parsing de `ip route` y `ip neigh`. |
-| **Prompt Interactivo de Descubrimiento** | Hecho (v4.9.0) | El wizard pregunta si incluir redes enrutadas descubiertas en el alcance. |
-| **CLI --scan-routed** | Hecho (v4.9.0) | Inclusion automatica de redes enrutadas para pipelines CI/CD. |
-| **Visibilidad Puertos UDP IoT** | Hecho (v4.9.1) | Asegurar que puertos UDP especializados (ej. WiZ 38899) hallados por HyperScan se incluyan en reportes. |
-| **Deteccion de Honeypot** | Hecho (v4.9.1) | Etiquetado heuristico (`honeypot`) para hosts con excesivos puertos abiertos (>100). |
-| **Etiquetado Sin Respuesta** | Hecho (v4.9.1) | Etiqueta `no_response` distintiva para hosts que fallan en Nmap. |
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Descubrimiento de Redes Enrutadas** | Hecho (v4.9.0) | Detectar redes ocultas via parsing de `ip route` e `ip neigh`. |
+| **Prompt de Descubrimiento Interactivo** | Hecho (v4.9.0) | El asistente pregunta para incluir redes enrutadas descubiertas en el alcance. |
+| **CLI --scan-routed** | Hecho (v4.9.0) | Inclusión automatizada de redes enrutadas para pipelines CI/CD. |
+| **Visibilidad Puertos UDP IoT** | Hecho (v4.9.1) | Asegurar que puertos UDP especializados (ej. WiZ 38899) encontrados por HyperScan se incluyan en reportes finales. |
+| **Detección de Honeypot** | Hecho (v4.9.1) | Etiquetado heurístico (`honeypot`) para hosts con excesivos puertos abiertos (>100). |
+| **Etiquetado Sin Respuesta** | Hecho (v4.9.1) | Etiqueta distintiva `no_response` para hosts que fallan el escaneo Nmap. |
 
 ### v4.8 RustScan y Correcciones Instalador (Hecho)
 
-| Caracteristica | Estado | Descripcion |
-| :--- | :--- | :--- |
-| **RustScan Rango Completo** | Hecho (v4.8.2) | Forzar `-r 1-65535` para escanear todos los puertos en vez del top 1000 por defecto. |
-| **Soporte ARM64 Instalador** | Hecho (v4.8.3) | Deteccion ARM64/aarch64 para Raspberry Pi y VMs Apple Silicon. |
-| **Toggle Nuclei en Wizard** | Hecho (v4.8.1) | Restaurar prompt interactivo para activar Nuclei en perfil Exhaustivo. |
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **RustScan Rango Completo** | Hecho (v4.8.2) | Forzar `-r 1-65535` para escanear todos los puertos en lugar del default top 1000 de RustScan. |
+| **Soporte Instalador ARM64** | Hecho (v4.8.3) | Añadida detección ARM64/aarch64 para Raspberry Pi y VMs Apple Silicon. |
+| **Toggle Asistente Nuclei** | Hecho (v4.8.1) | Restaurar prompt interactivo de activación de Nuclei en perfil Exhaustivo. |
 
 ### v4.7 Integracion HyperScan Masscan (Hecho)
 
 | Caracteristica | Estado | Descripcion |
-| :--- | :--- | :--- |
+|---|---|---|
 | **Backend Masscan** | Reemplazado (v4.8.0) | `masscan_scanner.py` reemplazado por `RustScan` para mayor velocidad y precision. |
 | **Integracion RustScan** | Hecho (v4.8.0) | Nuevo modulo primario para HyperScan. Escaneo de todos los puertos en ~3s. |
 | **Fallback Redes Docker** | Hecho (v4.7.1) | Fallback automatico a Scapy cuando Masscan retorna 0 puertos (redes bridge Docker). |
@@ -119,7 +119,7 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 ### v4.6 Fidelidad de Escaneo y Control de Tiempo (Hecho)
 
 | Característica | Estado | Descripción |
-| :--- | :--- | :--- |
+|---|---|---|
 | **Gating de Apps Web por Infraestructura** | Hecho | Omitir sqlmap/ZAP en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP. |
 | **Evidencia de Identidad en Deep Scan** | Hecho | Título/servidor HTTP y tipo de dispositivo evitan deep scan cuando la identidad ya es fuerte. |
 | **Sonda HTTP Rápida de Identidad** | Hecho | Sonda HTTP/HTTPS breve en hosts silenciosos para resolver identidad antes. |
@@ -142,7 +142,7 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 ### v4.4 Cobertura de Código y Estabilidad (Hecho)
 
 | Característica | Estado | Descripción |
-| :--- | :--- | :--- |
+|---|---|---|
 | **Cobertura Topology 100%** | Hecho (v4.4.5) | Alcanzada cobertura completa de tests para `topology.py`. |
 | **Cobertura Updater >94%** | Hecho (v4.4.5) | Endurecido `updater.py` con tests robustos. |
 | **Cobertura Proyecto ~89%** | Hecho (v4.4.5) | Cobertura total del proyecto ahora en 88.75% (1619 tests pasando). |
@@ -154,7 +154,7 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 ### v4.3 Mejoras al Risk Score (Hecho)
 
 | Característica | Estado | Descripción |
-| :--- | :--- | :--- |
+|---|---|---|
 | **Algoritmo Weighted Maximum Gravity** | Hecho | Refactorizado `calculate_risk_score()` usando CVSS de NVD. |
 | **Risk Score Breakdown Tooltip** | Hecho | HTML reports show detailed risk score components on hover. |
 | **Identity Score Visualization** | Hecho | HTML reports display color-coded identity_score with tooltip showing identity signals. |
@@ -169,7 +169,7 @@ Ver [Release Notes](../releases/RELEASE_NOTES_v4.2.0.md) para detalles.
 ### v4.1 Optimizaciones de Rendimiento (Hecho)
 
 | Característica | Estado | Descripción |
-| :--- | :--- | :--- |
+|---|---|---|
 | **HyperScan-First Secuencial** | Hecho | Pre-escaneo de 65.535 puertos por host secuencialmente. |
 | **Escaneo Vulns Paralelo** | Hecho | nikto/testssl/whatweb concurrentemente por host. |
 | **Pre-filtrado Nikto CDN** | Hecho | Omitir Nikto en Cloudflare/Akamai/AWS CloudFront. |
@@ -183,7 +183,7 @@ Refactorización interna utilizando el patrón Strangler Fig. Completado en v4.0
 ### Infraestructura (Prioridad: Alta)
 
 | Característica | Estado | Descripción |
-| :--- | :--- | :--- |
+|---|---|---|
 | **Consolidación Suite Tests** | Hecho | Refactorizado 199 archivos → 123. 1130 tests al 85%. |
 
 ---
@@ -192,17 +192,17 @@ Refactorización interna utilizando el patrón Strangler Fig. Completado en v4.0
 
 Referencia de verificación de capacidades clave contra la base de código.
 
-| Capacidad | Versión | Ruta del Código / Verificación |
-| :--- | :--- | :--- |
-| **Descubrimiento LLDP Pasivo** | v4.10.0 | `core/topology.py` (vía `tcpdump` & `lldpctl`) |
-| **Descubrimiento CDP Pasivo** | v4.10.0 | `core/topology.py` (vía `tcpdump`/CISCO-CDP) |
-| **Etiquetado VLAN (802.1Q)** | v4.10.0 | `core/topology.py` (vía `ip link`/`ifconfig`) |
+| Capacidad | Versión | Ruta Código / Verificación |
+|---|---|---|
+| **Descubrimiento Pasivo LLDP** | v4.10.0 | `core/topology.py` (via `tcpdump` & `lldpctl`) |
+| **Descubrimiento Pasivo CDP** | v4.10.0 | `core/topology.py` (via `tcpdump`/CISCO-CDP) |
+| **Etiquetado VLAN (802.1Q)** | v4.10.0 | `core/topology.py` (via `ip link`/`ifconfig`) |
 | **Sonda IoT WiZ (UDP)** | v4.11.0 | `core/udp_probe.py`, `core/auditor.py` |
 | **Perfiles Nuclei** | v4.11.0 | `core/nuclei.py`, `core/auditor.py` |
-| **Base de Datos OUI** | v4.11.0 | `data/manuf` (38k+ vendors) |
-| **Descubrimiento Redes Enrutadas** | v4.9.0 | `core/net_discovery.py` (`ip route`/`ip neigh`) |
+| **Base Datos OUI** | v4.11.0 | `data/manuf` (38k+ vendors) |
+| **Descubrimiento Red Enrutada** | v4.9.0 | `core/net_discovery.py` (`ip route`/`ip neigh`) |
 | **Integración RustScan** | v4.8.0 | `core/rustscan.py` |
-| **Smart-Check** | v4.3.0 | `core/scanner/enrichment.py` (Lógica CPE/Falsos Positivos) |
+| **Smart-Check** | v4.3.0 | `core/scanner/enrichment.py` (CPE/Lógica Falsos Positivos) |
 
 ---
 
