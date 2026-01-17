@@ -349,8 +349,8 @@ TRANSLATIONS = {
         # v4.11.0: Nuclei profile selector
         "nuclei_profile_q": "Nuclei scan profile:",
         "nuclei_full": "Full - All templates, all ports (~2h)",
-        "nuclei_balanced": "Balanced - Full on 80/443, reduced on others (~30min, recommended)",
-        "nuclei_fast": "Fast - Critical CVEs only (~15min)",
+        "nuclei_balanced": "Balanced - 80/443 full, others reduced (~1h)",
+        "nuclei_fast": "Fast - Critical CVEs (~30-60min)",
         "windows_verify_q": "Enable agentless verification (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Max targets for agentless verification (1-200; higher = slower):",
         # v3.7: Interactive webhooks
@@ -494,9 +494,9 @@ TRANSLATIONS = {
         "mode_normal": "NORMAL (Puertos principales; equilibrio)",
         "mode_full": "COMPLETO (Todos los puertos + scripts + vulns + identidad profunda; más lento)",
         "wizard_profile_q": "Que tipo de auditoria deseas realizar?",
-        "wizard_profile_express": "Express — Solo discovery, sin escaneo de vulns (~10 min)",
-        "wizard_profile_standard": "Estandar — Discovery + escaneo de vulnerabilidades (~30 min)",
-        "wizard_profile_exhaustive": "Exhaustivo — Maxima profundidad + deteccion CVE con Nuclei (~2h)",
+        "wizard_profile_express": "Express — Solo discovery (~10 min)",
+        "wizard_profile_standard": "Estandar — Discovery + vulns (~30 min)",
+        "wizard_profile_exhaustive": "Exhaustivo — Profundidad maxima + Nuclei (~2h)",
         "wizard_profile_custom": "Personalizado — Control total (9 pasos)",
         "nvd_not_configured_reminder": "⚠️  API key de NVD no configurada. Se omitirá correlación CVE.",
         "nvd_get_key_hint": "   Obtén una key gratis en: https://nvd.nist.gov/developers/request-an-api-key",
@@ -786,9 +786,9 @@ TRANSLATIONS = {
         "nuclei_q": "¿Ejecutar Nuclei (especializado para servicios HTTP/Web)?",
         # v4.11.0: Selector de perfil Nuclei
         "nuclei_profile_q": "Perfil de escaneo Nuclei:",
-        "nuclei_full": "Completo - Todos los templates, todos los puertos (~2h)",
-        "nuclei_balanced": "Equilibrado - Completo en 80/443, reducido en otros (~30min, recomendado)",
-        "nuclei_fast": "Rapido - Solo CVEs criticos (~15min)",
+        "nuclei_full": "Completo - Todos los templates (~2h)",
+        "nuclei_balanced": "Equilibrado - 80/443 completo (~1h, recomendado)",
+        "nuclei_fast": "Rapido - CVEs criticos (~30-60min)",
         "windows_verify_q": "¿Activar verificación sin agente (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Máximo de objetivos para verificación sin agente (1-200; más alto = más lento):",
         # v3.7: Webhooks interactivos
