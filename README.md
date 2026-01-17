@@ -120,6 +120,9 @@ See [CHANGELOG](CHANGELOG.md) for complete version history.
 
 RedAudit operates as an orchestration layer, managing concurrent execution threads for network interaction and data processing. It implements a multi-stage architecture:
 
+> **Design Philosophy**: *"Optimization by Default, Resilience by Exception."*
+> An efficient pipeline that avoids redundancy but ensures absolute fatigue-based certainty when ambiguity arises. This is the optimal design to balance speed and security in audits.
+
 1. **HyperScan**: Async UDP/TCP discovery with **Smart-Throttle (AIMD)** congestion control.
 2. **Adaptive Deep Scan**: Targeted enumeration based on host identity.
 3. **Entity Resolution**: Identity-Based consolidation of multi-interface devices (heuristic).

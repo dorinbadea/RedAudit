@@ -122,6 +122,9 @@ Ver [NOTAS DE LANZAMIENTO](../docs/releases/RELEASE_NOTES_v4.4.4_ES.md) para má
 
 RedAudit opera como una capa de orquestación, gestionando hilos de ejecución concurrentes para la interacción de red y el procesamiento de datos. Implementa una arquitectura multifase:
 
+> **Filosofía de Diseño**: *"Optimización por Defecto, Resiliencia por Excepción."*
+> Una arquitectura diseñada para equilibrar velocidad y seguridad, evitando redundancia en casos claros y aplicando certeza absoluta (escaneo profundo) solo ante la ambigüedad. Este es el diseño óptimo para auditorías.
+
 1. **HyperScan**: Descubrimiento async UDP/TCP con control de congestión **Smart-Throttle (AIMD)**.
 2. **Deep Scan Adaptativo**: Enumeración dirigida basada en la identidad del host.
 3. **Resolución de Entidad**: Consolidación basada en identidad de dispositivos multi-interfaz (heurística).
