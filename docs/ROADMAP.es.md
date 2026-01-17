@@ -55,6 +55,16 @@ Mejoras menores identificadas durante la validación Gold Master de v4.4.0.
 
 ---
 
+### Funcionalidades Futuras (v5.0.0)
+
+| Característica | Descripción |
+| :--- | :--- |
+| **Sondas IoT Específicas** | Consultas profundas para protocolos específicos (Tuya, CoAP, propietarios). |
+| **Seguimiento de Fugas (Leak Following)** | Expansión automatizada del alcance basada en cabeceras internas filtradas. |
+| **Auditoría de Pipeline** | Visualización del flujo de descubrimiento (net_discovery -> hyperscan -> smart_scan). |
+
+---
+
 ## 2. Hitos Completados (Histórico)
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
@@ -178,7 +188,25 @@ Refactorización interna utilizando el patrón Strangler Fig. Completado en v4.0
 
 ---
 
-## 3. Conceptos Descartados
+## 3. Referencia de Capacidades Verificadas
+
+Referencia de verificación de capacidades clave contra la base de código.
+
+| Capacidad | Versión | Ruta del Código / Verificación |
+| :--- | :--- | :--- |
+| **Descubrimiento LLDP Pasivo** | v4.10.0 | `core/topology.py` (vía `tcpdump` & `lldpctl`) |
+| **Descubrimiento CDP Pasivo** | v4.10.0 | `core/topology.py` (vía `tcpdump`/CISCO-CDP) |
+| **Etiquetado VLAN (802.1Q)** | v4.10.0 | `core/topology.py` (vía `ip link`/`ifconfig`) |
+| **Sonda IoT WiZ (UDP)** | v4.11.0 | `core/udp_probe.py`, `core/auditor.py` |
+| **Perfiles Nuclei** | v4.11.0 | `core/nuclei.py`, `core/auditor.py` |
+| **Base de Datos OUI** | v4.11.0 | `data/manuf` (38k+ vendors) |
+| **Descubrimiento Redes Enrutadas** | v4.9.0 | `core/net_discovery.py` (`ip route`/`ip neigh`) |
+| **Integración RustScan** | v4.8.0 | `core/rustscan.py` |
+| **Smart-Check** | v4.3.0 | `core/scanner/enrichment.py` (Lógica CPE/Falsos Positivos) |
+
+---
+
+## 4. Conceptos Descartados
 
 Ideas consideradas pero rechazadas para mantener el foco del proyecto.
 
@@ -192,7 +220,7 @@ Ideas consideradas pero rechazadas para mantener el foco del proyecto.
 
 ---
 
-## 4. Contribuir
+## 5. Contribuir
 
 1. Revisa [Issues](https://github.com/dorinbadea/RedAudit/issues).
 2. Lee [CONTRIBUTING.md](../CONTRIBUTING.md).

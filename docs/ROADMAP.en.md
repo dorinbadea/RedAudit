@@ -55,6 +55,16 @@ Minor improvements identified during v4.4.0 Gold Master validation.
 
 ---
 
+### Future Features (v5.0.0)
+
+| Feature | Description |
+| :--- | :--- |
+| **Protocol Specific IoT Probes** | Deep queries for device-specific protocols (Tuya, CoAP, proprietary). |
+| **Leak Following** | Automated scope expansion based on leaked internal headers. |
+| **Pipeline Audit** | Visualization of the discovery flow (net_discovery -> hyperscan -> smart_scan). |
+
+---
+
 ## 2. Completed Milestones (History)
 
 These items are ordered chronologically (most recent first).
@@ -178,7 +188,25 @@ Internal refactoring using Strangler Fig pattern. Completed in v4.0.0.
 
 ---
 
-## 3. Discarded Concepts
+## 3. Verified Capabilities Reference
+
+Reference verification of key capabilities against the codebase.
+
+| Capability | Version | Code Path / Verification |
+| :--- | :--- | :--- |
+| **Passive LLDP Discovery** | v4.10.0 | `core/topology.py` (via `tcpdump` & `lldpctl`) |
+| **Passive CDP Discovery** | v4.10.0 | `core/topology.py` (via `tcpdump`/CISCO-CDP) |
+| **VLAN Tagging (802.1Q)** | v4.10.0 | `core/topology.py` (via `ip link`/`ifconfig`) |
+| **WiZ IoT Probe (UDP)** | v4.11.0 | `core/udp_probe.py`, `core/auditor.py` |
+| **Nuclei Profiles** | v4.11.0 | `core/nuclei.py`, `core/auditor.py` |
+| **OUI Database** | v4.11.0 | `data/manuf` (38k+ vendors) |
+| **Routed Network Discovery** | v4.9.0 | `core/net_discovery.py` (`ip route`/`ip neigh`) |
+| **RustScan Integration** | v4.8.0 | `core/rustscan.py` |
+| **Smart-Check** | v4.3.0 | `core/scanner/enrichment.py` (CPE/False Positive logic) |
+
+---
+
+## 4. Discarded Concepts
 
 Ideas considered but rejected to maintain project focus.
 
@@ -192,7 +220,7 @@ Ideas considered but rejected to maintain project focus.
 
 ---
 
-## 4. Contributing
+## 5. Contributing
 
 1. Check [Issues](https://github.com/dorinbadea/RedAudit/issues).
 2. Read [CONTRIBUTING.md](../CONTRIBUTING.md).
