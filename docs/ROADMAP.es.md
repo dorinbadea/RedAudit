@@ -14,6 +14,15 @@ Este documento describe el roadmap técnico, verifica las capacidades ya impleme
 
 Estos elementos están ordenados cronológicamente e incluyen trabajo entregado, planificado y aplazado.
 
+### v4.11 Rendimiento y Visibilidad IoT (Hecho)
+
+| Característica | Estado | Descripción |
+| :--- | :--- | :--- |
+| **Perfiles de Escaneo Nuclei** | Hecho (v4.11.0) | Flag `--profile` (full/balanced/fast) para controlar intensidad y velocidad. |
+| **Detección IoT WiZ** | Hecho (v4.11.0) | Sonda UDP especializada (38899) para bombillas inteligentes WiZ. |
+| **Expansión Base de Datos OUI** | Hecho (v4.11.0) | Actualización de MACs a ~39k fabricantes (ingesta Wireshark). |
+| **Optimización Lotes Nuclei** | Hecho (v4.11.0) | Reducción de lote (10) y aumento de timeouts (600s) para redes densas. |
+
 ### v4.6 Fidelidad de Escaneo y Control de Tiempo (Hecho)
 
 | Característica | Estado | Descripción |

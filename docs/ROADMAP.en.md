@@ -14,6 +14,15 @@ This document outlines the technical roadmap, verifies implemented capabilities,
 
 These items are ordered chronologically and include delivered, planned, and deferred work.
 
+### v4.11 Performance & IoT Visibility (Done)
+
+| Feature | Status | Description |
+| :--- | :--- | :--- |
+| **Nuclei Scan Profiles** | Done (v4.11.0) | `--profile` flag (full/balanced/fast) to control scan intensity and speed. |
+| **IoT WiZ Detection** | Done (v4.11.0) | Specialized UDP probe (38899) for WiZ smart bulbs. |
+| **OUI Database Expansion** | Done (v4.11.0) | Updated Macs to ~39k vendors (Wireshark ingest). |
+| **Nuclei Batch Optimization** | Done (v4.11.0) | Reduced batch size (10) and increased timeouts (600s) for dense nets. |
+
 ### v4.6 Scan Fidelity & Time Control (Done)
 
 | Feature | Status | Description |
