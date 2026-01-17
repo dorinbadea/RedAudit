@@ -1098,6 +1098,7 @@ class AuditorScan:
             # Infrastructure devices should be excluded via identity_strong at evaluation level
             cmd_p1 = [
                 "nmap",
+                "-p-",
                 "-A",
                 "-Pn",
                 safe_ip,
