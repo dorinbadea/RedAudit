@@ -28,92 +28,6 @@ It orchestrates a comprehensive toolchain (nmap, nikto, nuclei, whatweb, testssl
 
 ---
 
-## Quick Start
-
-```bash
-# Install
-git clone https://github.com/dorinbadea/RedAudit.git
-cd RedAudit && sudo bash redaudit_install.sh
-
-# Run your first scan
-sudo redaudit --target 192.168.1.0/24 --mode normal --yes
-```
-
-For interactive mode (wizard-guided setup), simply run:
-
-```bash
-sudo redaudit
-```
-
-> **Want to test RedAudit safely?**
-> Set up our Vulnerable Lab using Docker: **[Lab Setup Guide](docs/LAB_SETUP.md)**
-
----
-
-## Core Capabilities
-
-### Scanning & Discovery
-
-| Capability | Description |
-|:---|:---|
-| **Parallel Deep Scan** | Fully decoupled deep scan phase running in parallel (up to 100 threads) for massive speedups |
-| **HyperScan** | Async TCP sweep + UDP discovery probes (including broadcast where supported) + aggressive ARP for fast inventory |
-| **Smart-Throttle** | AIMD-based adaptive congestion control that prevents packet loss by dynamically sizing scan batches |
-| **Topology Discovery** | L2/L3 mapping (ARP/VLAN/LLDP + gateway/routes) for network context |
-| **Network Discovery** | Broadcast protocols (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) for L2 visibility |
-| **Web App Security** | Integrated `sqlmap` (SQLi) and `OWASP ZAP` (DAST) for deep web application scanning, with infra-aware gating |
-| **Agentless Verification** | Optional SMB/RDP/LDAP/SSH/HTTP probes for identity hints and fingerprints |
-| **VPN Interface Detection** | Classifies VPN endpoints via vendor OUI, VPN ports (500/4500/1194/51820), and hostname patterns |
-| **Stealth Mode** | T1 timing, 1 thread, 5s+ delays for IDS-sensitive environments (`--stealth`) |
-
-### Intelligence & Correlation
-
-| Capability | Description |
-|:---|:---|
-| **CVE Correlation** | NVD API 2.0 with CPE 2.3 matching and 7-day cache |
-| **Exploit Lookup** | Automatic ExploitDB (`searchsploit`) queries for detected services |
-| **Template Scanning** | Nuclei templates with best-effort false-positive checks (header/vendor/title hints) and partial timeout reporting |
-| **Smart-Check Filter** | 3-layer false positive reduction (Content-Type, size, magic bytes) |
-| **Network Leak Hints** | Flags multiple DHCP-advertised subnets/VLANs as potential hidden networks |
-
-### Reporting & Integration
-
-| Capability | Description |
-|:---|:---|
-| **Multi-Format Output** | JSON, TXT, HTML dashboard, JSONL exports for SIEM pipelines |
-| **Remediation Playbooks** | Markdown guides auto-generated per host/category |
-| **Diff Analysis** | Compare JSON reports to track network changes over time |
-| **SIEM-Ready Exports** | JSONL with risk scoring and observable hashing for deduplication |
-| **Report Encryption** | AES-128-CBC (Fernet) with PBKDF2-HMAC-SHA256 key derivation |
-
-### Operations
-
-| Capability | Description |
-|:---|:---|
-| **Persistent Defaults** | User preferences stored in `~/.redaudit/config.json` |
-| **Generator-based Targeting** | Streaming target processor for unlimited network size (e.g. /16 or /8) without memory/RAM exhaustion |
-| **Interactive Webhooks** | Webhook alerts for high/critical findings (wizard or CLI) |
-| **Session Logging** | Dual-format terminal output capture (`.log` raw + `.txt` clean) for audit trails |
-| **Timeout-Safe Scanning** | Host scans are bounded by hard timeouts; progress shows upper-bound ETA |
-| **IPv6 + Proxy Support** | Dual-stack scanning with SOCKS5 pivoting via proxychains4 (TCP connect only) |
-| **Rate Limiting** | Configurable inter-host delay with ±30% jitter to reduce predictability |
-| **Bilingual Interface** | Complete English/Spanish localization |
-| **Auto-Update** | Atomic staged updates with automatic rollback on failure |
-
-### Recent Enhancements
-
-**Smart-Throttle:** AIMD-based adaptive congestion control automatically adjusts scan batch sizes based on network conditions, ensuring maximum speed without packet loss.
-
-**Generator-based Targeting:** Stream-processing architecture supports unlimited network sizes (e.g., /8 or /16) without memory exhaustion.
-
-**Thread Scaling:** Increased `MAX_THREADS` from 16 to 100 (v4.6.29) to fully utilize modern hardware.
-
-**Enterprise-Grade Risk Scoring:** Configuration findings (Nikto/Nuclei) integrated into decision matrix with Low/Medium/High severity mappings.
-
-See [CHANGELOG](CHANGELOG.md) for complete version history.
-
----
-
 ## How It Works
 
 ### Architecture Overview
@@ -229,6 +143,92 @@ RedAudit uses Python's `ThreadPoolExecutor` to scan multiple hosts simultaneousl
 - **High threads (50-100)**: Faster, but more network noise. Risk of congestion.
 - **Low threads (1-4)**: Slower, stealthier, kinder to legacy networks.
 - **Rate limit >0**: Recommended for production environments to avoid IDS triggers.
+
+---
+
+## Quick Start
+
+```bash
+# Install
+git clone https://github.com/dorinbadea/RedAudit.git
+cd RedAudit && sudo bash redaudit_install.sh
+
+# Run your first scan
+sudo redaudit --target 192.168.1.0/24 --mode normal --yes
+```
+
+For interactive mode (wizard-guided setup), simply run:
+
+```bash
+sudo redaudit
+```
+
+> **Want to test RedAudit safely?**
+> Set up our Vulnerable Lab using Docker: **[Lab Setup Guide](docs/LAB_SETUP.md)**
+
+---
+
+## Core Capabilities
+
+### Scanning & Discovery
+
+| Capability | Description |
+|:---|:---|
+| **Parallel Deep Scan** | Fully decoupled deep scan phase running in parallel (up to 100 threads) for massive speedups |
+| **HyperScan** | Async TCP sweep + UDP discovery probes (including broadcast where supported) + aggressive ARP for fast inventory |
+| **Smart-Throttle** | AIMD-based adaptive congestion control that prevents packet loss by dynamically sizing scan batches |
+| **Topology Discovery** | L2/L3 mapping (ARP/VLAN/LLDP + gateway/routes) for network context |
+| **Network Discovery** | Broadcast protocols (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) for L2 visibility |
+| **Web App Security** | Integrated `sqlmap` (SQLi) and `OWASP ZAP` (DAST) for deep web application scanning, with infra-aware gating |
+| **Agentless Verification** | Optional SMB/RDP/LDAP/SSH/HTTP probes for identity hints and fingerprints |
+| **VPN Interface Detection** | Classifies VPN endpoints via vendor OUI, VPN ports (500/4500/1194/51820), and hostname patterns |
+| **Stealth Mode** | T1 timing, 1 thread, 5s+ delays for IDS-sensitive environments (`--stealth`) |
+
+### Intelligence & Correlation
+
+| Capability | Description |
+|:---|:---|
+| **CVE Correlation** | NVD API 2.0 with CPE 2.3 matching and 7-day cache |
+| **Exploit Lookup** | Automatic ExploitDB (`searchsploit`) queries for detected services |
+| **Template Scanning** | Nuclei templates with best-effort false-positive checks (header/vendor/title hints) and partial timeout reporting |
+| **Smart-Check Filter** | 3-layer false positive reduction (Content-Type, size, magic bytes) |
+| **Network Leak Hints** | Flags multiple DHCP-advertised subnets/VLANs as potential hidden networks |
+
+### Reporting & Integration
+
+| Capability | Description |
+|:---|:---|
+| **Multi-Format Output** | JSON, TXT, HTML dashboard, JSONL exports for SIEM pipelines |
+| **Remediation Playbooks** | Markdown guides auto-generated per host/category |
+| **Diff Analysis** | Compare JSON reports to track network changes over time |
+| **SIEM-Ready Exports** | JSONL with risk scoring and observable hashing for deduplication |
+| **Report Encryption** | AES-128-CBC (Fernet) with PBKDF2-HMAC-SHA256 key derivation |
+
+### Operations
+
+| Capability | Description |
+|:---|:---|
+| **Persistent Defaults** | User preferences stored in `~/.redaudit/config.json` |
+| **Generator-based Targeting** | Streaming target processor for unlimited network size (e.g. /16 or /8) without memory/RAM exhaustion |
+| **Interactive Webhooks** | Webhook alerts for high/critical findings (wizard or CLI) |
+| **Session Logging** | Dual-format terminal output capture (`.log` raw + `.txt` clean) for audit trails |
+| **Timeout-Safe Scanning** | Host scans are bounded by hard timeouts; progress shows upper-bound ETA |
+| **IPv6 + Proxy Support** | Dual-stack scanning with SOCKS5 pivoting via proxychains4 (TCP connect only) |
+| **Rate Limiting** | Configurable inter-host delay with ±30% jitter to reduce predictability |
+| **Bilingual Interface** | Complete English/Spanish localization |
+| **Auto-Update** | Atomic staged updates with automatic rollback on failure |
+
+### Recent Enhancements
+
+**Smart-Throttle:** AIMD-based adaptive congestion control automatically adjusts scan batch sizes based on network conditions, ensuring maximum speed without packet loss.
+
+**Generator-based Targeting:** Stream-processing architecture supports unlimited network sizes (e.g., /8 or /16) without memory exhaustion.
+
+**Thread Scaling:** Increased `MAX_THREADS` from 16 to 100 (v4.6.29) to fully utilize modern hardware.
+
+**Enterprise-Grade Risk Scoring:** Configuration findings (Nikto/Nuclei) integrated into decision matrix with Low/Medium/High severity mappings.
+
+See [CHANGELOG](CHANGELOG.md) for complete version history.
 
 ---
 
@@ -359,7 +359,7 @@ redaudit --diff ~/reports/monday.json ~/reports/friday.json
 | `-t, --target` | Target network(s) in CIDR notation |
 | `-m, --mode` | Scan mode: `fast` / `normal` / `full` (default: normal) |
 | `-j, --threads` | Concurrent threads (1-100, auto-detected) |
-| `--rate-limit` | Delay between hosts in seconds (±30% jitter) |
+| `--rate-limit` | Delay between hosts in seconds (±30% jitter applied) |
 | `-e, --encrypt` | Encrypt reports with AES-128 |
 | `-o, --output` | Output directory |
 | `--topology` | Enable network topology discovery |

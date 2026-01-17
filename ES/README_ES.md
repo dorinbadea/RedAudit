@@ -24,98 +24,6 @@ Orquesta un toolchain completo (nmap, nikto, nuclei, whatweb, testssl.sh, sqlmap
 
 ---
 
-## Inicio Rápido
-
-```bash
-# Instalar
-git clone https://github.com/dorinbadea/RedAudit.git
-cd RedAudit && sudo bash redaudit_install.sh
-
-# Ejecutar tu primer escaneo
-sudo redaudit --target 192.168.1.0/24 --mode normal --yes
-```
-
-Para modo interactivo (asistente guiado), simplemente ejecuta:
-
-```bash
-sudo redaudit
-```
-
-> **¿Quieres probar RedAudit de forma segura?**
-> Configura nuestro Laboratorio Vulnerable usando Docker: **[Guia del Laboratorio](docs/LAB_SETUP_ES.md)**
-
----
-
-## Capacidades Principales
-
-### Escaneo y Descubrimiento
-
-| Capacidad | Descripción |
-| :--- | :--- |
-| **Deep Scan Paralelo** | Fase de deep scan totalmente desacoplada ejecutándose en paralelo (hasta 50 hilos) para aceleración masiva |
-| **HyperScan** | Barrido TCP asíncrono + sondas UDP de descubrimiento (incluye broadcast cuando procede) + ARP agresivo |
-| **Smart-Throttle** | Control de congestión adaptativo (AIMD) que previene la pérdida de paquetes ajustando dinámicamente los lotes de escaneo |
-| **Descubrimiento de Topología** | Mapeo L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para contexto de red |
-| **Descubrimiento de Red** | Protocolos broadcast (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) para visibilidad L2 |
-| **Seguridad Web App** | Integración de `sqlmap` (SQLi) y `OWASP ZAP` (DAST) para escaneo profundo de aplicaciones web, con gating de infraestructura |
-| **Verificación sin agente** | Sondas SMB/RDP/LDAP/SSH/HTTP para pistas de identidad |
-| **Detección Interfaces VPN** | Clasifica endpoints VPN por OUI del fabricante, puertos VPN (500/4500/1194/51820) y patrones de hostname |
-| **Modo Sigiloso** | Timing T1, 1 hilo, retardos 5s+ para entornos sensibles a IDS (`--stealth`) |
-
-### Inteligencia y Correlación
-
-| Capacidad | Descripción |
-| :--- | :--- |
-| **Correlación CVE** | NVD API 2.0 con matching CPE 2.3 y caché de 7 días |
-| **Búsqueda de Exploits** | Consultas automáticas a ExploitDB (`searchsploit`) para servicios detectados |
-| **Escaneo de Plantillas** | Plantillas Nuclei con comprobaciones best-effort de falsos positivos (cabeceras/fabricante/título) y informe de timeout parcial |
-| **Filtro Smart-Check** | Reducción de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |
-| **Indicios de Fuga de Red** | Señala múltiples subredes/VLANs anunciadas por DHCP como posibles redes ocultas |
-
-### Informes e Integración
-
-| Capacidad | Descripción |
-| :--- | :--- |
-| **Salida Multi-Formato** | JSON, TXT, dashboard HTML y exportaciones JSONL para SIEM |
-| **Playbooks de Remediación** | Guías Markdown auto-generadas por host/categoría |
-| **Análisis Diferencial** | Compara informes JSON para rastrear cambios en la red |
-| **Exportaciones SIEM-Ready** | JSONL con scoring de riesgo y hash de observables para deduplicación |
-| **Cifrado de Informes** | AES-128-CBC (Fernet) con derivación PBKDF2-HMAC-SHA256 |
-
-### Operaciones
-
-| Capacidad | Descripción |
-| :--- | :--- |
-| **Defaults Persistentes** | Preferencias de usuario guardadas en `~/.redaudit/config.json` |
-| **Targeting basado en Generadores** | Procesador de targets en streaming para tamaño de red ilimitado (ej. /16 o /8) sin agotar la RAM |
-| **Webhooks Interactivos** | Alertas por webhook para hallazgos high/critical (asistente o CLI) |
-| **Logging de Sesión** | Captura de salida terminal en doble formato (`.log` raw + `.txt` limpio) |
-| **Escaneo con Timeout** | Escaneos de host con timeout duro; progreso con ETA límite |
-| **Soporte IPv6 + Proxy** | Escaneo dual-stack con pivoting SOCKS5 vía proxychains4 (solo TCP connect) |
-| **Rate Limiting** | Retardo inter-host configurable con jitter ±30% para entornos sensibles a IDS |
-| **Interfaz Bilingüe** | Localización completa Inglés/Español |
-| **Auto-Actualización** | Actualizaciones atómicas staged con rollback automático en caso de fallo |
-
-### Nuevo en v4.4: Escalabilidad Enterprise y Smart-Throttle
-
-> **Escala Masiva + Velocidad Adaptativa.**
-
-**Smart-Throttle:** Se acabó el tuning manual. RedAudit ahora "siente" la congestión de la red usando un algoritmo AIMD (Incremento Aditivo, Decremento Multiplicativo). Frena cuando hay pérdida de paquetes y acelera en enlaces estables, asegurando la máxima velocidad sin romper la red objetivo.
-
-**Targeting basado en Generadores:** Se ha reescrito el motor de targeting para usar generadores en streaming. Ahora puedes alimentar una red `/8` o millones de IPs aleatorias sin llenar tu RAM.
-
-**Risk Scoring V2:** El motor de riesgos ahora integra la severidad de los hallazgos (low/med/high/crit) de Nikto y Nuclei en la puntuación final. Un host con cero CVEs pero fallos críticos de configuración (ej. falta de auth) ahora reflejará correctamente un riesgo alto.
-
-**Optimización Docker/Deep (H2):**
-
-- **Nikto**: Timeouts extendidos (5m) y perfiles de tuning completos.
-- **Nuclei**: Añadidos hallazgos de severidad "Low" (ej. fugas de info, paneles expuestos) a la matriz de decisión.
-- **Silencio Scapy**: Supresión de advertencias ARP de bajo nivel para una salida más limpia.
-
-Ver [NOTAS DE LANZAMIENTO](../docs/releases/RELEASE_NOTES_v4.4.4_ES.md) para más detalles.
-
----
-
 ## Cómo Funciona
 
 ### Vista General de Arquitectura
@@ -232,6 +140,98 @@ RedAudit usa `ThreadPoolExecutor` de Python para escanear múltiples hosts simul
 - **Hilos altos (50-100)**: Más rápido, pero más ruido de red. Riesgo de congestión.
 - **Hilos bajos (1-4)**: Más lento, más sigiloso, más amable con redes legacy.
 - **Rate limit >0**: Recomendado para entornos de producción para evitar triggers IDS.
+
+---
+
+## Inicio Rápido
+
+```bash
+# Instalar
+git clone https://github.com/dorinbadea/RedAudit.git
+cd RedAudit && sudo bash redaudit_install.sh
+
+# Ejecutar tu primer escaneo
+sudo redaudit --target 192.168.1.0/24 --mode normal --yes
+```
+
+Para modo interactivo (asistente guiado), simplemente ejecuta:
+
+```bash
+sudo redaudit
+```
+
+> **¿Quieres probar RedAudit de forma segura?**
+> Configura nuestro Laboratorio Vulnerable usando Docker: **[Guia del Laboratorio](docs/LAB_SETUP_ES.md)**
+
+---
+
+## Capacidades Principales
+
+### Escaneo y Descubrimiento
+
+| Capacidad | Descripción |
+| :--- | :--- |
+| **Deep Scan Paralelo** | Fase de deep scan totalmente desacoplada ejecutándose en paralelo (hasta 50 hilos) para aceleración masiva |
+| **HyperScan** | Barrido TCP asíncrono + sondas UDP de descubrimiento (incluye broadcast cuando procede) + ARP agresivo |
+| **Smart-Throttle** | Control de congestión adaptativo (AIMD) que previene la pérdida de paquetes ajustando dinámicamente los lotes de escaneo |
+| **Descubrimiento de Topología** | Mapeo L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para contexto de red |
+| **Descubrimiento de Red** | Protocolos broadcast (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) para visibilidad L2 |
+| **Seguridad Web App** | Integración de `sqlmap` (SQLi) y `OWASP ZAP` (DAST) para escaneo profundo de aplicaciones web, con gating de infraestructura |
+| **Verificación sin agente** | Sondas SMB/RDP/LDAP/SSH/HTTP para pistas de identidad |
+| **Detección Interfaces VPN** | Clasifica endpoints VPN por OUI del fabricante, puertos VPN (500/4500/1194/51820) y patrones de hostname |
+| **Modo Sigiloso** | Timing T1, 1 hilo, retardos 5s+ para entornos sensibles a IDS (`--stealth`) |
+
+### Inteligencia y Correlación
+
+| Capacidad | Descripción |
+| :--- | :--- |
+| **Correlación CVE** | NVD API 2.0 con matching CPE 2.3 y caché de 7 días |
+| **Búsqueda de Exploits** | Consultas automáticas a ExploitDB (`searchsploit`) para servicios detectados |
+| **Escaneo de Plantillas** | Plantillas Nuclei con comprobaciones best-effort de falsos positivos (cabeceras/fabricante/título) y informe de timeout parcial |
+| **Filtro Smart-Check** | Reducción de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |
+| **Indicios de Fuga de Red** | Señala múltiples subredes/VLANs anunciadas por DHCP como posibles redes ocultas |
+
+### Informes e Integración
+
+| Capacidad | Descripción |
+| :--- | :--- |
+| **Salida Multi-Formato** | JSON, TXT, dashboard HTML y exportaciones JSONL para SIEM |
+| **Playbooks de Remediación** | Guías Markdown auto-generadas por host/categoría |
+| **Análisis Diferencial** | Compara informes JSON para rastrear cambios en la red |
+| **Exportaciones SIEM-Ready** | JSONL con scoring de riesgo y hash de observables para deduplicación |
+| **Cifrado de Informes** | AES-128-CBC (Fernet) con derivación PBKDF2-HMAC-SHA256 |
+
+### Operaciones
+
+| Capacidad | Descripción |
+| :--- | :--- |
+| **Defaults Persistentes** | Preferencias de usuario guardadas en `~/.redaudit/config.json` |
+| **Targeting basado en Generadores** | Procesador de targets en streaming para tamaño de red ilimitado (ej. /16 o /8) sin agotar la RAM |
+| **Webhooks Interactivos** | Alertas por webhook para hallazgos high/critical (asistente o CLI) |
+| **Logging de Sesión** | Captura de salida terminal en doble formato (`.log` raw + `.txt` limpio) |
+| **Escaneo con Timeout** | Escaneos de host con timeout duro; progreso con ETA límite |
+| **Soporte IPv6 + Proxy** | Escaneo dual-stack con pivoting SOCKS5 vía proxychains4 (solo TCP connect) |
+| **Rate Limiting** | Retardo inter-host configurable con jitter ±30% para entornos sensibles a IDS |
+| **Interfaz Bilingüe** | Localización completa Inglés/Español |
+| **Auto-Actualización** | Actualizaciones atómicas staged con rollback automático en caso de fallo |
+
+### Nuevo en v4.4: Escalabilidad Enterprise y Smart-Throttle
+
+> **Escala Masiva + Velocidad Adaptativa.**
+
+**Smart-Throttle:** Se acabó el tuning manual. RedAudit ahora "siente" la congestión de la red usando un algoritmo AIMD (Incremento Aditivo, Decremento Multiplicativo). Frena cuando hay pérdida de paquetes y acelera en enlaces estables, asegurando la máxima velocidad sin romper la red objetivo.
+
+**Targeting basado en Generadores:** Se ha reescrito el motor de targeting para usar generadores en streaming. Ahora puedes alimentar una red `/8` o millones de IPs aleatorias sin llenar tu RAM.
+
+**Risk Scoring V2:** El motor de riesgos ahora integra la severidad de los hallazgos (low/med/high/crit) de Nikto y Nuclei en la puntuación final. Un host con cero CVEs pero fallos críticos de configuración (ej. falta de auth) ahora reflejará correctamente un riesgo alto.
+
+**Optimización Docker/Deep (H2):**
+
+- **Nikto**: Timeouts extendidos (5m) y perfiles de tuning completos.
+- **Nuclei**: Añadidos hallazgos de severidad "Low" (ej. fugas de info, paneles expuestos) a la matriz de decisión.
+- **Silencio Scapy**: Supresión de advertencias ARP de bajo nivel para una salida más limpia.
+
+Ver [NOTAS DE LANZAMIENTO](../docs/releases/RELEASE_NOTES_v4.4.4_ES.md) para más detalles.
 
 ---
 
@@ -566,8 +566,6 @@ Consulta [CHANGELOG_ES.md](CHANGELOG_ES.md) para el historial completo de versio
 ## Licencia
 
 RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**. Consulta [LICENSE](../LICENSE).
-
----
 
 ---
 
