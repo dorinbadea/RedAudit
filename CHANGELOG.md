@@ -8,6 +8,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [4.12.1] - 2026-01-17
+
+### Added
+
+- **Topology Enrichment**: ARP scan results in topology phase now perform OUI lookup to resolve "(Unknown)" vendors.
+- **Nuclei Optimization**: Added `rate_limit` and `batch_size` configuration to Nuclei profiles.
+  - `fast` profile now runs at 300 rps (was 150) with batch size 15 (was 10) for faster execution.
+- **Wizard Clarity**: Updated Express/Standard profile descriptions to clearly state scan depth (discovery vs vuln).
+
+### Fixed
+
+- Fixed interaction between Nuclei profile defaults and explicit parameters (explicit parameters now correctly override profile defaults).
+- Fixed typing issues (mypy) in Nuclei module with proper `TypedDict` for profiles.
+
 ## [v4.12.0] - 2026-01-17
 
 ### Added

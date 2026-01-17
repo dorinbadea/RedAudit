@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from redaudit.core.command_runner import CommandRunner
 from redaudit.utils.dry_run import is_dry_run
+from redaudit.utils.oui_lookup import lookup_vendor_online
 
 
 def _run_cmd(
@@ -99,6 +100,10 @@ def _extract_default_gateway(routes: List[Dict[str, Any]]) -> Optional[Dict[str,
 
 
 def _parse_arp_scan(stdout: str) -> List[Dict[str, Any]]:
+    """Parse arp-scan output and enrich unknown vendors via OUI lookup.
+
+    v4.12.1: Added OUI enrichment to resolve "(Unknown)" vendors.
+    """
     hosts: List[Dict[str, Any]] = []
     for line in (stdout or "").splitlines():
         line = line.strip()
@@ -112,6 +117,16 @@ def _parse_arp_scan(stdout: str) -> List[Dict[str, Any]]:
         if not m:
             continue
         ip, mac, vendor = m.group(1), m.group(2), m.group(3).strip()
+
+        # v4.12.1: Enrich unknown vendors via OUI lookup
+        if "unknown" in vendor.lower():
+            try:
+                enriched = lookup_vendor_online(mac)
+                if enriched:
+                    vendor = enriched
+            except Exception:
+                pass
+
         hosts.append({"ip": ip, "mac": mac.lower(), "vendor": vendor})
 
     return hosts

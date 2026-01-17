@@ -13,7 +13,7 @@ import shutil
 import tempfile
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Protocol, cast
+from typing import Any, Callable, Dict, List, Optional, Protocol, TypedDict, cast
 
 from redaudit.core.command_runner import CommandRunner
 from redaudit.core.proxy import get_proxy_command_wrapper
@@ -87,19 +87,36 @@ def get_nuclei_version() -> Optional[str]:
 
 
 # v4.11.0: Nuclei scan profile configurations
-# Maps profile names to template and severity settings
-NUCLEI_PROFILES = {
+# v4.12.1: Added rate_limit and batch_size per profile for performance tuning
+
+
+class NucleiProfileConfig(TypedDict, total=False):
+    """Type definition for nuclei profile configuration."""
+
+    severity: str
+    tags: Optional[str]
+    rate_limit: int
+    batch_size: int
+
+
+NUCLEI_PROFILES: Dict[str, NucleiProfileConfig] = {
     "full": {
         "severity": "low,medium,high,critical",
         "tags": None,  # All templates
+        "rate_limit": 100,  # Conservative for full scan
+        "batch_size": 10,
     },
     "balanced": {
         "severity": "medium,high,critical",
         "tags": "cve,default-login,exposure,misconfig",  # Core security templates
+        "rate_limit": 150,  # Balanced speed
+        "batch_size": 10,
     },
     "fast": {
         "severity": "high,critical",
         "tags": "cve",  # Only CVE templates
+        "rate_limit": 300,  # v4.12.1: Higher rate for speed
+        "batch_size": 15,  # v4.12.1: Larger batches for speed
     },
 }
 
@@ -203,8 +220,18 @@ def run_nuclei_scan(
         if retries_val > 3:
             retries_val = 3
 
+        # v4.12.1: Load profile config early to get rate_limit and batch_size
+        # Explicit parameters override profile defaults for testing/customization
+        profile_config = NUCLEI_PROFILES.get(profile, NUCLEI_PROFILES["balanced"])
+        profile_rate = profile_config.get("rate_limit") or 150
+        profile_batch = profile_config.get("batch_size") or 10
+        # If caller passed explicit values different from defaults, use them
+        effective_rate_limit: int = rate_limit if rate_limit != 150 else int(profile_rate)
+        effective_batch_size: int = batch_size if batch_size != 10 else int(profile_batch)
+
         # v4.6.24: Smaller batches = fewer timeouts, faster completion
-        size = int(batch_size) if isinstance(batch_size, int) else 10
+        # v4.12.1: Now uses profile-specific batch_size
+        size = int(effective_batch_size) if isinstance(effective_batch_size, int) else 10
         if size < 1:
             size = 10
         batches = [targets[i : i + size] for i in range(0, len(targets), size)]
@@ -222,14 +249,14 @@ def run_nuclei_scan(
             out_path: str,
             rate_limit_override: Optional[int],
         ) -> List[str]:
+            # v4.12.1: Use profile-specific rate_limit as default
             effective_rate = (
                 int(rate_limit_override)
                 if isinstance(rate_limit_override, int) and rate_limit_override > 0
-                else int(rate_limit)
+                else int(effective_rate_limit)
             )
-            # v4.11.0: Apply profile-based severity and tags
-            profile_config = NUCLEI_PROFILES.get(profile, NUCLEI_PROFILES["balanced"])
-            effective_severity = profile_config.get("severity", severity)
+            # v4.11.0: Apply profile-based severity and tags (profile_config from outer scope)
+            effective_severity: str = str(profile_config.get("severity") or severity)
             profile_tags = profile_config.get("tags")
 
             cmd = [

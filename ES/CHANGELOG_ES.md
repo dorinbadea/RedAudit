@@ -8,6 +8,20 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [4.12.1] - 2026-01-17
+
+### Añadido
+
+- **Enriquecimiento de Topología**: Los resultados ARP en la fase de topología ahora resuelven vendors "(Unknown)" usando la base de datos OUI.
+- **Optimización Nuclei**: Añadida configuración de `rate_limit` y `batch_size` a los perfiles de Nuclei.
+  - El perfil `fast` ahora corre a 300 rps (antes 150) con batch size 15 (antes 10) para mayor velocidad.
+- **Claridad del Asistente**: Actualizadas las descripciones de perfiles Express/Standard para indicar claramente la profundidad (solo discovery vs vulns).
+
+### Corregido
+
+- Corregida la interacción entre defaults de perfil Nuclei y parámetros explícitos (los parámetros explícitos ahora tienen prioridad).
+- Corregidos problemas de tipado (mypy) en el módulo Nuclei usando `TypedDict`.
+
 ## [v4.12.0] - 2026-01-17
 
 ### Añadido
