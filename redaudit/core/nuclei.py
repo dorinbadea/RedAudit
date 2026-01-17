@@ -86,6 +86,24 @@ def get_nuclei_version() -> Optional[str]:
     return None
 
 
+# v4.11.0: Nuclei scan profile configurations
+# Maps profile names to template and severity settings
+NUCLEI_PROFILES = {
+    "full": {
+        "severity": "low,medium,high,critical",
+        "tags": None,  # All templates
+    },
+    "balanced": {
+        "severity": "medium,high,critical",
+        "tags": "cve,default-login,exposure,misconfig",  # Core security templates
+    },
+    "fast": {
+        "severity": "high,critical",
+        "tags": "cve",  # Only CVE templates
+    },
+}
+
+
 def run_nuclei_scan(
     targets: List[str],
     output_dir: str,
@@ -93,8 +111,8 @@ def run_nuclei_scan(
     severity: str = "medium,high,critical",
     templates: Optional[str] = None,
     rate_limit: int = 150,
-    timeout: int = 300,
-    batch_size: int = 25,
+    timeout: int = 600,  # v4.11.0: Increased default from 300s to 600s
+    batch_size: int = 10,  # v4.11.0: Decreased default from 25 to 10
     request_timeout: Optional[int] = None,
     retries: Optional[int] = None,
     progress_callback: Optional[NucleiProgressCallback] = None,
@@ -103,6 +121,7 @@ def run_nuclei_scan(
     dry_run: bool = False,
     print_status=None,
     proxy_manager=None,
+    profile: str = "balanced",  # v4.11.0: Scan profile (full/balanced/fast)
 ) -> Dict[str, Any]:
     """
     Run Nuclei scan against HTTP/HTTPS targets.
@@ -113,12 +132,14 @@ def run_nuclei_scan(
         severity: Comma-separated severity levels (default: medium,high,critical)
         templates: Path to custom templates directory (optional)
         rate_limit: Requests per second (default: 150)
-        timeout: Scan timeout in seconds (default: 300)
+        timeout: Scan timeout in seconds (default: 600)
+        batch_size: Targets per batch (default: 10)
         request_timeout: Per-request timeout in seconds (optional)
         retries: Request retries (optional)
         logger: Optional logger
         dry_run: If True, print command but don't execute
         print_status: Optional status print function
+        profile: Scan profile - 'full', 'balanced', or 'fast' (default: balanced)
 
     Returns:
         Dict with scan results and findings
@@ -206,6 +227,11 @@ def run_nuclei_scan(
                 if isinstance(rate_limit_override, int) and rate_limit_override > 0
                 else int(rate_limit)
             )
+            # v4.11.0: Apply profile-based severity and tags
+            profile_config = NUCLEI_PROFILES.get(profile, NUCLEI_PROFILES["balanced"])
+            effective_severity = profile_config.get("severity", severity)
+            profile_tags = profile_config.get("tags")
+
             cmd = [
                 "nuclei",
                 "-l",
@@ -214,12 +240,15 @@ def run_nuclei_scan(
                 out_path,
                 "-jsonl",  # JSON Lines format
                 "-severity",
-                severity,
+                effective_severity,
                 "-rate-limit",
                 str(effective_rate),
                 "-silent",  # Reduce noise
                 "-nc",  # No color
             ]
+            # v4.11.0: Add tag filtering for balanced/fast profiles
+            if profile_tags and _nuclei_supports_flag("-tags", runner):
+                cmd.extend(["-tags", profile_tags])
             timeout_flag = None
             if request_timeout_s > 0:
                 if _nuclei_supports_flag("-timeout", runner):
@@ -298,12 +327,22 @@ def run_nuclei_scan(
             # 60s was causing 100% batch timeout rate on medium-sized networks
             base_timeout = float(timeout) if isinstance(timeout, (int, float)) else 600.0
             target_budget = float(request_timeout_s) * len(batch_targets) * 2
-            batch_timeout_s = max(300.0, target_budget)  # v4.7.2: 300s min (was 60s)
+
+            # v4.11.0: Critical fix for timeout calculation.
+            # Previously: batch_timeout_s = min(base_timeout, batch_timeout_s)
+            # This clamped the budget to base_timeout (e.g. 300s) even if targets needed more.
+            # Fix: Allow budget to exceed base_timeout but ensure minimum floor.
+            batch_timeout_s = max(300.0, target_budget)
+
+            # Use base_timeout as a "minimum floor" if provided, but don't clamp the max.
+            # Or effectively: timeout = max(base_timeout, target_budget, 300)
+            if base_timeout > 0:
+                batch_timeout_s = max(batch_timeout_s, base_timeout)
+
             # v4.6.23: Extend timeout on retry attempt
             if retry_attempt > 0:
                 batch_timeout_s = batch_timeout_s * 1.5
-            if base_timeout > 0:
-                batch_timeout_s = min(base_timeout, batch_timeout_s)
+
             with tempfile.TemporaryDirectory(prefix="nuclei_tmp_", dir=output_dir) as tmpdir:
                 batch_targets_file = os.path.join(tmpdir, f"targets_{batch_idx}.txt")
                 batch_output_file = os.path.join(tmpdir, f"output_{batch_idx}.json")
@@ -556,6 +595,9 @@ def run_nuclei_scan(
                     )
                 _run_one_batch(idx, batch)
 
+        if os.path.exists(output_file):
+            result["findings"] = _parse_nuclei_output(output_file, logger)
+
         if timed_out_batches:
             result["partial"] = True
             result["timeout_batches"] = sorted(timed_out_batches)
@@ -564,11 +606,13 @@ def run_nuclei_scan(
             if not result.get("error"):
                 result["error"] = "timeout"
 
-        result["success"] = os.path.exists(output_file) and not failed_batches
+        # v4.11.0: Success if we have findings, even if some batches failed
+        # Previously: result["success"] = os.path.exists(output_file) and not failed_batches
+        findings_list = result.get("findings") or []
+        result["success"] = os.path.exists(output_file) and (
+            not failed_batches or bool(findings_list)
+        )
         result["raw_output_file"] = output_file if os.path.exists(output_file) else None
-
-        if os.path.exists(output_file):
-            result["findings"] = _parse_nuclei_output(output_file, logger)
 
     except Exception as e:
         result["error"] = str(e)

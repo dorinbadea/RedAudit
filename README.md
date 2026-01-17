@@ -519,6 +519,7 @@ redaudit/
 |:---|:---|
 | **Deep Scan** | Selective escalation (TCP + UDP fingerprinting) when identity is weak or host is unresponsive |
 | **HyperScan** | Ultra-fast async discovery module (batch TCP, UDP IoT, aggressive ARP) |
+| **Closed-Port IoT** | Devices with no open TCP ports (WiZ, Tapo) detected via UDP broadcast probes |
 | **Smart-Check** | 3-layer false positive filter (Content-Type, size, magic bytes) |
 | **Entity Resolution** | Consolidation of multi-interface devices into unified assets |
 | **ECS** | Elastic Common Schema alignment for SIEM compatibility |

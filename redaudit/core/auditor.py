@@ -723,21 +723,33 @@ class InteractiveNetworkAuditor:
 
                         new_ports = discovered_udp - current_udp - current_mixed
                         if new_ports:
-                            # We assume Host object has add_port method or we modify .ports directly
-                            # Since this is a list of ints, we just append.
-                            # BUT scanner expects ports to be TCP usually unless marked.
-                            # Ideally we separate them. For now, adding to .ports permits scanning?
-                            # No, nmap -sS will fail on UDP ports.
-                            # We should add to a specific udp_ports list if the Host object supports it.
-                            # Checking audit_objects.py would be wise, but assuming 'extra_ports' or similar.
-                            # For now, let's log it and try to add to .ports but we might need to handle protocol.
-                            pass
-                            # Actually, let's just log for now to confirm visibility,
-                            # and if Host has udp_ports attribute, use it.
-                            if hasattr(h, "udp_ports"):
-                                h.udp_ports.extend(list(new_ports))
+                            # v4.11.0: Create Service objects for discovered UDP IoT ports
+                            from redaudit.core.models import Service
 
-                            # Also tag as IoT if not tagged
+                            # Get protocol name from upnp_devices if available
+                            protocol_name = "iot"
+                            upnp_devices = self.results.get("net_discovery", {}).get(
+                                "upnp_devices", []
+                            )
+                            for device in upnp_devices:
+                                if device.get("ip") == h.ip:
+                                    proto = (
+                                        device.get("device", "").replace("IoT (", "").rstrip(")")
+                                    )
+                                    if proto and proto != "unknown":
+                                        protocol_name = f"iot-{proto.lower()}"
+                                    break
+
+                            for udp_port in new_ports:
+                                svc = Service(
+                                    port=udp_port,
+                                    protocol="udp",
+                                    name=protocol_name,
+                                    state="open",
+                                )
+                                h.services.append(svc)
+
+                            # Tag as IoT
                             if "iot" not in h.tags:
                                 h.tags.add("iot")
 
@@ -878,6 +890,7 @@ class InteractiveNetworkAuditor:
                                     dry_run=bool(self.config.get("dry_run", False)),
                                     print_status=self.ui.print_status,
                                     proxy_manager=self.proxy_manager,
+                                    profile=self.config.get("nuclei_profile", "balanced"),
                                 )
                         except Exception:
                             nuclei_result = run_nuclei_scan(
@@ -891,6 +904,7 @@ class InteractiveNetworkAuditor:
                                 dry_run=bool(self.config.get("dry_run", False)),
                                 print_status=self.ui.print_status,
                                 proxy_manager=self.proxy_manager,
+                                profile=self.config.get("nuclei_profile", "balanced"),
                             )
 
                         findings = nuclei_result.get("findings") or []
@@ -1832,6 +1846,19 @@ class InteractiveNetworkAuditor:
             # v4.8.0: Nuclei OFF by default (use --nuclei to enable)
             # PROMPT: Ask usage for granular control in Exhaustive mode
             self.config["nuclei_enabled"] = self.ask_yes_no(self.ui.t("nuclei_q"), default="no")
+            # v4.11.0: Nuclei profile selector (full/balanced/fast)
+            if self.config["nuclei_enabled"]:
+                profile_opts = [
+                    self.ui.t("nuclei_full"),
+                    self.ui.t("nuclei_balanced"),
+                    self.ui.t("nuclei_fast"),
+                ]
+                profile_idx = self.ask_choice(
+                    self.ui.t("nuclei_profile_q"), profile_opts, default=1
+                )
+                self.config["nuclei_profile"] = ["full", "balanced", "fast"][profile_idx]
+            else:
+                self.config["nuclei_profile"] = "balanced"  # Default for non-interactive
 
             # NVD/CVE - enable if API key is configured, otherwise show reminder
             if is_nvd_api_key_configured():
@@ -2060,6 +2087,7 @@ class InteractiveNetworkAuditor:
 
                 # Nuclei (conditional) - v4.8.0: OFF by default due to slow scans
                 self.config["nuclei_enabled"] = False
+                self.config["nuclei_profile"] = "balanced"  # Default
                 if (
                     self.config.get("scan_vulnerabilities")
                     and self.config.get("scan_mode") == "completo"
@@ -2070,6 +2098,17 @@ class InteractiveNetworkAuditor:
                         self.ui.t("nuclei_q"),
                         default="no",
                     )
+                    # v4.11.0: Nuclei profile selector (full/balanced/fast)
+                    if self.config["nuclei_enabled"]:
+                        profile_opts = [
+                            self.ui.t("nuclei_full"),
+                            self.ui.t("nuclei_balanced"),
+                            self.ui.t("nuclei_fast"),
+                        ]
+                        profile_idx = self.ask_choice(
+                            self.ui.t("nuclei_profile_q"), profile_opts, default=1
+                        )
+                        self.config["nuclei_profile"] = ["full", "balanced", "fast"][profile_idx]
 
                 # v4.2: SQLMap Intensity (Custom profile)
                 # Only ask if vuln scan is enabled

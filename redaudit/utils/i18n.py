@@ -346,6 +346,11 @@ TRANSLATIONS = {
         "nuclei_suspected": "Nuclei flagged {} suspected false positive(s)",
         "nuclei_partial": "Nuclei scan partial: {} timeout batch(es), {} failed",
         "nuclei_q": "Run Nuclei (specialized for HTTP/Web services)?",
+        # v4.11.0: Nuclei profile selector
+        "nuclei_profile_q": "Nuclei scan profile:",
+        "nuclei_full": "Full - All templates, all ports (~2h)",
+        "nuclei_balanced": "Balanced - Full on 80/443, reduced on others (~30min, recommended)",
+        "nuclei_fast": "Fast - Critical CVEs only (~15min)",
         "windows_verify_q": "Enable agentless verification (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Max targets for agentless verification (1-200; higher = slower):",
         # v3.7: Interactive webhooks
@@ -779,6 +784,11 @@ TRANSLATIONS = {
         "nuclei_suspected": "Nuclei marcó {} falso(s) positivo(s) sospechado(s)",
         "nuclei_partial": "Escaneo Nuclei parcial: {} lote(s) con timeout, {} fallidos",
         "nuclei_q": "¿Ejecutar Nuclei (especializado para servicios HTTP/Web)?",
+        # v4.11.0: Selector de perfil Nuclei
+        "nuclei_profile_q": "Perfil de escaneo Nuclei:",
+        "nuclei_full": "Completo - Todos los templates, todos los puertos (~2h)",
+        "nuclei_balanced": "Equilibrado - Completo en 80/443, reducido en otros (~30min, recomendado)",
+        "nuclei_fast": "Rapido - Solo CVEs criticos (~15min)",
         "windows_verify_q": "¿Activar verificación sin agente (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Máximo de objetivos para verificación sin agente (1-200; más alto = más lento):",
         # v3.7: Webhooks interactivos

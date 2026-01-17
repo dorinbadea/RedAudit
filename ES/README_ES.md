@@ -519,9 +519,10 @@ redaudit/
 
 | Término | Definición |
 | :--- | :--- |
-| **Deep Scan** | Escalado selectivo (fingerprinting TCP + UDP) cuando la identidad es débil o el host no responde |
-| **HyperScan** | Módulo de descubrimiento async ultrarrápido (batch TCP, UDP IoT, ARP agresivo) |
-| **Smart-Check** | Filtro de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |
+| **Deep Scan** | Escalado selectivo (fingerprinting TCP + UDP) cuando la identidad es debil o el host no responde |
+| **HyperScan** | Modulo de descubrimiento async ultrarrapido (batch TCP, UDP IoT, ARP agresivo) |
+| **IoT sin puertos TCP** | Dispositivos sin puertos TCP abiertos (WiZ, Tapo) detectados via sondas UDP broadcast |
+| **Smart-Check** | Filtro de falsos positivos en 3 capas (Content-Type, tamano, magic bytes) |
 | **Entity Resolution** | Consolidación de dispositivos multi-interfaz en activos unificados |
 | **ECS** | Elastic Common Schema (ECS) para compatibilidad SIEM |
 | **Finding ID** | Hash SHA256 determinístico para correlación entre escaneos |
