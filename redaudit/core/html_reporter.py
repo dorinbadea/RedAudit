@@ -10,7 +10,7 @@ v3.3: Generate interactive HTML reports with Bootstrap + Chart.js.
 import os
 import re
 import json
-import xml.dom.minidom
+import xml.dom.minidom  # nosec B408
 from datetime import datetime
 from typing import Dict, Optional
 
