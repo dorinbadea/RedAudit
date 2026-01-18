@@ -25,13 +25,6 @@ If you discover a security vulnerability in RedAudit, please report it responsib
 3. **Response Time**: You will receive an acknowledgment within 48 hours
 4. **Disclosure**: We follow responsible disclosure - we will coordinate with you on public disclosure timing
 
-## Security Audit (Summary)
-
-- **Audit Date**: 2025-02-14
-- **Coverage**: ~93.03% (High confidence)
-- **Status**: Best-effort internal review. No critical vulnerabilities found.
-- **See**: [SECURITY_AUDIT.md](../SECURITY_AUDIT.md) for full details.
-
 ### Supported Versions
 
 | Version | Supported | Status |
