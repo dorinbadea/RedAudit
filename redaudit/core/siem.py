@@ -1139,8 +1139,11 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
     enriched["normalized_severity"] = round(max_score / 10, 1)
 
     # v3.1: Preserve original tool severity for traceability
+    # v4.13.2: Improved source attribution with whatweb detection, 'redaudit' fallback
     tool_name = source or (
-        "nikto" if vuln_record.get("nikto_findings") else "testssl" if testssl else "unknown"
+        "nikto"
+        if vuln_record.get("nikto_findings")
+        else "testssl" if testssl else "whatweb" if vuln_record.get("whatweb") else "redaudit"
     )
     enriched["original_severity"] = {
         "tool": tool_name,

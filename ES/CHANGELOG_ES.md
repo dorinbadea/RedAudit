@@ -8,6 +8,16 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [4.13.2] - 2026-01-18
+
+### Corregido
+
+- **Referencias en Informe HTML**: Corregido mismatch de claves (`reference` vs `references`) que causaba ausencia de detalles técnicos en la sección de Hallazgos.
+- **Falso Positivo CVE-2022-26143**: Mejorada la detección de FRITZ!OS para incluir el cuerpo de la respuesta, no solo la cabecera Server.
+- **Datos Enriquecidos de Nuclei**: Ahora se extraen `impact`, `remediation`, `cvss_score`, `cvss_metrics` y `extracted_results` de los hallazgos de Nuclei.
+- **Observaciones Vacías**: Añadido fallback para usar la descripción de la vulnerabilidad cuando `parsed_observations` está vacío.
+- **Atribución de Fuente**: Cambiado fuente por defecto de `unknown` a `redaudit` para hallazgos auto-generados. Añadida detección de WhatWeb.
+
 ## [4.13.0] - 2026-01-17
 
 ### Añadido

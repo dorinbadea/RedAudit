@@ -155,8 +155,11 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
     for vuln_entry in vulnerabilities:
         host_ip = vuln_entry.get("host", "")
         for vuln in vuln_entry.get("vulnerabilities", []):
+            # v4.13.2: Changed fallback from 'unknown' to 'redaudit' for auto-generated findings
             source = (
-                vuln.get("source") or (vuln.get("original_severity") or {}).get("tool") or "unknown"
+                vuln.get("source")
+                or (vuln.get("original_severity") or {}).get("tool")
+                or "redaudit"
             )
             cve_ids = vuln.get("cve_ids") or []
             cve_txt = ", ".join(cve_ids[:3]) if isinstance(cve_ids, list) else ""
