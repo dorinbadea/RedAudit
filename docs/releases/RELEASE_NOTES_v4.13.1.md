@@ -1,3 +1,5 @@
+[![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/v4.13.1/docs/releases/RELEASE_NOTES_v4.13.1_ES.md)
+
 # Release Notes v4.13.1 (Enhancement Release)
 
 **Release Date:** 2026-01-18
