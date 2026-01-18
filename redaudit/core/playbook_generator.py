@@ -483,6 +483,11 @@ def save_playbooks(results: Dict, output_dir: str, *, logger=None) -> tuple[int,
                     "title": playbook.get("title", category),
                     "path": filepath,
                     "filename": filename,
+                    # v4.3.0: Include full content for HTML display
+                    "steps": playbook.get("steps", []),
+                    "commands": playbook.get("commands", []),
+                    "references": playbook.get("references", []),
+                    "severity": playbook.get("severity", "INFO"),
                 }
             )
         except Exception as exc:

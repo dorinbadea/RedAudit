@@ -54,6 +54,41 @@ def extract_os_detection(text: str) -> Optional[str]:
     return None
 
 
+def extract_detailed_identity(text: str) -> Optional[Dict[str, str]]:
+    """
+    Extract detailed identity information from Nmap script output.
+    Focuses on HTTP titles and known signatures (e.g., FRITZ!Repeater).
+    """
+    if not text:
+        return None
+
+    # Priority 1: HTTP Title
+    # Example: |_http-title: FRITZ!Repeater
+    title_match = re.search(r"\|_http-title:\s*(.+)$", text, re.MULTILINE)
+    if title_match:
+        title = title_match.group(1).strip()
+
+        # FRITZ!Repeater Specific
+        if "FRITZ!Repeater" in title:
+            return {
+                "vendor": "AVM",
+                "model": "FRITZ!Repeater",
+                "device_type": "iot_network_device",
+                "os_detected": f"FRITZ!OS ({title})",
+            }
+
+        # FRITZ!Box Specific
+        if "FRITZ!Box" in title:
+            return {
+                "vendor": "AVM",
+                "model": "FRITZ!Box",
+                "device_type": "router",
+                "os_detected": f"FRITZ!OS ({title})",
+            }
+
+    return None
+
+
 def output_has_identity(records: List[Dict]) -> bool:
     """
     Check if scan records contain sufficient identity information (MAC/OS).

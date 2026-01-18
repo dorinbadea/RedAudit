@@ -9,6 +9,8 @@ v3.3: Generate interactive HTML reports with Bootstrap + Chart.js.
 
 import os
 import re
+import json
+import xml.dom.minidom
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -169,6 +171,33 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
             if lang:
                 title = _translate_finding_title(title, lang)
 
+            # v4.3.0: Extract rich details
+            description = vuln.get("description") or vuln.get("info", {}).get("description", "")
+            references = vuln.get("references") or vuln.get("info", {}).get("reference", [])
+            if not references and cve_ids:
+                references = [f"https://nvd.nist.gov/vuln/detail/{cve}" for cve in cve_ids]
+
+            evidence = ""
+            extracted_results = vuln.get("extracted_results") or vuln.get("extracted-results") or []
+            if extracted_results:
+                raw_evidence = "\n".join(str(r) for r in extracted_results)
+                # Try to pretty print if it looks like XML
+                if raw_evidence.strip().startswith("<") and raw_evidence.strip().endswith(">"):
+                    try:
+                        dom = xml.dom.minidom.parseString(raw_evidence)
+                        evidence = dom.toprettyxml()
+                    except Exception:
+                        evidence = raw_evidence
+                # Try to pretty print if it looks like JSON
+                elif raw_evidence.strip().startswith("{") and raw_evidence.strip().endswith("}"):
+                    try:
+                        obj = json.loads(raw_evidence)
+                        evidence = json.dumps(obj, indent=2)
+                    except Exception:
+                        evidence = raw_evidence
+                else:
+                    evidence = raw_evidence
+
             finding_table.append(
                 {
                     "host": host_ip,
@@ -180,6 +209,11 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
                     "source": source,
                     "cve": cve_txt,
                     "observations": observations,
+                    # v4.3.0: Rich details
+                    "description": description,
+                    "references": references,
+                    "evidence": evidence,
+                    "template_id": vuln.get("template_id"),
                 }
             )
 

@@ -292,7 +292,35 @@
                 {% for playbook in playbooks %}
                 <div class="playbook-card">
                     <h5>{{ playbook.title or playbook.path|basename }}</h5>
-                    <p class="ip">{{ playbook.target_ip or '-' }}</p>
+                    <p class="ip">{{ playbook.target_ip or playbook.host or '-' }}</p>
+                    <details style="margin-top: 0.5rem;">
+                        <summary style="cursor: pointer; color: var(--accent-blue); font-size: 0.85rem;">Ver Pasos y Comandos</summary>
+                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                            {% if playbook.steps %}
+                            <strong style="display: block; margin-bottom: 0.25rem;">Pasos de Remediación:</strong>
+                            <ol style="padding-left: 1.2rem; margin-bottom: 0.75rem;">
+                                {% for step in playbook.steps %}
+                                <li style="margin-bottom: 0.2rem;">{{ step }}</li>
+                                {% endfor %}
+                            </ol>
+                            {% endif %}
+
+                            {% if playbook.commands %}
+                            <strong style="display: block; margin-bottom: 0.25rem;">Comandos Sugeridos:</strong>
+                            <pre style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; overflow-x: auto; color: var(--text-primary); font-family: monospace;">{% for cmd in playbook.commands %}
+{{ cmd }}{% endfor %}</pre>
+                            {% endif %}
+
+                            {% if playbook.references %}
+                            <div style="margin-top: 0.75rem;">
+                                <strong>Referencias:</strong><br>
+                                {% for ref in playbook.references %}
+                                <a href="{{ ref }}" target="_blank" style="color: var(--accent-blue); text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🔗 {{ ref }}</a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </details>
                 </div>
                 {% endfor %}
             </div>
@@ -403,14 +431,39 @@
                     </tr>
                     <tr class="details-row">
                         <td colspan="8" class="details-cell">
+                            {% if finding.description %}
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong style="color: var(--text-secondary); font-size: 0.8rem;">Descripción:</strong>
+                                <p style="font-size: 0.9rem; margin-top: 0.2rem;">{{ finding.description }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if finding.evidence %}
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong style="color: var(--text-secondary); font-size: 0.8rem;">Evidencia Técnica:</strong>
+                                <pre style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; color: var(--accent-green); margin-top: 0.25rem; white-space: pre-wrap;">{{ finding.evidence }}</pre>
+                            </div>
+                            {% endif %}
+
                             {% if finding.observations %}
                             <strong style="color: var(--text-secondary); font-size: 0.8rem;">Observaciones técnicas:</strong>
-                            <ul class="observations">
+                            <ul class="observations" style="margin-bottom: 0.75rem;">
                                 {% for obs in finding.observations %}
                                 <li>{{ obs }}</li>
                                 {% endfor %}
                             </ul>
-                            {% else %}
+                            {% endif %}
+
+                            {% if finding.references %}
+                            <strong style="color: var(--text-secondary); font-size: 0.8rem;">Referencias:</strong>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem;">
+                                {% for ref in finding.references %}
+                                <a href="{{ ref }}" target="_blank" style="color: var(--accent-blue); text-decoration: none; font-size: 0.85rem;">🔗 {{ ref }}</a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            {% if not finding.description and not finding.evidence and not finding.observations and not finding.references %}
                             <p style="color: var(--text-secondary); font-size: 0.85rem;">No hay detalles técnicos adicionales disponibles.</p>
                             {% endif %}
                         </td>

@@ -33,6 +33,7 @@ from redaudit.core.scanner import (
     enrich_host_with_dns,
     enrich_host_with_whois,
     exploit_lookup,
+    extract_detailed_identity,
     extract_os_detection,
     extract_vendor_mac,
     finalize_host_status,
@@ -1174,6 +1175,20 @@ class AuditorScan:
                 deep_obj["vendor"] = vendor
             if os_detected:
                 deep_obj["os_detected"] = os_detected
+
+            # v4.13: Enhanced Identification (FRITZ!Repeater, etc)
+            detailed_id = extract_detailed_identity(
+                f"{self._coerce_text(rec1.get('stdout'))}\n{self._coerce_text(rec1.get('stderr'))}"
+            )
+            if detailed_id:
+                if detailed_id.get("vendor"):
+                    deep_obj["vendor"] = detailed_id["vendor"]
+                if detailed_id.get("model"):
+                    deep_obj["model"] = detailed_id["model"]
+                if detailed_id.get("device_type"):
+                    deep_obj["device_type"] = detailed_id["device_type"]
+                if detailed_id.get("os_detected"):
+                    deep_obj["os_detected"] = detailed_id["os_detected"]
 
             # Phase 2: UDP scanning (Intelligent strategy)
             if has_identity and has_open_ports:
