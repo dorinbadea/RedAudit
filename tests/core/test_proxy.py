@@ -108,3 +108,28 @@ def test_proxy_connection_with_nc_failure():
             ok, msg = proxy.test_proxy_connection({"host": "h", "port": 1})
     assert ok is False
     assert "not responding" in msg
+
+
+def test_create_temp_config_exception():
+    """Test exception handling in temp config creation."""
+    with patch("tempfile.mkstemp", side_effect=OSError("Disk full")):
+        assert (
+            proxy.create_temp_proxychains_config({"type": "socks5", "host": "h", "port": 1}) is None
+        )
+
+
+def test_cleanup_temp_config_exception():
+    """Test exception handling in temp config cleanup."""
+    with patch("os.remove", side_effect=OSError("Permission denied")):
+        # Should not raise exception
+        proxy.cleanup_temp_config("/tmp/fake_path")
+
+
+def test_parse_proxy_url_exception():
+    """Test parsing exception (e.g. malformed URL causing urlparse failure)."""
+    with patch("redaudit.core.proxy.urlparse", side_effect=ValueError("bad url")):
+        assert proxy.parse_proxy_url("socks5://bad") is None
+
+    # Test missing port case logic
+    parsed_no_port = proxy.parse_proxy_url("socks5://host")
+    assert parsed_no_port is None

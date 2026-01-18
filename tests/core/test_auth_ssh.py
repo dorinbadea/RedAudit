@@ -5,7 +5,7 @@ These tests use mocking to avoid requiring actual SSH connections.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 from redaudit.core.credentials import Credential
 from redaudit.core.auth_ssh import (
@@ -338,6 +338,144 @@ class TestSSHScanner(unittest.TestCase):
         self.assertEqual(len(info.packages), 1)
         self.assertEqual(len(info.services), 1)
         self.assertEqual(len(info.users), 1)
+
+    def test_get_installed_packages_apk(self):
+        """Test package parsing for apk (Alpine)."""
+        scanner = self._create_mock_scanner()
+        scanner._connected = True
+
+        apk_output = "musl-1.2.2-r7 x86_64 {musl}\n"
+
+        def mock_run_command(cmd, timeout=None):
+            if "dpkg" in cmd:
+                return "", "", 1
+            if "rpm" in cmd:
+                return "", "", 1
+            if "apk" in cmd:
+                return apk_output, "", 0
+            return "", "", 1
+
+        scanner.run_command = mock_run_command
+
+        packages = scanner.get_installed_packages()
+
+        self.assertEqual(len(packages), 1)
+        self.assertEqual(packages[0]["name"], "musl-1.2.2-r7")
+        self.assertEqual(packages[0]["manager"], "apk")
+
+    def test_get_installed_packages_none(self):
+        """Test when no package manager is detected."""
+        scanner = self._create_mock_scanner()
+        scanner._connected = True
+
+        scanner.run_command = MagicMock(return_value=("", "", 1))
+        packages = scanner.get_installed_packages()
+        self.assertEqual(len(packages), 0)
+
+    def test_get_running_services_sysv(self):
+        """Test service parsing for SysV init."""
+        scanner = self._create_mock_scanner()
+        scanner._connected = True
+
+        service_output = " [ + ]  cron\n [ - ]  procps\n"
+
+        def mock_run_command(cmd, timeout=None):
+            if "systemctl" in cmd:
+                return "", "", 1
+            if "service" in cmd:
+                return service_output, "", 0
+            return "", "", 1
+
+        scanner.run_command = mock_run_command
+        services = scanner.get_running_services()
+
+        self.assertEqual(len(services), 1)
+        self.assertEqual(services[0]["name"], "cron")
+        self.assertEqual(services[0]["manager"], "sysv")
+
+    def test_firewall_detection_variants(self):
+        """Test detection of various firewalls."""
+        scanner = self._create_mock_scanner()
+        scanner._connected = True
+
+        # nftables
+        def mock_nft(cmd, timeout=None):
+            if "iptables" in cmd:
+                return "", "", 1
+            if "nft" in cmd:
+                return "table ip filter", "", 0
+            return "", "", 1
+
+        scanner.run_command = mock_nft
+        self.assertIn("nftables", scanner.get_firewall_rules())
+
+        # firewalld
+        def mock_firewalld(cmd, timeout=None):
+            if "iptables" in cmd:
+                return "", "", 1
+            if "nft" in cmd:
+                return "", "", 1
+            if "firewall-cmd" in cmd:
+                return "public (active)", "", 0
+            return "", "", 1
+
+        scanner.run_command = mock_firewalld
+        self.assertIn("firewalld", scanner.get_firewall_rules())
+
+        # ufw
+        def mock_ufw(cmd, timeout=None):
+            if "iptables" in cmd:
+                return "", "", 1
+            if "nft" in cmd:
+                return "", "", 1
+            if "firewall-cmd" in cmd:
+                return "", "", 1
+            if "ufw" in cmd:
+                return "Status: active", "", 0
+            return "", "", 1
+
+        scanner.run_command = mock_ufw
+        self.assertIn("ufw", scanner.get_firewall_rules())
+
+        # None
+        scanner.run_command = MagicMock(return_value=("", "", 1))
+        self.assertIn("No firewall detected", scanner.get_firewall_rules())
+
+    def test_load_private_key_iteration(self):
+        """Test that _load_private_key tries all key types."""
+        scanner = self._create_mock_scanner(credential=self.key_credential)
+
+        # Define a real exception class for mocking
+        class MockSSHException(Exception):
+            pass
+
+        scanner._paramiko.SSHException = MockSSHException
+
+        # Mock SSHException for the first few types
+        scanner._paramiko.RSAKey.from_private_key_file.side_effect = MockSSHException
+        scanner._paramiko.Ed25519Key.from_private_key_file.side_effect = MockSSHException
+        scanner._paramiko.ECDSAKey.from_private_key_file.side_effect = MockSSHException
+
+        # Succeed on the last one
+        mock_key = MagicMock()
+        scanner._paramiko.DSSKey.from_private_key_file.side_effect = None
+        scanner._paramiko.DSSKey.from_private_key_file.return_value = mock_key
+        key = scanner._load_private_key()
+        self.assertEqual(key, mock_key)
+
+    def test_load_private_key_failure(self):
+        """Test failure when no key type matches."""
+        scanner = self._create_mock_scanner(credential=self.key_credential)
+
+        # All fail
+        scanner._paramiko.SSHException = Exception
+        scanner._paramiko.RSAKey.from_private_key_file.side_effect = Exception
+        scanner._paramiko.Ed25519Key.from_private_key_file.side_effect = Exception
+        scanner._paramiko.ECDSAKey.from_private_key_file.side_effect = Exception
+        scanner._paramiko.DSSKey.from_private_key_file.side_effect = Exception
+
+        with self.assertRaises(SSHConnectionError):
+            scanner._load_private_key()
 
 
 if __name__ == "__main__":

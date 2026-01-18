@@ -5,13 +5,13 @@ RedAudit - Consolidated tests for hyperscan helpers, sweeps, and progress.
 
 import asyncio
 import builtins
-import ipaddress
+import logging
 import shutil
 import socket
 import sys
-import time
+import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
@@ -478,3 +478,150 @@ def test_hyperscan_with_nmap_enrichment_no_nmap(monkeypatch):
     discovery = {"tcp_hosts": {"10.0.0.1": [22]}}
     monkeypatch.setattr(shutil, "which", lambda _name: None)
     assert hyperscan.hyperscan_with_nmap_enrichment(discovery, extra_tools={}) == discovery
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_tcp_sweep_success():
+    """Test async TCP sweep success path."""
+    targets = ["192.168.1.1"]
+    ports = [80]
+
+    # Mock asyncio.open_connection
+    # It returns (reader, writer)
+    mock_reader = AsyncMock()
+    mock_writer = AsyncMock()
+
+    with patch("asyncio.open_connection", new_callable=AsyncMock) as mock_conn:
+        mock_conn.return_value = (mock_reader, mock_writer)
+
+        results = await hyperscan.hyperscan_tcp_sweep(targets, ports, batch_size=10, timeout=0.1)
+
+        assert 80 in results["192.168.1.1"]
+        mock_writer.close.assert_called()
+        mock_writer.wait_closed.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_tcp_sweep_refused():
+    """Test async TCP sweep connection refused."""
+    targets = ["192.168.1.1"]
+    ports = [80]
+
+    with patch("asyncio.open_connection", new_callable=AsyncMock) as mock_conn:
+        mock_conn.side_effect = ConnectionRefusedError()
+
+        results = await hyperscan.hyperscan_tcp_sweep(targets, ports, batch_size=10, timeout=0.1)
+
+        assert 80 not in results["192.168.1.1"]
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_tcp_sweep_timeout():
+    """Test async TCP sweep timeout."""
+    targets = ["192.168.1.1"]
+    ports = [80]
+
+    with patch("asyncio.open_connection", new_callable=AsyncMock) as mock_conn:
+        mock_conn.side_effect = asyncio.TimeoutError()
+
+        results = await hyperscan.hyperscan_tcp_sweep(targets, ports, batch_size=10, timeout=0.1)
+
+        assert 80 not in results["192.168.1.1"]
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_udp_sweep_success():
+    """Test async UDP sweep success path."""
+    targets = ["192.168.1.1"]
+    ports = [161]
+
+    # Mock loop.sock_sendto and sock_recv
+    mock_loop = MagicMock()
+    mock_sock = MagicMock()
+
+    # mock_loop.sock_sendto is awaitable
+    mock_loop.sock_sendto = AsyncMock()
+    # mock_loop.sock_recv is awaitable, returns data
+    mock_loop.sock_recv = AsyncMock(return_value=b"response")
+
+    with patch("asyncio.get_event_loop", return_value=mock_loop):
+        with patch("socket.socket", return_value=mock_sock):
+
+            results = await hyperscan.hyperscan_udp_sweep(
+                targets, ports, batch_size=10, timeout=0.1
+            )
+
+            port_info = results["192.168.1.1"][0]
+            assert port_info["port"] == 161
+            assert port_info["response_size"] == 8
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_udp_sweep_timeout():
+    """Test async UDP sweep timeout."""
+    targets = ["192.168.1.1"]
+    ports = [161]
+
+    mock_loop = MagicMock()
+    mock_sock = MagicMock()
+
+    mock_loop.sock_sendto = AsyncMock()
+    mock_loop.sock_recv = AsyncMock(side_effect=asyncio.TimeoutError)
+
+    with patch("asyncio.get_event_loop", return_value=mock_loop):
+        with patch("socket.socket", return_value=mock_sock):
+
+            results = await hyperscan.hyperscan_udp_sweep(
+                targets, ports, batch_size=10, timeout=0.1
+            )
+
+            assert len(results["192.168.1.1"]) == 0
+
+
+def test_hyperscan_full_port_sweep_rustscan(monkeypatch):
+    """Test full port sweep using RustScan."""
+
+    # Mock is_rustscan_available -> True
+    monkeypatch.setattr("redaudit.core.rustscan.is_rustscan_available", lambda: True)
+
+    # Mock run_rustscan_discovery_only -> ([80, 443], None)
+    def fake_rustscan(*args, **kwargs):
+        return [80, 443], None
+
+    monkeypatch.setattr("redaudit.core.rustscan.run_rustscan_discovery_only", fake_rustscan)
+
+    ports = hyperscan.hyperscan_full_port_sweep("192.168.1.1")
+    assert ports == [80, 443]
+
+
+def test_hyperscan_full_port_sweep_fallback(monkeypatch):
+    """Test full port sweep fallback to asyncio."""
+
+    # Mock is_rustscan_available -> False
+    # Check if module exists first to avoid import error in mock if not installed?
+    # Hyperscan imports safely.
+    # We can mock the function even if module not loaded if we use sys.modules or patch.
+    # But hyperscan.py does: try: from redaudit.core.rustscan ... except ImportError
+    # So we need to ensure it fails or mock the function if available.
+
+    # Let's just patch is_rustscan_available to False if it can be imported,
+    # or ensure ImportError if not.
+    # Simpler: Mock is_rustscan_available to False
+
+    # We need to handle the import inside hyperscan.py
+    # If we patch redaudit.core.rustscan.is_rustscan_available, we assume it's importable.
+    # If not importable, fallback happens anyway.
+
+    # Let's force fallback by patching is_rustscan_available = False
+    # If runtime has it.
+
+    with patch("redaudit.core.rustscan.is_rustscan_available", return_value=False):
+        # We also need to mock hyperscan_tcp_sweep (the sync call inside loop.run_until_complete)
+        # Note: hyperscan_full_port_sweep calls hyperscan_tcp_sweep (async) via a new event loop.
+
+        async def fake_sweep(*args, **kwargs):
+            return {"192.168.1.1": [22, 80]}
+
+        with patch("redaudit.core.hyperscan.hyperscan_tcp_sweep", side_effect=fake_sweep):
+            ports = hyperscan.hyperscan_full_port_sweep("192.168.1.1")
+            assert ports == [22, 80]

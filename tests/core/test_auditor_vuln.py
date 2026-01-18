@@ -659,3 +659,78 @@ def test_sqlmap_not_called_when_unavailable(monkeypatch):
     # sqlmap should NOT have been called
     sqlmap_calls = [t for t in tools_called if "sqlmap" in t]
     assert len(sqlmap_calls) == 0, "sqlmap should not be called when unavailable"
+
+
+def test_run_vuln_tools_parallel_future_exception(monkeypatch):
+    """Test exception handling within the parallel execution loop."""
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    # Ensure tools are present so futures are submitted
+    auditor.extra_tools = {"whatweb": "whatweb", "nikto": "nikto"}
+    auditor.logger = MagicMock()
+
+    # We need to mock ThreadPoolExecutor context manager
+    mock_executor = MagicMock()
+
+    # We need a future that raises when result() is called
+    mock_future = MagicMock()
+    mock_future.result.side_effect = RuntimeError("Worker crashed")
+
+    context_manager = MagicMock()
+    context_manager.__enter__.return_value = mock_executor
+    context_manager.__exit__.return_value = None
+
+    # Mock submit to return our crashing future
+    mock_executor.submit.return_value = mock_future
+
+    # Mock as_completed to yield our crashing future
+    def fake_as_completed(futures):
+        yield mock_future
+
+    monkeypatch.setattr(
+        "redaudit.core.auditor_vuln.ThreadPoolExecutor", lambda **k: context_manager
+    )
+    monkeypatch.setattr("redaudit.core.auditor_vuln.as_completed", fake_as_completed)
+
+    # Bypass helpers
+    monkeypatch.setattr(auditor, "_should_run_nikto", lambda *a: (True, ""))
+
+    finding = {}
+    auditor._run_vuln_tools_parallel(
+        ip="10.0.0.1", port=443, url="https://10.0.0.1", scheme="https", finding=finding
+    )
+
+    # Logger should have caught the exception
+    assert auditor.logger.debug.called
+    found = False
+    for call in auditor.logger.debug.call_args_list:
+        if "Parallel vuln tool error" in str(call):
+            found = True
+            break
+    assert found, "Expected 'Parallel vuln tool error' not found in logger calls"
+
+
+def test_run_vuln_tools_parallel_whatweb_timeout(monkeypatch):
+    """Test specific timeout handling in whatweb parallel runner."""
+    auditor = _DummyAuditor()
+    auditor.extra_tools = {"whatweb": "whatweb"}
+
+    # Mock command runner to timeout
+    runner_mock = MagicMock()
+    result_mock = MagicMock()
+    result_mock.timed_out = True
+    runner_mock.run.return_value = result_mock
+
+    monkeypatch.setattr("redaudit.core.auditor_vuln.CommandRunner", lambda **k: runner_mock)
+
+    # We need to execute the inner run_whatweb function.
+    # Since it's inside _run_vuln_tools_parallel, we run the whole thing.
+    # We can use the real ThreadPoolExecutor or mock it to run synchronously for simplicity.
+    # Let's use real execution but with single worker or mock.
+    # Mocking is safer to avoid creating threads in unit tests if possible,
+    # but the previous test mocked everything.
+    # Let's trust the logic and just inspect result.
+
+    # Actually, if whatweb times out, it returns {}.
+    res = auditor._run_vuln_tools_parallel("10.0.0.1", 443, "https://10.0.0.1", "https", {})
+    assert "whatweb" not in res

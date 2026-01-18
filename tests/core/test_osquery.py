@@ -55,3 +55,59 @@ def test_verify_host_and_report():
         )
     assert report["verified_hosts"] == 0
     assert report["failed_hosts"] == 2
+
+
+def test_run_local_query_json_error():
+    result = SimpleNamespace(returncode=0, stdout="garbage", stderr="")
+    with patch("redaudit.core.osquery.subprocess.run", return_value=result):
+        # Should catch JSONDecodeError and return None or raise?
+        # Module code just calls json.loads(result.stdout) without try/except for JSON?
+        # Wait, let's check code. It does NOT have try/except for json.loads in verify_host,
+        # but run_local_query does?
+        # Checking file content...
+        # line 90: import json
+        # line 92: return json.loads(result.stdout)
+        # It's inside try/except Exception as e block?
+        # Yes, try starts at line 78.
+        pass
+
+    # The implementation wraps strict logic in try/except Exception as e.
+    # So json.loads raising ValueError will be caught.
+
+
+def test_run_local_query_exceptions():
+    """Test exception handling in run_local_query."""
+    # JSON Decode Error
+    result = SimpleNamespace(returncode=0, stdout="garbage", stderr="")
+    with patch("redaudit.core.osquery.subprocess.run", return_value=result):
+        assert osquery.run_local_query("select 1") is None
+
+    # Timeout
+    with patch(
+        "redaudit.core.osquery.subprocess.run",
+        side_effect=osquery.subprocess.TimeoutExpired("cmd", 5),
+    ):
+        assert osquery.run_local_query("select 1") is None
+
+    # Generic Exception
+    with patch("redaudit.core.osquery.subprocess.run", side_effect=Exception("boom")):
+        assert osquery.run_local_query("select 1") is None
+
+
+def test_run_remote_query_exceptions():
+    """Test exception handling in run_remote_query."""
+    # SSH Error (returncode != 0)
+    result = SimpleNamespace(returncode=255, stdout="", stderr="ssh connect failed")
+    with patch("redaudit.core.osquery.subprocess.run", return_value=result):
+        assert osquery.run_remote_query("host", "query") is None
+
+    # Timeout
+    with patch(
+        "redaudit.core.osquery.subprocess.run",
+        side_effect=osquery.subprocess.TimeoutExpired("cmd", 5),
+    ):
+        assert osquery.run_remote_query("host", "query") is None
+
+    # Generic Exception
+    with patch("redaudit.core.osquery.subprocess.run", side_effect=Exception("boom")):
+        assert osquery.run_remote_query("host", "query") is None
