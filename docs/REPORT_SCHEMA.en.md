@@ -531,7 +531,7 @@ List of detected network interfaces.
 ]
 ```
 
-## New Features (v3.0.0)
+## Schema Enhancements Reference
 
 ### SIEM Enhancement (ECS Alignment)
 

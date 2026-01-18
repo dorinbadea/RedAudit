@@ -145,6 +145,8 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | `--identity-threshold N` | Umbral mínimo de identidad para omitir deep scan |
 | `--stealth` | Fuerza timing T1, 1 hilo, 5s retardo |
 | `--dry-run` | Muestra comandos sin ejecutarlos |
+| `--profile {fast,balanced,full}` | Definir intensidad/velocidad de escaneo Nuclei (v4.11+) |
+| `--dead-host-retries N` | Abandonar host tras N tiempos de espera consecutivos (v4.13+) |
 
 ### Conectividad y Proxy
 

@@ -138,6 +138,8 @@ Grouped by operational function. Verified against the current codebase.
 | `--identity-threshold N` | Minimum identity score to skip deep scan |
 | `--stealth` | Force T1 timing, 1 thread, 5s delay |
 | `--dry-run` | Show commands without executing them |
+| `--profile {fast,balanced,full}` | Set Nuclei scan intensity/speed (v4.11+) |
+| `--dead-host-retries N` | Abandon host after N consecutive timeouts (v4.13+) |
 
 ### Connectivity & Proxy
 

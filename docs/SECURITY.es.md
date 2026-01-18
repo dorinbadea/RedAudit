@@ -37,17 +37,13 @@ Si descubres una vulnerabilidad de seguridad en RedAudit, notifícala de forma r
 ## Versiones soportadas
 
 | Versión | Soportada | Estado |
-| 4.6.x | Sí | Estable actual |
-| 4.5.x | Sí | Soportada |
-| 4.4.x | Sí | Soportada |
-| 4.3.x | Sí | Soportada |
-| 4.2.x | Sí | Soportada |
-| 3.9.x | Sí | Soportada |
-| 3.8.x | Sí | Soportada |
-| 3.7.x | Sí | Soportada |
-| 3.6.x | Solo correcciones de seguridad | Mantenimiento |
-| 3.5.x | Solo correcciones de seguridad | EOL: Junio 2026 |
-| < 3.5 | No | EOL |
+| 4.13.x | Sí | Estable actual |
+| 4.12.x | Sí | Soportada |
+| 4.11.x | Sí | Soportada |
+| 4.6.x | Sí | Mantenimiento |
+| 4.5.x | Sí | Mantenimiento |
+| 4.4.x | Sí | EOL: Junio 2026 |
+| < 4.4 | No | EOL |
 
 ## 1. Sanitización de Entrada
 
