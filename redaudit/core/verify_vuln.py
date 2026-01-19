@@ -429,6 +429,14 @@ NUCLEI_TEMPLATE_VENDORS = {
         "false_positive_vendors": [],  # Log4j can affect many products
         "description": "Log4Shell",
     },
+    # v4.14: CVE-2024-54767 affects ONLY FRITZ!Box 7530 AX v7.59 or earlier
+    # FRITZ!Box 7590, Repeaters, and other models are NOT affected
+    "CVE-2024-54767": {
+        "expected_vendors": ["avm", "fritz"],
+        "expected_models": ["7530"],  # Must contain "7530" in model
+        "false_positive_models": ["7590", "repeater", "1200", "2400", "3000"],
+        "description": "AVM FRITZ!Box 7530 AX Unauthorized Access",
+    },
 }
 
 
@@ -649,6 +657,21 @@ def check_nuclei_false_positive(
     # Check if any expected vendor is present
     expected = template_config.get("expected_vendors", [])
     if any(v in identifiers for v in expected):
+        # v4.14: For model-specific CVEs, also check if the model matches
+        expected_models = template_config.get("expected_models", [])
+        fp_models = template_config.get("false_positive_models", [])
+
+        if expected_models or fp_models:
+            # Check for false positive models first
+            for fp_model in fp_models:
+                if fp_model in identifiers:
+                    return True, f"fp_model_detected:{fp_model}"
+
+            # Check if expected model is present (if specified)
+            if expected_models:
+                if not any(model in identifiers for model in expected_models):
+                    return True, "fp_model_mismatch"
+
         return False, "expected_vendor_found"
 
     # Check if a known FP vendor is present

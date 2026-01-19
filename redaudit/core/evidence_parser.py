@@ -270,6 +270,40 @@ def extract_observations(vuln_record: Dict) -> Tuple[List[str], str]:
             if len(tech) < 50 and tech not in observations:
                 observations.append(f"Technology: {tech}")
 
+    # v4.14: Generate fallback observations from service/port data
+    # This ensures findings with source "redaudit" have some technical details
+    if not observations:
+        port = vuln_record.get("port")
+        url = vuln_record.get("url", "")
+        description = vuln_record.get("description", "")
+        service = vuln_record.get("service", "")
+        banner = vuln_record.get("banner", "")
+
+        if url:
+            observations.append(f"Endpoint: {url}")
+        elif port:
+            observations.append(f"Port: {port}")
+
+        if service:
+            observations.append(f"Service: {service}")
+        if banner:
+            # Clean and truncate banner
+            clean_banner = banner.strip()[:100]
+            if clean_banner:
+                observations.append(f"Banner: {clean_banner}")
+
+        if description:
+            # Use description as observation
+            observations.append(description[:200])
+
+        # Check for headers if available
+        headers = vuln_record.get("headers", {})
+        if isinstance(headers, dict):
+            if headers.get("server"):
+                observations.append(f"Server: {headers['server']}")
+            if headers.get("x-powered-by"):
+                observations.append(f"X-Powered-By: {headers['x-powered-by']}")
+
     raw_output = "\n\n".join(raw_parts)
 
     return observations[:25], raw_output
