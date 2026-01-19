@@ -98,5 +98,59 @@ class TestEvidenceParserHelpers(unittest.TestCase):
         self.assertIn("raw_tool_output_ref", enriched)
 
 
+class TestFallbackObservations(unittest.TestCase):
+    """Test v4.14 fallback observations from service data."""
+
+    def test_extract_observations_fallback_from_url(self):
+        """Test observations generated from URL when no tool findings."""
+        record = {
+            "url": "https://192.168.1.1:443/admin",
+            "port": 443,
+        }
+        observations, _ = extract_observations(record)
+        self.assertTrue(len(observations) > 0)
+        self.assertTrue(any("192.168.1.1" in obs or "443" in obs for obs in observations))
+
+    def test_extract_observations_fallback_from_service(self):
+        """Test observations generated from service info."""
+        record = {
+            "port": 80,
+            "service": "http",
+            "banner": "Apache/2.4.52 (Ubuntu)",
+        }
+        observations, _ = extract_observations(record)
+        self.assertTrue(any("Service: http" in obs for obs in observations))
+        self.assertTrue(any("Banner:" in obs and "Apache" in obs for obs in observations))
+
+    def test_extract_observations_fallback_from_headers(self):
+        """Test observations generated from HTTP headers."""
+        record = {
+            "url": "http://192.168.1.1/",
+            "port": 80,
+            "headers": {
+                "server": "nginx/1.18.0",
+                "x-powered-by": "PHP/8.1",
+            },
+        }
+        observations, _ = extract_observations(record)
+        self.assertTrue(any("nginx" in obs for obs in observations))
+        self.assertTrue(any("PHP" in obs for obs in observations))
+
+    def test_extract_observations_no_fallback_when_tool_findings(self):
+        """Test that fallback is NOT used when tool findings exist."""
+        record = {
+            "url": "http://192.168.1.1/",
+            "port": 80,
+            "nikto_findings": [
+                "+ /: Missing HSTS header",
+            ],
+        }
+        observations, _ = extract_observations(record)
+        # Should have nikto observation, not fallback from url
+        self.assertTrue(any("HSTS" in obs for obs in observations))
+        # Should NOT have "Endpoint:" prefix from fallback
+        self.assertFalse(any(obs.startswith("Endpoint:") for obs in observations))
+
+
 if __name__ == "__main__":
     unittest.main()

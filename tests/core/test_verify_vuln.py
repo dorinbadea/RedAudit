@@ -403,3 +403,56 @@ def test_normalize_nuclei_finding_extracts_rich_fields():
     assert "CVSS:3.1" in result["cvss_metrics"]
     assert len(result["reference"]) == 1
     assert result["extracted_results"] == ["<result>data</result>"]
+
+
+# =============================================================================
+# v4.14: CVE-2024-54767 Model-Specific Matching Tests
+# =============================================================================
+
+
+def test_check_nuclei_false_positive_cve_2024_54767_correct_model():
+    """Test CVE-2024-54767 is NOT flagged as FP when model 7530 is present."""
+    finding = {
+        "template_id": "CVE-2024-54767",
+        "info": {"name": "AVM FRITZ!Box 7530 AX - Unauthorized Access"},
+        "response": "HTTP/1.1 200 OK\r\nServer: FRITZ!Box 7530 AX\r\n",
+    }
+    is_fp, reason = check_nuclei_false_positive(finding, None)
+    assert is_fp is False, f"Should not be FP for 7530, but got: {reason}"
+
+
+def test_check_nuclei_false_positive_cve_2024_54767_wrong_model_7590():
+    """Test CVE-2024-54767 IS flagged as FP when model 7590 is detected."""
+    finding = {
+        "template_id": "CVE-2024-54767",
+        "info": {"name": "AVM FRITZ!Box - Unauthorized Access"},
+        "response": "HTTP/1.1 200 OK\r\nServer: FRITZ!Box 7590 AX\r\n",
+    }
+    is_fp, reason = check_nuclei_false_positive(finding, None)
+    assert is_fp is True, f"Should be FP for 7590, but got: {reason}"
+    assert "7590" in reason
+
+
+def test_check_nuclei_false_positive_cve_2024_54767_wrong_model_repeater():
+    """Test CVE-2024-54767 IS flagged as FP for FRITZ!Repeater devices."""
+    finding = {
+        "template_id": "CVE-2024-54767",
+        "info": {"name": "AVM FRITZ!Box - Unauthorized Access"},
+        "response": "HTTP/1.1 200 OK\r\nServer: FRITZ!Repeater 1200 AX\r\n",
+    }
+    is_fp, reason = check_nuclei_false_positive(finding, None)
+    assert is_fp is True, f"Should be FP for Repeater, but got: {reason}"
+    assert "repeater" in reason or "1200" in reason
+
+
+def test_check_nuclei_false_positive_cve_2024_54767_no_model_info():
+    """Test CVE-2024-54767 IS flagged as FP when no model info available."""
+    finding = {
+        "template_id": "CVE-2024-54767",
+        "info": {"name": "AVM FRITZ!Box - Unauthorized Access"},
+        "response": "HTTP/1.1 200 OK\r\nServer: AVM\r\n",
+    }
+    is_fp, reason = check_nuclei_false_positive(finding, None)
+    # Should be FP because expected model (7530) not found
+    assert is_fp is True, f"Should be FP when model not specified, but got: {reason}"
+    assert "model" in reason.lower()

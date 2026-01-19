@@ -172,5 +172,69 @@ class TestSavePlaybooks(unittest.TestCase):
             self.assertEqual(playbook_data, [])
 
 
+class TestDeviceAwarePlaybooks(unittest.TestCase):
+    """Test device-aware remediation (v4.14)."""
+
+    def test_generate_playbook_with_avm_vendor(self):
+        """Test AVM/FRITZ devices get embedded_device remediation."""
+        finding = {"cve_ids": ["CVE-2024-54767"], "severity": "high"}
+        playbook = generate_playbook(
+            finding, "192.168.178.1", "cve_remediation", vendor="AVM GmbH", device_type=None
+        )
+
+        # Should NOT contain apt/yum commands for embedded devices
+        commands_str = " ".join(playbook.get("commands", []))
+        self.assertNotIn("apt update", commands_str)
+        self.assertNotIn("yum update", commands_str)
+        # Should contain embedded device guidance
+        self.assertIn("Embedded", commands_str)
+
+    def test_generate_playbook_with_linux_vendor(self):
+        """Test Linux servers get apt/yum remediation."""
+        finding = {"cve_ids": ["CVE-2021-44228"], "severity": "critical"}
+        playbook = generate_playbook(
+            finding, "10.0.0.1", "cve_remediation", vendor="Ubuntu", device_type=None
+        )
+
+        # Should contain apt/yum commands for Linux
+        commands_str = " ".join(playbook.get("commands", []))
+        self.assertIn("apt", commands_str.lower())
+
+    def test_generate_playbook_default_without_vendor(self):
+        """Test default behavior without vendor info falls back to linux_server."""
+        finding = {"cve_ids": ["CVE-2021-44228"], "severity": "critical"}
+        playbook = generate_playbook(
+            finding, "10.0.0.1", "cve_remediation", vendor=None, device_type=None
+        )
+
+        # Should contain linux commands as default
+        commands_str = " ".join(playbook.get("commands", []))
+        self.assertIn("apt", commands_str.lower())
+
+    def test_generate_playbook_cisco_network_device(self):
+        """Test Cisco devices get network_device remediation."""
+        finding = {"cve_ids": ["CVE-2023-1234"], "severity": "high"}
+        playbook = generate_playbook(
+            finding, "10.0.0.1", "cve_remediation", vendor="Cisco Systems", device_type=None
+        )
+
+        # Should contain network device guidance
+        commands_str = " ".join(playbook.get("commands", []))
+        self.assertIn("Network device", commands_str)
+
+    def test_playbook_title_prefers_finding_title(self):
+        """Test that playbook title uses finding title over URL."""
+        finding = {
+            "title": "SSL/TLS vulnerability detected",
+            "url": "https://192.168.1.1:55174/",
+            "severity": "high",
+        }
+        playbook = generate_playbook(finding, "192.168.1.1", "tls_hardening")
+
+        # Title should be the descriptive title, not the URL
+        self.assertEqual(playbook["title"], "SSL/TLS vulnerability detected")
+        self.assertNotIn("://", playbook["title"])
+
+
 if __name__ == "__main__":
     unittest.main()
