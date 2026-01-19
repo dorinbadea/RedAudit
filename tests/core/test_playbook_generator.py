@@ -235,6 +235,22 @@ class TestDeviceAwarePlaybooks(unittest.TestCase):
         self.assertEqual(playbook["title"], "SSL/TLS vulnerability detected")
         self.assertNotIn("://", playbook["title"])
 
+    def test_playbook_title_rejects_url_like_title(self):
+        """Test that URL-like titles fall back to the actual URL or default."""
+        finding = {
+            "title": "https://192.168.1.1:55174/some/path",  # URL as title
+            "url": "https://192.168.1.1:55174/",
+            "severity": "info",
+        }
+        playbook = generate_playbook(finding, "192.168.1.1", "web_hardening")
+
+        # Title should fall back to URL (which is acceptable), not use URL-like title
+        # The key is the `title` field wasn't used - it goes to URL or default
+        self.assertTrue(
+            playbook["title"] == "https://192.168.1.1:55174/"
+            or playbook["title"] == "Finding on 192.168.1.1"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -193,9 +193,6 @@ def _extract_port(finding: Dict) -> Optional[int]:
     return None
 
 
-# Old classify_finding removed in v4.14 - replaced by simplified version below
-
-
 def _detect_device_type(vendor: Optional[str], device_type: Optional[str]) -> str:
     """
     Detect remediation template type based on vendor and device type.
@@ -314,12 +311,20 @@ def generate_playbook(
     # v4.14: Prefer 'title' field over URL if descriptive_title absent
     raw_title = finding.get("title")
 
+    # v4.14: Check if raw_title is not a URL (URLs are not real titles)
+    is_valid_title = (
+        isinstance(raw_title, str)
+        and raw_title.strip()
+        and raw_title.lower() != "untitled"
+        and not raw_title.startswith(("http://", "https://", "/"))
+    )
+
     title = (
         descriptive_title
         if isinstance(descriptive_title, str) and descriptive_title.strip()
         else (
             raw_title
-            if isinstance(raw_title, str) and raw_title.strip() and raw_title != "untitled"
+            if is_valid_title
             else url if isinstance(url, str) and url.strip() else f"Finding on {host}"
         )
     )
