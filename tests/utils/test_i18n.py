@@ -76,3 +76,19 @@ def test_detect_preferred_language_defaultlocale_exception():
         patch("locale.getdefaultlocale", side_effect=RuntimeError("boom")),
     ):
         assert detect_preferred_language(None) == "en"
+
+
+def test_hyperscan_start_sequential_key_en():
+    """v4.15: Test hyperscan_start_sequential key exists in English."""
+    result = get_text("hyperscan_start_sequential", "en")
+    assert "SYN mode" in result
+    assert "sequential" in result
+    assert "{}" in result  # placeholder for host count
+
+
+def test_hyperscan_start_sequential_key_es():
+    """v4.15: Test hyperscan_start_sequential key exists in Spanish."""
+    result = get_text("hyperscan_start_sequential", "es")
+    assert "SYN" in result
+    assert "secuencial" in result
+    assert "{}" in result  # placeholder for host count

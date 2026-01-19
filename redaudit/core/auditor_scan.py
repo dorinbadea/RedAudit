@@ -1481,7 +1481,7 @@ class AuditorScan:
             if not nm:
                 self.logger.warning("Nmap scan failed for %s: %s", safe_ip, scan_error)
                 self.ui.print_status(
-                    f"⚠️  Nmap scan failed {safe_ip}: {scan_error}",
+                    f"⚠  Nmap scan failed {safe_ip}: {scan_error}",
                     "FAIL",
                     force=True,
                 )
@@ -2345,7 +2345,7 @@ class AuditorScan:
         except Exception as exc:
             self.logger.error("Scan error %s: %s", safe_ip, exc, exc_info=True)
             # Keep terminal output clean while progress UIs are active.
-            self.ui.print_status(f"⚠️  Scan error {safe_ip}: {exc}", "FAIL", force=True)
+            self.ui.print_status(f"⚠  Scan error {safe_ip}: {exc}", "FAIL", force=True)
 
             # v4.0: Return Host object on error
             host_obj = self.scanner.get_or_create_host(safe_ip)
@@ -2427,16 +2427,12 @@ class AuditorScan:
                     masscan_ports[ip].append(port)
 
         discovery_count = len(host_ips)
+
+        # v4.15: HyperScan is now always parallel (RustScan or asyncio TCP connect)
         self.ui.print_status(
             self.ui.t("hyperscan_start").format(discovery_count),
             "INFO",
         )
-
-        # v4.6.31: Parallel HyperScan-First
-        # v4.6.34: Add lock to serialize SYN scans (scapy raw socket contention fix)
-        import threading
-
-        _syn_scan_lock = threading.Lock()
 
         start_time = time.time()
         # Calculate safe concurrency based on estimated FD usage
@@ -2482,34 +2478,15 @@ class AuditorScan:
                 return
 
             # Run HyperScan
-            # v4.6.34: Serialize SYN scans to avoid scapy raw socket contention
-            # When 8+ workers run scapy simultaneously, responses get mixed/lost
+            # v4.15: Removed SYN lock - hyperscan_full_port_sweep uses RustScan (parallel)
+            # or asyncio TCP connect, both of which handle concurrency correctly.
             try:
-                # Check if SYN mode will be used (root + scapy available)
-                try:
-                    from redaudit.core.syn_scanner import is_syn_scan_available
-
-                    syn_available, _ = is_syn_scan_available()
-                except ImportError:
-                    syn_available = False
-
-                if syn_available:
-                    # SYN mode: serialize to avoid raw socket conflicts
-                    with _syn_scan_lock:
-                        w_ports = hyperscan_full_port_sweep(
-                            w_ip,
-                            batch_size=hs_batch_size,
-                            timeout=1.5,
-                            logger=self.logger,
-                        )
-                else:
-                    # TCP connect mode: safe to run in parallel
-                    w_ports = hyperscan_full_port_sweep(
-                        w_ip,
-                        batch_size=hs_batch_size,
-                        timeout=1.5,
-                        logger=self.logger,
-                    )
+                w_ports = hyperscan_full_port_sweep(
+                    w_ip,
+                    batch_size=hs_batch_size,
+                    timeout=1.5,
+                    logger=self.logger,
+                )
                 self._hyperscan_discovery_ports[w_ip] = w_ports
                 if w_ports:
                     self.ui.print_status(
@@ -2527,15 +2504,45 @@ class AuditorScan:
                 self.logger.warning("HyperScan discovery failed for %s: %s", w_ip, e)
 
         # Execute parallel scan
+        # v4.15: Add Rich progress bar for HyperScan-First
+        use_rich = self.ui.get_progress_console() is not None
+        completed_count = 0
+
         with ThreadPoolExecutor(max_workers=hs_workers) as executor:
             futures = {
-                executor.submit(_hs_worker, idx, ip): ip for idx, ip in enumerate(host_ips, 1)
+                executor.submit(_hs_worker, idx, ip): (idx, ip)
+                for idx, ip in enumerate(host_ips, 1)
             }
-            # Wait for all to complete (this phase is blocking before Nmap anyway)
-            for _ in as_completed(futures):
-                if self.interrupted:
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    break
+
+            if use_rich and discovery_count > 0:
+                progress = self.ui.get_standard_progress(transient=False)
+                if progress:
+                    with progress:
+                        # Single global progress bar (magenta for HyperScan)
+                        task_id = progress.add_task(
+                            "[magenta]HyperScan",
+                            total=discovery_count,
+                            start=True,
+                        )
+                        for fut in as_completed(futures):
+                            if self.interrupted:
+                                executor.shutdown(wait=False, cancel_futures=True)
+                                break
+                            completed_count += 1
+                            idx, ip = futures[fut]
+                            ports = self._hyperscan_discovery_ports.get(ip, [])
+                            port_str = f"{len(ports)} ports" if ports else "no ports"
+                            progress.update(
+                                task_id,
+                                advance=1,
+                                description=f"[magenta]HyperScan ({completed_count}/{discovery_count}) {ip}: {port_str}",
+                            )
+            else:
+                # Fallback without rich
+                for fut in as_completed(futures):
+                    if self.interrupted:
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        break
 
         duration = time.time() - start_time
         total_ports = sum(len(p) for p in self._hyperscan_discovery_ports.values())
@@ -2690,14 +2697,14 @@ class AuditorScan:
                                         progress.update(
                                             task_id,
                                             completed=100,
-                                            description=f"[green]✅ {host_ip}",
+                                            description=f"[green]✔ {host_ip}",
                                         )
                                     except Exception as e:
                                         self.logger.error(f"Deep scan error for {host_ip}: {e}")
                                         progress.update(
                                             task_id,
                                             completed=100,
-                                            description=f"[red]❌ {host_ip}",
+                                            description=f"[red]✖ {host_ip}",
                                         )
                 else:
                     # Fallback loop
@@ -2846,7 +2853,7 @@ class AuditorScan:
                                         progress.update(
                                             task_id,
                                             completed=100,
-                                            description=f"[green]✅ {host_ip}",
+                                            description=f"[green]✔ {host_ip}",
                                         )
                                     except Exception as exc:
                                         self.logger.error("Worker error for %s: %s", host_ip, exc)
@@ -2859,7 +2866,7 @@ class AuditorScan:
                                         progress.update(
                                             task_id,
                                             completed=100,
-                                            description=f"[red]❌ {host_ip}",
+                                            description=f"[red]✖ {host_ip}",
                                         )
                                     done += 1
                 else:

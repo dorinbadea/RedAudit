@@ -288,7 +288,7 @@ def test_tee_stream_should_skip_line_progress_bar_duplicate():
     lock = MagicMock()
     tee = TeeStream(terminal, log_file, lock)
 
-    line = "✅ 192.168.178.24 ━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:00:03 0:00:00\n"
+    line = "✔ 192.168.178.24 ━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:00:03 0:00:00\n"
     result1 = tee._should_skip_line(line)
     assert result1 is False  # Keep first occurrence
 

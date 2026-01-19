@@ -13,7 +13,7 @@ from typing import Optional
 
 TRANSLATIONS = {
     "en": {
-        "interrupted": "\n⚠️  Interruption received. Saving current state...",
+        "interrupted": "\n⚠  Interruption received. Saving current state...",
         "terminating_scans": "Terminating active scans...",
         "heartbeat_info": "⏱  Activity Monitor: {} ({}s elapsed)",
         "heartbeat_warn": "⏱  Activity Monitor: {} - No output for {}s (tool may be busy)",
@@ -21,7 +21,7 @@ TRANSLATIONS = {
             "⏱  Activity Monitor: {} - Long silence (>{}s). "
             "The active tool is still running; this is normal for slow or filtered hosts."
         ),
-        "deep_scan_skip": "✅ Info sufficient (MAC/OS found), skipping phase 2.",
+        "deep_scan_skip": "✔ Info sufficient (MAC/OS found), skipping phase 2.",
         "verifying_env": "Verifying environment integrity...",
         "config_module_missing": "Config module not available",
         "detected": "✓ {} detected",
@@ -62,7 +62,7 @@ TRANSLATIONS = {
         "wizard_profile_standard": "Standard — Discovery + vulnerability scanning (~30 min)",
         "wizard_profile_exhaustive": "Exhaustive — Maximum depth + Nuclei CVE detection (~2h)",
         "wizard_profile_custom": "Custom — Full control (9 steps)",
-        "nvd_not_configured_reminder": "⚠️  NVD API key not configured. CVE correlation will be skipped.",
+        "nvd_not_configured_reminder": "⚠  NVD API key not configured. CVE correlation will be skipped.",
         "nvd_get_key_hint": "   Get a free key at: https://nvd.nist.gov/developers/request-an-api-key",
         "exhaustive_mode_applying": "🚀 Applying Exhaustive profile for maximum discovery...",
         "timing_q": "Scan timing (adjust based on network sensitivity):",
@@ -91,7 +91,7 @@ TRANSLATIONS = {
         "windows_verify_none": "No compatible targets detected for agentless verification.",
         "windows_verify_done": "Agentless verification completed for {} host(s)",
         "windows_verify_limit": "Agentless verification capped at {} targets",
-        "vulns_found": "⚠️  Vulnerabilities found on {}",
+        "vulns_found": "⚠  Vulnerabilities found on {}",
         "no_hosts": "No hosts found.",
         "exec_params": "EXECUTION PARAMETERS",
         "web_vulns": "Web vulns",
@@ -130,7 +130,7 @@ TRANSLATIONS = {
         "rate_limiting": "Enable rate limiting (slower but stealthier)?",
         "rate_delay": "Delay between hosts (seconds; 0 = none):",
         "low_impact_enrichment_q": "Enable Phase 0 low-impact enrichment (DNS/mDNS/SNMP)?",
-        "ports_truncated": "⚠️  {}: {} ports found, showing top 50",
+        "ports_truncated": "⚠  {}: {} ports found, showing top 50",
         # v3.1+: Persisted defaults
         "save_defaults_q": "Save these settings as defaults for future runs?",
         "save_defaults_info_yes": "This overwrites your previous defaults and will be used as initial values in future runs.",
@@ -205,7 +205,7 @@ TRANSLATIONS = {
         "deep_udp_full_cmd": "[deep] {} → {} (~120-180s, top {} UDP)",
         "banner_grab": "[banner] {} → Grabbing banners for {} unidentified ports",
         "nmap_cmd": "[nmap] {} → {}",
-        "exploits_found": "⚠️  Found {} known exploits for {}",
+        "exploits_found": "⚠  Found {} known exploits for {}",
         "testssl_analysis": "Running deep SSL/TLS analysis on {}:{} (may take 60s)...",
         "scanning_hosts": "Scanning hosts...",
         # Update system (v2.8.0)
@@ -252,8 +252,8 @@ TRANSLATIONS = {
         ),
         # NVD API Key configuration (v3.0.1)
         "nvd_key_set_cli": "✓ NVD API key set from command line",
-        "nvd_key_invalid": "⚠️  Invalid NVD API key format",
-        "nvd_key_not_configured": "⚠️  CVE lookup enabled but no NVD API key configured (slower rate limit)",
+        "nvd_key_invalid": "⚠  Invalid NVD API key format",
+        "nvd_key_not_configured": "⚠  CVE lookup enabled but no NVD API key configured (slower rate limit)",
         "nvd_setup_header": "NVD API KEY SETUP (Optional)",
         "nvd_setup_info": "CVE Correlation requires an NVD API key for faster lookups.\nWithout key: 5 requests/30s | With key: 50 requests/30s\n\nRegister for FREE at:",
         "nvd_option_config": "Save in config file (~/.redaudit/config.json)",
@@ -262,17 +262,17 @@ TRANSLATIONS = {
         "nvd_ask_storage": "How would you like to configure the API key?",
         "nvd_key_skipped": "API key skipped",
         "nvd_key_saved": "✓ NVD API key saved to config file",
-        "nvd_key_save_error": "⚠️  Error saving API key to config",
+        "nvd_key_save_error": "⚠  Error saving API key to config",
         "nvd_key_invalid_format": "Invalid API key format. Expected UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)",
         "nvd_env_instructions": "Add this to your ~/.bashrc or ~/.zshrc:",
         "nvd_env_set_later": "You can set the environment variable later",
-        "nvd_slow_mode": "⚠️  Continuing with slow mode (5 requests/30 seconds)",
+        "nvd_slow_mode": "⚠  Continuing with slow mode (5 requests/30 seconds)",
         # v3.2+: Network discovery
         "net_discovery_start": "Running enhanced network discovery (DHCP/NetBIOS/mDNS)...",
         "net_discovery_dhcp_found": "✓ Found {} DHCP server(s)",
         "net_discovery_routed_found": "ℹ️  Found {} hidden routed network(s) via local gateway(s):",
         "net_discovery_routed_add_q": "Add these hidden networks to the scan scope?",
-        "net_discovery_vlans_found": "⚠️  Detected {} potential guest network(s)/VLAN(s)",
+        "net_discovery_vlans_found": "⚠  Detected {} potential guest network(s)/VLAN(s)",
         "net_discovery_seed_hosts": "Net Discovery identified {} host(s) to include in the scan",
         "net_discovery_seed_added": "Added {} host(s) missed by ICMP discovery",
         "net_discovery_q": "Enable enhanced network discovery (DHCP/NetBIOS/mDNS/UPNP)?",
@@ -322,7 +322,7 @@ TRANSLATIONS = {
             "192.168.1.10-192.168.1.20:"
         ),
         "confirm_prompt": "Confirm:",
-        "legal_warning_skipped": "⚠️  Legal warning skipped (--yes flag)",
+        "legal_warning_skipped": "⚠  Legal warning skipped (--yes flag)",
         "invalid_target_too_long": "Invalid target (too long): {}",
         "invalid_cidr_target": "Invalid target: {}",
         "no_valid_targets": "No valid targets provided",
@@ -361,7 +361,7 @@ TRANSLATIONS = {
         "webhook_configured": "✓ Webhook configured: {}",
         "webhook_test_q": "Send a test alert to verify the webhook?",
         "webhook_test_success": "✓ Test webhook sent successfully",
-        "webhook_test_failed": "⚠️  Test webhook failed: {}",
+        "webhook_test_failed": "⚠  Test webhook failed: {}",
         "auditor_name_q": "Auditor name (optional; e.g., Jane Doe)",
         # v3.7: Advanced Net Discovery wizard
         "net_discovery_advanced_q": "Configure advanced Net Discovery options?",
@@ -383,6 +383,7 @@ TRANSLATIONS = {
         "redteam_masscan_q": "Use masscan for initial discovery? (High speed, requires root)",
         # v4.2: HyperScan/DeepScan i18n
         "hyperscan_start": "HyperScan-First: Running discovery for {} hosts in parallel...",
+        "hyperscan_start_sequential": "HyperScan-First: Running discovery for {} hosts (SYN mode, sequential)...",
         "hyperscan_complete": "HyperScan-First complete: {} total ports in {:.1f}s",
         "hyperscan_ports_found": "[{}/{}] {}: found {} open ports",
         "hyperscan_no_ports": "[{}/{}] {}: no ports detected",
@@ -451,7 +452,7 @@ TRANSLATIONS = {
         "wizard_custom_intro": "Custom wizard: 9 steps. Use Cancel to go back.",
     },
     "es": {
-        "interrupted": "\n⚠️  Interrupción recibida. Guardando estado actual...",
+        "interrupted": "\n⚠  Interrupción recibida. Guardando estado actual...",
         "terminating_scans": "Terminando escaneos activos...",
         "heartbeat_info": "⏱  Monitor de Actividad: {} ({}s transcurridos)",
         "heartbeat_warn": "⏱  Monitor de Actividad: {} - Sin salida hace {}s (herramienta ocupada)",
@@ -459,7 +460,7 @@ TRANSLATIONS = {
             "⏱  Monitor de Actividad: {} - Silencio prolongado (>{}s). "
             "La herramienta activa sigue ejecutándose; esto es normal en hosts lentos o filtrados."
         ),
-        "deep_scan_skip": "✅ Info suficiente (MAC/OS detectado), saltando fase 2.",
+        "deep_scan_skip": "✔ Info suficiente (MAC/OS detectado), saltando fase 2.",
         "verifying_env": "Verificando integridad del entorno...",
         "config_module_missing": "Módulo de configuración no disponible",
         "detected": "✓ {} detectado",
@@ -500,7 +501,7 @@ TRANSLATIONS = {
         "wizard_profile_standard": "Estandar — Discovery + vulns (~30 min)",
         "wizard_profile_exhaustive": "Exhaustivo — Profundidad maxima + Nuclei (~2h)",
         "wizard_profile_custom": "Personalizado — Control total (9 pasos)",
-        "nvd_not_configured_reminder": "⚠️  API key de NVD no configurada. Se omitirá correlación CVE.",
+        "nvd_not_configured_reminder": "⚠  API key de NVD no configurada. Se omitirá correlación CVE.",
         "nvd_get_key_hint": "   Obtén una key gratis en: https://nvd.nist.gov/developers/request-an-api-key",
         "exhaustive_mode_applying": "Aplicando perfil Exhaustivo para máximo descubrimiento...",
         "timing_q": "Velocidad de escaneo (ajustar según sensibilidad de la red):",
@@ -529,7 +530,7 @@ TRANSLATIONS = {
         "windows_verify_none": "No se detectaron objetivos compatibles para verificación sin agente.",
         "windows_verify_done": "Verificación sin agente completada en {} host(s)",
         "windows_verify_limit": "Verificación sin agente limitada a {} objetivos",
-        "vulns_found": "⚠️  Vulnerabilidades registradas en {}",
+        "vulns_found": "⚠  Vulnerabilidades registradas en {}",
         "no_hosts": "No se encontraron hosts.",
         "exec_params": "PARÁMETROS DE EJECUCIÓN",
         "web_vulns": "Vulnerabilidades web",
@@ -568,7 +569,7 @@ TRANSLATIONS = {
         "rate_limiting": "¿Activar limitación de velocidad (más lento pero más sigiloso)?",
         "rate_delay": "Retardo entre hosts (segundos; 0 = ninguno):",
         "low_impact_enrichment_q": "¿Activar enriquecimiento de bajo impacto (Fase 0: DNS/mDNS/SNMP)?",
-        "ports_truncated": "⚠️  {}: {} puertos encontrados, mostrando los 50 principales",
+        "ports_truncated": "⚠  {}: {} puertos encontrados, mostrando los 50 principales",
         # v3.1+: Defaults persistentes
         "save_defaults_q": "¿Guardar estos ajustes como valores por defecto para futuras ejecuciones?",
         "save_defaults_info_yes": "Esto sobrescribe tus valores por defecto anteriores y se aplicará como valores iniciales en futuras ejecuciones.",
@@ -641,7 +642,7 @@ TRANSLATIONS = {
         "deep_udp_full_cmd": "[deep] {} → {} (~120-180s, top {} UDP)",
         "banner_grab": "[banner] {} → Capturando banners para {} puertos no identificados",
         "nmap_cmd": "[nmap] {} → {}",
-        "exploits_found": "⚠️  Encontrados {} exploits conocidos para {}",
+        "exploits_found": "⚠  Encontrados {} exploits conocidos para {}",
         "testssl_analysis": "Ejecutando análisis SSL/TLS profundo en {}:{} (puede tomar 60s)...",
         "scanning_hosts": "Escaneando hosts...",
         # Sistema de actualizaciones (v2.8.0)
@@ -694,8 +695,8 @@ TRANSLATIONS = {
         ),
         # Configuración de API Key de NVD (v3.0.1)
         "nvd_key_set_cli": "✓ API key de NVD establecida desde línea de comandos",
-        "nvd_key_invalid": "⚠️  Formato de API key de NVD inválido",
-        "nvd_key_not_configured": "⚠️  CVE lookup activado pero sin API key de NVD configurada (límite de velocidad más lento)",
+        "nvd_key_invalid": "⚠  Formato de API key de NVD inválido",
+        "nvd_key_not_configured": "⚠  CVE lookup activado pero sin API key de NVD configurada (límite de velocidad más lento)",
         "nvd_setup_header": "CONFIGURACIÓN DE API KEY DE NVD (Opcional)",
         "nvd_setup_info": "La correlación CVE requiere una API key de NVD para consultas más rápidas.\nSin key: 5 peticiones/30s | Con key: 50 peticiones/30s\n\nRegístrate GRATIS en:",
         "nvd_option_config": "Guardar en fichero de configuración (~/.redaudit/config.json)",
@@ -704,17 +705,17 @@ TRANSLATIONS = {
         "nvd_ask_storage": "¿Cómo quieres configurar la API key?",
         "nvd_key_skipped": "API key omitida",
         "nvd_key_saved": "✓ API key de NVD guardada en fichero de configuración",
-        "nvd_key_save_error": "⚠️  Error guardando API key en configuración",
+        "nvd_key_save_error": "⚠  Error guardando API key en configuración",
         "nvd_key_invalid_format": "Formato de API key inválido. Esperado formato UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)",
         "nvd_env_instructions": "Añade esto a tu ~/.bashrc o ~/.zshrc:",
         "nvd_env_set_later": "Puedes configurar la variable de entorno más tarde",
-        "nvd_slow_mode": "⚠️  Continuando en modo lento (5 peticiones/30 segundos)",
+        "nvd_slow_mode": "⚠  Continuando en modo lento (5 peticiones/30 segundos)",
         # v3.2+: Descubrimiento de red
         "net_discovery_start": "Ejecutando Net Discovery mejorado (DHCP/NetBIOS/mDNS)...",
         "net_discovery_dhcp_found": "✓ Encontrado(s) {} servidor(es) DHCP",
         "net_discovery_routed_found": "ℹ️  Encontrada(s) {} red(es) enrutada(s) oculta(s) vía gateway(s) local(es):",
         "net_discovery_routed_add_q": "¿Añadir estas redes ocultas al alcance del escaneo?",
-        "net_discovery_vlans_found": "⚠️  Detectada(s) {} red(es) de invitados/VLAN(s) potencial(es)",
+        "net_discovery_vlans_found": "⚠  Detectada(s) {} red(es) de invitados/VLAN(s) potencial(es)",
         "net_discovery_seed_hosts": "Net Discovery identificó {} hosts para incluir en el escaneo",
         "net_discovery_seed_added": "Añadidos {} hosts que no respondieron al ICMP",
         "net_discovery_q": "¿Activar Net Discovery mejorado (DHCP/NetBIOS/mDNS/UPNP)?",
@@ -762,7 +763,7 @@ TRANSLATIONS = {
             "192.168.1.10-192.168.1.20:"
         ),
         "confirm_prompt": "Confirmar:",
-        "legal_warning_skipped": "⚠️  Advertencia legal omitida (flag --yes)",
+        "legal_warning_skipped": "⚠  Advertencia legal omitida (flag --yes)",
         "invalid_target_too_long": "Objetivo inválido (demasiado largo): {}",
         "invalid_cidr_target": "Objetivo inválido: {}",
         "no_valid_targets": "No se proporcionaron objetivos válidos",
@@ -801,7 +802,7 @@ TRANSLATIONS = {
         "webhook_configured": "✓ Webhook configurado: {}",
         "webhook_test_q": "¿Enviar alerta de prueba para verificar el webhook?",
         "webhook_test_success": "✓ Webhook de prueba enviado correctamente",
-        "webhook_test_failed": "⚠️  Webhook de prueba fallido: {}",
+        "webhook_test_failed": "⚠  Webhook de prueba fallido: {}",
         "auditor_name_q": "Nombre del auditor (opcional; ej. Juan Pérez)",
         # v3.7: Opciones avanzadas Net Discovery
         "net_discovery_advanced_q": "¿Configurar opciones avanzadas de Net Discovery?",
@@ -823,6 +824,7 @@ TRANSLATIONS = {
         "redteam_masscan_q": "¿Usar masscan para descubrimiento inicial? (Alta velocidad, requiere root)",
         # v4.2: HyperScan/DeepScan i18n
         "hyperscan_start": "HyperScan-First: Ejecutando descubrimiento en {} hosts en paralelo...",
+        "hyperscan_start_sequential": "HyperScan-First: Ejecutando descubrimiento en {} hosts (modo SYN, secuencial)...",
         "hyperscan_complete": "HyperScan-First completo: {} puertos totales en {:.1f}s",
         "hyperscan_ports_found": "[{}/{}] {}: {} puertos abiertos encontrados",
         "hyperscan_no_ports": "[{}/{}] {}: ningún puerto detectado",
