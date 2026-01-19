@@ -249,7 +249,8 @@ class Wizard:
             )
             for i, opt in enumerate(options):
                 marker = f"{self.ui.colors['BOLD']}❯{self.ui.colors['ENDC']}" if i == index else " "
-                opt_display = self._format_menu_option(opt)
+                # v4.14: Pass is_selected for enhanced color scheme
+                opt_display = self._format_menu_option(opt, is_selected=(i == index))
                 lines.append(self._truncate_menu_text(f"  {marker} {opt_display}", width))
             lines.append(
                 self._truncate_menu_text(
@@ -285,12 +286,22 @@ class Wizard:
                 print("")
                 return index
 
-    def _format_menu_option(self, option: str) -> str:
+    def _format_menu_option(self, option: str, is_selected: bool = False) -> str:
+        """Format menu option with professional color scheme.
+
+        v4.14: Enhanced colors for better visual hierarchy:
+        - Selected option: Bold cyan
+        - Yes/Si options: Green
+        - No options: Dim red
+        - Cancel/Back: Dim yellow
+        """
         if not option:
             return option
         if "\x1b[" in option:
             return option
         stripped = option.strip()
+
+        # Define label-color mappings
         labels = (
             (self.ui.t("yes_default"), "OKGREEN"),
             (self.ui.t("yes_option"), "OKGREEN"),
@@ -299,9 +310,23 @@ class Wizard:
             (self.ui.t("wizard_go_back"), "WARNING"),
             (self.ui.t("go_back"), "WARNING"),
         )
+
+        # Check for matching labels
         for label, color in labels:
             if label and stripped.startswith(label):
+                # v4.14: Use DIM for cancel/back options
+                if color == "WARNING":
+                    dim = self.ui.colors.get("DIM", "")
+                    return f"{dim}{self.ui.colors.get(color, '')}{option}{self.ui.colors['ENDC']}"
                 return f"{self.ui.colors.get(color, '')}{option}{self.ui.colors['ENDC']}"
+
+        # v4.14: Selected option gets bold cyan for prominence
+        if is_selected:
+            return (
+                f"{self.ui.colors['BOLD']}{self.ui.colors['CYAN']}"
+                f"{option}{self.ui.colors['ENDC']}"
+            )
+
         return option
 
     def show_main_menu(self) -> int:
@@ -826,6 +851,12 @@ class Wizard:
             # Credentials loaded from keyring, allow optional manual additions
             auth_config["auth_enabled"] = True
             if not self.ask_yes_no(self.ui.t("auth_add_more_q"), default="no"):
+                return auth_config
+        else:
+            # v4.14: No credentials loaded - ask if user wants to configure manually
+            # This fixes the bug where mode selection appeared after declining keyring load
+            if not self.ask_yes_no(self.ui.t("auth_configure_manual_q"), default="no"):
+                auth_config["auth_enabled"] = False
                 return auth_config
 
         auth_config["auth_enabled"] = True

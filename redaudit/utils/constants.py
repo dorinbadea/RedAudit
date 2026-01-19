@@ -235,6 +235,7 @@ STANDARD_PORT_SERVICES = {
 
 
 # Console colors
+# v4.14: Added DIM for professional wizard menus
 COLORS = {
     "HEADER": "\033[95m",
     "OKBLUE": "\033[94m",
@@ -244,4 +245,5 @@ COLORS = {
     "ENDC": "\033[0m",
     "BOLD": "\033[1m",
     "CYAN": "\033[96m",
+    "DIM": "\033[2m",
 }

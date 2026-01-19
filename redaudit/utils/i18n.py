@@ -417,6 +417,7 @@ TRANSLATIONS = {
         "auth_saved_creds_found": "Saved credentials found in keyring:",
         "auth_saved_creds_found_invoking": "Saved credentials found in keyring for user {0}:",
         "auth_load_saved_q": "Load saved credentials?",
+        "auth_configure_manual_q": "Configure credentials manually?",
         "auth_loaded_creds": "Loaded {0} credential(s) from keyring.",
         "auth_add_more_q": "Add more credentials?",
         # v4.3: SNMP v3
@@ -855,6 +856,7 @@ TRANSLATIONS = {
         "auth_saved_creds_found": "Credenciales guardadas encontradas en keyring:",
         "auth_saved_creds_found_invoking": "Credenciales guardadas encontradas en keyring para el usuario {0}:",
         "auth_load_saved_q": "¿Cargar credenciales guardadas?",
+        "auth_configure_manual_q": "¿Configurar credenciales manualmente?",
         "auth_loaded_creds": "Cargadas {0} credencial(es) desde keyring.",
         "auth_add_more_q": "¿Añadir más credenciales?",
         # v4.3: SNMP v3
