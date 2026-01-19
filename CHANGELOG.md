@@ -8,6 +8,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release notes live under `docs/releases/` for additional context.
 
+## [4.15.0] - 2026-01-19
+
+### Added
+
+- **HyperScan Progress Bar**: Visual progress bar (magenta) showing host completion during HyperScan-First discovery phase.
+- **Nuclei Auto-Fast Profile**: Automatic detection of hosts with 3+ HTTP ports, switching to "fast" profile (CVE-only templates) to prevent timeouts.
+
+### Fixed
+
+- **HyperScan True Parallelism**: Removed SYN scan lock that was serializing scans. RustScan/asyncio now run in true parallel mode.
+- **Minimalist Terminal Emojis**: Replaced colorful emojis with monochrome Unicode alternatives:
+  - `✅` -> `✔`
+  - `❌` -> `✖`
+  - `⚠️` -> `⚠`
+- **Test Fixes**: Updated `test_session_log.py` to use new minimalist emojis.
+
+### Testing
+
+- Added `test_hyperscan_start_sequential_key_en` and `test_hyperscan_start_sequential_key_es` to verify i18n keys.
+
 ## [4.14.0] - 2026-01-19
 
 ### Added

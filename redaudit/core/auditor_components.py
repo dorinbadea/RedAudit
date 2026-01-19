@@ -573,7 +573,7 @@ class AuditorCrypto:
             if password is None:
                 password = generate_random_password()
                 self.ui.print_status(
-                    f"⚠️  Generated random encryption password (save this!): {password}", "WARNING"
+                    f"⚠  Generated random encryption password (save this!): {password}", "WARNING"
                 )
 
             try:

@@ -685,7 +685,7 @@ class AuditorVuln:
                     finding["testssl_analysis"] = ssl_analysis
                     if ssl_analysis.get("vulnerabilities"):
                         self.ui.print_status(
-                            f"⚠️  SSL/TLS vulnerabilities detected on {ip}:{port}", "WARNING"
+                            f"⚠  SSL/TLS vulnerabilities detected on {ip}:{port}", "WARNING"
                         )
 
         # WhatWeb
@@ -899,14 +899,14 @@ class AuditorVuln:
                                             progress.update(
                                                 task_id,
                                                 completed=100,
-                                                description=f"[green]✅ {host_ip} {count_str}",
+                                                description=f"[green]✔ {host_ip} {count_str}",
                                                 detail="",
                                             )
                                         else:
                                             progress.update(
                                                 task_id,
                                                 completed=100,
-                                                description=f"[green]✅ {host_ip} (Clean)",
+                                                description=f"[green]✔ {host_ip} (Clean)",
                                                 detail="",
                                             )
                                         completed_hosts.add(host_ip)
@@ -917,7 +917,7 @@ class AuditorVuln:
                                         progress.update(
                                             task_id,
                                             completed=100,
-                                            description=f"[red]❌ {host_ip}",
+                                            description=f"[red]✖ {host_ip}",
                                             detail=str(exc),
                                         )
                                         completed_hosts.add(host_ip)

@@ -627,20 +627,20 @@ class InteractiveNetworkAuditor:
                         upnp_devices = self.results["net_discovery"].get("upnp_devices", [])
                         tcp_hosts = self.results["net_discovery"].get("hyperscan_tcp_hosts", {})
                         self.ui.print_status(
-                            f"✅ HyperScan: {len(arp_hosts)} ARP, {len(upnp_devices)} IoT/UPNP, {len(tcp_hosts)} TCP hosts ({hyperscan_dur:.1f}s)",
+                            f"✔ HyperScan: {len(arp_hosts)} ARP, {len(upnp_devices)} IoT/UPNP, {len(tcp_hosts)} TCP hosts ({hyperscan_dur:.1f}s)",
                             "OKGREEN",
                         )
                     backdoors = self.results["net_discovery"].get("potential_backdoors", [])
                     if backdoors:
                         self.ui.print_status(
-                            f"⚠️  {len(backdoors)} puertos sospechosos (backdoor) detectados",
+                            f"⚠  {len(backdoors)} puertos sospechosos (backdoor) detectados",
                             "WARNING",
                         )
 
                     # v4.6.32: L2 Warnings moved here for UI safety
                     l2_note = self.results["net_discovery"].get("l2_warning_note")
                     if l2_note:
-                        self.ui.print_status(f"⚠️  {l2_note}", "WARNING")
+                        self.ui.print_status(f"⚠  {l2_note}", "WARNING")
                 except Exception as exc:
                     if self.logger:
                         self.logger.warning("Net discovery failed: %s", exc)
@@ -802,6 +802,34 @@ class InteractiveNetworkAuditor:
                             or get_default_reports_base_dir()
                         )
 
+                        # v4.15: Auto-detect multi-port hosts and switch to 'fast' profile
+                        # Hosts with 3+ HTTP ports cause timeout issues with full template set
+                        nuclei_profile = self.config.get("nuclei_profile", "balanced")
+                        from urllib.parse import urlparse
+
+                        host_port_count: Dict[str, int] = {}
+                        for url in nuclei_targets:
+                            try:
+                                parsed = urlparse(url)
+                                host = parsed.hostname or ""
+                                if host:
+                                    host_port_count[host] = host_port_count.get(host, 0) + 1
+                            except Exception:
+                                pass
+
+                        multi_port_hosts = [h for h, c in host_port_count.items() if c >= 3]
+                        if multi_port_hosts and nuclei_profile != "fast":
+                            nuclei_profile = "fast"
+                            if self.logger:
+                                self.logger.info(
+                                    "Auto-switching to 'fast' Nuclei profile: %d hosts with 3+ HTTP ports",
+                                    len(multi_port_hosts),
+                                )
+                            self.ui.print_status(
+                                f"Nuclei: auto-fast mode ({len(multi_port_hosts)} multi-port hosts)",
+                                "INFO",
+                            )
+
                         # Prefer a single Progress instance managed by the auditor to avoid
                         # competing Rich Live displays (which can cause flicker/no output).
                         nuclei_result = None
@@ -890,7 +918,7 @@ class InteractiveNetworkAuditor:
                                     dry_run=bool(self.config.get("dry_run", False)),
                                     print_status=self.ui.print_status,
                                     proxy_manager=self.proxy_manager,
-                                    profile=self.config.get("nuclei_profile", "balanced"),
+                                    profile=nuclei_profile,
                                 )
                         except Exception:
                             nuclei_result = run_nuclei_scan(
@@ -904,7 +932,7 @@ class InteractiveNetworkAuditor:
                                 dry_run=bool(self.config.get("dry_run", False)),
                                 print_status=self.ui.print_status,
                                 proxy_manager=self.proxy_manager,
-                                profile=self.config.get("nuclei_profile", "balanced"),
+                                profile=nuclei_profile,
                             )
 
                         findings = nuclei_result.get("findings") or []

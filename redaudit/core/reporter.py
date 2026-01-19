@@ -687,7 +687,7 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
     # The user specifically requested techniques to discover "all networks here"
     network_leaks = _detect_network_leaks(results, results.get("config", {}))
     if network_leaks:
-        lines.append("⚠️  POTENTIAL HIDDEN NETWORKS (LEAKS DETECTED):\n")
+        lines.append("⚠  POTENTIAL HIDDEN NETWORKS (LEAKS DETECTED):\n")
         lines.append(
             "   (Professional Pivot / Discovery Tip: These networks are referenced in headers/redirects but were not scanned)\n"
         )
@@ -716,7 +716,7 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                 lines.append(f"      CVEs: {p['cve_count']} (max severity: {max_sev})\n")
             # Show known exploits if found
             if p.get("known_exploits"):
-                lines.append(f"      ⚠️  Known Exploits ({len(p['known_exploits'])}):\n")
+                lines.append(f"      ⚠  Known Exploits ({len(p['known_exploits'])}):\n")
                 for exploit in p["known_exploits"][:3]:  # Max 3 for readability
                     lines.append(f"         - {exploit}\n")
 
@@ -819,7 +819,7 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                 # v3.2.1: Show potential false positives for transparency
                 if item.get("potential_false_positives"):
                     fps = item["potential_false_positives"]
-                    lines.append(f"    ⚠️  Possible False Positives ({len(fps)}):\n")
+                    lines.append(f"    ⚠  Possible False Positives ({len(fps)}):\n")
                     for fp in fps[:3]:
                         lines.append(f"      - {fp}\n")
 

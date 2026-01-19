@@ -267,7 +267,7 @@ class TeeStream(io.TextIOBase):
     )
     PROGRESS_PATTERN = re.compile(r"[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏].*━+.*\d+%")
     PROGRESS_BAR_PATTERN = re.compile(
-        r"(?:✅|❌)?\s*(?P<host>\d{1,3}(?:\.\d{1,3}){3})?.*?[━─]+.*?(?P<pct>\d+)%"
+        r"(?:✔|✖)?\s*(?P<host>\d{1,3}(?:\.\d{1,3}){3})?.*?[━─]+.*?(?P<pct>\d+)%"
     )
     TIMESTAMP_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2} ")
 
@@ -390,9 +390,7 @@ class TeeStream(io.TextIOBase):
                 host = progress_bar.group("host") or ""
                 pct_str = progress_bar.group("pct")
                 pct_val = int(pct_str) if pct_str else -1
-                status = (
-                    "complete" if "✅" in cleaned else "fail" if "❌" in cleaned else "progress"
-                )
+                status = "complete" if "✔" in cleaned else "fail" if "✖" in cleaned else "progress"
                 if host:
                     key = (host, status)
                     last_pct = self._progress_host_pct.get(key)
@@ -401,7 +399,7 @@ class TeeStream(io.TextIOBase):
                     self._progress_host_pct[key] = pct_val
 
         # ALWAYS keep: status messages with [OK], [WARN], [FAIL], [INFO] that have results
-        if any(tag in stripped for tag in ["[OK]", "[WARN]", "[FAIL]", "✓", "✅", "⚠️", "❌"]):
+        if any(tag in stripped for tag in ["[OK]", "[WARN]", "[FAIL]", "✓", "✔", "⚠", "✖"]):
             return False  # Never skip status messages
 
         # ALWAYS keep: lines with actual scan results (hosts, ports, vulns, durations)

@@ -962,7 +962,7 @@ def main():
         )
         sys.exit(1)
     elif os.geteuid() != 0:
-        print("⚠️  Running without root: some scans (OS detection, UDP, tcpdump) may fail.")
+        print("⚠  Running without root: some scans (OS detection, UDP, tcpdump) may fail.")
 
     # Import here to avoid circular imports
     from redaudit.core.auditor import InteractiveNetworkAuditor
