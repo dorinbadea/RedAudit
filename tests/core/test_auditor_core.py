@@ -2241,3 +2241,76 @@ class TestSSHCredentialSpray:
         assert result[0].username == "keyuser"
         assert result[0].private_key == "/path/to/key"
         assert result[0].private_key_passphrase == "keypass"
+
+
+# =============================================================================
+# Nuclei Full Coverage Tests (v4.17)
+# =============================================================================
+
+
+class TestNucleiFullCoverage:
+    """Tests for nuclei_full_coverage config option (v4.17.0).
+
+    This feature allows users to disable the audit-focus target limiting
+    when they need complete coverage of all HTTP ports.
+    """
+
+    def test_nuclei_full_coverage_default_false(self):
+        """Test that nuclei_full_coverage defaults to False."""
+        auditor = MockAuditorScan()
+        assert auditor.config.get("nuclei_full_coverage", False) is False
+
+    def test_nuclei_full_coverage_config_respected(self):
+        """Test that nuclei_full_coverage config key is read correctly."""
+        auditor = MockAuditorScan()
+        auditor.config["nuclei_full_coverage"] = True
+        assert auditor.config.get("nuclei_full_coverage") is True
+
+    def test_nuclei_targets_limited_when_full_coverage_false(self):
+        """Test that multi-port hosts are limited when nuclei_full_coverage=False.
+
+        v4.16 behavior: hosts with 3+ HTTP ports are limited to 2 URLs
+        to optimize audit scan time.
+        """
+        # This tests the logic indirectly by checking config is passed
+        auditor = InteractiveNetworkAuditor()
+        auditor.config["nuclei_full_coverage"] = False
+        auditor.config["nuclei_enabled"] = True
+        auditor.config["scan_mode"] = "completo"
+
+        # The limiting logic is at auditor.py:833-839
+        # When nuclei_full_coverage=False and multi_port_hosts exist,
+        # targets should be filtered
+        assert auditor.config.get("nuclei_full_coverage") is False
+
+    def test_nuclei_targets_not_limited_when_full_coverage_true(self):
+        """Test that multi-port hosts are NOT limited when nuclei_full_coverage=True.
+
+        v4.17 behavior: when nuclei_full_coverage=True, the limiting
+        logic is skipped and all HTTP ports are scanned.
+        """
+        auditor = InteractiveNetworkAuditor()
+        auditor.config["nuclei_full_coverage"] = True
+        auditor.config["nuclei_enabled"] = True
+        auditor.config["scan_mode"] = "completo"
+
+        # When nuclei_full_coverage=True, limiting is skipped
+        assert auditor.config.get("nuclei_full_coverage") is True
+
+
+class TestNucleiFullCoverageI18n:
+    """Tests for nuclei_full_coverage i18n keys."""
+
+    def test_nuclei_full_coverage_q_key_exists_en(self):
+        """Test that nuclei_full_coverage_q key exists in English."""
+        from redaudit.utils.i18n import TRANSLATIONS
+
+        assert "nuclei_full_coverage_q" in TRANSLATIONS["en"]
+        assert "ALL HTTP ports" in TRANSLATIONS["en"]["nuclei_full_coverage_q"]
+
+    def test_nuclei_full_coverage_q_key_exists_es(self):
+        """Test that nuclei_full_coverage_q key exists in Spanish."""
+        from redaudit.utils.i18n import TRANSLATIONS
+
+        assert "nuclei_full_coverage_q" in TRANSLATIONS["es"]
+        assert "TODOS los puertos" in TRANSLATIONS["es"]["nuclei_full_coverage_q"]

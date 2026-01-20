@@ -833,7 +833,8 @@ class InteractiveNetworkAuditor:
                         # v4.16: For audit-focused scans, limit multi-port hosts to 2 URLs
                         # Prioritize standard HTTP ports (80, 443) to avoid timeout issues
                         # Rationale: Auditing seeks critical CVEs on main services, not full pentesting
-                        if multi_port_hosts:
+                        # v4.17: Skip limiting if nuclei_full_coverage is enabled
+                        if multi_port_hosts and not self.config.get("nuclei_full_coverage", False):
                             priority_ports = {80, 443, 8080, 8443}  # Standard HTTP/HTTPS ports
                             filtered_targets: list = []
                             host_url_count: Dict[str, int] = {}
@@ -1931,8 +1932,13 @@ class InteractiveNetworkAuditor:
                     self.ui.t("nuclei_profile_q"), profile_opts, default=1
                 )
                 self.config["nuclei_profile"] = ["full", "balanced", "fast"][profile_idx]
+                # v4.17: Full coverage option - default YES for Exhaustivo (pentesting-like)
+                self.config["nuclei_full_coverage"] = self.ask_yes_no(
+                    self.ui.t("nuclei_full_coverage_q"), default="yes"
+                )
             else:
                 self.config["nuclei_profile"] = "balanced"  # Default for non-interactive
+                self.config["nuclei_full_coverage"] = False
 
             # NVD/CVE - enable if API key is configured, otherwise show reminder
             if is_nvd_api_key_configured():
@@ -2183,8 +2189,12 @@ class InteractiveNetworkAuditor:
                             self.ui.t("nuclei_profile_q"), profile_opts, default=1
                         )
                         self.config["nuclei_profile"] = ["full", "balanced", "fast"][profile_idx]
-
-                # v4.2: SQLMap Intensity (Custom profile)
+                        # v4.17: Full coverage option - default NO for Custom (efficiency)
+                        self.config["nuclei_full_coverage"] = self.ask_yes_no(
+                            self.ui.t("nuclei_full_coverage_q"), default="no"
+                        )
+                    else:
+                        self.config["nuclei_full_coverage"] = False
                 # Only ask if vuln scan is enabled
                 if self.config.get("scan_vulnerabilities"):
                     sql_opts = [

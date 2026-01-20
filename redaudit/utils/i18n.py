@@ -352,6 +352,8 @@ TRANSLATIONS = {
         "nuclei_full": "Full - All templates, all ports (~2h)",
         "nuclei_balanced": "Balanced - 80/443 full, others reduced (~1h)",
         "nuclei_fast": "Fast - Critical CVEs (~30-60min)",
+        # v4.17: Full coverage option
+        "nuclei_full_coverage_q": "Scan ALL HTTP ports with Nuclei? (slower but complete coverage)",
         "windows_verify_q": "Enable agentless verification (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Max targets for agentless verification (1-200; higher = slower):",
         # v3.7: Interactive webhooks
@@ -793,6 +795,8 @@ TRANSLATIONS = {
         "nuclei_full": "Completo - Todos los templates (~2h)",
         "nuclei_balanced": "Equilibrado - 80/443 completo (~1h, recomendado)",
         "nuclei_fast": "Rapido - CVEs criticos (~30-60min)",
+        # v4.17: Opcion de cobertura completa
+        "nuclei_full_coverage_q": "Escanear TODOS los puertos HTTP con Nuclei? (mas lento pero cobertura completa)",
         "windows_verify_q": "¿Activar verificación sin agente (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Máximo de objetivos para verificación sin agente (1-200; más alto = más lento):",
         # v3.7: Webhooks interactivos
