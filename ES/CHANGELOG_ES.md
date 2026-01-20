@@ -8,6 +8,30 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [4.18.0] - 2026-01-20
+
+### Corregido
+
+- **Bugs de Color con Rich Progress**: Corregidos mensajes [WARN], [OK] e [INFO] que aparecían blancos durante barras de progreso.
+  - Causa raíz: New Console() evitaba el Rich progress activo, perdiendo color.
+  - Corrección: Añadido seguimiento `_active_progress_console` en UIManager.
+  - Corregidos heartbeats de Deep Scan y Net Discovery para usar objetos `Text()`.
+
+### Mejorado
+
+- **Prompts Acortados del Wizard**: Reducida truncación en terminal acortando prompts:
+  - `nuclei_full_coverage_q`: Acortado para evitar wrap de terminal.
+  - `trust_hyperscan_q`: Simplificado para más claridad.
+
+### Documentación
+
+- **Sección Configuración Nuclei**: Añadida sección Nuclei completa a USAGE.en.md y USAGE.es.md explicando:
+  - Perfiles de escaneo (fast/balanced/full) con estimaciones de tiempo.
+  - Opción cobertura completa (solo wizard, no flag CLI).
+  - RustScan como mejora de rendimiento opcional.
+- **Actualizaciones Referencia CLI**: Añadidos flags faltantes `--profile` y `--nuclei-timeout` a referencia CLI del MANUAL.
+- **Corregido**: `--nuclei-full` NO existe como flag CLI (opción solo en wizard).
+
 ## [4.17.0] - 2026-01-20
 
 ### Añadido

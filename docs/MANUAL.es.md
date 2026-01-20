@@ -520,6 +520,8 @@ sudo redaudit -t 192.168.1.0/24 --credentials-file ~/.redaudit/credentials.json 
 | `--no-vuln-scan` | Omitir escaneo nikto/vulnerabilidades web |
 | `--nuclei` | Habilitar escaneo de plantillas Nuclei (requiere `nuclei`) |
 | `--no-nuclei` | Deshabilitar Nuclei (ignora defaults) |
+| `--nuclei-timeout N` | Timeout por lote de Nuclei en segundos (defecto: 300) |
+| `--profile {fast,balanced,full}` | Intensidad de escaneo Nuclei (v4.11+) |
 
 ### Verificación (Sin Agente)
 

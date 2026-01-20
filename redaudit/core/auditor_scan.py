@@ -2674,8 +2674,15 @@ class AuditorScan:
                                 if now - last_heartbeat >= 60.0:
                                     elapsed = int(now - start_t)
                                     mins, secs = divmod(elapsed, 60)
-                                    msg = f"Deep Scan... {done}/{total} ({mins}:{secs:02d})"
-                                    progress.console.print(f"[dim]{msg}[/dim]")
+                                    # v4.18: Use Text() to avoid Rich markup issues
+                                    from rich.text import Text
+
+                                    heartbeat_msg = Text()
+                                    heartbeat_msg.append(
+                                        f"Deep Scan... {done}/{total} ({mins}:{secs:02d})",
+                                        style="dim",
+                                    )
+                                    progress.console.print(heartbeat_msg)
                                     last_heartbeat = now
 
                                 # Update progress for pending hosts
