@@ -229,6 +229,7 @@ During interactive mode, the wizard asks "Scan ALL HTTP ports?" This controls wh
 | **Yes** | Scan ALL HTTP ports on every host |
 
 Note: This option is only available in the interactive wizard, not via CLI flags.
+When full coverage is enabled, the auto-fast profile switch is skipped so the selected profile is honored.
 
 **When to use each combination:**
 

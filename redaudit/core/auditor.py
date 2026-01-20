@@ -818,7 +818,12 @@ class InteractiveNetworkAuditor:
                                 pass
 
                         multi_port_hosts = [h for h, c in host_port_count.items() if c >= 3]
-                        if multi_port_hosts and nuclei_profile != "fast":
+                        nuclei_full_coverage = bool(self.config.get("nuclei_full_coverage", False))
+                        if (
+                            multi_port_hosts
+                            and nuclei_profile != "fast"
+                            and not nuclei_full_coverage
+                        ):
                             nuclei_profile = "fast"
                             if self.logger:
                                 self.logger.info(
@@ -829,6 +834,11 @@ class InteractiveNetworkAuditor:
                                 f"Nuclei: auto-fast mode ({len(multi_port_hosts)} multi-port hosts)",
                                 "INFO",
                             )
+                        elif multi_port_hosts and nuclei_full_coverage:
+                            if self.logger:
+                                self.logger.info(
+                                    "Auto-fast Nuclei profile skipped (full coverage enabled)"
+                                )
 
                         # v4.16: For audit-focused scans, limit multi-port hosts to 2 URLs
                         # Prioritize standard HTTP ports (80, 443) to avoid timeout issues

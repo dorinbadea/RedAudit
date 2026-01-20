@@ -25,7 +25,7 @@ from redaudit.utils.constants import (
 from redaudit.utils.paths import get_default_reports_base_dir, maybe_chown_tree_to_invoking_user
 from redaudit.core.crypto import encrypt_data
 from redaudit.core.entity_resolver import reconcile_assets
-from redaudit.core.siem import enrich_report_for_siem
+from redaudit.core.siem import enrich_report_for_siem, enrich_vulnerability_severity
 from redaudit.core.scanner_versions import get_scanner_versions
 
 
@@ -274,6 +274,22 @@ def _summarize_vulnerabilities(vuln_entries: list) -> Dict[str, Any]:
     return {"total": total, "sources": sources}
 
 
+def _summarize_vulnerabilities_for_pipeline(vuln_entries: list) -> Dict[str, Any]:
+    total = 0
+    sources: Dict[str, int] = {}
+    for entry in vuln_entries or []:
+        if not entry:
+            continue
+        for vuln in entry.get("vulnerabilities", []) or []:
+            total += 1
+            source = _infer_vuln_source(vuln)
+            if source == "unknown":
+                enriched = enrich_vulnerability_severity(vuln)
+                source = _infer_vuln_source(enriched)
+            sources[source] = sources.get(source, 0) + 1
+    return {"total": total, "sources": sources}
+
+
 def generate_summary(
     results: Dict,
     config: Dict,
@@ -329,7 +345,9 @@ def generate_summary(
     # Attach sanitized config snapshot + pipeline + smart scan summary for reporting.
     results["config_snapshot"] = _build_config_snapshot(config)
     results["smart_scan_summary"] = _summarize_smart_scan(results.get("hosts", []), config)
-    raw_vuln_summary = _summarize_vulnerabilities(results.get("vulnerabilities", []))
+    pipeline_vuln_summary = _summarize_vulnerabilities_for_pipeline(
+        results.get("vulnerabilities", [])
+    )
     results["pipeline"] = {
         "topology": results.get("topology") or {},
         "net_discovery": _summarize_net_discovery(results.get("net_discovery") or {}),
@@ -342,7 +360,7 @@ def generate_summary(
             results.get("hosts", []), results.get("agentless_verify") or {}, config
         ),
         "nuclei": results.get("nuclei") or {},
-        "vulnerability_scan": raw_vuln_summary,
+        "vulnerability_scan": pipeline_vuln_summary,
     }
 
     # v3.1+: Updated SIEM-compatible fields
@@ -438,7 +456,6 @@ def generate_summary(
     # v2.9: SIEM Enhancement - ECS compliance, severity scoring, tags, risk scores
     enriched = enrich_report_for_siem(results, config)
     results.update(enriched)
-    consolidated_vulns = 0
     try:
         consolidated_vulns = _summarize_vulnerabilities(results.get("vulnerabilities", [])).get(
             "total", 0
@@ -448,8 +465,9 @@ def generate_summary(
     summary["vulns_found"] = consolidated_vulns
     summary["vulns_found_raw"] = raw_vulns
     if results.get("pipeline", {}).get("vulnerability_scan") is not None:
-        results["pipeline"]["vulnerability_scan"]["total_raw"] = raw_vulns
-        results["pipeline"]["vulnerability_scan"]["total"] = consolidated_vulns
+        pipeline_summary = results["pipeline"]["vulnerability_scan"]
+        pipeline_summary["total_raw"] = raw_vulns
+        pipeline_summary["total"] = consolidated_vulns
 
     return summary
 
@@ -674,6 +692,20 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                     targets=nuclei.get("targets", 0),
                 )
             )
+            if nuclei.get("partial"):
+                timeout_batches = len(nuclei.get("timeout_batches") or [])
+                failed_batches = len(nuclei.get("failed_batches") or [])
+                lines.append(
+                    "  Nuclei: partial (timeouts {timeouts}, failed {failed})\n".format(
+                        timeouts=timeout_batches,
+                        failed=failed_batches,
+                    )
+                )
+            elif nuclei.get("error"):
+                lines.append("  Nuclei: error ({error})\n".format(error=nuclei.get("error")))
+            suspected = nuclei.get("findings_suspected")
+            if suspected:
+                lines.append("  Nuclei: suspected {count}\n".format(count=suspected))
         if smart:
             lines.append(
                 "  SmartScan: deep executed {executed}, avg identity {avg}\n".format(

@@ -234,6 +234,7 @@ Durante el modo interactivo, el asistente pregunta "Escanear TODOS puertos HTTP?
 | **Si** | Escanea TODOS los puertos HTTP en cada host |
 
 Nota: Esta opcion solo esta disponible en el asistente interactivo, no via flags CLI.
+Cuando la cobertura completa esta activada, se omite el cambio automatico a auto-fast para respetar el perfil seleccionado.
 
 **Cuando usar cada combinacion:**
 

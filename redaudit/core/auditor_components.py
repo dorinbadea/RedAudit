@@ -362,11 +362,16 @@ class AuditorUI:
             from rich.console import Console
         except ImportError:
             return None
-        return Console(
+        console = Console(
             file=getattr(sys, "__stdout__", sys.stdout),
             width=self._terminal_width(),
             force_terminal=True,
         )
+        try:
+            self.ui._active_progress_console = console
+        except Exception:
+            pass
+        return console
 
     def _safe_text_column(self, *args, **kwargs):
         try:
@@ -422,6 +427,11 @@ class AuditorUI:
             yield
         finally:
             self._ui_progress_active = prev
+            if hasattr(self, "_ui_manager"):
+                try:
+                    self.ui._active_progress_console = None
+                except Exception:
+                    pass
 
 
 class AuditorLogging:

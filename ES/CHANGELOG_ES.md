@@ -8,6 +8,20 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [Sin lanzar]
+
+### Corregido
+
+- Ninguno.
+
+## [4.18.1] - 2026-01-20
+
+### Corregido
+
+- **Consistencia de informes Nuclei**: HTML/TXT ahora muestran estado parcial, lotes con timeout/fallidos y resultados solo sospechosos.
+- **Resumen de fuentes de vulnerabilidades**: Los conteos de fuentes en el pipeline reflejan los hallazgos enriquecidos en lugar de `unknown`.
+- **Cobertura completa vs Auto-Fast**: Se omite el cambio automatico a auto-fast cuando la cobertura completa esta activada para respetar el perfil seleccionado.
+
 ## [4.18.0] - 2026-01-20
 
 ### Corregido
