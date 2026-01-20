@@ -258,8 +258,9 @@ class TestAuditorOrchestrator(unittest.TestCase):
 
         # Sequence of yes/no:
         # 1. Nuclei enabled? True
-        # 2. Trust Hyperscan? True
-        self.auditor.ask_yes_no.side_effect = [True, True]
+        # 2. Nuclei full coverage? True (v4.17+)
+        # 3. Trust Hyperscan? True
+        self.auditor.ask_yes_no.side_effect = [True, True, True]
 
         defaults = {}
         # Patch is_nvd_api_key_configured to avoid NVD warning path
