@@ -8,6 +8,19 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [4.17.0] - 2026-01-20
+
+### Añadido
+
+- **Opción Cobertura Completa Nuclei**: Nueva pregunta en wizard para escanear TODOS los puertos HTTP con Nuclei.
+  - Modo Exhaustivo: por defecto SI (cobertura completa para escaneos tipo pentesting).
+  - Modo Personalizado: por defecto NO (eficiencia audit-focus).
+  - Clave config: `nuclei_full_coverage` omite limitación de targets cuando es true.
+
+### Tests
+
+- Añadidos `TestNucleiFullCoverage` (4 tests) y `TestNucleiFullCoverageI18n` (2 tests).
+
 ## [4.16.0] - 2026-01-19
 
 ### Añadido
