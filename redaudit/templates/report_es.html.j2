@@ -212,9 +212,25 @@
                 <div class="meta-item">
                     <h4>Nuclei</h4>
                     <ul>
-                        <li>Objetivos <span>{{ pipeline.nuclei.targets or 0 }}</span></li>
-                        <li>Hallazgos <span>{{ pipeline.nuclei.findings or 0 }}</span></li>
-                        <li>Estado <span>{{ 'OK' if pipeline.nuclei.success else 'N/A' }}</span></li>
+                        {% set nuclei = pipeline.nuclei or {} %}
+                        <li>Objetivos <span>{{ nuclei.targets or 0 }}</span></li>
+                        <li>Hallazgos <span>{{ nuclei.findings or 0 }}</span></li>
+                        {% if nuclei.findings_suspected is not none %}
+                        <li>Sospechosos <span>{{ nuclei.findings_suspected }}</span></li>
+                        {% endif %}
+                        {% if nuclei.partial %}
+                        <li>Lotes con timeout <span>{{ (nuclei.timeout_batches or [])|length }}</span></li>
+                        <li>Lotes fallidos <span>{{ (nuclei.failed_batches or [])|length }}</span></li>
+                        {% endif %}
+                        {% if nuclei.partial %}
+                        <li>Estado <span>Parcial</span></li>
+                        {% elif nuclei.success %}
+                        <li>Estado <span>OK</span></li>
+                        {% elif nuclei.error %}
+                        <li>Estado <span>Error</span></li>
+                        {% else %}
+                        <li>Estado <span>N/A</span></li>
+                        {% endif %}
                     </ul>
                 </div>
                 <div class="meta-item">
