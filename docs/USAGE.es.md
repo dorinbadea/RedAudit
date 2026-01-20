@@ -210,6 +210,55 @@ Notas:
 - Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
 - **Nuclei en redes con alta densidad web:** En redes con muchos servicios HTTP/HTTPS (p. ej., labs Docker, microservicios), los escaneos Nuclei pueden tardar significativamente mas (30-90+ minutos). Usa `--nuclei-timeout 600` para aumentar el timeout por lote, o `--no-nuclei` para omitir Nuclei si la velocidad es critica.
 
+### Configuracion de Nuclei (v4.17+)
+
+El escaneo con Nuclei tiene dos opciones de configuracion independientes:
+
+**1. Perfil de escaneo (`--profile`)**
+
+Controla que plantillas se ejecutan:
+
+| Perfil | Descripcion | Tiempo Estimado |
+|:-------|:------------|:----------------|
+| `full` | Todas las plantillas, todos los niveles de severidad | ~2 horas |
+| `balanced` | Optimizado para puertos 80/443, reducido para otros | ~1 hora (recomendado) |
+| `fast` | Solo CVEs criticos | ~30-60 minutos |
+
+**2. Cobertura completa (`--nuclei-full`)**
+
+Controla que puertos HTTP se escanean por host:
+
+| Opcion | Comportamiento |
+|:-------|:---------------|
+| **Por defecto (audit-focus)** | Max 2 URLs por host multipuerto (prioriza 80, 443) |
+| `--nuclei-full` | Escaner TODOS los puertos HTTP en cada host |
+
+**Cuando usar cada combinacion:**
+
+| Escenario | Configuracion Recomendada |
+|:----------|:--------------------------|
+| Comprobacion rapida de vulnerabilidades | `--profile fast` (cobertura por defecto) |
+| Auditoria estandar | `--profile balanced` (cobertura por defecto) |
+| Pentest exhaustivo | `--profile full --nuclei-full` |
+| Auditoria con tiempo limitado | `--profile fast` (cobertura por defecto) |
+
+**Notas de rendimiento:**
+
+- Hosts con muchos puertos HTTP (p. ej., FRITZ!Box con 8+ puertos) pueden dominar el tiempo de escaneo.
+- El modo audit-focus (por defecto) reduce significativamente el tiempo en hosts multipuerto.
+- Usa `--nuclei-full` solo cuando se requiere cobertura exhaustiva.
+
+**Mejora de rendimiento opcional:**
+
+Instala [RustScan](https://github.com/RustScan/RustScan) para descubrimiento de puertos mas rapido:
+
+```bash
+# Ubuntu/Debian
+cargo install rustscan
+```
+
+RustScan se detecta automaticamente y se usa para HyperScan cuando esta disponible.
+
 ### Seguridad y Privacidad
 
 | Flag | Descripción |

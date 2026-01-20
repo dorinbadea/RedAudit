@@ -205,6 +205,55 @@ Notes:
 - Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.
 - **Nuclei on web-dense networks:** On networks with many HTTP/HTTPS services (e.g., Docker labs, microservices), Nuclei scans may take significantly longer (30-90+ minutes). Use `--nuclei-timeout 600` to increase the batch timeout, or `--no-nuclei` to skip Nuclei entirely if speed is critical.
 
+### Nuclei Configuration (v4.17+)
+
+Nuclei scanning has two independent configuration options:
+
+**1. Scan Profile (`--profile`)**
+
+Controls which templates are executed:
+
+| Profile | Description | Time Estimate |
+|:--------|:------------|:--------------|
+| `full` | All templates, all severity levels | ~2 hours |
+| `balanced` | Optimized for ports 80/443, reduced others | ~1 hour (recommended) |
+| `fast` | Critical CVEs only | ~30-60 minutes |
+
+**2. Full Coverage (`--nuclei-full`)**
+
+Controls which HTTP ports are scanned per host:
+
+| Option | Behavior |
+|:-------|:---------|
+| **Default (audit-focus)** | Max 2 URLs per multi-port host (prioritizes 80, 443) |
+| `--nuclei-full` | Scan ALL HTTP ports on every host |
+
+**When to use each combination:**
+
+| Scenario | Recommended Settings |
+|:---------|:--------------------|
+| Quick vulnerability check | `--profile fast` (default coverage) |
+| Standard audit | `--profile balanced` (default coverage) |
+| Thorough pentest | `--profile full --nuclei-full` |
+| Time-constrained audit | `--profile fast` (default coverage) |
+
+**Performance notes:**
+
+- Hosts with many HTTP ports (e.g., FRITZ!Box with 8+ ports) can dominate scan time.
+- Audit-focus mode (default) significantly reduces scan time on multi-port hosts.
+- Use `--nuclei-full` only when exhaustive coverage is required.
+
+**Optional Performance Boost:**
+
+Install [RustScan](https://github.com/RustScan/RustScan) for faster port discovery:
+
+```bash
+# Ubuntu/Debian
+cargo install rustscan
+```
+
+RustScan is automatically detected and used for HyperScan when available.
+
 ### Security & Privacy
 
 | Flag | Description |
