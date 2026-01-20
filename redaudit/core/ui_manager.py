@@ -54,6 +54,8 @@ class UIManager:
         self._ui_detail = ""
         self.last_activity = datetime.now()
         self.current_phase = "init"
+        # v4.18: Store active progress console for correct color output during Live display
+        self._active_progress_console = None
 
     def _is_progress_active(self) -> bool:
         """Check if progress UI is active (local or parent state)."""
@@ -161,10 +163,13 @@ class UIManager:
             from rich.console import Console
             from rich.text import Text
 
-            console = Console(
-                file=getattr(sys, "__stdout__", sys.stdout),
-                width=self._terminal_width(),
-            )
+            # v4.18: Use active progress console if available for correct color during Live display
+            console = self._active_progress_console
+            if console is None:
+                console = Console(
+                    file=getattr(sys, "__stdout__", sys.stdout),
+                    width=self._terminal_width(),
+                )
             # v4.0.4: Use Text objects for reliable color output
             # This avoids markup escaping issues with brackets in [WARN], [INFO] etc
             prefix = Text()
@@ -275,6 +280,8 @@ class UIManager:
             yield
         finally:
             self._ui_progress_active = False
+            # v4.18: Clear console reference when progress ends
+            self._active_progress_console = None
 
     def get_progress_console(self):
         """Get a Rich console for progress displays."""
@@ -301,7 +308,9 @@ class UIManager:
                 TimeRemainingColumn,
             )
 
-            return Progress(
+            # v4.18: Create and store console for use in print_status during progress
+            progress_console = self.get_progress_console()
+            progress = Progress(
                 SpinnerColumn("dots", style="bright_blue"),
                 TextColumn("[bold blue]{task.description}"),
                 BarColumn(bar_width=None, style="blue", complete_style="bright_blue"),
@@ -309,9 +318,12 @@ class UIManager:
                 TimeElapsedColumn(),
                 TimeRemainingColumn(),
                 transient=transient,
-                console=self.get_progress_console(),
+                console=progress_console,
                 expand=True,
             )
+            # Store console reference for print_status to use
+            self._active_progress_console = progress_console
+            return progress
         except ImportError:
             return None
 

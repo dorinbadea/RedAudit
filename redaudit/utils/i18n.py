@@ -352,8 +352,8 @@ TRANSLATIONS = {
         "nuclei_full": "Full - All templates, all ports (~2h)",
         "nuclei_balanced": "Balanced - 80/443 full, others reduced (~1h)",
         "nuclei_fast": "Fast - Critical CVEs (~30-60min)",
-        # v4.17: Full coverage option
-        "nuclei_full_coverage_q": "Scan ALL HTTP ports with Nuclei? (slower but complete coverage)",
+        # v4.17: Full coverage option (v4.18: shortened to prevent truncation)
+        "nuclei_full_coverage_q": "Scan ALL HTTP ports? (slower, full coverage)",
         "windows_verify_q": "Enable agentless verification (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Max targets for agentless verification (1-200; higher = slower):",
         # v3.7: Interactive webhooks
@@ -398,7 +398,7 @@ TRANSLATIONS = {
         "hyperscan_auto": "Auto — Detect best method (SYN if root, else connect)",
         "hyperscan_connect": "Connect — Standard TCP (no root required, stealthier)",
         "hyperscan_syn": "SYN — Raw packets (requires root + scapy, faster)",
-        "trust_hyperscan_q": "Trust discovery results to speed up deep scans? (Skips deep scan if 0 ports found)",
+        "trust_hyperscan_q": "Skip deep scan on identified hosts? (faster)",
         # v4.0: Authenticated Scanning
         "auth_scan_q": "Enable authenticated scanning?",
         "auth_ssh_configure_q": "Configure SSH credentials?",
@@ -795,8 +795,8 @@ TRANSLATIONS = {
         "nuclei_full": "Completo - Todos los templates (~2h)",
         "nuclei_balanced": "Equilibrado - 80/443 completo (~1h, recomendado)",
         "nuclei_fast": "Rapido - CVEs criticos (~30-60min)",
-        # v4.17: Opcion de cobertura completa
-        "nuclei_full_coverage_q": "Escanear TODOS los puertos HTTP con Nuclei? (mas lento pero cobertura completa)",
+        # v4.17: Opcion de cobertura completa (v4.18: abreviado)
+        "nuclei_full_coverage_q": "Escanear TODOS puertos HTTP? (mas lento, cobertura total)",
         "windows_verify_q": "¿Activar verificación sin agente (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Máximo de objetivos para verificación sin agente (1-200; más alto = más lento):",
         # v3.7: Webhooks interactivos
@@ -841,7 +841,7 @@ TRANSLATIONS = {
         "hyperscan_auto": "Auto — Detectar mejor método (SYN si root, sino connect)",
         "hyperscan_connect": "Connect — TCP estándar (no requiere root, más sigiloso)",
         "hyperscan_syn": "SYN — Paquetes raw (requiere root + scapy, más rápido)",
-        "trust_hyperscan_q": "¿Confiar en los resultados del descubrimiento para acelerar? (Omite deep scan si 0 puertos)",
+        "trust_hyperscan_q": "Omitir deep scan en hosts identificados? (mas rapido)",
         # v4.0: Authenticated Scanning
         "auth_scan_q": "¿Activar escaneo autenticado?",
         "auth_ssh_user_prompt": "Usuario SSH",
