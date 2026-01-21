@@ -248,7 +248,7 @@ def _summarize_smart_scan(hosts: list, config: Optional[Dict[str, Any]] = None) 
 
 def _infer_vuln_source(vuln: Dict[str, Any]) -> str:
     source = vuln.get("source") or (vuln.get("original_severity") or {}).get("tool") or ""
-    if source:
+    if source and source != "redaudit":
         return source
     if vuln.get("template_id") or vuln.get("matched_at"):
         return "nuclei"
@@ -258,7 +258,7 @@ def _infer_vuln_source(vuln: Dict[str, Any]) -> str:
         return "testssl"
     if vuln.get("whatweb"):
         return "whatweb"
-    return "unknown"
+    return source or "unknown"
 
 
 def _summarize_vulnerabilities(vuln_entries: list) -> Dict[str, Any]:
@@ -345,9 +345,6 @@ def generate_summary(
     # Attach sanitized config snapshot + pipeline + smart scan summary for reporting.
     results["config_snapshot"] = _build_config_snapshot(config)
     results["smart_scan_summary"] = _summarize_smart_scan(results.get("hosts", []), config)
-    pipeline_vuln_summary = _summarize_vulnerabilities_for_pipeline(
-        results.get("vulnerabilities", [])
-    )
     results["pipeline"] = {
         "topology": results.get("topology") or {},
         "net_discovery": _summarize_net_discovery(results.get("net_discovery") or {}),
@@ -360,7 +357,7 @@ def generate_summary(
             results.get("hosts", []), results.get("agentless_verify") or {}, config
         ),
         "nuclei": results.get("nuclei") or {},
-        "vulnerability_scan": pipeline_vuln_summary,
+        "vulnerability_scan": {},
     }
 
     # v3.1+: Updated SIEM-compatible fields
@@ -465,9 +462,12 @@ def generate_summary(
     summary["vulns_found"] = consolidated_vulns
     summary["vulns_found_raw"] = raw_vulns
     if results.get("pipeline", {}).get("vulnerability_scan") is not None:
-        pipeline_summary = results["pipeline"]["vulnerability_scan"]
+        pipeline_summary = _summarize_vulnerabilities_for_pipeline(
+            results.get("vulnerabilities", [])
+        )
         pipeline_summary["total_raw"] = raw_vulns
         pipeline_summary["total"] = consolidated_vulns
+        results["pipeline"]["vulnerability_scan"] = pipeline_summary
 
     return summary
 
@@ -1158,7 +1158,11 @@ def _write_output_manifest(
             logger.debug("Failed to walk output directory for manifest", exc_info=True)
 
     artifacts.sort(key=lambda item: str(item.get("path", "")))
+    pcap_count = sum(
+        1 for item in artifacts if str(item.get("path", "")).lower().endswith(".pcap")
+    )
     manifest["artifacts"] = artifacts
+    manifest["counts"]["pcaps"] = pcap_count
 
     out_path = os.path.join(output_dir, "run_manifest.json")
     with open(out_path, "w", encoding="utf-8") as f:
