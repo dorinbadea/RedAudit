@@ -1158,9 +1158,7 @@ def _write_output_manifest(
             logger.debug("Failed to walk output directory for manifest", exc_info=True)
 
     artifacts.sort(key=lambda item: str(item.get("path", "")))
-    pcap_count = sum(
-        1 for item in artifacts if str(item.get("path", "")).lower().endswith(".pcap")
-    )
+    pcap_count = sum(1 for item in artifacts if str(item.get("path", "")).lower().endswith(".pcap"))
     manifest["artifacts"] = artifacts
     manifest["counts"]["pcaps"] = pcap_count
 
