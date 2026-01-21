@@ -14,6 +14,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.3] - 2026-01-21
+
+### Corregido
+
+- **Salida de progreso HyperScan**: Se suprimen lineas por host durante el progreso Rich para evitar UI mixta.
+- **Claridad del asistente Nuclei**: Las etiquetas de perfil describen alcance de plantillas; la pregunta de cobertura completa aclara el alcance de puertos.
+
 ## [4.18.2] - 2026-01-21
 
 ### Corregido

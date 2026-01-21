@@ -14,6 +14,13 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.3] - 2026-01-21
+
+### Fixed
+
+- **HyperScan Progress Output**: Suppressed per-host status lines during Rich progress to avoid mixed UI.
+- **Nuclei Wizard Clarity**: Profile labels now describe template scope; full coverage prompt clarifies port coverage.
+
 ## [4.18.2] - 2026-01-21
 
 ### Fixed
