@@ -101,6 +101,9 @@ class AuditorScan:
         def _set_ui_detail(self, detail: str) -> None:
             raise NotImplementedError
 
+        def _progress_ui(self):
+            raise NotImplementedError
+
     # v4.0: Authenticated Scanning Helpers
     @property
     def credential_provider(self):
@@ -2517,26 +2520,30 @@ class AuditorScan:
             if use_rich and discovery_count > 0:
                 progress = self.ui.get_standard_progress(transient=False)
                 if progress:
-                    with progress:
-                        # Single global progress bar (magenta for HyperScan)
-                        task_id = progress.add_task(
-                            "[magenta]HyperScan",
-                            total=discovery_count,
-                            start=True,
-                        )
-                        for fut in as_completed(futures):
-                            if self.interrupted:
-                                executor.shutdown(wait=False, cancel_futures=True)
-                                break
-                            completed_count += 1
-                            idx, ip = futures[fut]
-                            ports = self._hyperscan_discovery_ports.get(ip, [])
-                            port_str = f"{len(ports)} ports" if ports else "no ports"
-                            progress.update(
-                                task_id,
-                                advance=1,
-                                description=f"[magenta]HyperScan ({completed_count}/{discovery_count}) {ip}: {port_str}",
+                    with self._progress_ui():
+                        with progress:
+                            # Single global progress bar (magenta for HyperScan)
+                            task_id = progress.add_task(
+                                "[magenta]HyperScan",
+                                total=discovery_count,
+                                start=True,
                             )
+                            for fut in as_completed(futures):
+                                if self.interrupted:
+                                    executor.shutdown(wait=False, cancel_futures=True)
+                                    break
+                                completed_count += 1
+                                idx, ip = futures[fut]
+                                ports = self._hyperscan_discovery_ports.get(ip, [])
+                                port_str = f"{len(ports)} ports" if ports else "no ports"
+                                progress.update(
+                                    task_id,
+                                    advance=1,
+                                    description=(
+                                        f"[magenta]HyperScan ({completed_count}/{discovery_count}) "
+                                        f"{ip}: {port_str}"
+                                    ),
+                                )
             else:
                 # Fallback without rich
                 for fut in as_completed(futures):

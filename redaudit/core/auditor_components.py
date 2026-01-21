@@ -358,15 +358,9 @@ class AuditorUI:
         return max(60, int(width))
 
     def _progress_console(self):
-        try:
-            from rich.console import Console
-        except ImportError:
+        console = self.ui.get_progress_console()
+        if console is None:
             return None
-        console = Console(
-            file=getattr(sys, "__stdout__", sys.stdout),
-            width=self._terminal_width(),
-            force_terminal=True,
-        )
         try:
             self.ui._active_progress_console = console
         except Exception:

@@ -283,9 +283,15 @@ class TestReporter(unittest.TestCase):
                 {
                     "host": "192.168.1.10",
                     "vulnerabilities": [
-                        {"nikto_findings": ["+ test"]},
-                        {"testssl_analysis": {"summary": "ok"}},
-                        {"template_id": "http-test"},
+                        {"nikto_findings": ["+ test"], "descriptive_title": "Nikto test"},
+                        {
+                            "testssl_analysis": {"summary": "ok"},
+                            "descriptive_title": "TestSSL summary",
+                        },
+                        {
+                            "template_id": "http-test",
+                            "matched_at": "http://192.168.1.10:80",
+                        },
                     ],
                 }
             ],

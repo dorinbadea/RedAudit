@@ -1942,9 +1942,10 @@ class InteractiveNetworkAuditor:
                     self.ui.t("nuclei_profile_q"), profile_opts, default=1
                 )
                 self.config["nuclei_profile"] = ["full", "balanced", "fast"][profile_idx]
-                # v4.17: Full coverage option - default YES for Exhaustivo (pentesting-like)
+                # v4.17: Full coverage option - default YES only when Nuclei profile is full
+                full_coverage_default = "yes" if self.config["nuclei_profile"] == "full" else "no"
                 self.config["nuclei_full_coverage"] = self.ask_yes_no(
-                    self.ui.t("nuclei_full_coverage_q"), default="yes"
+                    self.ui.t("nuclei_full_coverage_q"), default=full_coverage_default
                 )
             else:
                 self.config["nuclei_profile"] = "balanced"  # Default for non-interactive
@@ -2199,9 +2200,12 @@ class InteractiveNetworkAuditor:
                             self.ui.t("nuclei_profile_q"), profile_opts, default=1
                         )
                         self.config["nuclei_profile"] = ["full", "balanced", "fast"][profile_idx]
-                        # v4.17: Full coverage option - default NO for Custom (efficiency)
+                        # v4.17: Full coverage option - default YES only when Nuclei profile is full
+                        full_coverage_default = (
+                            "yes" if self.config["nuclei_profile"] == "full" else "no"
+                        )
                         self.config["nuclei_full_coverage"] = self.ask_yes_no(
-                            self.ui.t("nuclei_full_coverage_q"), default="no"
+                            self.ui.t("nuclei_full_coverage_q"), default=full_coverage_default
                         )
                     else:
                         self.config["nuclei_full_coverage"] = False

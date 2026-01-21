@@ -14,6 +14,15 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.2] - 2026-01-21
+
+### Fixed
+
+- **UI Color Consistency**: Status colors now render correctly during HyperScan progress output.
+- **Nuclei Full Coverage Defaults**: Full coverage defaults to YES only when the Nuclei profile is Full.
+- **Pipeline Sources**: Summary source counts now match consolidated findings.
+- **Run Manifest PCAP Count**: PCAP counts now reflect all listed artifacts.
+
 ## [4.18.1] - 2026-01-20
 
 ### Fixed

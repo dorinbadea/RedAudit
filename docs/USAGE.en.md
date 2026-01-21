@@ -225,8 +225,8 @@ During interactive mode, the wizard asks "Scan ALL HTTP ports?" This controls wh
 
 | Option | Behavior |
 |:-------|:---------|
-| **No (default)** | Max 2 URLs per multi-port host (prioritizes 80, 443) |
-| **Yes** | Scan ALL HTTP ports on every host |
+| **No (default for balanced/fast)** | Max 2 URLs per multi-port host (prioritizes 80, 443) |
+| **Yes (default for full)** | Scan ALL HTTP ports on every host |
 
 Note: This option is only available in the interactive wizard, not via CLI flags.
 When full coverage is enabled, the auto-fast profile switch is skipped so the selected profile is honored.

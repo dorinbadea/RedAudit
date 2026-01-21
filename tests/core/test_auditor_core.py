@@ -2313,4 +2313,4 @@ class TestNucleiFullCoverageI18n:
         from redaudit.utils.i18n import TRANSLATIONS
 
         assert "nuclei_full_coverage_q" in TRANSLATIONS["es"]
-        assert "TODOS puertos HTTP" in TRANSLATIONS["es"]["nuclei_full_coverage_q"]
+        assert "TODOS los puertos HTTP" in TRANSLATIONS["es"]["nuclei_full_coverage_q"]

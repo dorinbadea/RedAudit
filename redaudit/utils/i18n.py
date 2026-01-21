@@ -796,7 +796,7 @@ TRANSLATIONS = {
         "nuclei_balanced": "Equilibrado - 80/443 completo (~1h, recomendado)",
         "nuclei_fast": "Rapido - CVEs criticos (~30-60min)",
         # v4.17: Opcion de cobertura completa (v4.18: abreviado)
-        "nuclei_full_coverage_q": "Escanear TODOS puertos HTTP? (mas lento, cobertura total)",
+        "nuclei_full_coverage_q": "Escanear TODOS los puertos HTTP? (más lento, cobertura completa)",
         "windows_verify_q": "¿Activar verificación sin agente (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Máximo de objetivos para verificación sin agente (1-200; más alto = más lento):",
         # v3.7: Webhooks interactivos

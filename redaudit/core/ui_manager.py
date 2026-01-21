@@ -91,28 +91,8 @@ class UIManager:
 
         ts = datetime.now().strftime("%H:%M:%S")
 
-        # Map internal status tokens to professional display labels
-        status_map = {
-            "OKGREEN": "OK",
-            "OKBLUE": "INFO",
-            "HEADER": "INFO",
-            "WARNING": "WARN",
-            "FAIL": "FAIL",
-            "INFO": "INFO",
-            "OK": "OK",
-        }
+        status_display, color_key, rich_style = self._resolve_status_style(status)
         is_tty = sys.stdout.isatty()
-        status_display = status_map.get(status, status)
-
-        color_key = status
-        if status_display == "OK":
-            color_key = "OKGREEN"
-        elif status_display in ("WARN", "WARNING"):
-            color_key = "WARNING"
-        elif status_display in ("FAIL", "ERROR"):
-            color_key = "FAIL"
-        elif status_display == "INFO":
-            color_key = "OKBLUE"
         color = self.colors.get(color_key, self.colors.get("OKBLUE", "")) if is_tty else ""
         endc = self.colors.get("ENDC", "") if is_tty else ""
 
@@ -144,13 +124,21 @@ class UIManager:
 
         with self._print_lock:
             if progress_active:
-                self._print_with_rich(ts, status_display, color_key, lines)
+                self._print_with_rich(ts, status_display, rich_style, lines)
             else:
                 self._print_ansi(ts, status_display, color, endc, lines)
             sys.stdout.flush()
 
-    def _print_with_rich(self, ts: str, status_display: str, color_key: str, lines: list) -> None:
-        """Print using Rich console for progress compatibility."""
+    def _resolve_status_style(self, status: str) -> tuple[str, str, str]:
+        status_map = {
+            "OKGREEN": "OK",
+            "OKBLUE": "INFO",
+            "HEADER": "INFO",
+            "WARNING": "WARN",
+            "FAIL": "FAIL",
+            "INFO": "INFO",
+            "OK": "OK",
+        }
         rich_color_map = {
             "OKBLUE": "bright_blue",
             "OKGREEN": "bright_green",
@@ -158,13 +146,27 @@ class UIManager:
             "FAIL": "bright_red",
             "HEADER": "bright_magenta",
         }
+        status_display = status_map.get(status, status)
+        color_key = status
+        if status_display == "OK":
+            color_key = "OKGREEN"
+        elif status_display in ("WARN", "WARNING"):
+            color_key = "WARNING"
+        elif status_display in ("FAIL", "ERROR"):
+            color_key = "FAIL"
+        elif status_display == "INFO":
+            color_key = "OKBLUE"
         rich_style = rich_color_map.get(color_key, "bright_blue")
+        return status_display, color_key, rich_style
+
+    def _print_with_rich(self, ts: str, status_display: str, rich_style: str, lines: list) -> None:
+        """Print using Rich console for progress compatibility."""
         try:
             from rich.console import Console
             from rich.text import Text
 
             # v4.18: Use active progress console if available for correct color during Live display
-            console = self._active_progress_console
+            console = self._active_progress_console or self.get_progress_console()
             if console is None:
                 console = Console(
                     file=getattr(sys, "__stdout__", sys.stdout),
@@ -288,7 +290,11 @@ class UIManager:
         try:
             from rich.console import Console
 
-            return Console(width=self._terminal_width())
+            return Console(
+                file=getattr(sys, "__stdout__", sys.stdout),
+                width=self._terminal_width(),
+                force_terminal=sys.stdout.isatty(),
+            )
         except ImportError:
             return None
 
