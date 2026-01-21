@@ -14,6 +14,15 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.2] - 2026-01-21
+
+### Corregido
+
+- **Consistencia de colores UI**: Los estados ahora se pintan correctamente durante el progreso de HyperScan.
+- **Cobertura completa de Nuclei**: El valor por defecto es SI solo cuando el perfil de Nuclei es Full.
+- **Fuentes en resumen**: Los conteos de fuentes ahora coinciden con los hallazgos consolidados.
+- **Conteo de PCAP en manifiesto**: El conteo de PCAP ahora refleja todos los artefactos listados.
+
 ## [4.18.1] - 2026-01-20
 
 ### Corregido
