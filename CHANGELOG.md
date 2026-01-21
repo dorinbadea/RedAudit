@@ -14,6 +14,14 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.4] - 2026-01-21
+
+### Fixed
+
+- **Report Traceability**: Nuclei suspected items are now listed in HTML/TXT for manual review.
+- **Discovery Errors Visibility**: Net Discovery errors are now surfaced in HTML/TXT pipeline sections.
+- **Config Snapshot Completeness**: Nuclei profile and full coverage options are now saved in snapshots/summary.
+
 ## [4.18.3] - 2026-01-21
 
 ### Fixed
