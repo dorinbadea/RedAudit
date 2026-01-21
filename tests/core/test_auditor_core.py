@@ -2306,11 +2306,11 @@ class TestNucleiFullCoverageI18n:
         from redaudit.utils.i18n import TRANSLATIONS
 
         assert "nuclei_full_coverage_q" in TRANSLATIONS["en"]
-        assert "ALL HTTP ports" in TRANSLATIONS["en"]["nuclei_full_coverage_q"]
+        assert "ALL detected HTTP ports" in TRANSLATIONS["en"]["nuclei_full_coverage_q"]
 
     def test_nuclei_full_coverage_q_key_exists_es(self):
         """Test that nuclei_full_coverage_q key exists in Spanish."""
         from redaudit.utils.i18n import TRANSLATIONS
 
         assert "nuclei_full_coverage_q" in TRANSLATIONS["es"]
-        assert "TODOS los puertos HTTP" in TRANSLATIONS["es"]["nuclei_full_coverage_q"]
+        assert "TODOS los puertos HTTP detectados" in TRANSLATIONS["es"]["nuclei_full_coverage_q"]
