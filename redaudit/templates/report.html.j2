@@ -197,6 +197,9 @@
                         <li>ARP Hosts <span>{{ pipeline.net_discovery.counts.arp_hosts or 0 }}</span></li>
                         <li>HyperScan TCP <span>{{ pipeline.net_discovery.counts.hyperscan_tcp_hosts or 0 }}</span></li>
                         <li>Red Team <span>{{ 'On' if pipeline.net_discovery.redteam_enabled else 'Off' }}</span></li>
+                        {% if pipeline.net_discovery.errors %}
+                        <li>Errors <span>{{ pipeline.net_discovery.errors|join('; ') }}</span></li>
+                        {% endif %}
                     </ul>
                 </div>
                 <div class="meta-item">
@@ -417,6 +420,30 @@
                 </tbody>
             </table>
         </div>
+
+        {% if nuclei_suspected and nuclei_suspected|length > 0 %}
+        <div class="section">
+            <div class="section-title">Nuclei Suspected ({{ nuclei_suspected|length }}) <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal;">— Unconfirmed signals for review</span></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Template</th>
+                        <th>Matched URL</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in nuclei_suspected %}
+                    <tr>
+                        <td><code>{{ item.template_id }}</code></td>
+                        <td><code>{{ item.matched_at }}</code></td>
+                        <td>{{ item.fp_reason }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
 
         <div class="section">
             <div class="section-title">Findings ({{ finding_count }}) <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal;">— Click row to expand technical details</span></div>

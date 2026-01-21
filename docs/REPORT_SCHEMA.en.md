@@ -158,6 +158,8 @@ Sanitized run configuration, stored for reproducibility.
 | `windows_verify_max_targets` | integer | Max targets for agentless verification |
 | `scan_vulnerabilities` | boolean | Web vuln enabled |
 | `nuclei_enabled` | boolean | Nuclei enabled |
+| `nuclei_profile` | string | Nuclei profile (fast/balanced/full) |
+| `nuclei_full_coverage` | boolean | Nuclei full coverage (scan all detected HTTP ports) |
 | `cve_lookup_enabled` | boolean | NVD enrichment |
 | `dry_run` | boolean | Dry-run mode |
 | `prevent_sleep` | boolean | Sleep inhibition enabled |

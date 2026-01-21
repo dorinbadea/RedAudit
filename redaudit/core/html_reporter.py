@@ -259,6 +259,20 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
     artifacts = results.get("artifacts", []) or []
     pcaps = [a for a in artifacts if a.get("path", "").endswith(".pcap")]
 
+    nuclei_data = results.get("nuclei") or {}
+    suspected_items = nuclei_data.get("suspected") or []
+    nuclei_suspected = []
+    for item in suspected_items:
+        if not isinstance(item, dict):
+            continue
+        nuclei_suspected.append(
+            {
+                "template_id": item.get("template_id") or "-",
+                "matched_at": item.get("matched_at") or "-",
+                "fp_reason": item.get("fp_reason") or "",
+            }
+        )
+
     return {
         "version": VERSION,
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -280,6 +294,7 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
         "topology_summary": topology_summary,
         "playbooks": playbooks,
         "pcaps": pcaps,
+        "nuclei_suspected": nuclei_suspected,
         "scan_duration": summary.get("duration", "-"),
     }
 

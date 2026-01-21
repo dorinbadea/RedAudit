@@ -396,7 +396,7 @@ def test_dhcp_discover_nmap_fail():
     with patch("shutil.which", return_value="/bin/nmap"):
         with patch("redaudit.core.net_discovery._run_cmd", return_value=(1, "", "nmap error")):
             res = dhcp_discover()
-            assert res["error"] == "nmap error"
+            assert res["error"] == "dhcp-discover failed on default route: nmap error"
 
 
 def test_dhcp_discover_parsing_edge():
@@ -779,7 +779,7 @@ def test_dhcp_discover_returns_error_on_failure(monkeypatch):
 
     result = net_discovery.dhcp_discover(interface=None)
 
-    assert result["error"] == "boom"
+    assert result["error"] == "dhcp-discover failed on default route: boom"
 
 
 def test_discover_networks_arp_dedupes(monkeypatch):

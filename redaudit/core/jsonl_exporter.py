@@ -255,6 +255,8 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "net_discovery_active_l2": config_snapshot.get("net_discovery_active_l2"),
         "scan_vulnerabilities": config_snapshot.get("scan_vulnerabilities"),
         "nuclei_enabled": config_snapshot.get("nuclei_enabled"),
+        "nuclei_profile": config_snapshot.get("nuclei_profile"),
+        "nuclei_full_coverage": config_snapshot.get("nuclei_full_coverage"),
         "cve_lookup_enabled": config_snapshot.get("cve_lookup_enabled"),
         "windows_verify_enabled": config_snapshot.get("windows_verify_enabled"),
     }

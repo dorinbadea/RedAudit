@@ -14,6 +14,15 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.4] - 2026-01-21
+
+### Fixed
+
+- **Report Traceability**: Nuclei suspected items are now listed in HTML/TXT for manual review.
+- **Discovery Errors Visibility**: Net Discovery errors are now surfaced in HTML/TXT pipeline sections.
+- **Config Snapshot Completeness**: Nuclei profile and full coverage options are now saved in snapshots/summary.
+- **DHCP Discovery Clarity**: DHCP discovery now defaults to the default-route interface, probes all IPv4 interfaces in full mode, and reports timeouts as no-response.
+
 ## [4.18.3] - 2026-01-21
 
 ### Fixed

@@ -14,6 +14,15 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.4] - 2026-01-21
+
+### Corregido
+
+- **Trazabilidad de informes**: Los sospechosos de Nuclei ahora se listan en HTML/TXT para revisión manual.
+- **Visibilidad de errores de discovery**: Los errores de Net Discovery ahora se muestran en secciones HTML/TXT.
+- **Snapshot de configuración**: Se guardan perfil y cobertura completa de Nuclei en snapshots/resumen.
+- **Claridad de DHCP discovery**: DHCP ahora usa la interfaz de la ruta por defecto, prueba todas las interfaces IPv4 en modo completo y reporta timeouts como sin respuesta.
+
 ## [4.18.3] - 2026-01-21
 
 ### Corregido

@@ -197,6 +197,9 @@
                         <li>Hosts ARP <span>{{ pipeline.net_discovery.counts.arp_hosts or 0 }}</span></li>
                         <li>HyperScan TCP <span>{{ pipeline.net_discovery.counts.hyperscan_tcp_hosts or 0 }}</span></li>
                         <li>Red Team <span>{{ 'Sí' if pipeline.net_discovery.redteam_enabled else 'No' }}</span></li>
+                        {% if pipeline.net_discovery.errors %}
+                        <li>Errores <span>{{ pipeline.net_discovery.errors|join('; ') }}</span></li>
+                        {% endif %}
                     </ul>
                 </div>
                 <div class="meta-item">
@@ -417,6 +420,30 @@
                 </tbody>
             </table>
         </div>
+
+        {% if nuclei_suspected and nuclei_suspected|length > 0 %}
+        <div class="section">
+            <div class="section-title">Nuclei sospechosos ({{ nuclei_suspected|length }}) <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal;">— Señales sin confirmar para revisión</span></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Template</th>
+                        <th>URL coincidente</th>
+                        <th>Motivo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in nuclei_suspected %}
+                    <tr>
+                        <td><code>{{ item.template_id }}</code></td>
+                        <td><code>{{ item.matched_at }}</code></td>
+                        <td>{{ item.fp_reason }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
 
         <div class="section">
             <div class="section-title">Hallazgos ({{ finding_count }}) <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal;">— Haz clic en la fila para expandir detalles técnicos</span></div>

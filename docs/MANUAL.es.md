@@ -241,6 +241,7 @@ La velocidad controla la agresividad del scheduling (timing de nmap y comportami
 - **Sigiloso**: El más lento y con menos ruido. Útil en redes sensibles a la detección.
 - **Tecnología Smart-Check**: Correlaciona puertos abiertos (Nmap) con vulnerabilidades (Nuclei) para eliminar falsos positivos.
 - **Descubrimiento Paralelo (v4.6.32)**: Ejecuta DHCP, ARP, mDNS, UPnP y Fping simultáneamente para un mapeo ultra-rápido.
+- **Interfaz de descubrimiento DHCP**: Por defecto usa la interfaz de la ruta por defecto; en modo `completo` prueba todas las interfaces IPv4 activas con un timeout corto.
 - **HyperScan**: Utiliza paquetes asíncronos TCP/SYN para escanear 65,535 puertos en segundos (integración RustScan).
 
 ### Deep Scan Adaptativo

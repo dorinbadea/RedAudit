@@ -272,6 +272,7 @@ RedAudit v4.4+ introduces:
 
 - **Smart-Check Technology**: Correlates open ports (Nmap) with vulnerabilities (Nuclei) to eliminate false positives.
 - **Parallel Discovery (v4.6.32)**: Executed DHCP, ARP, mDNS, UPnP, and Fping simultaneously for ultra-fast network mapping.
+- **DHCP Discovery Interface**: Defaults to the system's default-route interface; in `full` mode it probes all active IPv4 interfaces with a short timeout.
 - **HyperScan**: Uses asynchronous TCP/SYN packets to scan 65,535 ports in seconds (RustScan integration).
 - **Smart-Throttle**: An adaptive rate limiting system for HyperScan operations.
 - **Algorithm**: Uses an Additive Increase, Multiplicative Decrease (AIMD) algorithm similar to TCP congestion control.

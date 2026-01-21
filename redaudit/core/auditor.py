@@ -524,12 +524,35 @@ class InteractiveNetworkAuditor:
                 and (net_discovery_explicit or net_discovery_auto or topology_enabled)
             ) and not self.interrupted:
                 try:
-                    from redaudit.core.net_discovery import discover_networks
+                    from redaudit.core.net_discovery import (
+                        detect_default_route_interface,
+                        discover_networks,
+                    )
 
                     self.current_phase = "net_discovery"
                     self.ui.print_status(self.ui.t("net_discovery_start"), "INFO")
 
                     iface = self._select_net_discovery_interface()
+                    scan_mode = str(self.config.get("scan_mode") or "").strip().lower()
+                    full_dhcp = scan_mode in ("completo", "full", "exhaustive")
+                    dhcp_timeout_s = 6 if full_dhcp else 10
+                    dhcp_interfaces = None
+                    if full_dhcp:
+                        network_info = self.results.get("network_info", []) or []
+                        iface_set = {
+                            entry.get("interface")
+                            for entry in network_info
+                            if entry.get("interface") and entry.get("ip_version") == 4
+                        }
+                        if iface:
+                            iface_set.add(iface)
+                        dhcp_interfaces = sorted(i for i in iface_set if i)
+                        if not dhcp_interfaces:
+                            dhcp_interfaces = None
+                    else:
+                        default_iface = detect_default_route_interface(logger=self.logger)
+                        if default_iface:
+                            dhcp_interfaces = [default_iface]
                     redteam_options = {
                         "max_targets": self.config.get("net_discovery_max_targets", 50),
                         "snmp_community": self.config.get("net_discovery_snmp_community", "public"),
@@ -575,6 +598,8 @@ class InteractiveNetworkAuditor:
                                 self.results["net_discovery"] = discover_networks(
                                     target_networks=self.config.get("target_networks", []),
                                     interface=iface,
+                                    dhcp_interfaces=dhcp_interfaces,
+                                    dhcp_timeout_s=dhcp_timeout_s,
                                     protocols=self.config.get("net_discovery_protocols"),
                                     redteam=self.config.get("net_discovery_redteam", False),
                                     redteam_options=redteam_options,
@@ -596,6 +621,8 @@ class InteractiveNetworkAuditor:
                                 self.results["net_discovery"] = discover_networks(
                                     target_networks=self.config.get("target_networks", []),
                                     interface=iface,
+                                    dhcp_interfaces=dhcp_interfaces,
+                                    dhcp_timeout_s=dhcp_timeout_s,
                                     protocols=self.config.get("net_discovery_protocols"),
                                     redteam=self.config.get("net_discovery_redteam", False),
                                     redteam_options=redteam_options,

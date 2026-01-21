@@ -75,6 +75,8 @@ def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
         "windows_verify_max_targets": config.get("windows_verify_max_targets"),
         "scan_vulnerabilities": config.get("scan_vulnerabilities"),
         "nuclei_enabled": config.get("nuclei_enabled"),
+        "nuclei_profile": config.get("nuclei_profile"),
+        "nuclei_full_coverage": config.get("nuclei_full_coverage"),
         "cve_lookup_enabled": config.get("cve_lookup_enabled"),
         "dry_run": config.get("dry_run"),
         "prevent_sleep": config.get("prevent_sleep"),
@@ -676,6 +678,11 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                     upnp=counts.get("upnp_devices", 0),
                 )
             )
+            errors = net_summary.get("errors") or []
+            if errors:
+                lines.append("  Net Discovery errors:\n")
+                for err in errors:
+                    lines.append(f"    - {err}\n")
         agentless = pipeline.get("agentless_verify") or {}
         if agentless:
             lines.append(
@@ -706,6 +713,17 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
             suspected = nuclei.get("findings_suspected")
             if suspected:
                 lines.append("  Nuclei: suspected {count}\n".format(count=suspected))
+            suspected_items = nuclei.get("suspected") or []
+            if suspected_items:
+                lines.append("  Nuclei suspected details:\n")
+                for item in suspected_items[:10]:
+                    template_id = item.get("template_id") or "-"
+                    matched_at = item.get("matched_at") or "-"
+                    reason = item.get("fp_reason") or ""
+                    detail = f"{template_id} {matched_at}".strip()
+                    if reason:
+                        detail = f"{detail} ({reason})"
+                    lines.append(f"    - {detail}\n")
         if smart:
             lines.append(
                 "  SmartScan: deep executed {executed}, avg identity {avg}\n".format(

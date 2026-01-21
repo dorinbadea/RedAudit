@@ -135,6 +135,28 @@ def _check_tools() -> Dict[str, bool]:
 # =============================================================================
 
 
+def detect_default_route_interface(logger=None) -> Optional[str]:
+    """Return the interface tied to the system default route, if available."""
+    if not shutil.which("ip"):
+        return None
+
+    rc, out, _ = _run_cmd(["ip", "route", "show", "default"], 4, logger)
+    if rc != 0 and not out.strip():
+        return None
+
+    for line in out.splitlines():
+        line = line.strip()
+        if not line.startswith("default"):
+            continue
+        parts = line.split()
+        if "dev" in parts:
+            try:
+                return parts[parts.index("dev") + 1]
+            except Exception:
+                continue
+    return None
+
+
 def dhcp_discover(
     interface: Optional[str] = None,
     timeout_s: int = 10,
@@ -162,7 +184,14 @@ def dhcp_discover(
     rc, out, err = _run_cmd(cmd, timeout_s, logger)
 
     if rc != 0 and not out.strip():
-        result["error"] = err.strip() or "nmap dhcp-discover failed"
+        iface_label = interface or "default route"
+        err_text = (err or "").strip()
+        if rc == 124 or "timeout" in err_text.lower():
+            result["error"] = f"no response to DHCP broadcast on {iface_label} (timeout)"
+        elif err_text:
+            result["error"] = f"dhcp-discover failed on {iface_label}: {err_text}"
+        else:
+            result["error"] = f"dhcp-discover failed on {iface_label}"
         return result
 
     # Parse DHCP responses
@@ -972,6 +1001,8 @@ def listen_cdp(
 def discover_networks(
     target_networks: List[str],
     interface: Optional[str] = None,
+    dhcp_interfaces: Optional[List[str]] = None,
+    dhcp_timeout_s: Optional[int] = None,
     protocols: Optional[List[str]] = None,
     redteam: bool = False,
     redteam_options: Optional[Dict[str, Any]] = None,
@@ -985,6 +1016,8 @@ def discover_networks(
     Args:
         target_networks: List of network ranges to scan
         interface: Network interface to use (optional)
+        dhcp_interfaces: Optional list of interfaces to probe for DHCP discovery
+        dhcp_timeout_s: Optional override for DHCP discovery timeout
         protocols: List of protocols to use (dhcp, netbios, mdns, upnp, arp, fping)
                    If None, uses all available
         redteam: Enable Red Team techniques (slower, noisier)
@@ -1039,8 +1072,8 @@ def discover_networks(
     # Define a worker function to run one protocol and return its result key/value
     def _run_protocol(proto: str) -> Tuple[str, Dict[str, Any], List[str]]:
         nonlocal _started_tasks
-        local_errors = []
-        local_res = {}
+        local_errors: List[str] = []
+        local_res: Dict[str, Any] = {}
 
         # Monotonic progress update
         with _progress_lock:
@@ -1054,10 +1087,25 @@ def discover_networks(
 
             if proto == "dhcp":
                 _progress("DHCP discovery", current_idx)
-                dhcp_res = dhcp_discover(interface=interface, logger=logger)
-                local_res["dhcp_servers"] = dhcp_res.get("servers", [])
-                if dhcp_res.get("error"):
-                    local_errors.append(f"dhcp: {dhcp_res['error']}")
+                timeout_val = dhcp_timeout_s if dhcp_timeout_s is not None else 10
+                targets = []
+                if dhcp_interfaces:
+                    targets = list(dhcp_interfaces)
+                elif interface:
+                    targets = [interface]
+                else:
+                    targets = [None]
+
+                dhcp_servers: List[Dict[str, Any]] = []
+                for dhcp_iface in targets:
+                    dhcp_res = dhcp_discover(
+                        interface=dhcp_iface, timeout_s=timeout_val, logger=logger
+                    )
+                    dhcp_servers.extend(dhcp_res.get("servers", []) or [])
+                    if dhcp_res.get("error"):
+                        local_errors.append(f"dhcp: {dhcp_res['error']}")
+
+                local_res["dhcp_servers"] = dhcp_servers
 
             elif proto == "routing":
                 _progress("Routing analysis", current_idx)

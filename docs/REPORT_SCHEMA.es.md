@@ -154,6 +154,8 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `windows_verify_max_targets` | integer | Máx. objetivos para verificación sin agente |
 | `scan_vulnerabilities` | boolean | Vuln web habilitado |
 | `nuclei_enabled` | boolean | Nuclei habilitado |
+| `nuclei_profile` | string | Perfil de Nuclei (fast/balanced/full) |
+| `nuclei_full_coverage` | boolean | Cobertura completa de Nuclei (todos los puertos HTTP detectados) |
 | `cve_lookup_enabled` | boolean | Enriquecimiento NVD |
 | `dry_run` | boolean | Modo dry-run |
 | `prevent_sleep` | boolean | Inhibición de suspensión habilitada |

@@ -320,6 +320,8 @@ class TestReporter(unittest.TestCase):
             "windows_verify_enabled": True,
             "scan_vulnerabilities": False,
             "nuclei_enabled": True,
+            "nuclei_profile": "fast",
+            "nuclei_full_coverage": True,
             "dry_run": True,
             "auditor_name": "tester",
         }
@@ -337,6 +339,8 @@ class TestReporter(unittest.TestCase):
         self.assertTrue(snapshot["windows_verify_enabled"])
         self.assertFalse(snapshot["scan_vulnerabilities"])
         self.assertTrue(snapshot["nuclei_enabled"])
+        self.assertEqual(snapshot["nuclei_profile"], "fast")
+        self.assertTrue(snapshot["nuclei_full_coverage"])
         self.assertTrue(snapshot["dry_run"])
         self.assertEqual(snapshot["auditor_name"], "tester")
 
