@@ -2465,6 +2465,17 @@ class AuditorScan:
                 safe_limit,
             )
 
+        # v4.15: Add Rich progress bar for HyperScan-First
+        use_rich = self.ui.get_progress_console() is not None
+        progress = None
+        use_rich_progress = False
+        if use_rich and discovery_count > 0:
+            progress = self.ui.get_standard_progress(transient=False)
+            use_rich_progress = progress is not None
+
+        emit_worker_status = not use_rich_progress
+        completed_count = 0
+
         def _hs_worker(w_idx: int, w_ip: str) -> None:
             if self.interrupted:
                 return
@@ -2472,12 +2483,13 @@ class AuditorScan:
             # Check masscan reuse inside worker (thread-safe check, strict local usage)
             if w_ip in masscan_ports:
                 self._hyperscan_discovery_ports[w_ip] = sorted(set(masscan_ports[w_ip]))
-                self.ui.print_status(
-                    self.ui.t("hyperscan_masscan_reuse").format(
-                        w_idx, discovery_count, w_ip, len(masscan_ports[w_ip])
-                    ),
-                    "OKGREEN",
-                )
+                if emit_worker_status:
+                    self.ui.print_status(
+                        self.ui.t("hyperscan_masscan_reuse").format(
+                            w_idx, discovery_count, w_ip, len(masscan_ports[w_ip])
+                        ),
+                        "OKGREEN",
+                    )
                 return
 
             # Run HyperScan
@@ -2492,58 +2504,54 @@ class AuditorScan:
                 )
                 self._hyperscan_discovery_ports[w_ip] = w_ports
                 if w_ports:
-                    self.ui.print_status(
-                        self.ui.t("hyperscan_ports_found").format(
-                            w_idx, discovery_count, w_ip, len(w_ports)
-                        ),
-                        "OKGREEN",
-                    )
+                    if emit_worker_status:
+                        self.ui.print_status(
+                            self.ui.t("hyperscan_ports_found").format(
+                                w_idx, discovery_count, w_ip, len(w_ports)
+                            ),
+                            "OKGREEN",
+                        )
                 else:
-                    self.ui.print_status(
-                        self.ui.t("hyperscan_no_ports").format(w_idx, discovery_count, w_ip),
-                        "WARNING",
-                    )
+                    if emit_worker_status:
+                        self.ui.print_status(
+                            self.ui.t("hyperscan_no_ports").format(w_idx, discovery_count, w_ip),
+                            "WARNING",
+                        )
             except Exception as e:
                 self.logger.warning("HyperScan discovery failed for %s: %s", w_ip, e)
 
         # Execute parallel scan
-        # v4.15: Add Rich progress bar for HyperScan-First
-        use_rich = self.ui.get_progress_console() is not None
-        completed_count = 0
-
         with ThreadPoolExecutor(max_workers=hs_workers) as executor:
             futures = {
                 executor.submit(_hs_worker, idx, ip): (idx, ip)
                 for idx, ip in enumerate(host_ips, 1)
             }
 
-            if use_rich and discovery_count > 0:
-                progress = self.ui.get_standard_progress(transient=False)
-                if progress:
-                    with self._progress_ui():
-                        with progress:
-                            # Single global progress bar (magenta for HyperScan)
-                            task_id = progress.add_task(
-                                "[magenta]HyperScan",
-                                total=discovery_count,
-                                start=True,
+            if use_rich_progress and progress:
+                with self._progress_ui():
+                    with progress:
+                        # Single global progress bar (magenta for HyperScan)
+                        task_id = progress.add_task(
+                            "[magenta]HyperScan",
+                            total=discovery_count,
+                            start=True,
+                        )
+                        for fut in as_completed(futures):
+                            if self.interrupted:
+                                executor.shutdown(wait=False, cancel_futures=True)
+                                break
+                            completed_count += 1
+                            idx, ip = futures[fut]
+                            ports = self._hyperscan_discovery_ports.get(ip, [])
+                            port_str = f"{len(ports)} ports" if ports else "no ports"
+                            progress.update(
+                                task_id,
+                                advance=1,
+                                description=(
+                                    f"[magenta]HyperScan ({completed_count}/{discovery_count}) "
+                                    f"{ip}: {port_str}"
+                                ),
                             )
-                            for fut in as_completed(futures):
-                                if self.interrupted:
-                                    executor.shutdown(wait=False, cancel_futures=True)
-                                    break
-                                completed_count += 1
-                                idx, ip = futures[fut]
-                                ports = self._hyperscan_discovery_ports.get(ip, [])
-                                port_str = f"{len(ports)} ports" if ports else "no ports"
-                                progress.update(
-                                    task_id,
-                                    advance=1,
-                                    description=(
-                                        f"[magenta]HyperScan ({completed_count}/{discovery_count}) "
-                                        f"{ip}: {port_str}"
-                                    ),
-                                )
             else:
                 # Fallback without rich
                 for fut in as_completed(futures):
