@@ -230,8 +230,8 @@ Durante el modo interactivo, el asistente pregunta "Escanear TODOS puertos HTTP?
 
 | Opcion | Comportamiento |
 |:-------|:---------------|
-| **No (por defecto)** | Max 2 URLs por host multipuerto (prioriza 80, 443) |
-| **Si** | Escanea TODOS los puertos HTTP en cada host |
+| **No (por defecto en balanced/fast)** | Max 2 URLs por host multipuerto (prioriza 80, 443) |
+| **Si (por defecto en full)** | Escanea TODOS los puertos HTTP en cada host |
 
 Nota: Esta opcion solo esta disponible en el asistente interactivo, no via flags CLI.
 Cuando la cobertura completa esta activada, se omite el cambio automatico a auto-fast para respetar el perfil seleccionado.
