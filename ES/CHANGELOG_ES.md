@@ -14,6 +14,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.5] - 2026-01-22
+
+### Corregido
+
+- **Truncamiento en Deep Scan**: Deep Scan ahora captura stdout completo para evitar perder puertos en ejecuciones Nmap verbosas.
+- **Seguridad de FD en HyperScan**: El tamaño de lote TCP ahora se limita al 80% del soft limit de FD para evitar `Too many open files`.
+
 ## [4.18.4] - 2026-01-21
 
 ### Corregido

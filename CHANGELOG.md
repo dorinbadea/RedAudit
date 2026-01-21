@@ -14,6 +14,13 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.5] - 2026-01-22
+
+### Fixed
+
+- **Deep Scan Output Truncation**: Deep scan now captures full stdout to avoid missing ports in high-verbosity Nmap runs.
+- **HyperScan FD Safety**: HyperScan TCP batch size now caps to 80% of the system FD soft limit to prevent `Too many open files`.
+
 ## [4.18.4] - 2026-01-21
 
 ### Fixed
