@@ -18,6 +18,7 @@ This release improves audit traceability in reports and surfaces discovery error
 
 - Net Discovery errors now appear in HTML/TXT pipeline sections.
 - Config snapshots now persist `nuclei_profile` and `nuclei_full_coverage` in summary outputs.
+- DHCP discovery now defaults to the default-route interface, probes all IPv4 interfaces in full mode, and reports timeouts as no-response.
 
 ## Testing
 

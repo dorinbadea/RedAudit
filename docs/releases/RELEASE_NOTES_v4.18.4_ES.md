@@ -18,6 +18,7 @@ Esta versión mejora la trazabilidad en los informes y muestra errores de discov
 
 - Los errores de Net Discovery ahora aparecen en secciones HTML/TXT del pipeline.
 - Los snapshots de configuración ahora guardan `nuclei_profile` y `nuclei_full_coverage` en el resumen.
+- DHCP ahora usa la interfaz de la ruta por defecto, prueba todas las interfaces IPv4 en modo completo y reporta timeouts como sin respuesta.
 
 ## Testing
 
