@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-[![Version](https://img.shields.io/badge/version-4.18.5-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.18.6-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -135,7 +135,7 @@ RedAudit uses Python's `ThreadPoolExecutor` to scan multiple hosts simultaneousl
 
 | Parameter | Default | Range | Notes |
 |:---|:---|:---|:---|
-| `--threads` | Auto-detected | 1-100 | Threads share memory, execute nmap independently |
+| `--threads` | Auto-detected (fallback 6) | 1-100 | Threads share memory, execute nmap independently |
 | `--rate-limit` | 0 | 0-∞ | Seconds between hosts (±30% jitter applied) |
 
 **Guidance**:
@@ -358,7 +358,7 @@ redaudit --diff ~/reports/monday.json ~/reports/friday.json
 |:---|:---|
 | `-t, --target` | Target network(s) in CIDR notation |
 | `-m, --mode` | Scan mode: `fast` / `normal` / `full` (default: normal) |
-| `-j, --threads` | Concurrent threads (1-100, auto-detected) |
+| `-j, --threads` | Concurrent threads (1-100, auto-detected; fallback 6) |
 | `--rate-limit` | Delay between hosts in seconds (±30% jitter applied) |
 | `-e, --encrypt` | Encrypt reports with AES-128 |
 | `-o, --output` | Output directory |
@@ -370,7 +370,7 @@ redaudit --diff ~/reports/monday.json ~/reports/friday.json
 | `--proxy URL` | SOCKS5 proxy for pivoting (requires proxychains4; TCP only) |
 | `--ipv6` | IPv6-only scanning mode |
 | `--deep-scan-budget N` | Budget for aggressive deep scans (0 = unlimited) |
-| `--identity-threshold N` | Minimum identity score to skip deep scan |
+| `--identity-threshold N` | Minimum identity score to skip deep scan (0-100) |
 | `--cve-lookup` | CVE correlation via NVD API |
 | `--nvd-key KEY` | NVD API key for faster rate limits |
 | `--diff OLD NEW` | Differential analysis between scans |

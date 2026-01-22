@@ -1026,7 +1026,6 @@ class InteractiveNetworkAuditor:
                                 from redaudit.core.verify_vuln import filter_nuclei_false_positives
 
                                 host_agentless = {}
-                                host_agentless = {}
                                 # v4.4.3 Fix: Use 'results' (local) instead of self.results['hosts'] (empty)
                                 # and handle Host objects correctly
                                 for host in results:
@@ -1398,12 +1397,18 @@ class InteractiveNetworkAuditor:
                     lynis = LynisScanner(scanner)
                     lynis_result = lynis.run_audit(use_portable=True)
                     if lynis_result:
-                        host["auth_lynis"] = {
+                        lynis_data = {
                             "hardening_index": lynis_result.hardening_index,
                             "warnings_count": len(lynis_result.warnings or []),
                             "suggestions_count": len(lynis_result.suggestions or []),
                             "tests_performed": lynis_result.tests_performed,
                         }
+                        if isinstance(host, dict):
+                            host["auth_lynis"] = lynis_data
+                        else:
+                            if not hasattr(host, "auth_scan") or host.auth_scan is None:
+                                host.auth_scan = {}
+                            host.auth_scan["lynis"] = lynis_data
                         auth_summary["lynis_success"] += 1
                 except Exception as lynis_err:
                     if self.logger:

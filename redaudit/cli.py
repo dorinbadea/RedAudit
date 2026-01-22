@@ -54,7 +54,7 @@ def parse_arguments():
             "Máximo hosts que pueden ejecutar Deep Scan agresivo por ejecución (0 = sin límite)."
         )
         help_identity_threshold = (
-            "Umbral mínimo de identity_score para omitir Deep Scan (defecto: 3)."
+            "Umbral mínimo de identity_score para omitir Deep Scan (0-100, defecto: 3)."
         )
         help_dead_host_retries = "Abandonar host tras N timeouts consecutivos (0 = sin límite)."
     else:
@@ -63,7 +63,7 @@ def parse_arguments():
             "Short timeouts, minimal noise."
         )
         help_deep_budget = "Max hosts that can run aggressive Deep Scan per run (0 = unlimited)."
-        help_identity_threshold = "Minimum identity_score to skip Deep Scan (default: 3)."
+        help_identity_threshold = "Minimum identity_score to skip Deep Scan (0-100, default: 3)."
         help_dead_host_retries = "Abandon host after N consecutive timeouts (0 = unlimited)."
 
     parser = argparse.ArgumentParser(
@@ -740,7 +740,11 @@ def configure_from_args(app, args) -> bool:
         deep_scan_budget = DEFAULT_DEEP_SCAN_BUDGET
     app.config["deep_scan_budget"] = deep_scan_budget
     identity_threshold = getattr(args, "identity_threshold", DEFAULT_IDENTITY_THRESHOLD)
-    if not isinstance(identity_threshold, int) or identity_threshold < 0:
+    if (
+        not isinstance(identity_threshold, int)
+        or identity_threshold < 0
+        or identity_threshold > 100
+    ):
         identity_threshold = DEFAULT_IDENTITY_THRESHOLD
     app.config["identity_threshold"] = identity_threshold
     # v4.13: Dead host budget - abandon after N consecutive timeouts

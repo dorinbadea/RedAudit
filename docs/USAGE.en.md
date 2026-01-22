@@ -61,6 +61,10 @@ sudo redaudit -t 192.168.56.101 \
 
 **Artifacts:** JSON/TXT, optional HTML, PCAP (deep scan + tcpdump), playbooks (when findings match categories and encryption is off).
 
+## 2. Scenario Examples
+
+Examples aligned with common audit workflows. Adjust timing and encryption based on client requirements.
+
 ### Authorized Pentest (Stealth/Corporate)
 
 Focus on low noise, reliable artifacts, and encryption for chain of custody.
@@ -132,10 +136,10 @@ Grouped by operational function. Verified against the current codebase.
 | :--- | :--- |
 | `-t, --target CIDR` | IP, range, or CIDR (comma-separated supported) |
 | `-m, --mode` | `fast` (host discovery), `normal` (top 100), `full` (all ports + scripts/OS detection) |
-| `-j, --threads N` | Parallel hosts 1-100 (Auto-detected) |
-| `--rate-limit S` | Delay between hosts in seconds (applies jitter) |
+| `-j, --threads N` | Parallel hosts 1-100 (auto-detected; fallback 6) |
+| `--rate-limit S` | Delay between hosts in seconds (±30% jitter applied) |
 | `--deep-scan-budget N` | Max hosts eligible for aggressive deep scan (0 = unlimited) |
-| `--identity-threshold N` | Minimum identity score to skip deep scan |
+| `--identity-threshold N` | Minimum identity score to skip deep scan (0-100) |
 | `--stealth` | Force T1 timing, 1 thread, 5s delay |
 | `--dry-run` | Show commands without executing them |
 | `--profile {fast,balanced,full}` | Set Nuclei scan intensity/speed (v4.11+) |

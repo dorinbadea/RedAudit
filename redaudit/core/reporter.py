@@ -1244,5 +1244,15 @@ def show_results_summary(results: Dict, t_fn, colors: Dict, output_dir: str) -> 
         pcap = deep.get("pcap_capture") or {}
         if isinstance(pcap, dict) and pcap.get("pcap_file"):
             pcap_count += 1
+    if output_dir and os.path.isdir(output_dir):
+        try:
+            pcap_count = sum(
+                1
+                for root, _dirs, files in os.walk(output_dir)
+                for name in files
+                if str(name).lower().endswith(".pcap")
+            )
+        except Exception:
+            pass
     print(t_fn("pcaps", pcap_count))
     print(f"{colors['OKGREEN']}{t_fn('reports_gen', output_dir)}{colors['ENDC']}")

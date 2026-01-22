@@ -19,6 +19,7 @@ These items represent the current backlog of planned or deferred work for the re
 | Feature | Status | Description |
 |---|---|---|
 | **Dependency Pinning Mode** | Planned | Optional pinned tags/commits for external tools installed from git. |
+| **Poetry Lockfile Evaluation** | Planned | Assess whether adding `poetry.lock` offers value alongside existing pip-tools locks. |
 | **Streaming JSON Report** | Planned | Incremental write for reports >500MB on very large networks to prevent OOM. |
 
 ### Deferred / Technical Backlog
@@ -29,6 +30,8 @@ These items represent the current backlog of planned or deferred work for the re
 | **PyPI Distribution** | Deferred | Publishing `pip install redaudit`. Blocked by need for extensive cross-platform testing. |
 | **Plugin Engine** | Deferred | "Plugin-first" architecture to decouple core scanner from tools. |
 | **AsyncIO Migration** | Deferred | Full migration to AsyncIO deferred to v5.0. |
+| **Centralized Timeout Registry** | Deferred | Consolidate scanner timeouts in one place for easier tuning and testing. |
+| **Red Team Module Split** | Deferred | Split Red Team discovery logic into a dedicated package to reduce `net_discovery.py` size. |
 
 ---
 
