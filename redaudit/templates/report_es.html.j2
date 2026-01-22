@@ -187,6 +187,8 @@
                         <li>Escaneados <span>{{ pipeline.host_scan.scanned or 0 }}</span></li>
                         <li>Hilos <span>{{ pipeline.host_scan.threads or 0 }}</span></li>
                         <li>Modo <span>{{ config_snapshot.scan_mode or scan_mode }}</span></li>
+                        <li>Args Nmap <span>{{ pipeline.host_scan.nmap_args or '-' }}</span></li>
+                        <li>Timing Nmap <span>{{ pipeline.host_scan.nmap_timing or '-' }}</span></li>
                     </ul>
                 </div>
                 <div class="meta-item">
@@ -236,6 +238,28 @@
                         {% endif %}
                     </ul>
                 </div>
+                <div class="meta-item">
+                    <h4>Deep Scan</h4>
+                    <ul>
+                        <li>Umbral de identidad <span>{{ pipeline.deep_scan.identity_threshold or 0 }}</span></li>
+                        <li>Modo UDP <span>{{ pipeline.deep_scan.udp_mode or '-' }}</span></li>
+                        <li>UDP Top Ports <span>{{ pipeline.deep_scan.udp_top_ports or 0 }}</span></li>
+                        {% if pipeline.deep_scan.deep_scan_budget %}
+                        <li>Presupuesto Deep <span>{{ pipeline.deep_scan.deep_scan_budget }}</span></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% set hyperscan_vs_final = pipeline.hyperscan_vs_final or {} %}
+                {% if hyperscan_vs_final.by_subnet %}
+                <div class="meta-item">
+                    <h4>HyperScan vs Final</h4>
+                    <ul>
+                        {% for subnet, stats in hyperscan_vs_final.by_subnet.items() %}
+                        <li>{{ subnet }} <span>{{ stats.hyperscan_ports or 0 }} / {{ stats.final_ports or 0 }} (missed TCP {{ stats.missed_tcp or 0 }}, UDP {{ stats.missed_udp or 0 }})</span></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
                 <div class="meta-item">
                     <h4>SmartScan</h4>
                     <ul>
@@ -478,6 +502,28 @@
                             <div style="margin-bottom: 0.75rem;">
                                 <strong style="color: var(--text-secondary); font-size: 0.8rem;">Descripción:</strong>
                                 <p style="font-size: 0.9rem; margin-top: 0.2rem;">{{ finding.description }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if finding.evidence_meta %}
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong style="color: var(--text-secondary); font-size: 0.8rem;">Fuente de evidencia:</strong>
+                                <span style="font-size: 0.85rem;">{{ finding.evidence_meta.source_tool or finding.source }}</span>
+                                {% if finding.evidence_meta.signals %}
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">({{ finding.evidence_meta.signals|join(', ') }})</span>
+                                {% endif %}
+                                {% if finding.evidence_meta.template_id %}
+                                <div style="font-size: 0.85rem; color: var(--text-secondary);">Template ID: {{ finding.evidence_meta.template_id }}</div>
+                                {% endif %}
+                                {% if finding.evidence_meta.matched_at %}
+                                <div style="font-size: 0.85rem; color: var(--text-secondary);">Matched At: {{ finding.evidence_meta.matched_at }}</div>
+                                {% endif %}
+                                {% if finding.evidence_meta.raw_output_sha256 %}
+                                <div style="font-size: 0.85rem; color: var(--text-secondary);">Raw Output SHA256: <code>{{ finding.evidence_meta.raw_output_sha256 }}</code></div>
+                                {% endif %}
+                                {% if finding.evidence_meta.raw_output_ref %}
+                                <div style="font-size: 0.85rem; color: var(--text-secondary);">Raw Output Ref: <code>{{ finding.evidence_meta.raw_output_ref }}</code></div>
+                                {% endif %}
                             </div>
                             {% endif %}
 

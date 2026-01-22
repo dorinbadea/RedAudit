@@ -213,6 +213,8 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
                 else:
                     evidence = raw_evidence
 
+            evidence_meta = vuln.get("evidence") if isinstance(vuln.get("evidence"), dict) else {}
+
             finding_table.append(
                 {
                     "host": host_ip,
@@ -228,6 +230,7 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
                     "description": description,
                     "references": references,
                     "evidence": evidence,
+                    "evidence_meta": evidence_meta,
                     "template_id": vuln.get("template_id"),
                 }
             )

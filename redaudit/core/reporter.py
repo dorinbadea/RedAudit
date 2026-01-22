@@ -27,6 +27,7 @@ from redaudit.core.crypto import encrypt_data
 from redaudit.core.entity_resolver import reconcile_assets
 from redaudit.core.siem import enrich_report_for_siem, enrich_vulnerability_severity
 from redaudit.core.scanner_versions import get_scanner_versions
+from redaudit.core.scanner.nmap import get_nmap_arguments
 
 
 def _get_hostname_fallback(host: Dict) -> str:
@@ -130,6 +131,82 @@ def _summarize_net_discovery(net_discovery: Dict[str, Any]) -> Dict[str, Any]:
             "ipv6_neighbors": len((redteam.get("ipv6_discovery") or {}).get("neighbors", []) or []),
         }
     return summary
+
+
+def _infer_subnet_label(ip: str) -> str:
+    try:
+        addr = ipaddress.ip_address(ip)
+        if addr.version == 4:
+            network = ipaddress.ip_network(f"{ip}/24", strict=False)
+        else:
+            network = ipaddress.ip_network(f"{ip}/64", strict=False)
+        return str(network)
+    except Exception:
+        return "unknown"
+
+
+def _summarize_hyperscan_vs_final(
+    hosts: List[Dict[str, Any]], net_discovery: Dict[str, Any]
+) -> Dict:
+    if not isinstance(net_discovery, dict) or not net_discovery:
+        return {}
+
+    hyperscan_tcp = net_discovery.get("hyperscan_tcp_hosts") or {}
+    hyperscan_udp = net_discovery.get("hyperscan_udp_ports") or {}
+
+    if not hyperscan_tcp and not hyperscan_udp:
+        return {}
+
+    by_subnet: Dict[str, Dict[str, int]] = {}
+    totals = {
+        "hosts": 0,
+        "hyperscan_ports": 0,
+        "final_ports": 0,
+        "missed_tcp": 0,
+        "missed_udp": 0,
+    }
+
+    for host in hosts or []:
+        if not isinstance(host, dict):
+            continue
+        ip = host.get("ip")
+        if not ip:
+            continue
+
+        ports = host.get("ports") or []
+        final_tcp = {p.get("port") for p in ports if p.get("protocol") == "tcp" and p.get("port")}
+        final_udp = {p.get("port") for p in ports if p.get("protocol") == "udp" and p.get("port")}
+
+        htcp_set = set(hyperscan_tcp.get(ip, []) or [])
+        hudp_set = set(hyperscan_udp.get(ip, []) or [])
+
+        subnet = _infer_subnet_label(str(ip))
+        entry = by_subnet.setdefault(
+            subnet,
+            {
+                "hosts": 0,
+                "hyperscan_ports": 0,
+                "final_ports": 0,
+                "missed_tcp": 0,
+                "missed_udp": 0,
+            },
+        )
+
+        entry["hosts"] += 1
+        hyperscan_ports = len(htcp_set) + len(hudp_set)
+        final_ports = len(final_tcp) + len(final_udp)
+        entry["hyperscan_ports"] += hyperscan_ports
+        entry["final_ports"] += final_ports
+        entry["missed_tcp"] += len(final_tcp - htcp_set)
+        entry["missed_udp"] += len(final_udp - hudp_set)
+
+        totals["hosts"] += 1
+        totals["hyperscan_ports"] += hyperscan_ports
+        totals["final_ports"] += final_ports
+        totals["missed_tcp"] += len(final_tcp - htcp_set)
+        totals["missed_udp"] += len(final_udp - hudp_set)
+
+    return {"totals": totals, "by_subnet": by_subnet}
 
 
 def _summarize_agentless(
@@ -347,6 +424,7 @@ def generate_summary(
     # Attach sanitized config snapshot + pipeline + smart scan summary for reporting.
     results["config_snapshot"] = _build_config_snapshot(config)
     results["smart_scan_summary"] = _summarize_smart_scan(results.get("hosts", []), config)
+    nmap_args = get_nmap_arguments(str(config.get("scan_mode") or "normal"), config)
     results["pipeline"] = {
         "topology": results.get("topology") or {},
         "net_discovery": _summarize_net_discovery(results.get("net_discovery") or {}),
@@ -354,13 +432,28 @@ def generate_summary(
             "targets": len(unique_hosts),
             "scanned": len(scanned_results),
             "threads": config.get("threads"),
+            "nmap_args": nmap_args,
+            "nmap_timing": config.get("nmap_timing", "T4"),
         },
         "agentless_verify": _summarize_agentless(
             results.get("hosts", []), results.get("agentless_verify") or {}, config
         ),
         "nuclei": results.get("nuclei") or {},
         "vulnerability_scan": {},
+        "deep_scan": {
+            "identity_threshold": results["config_snapshot"].get("identity_threshold"),
+            "deep_scan_budget": results["config_snapshot"].get("deep_scan_budget"),
+            "udp_mode": results["config_snapshot"].get("udp_mode"),
+            "udp_top_ports": results["config_snapshot"].get("udp_top_ports"),
+            "low_impact_enrichment": results["config_snapshot"].get("low_impact_enrichment"),
+        },
     }
+
+    hyperscan_vs_final = _summarize_hyperscan_vs_final(
+        results.get("hosts", []), results.get("net_discovery") or {}
+    )
+    if hyperscan_vs_final:
+        results["pipeline"]["hyperscan_vs_final"] = hyperscan_vs_final
 
     # v3.1+: Updated SIEM-compatible fields
     results["schema_version"] = SCHEMA_VERSION
@@ -1148,6 +1241,16 @@ def _write_output_manifest(
             "pcaps": pcap_count,
         },
         "artifacts": [],
+    }
+    manifest["config_snapshot"] = results.get("config_snapshot", {}) or {}
+    pipeline = results.get("pipeline") or {}
+    manifest["pipeline"] = {
+        "host_scan": pipeline.get("host_scan") or {},
+        "deep_scan": pipeline.get("deep_scan") or {},
+        "net_discovery": pipeline.get("net_discovery") or {},
+        "nuclei": pipeline.get("nuclei") or {},
+        "vulnerability_scan": pipeline.get("vulnerability_scan") or {},
+        "hyperscan_vs_final": pipeline.get("hyperscan_vs_final") or {},
     }
     if raw_findings is not None:
         manifest["counts"]["findings_raw"] = raw_findings

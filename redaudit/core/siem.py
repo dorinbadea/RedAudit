@@ -11,7 +11,7 @@ Implements ECS (Elastic Common Schema), severity scoring, and CEF format.
 import hashlib
 import json
 import re
-from typing import Dict, List, Optional, Tuple, TypedDict
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 
 # ECS Version for Elastic integration
@@ -1397,6 +1397,15 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
                 obs_enriched = enrich_with_observations(vuln, output_dir)
                 vuln.update(obs_enriched)
 
+            evidence_meta = _build_evidence_meta(vuln)
+            if evidence_meta:
+                existing = vuln.get("evidence")
+                if isinstance(existing, dict):
+                    merged = {**existing, **evidence_meta}
+                else:
+                    merged = evidence_meta
+                vuln["evidence"] = merged
+
     # Add summary statistics for SIEM dashboards
     summary = enriched.get("summary", {})
     hosts = enriched.get("hosts", [])
@@ -1413,6 +1422,53 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
     enriched["vulnerabilities"] = consolidate_findings(enriched.get("vulnerabilities", []))
 
     return enriched
+
+
+def _build_evidence_meta(vuln_record: Dict[str, Any]) -> Dict[str, Any]:
+    meta: Dict[str, Any] = {}
+
+    source = (
+        vuln_record.get("source")
+        or (vuln_record.get("original_severity") or {}).get("tool")
+        or "redaudit"
+    )
+    if source:
+        meta["source_tool"] = source
+
+    matched_at = vuln_record.get("matched_at") or vuln_record.get("url")
+    if matched_at:
+        meta["matched_at"] = matched_at
+
+    template_id = vuln_record.get("template_id")
+    if template_id:
+        meta["template_id"] = template_id
+
+    raw_hash = vuln_record.get("raw_tool_output_sha256")
+    if raw_hash:
+        meta["raw_output_sha256"] = raw_hash
+
+    raw_ref = vuln_record.get("raw_tool_output_ref")
+    if raw_ref:
+        meta["raw_output_ref"] = raw_ref
+
+    signals = []
+    if vuln_record.get("template_id") or vuln_record.get("matched_at"):
+        signals.append("nuclei")
+    if vuln_record.get("nikto_findings"):
+        signals.append("nikto")
+    if vuln_record.get("testssl_analysis"):
+        signals.append("testssl")
+    if vuln_record.get("whatweb"):
+        signals.append("whatweb")
+    if vuln_record.get("extracted_results") or vuln_record.get("extracted-results"):
+        signals.append("extracted_results")
+    if vuln_record.get("curl_headers") or vuln_record.get("wget_headers"):
+        signals.append("http_headers")
+
+    if signals:
+        meta["signals"] = sorted({s for s in signals if s})
+
+    return meta
 
 
 def consolidate_findings(vulnerabilities: List[Dict]) -> List[Dict]:

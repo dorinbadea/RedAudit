@@ -43,6 +43,8 @@ Metadatos del manifiesto usados para inventariar artefactos de salida en pipelin
 | `redaudit_version` | string | Versión de RedAudit |
 | `scanner_versions` | object | Versiones de herramientas externas capturadas en tiempo de ejecución |
 | `targets` | array | Redes objetivo o rangos IP |
+| `config_snapshot` | object | Snapshot de configuración sanitizada (sin secretos) |
+| `pipeline` | object | Resumen mínimo del pipeline (host_scan, deep_scan, net_discovery, nuclei, vulnerability_scan, hyperscan_vs_final) |
 | `counts` | object | Conteos de hosts, hallazgos y PCAPs |
 | `counts.findings_raw` | integer | (Opcional) Conteo bruto de hallazgos antes de normalizar |
 | `artifacts` | array | Lista de archivos con `path` relativo y `size_bytes` |
@@ -165,11 +167,40 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 
 | Campo | Tipo | Descripción |
 | :--- | :--- | :--- |
-| `host_scan` | object | Targets + threads |
+| `host_scan` | object | Targets + threads + args Nmap resueltos |
 | `net_discovery` | object | Conteos DHCP/ARP/NetBIOS/UPNP + redteam |
 | `agentless_verify` | object | Targets + completados + conteos por protocolo |
 | `nuclei` | object | Resumen Nuclei |
 | `vulnerability_scan` | object | Total de hallazgos + fuentes (+ conteo raw) |
+| `deep_scan` | object | Umbral de identidad + estrategia UDP (v4.18.9+) |
+| `hyperscan_vs_final` | object | Conteos HyperScan vs final (v4.18.9+) |
+
+#### pipeline.host_scan (v4.18.9+)
+
+| Campo | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `targets` | integer | Objetivos descubiertos |
+| `scanned` | integer | Hosts escaneados |
+| `threads` | integer | Concurrencia usada |
+| `nmap_args` | string | Args Nmap resueltos para el modo seleccionado |
+| `nmap_timing` | string | Plantilla de timing Nmap (ej.: T4) |
+
+#### pipeline.deep_scan (v4.18.9+)
+
+| Campo | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `identity_threshold` | integer | Umbral de identidad para deep scan |
+| `deep_scan_budget` | integer | Max deep scans (0 = ilimitado) |
+| `udp_mode` | string | Modo UDP usado (quick/full) |
+| `udp_top_ports` | integer | Top UDP ports cuando se usa full |
+| `low_impact_enrichment` | boolean | Enriquecimiento de bajo impacto |
+
+#### pipeline.hyperscan_vs_final (v4.18.9+)
+
+| Campo | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `totals` | object | Totales agregados (hosts/hyperscan_ports/final_ports/missed_tcp/missed_udp) |
+| `by_subnet` | object | Resumen por subred usando /24 (IPv4) o /64 (IPv6) |
 
 ### findings.jsonl (Campos Seleccionados)
 
@@ -181,6 +212,19 @@ Exportación plana, un hallazgo por línea para SIEM.
 | `descriptive_title` | string | Título enriquecido derivado de observaciones (best-effort) |
 | `severity` | string | Severidad (critical/high/medium/low/info) |
 | `source` | string | Herramienta principal (nikto/testssl/nuclei/etc.) |
+
+### Objeto de Evidencia de Vulnerabilidad (v4.18.9+)
+
+Para cada vulnerabilidad, puede existir un objeto `evidence` para trazabilidad.
+
+| Campo | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `source_tool` | string | Herramienta principal (nikto/testssl/nuclei/redaudit) |
+| `signals` | array | Señales de evidencia que contribuyen al hallazgo |
+| `matched_at` | string | URL o endpoint si aplica |
+| `template_id` | string | ID de template Nuclei (si aplica) |
+| `raw_output_sha256` | string | Hash SHA256 de la salida cruda (si aplica) |
+| `raw_output_ref` | string | Referencia relativa a fichero con salida cruda (si se externaliza) |
 
 ### Resumen SmartScan (v3.7+)
 
