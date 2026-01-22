@@ -504,7 +504,8 @@ async def test_hyperscan_tcp_sweep_success():
     # Mock asyncio.open_connection
     # It returns (reader, writer)
     mock_reader = AsyncMock()
-    mock_writer = AsyncMock()
+    mock_writer = MagicMock()
+    mock_writer.wait_closed = AsyncMock()
 
     with patch("asyncio.open_connection", new_callable=AsyncMock) as mock_conn:
         mock_conn.return_value = (mock_reader, mock_writer)
