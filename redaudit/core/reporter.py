@@ -1239,20 +1239,18 @@ def show_results_summary(results: Dict, t_fn, colors: Dict, output_dir: str) -> 
         print(t_fn("vulns_web", total_vulns))
     print(t_fn("duration", s.get("duration")))
     pcap_count = 0
+    pcap_summary = results.get("pcap_summary") or {}
+    if pcap_summary:
+        pcap_count = int(pcap_summary.get("individual_count", 0) or 0)
+        if pcap_summary.get("merged_file"):
+            pcap_count += 1
+        print(t_fn("pcaps", pcap_count))
+        print(f"{colors['OKGREEN']}{t_fn('reports_gen', output_dir)}{colors['ENDC']}")
+        return
     for h in results.get("hosts", []) or []:
         deep = h.get("deep_scan") or {}
         pcap = deep.get("pcap_capture") or {}
         if isinstance(pcap, dict) and pcap.get("pcap_file"):
             pcap_count += 1
-    if output_dir and os.path.isdir(output_dir):
-        try:
-            pcap_count = sum(
-                1
-                for root, _dirs, files in os.walk(output_dir)
-                for name in files
-                if str(name).lower().endswith(".pcap")
-            )
-        except Exception:
-            pass
     print(t_fn("pcaps", pcap_count))
     print(f"{colors['OKGREEN']}{t_fn('reports_gen', output_dir)}{colors['ENDC']}")

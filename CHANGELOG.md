@@ -14,6 +14,12 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.7] - 2026-01-22
+
+### Fixed
+
+- **CLI PCAP Count**: Final summary now uses per-run PCAP metadata to avoid counting captures from other runs.
+
 ## [4.18.6] - 2026-01-22
 
 ### Fixed

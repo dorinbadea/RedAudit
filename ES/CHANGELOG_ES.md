@@ -14,6 +14,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.7] - 2026-01-22
+
+### Corregido
+
+- **Recuento PCAP en CLI**: El resumen final usa metadatos del run para evitar contar capturas de otros runs.
+
 ## [4.18.6] - 2026-01-22
 
 ### Corregido

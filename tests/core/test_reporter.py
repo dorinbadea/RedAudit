@@ -803,3 +803,23 @@ def test_show_results_summary_counts_pcaps(capsys):
 
     captured = capsys.readouterr().out
     assert "pcaps" in captured
+
+
+def test_show_results_summary_uses_pcap_summary(capsys):
+    results = {
+        "summary": {
+            "networks": 1,
+            "hosts_found": 1,
+            "hosts_scanned": 1,
+            "vulns_found": 0,
+            "duration": "0:01:00",
+        },
+        "pcap_summary": {"merged_file": "full_capture.pcap", "individual_count": 10},
+    }
+    colors = {"HEADER": "", "ENDC": "", "OKGREEN": ""}
+    t_fn = lambda key, *args: f"{key}:{args[0]}" if args else key
+
+    show_results_summary(results, t_fn, colors, "/tmp/output")
+
+    captured = capsys.readouterr().out
+    assert "pcaps:11" in captured
