@@ -12,7 +12,7 @@ from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from redaudit.core import net_discovery
+from redaudit.core import net_discovery, redteam
 from redaudit.core.net_discovery import (
     _check_tools,
     discover_networks,
@@ -25,6 +25,10 @@ from redaudit.core.net_discovery import (
     arp_scan_active,
     detect_routed_networks,
     _analyze_vlans,
+    _run_cmd,
+    _sanitize_iface,
+)
+from redaudit.core.redteam import (
     _gather_redteam_targets,
     _redteam_bettercap_recon,
     _redteam_dns_zone_transfer,
@@ -41,9 +45,7 @@ from redaudit.core.net_discovery import (
     _redteam_snmp_walk,
     _redteam_stp_topology,
     _redteam_vlan_enum,
-    _run_cmd,
     _sanitize_dns_zone,
-    _sanitize_iface,
 )
 
 
@@ -312,8 +314,8 @@ class TestDiscoverNetworks(unittest.TestCase):
 class TestRedTeamDiscovery(unittest.TestCase):
     """Test Red Team net discovery helpers (best-effort)."""
 
-    @patch("redaudit.core.net_discovery._run_cmd")
-    @patch("redaudit.core.net_discovery.shutil.which")
+    @patch("redaudit.core.redteam._run_cmd")
+    @patch("redaudit.core.redteam.shutil.which")
     @patch("redaudit.core.net_discovery.fping_sweep")
     @patch("redaudit.core.net_discovery._check_tools")
     def test_redteam_snmp_and_smb(self, mock_tools, mock_fping, mock_which, mock_run):
@@ -554,23 +556,20 @@ def test_redteam_discovery_ticker_and_cleanup():
     """Test _run_redteam_discovery progress ticker (lines 933-937, 947-949)."""
     # Mock progress callback to be slow enough to let ticker run
     mock_cb = MagicMock()
-    with patch("redaudit.core.net_discovery._check_tools", return_value={}):
-        with patch("redaudit.core.net_discovery._gather_redteam_targets", return_value=[]):
-            from redaudit.core.net_discovery import _run_redteam_discovery
+    with patch("redaudit.core.redteam._gather_redteam_targets", return_value=[]):
+        from redaudit.core.redteam import run_redteam_discovery
 
-            # Ticker runs every 3s. We'll simulate a 4s task to ensure ticker hits.
-            def slow_task(*args, **kwargs):
-                import time
+        # Ticker runs every 3s. We'll simulate a 4s task to ensure ticker hits.
+        def slow_task(*args, **kwargs):
+            import time
 
-                time.sleep(4)
-                return {}
+            time.sleep(4)
+            return {}
 
-            with patch(
-                "redaudit.core.net_discovery._redteam_rustscan_sweep", side_effect=slow_task
-            ):
-                _run_redteam_discovery(
-                    {}, [], progress_callback=mock_cb, redteam_options={"max_targets": 10}
-                )
+        with patch("redaudit.core.redteam._redteam_rustscan_sweep", side_effect=slow_task):
+            run_redteam_discovery(
+                {}, [], tools={}, progress_callback=mock_cb, redteam_options={"max_targets": 10}
+            )
     # Ticker should have called _progress_redteam
     # Just verify it finishes without error
 
@@ -584,13 +583,13 @@ def test_redteam_snmp_walk_errors():
     # 1252: Error log
     with patch("shutil.which", return_value="snmpwalk"):
         with patch(
-            "redaudit.core.net_discovery._run_cmd", return_value=(1, "", "Permission Denied")
+            "redaudit.core.redteam._run_cmd", return_value=(1, "", "Permission Denied")
         ):
             res = _redteam_snmp_walk(["1.1.1.1"], {"snmpwalk": True})
             assert "Permission Denied" in res["errors"][0]
     # 1263: Row-based raw fallback
     with patch("shutil.which", return_value="snmpwalk"):
-        with patch("redaudit.core.net_discovery._run_cmd", return_value=(0, "UNKNOWN OUTPUT", "")):
+        with patch("redaudit.core.redteam._run_cmd", return_value=(0, "UNKNOWN OUTPUT", "")):
             res = _redteam_snmp_walk(["1.1.1.1"], {"snmpwalk": True})
             assert res["hosts"][0]["raw"] == "UNKNOWN OUTPUT"
 
@@ -602,7 +601,7 @@ def test_redteam_smb_enum_nmap_fallback():
     # 1356: Raw snippet
     with patch("shutil.which", side_effect=lambda x: "nmap" if x == "nmap" else None):
         with patch(
-            "redaudit.core.net_discovery._run_cmd",
+            "redaudit.core.redteam._run_cmd",
             return_value=(0, "Nmap header\nweird output", ""),
         ):
             res = _redteam_smb_enum(["1.1.1.1"], {"nmap": True})
@@ -616,7 +615,7 @@ def test_redteam_rustscan_sweep_errors():
     assert _redteam_rustscan_sweep(["1.1.1.1"], {"rustscan": False})["status"] == "tool_missing"
 
     # Execution error
-    with patch("redaudit.core.net_discovery.run_rustscan_multi") as mock_run:
+    with patch("redaudit.core.redteam.run_rustscan_multi") as mock_run:
         mock_run.return_value = ({}, "Fatal Error")
         res = _redteam_rustscan_sweep(["1.1.1.0/24"], {"rustscan": True})
         assert res["status"] == "error"
@@ -627,13 +626,13 @@ def test_redteam_rpc_enum_parsing():
     """Test _redteam_rpc_enum parsing and fallback (lines 1531, 1539)."""
     with patch("shutil.which", side_effect=lambda x: "rpcclient" if x == "rpcclient" else None):
         with patch(
-            "redaudit.core.net_discovery._run_cmd",
+            "redaudit.core.redteam._run_cmd",
             return_value=(0, "os version: Win10\ndomain: WORKGROUP", ""),
         ):
             res = _redteam_rpc_enum(["1.1.1.1"], {"rpcclient": True})
             assert res["hosts"][0]["os_version"] == "Win10"
         # 1531: Raw fallback
-        with patch("redaudit.core.net_discovery._run_cmd", return_value=(0, "just some text", "")):
+        with patch("redaudit.core.redteam._run_cmd", return_value=(0, "just some text", "")):
             res = _redteam_rpc_enum(["1.1.1.1"], {"rpcclient": True})
             assert "raw" in res["hosts"][0]
 
@@ -656,7 +655,7 @@ def test_redteam_kerberos_enum_userlist_paths():
     # 1708: No realm
     with patch("shutil.which", return_value="/bin/kerbrute"):
         with patch("os.path.exists", return_value=True):
-            with patch("redaudit.core.net_discovery._run_cmd", return_value=(0, "", "")):
+            with patch("redaudit.core.redteam._run_cmd", return_value=(0, "", "")):
                 res = _redteam_kerberos_enum(
                     ["1.1.1.1"], {"nmap": True, "kerbrute": True}, userlist_path="/tmp/users"
                 )
@@ -671,7 +670,7 @@ def test_redteam_dns_zone_transfer_edge():
     # 1811: Transfer failed msg
     with patch("shutil.which", return_value="dig"):
         with patch(
-            "redaudit.core.net_discovery._run_cmd", return_value=(1, "transfer failed", "dig error")
+            "redaudit.core.redteam._run_cmd", return_value=(1, "transfer failed", "dig error")
         ):
             res = _redteam_dns_zone_transfer(
                 {"dhcp_servers": [{"dns": ["1.1.1.1"]}]}, {"dig": True}, zone="target.local"
@@ -687,16 +686,16 @@ def test_redteam_bettercap_recon_edge():
         == "skipped_disabled"
     )
     # 2183: Error capture
-    with patch("redaudit.core.net_discovery._is_root", return_value=True):
+    with patch("redaudit.core.redteam._is_root", return_value=True):
         with patch("shutil.which", return_value="bettercap"):
-            with patch("redaudit.core.net_discovery._run_cmd", return_value=(1, "", "Fatal error")):
+            with patch("redaudit.core.redteam._run_cmd", return_value=(1, "", "Fatal error")):
                 res = _redteam_bettercap_recon("eth0", {"bettercap": True}, active_l2=True)
                 assert res["error"] == "Fatal error"
 
 
 def test_redteam_scapy_custom_exception():
     """Test _redteam_scapy_custom exception (line 2221)."""
-    with patch("redaudit.core.net_discovery._is_root", return_value=True):
+    with patch("redaudit.core.redteam._is_root", return_value=True):
         # Mock scapy imports
         mock_scapy = MagicMock()
         mock_scapy.__version__ = "2.4.5"
@@ -868,7 +867,7 @@ class TestRoutingDiscovery(unittest.TestCase):
 
 
 def test_redteam_ldap_enum_parses_rootdse(monkeypatch):
-    monkeypatch.setattr(net_discovery.shutil, "which", lambda _tool: True)
+    monkeypatch.setattr(redteam.shutil, "which", lambda _tool: True)
 
     out = "\n".join(
         [
@@ -878,16 +877,16 @@ def test_redteam_ldap_enum_parses_rootdse(monkeypatch):
             "supportedLDAPVersion: 3",
         ]
     )
-    monkeypatch.setattr(net_discovery, "_run_cmd", lambda *_a, **_k: (0, out, ""))
+    monkeypatch.setattr(redteam, "_run_cmd", lambda *_a, **_k: (0, out, ""))
 
-    result = net_discovery._redteam_ldap_enum(["192.168.1.10"], tools={"ldapsearch": True})
+    result = redteam._redteam_ldap_enum(["192.168.1.10"], tools={"ldapsearch": True})
 
     assert result["status"] == "ok"
     assert result["hosts"][0]["defaultNamingContext"] == "DC=corp,DC=local"
 
 
 def test_redteam_kerberos_enum_with_userenum(monkeypatch, tmp_path):
-    monkeypatch.setattr(net_discovery.shutil, "which", lambda _tool: True)
+    monkeypatch.setattr(redteam.shutil, "which", lambda _tool: True)
     userlist = tmp_path / "users.txt"
     userlist.write_text("user1\n", encoding="utf-8")
 
@@ -899,9 +898,9 @@ def test_redteam_kerberos_enum_with_userenum(monkeypatch, tmp_path):
             return 0, "VALID USERNAME: user1@EXAMPLE.COM", ""
         return 1, "", "nope"
 
-    monkeypatch.setattr(net_discovery, "_run_cmd", _fake_run_cmd)
+    monkeypatch.setattr(redteam, "_run_cmd", _fake_run_cmd)
 
-    result = net_discovery._redteam_kerberos_enum(
+    result = redteam._redteam_kerberos_enum(
         ["192.168.1.10"],
         tools={"nmap": True, "kerbrute": True},
         userlist_path=str(userlist),

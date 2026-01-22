@@ -29,6 +29,12 @@ if [[ -n "$REDAUDIT_AUTO_UPDATE" ]]; then
     AUTO_YES=true
 fi
 
+# Toolchain install policy: pinned (default) or latest
+TOOLCHAIN_MODE="${REDAUDIT_TOOLCHAIN_MODE:-pinned}"
+if [[ "$TOOLCHAIN_MODE" != "latest" ]]; then
+    TOOLCHAIN_MODE="pinned"
+fi
+
 # Determine real user early (before any operations that need it)
 REAL_USER=${SUDO_USER:-$USER}
 REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
@@ -148,20 +154,35 @@ if $INSTALL; then
     # -------------------------------------------
 
     TESTSSL_REPO="https://github.com/drwetter/testssl.sh.git"
-    TESTSSL_VERSION="${TESTSSL_VERSION:-v3.2}"
+    if [[ -z "${TESTSSL_VERSION+x}" ]]; then
+        if [[ "$TOOLCHAIN_MODE" == "latest" ]]; then
+            TESTSSL_VERSION="latest"
+        else
+            TESTSSL_VERSION="v3.2"
+        fi
+    fi
 
     if [[ ! -f "/usr/local/bin/testssl.sh" ]]; then
         echo "[INFO] Installing testssl.sh ($TESTSSL_VERSION) from GitHub..."
         if command -v git &> /dev/null; then
             rm -rf /opt/testssl.sh 2>/dev/null
             # Try version tag first, fallback to latest if it fails
-            if git clone --depth 1 --branch "$TESTSSL_VERSION" "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
-                echo "[OK] Cloned testssl.sh $TESTSSL_VERSION"
-            elif git clone --depth 1 "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
-                echo "[OK] Cloned testssl.sh (latest)"
+            if [[ "$TESTSSL_VERSION" == "latest" ]]; then
+                if git clone --depth 1 "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
+                    echo "[OK] Cloned testssl.sh (latest)"
+                else
+                    echo "[WARN] git clone failed; skipping testssl.sh installation"
+                    rm -rf /opt/testssl.sh 2>/dev/null
+                fi
             else
-                echo "[WARN] git clone failed; skipping testssl.sh installation"
-                rm -rf /opt/testssl.sh 2>/dev/null
+                if git clone --depth 1 --branch "$TESTSSL_VERSION" "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
+                    echo "[OK] Cloned testssl.sh $TESTSSL_VERSION"
+                elif git clone --depth 1 "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
+                    echo "[OK] Cloned testssl.sh (latest)"
+                else
+                    echo "[WARN] git clone failed; skipping testssl.sh installation"
+                    rm -rf /opt/testssl.sh 2>/dev/null
+                fi
             fi
             # Create symlink if clone succeeded
             if [[ -f "/opt/testssl.sh/testssl.sh" ]]; then
@@ -190,15 +211,43 @@ fi
 # -------------------------------------------
 
 if [[ ! -f "/usr/local/bin/kerbrute" ]]; then
-    echo "[INFO] Installing kerbrute (v1.0.3)..."
-    KERBRUTE_URL="https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64"
+    if [[ -z "${KERBRUTE_VERSION+x}" ]]; then
+        if [[ "$TOOLCHAIN_MODE" == "latest" ]]; then
+            KERBRUTE_VERSION="latest"
+        else
+            KERBRUTE_VERSION="v1.0.3"
+        fi
+    fi
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Instalando kerbrute (${KERBRUTE_VERSION})..."
+    else
+        echo "[INFO] Installing kerbrute (${KERBRUTE_VERSION})..."
+    fi
+    if [[ "$KERBRUTE_VERSION" == "latest" ]]; then
+        KERBRUTE_URL="https://github.com/ropnop/kerbrute/releases/latest/download/kerbrute_linux_amd64"
+    else
+        KERBRUTE_URL="https://github.com/ropnop/kerbrute/releases/download/${KERBRUTE_VERSION}/kerbrute_linux_amd64"
+    fi
     if wget -q -O /usr/local/bin/kerbrute "$KERBRUTE_URL"; then
         chmod +x /usr/local/bin/kerbrute
-        echo "[OK] kerbrute installed at /usr/local/bin/kerbrute"
+        if [[ "$LANG_CODE" == "es" ]]; then
+            echo "[OK] kerbrute instalado en /usr/local/bin/kerbrute"
+        else
+            echo "[OK] kerbrute installed at /usr/local/bin/kerbrute"
+        fi
     else
-        echo "[WARN] Failed to download kerbrute from GitHub. Skipping."
+        if [[ "$LANG_CODE" == "es" ]]; then
+            echo "[WARN] Falló la descarga de kerbrute desde GitHub. Se omite."
+        else
+            echo "[WARN] Failed to download kerbrute from GitHub. Skipping."
+        fi
     fi
-    echo "[OK] kerbrute already installed"
+else
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[OK] kerbrute ya instalado"
+    else
+        echo "[OK] kerbrute already installed"
+    fi
 fi
 
 # -------------------------------------------
@@ -209,7 +258,9 @@ fi
 # 2e) Install RustScan (fast port scanner)
 # -------------------------------------------
 
-RUSTSCAN_VERSION="2.3.0"
+if [[ -z "${RUSTSCAN_VERSION+x}" ]]; then
+    RUSTSCAN_VERSION="2.3.0"
+fi
 
 if ! command -v rustscan &> /dev/null; then
     # Detect Architecture

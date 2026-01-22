@@ -262,6 +262,18 @@ cargo install rustscan
 
 RustScan se detecta automaticamente y se usa para HyperScan cuando esta disponible.
 
+### Politica del Toolchain del Instalador
+
+El instalador puede anclar o usar versiones latest para herramientas descargadas desde GitHub:
+
+```bash
+# Latest para testssl y kerbrute
+REDAUDIT_TOOLCHAIN_MODE=latest sudo bash redaudit_install.sh
+
+# Overrides de version explicitos
+TESTSSL_VERSION=v3.2 KERBRUTE_VERSION=v1.0.3 RUSTSCAN_VERSION=2.3.0 sudo bash redaudit_install.sh
+```
+
 ### Seguridad y Privacidad
 
 | Flag | Descripción |

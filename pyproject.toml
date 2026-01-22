@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "redaudit"
-version = "4.18.7"
+version = "4.18.8"
 description = "CLI tool for structured network auditing and hardening on Kali/Debian systems"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -58,7 +58,6 @@ dev = [
 ]
 auth = [
     "paramiko>=3.0.0",
-    "keyring>=24.0.0",
     "impacket>=0.11.0",
     "pysnmp>=6.0.0",
 ]
@@ -72,6 +71,40 @@ Changelog = "https://github.com/dorinbadea/RedAudit/blob/main/CHANGELOG.md"
 
 [project.scripts]
 redaudit = "redaudit.cli:main"
+
+[tool.poetry]
+name = "redaudit"
+version = "4.18.8"
+description = "CLI tool for structured network auditing and hardening on Kali/Debian systems"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+authors = ["Dorin Badea <dorinidtech@gmail.com>"]
+packages = [{ include = "redaudit" }]
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+python-nmap = ">=0.7.1"
+cryptography = ">=41.0.0"
+netifaces = ">=0.11.0"
+requests = ">=2.31.0"
+jinja2 = ">=3.1.0"
+rich = ">=13.0.0"
+keyring = ">=24.0.0"
+paramiko = { version = ">=3.0.0", optional = true }
+impacket = { version = ">=0.11.0", optional = true }
+pysnmp = { version = ">=6.0.0", optional = true }
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.0.0"
+pytest-asyncio = ">=0.23.0"
+pytest-cov = ">=4.0.0"
+coverage = ">=7.0.0"
+black = ">=23.0.0"
+flake8 = ">=6.0.0"
+pre-commit = ">=3.0.0"
+
+[tool.poetry.extras]
+auth = ["paramiko", "impacket", "pysnmp"]
 
 [tool.setuptools]
 packages = ["redaudit", "redaudit.core", "redaudit.utils", "redaudit.templates"]

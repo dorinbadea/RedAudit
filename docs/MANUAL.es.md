@@ -59,6 +59,16 @@ El instalador:
 3. Crea el alias `redaudit` en el shell
 4. Solicita preferencia de idioma (EN/ES)
 
+Política de versiones del toolchain (opcional):
+
+```bash
+# Usa versiones latest para herramientas descargadas de GitHub (testssl, kerbrute)
+REDAUDIT_TOOLCHAIN_MODE=latest sudo bash redaudit_install.sh
+
+# O fija versiones específicas
+TESTSSL_VERSION=v3.2 KERBRUTE_VERSION=v1.0.3 RUSTSCAN_VERSION=2.3.0 sudo bash redaudit_install.sh
+```
+
 ### Instalación Manual (sin instalador)
 
 ```bash
@@ -80,6 +90,8 @@ source venv/bin/activate
 pip install -r requirements.lock
 pip install .
 ```
+
+Usuarios de Poetry pueden apoyarse en `poetry.lock` para evaluacion; pip-tools sigue siendo la fuente de verdad de los lockfiles.
 
 Los checks TLS profundos requieren `testssl.sh`. El instalador lo instala desde GitHub como parte del toolchain principal.
 

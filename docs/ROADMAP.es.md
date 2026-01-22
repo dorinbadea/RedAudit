@@ -18,8 +18,8 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 | Funcionalidad | Estado | Descripción |
 |---|---|---|
-| **Modo de Anclaje de Dependencias** | Planeado | Tags/commits anclados opcionales para herramientas externas instaladas desde git. |
-| **Evaluación de poetry.lock** | Planeado | Valorar si añadir `poetry.lock` aporta valor junto a los locks de pip-tools. |
+| **Modo de Anclaje de Dependencias** | Hecho (v4.18.8) | Anclaje opcional del toolchain descargado desde GitHub vía `REDAUDIT_TOOLCHAIN_MODE` y overrides. |
+| **Evaluación de poetry.lock** | Hecho (v4.18.8) | Añadido `poetry.lock` junto a pip-tools para evaluación y paridad de workflows. |
 | **Streaming JSON Report** | Planeado | Escritura incremental para reportes >500MB en redes muy grandes para evitar OOM. |
 
 ### Diferido / Backlog Técnico
@@ -31,7 +31,7 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 | **Motor de Plugins** | Diferido | Arquitectura "Plugin-first" para desacoplar el escáner core de las herramientas. |
 | **Migración AsyncIO** | Diferido | Migración completa a AsyncIO diferida a v5.0. |
 | **Registro central de timeouts** | Diferido | Consolidar timeouts de escáneres en un único punto para ajuste y tests. |
-| **Separación de módulo Red Team** | Diferido | Separar la lógica Red Team en un paquete dedicado para reducir `net_discovery.py`. |
+| **Separación de módulo Red Team** | Hecho (v4.18.8) | Separar la lógica Red Team en un módulo dedicado para reducir `net_discovery.py`. |
 
 ---
 

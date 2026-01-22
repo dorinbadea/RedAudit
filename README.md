@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-[![Version](https://img.shields.io/badge/version-4.18.7-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.18.8-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -243,6 +243,16 @@ cd RedAudit
 
 # 2. Run the installer (handles dependencies and aliases)
 sudo bash redaudit_install.sh
+```
+
+Optional toolchain pinning:
+
+```bash
+# Use latest versions for GitHub-downloaded tools (testssl, kerbrute)
+REDAUDIT_TOOLCHAIN_MODE=latest sudo bash redaudit_install.sh
+
+# Or pin specific tool versions explicitly
+TESTSSL_VERSION=v3.2 KERBRUTE_VERSION=v1.0.3 RUSTSCAN_VERSION=2.3.0 sudo bash redaudit_install.sh
 ```
 
 ### Docker (Windows / macOS / Linux)

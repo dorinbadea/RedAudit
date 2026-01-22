@@ -14,6 +14,22 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.8] - 2026-01-22
+
+### Improved
+
+- **Installer Toolchain Pinning**: Added `REDAUDIT_TOOLCHAIN_MODE=latest` for testssl/kerbrute plus explicit version overrides (`TESTSSL_VERSION`, `KERBRUTE_VERSION`, `RUSTSCAN_VERSION`).
+- **Poetry Lockfile**: Added `poetry.lock` for evaluation alongside pip-tools.
+- **Red Team Refactor**: Split Red Team discovery into a dedicated module to reduce `net_discovery.py` size.
+
+### Fixed
+
+- **Kerbrute Installer Message**: Avoids reporting "already installed" after a fresh install.
+
+### Documentation
+
+- **Installer Toolchain Policy**: Documented toolchain mode and version overrides in README and manuals.
+
 ## [4.18.7] - 2026-01-22
 
 ### Fixed

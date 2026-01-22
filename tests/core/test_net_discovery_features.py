@@ -310,11 +310,11 @@ class TestRedTeamFeatures(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings("ignore")
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_snmp_walk(self, mock_which, mock_run_cmd):
         """Test SNMP walk parsing."""
-        from redaudit.core.net_discovery import _redteam_snmp_walk
+        from redaudit.core.redteam import _redteam_snmp_walk
 
         mock_which.return_value = "/usr/bin/snmpwalk"
 
@@ -334,10 +334,10 @@ class TestRedTeamFeatures(unittest.TestCase):
         self.assertEqual(res["hosts"][0]["sysDescr"], "Linux server 5.10")
         self.assertEqual(res["hosts"][0]["sysName"], "srv01")
 
-    @patch("redaudit.core.net_discovery.run_rustscan_multi")
+    @patch("redaudit.core.redteam.run_rustscan_multi")
     def test_redteam_rustscan_sweep(self, mock_run_rustscan):
         """Test rustscan integration."""
-        from redaudit.core.net_discovery import _redteam_rustscan_sweep
+        from redaudit.core.redteam import _redteam_rustscan_sweep
 
         # Mock RustScan output
         # run_rustscan_multi returns (found_map, error)
@@ -352,11 +352,11 @@ class TestRedTeamFeatures(unittest.TestCase):
         self.assertEqual(ports[0]["port"], 80)
         self.assertEqual(ports[1]["port"], 443)
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_smb_enum_nmap(self, mock_which, mock_run_cmd):
         """Test SMB enum using Nmap fallback."""
-        from redaudit.core.net_discovery import _redteam_smb_enum
+        from redaudit.core.redteam import _redteam_smb_enum
 
         # Simulate enum4linux missing, nmap present
         def which_side_effect(cmd):
@@ -393,11 +393,11 @@ Host script results:
         self.assertIn("IPC$", host["shares"])
         self.assertIn("Share$", host["shares"])
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_dns_zone_transfer(self, mock_which, mock_run_cmd):
         """Test DNS zone transfer."""
-        from redaudit.core.net_discovery import _redteam_dns_zone_transfer
+        from redaudit.core.redteam import _redteam_dns_zone_transfer
 
         mock_which.return_value = "/usr/bin/dig"
 
@@ -427,11 +427,11 @@ class TestRedTeamFeaturesExtended(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings("ignore")
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_rpc_enum(self, mock_which, mock_run_cmd):
         """Test RPC enumeration."""
-        from redaudit.core.net_discovery import _redteam_rpc_enum
+        from redaudit.core.redteam import _redteam_rpc_enum
 
         mock_which.return_value = "/usr/bin/rpcclient"
 
@@ -453,11 +453,11 @@ class TestRedTeamFeaturesExtended(unittest.TestCase):
         self.assertEqual(len(res["hosts"]), 1)
         self.assertEqual(res["hosts"][0]["os_version"], "10.0")
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_ldap_enum(self, mock_which, mock_run_cmd):
         """Test LDAP enumeration."""
-        from redaudit.core.net_discovery import _redteam_ldap_enum
+        from redaudit.core.redteam import _redteam_ldap_enum
 
         mock_which.return_value = "/usr/bin/ldapsearch"
 
@@ -478,11 +478,11 @@ supportedLDAPVersion: 3
         self.assertEqual(res["hosts"][0]["defaultNamingContext"], "DC=lab,DC=local")
         self.assertIn("DC=lab,DC=local", res["hosts"][0]["namingContexts"])
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_kerberos_enum(self, mock_which, mock_run_cmd):
         """Test Kerberos enumeration."""
-        from redaudit.core.net_discovery import _redteam_kerberos_enum
+        from redaudit.core.redteam import _redteam_kerberos_enum
 
         mock_which.return_value = "/usr/bin/nmap"
 
@@ -501,14 +501,14 @@ supportedLDAPVersion: 3
         self.assertEqual(res["hosts"][0]["realms"][0], "LAB.LOCAL")
         self.assertEqual(res["detected_realms"][0], "LAB.LOCAL")
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_vlan_enum(self, mock_which, mock_run_cmd):
         """Test VLAN enumeration via tcpdump capture."""
-        from redaudit.core.net_discovery import _redteam_vlan_enum
+        from redaudit.core.redteam import _redteam_vlan_enum
 
         mock_which.return_value = "/usr/bin/tcpdump"
-        with patch("redaudit.core.net_discovery._is_root", return_value=True):
+        with patch("redaudit.core.redteam._is_root", return_value=True):
             mock_run_cmd.return_value = (
                 0,
                 """
@@ -528,13 +528,13 @@ class TestRedTeamFeaturesFinal(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings("ignore")
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_stp_topology(self, mock_which, mock_run_cmd):
-        from redaudit.core.net_discovery import _redteam_stp_topology
+        from redaudit.core.redteam import _redteam_stp_topology
 
         mock_which.return_value = "/usr/bin/tcpdump"
-        with patch("redaudit.core.net_discovery._is_root", return_value=True):
+        with patch("redaudit.core.redteam._is_root", return_value=True):
             mock_run_cmd.return_value = (
                 0,
                 """
@@ -547,13 +547,13 @@ bridge id 8000.00e0.b0bb.bbbb
             self.assertEqual(res["status"], "ok")
             self.assertEqual(res["root_ids"][0], "8000.00e0.b0aa.aaaa")
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_hsrp_vrrp(self, mock_which, mock_run_cmd):
-        from redaudit.core.net_discovery import _redteam_hsrp_vrrp_discovery
+        from redaudit.core.redteam import _redteam_hsrp_vrrp_discovery
 
         mock_which.return_value = "/usr/bin/tcpdump"
-        with patch("redaudit.core.net_discovery._is_root", return_value=True):
+        with patch("redaudit.core.redteam._is_root", return_value=True):
             mock_run_cmd.return_value = (
                 0,
                 """
@@ -567,13 +567,13 @@ VRRP v2 192.168.1.2 Adv
             self.assertIn("vrrp", res["protocols_observed"])
             self.assertIn("192.168.1.1", res["ip_candidates"])
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_llmnr(self, mock_which, mock_run_cmd):
-        from redaudit.core.net_discovery import _redteam_llmnr_nbtns_capture
+        from redaudit.core.redteam import _redteam_llmnr_nbtns_capture
 
         mock_which.return_value = "/usr/bin/tcpdump"
-        with patch("redaudit.core.net_discovery._is_root", return_value=True):
+        with patch("redaudit.core.redteam._is_root", return_value=True):
             mock_run_cmd.return_value = (
                 0,
                 """
@@ -586,10 +586,10 @@ VRRP v2 192.168.1.2 Adv
             self.assertIn("WPAD", res["llmnr_queries_sample"])
             self.assertIn("FILESERVER", res["nbns_queries_sample"])
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_router_discovery_igmp(self, mock_which, mock_run_cmd):
-        from redaudit.core.net_discovery import _redteam_router_discovery
+        from redaudit.core.redteam import _redteam_router_discovery
 
         mock_which.return_value = "/usr/bin/nmap"
         mock_run_cmd.return_value = (
@@ -608,10 +608,10 @@ Pre-execution script output:
         self.assertEqual(res["status"], "ok")
         self.assertIn("192.168.1.1", res["router_candidates"])
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_ipv6_discovery(self, mock_which, mock_run_cmd):
-        from redaudit.core.net_discovery import _redteam_ipv6_discovery
+        from redaudit.core.redteam import _redteam_ipv6_discovery
 
         def which_side_effect(cmd):
             if cmd in ["ping6", "ip"]:
@@ -620,7 +620,7 @@ Pre-execution script output:
 
         mock_which.side_effect = which_side_effect
 
-        with patch("redaudit.core.net_discovery._is_root", return_value=True):
+        with patch("redaudit.core.redteam._is_root", return_value=True):
             mock_run_cmd.return_value = (
                 0,
                 """
@@ -633,9 +633,9 @@ fe80::1 dev eth0 lladdr aa:bb:cc:dd:ee:ff REACHABLE
             self.assertEqual(res["neighbors"][0]["ip"], "fe80::1")
             self.assertEqual(res["neighbors"][0]["mac"], "aa:bb:cc:dd:ee:ff")
 
-    @patch("redaudit.core.net_discovery._is_root", return_value=True)
+    @patch("redaudit.core.redteam._is_root", return_value=True)
     def test_redteam_scapy_custom(self, mock_root):
-        from redaudit.core.net_discovery import _redteam_scapy_custom
+        from redaudit.core.redteam import _redteam_scapy_custom
 
         mock_scapy = MagicMock()
         mock_scapy.__version__ = "2.5.0"
@@ -669,13 +669,13 @@ class TestRedTeamFeaturesEdgeCases(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings("ignore")
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_bettercap(self, mock_which, mock_run_cmd):
-        from redaudit.core.net_discovery import _redteam_bettercap_recon
+        from redaudit.core.redteam import _redteam_bettercap_recon
 
         mock_which.return_value = "/usr/bin/bettercap"
-        with patch("redaudit.core.net_discovery._is_root", return_value=True):
+        with patch("redaudit.core.redteam._is_root", return_value=True):
             mock_run_cmd.return_value = (
                 0,
                 """
@@ -687,10 +687,10 @@ class TestRedTeamFeaturesEdgeCases(unittest.TestCase):
             self.assertEqual(res["status"], "ok")
             self.assertIn("192.168.1.10", res["raw_sample"])
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_kerbrute_userenum(self, mock_which, mock_run_cmd):
-        from redaudit.core.net_discovery import _redteam_kerberos_enum
+        from redaudit.core.redteam import _redteam_kerberos_enum
 
         def which_side_effect(cmd):
             return "/usr/bin/" + cmd
@@ -723,10 +723,10 @@ class TestRedTeamFeaturesEdgeCases(unittest.TestCase):
             self.assertEqual(res["userenum"]["status"], "ok")
             self.assertIn("admin", res["userenum"]["valid_users_sample"])
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_ipv6_ndp_fallback(self, mock_which, mock_run_cmd):
-        from redaudit.core.net_discovery import _redteam_ipv6_discovery
+        from redaudit.core.redteam import _redteam_ipv6_discovery
 
         # Mock only ndp available (macOS style)
         def which_side_effect(cmd):
@@ -734,7 +734,7 @@ class TestRedTeamFeaturesEdgeCases(unittest.TestCase):
 
         mock_which.side_effect = which_side_effect
 
-        with patch("redaudit.core.net_discovery._is_root", return_value=True):
+        with patch("redaudit.core.redteam._is_root", return_value=True):
             mock_run_cmd.return_value = (
                 0,
                 """
@@ -747,10 +747,10 @@ fe80::1%eth0 aa:bb:cc:dd:ee:ff eth0 permanent R
             self.assertEqual(res["neighbors"][0]["ip"], "fe80::1%eth0")
             self.assertEqual(res["neighbors"][0]["mac"], "aa:bb:cc:dd:ee:ff")
 
-    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
     def test_redteam_router_passive_fallback(self, mock_which, mock_run_cmd):
-        from redaudit.core.net_discovery import _redteam_router_discovery
+        from redaudit.core.redteam import _redteam_router_discovery
 
         # No nmap, use tcpdump
         mock_which.return_value = "/usr/bin/tcpdump"
@@ -763,7 +763,7 @@ fe80::1%eth0 aa:bb:cc:dd:ee:ff eth0 permanent R
             "",
         )
 
-        with patch("redaudit.core.net_discovery._is_root", return_value=True):
+        with patch("redaudit.core.redteam._is_root", return_value=True):
             res = _redteam_router_discovery("eth0", tools={"tcpdump": True})
             self.assertEqual(res["status"], "ok")
             self.assertEqual(res["tool"], "tcpdump")
