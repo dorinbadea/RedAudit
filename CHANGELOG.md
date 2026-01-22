@@ -14,6 +14,16 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.6] - 2026-01-22
+
+### Fixed
+
+- **Auth Scan Lynis Output**: Host objects now store Lynis results safely to avoid `TypeError` crashes.
+- **Agentless Filter Init**: Removed duplicate `host_agentless` assignment in the Nuclei false-positive filter path.
+- **PCAP Summary Count**: CLI summary now counts all PCAP artifacts, including full capture files.
+- **Identity Threshold Validation**: `--identity-threshold` is now bounded to 0-100 with a safe fallback.
+- **Docs Consistency**: Clarified thread fallback, jitter detail, identity threshold range, and USAGE section numbering.
+
 ## [4.18.5] - 2026-01-22
 
 ### Fixed

@@ -14,6 +14,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.6] - 2026-01-22
+
+### Corregido
+
+- **Salida de Lynis en autenticado**: Los objetos Host ahora guardan resultados de Lynis sin provocar `TypeError`.
+- **Inicialización de filtro sin agente**: Eliminada la asignación duplicada de `host_agentless` en el filtro de falsos positivos de Nuclei.
+- **Recuento de PCAPs**: El resumen CLI ahora cuenta todos los artefactos PCAP, incluido el full capture.
+- **Validación de identity threshold**: `--identity-threshold` ahora se limita a 0-100 con fallback seguro.
+- **Consistencia de docs**: Aclarado el fallback de hilos, el jitter, el rango de identity threshold y la numeración de USAGE.
+
 ## [4.18.5] - 2026-01-22
 
 ### Corregido
