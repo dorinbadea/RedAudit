@@ -17,7 +17,7 @@ These items represent the current backlog of planned or deferred work for the re
 ### v4.14 Dependency Management (Priority: Low)
 
 | Feature | Status | Description |
-|---|---|---|
+| --- | --- | --- |
 | **Dependency Pinning Mode** | Done (v4.18.8) | Optional toolchain pinning for GitHub-downloaded tools via `REDAUDIT_TOOLCHAIN_MODE` and version overrides. |
 | **Poetry Lockfile Evaluation** | Done (v4.18.8) | Added `poetry.lock` alongside pip-tools for evaluation and workflow parity. |
 | **Streaming JSON Report** | Planned | Incremental write for reports >500MB on very large networks to prevent OOM. |
@@ -25,7 +25,7 @@ These items represent the current backlog of planned or deferred work for the re
 ### Deferred / Technical Backlog
 
 | Feature | Status | Description |
-|---|---|---|
+| --- | --- | --- |
 | **auditor.py Refactor** | Deferred | Split orchestration and decision logic only if it unlocks testing or fixes defects. |
 | **PyPI Distribution** | Deferred | Publishing `pip install redaudit`. Blocked by need for extensive cross-platform testing. |
 | **Plugin Engine** | Deferred | "Plugin-first" architecture to decouple core scanner from tools. |
@@ -38,7 +38,7 @@ These items represent the current backlog of planned or deferred work for the re
 ### Future Features (v5.0.0)
 
 | Feature | Description |
-|---|---|
+| --- | --- |
 | **Protocol Specific IoT Probes** | Deep queries for device-specific protocols (Tuya, CoAP, proprietary). |
 | **Leak Following** | Automated scope expansion based on leaked internal headers. |
 | **Pipeline Audit** | Interactive visualization of the discovery flow. |
@@ -52,7 +52,7 @@ These items are ordered chronologically (most recent first).
 ### v4.13 Resilience & Observability (Done)
 
 | Feature | Status | Description |
-|---|---|---|
+| --- | --- | --- |
 | **Dead Host Retries** | Done (v4.13.0) | New `--dead-host-retries` CLI flag to abandon hosts after N consecutive timeouts. |
 | **Honeypot Detection** | Done (v4.9.1) | Heuristic tagging (`honeypot`) for hosts with excessive open ports (>100). |
 | **No-Response Tagging** | Done (v4.9.1) | Distinct `no_response` tag for hosts that fail Nmap scanning. |
@@ -61,7 +61,7 @@ These items are ordered chronologically (most recent first).
 ### v4.12 Performance & Data Quality (Done)
 
 | Feature | Status | Description |
-|---|---|---|
+| --- | --- | --- |
 | **Nuclei 'Fast' Profile Optimization** | Done (v4.12.1) | Boosted speed (300 req/s) and batch size (15) for fast profile. |
 | **OUI Vendor Enrichment** | Done (v4.12.1) | Fallback to online API for unknown vendors in network topology. |
 | **Clarified 'Express' Wizard** | Done (v4.12.1) | Updated i18n to explicitly state "Discovery Only". |
@@ -71,7 +71,7 @@ These items are ordered chronologically (most recent first).
 ### v4.11 Performance & IoT Visibility (Done)
 
 | Feature | Status | Description |
-|---|---|---|
+| --- | --- | --- |
 | **Nuclei Scan Profiles** | Done (v4.11.0) | `--profile` flag (full/balanced/fast) to control scan intensity and speed. |
 | **IoT WiZ Detection** | Done (v4.11.0) | Specialized UDP probe (38899) for WiZ smart bulbs. |
 | **OUI Database Expansion** | Done (v4.11.0) | Updated Macs to ~39k vendors (Wireshark ingest). |
@@ -80,7 +80,7 @@ These items are ordered chronologically (most recent first).
 ### v4.10 Advanced Discovery (Done)
 
 | Feature | Status | Description |
-|---|---|---|
+| --- | --- | --- |
 | **SNMP Router Query** | Done (v4.10.0) | Query router interfaces and remote ARP tables via `snmpwalk`. |
 | **LLDP Discovery** | Done (v4.10.0) | Discover switch topology on managed networks via `lldpctl`. |
 | **CDP Discovery** | Done (v4.10.0) | Cisco Discovery Protocol parsing for Cisco-based topologies. |
@@ -89,7 +89,7 @@ These items are ordered chronologically (most recent first).
 ### v4.9 Hidden Network Detection (Done)
 
 | Feature | Status | Description |
-|---|---|---|
+| --- | --- | --- |
 | **Routed Network Discovery** | Done (v4.9.0) | Detect hidden networks via `ip route` and `ip neigh` parsing. |
 | **Interactive Discovery Prompt** | Done (v4.9.0) | Wizard asks to include discovered routed networks in scope. |
 | **CLI --scan-routed** | Done (v4.9.0) | Automated inclusion of routed networks for CI/CD pipelines. |
@@ -100,7 +100,7 @@ These items are ordered chronologically (most recent first).
 ### v4.8 RustScan and Installer Fixes (Done)
 
 | Feature | Status | Description |
-|---|---|---|
+| --- | --- | --- |
 | **RustScan Full Port Range** | Done (v4.8.2) | Force `-r 1-65535` to scan all ports instead of RustScan's default top 1000. |
 | **ARM64 Installer Support** | Done (v4.8.3) | Added ARM64/aarch64 detection for Raspberry Pi and Apple Silicon VMs. |
 | **Nuclei Wizard Toggle** | Done (v4.8.1) | Restore interactive Nuclei enable prompt in Exhaustive profile. |
@@ -192,7 +192,7 @@ Internal refactoring using Strangler Fig pattern. Completed in v4.0.0.
 Reference verification of key capabilities against the codebase.
 
 | Capability | Version | Code Path / Verification |
-|---|---|---|
+| --- | --- | --- |
 | **Passive LLDP Discovery** | v4.10.0 | `core/topology.py` (via `tcpdump` & `lldpctl`) |
 | **Passive CDP Discovery** | v4.10.0 | `core/topology.py` (via `tcpdump`/CISCO-CDP) |
 | **VLAN Tagging (802.1Q)** | v4.10.0 | `core/topology.py` (via `ip link`/`ifconfig`) |
