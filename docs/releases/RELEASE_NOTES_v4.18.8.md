@@ -22,7 +22,8 @@ This release adds a toolchain pinning mode to the installer, introduces a Poetry
 
 ## Testing
 
-- Not run (pending user verification).
+- `pre-commit run --all-files`
+- `pytest tests/ -v`
 
 ## Upgrade
 

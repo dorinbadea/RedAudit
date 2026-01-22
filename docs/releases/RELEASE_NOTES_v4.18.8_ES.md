@@ -22,7 +22,8 @@ Esta version añade un modo de anclaje del toolchain en el instalador, incorpora
 
 ## Testing
 
-- No ejecutado (pendiente de verificacion del usuario).
+- `pre-commit run --all-files`
+- `pytest tests/ -v`
 
 ## Upgrade
 
