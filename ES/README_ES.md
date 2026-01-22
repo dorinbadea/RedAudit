@@ -489,6 +489,7 @@ RedAudit orquesta estas herramientas:
 redaudit/
 ├── core/                   # Funcionalidad Core
 │   ├── auditor.py          # Orquestador principal
+│   ├── auditor_components.py # Helpers compartidos de orquestacion
 │   ├── auditor_scan.py     # Lógica de escaneo (Nmap/Masscan/HyperScan adapter)
 │   ├── auditor_vuln.py     # Escaneo de vulnerabilidades (Nikto/Nuclei/Exploits)
 │   ├── auditor_runtime.py  # Adaptador de composición
@@ -496,11 +497,17 @@ redaudit/
 │   ├── ui_manager.py       # Gestor centralizado de UI/Salida
 │   ├── scanner/            # Wrapper de bajo nivel Nmap + Helpers IPv6
 │   ├── network.py          # Detección de interfaces de red
+│   ├── network_scanner.py  # Orquestacion del escaneo de hosts
 │   ├── hyperscan.py        # Descubrimiento paralelo ultra-rápido (Fase 0)
+│   ├── rustscan.py         # Integracion RustScan para descubrimiento de puertos (v4.8+)
 │   ├── net_discovery.py    # Descubrimiento L2/Broadcast mejorado
+│   ├── redteam.py          # Helpers de descubrimiento Red Team (opt-in)
 │   ├── topology.py         # Descubrimiento de topología de red (L3/VLAN)
 │   ├── udp_probe.py        # Helpers de sondeo UDP
+│   ├── syn_scanner.py      # Helpers de escaneo TCP SYN
 │   ├── agentless_verify.py # Verificaciones sin agente (SMB/RDP/LDAP/SSH/HTTP)
+│   ├── identity_utils.py   # Helpers de scoring de identidad
+│   ├── config_context.py   # Vista de configuracion en runtime
 │   ├── auth_*.py           # Manejadores de autenticación por protocolo
 │   ├── nuclei.py           # Integración scanner de plantillas Nuclei
 │   ├── playbook_generator.py # Generador de playbooks de remediación
@@ -517,9 +524,12 @@ redaudit/
 │   ├── command_runner.py   # Ejecución segura de comandos externos
 │   ├── power.py            # Inhibición de suspensión
 │   ├── proxy.py            # Manejo de proxy
+│   ├── tool_compat.py      # Helpers de compatibilidad del toolchain
 │   ├── scanner_versions.py # Detección de versiones de herramientas externas
 │   ├── verify_vuln.py      # Filtro de falsos positivos Smart-Check
 │   ├── credentials.py      # Proveedor de credenciales (keyring/env/file)
+│   ├── credentials_manager.py # Helpers de orquestacion de credenciales
+│   ├── models.py           # Modelos/dataclasses compartidos
 │   └── updater.py          # Sistema de auto-actualización
 ├── templates/              # Plantillas de informes HTML
 └── utils/                  # Utilidades (i18n, config, constants)

@@ -486,6 +486,7 @@ RedAudit orchestrates these tools:
 redaudit/
 ├── core/                   # Core functionality
 │   ├── auditor.py          # Main orchestrator (composition entrypoint)
+│   ├── auditor_components.py # Shared orchestration helpers
 │   ├── auditor_scan.py     # Scanning logic (Nmap/Masscan/HyperScan adapter)
 │   ├── auditor_vuln.py     # Vulnerability scanning (Nikto/Nuclei/Exploits)
 │   ├── auditor_runtime.py  # Composition adapter (auditor component bridge)
@@ -493,12 +494,17 @@ redaudit/
 │   ├── ui_manager.py       # Centralized UI/Output manager
 │   ├── scanner/            # Low-level Nmap wrapper + IPv6 helpers
 │   ├── network.py          # Network interface detection
+│   ├── network_scanner.py  # Host scanning orchestration
 │   ├── hyperscan.py        # Ultra-fast parallel discovery (Phase 0)
 │   ├── rustscan.py         # RustScan integration for port discovery (v4.8+)
 │   ├── net_discovery.py    # Enhanced L2/Broadcast discovery
+│   ├── redteam.py          # Red Team discovery helpers (opt-in)
 │   ├── topology.py         # Network topology discovery (L3/VLAN)
 │   ├── udp_probe.py        # UDP probing helpers
+│   ├── syn_scanner.py      # TCP SYN scan helpers
 │   ├── agentless_verify.py # Agentless SMB/RDP/LDAP/SSH/HTTP checks
+│   ├── identity_utils.py   # Identity scoring helpers
+│   ├── config_context.py   # Runtime config view / convenience accessors
 │   ├── auth_*.py           # Protocol-specific auth handlers (SMB, SSH, SNMP)
 │   ├── nuclei.py           # Nuclei template scanner integration
 │   ├── playbook_generator.py # Remediation playbook generator
@@ -515,9 +521,12 @@ redaudit/
 │   ├── command_runner.py   # Safe external command execution
 │   ├── power.py            # Sleep inhibition helpers
 │   ├── proxy.py            # Proxy handling
+│   ├── tool_compat.py      # Toolchain feature/compatibility helpers
 │   ├── scanner_versions.py # External tool version detection
 │   ├── verify_vuln.py      # Smart-Check false positive filter
 │   ├── credentials.py      # Credential provider (keyring/env/file)
+│   ├── credentials_manager.py # Credential orchestration helpers
+│   ├── models.py           # Shared dataclasses/models
 │   └── updater.py          # Auto-update system
 ├── templates/              # HTML report templates
 └── utils/                  # Utilities (i18n, config, constants)
