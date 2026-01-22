@@ -817,9 +817,9 @@ def test_show_results_summary_uses_pcap_summary(capsys):
         "pcap_summary": {"merged_file": "full_capture.pcap", "individual_count": 10},
     }
     colors = {"HEADER": "", "ENDC": "", "OKGREEN": ""}
-    t_fn = lambda key, *args: f\"{key}:{args[0]}\" if args else key
+    t_fn = lambda key, *args: f"{key}:{args[0]}" if args else key
 
     show_results_summary(results, t_fn, colors, "/tmp/output")
 
     captured = capsys.readouterr().out
-    assert \"pcaps:11\" in captured
+    assert "pcaps:11" in captured
