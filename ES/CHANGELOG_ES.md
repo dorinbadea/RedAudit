@@ -14,6 +14,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.12] - 2026-01-23
+
+### Corregido
+
+- **Métricas HyperScan-First**: El barrido HyperScan-First ahora gobierna las comparativas `hyperscan_vs_final` para evitar subcuentas de puertos en el discovery rápido.
+- **Merge de masscan en HyperScan-First**: La detección con RustScan ahora fusiona puertos de masscan como fallback, en lugar de reemplazar el resultado completo.
+- **Precisión de pistas DHCP**: Los timeouts DHCP ya no reportan falta de IPv4 cuando la ruta por defecto ya aporta dirección de origen.
+- **Errores de auth en HTML (ES)**: Los informes HTML en español traducen los errores del escaneo autenticado.
+- **Exclusión de IPs del auditor**: El filtrado excluye IPs locales de interfaces y rutas para evitar listar el propio nodo auditor.
+
 ## [4.18.11] - 2026-01-23
 
 ### Corregido

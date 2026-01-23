@@ -14,6 +14,16 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.12] - 2026-01-23
+
+### Fixed
+
+- **HyperScan-First Metrics**: The HyperScan-First sweep now drives `hyperscan_vs_final` comparisons to avoid undercounting from quick discovery ports.
+- **HyperScan-First Masscan Merge**: RustScan-driven discovery now merges any masscan fallback ports instead of replacing full results.
+- **DHCP Hint Accuracy**: DHCP timeout hints no longer claim missing IPv4 when the default route already provides a source address.
+- **HTML Auth Errors (ES)**: Spanish HTML reports now translate authenticated scan error messages.
+- **Auditor IP Exclusion**: Filters now exclude local interface and route source IPs to avoid listing the scanner node as a target.
+
 ## [4.18.11] - 2026-01-23
 
 ### Fixed
