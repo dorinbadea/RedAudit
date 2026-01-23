@@ -2,7 +2,7 @@ blank_issues_enabled: false
 contact_links:
   - name: Security reports
     url: https://github.com/dorinbadea/RedAudit/blob/main/docs/SECURITY.en.md
-    about: Report vulnerabilities privately via security@dorinbadea.com
+    about: Report vulnerabilities privately via dorinidtech@gmail.com
   - name: Reportes de seguridad
     url: https://github.com/dorinbadea/RedAudit/blob/main/docs/SECURITY.es.md
-    about: Reporta vulnerabilidades en privado (security@dorinbadea.com)
+    about: Reporta vulnerabilidades en privado (dorinidtech@gmail.com)

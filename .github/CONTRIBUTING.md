@@ -182,7 +182,7 @@ Include:
 
 **Do not report security vulnerabilities via public issues!**
 
-Email: `security@dorinbadea.com`
+Email: `dorinidtech@gmail.com`
 
 See [SECURITY.md](../docs/SECURITY.en.md) for our vulnerability disclosure policy.
 
