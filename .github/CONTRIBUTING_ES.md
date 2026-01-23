@@ -180,7 +180,7 @@ Incluir:
 
 **¡No reportar vulnerabilidades de seguridad via issues públicos!**
 
-Email: `security@dorinbadea.com`
+Email: `dorinidtech@gmail.com`
 
 Ver [SECURITY.md](../docs/SECURITY.es.md) para nuestra política de divulgación de vulnerabilidades.
 
