@@ -151,7 +151,11 @@ def _summarize_hyperscan_vs_final(
     if not isinstance(net_discovery, dict) or not net_discovery:
         return {}
 
-    hyperscan_tcp = net_discovery.get("hyperscan_tcp_hosts") or {}
+    hyperscan_tcp = (
+        net_discovery.get("hyperscan_first_tcp_hosts")
+        or net_discovery.get("hyperscan_tcp_hosts")
+        or {}
+    )
     hyperscan_udp = net_discovery.get("hyperscan_udp_ports") or {}
 
     if not hyperscan_tcp and not hyperscan_udp:

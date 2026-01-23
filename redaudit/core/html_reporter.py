@@ -291,6 +291,8 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
             continue
         ip = item.get("ip") or "-"
         msg = item.get("error") or "Unknown error"
+        if lang.lower() == "es":
+            msg = _translate_auth_error(msg, lang)
         auth_errors.append(f"{ip}: {msg}")
 
     auth_summary = {
@@ -348,6 +350,20 @@ def _translate_pipeline_error(error: str, lang: str) -> str:
         "no DHCP server responding on this network": "ningún servidor DHCP responde en esta red",
         "dhcp-discover failed on ": "dhcp-discover falló en ",
         "dhcp-discover failed": "dhcp-discover falló",
+    }
+    translated = error
+    for src, dst in replacements.items():
+        translated = translated.replace(src, dst)
+    return translated
+
+
+def _translate_auth_error(error: str, lang: str) -> str:
+    if not error or lang.lower() != "es":
+        return error
+    replacements = {
+        "All credentials failed": "Todas las credenciales fallaron",
+        "Authentication failed": "Autenticación fallida",
+        "Unknown error": "Error desconocido",
     }
     translated = error
     for src, dst in replacements.items():

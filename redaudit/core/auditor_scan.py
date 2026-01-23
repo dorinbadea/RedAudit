@@ -2414,7 +2414,7 @@ class AuditorScan:
         if "_hyperscan_discovery_ports" not in self.__dict__:
             self._hyperscan_discovery_ports = {}
 
-        # Check for existing masscan results to reuse
+        # Check for existing masscan results to reuse as a fallback/merge (never replace)
         net_discovery = self.results.get("net_discovery") or {}
         redteam = net_discovery.get("redteam") or {}
         masscan_result = redteam.get("masscan") or {}
@@ -2482,17 +2482,7 @@ class AuditorScan:
             if self.interrupted:
                 return
 
-            # Check masscan reuse inside worker (thread-safe check, strict local usage)
-            if w_ip in masscan_ports:
-                self._hyperscan_discovery_ports[w_ip] = sorted(set(masscan_ports[w_ip]))
-                if emit_worker_status:
-                    self.ui.print_status(
-                        self.ui.t("hyperscan_masscan_reuse").format(
-                            w_idx, discovery_count, w_ip, len(masscan_ports[w_ip])
-                        ),
-                        "OKGREEN",
-                    )
-                return
+            seed_ports = sorted(set(masscan_ports.get(w_ip, []) or []))
 
             # Run HyperScan
             # v4.15: Removed SYN lock - hyperscan_full_port_sweep uses RustScan (parallel)
@@ -2504,6 +2494,8 @@ class AuditorScan:
                     timeout=1.5,
                     logger=self.logger,
                 )
+                if seed_ports:
+                    w_ports = sorted(set(w_ports or []) | set(seed_ports))
                 self._hyperscan_discovery_ports[w_ip] = w_ports
                 if w_ports:
                     if emit_worker_status:
@@ -2520,7 +2512,10 @@ class AuditorScan:
                             "WARNING",
                         )
             except Exception as e:
-                self.logger.warning("HyperScan discovery failed for %s: %s", w_ip, e)
+                if seed_ports:
+                    self._hyperscan_discovery_ports[w_ip] = seed_ports
+                if self.logger:
+                    self.logger.warning("HyperScan discovery failed for %s: %s", w_ip, e)
 
         # Execute parallel scan
         with ThreadPoolExecutor(max_workers=hs_workers) as executor:

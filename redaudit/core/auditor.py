@@ -384,10 +384,17 @@ class InteractiveNetworkAuditor:
         Filter out auditor's own IPs from the host list.
         Uses self.results['network_info'] as the source of truth.
         """
-        if not self.results.get("network_info"):
-            return hosts
-
-        auditor_ips = {n.get("ip") for n in self.results["network_info"] if n.get("ip")}
+        network_info = self.results.get("network_info") or []
+        auditor_ips = {n.get("ip") for n in network_info if n.get("ip")}
+        topology = self.results.get("topology") or {}
+        for route in topology.get("routes", []) or []:
+            src_ip = route.get("src")
+            if src_ip:
+                auditor_ips.add(src_ip)
+        for iface in topology.get("interfaces", []) or []:
+            iface_ip = iface.get("ip")
+            if iface_ip:
+                auditor_ips.add(iface_ip)
         if not auditor_ips:
             return hosts
 
@@ -783,7 +790,13 @@ class InteractiveNetworkAuditor:
             # v4.1: Run HyperScan-First sequentially BEFORE parallel nmap
             # This avoids file descriptor exhaustion by running one at a time
             if not self.interrupted:
-                self._run_hyperscan_discovery(all_hosts)
+                hyperscan_ports = self._run_hyperscan_discovery(all_hosts)
+                if hyperscan_ports:
+                    net_discovery = self.results.get("net_discovery")
+                    if not isinstance(net_discovery, dict):
+                        net_discovery = {}
+                        self.results["net_discovery"] = net_discovery
+                    net_discovery["hyperscan_first_tcp_hosts"] = hyperscan_ports
 
             results = self.scan_hosts_concurrent(host_targets)
 

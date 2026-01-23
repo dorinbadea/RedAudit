@@ -274,6 +274,25 @@ def _format_dhcp_timeout_hint(interface: Optional[str], logger=None) -> Optional
     iface_for_hint = interface or detect_default_route_interface(logger)
     facts = _get_interface_facts(iface_for_hint, logger)
     hints = []
+    default_src_ip = None
+
+    def _default_route_src_ip() -> Optional[str]:
+        if not iface_for_hint or not shutil.which("ip"):
+            return None
+        rc, out, _ = _run_cmd(["ip", "route", "show", "default"], 4, logger)
+        if rc != 0 and not out.strip():
+            return None
+        for line in out.splitlines():
+            parts = line.split()
+            if "dev" in parts and parts[parts.index("dev") + 1] == iface_for_hint:
+                if "src" in parts:
+                    try:
+                        return parts[parts.index("src") + 1]
+                    except Exception:
+                        return None
+        return None
+
+    default_src_ip = _default_route_src_ip()
 
     def _add_hint(text: str) -> None:
         if text not in hints:
@@ -283,7 +302,7 @@ def _format_dhcp_timeout_hint(interface: Optional[str], logger=None) -> Optional
         _add_hint("interface is loopback; DHCP is not applicable")
     if facts.get("link_up") is False or facts.get("carrier") is False:
         _add_hint("interface appears down or has no carrier")
-    if facts.get("ipv4_checked") and not facts.get("ipv4"):
+    if facts.get("ipv4_checked") and not facts.get("ipv4") and not default_src_ip:
         _add_hint("no IPv4 address detected on interface")
     if facts.get("kind") == "virtual":
         _add_hint("interface looks virtual/bridge; DHCP may be unavailable")

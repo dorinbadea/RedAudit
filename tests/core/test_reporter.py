@@ -206,6 +206,31 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(pipeline["agentless_verify"]["signals"]["smb"], 1)
         self.assertIn("corp.local", pipeline["agentless_verify"]["domains"])
 
+    def test_generate_summary_prefers_hyperscan_first(self):
+        results = {
+            "hosts": [
+                {
+                    "ip": "10.0.0.2",
+                    "ports": [
+                        {"port": 80, "protocol": "tcp"},
+                        {"port": 443, "protocol": "tcp"},
+                    ],
+                }
+            ],
+            "vulnerabilities": [],
+            "net_discovery": {
+                "hyperscan_tcp_hosts": {"10.0.0.2": [80]},
+                "hyperscan_first_tcp_hosts": {"10.0.0.2": [80, 443]},
+            },
+        }
+        config = {"target_networks": ["10.0.0.0/24"], "threads": 1, "scan_mode": "normal"}
+
+        generate_summary(results, config, ["10.0.0.2"], results["hosts"], datetime.now())
+
+        pipeline = results.get("pipeline", {})
+        hs = pipeline.get("hyperscan_vs_final", {}).get("totals", {})
+        self.assertEqual(hs.get("missed_tcp"), 0)
+
     def test_generate_text_report(self):
         """Test text report generation."""
         self.sample_results["summary"] = {
