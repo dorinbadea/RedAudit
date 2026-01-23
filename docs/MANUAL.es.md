@@ -112,6 +112,7 @@ docker run --rm --network host \
 ### Actualización
 
 RedAudit verifica actualizaciones al iniciar (modo interactivo). Para omitir: `--skip-update-check`.
+Si mantienes un checkout git en `~/RedAudit`, el updater refresca tags y hace fast‑forward de `main` cuando el repo está limpio para evitar prompts desfasados. Los cambios locales o ramas distintas de `main` no se tocan.
 
 ---
 
@@ -620,7 +621,7 @@ Cuando se usa `--encrypt`:
 **Evidencia y transparencia del pipeline:**
 
 - El JSON principal incluye metadatos de evidencia por hallazgo (herramienta fuente, matched_at, hash/ref de salida cruda si aplica).
-- El HTML muestra los args/timing de Nmap, ajustes de deep scan y el resumen HyperScan vs final cuando existe.
+- El HTML muestra los args/timing de Nmap, ajustes de deep scan, el resumen HyperScan vs final y el resultado del escaneo autenticado cuando existe.
 
 **Descifrado:**
 

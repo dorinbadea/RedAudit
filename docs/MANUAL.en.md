@@ -112,6 +112,7 @@ docker run --rm --network host \
 ### Update
 
 RedAudit checks for updates on startup (interactive mode). To skip: `--skip-update-check`.
+If you keep a local `~/RedAudit` git checkout, the updater refreshes tags and fast-forwards `main` when the repo is clean to avoid stale version prompts. Local changes or non-`main` branches are left untouched.
 
 ---
 
@@ -624,7 +625,7 @@ When `--encrypt` is used:
 **Evidence and pipeline transparency:**
 
 - The main JSON includes per-finding evidence metadata (source tool, matched_at, raw output hash/ref when available).
-- The HTML pipeline section exposes resolved Nmap args/timing, deep scan settings, and HyperScan vs final summary when present.
+- The HTML pipeline section exposes resolved Nmap args/timing, deep scan settings, HyperScan vs final summary, and authenticated scan outcomes when available.
 
 **Decryption:**
 

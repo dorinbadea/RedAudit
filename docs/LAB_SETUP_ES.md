@@ -39,6 +39,8 @@ sudo bash scripts/setup_lab.sh install
 sudo bash scripts/setup_lab.sh status
 ```
 
+**Rotación de logs**: El script configura rotación de logs de Docker para evitar crecimiento excesivo de `*-json.log`. Si creaste el lab antes de este cambio, recrea los contenedores para aplicarlo.
+
 ## Gestion del Laboratorio
 
 | Accion | Comando | Descripcion |
@@ -127,6 +129,12 @@ done
 | **.71** | `iot-router` | Router IoT | `admin` | `password` | Web/IoT |
 
 ## Comandos de Instalacion (Verificados)
+
+El script automatizado aplica rotacion de logs de Docker a todos los contenedores. Si ejecutas estos comandos manualmente, anade:
+
+```
+--log-driver local --log-opt max-size=10m --log-opt max-file=3
+```
 
 ### Grupo Core (Web y Legacy)
 
