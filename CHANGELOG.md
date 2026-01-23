@@ -12,7 +12,7 @@ Release notes live under `docs/releases/` for additional context.
 
 ### Fixed
 
-- None.
+- **DHCP Timeout Hints**: Added best-effort hints for DHCP broadcast timeouts to help interpret missing responses.
 
 ## [4.18.9] - 2026-01-23
 
