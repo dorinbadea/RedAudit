@@ -401,6 +401,29 @@ def test_dhcp_discover_nmap_fail():
             assert res["error"] == "dhcp-discover failed on default route: nmap error"
 
 
+def test_dhcp_discover_timeout_includes_hint(monkeypatch):
+    monkeypatch.setattr(net_discovery.shutil, "which", lambda _tool: True)
+    monkeypatch.setattr(net_discovery, "_run_cmd", lambda *_a, **_k: (124, "", "timeout"))
+    monkeypatch.setattr(
+        net_discovery,
+        "_get_interface_facts",
+        lambda *_a, **_k: {
+            "iface": "eth0",
+            "link_up": False,
+            "carrier": False,
+            "ipv4": [],
+            "ipv6": [],
+            "kind": "virtual",
+        },
+    )
+
+    result = net_discovery.dhcp_discover(interface="eth0")
+
+    assert "no response to DHCP broadcast on eth0 (timeout)." in result["error"]
+    assert "Possible causes:" in result["error"]
+    assert "interface appears down or has no carrier" in result["error"]
+
+
 def test_dhcp_discover_parsing_edge():
     """Test dhcp_discover parsing edge cases (lines 135-138, 161, 167, 173)."""
     # DHCPOFFER without IP, then another DHCPOFFER with IP.

@@ -141,6 +141,17 @@ sudo bash redaudit_install.sh -y
 - Check Nmap supports IPv6: `nmap -6 ::1`
 - Use `--ipv6` flag for IPv6-only mode
 
+### 9b. DHCP discovery timeout (no response)
+
+**Symptom**: You see `dhcp: no response to DHCP broadcast on <iface> (timeout)` in Net Discovery.
+**Explanation**: DHCP broadcast probes are best-effort. In lab, container, or static networks there may be no DHCP server, or broadcasts may be blocked.
+**Resolution**:
+
+- Confirm the interface is up and has carrier.
+- If the interface is virtual/bridge (Docker, VM), DHCP may be intentionally absent.
+- On wireless, AP isolation can block broadcast traffic.
+- If your network is static, you can ignore this warning.
+
 ### 10. NVD API rate limit errors (v3.0)
 
 **Symptom**: "Rate limit exceeded" or slow CVE lookups.

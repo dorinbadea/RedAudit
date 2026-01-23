@@ -103,6 +103,19 @@ def _run_cmd_suppress_stderr(
 
 
 _IFACE_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9\\-_]{0,31}$")
+_VIRTUAL_IFACE_PREFIXES = (
+    "br-",
+    "docker",
+    "veth",
+    "virbr",
+    "vmnet",
+    "vboxnet",
+    "tap",
+    "tun",
+    "wg",
+    "zt",
+)
+_WIRELESS_IFACE_PREFIXES = ("wl", "wlan", "wifi", "wlp")
 
 
 def _sanitize_iface(iface: Optional[str]) -> Optional[str]:
@@ -168,6 +181,116 @@ def detect_default_route_interface(logger=None) -> Optional[str]:
     return None
 
 
+def _classify_iface_name(interface: Optional[str]) -> Optional[str]:
+    if not interface:
+        return None
+    name = interface.lower()
+    if name == "lo" or name.startswith("lo"):
+        return "loopback"
+    for prefix in _VIRTUAL_IFACE_PREFIXES:
+        if name.startswith(prefix):
+            return "virtual"
+    for prefix in _WIRELESS_IFACE_PREFIXES:
+        if name.startswith(prefix):
+            return "wireless"
+    return None
+
+
+def _get_interface_facts(interface: Optional[str], logger=None) -> Dict[str, Any]:
+    facts: Dict[str, Any] = {
+        "iface": None,
+        "link_up": None,
+        "carrier": None,
+        "ipv4": [],
+        "ipv6": [],
+        "kind": None,
+    }
+    safe_iface = _sanitize_iface(interface)
+    if not safe_iface:
+        return facts
+    facts["iface"] = safe_iface
+    facts["kind"] = _classify_iface_name(safe_iface)
+
+    if shutil.which("ip"):
+        rc, out, _ = _run_cmd(["ip", "-o", "link", "show", "dev", safe_iface], 2, logger)
+        if rc == 0 and out:
+            line = out.strip()
+            match = re.search(r"<([^>]+)>", line)
+            flags = set()
+            if match:
+                flags = {f.strip().upper() for f in match.group(1).split(",")}
+            if "UP" in flags:
+                facts["link_up"] = True
+            if "LOWER_UP" in flags:
+                facts["carrier"] = True
+            if "UP" not in flags and re.search(r"\\bstate\\s+(DOWN|LOWERLAYERDOWN)\\b", line):
+                facts["link_up"] = False
+            if "LOWER_UP" not in flags and re.search(r"\\bstate\\s+(DOWN|LOWERLAYERDOWN)\\b", line):
+                facts["carrier"] = False
+
+        rc, out, _ = _run_cmd(["ip", "-o", "-4", "addr", "show", "dev", safe_iface], 2, logger)
+        if rc == 0 and out:
+            for line in out.splitlines():
+                match = re.search(r"inet\\s+(\\d+\\.\\d+\\.\\d+\\.\\d+)/", line)
+                if match:
+                    facts["ipv4"].append(match.group(1))
+
+        rc, out, _ = _run_cmd(["ip", "-o", "-6", "addr", "show", "dev", safe_iface], 2, logger)
+        if rc == 0 and out:
+            for line in out.splitlines():
+                match = re.search(r"inet6\\s+([0-9a-fA-F:]+)/", line)
+                if match:
+                    facts["ipv6"].append(match.group(1))
+
+        return facts
+
+    if shutil.which("ifconfig"):
+        rc, out, _ = _run_cmd(["ifconfig", safe_iface], 2, logger)
+        if rc == 0 and out:
+            if "status: active" in out:
+                facts["link_up"] = True
+                facts["carrier"] = True
+            for line in out.splitlines():
+                line = line.strip()
+                if line.startswith("inet "):
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        facts["ipv4"].append(parts[1])
+                if line.startswith("inet6 "):
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        facts["ipv6"].append(parts[1])
+
+    return facts
+
+
+def _format_dhcp_timeout_hint(interface: Optional[str], logger=None) -> Optional[str]:
+    iface_for_hint = interface or detect_default_route_interface(logger)
+    facts = _get_interface_facts(iface_for_hint, logger)
+    hints = []
+
+    def _add_hint(text: str) -> None:
+        if text not in hints:
+            hints.append(text)
+
+    if facts.get("kind") == "loopback":
+        _add_hint("interface is loopback; DHCP is not applicable")
+    if facts.get("link_up") is False or facts.get("carrier") is False:
+        _add_hint("interface appears down or has no carrier")
+    if not facts.get("ipv4"):
+        _add_hint("no IPv4 address detected on interface")
+    if facts.get("kind") == "virtual":
+        _add_hint("interface looks virtual/bridge; DHCP may be unavailable")
+    if facts.get("kind") == "wireless":
+        _add_hint("wireless interface; AP isolation can block DHCP broadcasts")
+
+    _add_hint("no DHCP server responding on this network")
+
+    if not hints:
+        return None
+    return "Possible causes: " + "; ".join(hints)
+
+
 def dhcp_discover(
     interface: Optional[str] = None,
     timeout_s: int = 10,
@@ -198,7 +321,13 @@ def dhcp_discover(
         iface_label = interface or "default route"
         err_text = (err or "").strip()
         if rc == 124 or "timeout" in err_text.lower():
-            result["error"] = f"no response to DHCP broadcast on {iface_label} (timeout)"
+            hint = _format_dhcp_timeout_hint(interface, logger)
+            if hint:
+                result["error"] = (
+                    f"no response to DHCP broadcast on {iface_label} (timeout). {hint}"
+                )
+            else:
+                result["error"] = f"no response to DHCP broadcast on {iface_label} (timeout)"
         elif err_text:
             result["error"] = f"dhcp-discover failed on {iface_label}: {err_text}"
         else:

@@ -79,6 +79,36 @@ class TestRunAuthenticatedScans:
         # No auth_scan added since no SSH hosts
         assert "auth_scan" not in auditor.results
 
+    @patch("redaudit.core.auth_ssh.SSHScanner")
+    def test_ssh_nonstandard_port_detected(self, MockSSHScanner, auditor):
+        """SSH service on non-22 port should be detected and used."""
+        auditor.config = {
+            "auth_enabled": True,
+            "auth_ssh_user": "root",
+            "auth_ssh_pass": "secret",
+        }
+
+        host = {
+            "ip": "192.168.1.20",
+            "ports": [{"port": 2222, "service": "ssh", "state": "open"}],
+        }
+
+        mock_ssh = MockSSHScanner.return_value
+        mock_ssh.connect.return_value = True
+        mock_info = MagicMock()
+        mock_info.os_name = "Ubuntu"
+        mock_info.os_version = "22.04"
+        mock_info.kernel = "5.15.0"
+        mock_info.hostname = "testserver"
+        mock_info.packages = []
+        mock_info.services = []
+        mock_info.users = []
+        mock_ssh.gather_host_info.return_value = mock_info
+
+        auditor._run_authenticated_scans([host])
+
+        mock_ssh.connect.assert_called_with("192.168.1.20", port=2222)
+
     @patch("redaudit.core.auth_lynis.LynisScanner")
     @patch("redaudit.core.auth_ssh.SSHScanner")
     def test_ssh_connection_success(self, MockSSHScanner, MockLynisScanner, auditor):

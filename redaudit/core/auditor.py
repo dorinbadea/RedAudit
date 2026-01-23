@@ -1298,27 +1298,69 @@ class InteractiveNetworkAuditor:
                 )
             )
 
-        # Find hosts with SSH port (22) open
-        def has_ssh_port(host) -> bool:
-            """Check if host has SSH port 22 open. Handles both dict and Host objects."""
+        # Find hosts with SSH ports open (22 or non-standard where service is SSH)
+        def get_ssh_port(host) -> Optional[int]:
+            """Return SSH port for host if found (22 or service-based)."""
             # Get ports from dict or object
             if isinstance(host, dict):
                 ports = host.get("ports", [])
+                services = host.get("services", [])
             else:
                 ports = getattr(host, "ports", []) or []
+                services = getattr(host, "services", []) or []
 
+            def _port_from_entry(entry) -> Optional[int]:
+                if isinstance(entry, dict):
+                    port = entry.get("port")
+                    service = (entry.get("service") or entry.get("name") or "").lower()
+                    product = (entry.get("product") or "").lower()
+                    cpes = entry.get("cpe") or []
+                    if service == "ssh" or "ssh" in product:
+                        return int(port) if isinstance(port, int) else None
+                    if isinstance(cpes, list) and any("openssh" in str(c).lower() for c in cpes):
+                        return int(port) if isinstance(port, int) else None
+                    if port == 22:
+                        return 22
+                elif hasattr(entry, "port"):
+                    port = getattr(entry, "port", None)
+                    service = getattr(entry, "service", None)
+                    product = getattr(entry, "product", None)
+                    cpes = getattr(entry, "cpe", None) or []
+                    if str(service).lower() == "ssh" or "ssh" in str(product).lower():
+                        return int(port) if isinstance(port, int) else None
+                    if any("openssh" in str(c).lower() for c in cpes):
+                        return int(port) if isinstance(port, int) else None
+                    if port == 22:
+                        return 22
+                elif isinstance(entry, int) and entry == 22:
+                    return 22
+                return None
+
+            # Prefer explicit SSH service entries
             if isinstance(ports, list):
                 for p in ports:
-                    if isinstance(p, dict) and p.get("port") == 22:
-                        return True
-                    elif isinstance(p, int) and p == 22:
-                        return True
-                    # Handle Port objects (Pydantic models)
-                    elif hasattr(p, "port") and getattr(p, "port", None) == 22:
-                        return True
-            return False
+                    port = _port_from_entry(p)
+                    if port:
+                        return port
 
-        ssh_hosts = [h for h in hosts if has_ssh_port(h)]
+            # Fallback to services list if ports are missing service metadata
+            if isinstance(services, list):
+                for svc in services:
+                    if not isinstance(svc, dict):
+                        continue
+                    name = (svc.get("name") or "").lower()
+                    product = (svc.get("product") or "").lower()
+                    port = svc.get("port")
+                    if name == "ssh" or "ssh" in product:
+                        return int(port) if isinstance(port, int) else None
+
+            return None
+
+        ssh_hosts = []
+        for host in hosts:
+            port = get_ssh_port(host)
+            if port:
+                ssh_hosts.append((host, port))
 
         if not ssh_hosts:
             self.ui.print_status(self.ui.t("auth_scan_no_hosts"), "INFO")
@@ -1335,7 +1377,7 @@ class InteractiveNetworkAuditor:
             "errors": [],
         }
 
-        for host in ssh_hosts:
+        for host, ssh_port in ssh_hosts:
             if self.interrupted:
                 break
 
@@ -1356,7 +1398,7 @@ class InteractiveNetworkAuditor:
             for cred in credentials:
                 try:
                     scanner = SSHScanner(cred, timeout=30, trust_unknown_keys=True)
-                    scanner.connect(ip)
+                    scanner.connect(ip, port=int(ssh_port))
                     connected = True
                     working_cred = cred
                     break

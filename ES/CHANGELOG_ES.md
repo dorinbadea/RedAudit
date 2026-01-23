@@ -14,6 +14,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.10] - 2026-01-23
+
+### Corregido
+
+- **Pistas de timeout DHCP**: Añadidas pistas best-effort para timeouts de broadcast DHCP.
+- **Detección de puerto SSH**: El escaneo autenticado reconoce SSH en puertos no estándar (ej. 2222).
+
 ## [4.18.9] - 2026-01-23
 
 ### Mejorado
