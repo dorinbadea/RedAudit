@@ -124,12 +124,15 @@ sudo bash redaudit_install.sh -y
 ### 8b. La versión/banner no se refresca tras actualizar
 
 **Síntoma**: Actualizaste RedAudit pero el banner sigue mostrando la versión anterior.
-**Causa**: La shell puede estar cacheando la ruta del ejecutable (o sigues en la misma sesión de terminal).
+**Causa**: La shell puede estar cacheando la ruta del ejecutable (o sigues en la misma sesión de terminal). Si tienes un checkout git, el prompt/tag también puede quedar desfasado si el repo está en un commit antiguo o sin tags actualizados.
 **Solución**:
 
 - Reinicia el terminal (recomendado).
 - Si necesitas mantener la misma sesión, ejecuta `hash -r` (zsh/bash) para limpiar la caché.
 - Verifica qué binario se está ejecutando: `command -v redaudit`.
+- Si estás en un repo git de RedAudit, el updater ahora refresca tags y hace fast‑forward de `main` cuando el repo está limpio. Si tienes cambios locales o estás en otra rama/tag, actualiza manualmente:
+  - `git fetch --tags origin`
+  - `git checkout main && git pull --ff-only origin main`
 
 ### 9. Escaneo IPv6 no funciona (v3.0)
 

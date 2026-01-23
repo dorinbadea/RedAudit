@@ -15,6 +15,7 @@ Release notes live under `docs/releases/` for additional context.
 - **DHCP Hint Accuracy**: Avoids reporting missing IPv4 hints when interface data cannot be verified.
 - **HTML Pipeline Errors (ES)**: Pipeline error messages are now translated in Spanish reports.
 - **HTML Auth Summary**: Authenticated scan outcomes are now visible in HTML reports.
+- **Updater Repo Sync**: After updates, the updater refreshes tags and fast-forwards clean `main` checkouts to avoid stale version prompts.
 
 ## [4.18.10] - 2026-01-23
 
