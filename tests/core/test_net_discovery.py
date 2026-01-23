@@ -424,6 +424,36 @@ def test_dhcp_discover_timeout_includes_hint(monkeypatch):
     assert "interface appears down or has no carrier" in result["error"]
 
 
+def test_dhcp_timeout_hint_skips_no_ipv4_when_default_src(monkeypatch):
+    monkeypatch.setattr(net_discovery.shutil, "which", lambda _tool: True)
+    monkeypatch.setattr(
+        net_discovery,
+        "_run_cmd",
+        lambda *_a, **_k: (
+            0,
+            "default via 192.168.1.1 dev eth0 proto dhcp src 192.168.1.50 metric 100\n",
+            "",
+        ),
+    )
+    monkeypatch.setattr(
+        net_discovery,
+        "_get_interface_facts",
+        lambda *_a, **_k: {
+            "iface": "eth0",
+            "link_up": True,
+            "carrier": True,
+            "ipv4": [],
+            "ipv4_checked": True,
+            "ipv6": [],
+            "kind": None,
+        },
+    )
+
+    hint = net_discovery._format_dhcp_timeout_hint("eth0")
+    assert "no IPv4 address detected on interface" not in hint
+    assert "no DHCP server responding on this network" in hint
+
+
 def test_dhcp_discover_parsing_edge():
     """Test dhcp_discover parsing edge cases (lines 135-138, 161, 167, 173)."""
     # DHCPOFFER without IP, then another DHCPOFFER with IP.

@@ -101,6 +101,19 @@ def test_prepare_report_data_translates_titles_es():
     assert "Hallazgo de servicio web en el puerto 443" in titles
 
 
+def test_prepare_report_data_translates_auth_errors_es():
+    results = {
+        "hosts": [],
+        "vulnerabilities": [],
+        "summary": {},
+        "auth_scan": {"errors": [{"ip": "1.2.3.4", "error": "All credentials failed"}]},
+    }
+    config = {"target_networks": [], "scan_mode": "normal"}
+
+    data = html_reporter.prepare_report_data(results, config, lang="es")
+    assert data["auth_scan"]["errors"] == ["1.2.3.4: Todas las credenciales fallaron"]
+
+
 def test_generate_and_save_html_report(tmp_path):
     results = {"hosts": [], "vulnerabilities": [], "summary": {}}
     config = {"target_networks": [], "scan_mode": "normal", "auditor_name": "x"}

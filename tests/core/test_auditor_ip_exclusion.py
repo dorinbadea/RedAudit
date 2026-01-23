@@ -58,3 +58,22 @@ class TestAuditorIpExclusion(unittest.TestCase):
         filtered = auditor._filter_auditor_ips(hosts)
 
         self.assertEqual(filtered, hosts)
+
+    def test_filter_auditor_ips_uses_topology_src(self):
+        """Topology src/interface IPs should be excluded when present."""
+        auditor = InteractiveNetworkAuditor()
+        auditor.ui = MagicMock()
+        auditor.logger = MagicMock()
+        auditor.results["network_info"] = [{"ip": "10.0.0.5"}]
+        auditor.results["topology"] = {
+            "routes": [{"src": "172.20.0.1"}],
+            "interfaces": [{"ip": "172.20.0.2"}],
+        }
+
+        hosts = ["172.20.0.1", "172.20.0.2", "172.20.0.3", "10.0.0.5"]
+        filtered = auditor._filter_auditor_ips(hosts)
+
+        self.assertNotIn("172.20.0.1", filtered)
+        self.assertNotIn("172.20.0.2", filtered)
+        self.assertNotIn("10.0.0.5", filtered)
+        self.assertIn("172.20.0.3", filtered)
