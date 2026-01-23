@@ -105,6 +105,7 @@ def _parse_arp_scan(stdout: str) -> List[Dict[str, Any]]:
     v4.12.1: Added OUI enrichment to resolve "(Unknown)" vendors.
     """
     hosts: List[Dict[str, Any]] = []
+    seen = set()
     for line in (stdout or "").splitlines():
         line = line.strip()
         if not line or line.startswith(("Interface:", "Starting arp-scan", "Ending arp-scan")):
@@ -127,6 +128,10 @@ def _parse_arp_scan(stdout: str) -> List[Dict[str, Any]]:
             except Exception:
                 pass
 
+        key = (ip, mac.lower())
+        if key in seen:
+            continue
+        seen.add(key)
         hosts.append({"ip": ip, "mac": mac.lower(), "vendor": vendor})
 
     return hosts

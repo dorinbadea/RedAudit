@@ -220,6 +220,8 @@
                         {% set nuclei = pipeline.nuclei or {} %}
                         <li>Targets <span>{{ nuclei.targets or 0 }}</span></li>
                         <li>Findings <span>{{ nuclei.findings or 0 }}</span></li>
+                        <li>Profile <span>{{ nuclei.profile or '-' }}</span></li>
+                        <li>Full coverage <span>{{ 'Yes' if nuclei.full_coverage else 'No' }}</span></li>
                         {% if nuclei.findings_suspected is not none %}
                         <li>Suspected <span>{{ nuclei.findings_suspected }}</span></li>
                         {% endif %}

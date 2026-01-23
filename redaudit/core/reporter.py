@@ -567,6 +567,27 @@ def generate_summary(
     return summary
 
 
+def _collect_target_networks(config: Dict, results: Optional[Dict] = None) -> List[Any]:
+    raw_targets: List[str] = []
+    if isinstance(config, dict):
+        raw_targets = config.get("target_networks") or config.get("targets") or []
+    if not raw_targets and isinstance(results, dict):
+        raw_targets = results.get("targets") or []
+    targets = []
+    for t in raw_targets or []:
+        if not t:
+            continue
+        target_str = str(t).strip()
+        match = re.search(r"(\d{1,3}(?:\.\d{1,3}){3}/\d{1,2})", target_str)
+        if match:
+            target_str = match.group(1)
+        try:
+            targets.append(ipaddress.ip_network(target_str, strict=False))
+        except ValueError:
+            continue
+    return targets
+
+
 def _detect_network_leaks(results: Dict, config: Dict) -> list:
     """
     Detect potential hidden networks by analyzing finding leaks (redirects, headers).
@@ -579,12 +600,7 @@ def _detect_network_leaks(results: Dict, config: Dict) -> list:
         List of strings describing detected leaks
     """
     leaks = set()
-    targets = []
-    for t in config.get("target_networks", []):
-        try:
-            targets.append(ipaddress.ip_network(t, strict=False))
-        except ValueError:
-            pass
+    targets = _collect_target_networks(config, results)
 
     # Regex for private IPv4 (fixed for full octet matching)
     ip_regex = re.compile(
@@ -660,12 +676,7 @@ def extract_leaked_networks(results: Dict, config: Dict) -> list:
         List of unique network CIDRs (e.g., ["192.168.10.0/24", "10.0.1.0/24"])
     """
     networks = set()
-    targets = []
-    for t in config.get("target_networks", []):
-        try:
-            targets.append(ipaddress.ip_network(t, strict=False))
-        except ValueError:
-            pass
+    targets = _collect_target_networks(config, results)
 
     # Regex for private IPv4 (fixed for full octet matching)
     ip_regex = re.compile(
@@ -828,7 +839,8 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
 
     # v3.2.1: Check for network leaks (Guest Networks / Pivoting opportunities)
     # The user specifically requested techniques to discover "all networks here"
-    network_leaks = _detect_network_leaks(results, results.get("config", {}))
+    leak_config = results.get("config_snapshot") or results.get("config") or {}
+    network_leaks = _detect_network_leaks(results, leak_config)
     if network_leaks:
         lines.append("⚠  POTENTIAL HIDDEN NETWORKS (LEAKS DETECTED):\n")
         lines.append(

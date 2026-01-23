@@ -1051,6 +1051,8 @@ class InteractiveNetworkAuditor:
                                     )
                         nuclei_summary = {
                             "enabled": True,
+                            "profile": nuclei_profile,
+                            "full_coverage": bool(nuclei_full_coverage),
                             "targets": len(nuclei_targets),
                             "findings": len(findings),
                             "findings_total": len(nuclei_result.get("findings") or []),
