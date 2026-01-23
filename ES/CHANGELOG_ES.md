@@ -12,7 +12,9 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Corregido
 
-- Ninguno.
+- **Precisión en pistas DHCP**: Evita indicar ausencia de IPv4 cuando no se pudo verificar la interfaz.
+- **Errores del pipeline en HTML (ES)**: Los mensajes de error del pipeline se traducen en los informes en español.
+- **Resumen autenticado en HTML**: El resultado del escaneo autenticado ya es visible en los informes HTML.
 
 ## [4.18.10] - 2026-01-23
 
