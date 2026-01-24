@@ -14,6 +14,16 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.14] - 2026-01-24
+
+### Added
+
+- **Signature Data Store**: Vendor hinting and Nuclei FP templates now load from data files for easier updates.
+
+### Fixed
+
+- **Auditor IP Exclusion Fallback**: Adds best-effort local IP fallback when network info and topology are unavailable.
+
 ## [4.18.13] - 2026-01-24
 
 ### Added

@@ -14,6 +14,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.14] - 2026-01-24
+
+### Aniadido
+
+- **Almacen de firmas**: Las pistas de vendors y los templates FP de Nuclei ahora cargan desde archivos de datos.
+
+### Corregido
+
+- **Fallback de exclusion del auditor**: Se anade un fallback best-effort de IPs locales cuando faltan network_info y topologia.
+
 ## [4.18.13] - 2026-01-24
 
 ### Añadido
