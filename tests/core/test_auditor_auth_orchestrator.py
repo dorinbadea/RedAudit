@@ -6,10 +6,12 @@ This tests the Phase 4 integration that triggers SSH/Lynis scans
 when auth_enabled=True in config.
 """
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, PropertyMock
 import pytest
 
 from redaudit.core.auditor import InteractiveNetworkAuditor
+from redaudit.core.models import Host
 
 
 class MockUI:
@@ -263,3 +265,101 @@ class TestRunAuthenticatedScans:
         assert credential.username == "deploy"
         assert credential.private_key == "/home/user/.ssh/id_rsa"
         assert credential.private_key_passphrase == "keypass"
+
+    def test_port_detection_and_exception_paths(self, auditor):
+        auditor.config = {
+            "auth_enabled": True,
+            "auth_credentials": [{"user": "root", "pass": "secret"}],
+        }
+
+        host_cpe = {
+            "ip": "10.0.0.1",
+            "ports": [{"port": 2222, "service": "http", "cpe": ["cpe:/a:openssh:openssh"]}],
+        }
+        host_obj = Host(ip="10.0.0.4")
+        host_obj.auth_scan = None
+        host_obj.ports = [
+            SimpleNamespace(
+                port=2223,
+                service="http",
+                product="apache",
+                cpe=["cpe:/a:openssh:openssh"],
+            )
+        ]
+        host_service = Host(ip="10.0.0.6")
+        host_service.ports = [
+            SimpleNamespace(
+                port=2022,
+                service="ssh",
+                product="openssh",
+                cpe=[],
+            )
+        ]
+        host_port22 = Host(ip="10.0.0.7")
+        host_port22.ports = [SimpleNamespace(port=22, service="http", product="")]
+        host_fail = {"ip": "10.0.0.2", "ports": [{"port": 2222, "service": "ssh"}]}
+        host_int = {"ip": "10.0.0.3", "ports": [22]}
+        host_services = {
+            "ip": "10.0.0.5",
+            "ports": [],
+            "services": [{"name": "ssh", "port": 2024}],
+        }
+        host_no_ip = {"ports": [{"port": 22, "service": "ssh"}]}
+
+        class _FakeSSHScanner:
+            def __init__(self, _cred, timeout=30, trust_unknown_keys=True):
+                self._ip = None
+
+            def connect(self, ip, port=22):
+                if ip == "10.0.0.2":
+                    raise RuntimeError("boom")
+                self._ip = ip
+
+            def gather_host_info(self):
+                if self._ip == "10.0.0.3":
+                    raise RuntimeError("fail")
+                return SimpleNamespace(
+                    os_name="Linux",
+                    os_version="1",
+                    kernel="k",
+                    hostname="host",
+                    packages=[1],
+                    services=[1],
+                    users=[1],
+                )
+
+            def close(self):
+                return None
+
+        class _FakeLynisScanner:
+            def __init__(self, _scanner):
+                pass
+
+            def run_audit(self, use_portable=True):
+                return SimpleNamespace(
+                    hardening_index=50,
+                    warnings=[],
+                    suggestions=[],
+                    tests_performed=10,
+                )
+
+        auditor.logger = MockLogger()
+        with (
+            patch("redaudit.core.auth_ssh.SSHScanner", _FakeSSHScanner),
+            patch("redaudit.core.auth_lynis.LynisScanner", _FakeLynisScanner),
+        ):
+            auditor._run_authenticated_scans(
+                [
+                    host_cpe,
+                    host_obj,
+                    host_service,
+                    host_port22,
+                    host_fail,
+                    host_int,
+                    host_services,
+                    host_no_ip,
+                ]
+            )
+
+        assert "ssh" in host_obj.auth_scan
+        assert auditor.results["auth_scan"]["errors"]
