@@ -7,7 +7,7 @@ v3.9.0: Updated to work with new profile selector.
 from __future__ import annotations
 
 import builtins
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from redaudit.core.auditor import InteractiveNetworkAuditor
 
@@ -231,6 +231,61 @@ def test_interactive_setup_with_defaults_ignore(monkeypatch, tmp_path):
     assert result is True
 
 
+def test_interactive_setup_with_defaults_prompt_ignore_choice(monkeypatch):
+    """Test interactive_setup with defaults prompt choosing ignore."""
+    app = InteractiveNetworkAuditor()
+    app.defaults_mode = "ask"
+
+    persisted = {"lang": "en", "target_networks": ["10.0.0.0/8"]}
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", lambda: persisted)
+    monkeypatch.setattr(app, "clear_screen", lambda: None)
+    monkeypatch.setattr(app, "print_banner", lambda: None)
+    monkeypatch.setattr(app, "check_dependencies", lambda: True)
+    monkeypatch.setattr(app, "show_legal_warning", lambda: True)
+    monkeypatch.setattr(app, "show_config_summary", lambda: None)
+    monkeypatch.setattr(app, "ask_network_range", lambda: ["172.16.0.0/16"])
+    monkeypatch.setattr(app, "_configure_scan_interactive", lambda d: None)
+    monkeypatch.setattr(app, "print_status", lambda *a, **kw: None)
+    monkeypatch.setattr(app, "ask_choice", lambda *a, **kw: 2)
+    monkeypatch.setattr(app, "ask_yes_no", lambda *a, **kw: True)
+
+    result = app.interactive_setup()
+
+    assert result is True
+    assert app.config["target_networks"] == ["172.16.0.0/16"]
+
+
+def test_interactive_setup_with_defaults_review_summary(monkeypatch):
+    """Test interactive_setup showing defaults summary."""
+    app = InteractiveNetworkAuditor()
+    app.defaults_mode = "ask"
+
+    persisted = {"lang": "en", "target_networks": ["10.0.0.0/8"]}
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", lambda: persisted)
+    monkeypatch.setattr(app, "clear_screen", lambda: None)
+    monkeypatch.setattr(app, "print_banner", lambda: None)
+    monkeypatch.setattr(app, "check_dependencies", lambda: True)
+    monkeypatch.setattr(app, "show_legal_warning", lambda: True)
+    monkeypatch.setattr(app, "show_config_summary", lambda: None)
+    monkeypatch.setattr(app, "ask_network_range", lambda: ["172.16.0.0/16"])
+    monkeypatch.setattr(app, "_configure_scan_interactive", lambda d: None)
+    monkeypatch.setattr(app, "print_status", lambda *a, **kw: None)
+    monkeypatch.setattr(app, "ask_choice", lambda *a, **kw: 1)
+
+    yes_no_iter = iter([True, False, True])
+    monkeypatch.setattr(app, "ask_yes_no", lambda *a, **kw: next(yes_no_iter))
+
+    summary_calls = []
+    monkeypatch.setattr(app, "_show_defaults_summary", lambda *_a, **_k: summary_calls.append(True))
+
+    result = app.interactive_setup()
+
+    assert result is True
+    assert summary_calls
+
+
 def test_interactive_setup_legal_rejected(monkeypatch):
     """Test interactive_setup returns False when legal warning rejected."""
     app = InteractiveNetworkAuditor()
@@ -290,6 +345,53 @@ def test_interactive_setup_save_defaults(monkeypatch, tmp_path):
 
     assert result is True
     assert len(save_called) == 1
+
+
+def test_interactive_setup_save_defaults_exception(monkeypatch):
+    """Test defaults persistence failure logs warning."""
+    app = InteractiveNetworkAuditor()
+    app.defaults_mode = "ask"
+    app.logger = MagicMock()
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", lambda: {})
+    monkeypatch.setattr(app, "clear_screen", lambda: None)
+    monkeypatch.setattr(app, "print_banner", lambda: None)
+    monkeypatch.setattr(app, "check_dependencies", lambda: True)
+    monkeypatch.setattr(app, "show_legal_warning", lambda: True)
+    monkeypatch.setattr(app, "show_config_summary", lambda: None)
+    monkeypatch.setattr(app, "ask_network_range", lambda: ["10.0.0.0/24"])
+    monkeypatch.setattr(app, "_configure_scan_interactive", lambda d: None)
+    monkeypatch.setattr(app, "print_status", lambda *a, **kw: None)
+
+    yes_no_iter = iter([True, True])
+    monkeypatch.setattr(app, "ask_yes_no", lambda *a, **kw: next(yes_no_iter))
+    monkeypatch.setattr(
+        "redaudit.utils.config.update_persistent_defaults",
+        lambda **_kw: (_ for _ in ()).throw(ValueError("boom")),
+    )
+
+    result = app.interactive_setup()
+
+    assert result is True
+    assert app.logger.debug.called
+
+
+def test_interactive_setup_defaults_load_error(monkeypatch):
+    app = InteractiveNetworkAuditor()
+    app.logger = MagicMock()
+
+    def _boom():
+        raise RuntimeError("fail")
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", _boom)
+    monkeypatch.setattr(app, "clear_screen", lambda: None)
+    monkeypatch.setattr(app, "print_banner", lambda: None)
+    monkeypatch.setattr(app, "check_dependencies", lambda: False)
+
+    result = app.interactive_setup()
+
+    assert result is False
+    assert app.logger.debug.called
 
 
 def test_wizard_express_profile():

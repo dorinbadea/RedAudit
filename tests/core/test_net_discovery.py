@@ -917,6 +917,663 @@ class TestRoutingDiscovery(unittest.TestCase):
         self.assertEqual(result["networks"], [])
 
 
+class TestNetDiscoveryHelpers(unittest.TestCase):
+    def test_run_cmd_suppress_stderr_dry_run(self):
+        logger = MagicMock()
+        with patch("redaudit.core.net_discovery.is_dry_run", return_value=True):
+            rc, out, err = net_discovery._run_cmd_suppress_stderr(["arp-scan"], 1, logger)
+        self.assertEqual((rc, out, err), (0, "", ""))
+        logger.debug.assert_called()
+
+    def test_run_cmd_suppress_stderr_timeout_and_errors(self):
+        logger = MagicMock()
+        timeout_exc = subprocess.TimeoutExpired(cmd=["arp-scan"], timeout=1)
+        timeout_exc.stdout = "out"
+        timeout_exc.stderr = "err"
+        with patch("redaudit.core.net_discovery.is_dry_run", return_value=False):
+            with patch("subprocess.run", side_effect=timeout_exc):
+                rc, out, err = net_discovery._run_cmd_suppress_stderr(["arp-scan"], 1, logger)
+        self.assertEqual(rc, 124)
+        self.assertEqual(out, "out")
+        self.assertEqual(err, "err")
+
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            rc, out, err = net_discovery._run_cmd_suppress_stderr(["missing"], 1, logger)
+        self.assertEqual(rc, 127)
+        self.assertIn("Command not found", err)
+
+        with patch("subprocess.run", side_effect=RuntimeError("boom")):
+            rc, out, err = net_discovery._run_cmd_suppress_stderr(["bad"], 1, logger)
+        self.assertEqual(rc, -1)
+        logger.error.assert_called()
+
+    def test_run_cmd_suppress_stderr_success(self):
+        logger = MagicMock()
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.stdout = "ok"
+        mock_proc.stderr = "warn"
+        with patch("redaudit.core.net_discovery.is_dry_run", return_value=False):
+            with patch("subprocess.run", return_value=mock_proc):
+                rc, out, err = net_discovery._run_cmd_suppress_stderr(["arp-scan"], 1, logger)
+        self.assertEqual((rc, out, err), (0, "ok", "warn"))
+
+    @patch("shutil.which")
+    @patch("redaudit.core.net_discovery._run_cmd")
+    def test_detect_default_route_interface(self, mock_run_cmd, mock_which):
+        mock_which.return_value = "/sbin/ip"
+        mock_run_cmd.return_value = (0, "default via 1.1.1.1 dev eth0", "")
+        self.assertEqual(net_discovery.detect_default_route_interface(), "eth0")
+
+        mock_run_cmd.return_value = (1, "", "")
+        self.assertIsNone(net_discovery.detect_default_route_interface())
+
+    @patch("shutil.which")
+    @patch("redaudit.core.net_discovery._run_cmd")
+    def test_detect_default_route_interface_noise(self, mock_run_cmd, mock_which):
+        mock_which.return_value = "/sbin/ip"
+        mock_run_cmd.return_value = (0, "not-default line\ndefault dev\n", "")
+        self.assertIsNone(net_discovery.detect_default_route_interface())
+
+    def test_classify_iface_name(self):
+        self.assertEqual(net_discovery._classify_iface_name("lo0"), "loopback")
+        self.assertEqual(net_discovery._classify_iface_name("br-123"), "virtual")
+        self.assertEqual(net_discovery._classify_iface_name("wlan0"), "wireless")
+        self.assertIsNone(net_discovery._classify_iface_name("eth0"))
+
+    @patch("shutil.which")
+    @patch("redaudit.core.net_discovery._run_cmd")
+    def test_get_interface_facts_ip_up(self, mock_run_cmd, mock_which):
+        mock_which.side_effect = lambda tool: "/sbin/ip" if tool == "ip" else None
+        mock_run_cmd.side_effect = [
+            (0, "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> state UP", ""),
+            (0, r"2: eth0 inet\s\d\.\d\.\d\.\d/ brd 192.168.1.255", ""),
+            (0, r"2: eth0 inet6\sfe80::1/", ""),
+        ]
+
+        facts = net_discovery._get_interface_facts("eth0")
+        self.assertTrue(facts["link_up"])
+        self.assertTrue(facts["carrier"])
+        self.assertTrue(facts["ipv4"])
+        self.assertIn("fe80::1", facts["ipv6"])
+
+    def test_get_interface_facts_invalid_iface(self):
+        facts = net_discovery._get_interface_facts("bad iface")
+        self.assertIsNone(facts["iface"])
+
+    @patch("shutil.which")
+    @patch("redaudit.core.net_discovery._run_cmd")
+    def test_get_interface_facts_ip_down(self, mock_run_cmd, mock_which):
+        mock_which.side_effect = lambda tool: "/sbin/ip" if tool == "ip" else None
+
+        def run_side_effect(cmd, *_args, **_kwargs):
+            if cmd[:3] == ["ip", "-o", "link"]:
+                return 0, "2: eth0: <BROADCAST,MULTICAST> state DOWN", ""
+            if cmd[:4] == ["ip", "-o", "-4", "addr"]:
+                return 0, "", ""
+            if cmd[:4] == ["ip", "-o", "-6", "addr"]:
+                return 0, "", ""
+            return 1, "", ""
+
+        mock_run_cmd.side_effect = run_side_effect
+        facts = net_discovery._get_interface_facts("eth0")
+        self.assertFalse(facts["link_up"])
+        self.assertFalse(facts["carrier"])
+        self.assertTrue(facts["ipv4_checked"])
+        self.assertTrue(facts["ipv6_checked"])
+
+    @patch("shutil.which")
+    @patch("redaudit.core.net_discovery._run_cmd")
+    def test_get_interface_facts_ifconfig(self, mock_run_cmd, mock_which):
+        def which_side_effect(tool):
+            if tool == "ip":
+                return None
+            if tool == "ifconfig":
+                return "/sbin/ifconfig"
+            return None
+
+        mock_which.side_effect = which_side_effect
+        mock_run_cmd.return_value = (
+            0,
+            "status: active\ninet 10.0.0.10\ninet6 fe80::abcd\n",
+            "",
+        )
+        facts = net_discovery._get_interface_facts("en0")
+        self.assertTrue(facts["link_up"])
+        self.assertTrue(facts["carrier"])
+        self.assertIn("10.0.0.10", facts["ipv4"])
+        self.assertIn("fe80::abcd", facts["ipv6"])
+
+    @patch("shutil.which")
+    @patch("redaudit.core.net_discovery._run_cmd")
+    def test_format_dhcp_timeout_hint_loopback(self, mock_run_cmd, mock_which):
+        mock_which.return_value = "/sbin/ip"
+        mock_run_cmd.return_value = (1, "", "")
+        with patch(
+            "redaudit.core.net_discovery._get_interface_facts",
+            return_value={
+                "kind": "loopback",
+                "link_up": False,
+                "carrier": False,
+                "ipv4_checked": True,
+                "ipv4": [],
+            },
+        ):
+            hint = net_discovery._format_dhcp_timeout_hint("lo0")
+        self.assertIn("loopback", hint)
+        self.assertIn("no IPv4 address", hint)
+
+    @patch("shutil.which")
+    @patch("redaudit.core.net_discovery._run_cmd")
+    def test_format_dhcp_timeout_hint_virtual(self, mock_run_cmd, mock_which):
+        mock_which.return_value = "/sbin/ip"
+        mock_run_cmd.return_value = (0, "default via 1.1.1.1 dev eth0 src 1.1.1.2", "")
+        with patch(
+            "redaudit.core.net_discovery._get_interface_facts",
+            return_value={
+                "kind": "virtual",
+                "link_up": None,
+                "carrier": None,
+                "ipv4_checked": True,
+                "ipv4": [],
+            },
+        ):
+            hint = net_discovery._format_dhcp_timeout_hint("eth0")
+        self.assertIn("virtual", hint)
+
+    @patch("shutil.which")
+    @patch("redaudit.core.net_discovery._run_cmd")
+    def test_format_dhcp_timeout_hint_wireless(self, mock_run_cmd, mock_which):
+        mock_which.return_value = "/sbin/ip"
+        mock_run_cmd.return_value = (0, "default via 1.1.1.1 dev wlan0 src 1.1.1.2", "")
+        with patch(
+            "redaudit.core.net_discovery._get_interface_facts",
+            return_value={
+                "kind": "wireless",
+                "link_up": True,
+                "carrier": True,
+                "ipv4_checked": False,
+                "ipv4": [],
+            },
+        ):
+            hint = net_discovery._format_dhcp_timeout_hint("wlan0")
+        self.assertIn("wireless", hint)
+
+
+class TestNetDiscoveryMore(unittest.TestCase):
+    @patch("redaudit.core.net_discovery._format_dhcp_timeout_hint")
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_dhcp_discover_timeout_with_hint(self, mock_which, mock_run_cmd, mock_hint):
+        mock_which.return_value = "/usr/bin/nmap"
+        mock_run_cmd.return_value = (124, "", "")
+        mock_hint.return_value = "Possible causes: hint"
+        result = dhcp_discover(interface="eth0")
+        self.assertIn("timeout", result["error"])
+        self.assertIn("Possible causes", result["error"])
+
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_dhcp_discover_error_variants(self, mock_which, mock_run_cmd):
+        mock_which.return_value = "/usr/bin/nmap"
+        mock_run_cmd.return_value = (2, "", "boom")
+        result = dhcp_discover()
+        self.assertIn("boom", result["error"])
+
+        mock_run_cmd.return_value = (2, "", "")
+        result = dhcp_discover()
+        self.assertIn("dhcp-discover failed", result["error"])
+
+    @patch("redaudit.core.net_discovery.lookup_vendor_online")
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_netdiscover_vendor_lookup_error(self, mock_which, mock_run_cmd, mock_lookup):
+        mock_which.return_value = "/usr/bin/netdiscover"
+        mock_lookup.side_effect = RuntimeError("lookup failed")
+        mock_run_cmd.return_value = (
+            0,
+            "192.168.1.1  aa:bb:cc:dd:ee:ff  1  60  Unknown vendor",
+            "",
+        )
+        result = netdiscover_scan("192.168.1.0/24")
+        self.assertEqual(len(result["hosts"]), 1)
+        self.assertEqual(result["hosts"][0]["ip"], "192.168.1.1")
+
+    @patch("redaudit.core.net_discovery.lookup_vendor_online")
+    @patch("redaudit.core.net_discovery._run_cmd_suppress_stderr")
+    @patch("shutil.which")
+    def test_arp_scan_active_warnings(self, mock_which, mock_run_cmd, mock_lookup):
+        mock_which.return_value = "/usr/bin/arp-scan"
+        mock_lookup.side_effect = RuntimeError("lookup failed")
+        mock_run_cmd.return_value = (
+            0,
+            "192.168.1.10\t00:11:22:33:44:55\tUnknown\n",
+            "WARNING: Mac address to reach destination not found\n",
+        )
+        result = arp_scan_active(target="192.168.1.0/24")
+        self.assertEqual(result["l2_warnings"], 1)
+        self.assertIn("hosts detected outside your local network", result["l2_warning_note"])
+
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_mdns_discover_avahi_and_retry(self, mock_which, mock_run_cmd):
+        def which_side_effect(tool):
+            return "/usr/bin/avahi-browse" if tool == "avahi-browse" else None
+
+        mock_which.side_effect = which_side_effect
+
+        calls = {"count": 0}
+
+        def _side_effect(*_a, **_k):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                return 0, "", ""
+            return 0, "=;eth0;IPv4;device;_http._tcp;local;host;192.168.1.2", ""
+
+        mock_run_cmd.side_effect = _side_effect
+        result = mdns_discover()
+        self.assertTrue(any(s.get("ip") == "192.168.1.2" for s in result["services"]))
+
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_mdns_discover_nmap_fallback(self, mock_which, mock_run_cmd):
+        def which_side_effect(tool):
+            return "/usr/bin/nmap" if tool == "nmap" else None
+
+        mock_which.side_effect = which_side_effect
+        mock_run_cmd.return_value = (0, "service _http._tcp", "")
+        result = mdns_discover()
+        self.assertEqual(result["services"][0]["type"], "nmap_raw")
+
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_upnp_discover_retries_and_fallback(self, mock_which, mock_run_cmd):
+        mock_which.return_value = "/usr/bin/nmap"
+
+        upnp_out = "\n".join(
+            [
+                "Server: Test Device",
+                "192.168.1.1:1900",
+                "urn:schemas-upnp-org:device:Basic:1",
+            ]
+        )
+        mock_run_cmd.side_effect = [
+            (0, "", ""),
+            (0, upnp_out, ""),
+            (0, "", ""),
+        ]
+        with patch("time.sleep"):
+            result = upnp_discover(retries=2)
+        self.assertEqual(result["devices"][0]["ip"], "192.168.1.1")
+
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_detect_routed_networks_command_error(self, mock_which, mock_run_cmd):
+        mock_which.return_value = "/usr/bin/ip"
+        mock_run_cmd.return_value = (1, "", "route error")
+        result = detect_routed_networks()
+        self.assertIn("ip route failed", result["error"])
+
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_detect_local_vlan_tags_ip_and_ifconfig(self, mock_which, mock_run_cmd):
+        def which_side_effect(tool):
+            if tool == "ip":
+                return "/sbin/ip"
+            if tool == "ifconfig":
+                return "/sbin/ifconfig"
+            return None
+
+        mock_which.side_effect = which_side_effect
+        mock_run_cmd.return_value = (0, "vlan protocol 802.1Q id 100", "")
+        tags = net_discovery.detect_local_vlan_tags("eth0")
+        self.assertEqual(tags, [100])
+
+        mock_which.side_effect = lambda tool: "/sbin/ifconfig" if tool == "ifconfig" else None
+        mock_run_cmd.return_value = (0, "vlan: 200 parent interface: en0", "")
+        tags = net_discovery.detect_local_vlan_tags("en0")
+        self.assertEqual(tags, [200])
+
+    def test_detect_local_vlan_tags_invalid(self):
+        self.assertEqual(net_discovery.detect_local_vlan_tags(None), [])
+        self.assertEqual(net_discovery.detect_local_vlan_tags("bad iface"), [])
+
+    @patch("shutil.which")
+    def test_listen_lldp_and_cdp_errors(self, mock_which):
+        mock_which.return_value = None
+        self.assertIn("tcpdump not found", net_discovery.listen_lldp("eth0")["error"])
+        self.assertIn("tcpdump not found", net_discovery.listen_cdp("eth0")["error"])
+
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_listen_lldp_parsing(self, mock_which, mock_run_cmd):
+        mock_which.return_value = "/usr/sbin/tcpdump"
+        lldp_out = "\n".join(
+            [
+                "LLDP",
+                "System Name TLV (5), length 18: Switch-01",
+                "Port ID TLV (4), length 7: Gi1/0/1",
+                "System Description TLV (6), length 4: Core",
+                "Management Address TLV (8), length 4: 192.168.1.1",
+                "802.1Q VLAN ID: 100",
+            ]
+        )
+        mock_run_cmd.return_value = (0, lldp_out, "")
+        result = net_discovery.listen_lldp("eth0")
+        self.assertEqual(result["system_name"], "Switch-01")
+        self.assertEqual(result["port_id"], "Gi1/0/1")
+        self.assertEqual(result["vlan_id"], 100)
+
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_listen_lldp_invalid_and_timeout(self, mock_which, mock_run_cmd):
+        mock_which.return_value = "/usr/sbin/tcpdump"
+        with patch("redaudit.core.net_discovery._sanitize_iface", return_value=None):
+            result = net_discovery.listen_lldp("bad")
+            self.assertIn("Invalid interface", result["error"])
+
+        mock_run_cmd.return_value = (1, "no data", "")
+        with patch("redaudit.core.net_discovery._sanitize_iface", return_value="eth0"):
+            result = net_discovery.listen_lldp("eth0")
+            self.assertIn("Timeout", result["error"])
+
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_listen_cdp_parsing(self, mock_which, mock_run_cmd):
+        mock_which.return_value = "/usr/sbin/tcpdump"
+        cdp_out = "\n".join(
+            [
+                "Cisco Discovery Protocol",
+                "Device-ID (0x01), length: 12 bytes: 'Switch-01'",
+                "Port-ID (0x03), length: 16 bytes: 'FastEthernet0/1'",
+                "Native VLAN ID: 100",
+                "Platform (0x06), length: 10 bytes: 'Cisco'",
+            ]
+        )
+        mock_run_cmd.return_value = (0, cdp_out, "")
+        result = net_discovery.listen_cdp("eth0")
+        self.assertEqual(result["device_id"], "Switch-01")
+        self.assertEqual(result["native_vlan"], 100)
+
+
+def test_classify_iface_name_none():
+    assert net_discovery._classify_iface_name(None) is None
+
+
+@patch("redaudit.core.net_discovery._run_cmd")
+@patch("shutil.which")
+def test_get_interface_facts_link_down_sets_flags(mock_which, mock_run_cmd):
+    mock_which.side_effect = lambda tool: "/sbin/ip" if tool == "ip" else None
+    mock_run_cmd.side_effect = [
+        (0, "2: eth0: <BROADCAST,MULTICAST> mtu 1500 \\bstate\\sDOWN\\b", ""),
+        (0, "", ""),
+        (0, "", ""),
+    ]
+    facts = net_discovery._get_interface_facts("eth0")
+    assert facts["link_up"] is False
+    assert facts["carrier"] is False
+
+
+@patch("redaudit.core.net_discovery._run_cmd")
+@patch("shutil.which")
+def test_format_dhcp_timeout_hint_default_route_parse_error(mock_which, mock_run_cmd):
+    mock_which.side_effect = lambda tool: "/sbin/ip" if tool == "ip" else None
+    mock_run_cmd.return_value = (0, "default via 192.0.2.1 dev eth0 src", "")
+    hint = net_discovery._format_dhcp_timeout_hint("eth0")
+    assert "Possible causes" in hint
+
+
+@patch("shutil.which")
+def test_format_dhcp_timeout_hint_no_iface_or_ip(mock_which):
+    mock_which.return_value = None
+    hint = net_discovery._format_dhcp_timeout_hint(None)
+    assert "Possible causes" in hint
+
+
+@patch("redaudit.core.net_discovery._format_dhcp_timeout_hint")
+@patch("redaudit.core.net_discovery._run_cmd")
+@patch("shutil.which")
+def test_dhcp_discover_timeout_no_hint(mock_which, mock_run_cmd, mock_hint):
+    mock_which.return_value = "/usr/bin/nmap"
+    mock_run_cmd.return_value = (124, "", "timeout")
+    mock_hint.return_value = None
+    result = net_discovery.dhcp_discover(interface="eth0")
+    assert "timeout" in result["error"]
+    assert "Possible causes" not in result["error"]
+
+
+@patch("redaudit.core.net_discovery._run_cmd")
+@patch("shutil.which")
+def test_dhcp_discover_multiple_offers_appends(mock_which, mock_run_cmd):
+    mock_which.return_value = "/usr/bin/nmap"
+    mock_run_cmd.return_value = (
+        0,
+        "\n".join(
+            [
+                "| DHCPOFFER:",
+                "|   Server Identifier: 192.168.1.1",
+                "| DHCPOFFER:",
+                "|   Server Identifier: 192.168.1.2",
+            ]
+        ),
+        "",
+    )
+    result = net_discovery.dhcp_discover()
+    assert len(result["servers"]) == 2
+
+
+@patch("redaudit.core.net_discovery._run_cmd_suppress_stderr")
+@patch("redaudit.core.net_discovery.lookup_vendor_online")
+@patch("shutil.which")
+def test_arp_scan_active_online_vendor(mock_which, mock_lookup, mock_run_cmd):
+    mock_which.return_value = "/usr/sbin/arp-scan"
+    mock_lookup.return_value = "Acme Corp"
+    mock_run_cmd.return_value = (
+        0,
+        "192.168.1.10\taa:bb:cc:dd:ee:ff\tunknown vendor\n",
+        "",
+    )
+    result = net_discovery.arp_scan_active("192.168.1.0/24")
+    assert result["hosts"][0]["vendor"] == "Acme Corp"
+
+
+@patch("redaudit.core.net_discovery._run_cmd")
+@patch("shutil.which")
+def test_upnp_discover_multiple_devices_appends(mock_which, mock_run_cmd):
+    mock_which.return_value = "/usr/bin/nmap"
+    mock_run_cmd.return_value = (
+        0,
+        "\n".join(
+            [
+                "Server: DeviceOne",
+                "192.168.1.10:80",
+                "Server: DeviceTwo",
+                "192.168.1.11:80",
+            ]
+        ),
+        "",
+    )
+    result = net_discovery.upnp_discover(retries=1)
+    assert len(result["devices"]) == 2
+
+
+@patch("redaudit.core.net_discovery._run_cmd")
+@patch("shutil.which")
+def test_detect_routed_networks_parse_edges(mock_which, mock_run_cmd):
+    mock_which.side_effect = lambda tool: "/sbin/ip" if tool == "ip" else None
+
+    def _fake_run_cmd(args, *_a, **_k):
+        if args[:3] == ["ip", "route", "show"]:
+            return (
+                0,
+                "\n".join(
+                    [
+                        "",
+                        "default via 192.168.1.1 dev eth0",
+                        "bad_route dev eth0",
+                        "10.0.100.0/24 via 192.168.1.1 dev eth0",
+                        "10.0.200.0/24 via",
+                    ]
+                ),
+                "",
+            )
+        return (
+            0,
+            "\n".join(
+                [
+                    "192.168.1.1 dev eth0 lladdr aa:bb:cc:dd:ee:ff REACHABLE",
+                    "incomplete line",
+                ]
+            ),
+            "",
+        )
+
+    mock_run_cmd.side_effect = _fake_run_cmd
+    result = net_discovery.detect_routed_networks()
+    assert "10.0.100.0/24" in result["networks"]
+    assert result["gateways"][0]["ip"] == "192.168.1.1"
+
+
+@patch("redaudit.core.net_discovery._run_cmd")
+@patch("shutil.which")
+def test_listen_lldp_no_packets_captured(mock_which, mock_run_cmd):
+    mock_which.return_value = "/usr/sbin/tcpdump"
+    mock_run_cmd.return_value = (0, "no lldp here", "")
+    result = net_discovery.listen_lldp("eth0")
+    assert "No LLDP packets" in result["error"]
+
+
+@patch("redaudit.core.net_discovery._run_cmd")
+@patch("shutil.which")
+def test_listen_cdp_invalid_iface_and_no_packets(mock_which, mock_run_cmd):
+    mock_which.return_value = "/usr/sbin/tcpdump"
+    with patch("redaudit.core.net_discovery._sanitize_iface", return_value=None):
+        result = net_discovery.listen_cdp("bad iface")
+        assert "Invalid interface" in result["error"]
+
+    mock_run_cmd.return_value = (0, "garbage output", "")
+    with patch("redaudit.core.net_discovery._sanitize_iface", return_value="eth0"):
+        result = net_discovery.listen_cdp("eth0")
+        assert result == {}
+
+
+def test_discover_networks_progress_callback_error(monkeypatch):
+    def _boom(*_a, **_k):
+        raise RuntimeError("fail")
+
+    monkeypatch.setattr(net_discovery, "dhcp_discover", lambda *_a, **_k: {"servers": []})
+    result = net_discovery.discover_networks(
+        ["10.0.0.0/24"], protocols=["dhcp"], progress_callback=_boom
+    )
+    assert result["enabled"] is True
+
+
+def test_discover_networks_dhcp_targets_preference(monkeypatch):
+    calls = []
+
+    def _fake_dhcp(interface=None, *_a, **_k):
+        calls.append(interface)
+        return {"servers": []}
+
+    monkeypatch.setattr(net_discovery, "dhcp_discover", _fake_dhcp)
+    net_discovery.discover_networks(["10.0.0.0/24"], protocols=["dhcp"], dhcp_interfaces=["eth0"])
+    net_discovery.discover_networks(["10.0.0.0/24"], protocols=["dhcp"], interface="wlan0")
+    assert calls == ["eth0", "wlan0"]
+
+
+def test_discover_networks_protocol_error_logs(monkeypatch):
+    logger = MagicMock()
+
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("fail")
+
+    monkeypatch.setattr(net_discovery, "mdns_discover", _boom)
+    net_discovery.discover_networks(["10.0.0.0/24"], protocols=["mdns"], logger=logger)
+    assert logger.error.called
+
+
+def test_discover_networks_parallel_merge(monkeypatch):
+    logger = MagicMock()
+    calls = []
+
+    def progress_cb(label, step, total):
+        calls.append((label, step, total))
+
+    monkeypatch.setattr(
+        net_discovery, "dhcp_discover", lambda *_a, **_k: {"servers": [{"ip": "1.1.1.1"}]}
+    )
+    monkeypatch.setattr(
+        net_discovery,
+        "detect_routed_networks",
+        lambda *_a, **_k: {"networks": ["10.0.0.0/24"], "gateways": [], "error": "route"},
+    )
+    monkeypatch.setattr(
+        net_discovery, "fping_sweep", lambda *_a, **_k: {"alive_hosts": ["10.0.0.2"]}
+    )
+    monkeypatch.setattr(
+        net_discovery, "netbios_discover", lambda *_a, **_k: {"hosts": [{"ip": "10.0.0.3"}]}
+    )
+    monkeypatch.setattr(
+        net_discovery,
+        "_check_tools",
+        lambda: {"arp-scan": True},
+    )
+    monkeypatch.setattr(
+        net_discovery,
+        "arp_scan_active",
+        lambda *_a, **_k: {"hosts": [{"ip": "10.0.0.4"}], "l2_warnings": 2},
+    )
+    monkeypatch.setattr(
+        net_discovery,
+        "netdiscover_scan",
+        lambda *_a, **_k: {"hosts": [{"ip": "10.0.0.5"}]},
+    )
+    monkeypatch.setattr(
+        net_discovery, "mdns_discover", lambda *_a, **_k: {"services": [{"ip": "10.0.0.6"}]}
+    )
+    monkeypatch.setattr(
+        net_discovery, "upnp_discover", lambda *_a, **_k: {"devices": [{"ip": "10.0.0.7"}]}
+    )
+    monkeypatch.setattr(net_discovery, "run_redteam_discovery", lambda *_a, **_k: None)
+
+    import redaudit.core.hyperscan as hyperscan
+
+    monkeypatch.setattr(
+        hyperscan,
+        "hyperscan_full_discovery",
+        lambda *_a, **_k: {
+            "arp_hosts": [{"ip": "10.0.0.8"}],
+            "udp_devices": [{"ip": "10.0.0.9", "port": 161, "protocol": "snmp"}],
+            "tcp_hosts": {"10.0.0.10": {}},
+            "potential_backdoors": [{"ip": "10.0.0.11"}],
+            "duration_seconds": 1.0,
+        },
+    )
+
+    result = net_discovery.discover_networks(
+        ["10.0.0.0/24"],
+        protocols=["dhcp", "routing", "fping", "netbios", "arp", "mdns", "upnp", "hyperscan"],
+        redteam=True,
+        progress_callback=progress_cb,
+        logger=logger,
+    )
+
+    assert result["dhcp_servers"][0]["ip"] == "1.1.1.1"
+    assert "l2_warning_note" in result
+    assert result["hyperscan_udp_ports"]["10.0.0.9"] == [161]
+    assert "potential_backdoors" in result
+    assert calls
+
+
+def test_discover_networks_protocol_error(monkeypatch):
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("fail")
+
+    monkeypatch.setattr(net_discovery, "mdns_discover", _boom)
+    result = net_discovery.discover_networks(["10.0.0.0/24"], protocols=["mdns"])
+    assert any("mdns" in err for err in result["errors"])
+
+
 def test_redteam_ldap_enum_parses_rootdse(monkeypatch):
     monkeypatch.setattr(redteam.shutil, "which", lambda _tool: True)
 
