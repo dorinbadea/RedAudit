@@ -386,6 +386,7 @@ class TestReporter(unittest.TestCase):
                 "upnp_devices": [],
                 "candidate_vlans": ["10.0.10.0/24"],
                 "hyperscan_tcp_hosts": {"10.0.0.2": [80]},
+                "hyperscan_udp_ports": {"10.0.0.2": [1900, 5353]},
                 "potential_backdoors": [{"ip": "10.0.0.2", "port": 31337}],
                 "redteam": {
                     "targets_considered": 3,
@@ -407,6 +408,7 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(summary["counts"]["mdns_services"], 1)
         self.assertEqual(summary["counts"]["candidate_vlans"], 1)
         self.assertEqual(summary["counts"]["hyperscan_tcp_hosts"], 1)
+        self.assertEqual(summary["counts"]["hyperscan_udp_ports"], 2)
         self.assertEqual(summary["counts"]["potential_backdoors"], 1)
         self.assertEqual(summary["redteam"]["targets_considered"], 3)
         self.assertEqual(summary["redteam"]["masscan_open_ports"], 2)
@@ -1039,6 +1041,23 @@ def test_summarize_hyperscan_vs_final_mixed_hosts():
     summary = _summarize_hyperscan_vs_final(hosts, net_discovery)
     assert summary["totals"]["hosts"] == 1
     assert summary["totals"]["final_ports"] == 2
+
+
+def test_summarize_hyperscan_vs_final_uses_tcp_only_when_first_present():
+    hosts = [
+        {
+            "ip": "10.0.0.1",
+            "ports": [{"port": 22, "protocol": "tcp"}, {"port": 53, "protocol": "udp"}],
+        }
+    ]
+    net_discovery = {
+        "hyperscan_first_tcp_hosts": {"10.0.0.1": [22]},
+        "hyperscan_udp_ports": {"10.0.0.1": [53]},
+    }
+    summary = _summarize_hyperscan_vs_final(hosts, net_discovery)
+    assert summary["totals"]["hyperscan_ports"] == 1
+    assert summary["totals"]["final_ports"] == 2
+    assert summary["totals"]["missed_udp"] == 1
 
 
 def test_summarize_agentless_http_fingerprint_counts():
