@@ -81,13 +81,13 @@ def test_smart_throttle_min_max():
     assert st.current_batch == 450
 
 
-def test_tcp_connect_semaphore():
-    import asyncio
+@pytest.mark.asyncio
+async def test_tcp_connect_semaphore():
     from redaudit.core.hyperscan import _tcp_connect
 
     sem = asyncio.Semaphore(1)
     with patch("redaudit.core.hyperscan._do_connect", return_value=(True, 80)):
-        res = asyncio.run(_tcp_connect("1.1.1.1", 80, 1.0, semaphore=sem))
+        res = await _tcp_connect("1.1.1.1", 80, 1.0, semaphore=sem)
         assert res == (True, 80)
 
 
