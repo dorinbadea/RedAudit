@@ -14,6 +14,7 @@ from typing import Dict, List, Optional, Tuple
 from redaudit.core.command_runner import CommandRunner
 from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.core.identity_utils import match_infra_keyword
+from redaudit.core.signature_store import load_nuclei_template_vendors
 from redaudit.utils.dry_run import is_dry_run
 
 # File extensions that suggest sensitive/binary content
@@ -405,39 +406,7 @@ def filter_nikto_false_positives(
 # v3.9.0: Nuclei False Positive Detection
 # =============================================================================
 
-# Mapping of CVE/template IDs to their expected vendor/product identifiers
-# If the actual Server header doesn't match, it's likely a false positive
-NUCLEI_TEMPLATE_VENDORS = {
-    # Mitel MiCollab - often false positive on routers with JSON endpoints
-    "CVE-2022-26143": {
-        "expected_vendors": ["mitel", "micollab", "mivoice"],
-        "false_positive_vendors": [
-            "fritz",
-            "fritz!os",  # v4.4.2: Explicit FRITZ!OS detection
-            "avm",
-            "netgear",
-            "tp-link",
-            "asus",
-            "linksys",
-            "ubiquiti",
-        ],
-        "description": "Mitel MiCollab Information Disclosure",
-    },
-    # Add more templates as FPs are discovered
-    "CVE-2021-44228": {
-        "expected_vendors": ["java", "log4j", "apache"],
-        "false_positive_vendors": [],  # Log4j can affect many products
-        "description": "Log4Shell",
-    },
-    # v4.14: CVE-2024-54767 affects ONLY FRITZ!Box 7530 AX v7.59 or earlier
-    # FRITZ!Box 7590, Repeaters, and other models are NOT affected
-    "CVE-2024-54767": {
-        "expected_vendors": ["avm", "fritz"],
-        "expected_models": ["7530"],  # Must contain "7530" in model
-        "false_positive_models": ["7590", "repeater", "1200", "2400", "3000"],
-        "description": "AVM FRITZ!Box 7530 AX Unauthorized Access",
-    },
-}
+NUCLEI_TEMPLATE_VENDORS = load_nuclei_template_vendors()
 
 
 def parse_cpe_components(cpe_string: str) -> Dict[str, str]:

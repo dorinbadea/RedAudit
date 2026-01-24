@@ -29,6 +29,7 @@ from redaudit.utils.dry_run import is_dry_run
 from redaudit.core.config_context import ConfigurationContext
 from redaudit.core.models import Host
 from redaudit.core.network import detect_all_networks
+from redaudit.core.signature_store import load_device_vendor_hints
 from redaudit.core.ui_manager import UIManager
 from redaudit.utils.constants import (
     STATUS_DOWN,
@@ -123,45 +124,12 @@ class NetworkScanner:
             score += 1
             signals.append("mac_vendor")
             vendor_lower = str(deep_meta.get("vendor") or "").lower()
-            if any(
-                x in vendor_lower
-                for x in ("apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus")
-            ):
-                device_type_hints.append("mobile")
-            elif any(
-                x in vendor_lower for x in ("hp", "canon", "epson", "brother", "lexmark", "xerox")
-            ):
-                device_type_hints.append("printer")
-            elif any(
-                x in vendor_lower
-                for x in ("philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo")
-            ):
-                device_type_hints.append("iot_lighting")
-            elif "tuya" in vendor_lower:
-                device_type_hints.append("iot")
-            elif any(
-                x in vendor_lower
-                for x in (
-                    "avm",
-                    "fritz",
-                    "cisco",
-                    "juniper",
-                    "mikrotik",
-                    "ubiquiti",
-                    "netgear",
-                    "dlink",
-                    "asus",
-                    "linksys",
-                    "tp-link",
-                    "sercomm",
-                    "sagemcom",
-                )
-            ):
-                device_type_hints.append("router")
-            elif any(
-                x in vendor_lower for x in ("google", "amazon", "roku", "lg", "sony", "vizio")
-            ):
-                device_type_hints.append("smart_tv")
+            for hint in load_device_vendor_hints():
+                device_type = hint.get("device_type")
+                vendors = hint.get("vendors") or []
+                if device_type and any(x in vendor_lower for x in vendors):
+                    device_type_hints.append(device_type)
+                    break
 
         hostname_lower = str(host_record.get("hostname") or "").lower()
         if any(x in hostname_lower for x in ("iphone", "ipad", "ipod", "macbook", "imac")):

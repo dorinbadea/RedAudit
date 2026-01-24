@@ -1,0 +1,40 @@
+[
+  {
+    "device_type": "mobile",
+    "vendors": ["apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus"]
+  },
+  {
+    "device_type": "printer",
+    "vendors": ["hp", "canon", "epson", "brother", "lexmark", "xerox"]
+  },
+  {
+    "device_type": "iot_lighting",
+    "vendors": ["philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo"]
+  },
+  {
+    "device_type": "iot",
+    "vendors": ["tuya"]
+  },
+  {
+    "device_type": "router",
+    "vendors": [
+      "avm",
+      "fritz",
+      "cisco",
+      "juniper",
+      "mikrotik",
+      "ubiquiti",
+      "netgear",
+      "dlink",
+      "asus",
+      "linksys",
+      "tp-link",
+      "sercomm",
+      "sagemcom"
+    ]
+  },
+  {
+    "device_type": "smart_tv",
+    "vendors": ["google", "amazon", "roku", "lg", "sony", "vizio"]
+  }
+]

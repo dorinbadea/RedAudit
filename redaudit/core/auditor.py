@@ -12,6 +12,7 @@ import math
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import threading
@@ -44,6 +45,7 @@ from redaudit.core.nuclei import (
     run_nuclei_scan,
     get_http_targets_from_hosts,
 )
+from redaudit.core.network import detect_all_networks
 from redaudit.core.crypto import is_crypto_available
 from redaudit.core.reporter import (
     generate_summary,
@@ -414,6 +416,43 @@ class InteractiveNetworkAuditor:
                     f"topology.interface_ip:{iface_name}" if iface_name else "topology.interface_ip"
                 )
                 _add_reason(iface_ip, reason)
+
+        if not auditor_ip_reasons:
+            try:
+                fallback_nets = detect_all_networks(self.lang)
+                for entry in fallback_nets:
+                    ip = entry.get("ip")
+                    iface = entry.get("interface")
+                    reason = f"fallback.network_info:{iface}" if iface else "fallback.network_info"
+                    _add_reason(ip, reason)
+            except Exception:
+                pass
+
+        if not auditor_ip_reasons:
+            try:
+                hostname = socket.gethostname()
+                for ip in socket.gethostbyname_ex(hostname)[2]:
+                    if ip and not ip.startswith("127."):
+                        _add_reason(ip, "fallback.hostname")
+            except Exception:
+                pass
+
+        if not auditor_ip_reasons:
+            sock = None
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.connect(("192.0.2.1", 80))
+                ip = sock.getsockname()[0]
+                if ip and not ip.startswith("127."):
+                    _add_reason(ip, "fallback.udp_route")
+            except Exception:
+                pass
+            finally:
+                if sock is not None:
+                    try:
+                        sock.close()
+                    except Exception:
+                        pass
 
         auditor_ips = set(auditor_ip_reasons)
         if not auditor_ips:
