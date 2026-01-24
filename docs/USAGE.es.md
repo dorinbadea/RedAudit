@@ -142,9 +142,11 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | `-t, --target CIDR` | IP, rango o CIDR (soporta lista separada por comas) |
 | `-m, --mode` | `fast` (descubrimiento de hosts), `normal` (top 100), `full` (todos los puertos + scripts/detección de SO) |
 | `-j, --threads N` | Hosts paralelos 1-100 (autodetectado; respaldo: 6) |
+| `--max-hosts N` | Número máximo de hosts a escanear (defecto: todos) |
 | `--rate-limit S` | Retardo entre hosts en segundos (jitter ±30%) |
 | `--deep-scan-budget N` | Máximo de hosts elegibles para deep scan agresivo (0 = sin límite) |
 | `--identity-threshold N` | Umbral mínimo de identidad para omitir deep scan (0-100) |
+| `--no-deep-scan` | Desactivar deep scan adaptativo |
 | `--stealth` | Fuerza timing T1, 1 hilo, 5s retardo |
 | `--dry-run` | Muestra comandos sin ejecutarlos |
 | `--profile {fast,balanced,full}` | Definir intensidad/velocidad de escaneo Nuclei (v4.11+) |
@@ -164,13 +166,25 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 
 | Flag | Descripción |
 | :--- | :--- |
-| `--net-discovery` | Protocolos broadcast (dhcp,netbios,mdns,upnp,arp,fping) |
+| `-y, --yes` | Auto-confirmar todos los prompts |
+| `--net-discovery [PROTOCOLS]` | Protocolos broadcast (dhcp,netbios,mdns,upnp,arp,fping) |
+| `--net-discovery-interface IFACE` | Interfaz de red para discovery y capturas L2 |
+| `--scan-routed` | Incluir redes enrutadas descubiertas por gateways locales |
+| `--follow-routes` | Incluir redes remotas descubiertas por routing/SNMP |
 | `--topology` | Mapeo de topología L2/L3 (rutas/gateways) |
+| `--no-topology` | Desactivar descubrimiento de topología |
+| `--topology-only` | Ejecutar solo topología (sin escaneo de hosts) |
 | `--hyperscan-mode MODE` | `auto`, `connect`, o `syn` (defecto: auto) |
-| `--trust-hyperscan` | Confiar en resultados HyperScan para Deep Scan (evitar -p-) |
+| `--trust-hyperscan, --trust-discovery` | Confiar en resultados HyperScan para Deep Scan (evitar -p-) |
 | `--udp-mode` | `quick` (puertos prioritarios) o `full` (top ports) |
+| `--udp-ports N` | Número de puertos UDP top a escanear en modo full |
 | `--redteam` | Añade técnicas de recon AD/Kerberos/SNMP |
+| `--redteam-max-targets N` | Máximo de IPs muestreadas para redteam (1-500) |
 | `--redteam-active-l2` | Habilita sondeo activo L2 más ruidoso |
+| `--snmp-community COMMUNITY` | Comunidad SNMP para discovery (defecto: public) |
+| `--dns-zone ZONE` | Zona DNS para intentos AXFR |
+| `--kerberos-realm REALM` | Hint de realm Kerberos para discovery |
+| `--kerberos-userlist PATH` | Lista opcional de usuarios para Kerberos userenum |
 | `--agentless-verify` | Verificación sin agente (SMB/RDP/LDAP/SSH/HTTP) |
 | `--no-agentless-verify` | Desactivar verificación sin agente (sobrescribe defaults) |
 | `--agentless-verify-max-targets N` | Límite de objetivos para verificación (1-200, defecto: 20) |
@@ -184,13 +198,17 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | `--generate-credentials-template` | Crear plantilla `credentials.json` y salir |
 | `--ssh-user USER` | Usuario SSH |
 | `--ssh-key PATH` | Ruta a Clave Privada |
+| `--ssh-key-pass PASS` | Passphrase de la clave privada SSH |
 | `--ssh-trust-keys` | Auto-aceptar claves desconocidas de hosts (¡Precaución!) |
 | `--smb-user USER` | Usuario SMB/Windows |
 | `--smb-pass PASS` | Contraseña SMB (preferible vía asistente/env) |
 | `--smb-domain DOMAIN` | Dominio Windows |
 | `--snmp-user USER` | Usuario SNMPv3 |
 | `--snmp-auth-proto {SHA,MD5...}` | Protocolo Auth SNMPv3 |
+| `--snmp-auth-pass PASS` | Password Auth SNMPv3 |
 | `--snmp-priv-proto {AES,DES...}` | Protocolo Privacidad SNMPv3 |
+| `--snmp-priv-pass PASS` | Password de privacidad SNMPv3 |
+| `--snmp-topology` | Habilitar consultas SNMP de topología profunda |
 | `--lynis` | Habilitar auditoría de hardening con Lynis (requiere SSH) |
 
 ### Informes e Integración
@@ -198,13 +216,16 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | Flag | Descripción |
 | :--- | :--- |
 | `-o, --output DIR` | Directorio de salida personalizado |
+| `--lang` | Idioma de interfaz/reporte (en/es) |
 | `--html-report` | Generar dashboard interactivo (HTML) |
+| `--no-txt-report` | Desactivar generacion de reporte TXT |
 | `--webhook URL` | Enviar alertas webhook (JSON) para hallazgos high/critical |
 | `--nuclei` | Habilitar escaneo de plantillas con Nuclei (requiere `nuclei`; solo en modo full; DESACTIVADO por defecto) |
 | `--nuclei-timeout S` | Timeout por lote de Nuclei en segundos (defecto: 300) |
 | `--no-nuclei` | Deshabilitar Nuclei (defecto) |
 | `--no-vuln-scan` | Omitir escaneo de vulnerabilidades Web/Nikto |
 | `--cve-lookup` | Correlar servicios con datos CVE NVD |
+| `--nvd-key KEY` | Clave API NVD para consultas CVE |
 
 Notas:
 
@@ -282,7 +303,6 @@ TESTSSL_VERSION=v3.2 KERBRUTE_VERSION=v1.0.3 RUSTSCAN_VERSION=2.3.0 sudo bash re
 | :--- | :--- |
 | `-e, --encrypt` | Cifrar todos los artefactos sensibles (AES-128) |
 | `--allow-non-root` | Ejecutar sin sudo (capacidad limitada) |
-| `--yes` | Auto-confirmar todos los prompts |
 
 ### Configuración
 
@@ -292,9 +312,11 @@ TESTSSL_VERSION=v3.2 KERBRUTE_VERSION=v1.0.3 RUSTSCAN_VERSION=2.3.0 sudo bash re
 | `--defaults {ask,use,ignore}` | Controlar cómo se aplican los defaults persistentes |
 | `--use-defaults` | Cargar argumentos desde config.json automáticamente |
 | `--ignore-defaults` | Forzar valores de fábrica |
+| `-v, --verbose` | Habilitar logging detallado |
+| `-V, --version` | Mostrar version del programa y salir |
+| `-h, --help` | Mostrar ayuda del CLI y salir |
 | `--no-color` | Deshabilitar salida a color |
 | `--skip-update-check` | Saltar comprobación de actualizaciones al inicio |
-| `--lang` | Idioma de interfaz/informe (en/es) |
 
 ---
 
