@@ -124,6 +124,8 @@ Identify VPN interfaces and endpoints within a report:
 cat redaudit_*.json | jq '.hosts[] | select(.asset_type == "vpn")'
 ```
 
+Note: If the VPN is inactive, the VPN interface can appear as a separate asset with the same MAC as the gateway and no open ports. This is expected.
+
 ---
 
 ## 3. CLI Flags Reference

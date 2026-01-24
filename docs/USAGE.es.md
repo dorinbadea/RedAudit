@@ -58,6 +58,8 @@ sudo redaudit -t 10.0.0.0/24 --mode full --yes
 cat redaudit_*.json | jq '.hosts[] | select(.asset_type == "vpn")'
 ```
 
+Nota: Si la VPN está inactiva, la interfaz VPN puede aparecer como un activo separado con la misma MAC que el gateway y sin puertos abiertos. Es un comportamiento esperado.
+
 ---
 
 ## 2. Ejemplos por Escenario

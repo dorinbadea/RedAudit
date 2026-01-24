@@ -155,6 +155,24 @@ sudo bash redaudit_install.sh -y
 - En WiFi, el aislamiento del AP puede bloquear el broadcast.
 - Si tu red es estática, puedes ignorar este aviso.
 
+### 9c. Timeout en la red Docker por defecto (comportamiento esperado)
+
+**Síntoma**: El descubrimiento de hosts hace timeout en `172.17.0.0/16` (o `docker0`) y no encuentra hosts.
+**Explicación**: La red bridge por defecto de Docker suele estar vacía o aislada. Si no estás escaneando contenedores, los timeouts son esperables.
+**Resolución**:
+
+- Ignora el timeout cuando Docker no se usa.
+- Elimina `172.17.0.0/16` de los objetivos si no es relevante.
+
+### 9d. Interfaz VPN listada sin puertos abiertos (VPN inactiva)
+
+**Síntoma**: Un activo VPN aparece con la misma MAC que el gateway pero sin puertos abiertos.
+**Explicación**: Los routers pueden exponer una interfaz/IP VPN virtual. Cuando la VPN está inactiva, puede aparecer como un activo separado sin puertos abiertos. Es un comportamiento esperado.
+**Resolución**:
+
+- Trátalo como esperado si la VPN está inactiva.
+- Si la VPN debería estar activa, reescanea la subred VPN y valida puertos.
+
 ### 10. Errores de límite de velocidad API NVD (v3.0)
 
 **Síntoma**: "Rate limit exceeded" o búsquedas CVE lentas.

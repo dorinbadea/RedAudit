@@ -155,6 +155,24 @@ sudo bash redaudit_install.sh -y
 - On wireless, AP isolation can block broadcast traffic.
 - If your network is static, you can ignore this warning.
 
+### 9c. Docker default network discovery timeout (expected)
+
+**Symptom**: Host discovery times out on `172.17.0.0/16` (or `docker0`) and no hosts are found.
+**Explanation**: The default Docker bridge network is often empty or isolated. If you are not scanning containers, timeouts are expected.
+**Resolution**:
+
+- Ignore the timeout when Docker is unused.
+- Remove `172.17.0.0/16` from targets if it is not relevant.
+
+### 9d. VPN interface listed with no open ports (inactive VPN)
+
+**Symptom**: A VPN asset appears with the same MAC as the gateway but no open ports.
+**Explanation**: Routers can expose a virtual VPN interface/IP. When the VPN is inactive, it can appear as a separate asset with no open ports. This is expected behavior.
+**Resolution**:
+
+- Treat it as expected if the VPN is inactive.
+- If the VPN should be active, re-scan the VPN subnet and validate ports.
+
 ### 10. NVD API rate limit errors (v3.0)
 
 **Symptom**: "Rate limit exceeded" or slow CVE lookups.
