@@ -14,6 +14,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.17] - 2026-01-24
+
+### Añadido
+
+- **Conteo UDP de Net Discovery**: El resumen del pipeline ahora incluye el total de puertos UDP detectados por HyperScan para mayor claridad.
+
+### Corregido
+
+- **Alineación de HyperScan-First**: Las comparativas de HyperScan-First ahora reflejan solo TCP para coincidir con la salida del CLI.
+
 ## [4.18.16] - 2026-01-24
 
 ### Añadido
