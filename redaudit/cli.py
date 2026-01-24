@@ -125,6 +125,10 @@ Examples:
     if not isinstance(default_nuclei_enabled, bool):
         default_nuclei_enabled = False
 
+    default_nuclei_profile = persisted_defaults.get("nuclei_profile")
+    if default_nuclei_profile not in ("fast", "balanced", "full"):
+        default_nuclei_profile = "balanced"
+
     default_windows_verify_enabled = persisted_defaults.get("windows_verify_enabled")
     if not isinstance(default_windows_verify_enabled, bool):
         default_windows_verify_enabled = False
@@ -286,6 +290,13 @@ Examples:
         type=int,
         default=300,
         help="Nuclei batch timeout in seconds (default: 300). Increase for slow networks.",
+    )
+    parser.add_argument(
+        "--profile",
+        dest="nuclei_profile",
+        choices=["fast", "balanced", "full"],
+        default=default_nuclei_profile,
+        help="Set Nuclei scan intensity/speed (fast, balanced, full)",
     )
     windows_verify_group = parser.add_mutually_exclusive_group()
     windows_verify_group.add_argument(
@@ -809,6 +820,10 @@ def configure_from_args(app, args) -> bool:
     if not isinstance(nuclei_timeout, int) or nuclei_timeout < 60:
         nuclei_timeout = 300  # Minimum 60s, default 300s
     app.config["nuclei_timeout"] = nuclei_timeout
+    nuclei_profile = getattr(args, "nuclei_profile", "balanced")
+    if nuclei_profile not in ("fast", "balanced", "full"):
+        nuclei_profile = "balanced"
+    app.config["nuclei_profile"] = nuclei_profile
 
     # v4.0: Authenticated Scanning
     app.config["auth_provider"] = getattr(args, "auth_provider", "keyring")
