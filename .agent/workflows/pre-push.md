@@ -1,10 +1,10 @@
 ---
-description: CRITICAL - Run pre-commit before ANY push to main
+description: Quality gate before pushing or merging
 ---
 
 # Pre-Push Quality Gate (MANDATORY)
 
-**BEFORE EVERY `git push` to `main`, you MUST run (from the repository root):**
+**Before pushing a branch or merging to `main`, run (from the repository root):**
 
 ```bash
 pre-commit run --all-files
@@ -21,8 +21,8 @@ pre-commit run --all-files
 
 1. [ ] `pre-commit run --all-files` passes
 2. [ ] `pip install -r requirements-dev.lock && pip install -e .` (Ensure deps are synced)
-3. [ ] `bash scripts/ci_local.sh` passes (Local CI parity)
-4. [ ] `pytest tests/ -v` passes
+3. [ ] `pytest tests/ -v` passes
+4. [ ] `bash scripts/ci_local.sh` passes (Local CI parity, optional but recommended)
 5. [ ] `git status` is clean
 
 ## Common Issues

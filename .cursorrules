@@ -1,29 +1,34 @@
 # AGENTS.md Enforcement Rule
 
-> **CRITICAL**: This project has a STRICT engineering protocol defined in `AGENTS.md`.
-> **YOU MUST READ `AGENTS.md` AT THE START OF EVERY SESSION/TASK.**
+> **CRITICAL**: This project has a strict engineering protocol defined in `AGENTS.md`.
+> **You must read `AGENTS.md` at the start of every session/task.**
 
-## SYSTEM RULES (MANDATORY)
+## System Rules (Mandatory)
 
-These rules are lifted from `AGENTS.md` and MUST be followed at the system level. Failure to follow these results in rejected work.
+These rules are lifted from `AGENTS.md` and must be followed. If anything conflicts, `AGENTS.md` is canonical.
 
-### 1. ABSOLUTE NON-NEGOTIABLES
-- **NO EMOJIS**: Do NOT use emojis in ANY documentation, release notes, commit messages, or artifacts. Maintain a professional, neutral tone.
-- **WORK ON A BRANCH**: Never commit directly to `main`. Use `feature/`, `hotfix/`, `docs/`.
-- **CLEAN HANDOFF**: Ensure `git status` is clean before finishing a task.
-- **NO FORCED MERGES**: Wait for CI to pass before merging to `main`.
+### 1. Absolute Non-Negotiables
+- **No Emojis**: Do not use emojis in documentation, release notes, or release payloads.
+- **Work on a Branch**: Never commit directly to `main`. Use `feature/`, `hotfix/`, `docs/`.
+- **Owner Approval**: Never merge or push to `main` without explicit owner approval.
+- **Local Gate First**: Run the local quality gate before merging; if CI fails after merge, fix immediately and do not force-merge with failing checks.
+- **Clean Handoff**: `git status` must be clean before finishing a task.
+- **No Retags**: Do not rewrite or retag published releases.
+- **Private Data**: `scan_results_private/` must never be pushed.
 
-### 2. RELEASE PROTOCOL (STRICT)
-When performing a release (vX.Y.Z), you MUST follow this sequence:
-1. **DEPENDENCIES**: Before running tests, ALWAYS run: `pip install -e ".[dev]"` to ensure the environment is correct.
-2. **AUDIT REPORT**: You MUST create `docs/AUDIT_REPORT_vX.Y.Z.md` validating the fixes/features.
-3. **RELEASE PAYLOAD**: You MUST create a `release_payload.md` file containing the clean release notes (NO EMOJIS) before creating the GitHub release.
-   - **Command**: `gh release create vX.Y.Z -t "vX.Y.Z - <Title>" -F release_payload.md`
+### 2. Release Protocol (Strict)
+When performing a release (vX.Y.Z), follow the `AGENTS.md` checklist, including:
+1. **Dependencies**: `pip install -r requirements-dev.lock && pip install -e .`
+2. **Release Notes**: Create EN/ES notes under `docs/releases/RELEASE_NOTES_vX.Y.Z*.md`
+3. **Private Audit Report**: Create `scan_results_private/AUDIT_REPORT_vX.Y.Z.md` (do not commit)
+4. **Release Payload**: Use the EN release notes as payload
+   - `gh release create vX.Y.Z -t "vX.Y.Z - <Title>" -F release_payload.md`
 
-### 3. AUTHORITY
-`AGENTS.md` is the FULL SOURCE OF TRUTH.
-- Branching names? See `AGENTS.md`.
-- CI failure handling? See `AGENTS.md`.
-- Documentation structure? See `AGENTS.md`.
+### 3. Authority
+`AGENTS.md` is the source of truth for:
+- Branching names
+- CI failure handling
+- Documentation structure
+- Release steps
 
-**REFER TO `AGENTS.md` FOR DETAILED PROCEDURES.**
+Refer to `AGENTS.md` for the full procedures.
