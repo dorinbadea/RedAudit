@@ -375,34 +375,14 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | `-m, --mode` | Modo de escaneo: `fast` / `normal` / `full` (defecto: normal) |
 | `-j, --threads` | Hilos concurrentes (1-100, autodetectado; respaldo: 6) |
 | `--rate-limit` | Retardo entre hosts en segundos (jitter ±30%) |
-| `-e, --encrypt` | Cifrar informes con AES-128 |
 | `-o, --output` | Directorio de salida |
-| `--topology` | Activar descubrimiento de topología |
-| `--net-discovery` | Descubrimiento L2/broadcast mejorado |
-| `--redteam` | Activar técnicas de descubrimiento Red Team |
-| `--agentless-verify` | Verificación sin agente (SMB/RDP/LDAP/SSH/HTTP) |
-| `--nuclei` | Habilitar escaneo de plantillas Nuclei (solo modo full) |
-| `--proxy URL` | Proxy SOCKS5 para pivoting (requiere proxychains4; solo TCP) |
-| `--ipv6` | Modo de escaneo solo IPv6 |
-| `--deep-scan-budget N` | Presupuesto para deep scan agresivo (0 = sin límite) |
-| `--identity-threshold N` | Umbral mínimo de identidad para omitir deep scan (0-100) |
-| `--cve-lookup` | Correlación CVE vía NVD API |
-| `--nvd-key KEY` | API key NVD para rate limits más rápidos |
-| `--diff OLD NEW` | Análisis diferencial entre escaneos |
-| `--html-report` | Generar dashboard HTML interactivo |
-| `--stealth` | Activar temporización paranoica para entornos sensibles a IDS |
-| `--hyperscan-mode MODE` | Modo de descubrimiento HyperScan: `auto`, `connect` o `syn` |
-| `--max-hosts N` | Limitar número de hosts a escanear |
-| `--no-deep-scan` | Deshabilitar deep scan adaptativo |
-| `--no-txt-report` | Omitir generación de informe TXT |
 | `-y, --yes` | Omitir confirmaciones (modo automatización) |
-| `--webhook URL` | URL Webhook para alertas en tiempo real |
-| `--dry-run` | Imprimir comandos en lugar de ejecutarlos |
-| `--allow-non-root` | Permitir funcionalidad limitada sin sudo |
-| `--save-defaults` | Guardar configuraciones CLI actuales como defaults |
-| `--auth-provider` | Proveedor de credenciales (`env` o `keyring`) |
-| `--credentials-file` | Cargar múltiples credenciales desde JSON |
-| `--lynis` | Habilitar auditoría de hardening Lynis (Linux/SSH) |
+| `-e, --encrypt` | Cifrar informes con AES-128 |
+| `--net-discovery` | Descubrimiento L2/broadcast mejorado |
+| `--topology` | Activar descubrimiento de topología |
+| `--nuclei` | Habilitar escaneo de plantillas Nuclei (solo modo full) |
+| `--html-report` | Generar dashboard HTML interactivo |
+| `--diff OLD NEW` | Análisis diferencial entre escaneos |
 
 Ver `redaudit --help` o [USAGE.es.md](docs/USAGE.es.md) para la lista completa de opciones.
 
