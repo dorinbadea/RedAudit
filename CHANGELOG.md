@@ -14,6 +14,16 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.17] - 2026-01-24
+
+### Added
+
+- **Net Discovery UDP Count**: Pipeline summaries now include total HyperScan UDP port counts for clarity in reports.
+
+### Fixed
+
+- **HyperScan-First Summary Alignment**: HyperScan-First comparisons now track TCP-only discovery to match CLI output.
+
 ## [4.18.16] - 2026-01-24
 
 ### Added

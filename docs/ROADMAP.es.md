@@ -49,6 +49,13 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.18.17 Claridad de Reportes HyperScan (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Alineacion de resumen HyperScan** | Hecho (v4.18.17) | Las comparativas de HyperScan-First ahora usan solo TCP para coherencia con el CLI. |
+| **Conteo UDP en pipeline** | Hecho (v4.18.17) | El resumen del pipeline incluye el total de puertos UDP de HyperScan para visibilidad en informes. |
+
 ### v4.13 Resiliencia y Observabilidad (Hecho)
 
 | Funcionalidad | Estado | Descripción |

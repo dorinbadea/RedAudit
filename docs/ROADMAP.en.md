@@ -49,6 +49,13 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.18.17 HyperScan Reporting Clarity (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **HyperScan Summary Alignment** | Done (v4.18.17) | HyperScan-First comparisons now track TCP-only discovery for CLI consistency. |
+| **HyperScan UDP Count in Pipeline** | Done (v4.18.17) | Pipeline net discovery counts include total HyperScan UDP ports for report visibility. |
+
 ### v4.13 Resilience & Observability (Done)
 
 | Feature | Status | Description |
