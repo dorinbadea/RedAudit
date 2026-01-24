@@ -7,13 +7,14 @@ v2.9 Entity Resolution for multi-interface hosts
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from redaudit.core.entity_resolver import (
     normalize_hostname,
     extract_identity_fingerprint,
+    determine_interface_type,
     create_unified_asset,
     guess_asset_type,
     _derive_asset_name,
@@ -223,6 +224,123 @@ class TestEntityResolver(unittest.TestCase):
         # Each should be its own asset
         self.assertEqual(len(result), 2)
 
+    def test_reconcile_complex_group(self):
+        hosts = [
+            {
+                "ip": "10.0.0.1",
+                "hostname": "host-a",
+                "deep_scan": {"mac_address": "AA:BB:CC:00:00:01"},
+            },
+            {
+                "ip": "10.0.0.2",
+                "hostname": "host-a",
+                "deep_scan": {"mac_address": "AA:BB:CC:00:00:01"},
+            },
+        ]
+        assets = reconcile_assets(hosts)
+        self.assertEqual(len(assets), 1)
+        self.assertEqual(len(assets[0]["interfaces"]), 2)
+
+    def test_extract_identity_fingerprint_deep_scan_nb(self):
+        # Case: NetBIOS name in command output
+        host = {"deep_scan": {"commands": [{"stdout": "NetBIOS name: MY-HOST-NAME"}]}}
+        self.assertEqual(extract_identity_fingerprint(host), "my-host-name")
+        # Case: Computer name
+        host = {"deep_scan": {"commands": [{"stdout": "Computer name: COMP-NAME-123"}]}}
+        self.assertEqual(extract_identity_fingerprint(host), "comp-name-123")
+
+    def test_extract_identity_fingerprint_dns_fallback(self):
+        # DNS reverse fallback
+        host = {"dns": {"reverse": ["reverse.local"]}}
+        self.assertEqual(extract_identity_fingerprint(host), "reverse")
+        # phase0 fallback
+        host = {"phase0_enrichment": {"dns_reverse": "phase0.local"}}
+        self.assertEqual(extract_identity_fingerprint(host), "phase0")
+
+    def test_determine_interface_type_branches(self):
+        # Virtual
+        self.assertEqual(determine_interface_type("02:42:AC:11:22:33", ""), "Virtual")
+        # Ethernet
+        self.assertEqual(determine_interface_type("00:1B:21:AA:BB:CC", ""), "Ethernet")
+        # WiFi
+        self.assertEqual(determine_interface_type("AC:22:0B:00:11:22", ""), "WiFi")
+        # Unknown MAC
+        self.assertEqual(determine_interface_type("11:22:33:44:55:66", ""), "Unknown")
+
+    def test_guess_asset_type_vpn_heuristics(self):
+        # Heuristic 1: MAC match with gateway
+        host = {
+            "ip": "10.0.0.5",
+            "_gateway_ip": "10.0.0.1",
+            "_gateway_mac": "AA:BB:CC:DD:EE:FF",
+            "deep_scan": {"mac_address": "AA:BB:CC:DD:EE:FF"},
+        }
+        self.assertEqual(guess_asset_type(host), "vpn")
+        # Heuristic 2: VPN ports
+        host = {"ports": [{"port": 1194, "protocol": "udp"}]}
+        self.assertEqual(guess_asset_type(host), "vpn")
+        # Heuristic 4: Firewall vendor + web ports
+        host = {"deep_scan": {"vendor": "Fortinet"}, "ports": [{"port": 443}]}
+        self.assertEqual(guess_asset_type(host), "firewall")
+
+    def test_guess_asset_type_media_extra(self):
+        # Media signal via ports 8008
+        host = {"ports": [{"port": 8008}]}
+        self.assertEqual(guess_asset_type(host), "media")
+
+    def test_guess_asset_type_os_extra(self):
+        # Trigger 'server' by using port 22
+        host = {"ports": [{"port": 22}]}
+        self.assertEqual(guess_asset_type(host), "server")
+
+    def test_hostname_regex_branch(self):
+        # We need to mock load_device_hostname_hints to return a regex hint
+        with patch("redaudit.core.entity_resolver.load_device_hostname_hints") as mock_hints:
+            mock_hints.return_value = [{"device_type": "printer", "hostname_regex": [r"prn-.*"]}]
+            host = {"hostname": "prn-office-1"}
+            self.assertEqual(guess_asset_type(host), "printer")
+
+    def test_reconcile_logging_branch(self):
+        # Trigger the log branch in reconcile_assets
+        # Mocking log objects
+        from unittest.mock import MagicMock
+
+        mock_logger = MagicMock()
+        # To trigger multi_interface_count > 0, we need two hosts with SAME fingerprint
+        hosts = [
+            {"ip": "10.0.0.1", "hostname": "same-host"},
+            {"ip": "10.0.0.2", "hostname": "same-host"},
+        ]
+        reconcile_assets(hosts, logger=mock_logger)
+        # Check if info was called (multi_interface_count > 0 uses info, not debug)
+        self.assertTrue(mock_logger.info.called)
+
+    def test_create_unified_asset_empty_list(self):
+        self.assertEqual(create_unified_asset([]), {})
+
+    def test_guess_asset_type_iot_branch(self):
+        # Trigger 'iot' via short ports list + 80/443
+        host = {"ports": [{"port": 80}]}  # len is 1
+        self.assertEqual(guess_asset_type(host), "iot")
+
+    def test_guess_asset_type_samsung_media(self):
+        # Samsung without mobile indicators = media
+        host = {"deep_scan": {"vendor": "Samsung"}, "hostname": "some-samsung-device"}
+        self.assertEqual(guess_asset_type(host), "media")
+
+    def test_guess_asset_type_agentless_ap(self):
+        host = {"agentless_fingerprint": {"device_type": "ap"}}
+        self.assertEqual(guess_asset_type(host), "router")
+
+    def test_guess_asset_type_hints_iot(self):
+        host = {"device_type_hints": ["iot_lighting"]}
+        self.assertEqual(guess_asset_type(host), "iot")
+
+    def test_determine_interface_type_ethernet(self):
+        # Ethernet prefix
+        self.assertEqual(determine_interface_type("00:0C:29:11:22:33", ""), "Virtual")
+        self.assertEqual(determine_interface_type("00:1B:21:11:22:33", ""), "Ethernet")
+
 
 if __name__ == "__main__":
     unittest.main()
@@ -307,3 +425,64 @@ def test_guess_asset_type_workstation_msi_intel():
     assert guess_asset_type({"deep_scan": {"vendor": "Intel Corp"}}) == "workstation"
     assert guess_asset_type({"deep_scan": {"vendor": "Dell Inc."}}) == "workstation"
     assert guess_asset_type({"deep_scan": {"vendor": "HP Inc."}}) == "workstation"
+
+
+def test_guess_asset_type_hostname_regex_error_ignored():
+    host = {"hostname": "vpn-host", "ports": []}
+    hints = [{"device_type": "vpn", "hostname_regex": ["["]}]
+    with patch("redaudit.core.entity_resolver.load_device_hostname_hints", return_value=hints):
+        assert guess_asset_type(host) == "unknown"
+
+
+def test_guess_asset_type_media_signal_from_http_title():
+    host = {"agentless_fingerprint": {"http_title": "Chromecast"}}
+    assert guess_asset_type(host) == "media"
+
+
+def test_guess_asset_type_vpn_vendor_ports():
+    host = {
+        "deep_scan": {"vendor": "Cisco"},
+        "ports": [{"port": 500}, {"port": 21}, {"port": 22}, {"port": 23}],
+    }
+    assert guess_asset_type(host) == "vpn"
+
+
+def test_guess_asset_type_mobile_media_override():
+    host = {"hostname": "mobile-tv", "agentless_fingerprint": {"http_title": "ssdp"}}
+    hints = [
+        {
+            "device_type": "mobile",
+            "hostname_keywords": ["mobile"],
+            "hostname_keywords_media_override": ["tv"],
+        }
+    ]
+    with patch("redaudit.core.entity_resolver.load_device_hostname_hints", return_value=hints):
+        assert guess_asset_type(host) == "media"
+
+
+def test_guess_asset_type_smart_tv_hostname():
+    host = {"hostname": "livingroom-tv"}
+    hints = [{"device_type": "smart_tv", "hostname_keywords": ["tv"]}]
+    with patch("redaudit.core.entity_resolver.load_device_hostname_hints", return_value=hints):
+        assert guess_asset_type(host) == "media"
+
+
+def test_guess_asset_type_device_type_hints_branches():
+    assert guess_asset_type({"device_type_hints": ["router"]}) == "router"
+    assert guess_asset_type({"device_type_hints": ["printer"]}) == "printer"
+    assert guess_asset_type({"device_type_hints": ["mobile"]}) == "mobile"
+    assert guess_asset_type({"device_type_hints": ["smart_tv"]}) == "media"
+    assert guess_asset_type({"device_type_hints": ["hypervisor"]}) == "server"
+
+
+def test_guess_asset_type_vendor_sercomm_media_and_router():
+    host_media = {"deep_scan": {"vendor": "Sercomm"}, "ports": [{"port": 8008}]}
+    assert guess_asset_type(host_media) == "media"
+
+    host_router = {"deep_scan": {"vendor": "Sercomm"}, "ports": []}
+    assert guess_asset_type(host_router) == "router"
+
+
+def test_guess_asset_type_ports_server_branch():
+    host = {"ports": [{"port": 80}, {"port": 443}, {"port": 8080}, {"port": 8443}]}
+    assert guess_asset_type(host) == "server"

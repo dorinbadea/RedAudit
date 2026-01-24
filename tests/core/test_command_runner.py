@@ -163,6 +163,86 @@ class TestCommandRunner(unittest.TestCase):
         self.assertIn("***", redacted)
         self.assertIn("--encrypt-password ***", redacted)
 
+    def test_capture_output_conflict_raises(self):
+        runner = CommandRunner()
+        with self.assertRaises(ValueError):
+            runner.run(["echo", "hi"], capture_output=True, stdout=subprocess.DEVNULL)
+
+    @patch("builtins.print", side_effect=RuntimeError("fail"))
+    def test_dry_run_print_exception(self, _mock_print):
+        runner = CommandRunner(dry_run=True)
+        res = runner.run(["echo", "hi"])
+        self.assertTrue(res.ok)
+
+    @patch("redaudit.core.command_runner.subprocess.run")
+    def test_timeout_returns_result(self, mock_run):
+        mock_run.side_effect = subprocess.TimeoutExpired(
+            cmd=["sleep"], timeout=1, output="out", stderr="err"
+        )
+        runner = CommandRunner(default_timeout=1, default_retries=0, backoff_base_s=0)
+        result = runner.run(["sleep", "1"])
+        self.assertEqual(result.returncode, 124)
+        self.assertTrue(result.timed_out)
+
+    def test_command_wrapper_failures(self):
+        logger = _Logger()
+
+        def _boom(_cmd):
+            raise RuntimeError("wrap fail")
+
+        runner = CommandRunner(logger=logger, command_wrapper=_boom)
+        cmd = runner._apply_command_wrapper(("echo", "hi"))
+        self.assertEqual(cmd, ("echo", "hi"))
+
+        def _bad(_cmd):
+            return [""]
+
+        runner_bad = CommandRunner(logger=logger, command_wrapper=_bad)
+        cmd_bad = runner_bad._apply_command_wrapper(("echo", "hi"))
+        self.assertEqual(cmd_bad, ("echo", "hi"))
+
+    def test_validate_args_casts_non_str(self):
+        runner = CommandRunner()
+        with patch("redaudit.core.command_runner.subprocess.run") as mock_run:
+            completed = MagicMock()
+            completed.returncode = 0
+            completed.stdout = ""
+            completed.stderr = ""
+            mock_run.return_value = completed
+            result = runner.run(["echo", 1])
+            self.assertTrue(result.ok)
+
+    def test_sleep_backoff_handles_exception(self):
+        runner = CommandRunner(backoff_base_s=0.01)
+        with patch("redaudit.core.command_runner.time.sleep", side_effect=RuntimeError("sleep")):
+            runner._sleep_backoff(1)
+
+    def test_log_handles_logger_exception(self):
+        class _BadLogger:
+            def debug(self, _msg):
+                raise RuntimeError("boom")
+
+        runner = CommandRunner(logger=_BadLogger())
+        runner._log("DEBUG", "x")
+
+    def test_dry_run_no_capture_output(self):
+        runner = CommandRunner(dry_run=True)
+        result = runner.run(["echo", "hi"], capture_output=False)
+        self.assertIsNone(result.stdout)
+
+    def test_dry_run_property(self):
+        runner = CommandRunner(dry_run=True)
+        self.assertTrue(runner.dry_run)
+
+    def test_sleep_backoff_zero(self):
+        runner = CommandRunner()
+        runner._sleep_backoff(0)
+
+    def test_redact_text_skips_empty_values(self):
+        runner = CommandRunner()
+        text = runner._redact_text("secret", {""})
+        self.assertEqual(text, "secret")
+
 
 if __name__ == "__main__":
     unittest.main()

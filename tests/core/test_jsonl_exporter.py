@@ -14,7 +14,12 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from redaudit.core.jsonl_exporter import export_all, export_summary_json
+from redaudit.core.jsonl_exporter import (
+    export_all,
+    export_assets_jsonl,
+    export_findings_jsonl,
+    export_summary_json,
+)
 
 # v4.6.20: _extract_title moved to siem.py as extract_finding_title
 from redaudit.core.siem import extract_finding_title as _extract_title
@@ -167,3 +172,46 @@ def test_extract_title_fallback_no_url():
     vuln = {"port": 8080}
     title = _extract_title(vuln)
     assert "8080" in title
+
+
+def test_export_findings_skips_invalid_vuln_list_and_chmod_error(tmp_path):
+    results = {
+        "hosts": [],
+        "vulnerabilities": [{"host": "1.2.3.4", "vulnerabilities": "bad"}],
+        "summary": {},
+    }
+    output_path = tmp_path / "findings.jsonl"
+    with patch("os.chmod", side_effect=PermissionError("nope")):
+        count = export_findings_jsonl(results, str(output_path))
+    assert count == 0
+    assert output_path.exists()
+
+
+def test_export_assets_filters_agentless_and_chmod_error(tmp_path):
+    results = {
+        "hosts": [
+            {
+                "ip": "10.0.0.1",
+                "hostname": "host",
+                "ecs_host": {"mac": ["aa:bb:cc:dd:ee:ff"], "vendor": "Vendor"},
+                "agentless_fingerprint": {
+                    "domain": "corp",
+                    "http_title": "UI",
+                    "http_server": "",
+                    "device_vendor": "Vendor",
+                    "device_type": "router",
+                    "smb_signing_required": None,
+                },
+            }
+        ],
+        "vulnerabilities": [],
+        "summary": {},
+    }
+    output_path = tmp_path / "assets.jsonl"
+    with patch("os.chmod", side_effect=PermissionError("nope")):
+        count = export_assets_jsonl(results, str(output_path))
+    assert count == 1
+    asset = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert "agentless" in asset
+    assert asset["agentless"]["domain"] == "corp"
+    assert "http_server" not in asset["agentless"]

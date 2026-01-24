@@ -323,3 +323,112 @@ def test_detect_networks_fallback_ipv6_value_error():
 
         result = detect_networks_fallback(include_ipv6=True)
         assert isinstance(result, list)
+
+
+def test_detect_networks_netifaces_ipv6_hex_netmask():
+    class _DummyNetifaces:
+        AF_INET = 2
+        AF_INET6 = 10
+
+        @staticmethod
+        def interfaces():
+            return ["eth0"]
+
+        @staticmethod
+        def ifaddresses(_iface):
+            return {
+                _DummyNetifaces.AF_INET6: [
+                    {"addr": "2001:db8::2", "netmask": "ffff:ffff:ffff:ffff::"}
+                ]
+            }
+
+    with patch.dict(sys.modules, {"netifaces": _DummyNetifaces}):
+        nets = detect_networks_netifaces(include_ipv6=True)
+    assert nets[0]["ip_version"] == 6
+
+
+def test_detect_networks_netifaces_ifaddresses_exception():
+    class _DummyNetifaces:
+        AF_INET = 2
+        AF_INET6 = 10
+
+        @staticmethod
+        def interfaces():
+            return ["eth0"]
+
+        @staticmethod
+        def ifaddresses(_iface):
+            raise RuntimeError("boom")
+
+    with patch.dict(sys.modules, {"netifaces": _DummyNetifaces}):
+        nets = detect_networks_netifaces()
+    assert nets == []
+
+
+def test_detect_networks_fallback_ipv4_exception():
+    with patch("redaudit.core.network.CommandRunner") as mock_runner_class:
+        mock_runner = MagicMock()
+        mock_runner.run.side_effect = [OSError("boom"), MagicMock(stdout="")]
+        mock_runner_class.return_value = mock_runner
+
+        nets = detect_networks_fallback()
+    assert isinstance(nets, list)
+
+
+def test_detect_networks_fallback_ipv6_skips_docker_and_adds():
+    with patch("redaudit.core.network.CommandRunner") as mock_runner_class:
+        mock_runner = MagicMock()
+        mock_runner_class.return_value = mock_runner
+
+        mock_result_v4 = MagicMock()
+        mock_result_v4.stdout = ""
+
+        mock_result_v6 = MagicMock()
+        mock_result_v6.stdout = (
+            "2: docker0 inet6 fe80::1/64 scope global\n"
+            "3: eth0 inet6 2001:db8::1/64 scope global\n"
+        )
+
+        mock_runner.run.side_effect = [mock_result_v4, mock_result_v6]
+
+        result = detect_networks_fallback(include_ipv6=True)
+    assert any(entry["ip_version"] == 6 for entry in result)
+
+
+def test_detect_networks_fallback_ipv6_exception():
+    with patch("redaudit.core.network.CommandRunner") as mock_runner_class:
+        mock_runner = MagicMock()
+        mock_runner_class.return_value = mock_runner
+
+        mock_result_v4 = MagicMock()
+        mock_result_v4.stdout = ""
+        mock_runner.run.side_effect = [mock_result_v4, OSError("boom")]
+
+        result = detect_networks_fallback(include_ipv6=True)
+    assert isinstance(result, list)
+
+
+def test_detect_all_networks_uses_fallback():
+    with (
+        patch("redaudit.core.network.detect_networks_netifaces", return_value=[]),
+        patch(
+            "redaudit.core.network.detect_networks_fallback",
+            return_value=[{"network": "n", "interface": "i"}],
+        ),
+    ):
+        result = detect_all_networks()
+    assert result[0]["interface"] == "i"
+
+
+def test_find_interface_for_ip_invalid_network_entry():
+    networks = [{"interface": "eth0", "network": "not-a-cidr"}]
+    assert find_interface_for_ip("192.168.1.5", networks) is None
+
+
+def test_get_neighbor_mac_handles_runner_exception():
+    with patch("redaudit.core.network.CommandRunner") as mock_runner_class:
+        mock_runner = MagicMock()
+        mock_runner.run.side_effect = RuntimeError("boom")
+        mock_runner_class.return_value = mock_runner
+
+        assert get_neighbor_mac("10.0.0.1") is None

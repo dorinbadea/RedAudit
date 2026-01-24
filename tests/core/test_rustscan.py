@@ -11,6 +11,7 @@ from redaudit.core.rustscan import (
     run_rustscan,
     run_rustscan_discovery_only,
     run_rustscan_multi,
+    _make_runner,
     _parse_rustscan_ports,
     _parse_rustscan_greppable,
     _parse_rustscan_greppable_map,
@@ -40,6 +41,10 @@ class TestRustScan(unittest.TestCase):
                 mock_run.side_effect = Exception("Error")
                 self.assertIsNone(get_rustscan_version())
 
+    def test_get_rustscan_version_not_available(self):
+        with patch("redaudit.core.rustscan.is_rustscan_available", return_value=False):
+            self.assertIsNone(get_rustscan_version())
+
     def test_parse_rustscan_ports(self):
         stdout = """
         Open 10.0.0.1:80
@@ -49,6 +54,11 @@ class TestRustScan(unittest.TestCase):
         ports = _parse_rustscan_ports(stdout)
         self.assertEqual(ports, [80, 443])
 
+    def test_parse_rustscan_ports_invalid(self):
+        stdout = "Open 10.0.0.1:notaport"
+        ports = _parse_rustscan_ports(stdout)
+        self.assertEqual(ports, [])
+
     def test_parse_rustscan_greppable(self):
         stdout = "10.0.0.1 -> [80,443, 8080]"
         ports = _parse_rustscan_greppable(stdout)
@@ -56,6 +66,10 @@ class TestRustScan(unittest.TestCase):
 
         stdout_garbage = "garbage"
         self.assertEqual(_parse_rustscan_greppable(stdout_garbage), [])
+
+    def test_parse_rustscan_greppable_invalid_line(self):
+        stdout = "10.0.0.1 -> [80,443"
+        self.assertEqual(_parse_rustscan_greppable(stdout), [])
 
     def test_parse_rustscan_greppable_map(self):
         stdout = """
@@ -66,6 +80,15 @@ class TestRustScan(unittest.TestCase):
         mapping = _parse_rustscan_greppable_map(stdout)
         self.assertEqual(mapping["10.0.0.1"], [80, 443])
         self.assertEqual(mapping["10.0.0.2"], [22])
+
+    def test_parse_rustscan_greppable_map_invalid_line(self):
+        stdout = "10.0.0.1 -> [80,443"
+        mapping = _parse_rustscan_greppable_map(stdout)
+        self.assertEqual(mapping, {})
+
+    def test_make_runner_returns_command_runner(self):
+        runner = _make_runner()
+        self.assertIsNotNone(runner)
 
     @patch("redaudit.core.rustscan.is_rustscan_available", return_value=True)
     @patch("redaudit.core.rustscan._make_runner")
@@ -137,6 +160,53 @@ class TestRustScan(unittest.TestCase):
         self.assertEqual(ports, [80, 443])
         self.assertIsNone(error)
 
+    @patch("redaudit.core.rustscan.is_rustscan_available", return_value=False)
+    def test_run_rustscan_discovery_only_not_installed(self, mock_avail):
+        ports, error = run_rustscan_discovery_only("1.2.3.4")
+        self.assertEqual(ports, [])
+        self.assertEqual(error, "RustScan not installed")
+
+    @patch("redaudit.core.rustscan.is_rustscan_available", return_value=True)
+    @patch("redaudit.core.rustscan._make_runner")
+    def test_run_rustscan_discovery_only_timeout(self, mock_make_runner, mock_avail):
+        mock_runner = MagicMock()
+        mock_make_runner.return_value = mock_runner
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        mock_res.stdout = ""
+        mock_res.timed_out = True
+        mock_runner.run.return_value = mock_res
+
+        ports, error = run_rustscan_discovery_only("1.2.3.4")
+        self.assertEqual(ports, [])
+        self.assertIn("timeout", error.lower())
+
+    @patch("redaudit.core.rustscan.is_rustscan_available", return_value=True)
+    @patch("redaudit.core.rustscan._make_runner")
+    def test_run_rustscan_discovery_only_stdout_bytes(self, mock_make_runner, mock_avail):
+        mock_runner = MagicMock()
+        mock_make_runner.return_value = mock_runner
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        mock_res.stdout = b"1.2.3.4 -> [80]"
+        mock_res.timed_out = False
+        mock_runner.run.return_value = mock_res
+
+        ports, error = run_rustscan_discovery_only("1.2.3.4")
+        self.assertEqual(ports, [80])
+        self.assertIsNone(error)
+
+    @patch("redaudit.core.rustscan.is_rustscan_available", return_value=True)
+    @patch("redaudit.core.rustscan._make_runner")
+    def test_run_rustscan_discovery_only_exception(self, mock_make_runner, mock_avail):
+        mock_runner = MagicMock()
+        mock_make_runner.return_value = mock_runner
+        mock_runner.run.side_effect = RuntimeError("boom")
+
+        ports, error = run_rustscan_discovery_only("1.2.3.4")
+        self.assertEqual(ports, [])
+        self.assertEqual(error, "boom")
+
     @patch("redaudit.core.rustscan.is_rustscan_available", return_value=True)
     @patch("redaudit.core.rustscan._make_runner")
     def test_run_rustscan_multi(self, mock_make_runner, mock_avail):
@@ -159,6 +229,27 @@ class TestRustScan(unittest.TestCase):
         mapping, error = run_rustscan_multi([])
         self.assertEqual(mapping, {})
         self.assertEqual(error, "No targets provided")
+
+    @patch("redaudit.core.rustscan.is_rustscan_available", return_value=False)
+    def test_run_rustscan_multi_not_installed(self, mock_avail):
+        mapping, error = run_rustscan_multi(["1.2.3.4"])
+        self.assertEqual(mapping, {})
+        self.assertEqual(error, "RustScan not installed")
+
+    @patch("redaudit.core.rustscan.is_rustscan_available", return_value=True)
+    @patch("redaudit.core.rustscan._make_runner")
+    def test_run_rustscan_multi_stdout_bytes(self, mock_make_runner, mock_avail):
+        mock_runner = MagicMock()
+        mock_make_runner.return_value = mock_runner
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        mock_res.stdout = b"1.2.3.4 -> [80]"
+        mock_res.timed_out = False
+        mock_runner.run.return_value = mock_res
+
+        mapping, error = run_rustscan_multi(["1.2.3.4"])
+        self.assertEqual(mapping["1.2.3.4"], [80])
+        self.assertIsNone(error)
 
     @patch("redaudit.core.rustscan.is_rustscan_available", return_value=True)
     @patch("redaudit.core.rustscan._make_runner")

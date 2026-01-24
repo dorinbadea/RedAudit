@@ -29,7 +29,166 @@ from redaudit.core.hyperscan import (
     hyperscan_with_progress,
     _tcp_connect,
     _udp_probe,
+    hyperscan_deep_scan,
 )
+import socket
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_tcp_sweep_exception():
+    with patch("asyncio.open_connection", side_effect=RuntimeError("Async error")):
+        res = await hyperscan_tcp_sweep(["1.1.1.1"], [80])
+        assert res == {"1.1.1.1": []}
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_udp_sweep_socket_error():
+    with patch("socket.socket") as mock_sock:
+        mock_sock.return_value.sendto.side_effect = socket.error("Network down")
+        res = await hyperscan_udp_sweep(["1.1.1.1"], [161])
+        assert res == {"1.1.1.1": []}
+
+
+def test_hyperscan_arp_aggressive_no_tool():
+    with patch("shutil.which", return_value=None):
+        res = hyperscan_arp_aggressive("10.0.0.0/24")
+        assert res == []
+
+
+def test_hyperscan_full_discovery_no_networks():
+    res = hyperscan_full_discovery([], MagicMock())
+    assert isinstance(res, dict)
+    assert res["arp_hosts"] == []
+
+
+def test_detect_potential_backdoors_empty():
+    assert detect_potential_backdoors({}) == []
+    assert detect_potential_backdoors({"1.1.1.1": []}) == []
+
+
+def test_smart_throttle_min_max():
+    from redaudit.core.hyperscan import SmartThrottle
+
+    st = SmartThrottle(initial_batch=500, min_batch=100, max_batch=600)
+    # Increase but cap at max
+    st.update(500, 0)
+    st.update(500, 0)
+    assert st.current_batch == 600
+
+    # Decrease but floor at min
+    st = SmartThrottle(initial_batch=500, min_batch=450, max_batch=1000)
+    st.update(500, 400)
+    assert st.current_batch == 450
+
+
+def test_tcp_connect_semaphore():
+    import asyncio
+    from redaudit.core.hyperscan import _tcp_connect
+
+    sem = asyncio.Semaphore(1)
+    with patch("redaudit.core.hyperscan._do_connect", return_value=(True, 80)):
+        res = asyncio.run(_tcp_connect("1.1.1.1", 80, 1.0, semaphore=sem))
+        assert res == (True, 80)
+
+
+def test_detect_potential_backdoors_sev_low():
+    # Only low priority backdoors
+    tcp_results = {"1.1.1.1": [35000]}  # Not in classic list, and not suspicious enough
+    res = detect_potential_backdoors(tcp_results)
+    assert res == []
+
+
+def test_hyperscan_udp_broadcast_socket_options():
+    # Covers the socket configuration block
+    with patch("socket.socket") as mock_sock:
+        # Mocking the context manager and recv logic to exit early
+        mock_sock.return_value.recvfrom.side_effect = socket.timeout
+        hyperscan_udp_broadcast("192.168.1.0/24", timeout=0.1)
+        assert mock_sock.return_value.setsockopt.called
+
+
+def test_hyperscan_arp_aggressive_dry_run():
+    # Covers dry run branch
+    res = hyperscan_arp_aggressive("10.0.0.0/24", dry_run=True)
+    assert res == []
+
+
+def test_smart_throttle_more():
+    from redaudit.core.hyperscan import SmartThrottle
+
+    st = SmartThrottle(initial_batch=500, min_batch=100, max_batch=1000)
+    # Some timeouts
+    st.update(500, 50)
+    assert st.current_batch < 500
+
+    # Extreme timeouts
+    st.update(100, 100)
+    # Looking at code: st.current_batch = max(st.min_batch, int(st.current_batch * st.backoff_factor))
+    # If it was 125, next step with 100 timeouts: 125 * 0.5 = 62.5 -> floor to min (100)
+    assert st.current_batch >= 100
+
+
+def test_get_fd_soft_limit_positive():
+    with patch("resource.getrlimit", return_value=(4096, 4096)):
+        from redaudit.core.hyperscan import _get_fd_soft_limit
+
+        assert _get_fd_soft_limit() == 4096
+
+
+def test_smart_throttle_sent_zero():
+    from redaudit.core.hyperscan import SmartThrottle
+
+    st = SmartThrottle()
+    assert st.update(0, 0) == "STABLE"
+
+
+def test_get_fd_soft_limit_fallback():
+    # Use a local mock to avoid global patch side effects if possible
+    with patch("resource.getrlimit") as mock_get:
+        mock_get.side_effect = Exception("err")
+        from redaudit.core.hyperscan import _get_fd_soft_limit
+
+        res = _get_fd_soft_limit()
+        # Fallback is None on any exception
+        assert res is None
+
+
+@pytest.mark.asyncio
+async def test_udp_probe_error():
+    from redaudit.core.hyperscan import _udp_probe
+
+    sem = asyncio.Semaphore(1)
+    mock_loop = MagicMock()
+    mock_loop.sock_sendto = AsyncMock(side_effect=OSError("err"))
+    with patch("asyncio.get_event_loop", return_value=mock_loop):
+        with patch("socket.socket"):
+            res = await _udp_probe(sem, "1.1.1.1", 161, 0.1, b"data")
+            assert res is None
+
+
+@pytest.mark.asyncio
+async def test_tcp_connect_timeout():
+    from redaudit.core.hyperscan import _tcp_connect
+    import asyncio
+
+    # Ensure all arguments are passed to avoid TypeError
+    with patch("asyncio.open_connection", side_effect=asyncio.TimeoutError()):
+        # _tcp_connect(ip, port, timeout, semaphore=None)
+        res = await _tcp_connect("1.1.1.1", 80, 0.1, None)
+        assert res is None
+
+
+@pytest.mark.asyncio
+async def test_do_connect_writer_close_error():
+    from redaudit.core.hyperscan import _do_connect
+
+    mock_reader = AsyncMock()
+    mock_writer = MagicMock()
+    mock_writer.wait_closed = AsyncMock(side_effect=RuntimeError("close fail"))
+    with patch("asyncio.open_connection", new_callable=AsyncMock) as mock_conn:
+        mock_conn.return_value = (mock_reader, mock_writer)
+        res = await _do_connect("1.1.1.1", 80, 0.1)
+        assert res == ("1.1.1.1", 80)
 
 
 def test_build_discovery_packets():
@@ -641,3 +800,172 @@ def test_hyperscan_full_port_sweep_fallback(monkeypatch):
         with patch("redaudit.core.hyperscan.hyperscan_tcp_sweep", side_effect=fake_sweep):
             ports = hyperscan.hyperscan_full_port_sweep("192.168.1.1")
             assert ports == [22, 80]
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_tcp_sweep_syn_unavailable_logs(monkeypatch):
+    logger = MagicMock()
+
+    monkeypatch.setattr(
+        "redaudit.core.syn_scanner.is_syn_scan_available",
+        lambda: (False, "no-root"),
+    )
+
+    async def _fake_tcp_connect(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(hyperscan, "_tcp_connect", _fake_tcp_connect)
+
+    results = await hyperscan.hyperscan_tcp_sweep(
+        ["1.1.1.1"], [80], batch_size=1, timeout=0.01, logger=logger, mode="syn"
+    )
+    assert results == {"1.1.1.1": []}
+    assert logger.warning.called
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_tcp_sweep_syn_auto_uses_syn(monkeypatch):
+    logger = MagicMock()
+
+    async def _fake_syn(*_args, **_kwargs):
+        return {"1.1.1.1": [80]}
+
+    monkeypatch.setattr(
+        "redaudit.core.syn_scanner.is_syn_scan_available",
+        lambda: (True, "ok"),
+    )
+    monkeypatch.setattr("redaudit.core.syn_scanner.syn_sweep_batch", _fake_syn)
+
+    results = await hyperscan.hyperscan_tcp_sweep(
+        ["1.1.1.1"], [80], batch_size=1, timeout=0.01, logger=logger, mode="auto"
+    )
+    assert results["1.1.1.1"] == [80]
+    assert logger.info.called
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_tcp_sweep_syn_failure_fallback(monkeypatch):
+    logger = MagicMock()
+
+    async def _fake_syn(*_args, **_kwargs):
+        raise RuntimeError("syn fail")
+
+    async def _fake_tcp_connect(_ip, port, _timeout, semaphore=None):
+        return ("1.1.1.1", port)
+
+    monkeypatch.setattr(
+        "redaudit.core.syn_scanner.is_syn_scan_available",
+        lambda: (True, "ok"),
+    )
+    monkeypatch.setattr("redaudit.core.syn_scanner.syn_sweep_batch", _fake_syn)
+    monkeypatch.setattr(hyperscan, "_tcp_connect", _fake_tcp_connect)
+
+    results = await hyperscan.hyperscan_tcp_sweep(
+        ["1.1.1.1"], [80], batch_size=1, timeout=0.01, logger=logger, mode="syn"
+    )
+    assert results["1.1.1.1"] == [80]
+    assert logger.warning.called
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_tcp_sweep_syn_import_error(monkeypatch):
+    real_import = builtins.__import__
+
+    def _blocked_import(name, *args, **kwargs):
+        if name == "redaudit.core.syn_scanner":
+            raise ImportError("blocked")
+        return real_import(name, *args, **kwargs)
+
+    async def _fake_tcp_connect(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(builtins, "__import__", _blocked_import)
+    monkeypatch.setattr(hyperscan, "_tcp_connect", _fake_tcp_connect)
+    logger = MagicMock()
+
+    results = await hyperscan.hyperscan_tcp_sweep(
+        ["1.1.1.1"], [80], batch_size=1, timeout=0.01, logger=logger, mode="syn"
+    )
+    assert results == {"1.1.1.1": []}
+    assert logger.warning.called
+
+
+@pytest.mark.asyncio
+async def test_hyperscan_udp_sweep_default_ports_logging(monkeypatch):
+    async def _fake_probe(_sem, ip, port, _timeout, payload=b""):
+        return (ip, port, b"ok")
+
+    monkeypatch.setattr(hyperscan, "_udp_probe", _fake_probe)
+    logger = MagicMock()
+    results = await hyperscan.hyperscan_udp_sweep(
+        ["1.1.1.1"], ports=None, batch_size=1, timeout=0.01, logger=logger
+    )
+    assert results["1.1.1.1"]
+    assert logger.info.called
+
+
+def test_hyperscan_full_port_sweep_empty_target():
+    assert hyperscan.hyperscan_full_port_sweep("") == []
+
+
+def test_hyperscan_full_port_sweep_rustscan_success(monkeypatch):
+    logger = MagicMock()
+
+    monkeypatch.setattr("redaudit.core.rustscan.is_rustscan_available", lambda: True)
+    monkeypatch.setattr(
+        "redaudit.core.rustscan.run_rustscan_discovery_only",
+        lambda *_a, **_k: ([80], None),
+    )
+
+    ports = hyperscan.hyperscan_full_port_sweep("192.168.1.1", logger=logger)
+    assert ports == [80]
+    assert logger.info.called
+
+
+def test_hyperscan_udp_broadcast_logger_paths(monkeypatch):
+    logger = MagicMock()
+    call_state = {"count": 0}
+
+    class _DummySocket:
+        def __init__(self, behavior):
+            self.behavior = behavior
+            self._recv_calls = 0
+
+        def setsockopt(self, *_args, **_kwargs):
+            return None
+
+        def settimeout(self, *_args, **_kwargs):
+            return None
+
+        def sendto(self, *_args, **_kwargs):
+            if self.behavior == "error_send":
+                raise OSError("send fail")
+            return None
+
+        def recvfrom(self, _size):
+            if self.behavior in ("response_once", "unicast_response"):
+                if self._recv_calls == 0:
+                    self._recv_calls += 1
+                    return (b"resp", ("192.168.1.10", 1900))
+                raise socket.timeout()
+            raise socket.timeout()
+
+        def close(self):
+            return None
+
+    def _socket_factory(*_args, **_kwargs):
+        call_state["count"] += 1
+        if call_state["count"] == 1:
+            return _DummySocket("response_once")
+        if call_state["count"] == 2:
+            return _DummySocket("error_send")
+        if call_state["count"] == 6:
+            return _DummySocket("unicast_response")
+        if call_state["count"] == 7:
+            return _DummySocket("error_send")
+        return _DummySocket("timeout")
+
+    monkeypatch.setattr(hyperscan.socket, "socket", _socket_factory)
+    devices = hyperscan.hyperscan_udp_broadcast("192.168.1.0/30", timeout=0.01, logger=logger)
+    assert devices
+    assert logger.info.called

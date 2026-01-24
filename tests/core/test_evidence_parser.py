@@ -8,10 +8,12 @@ import tempfile
 import unittest
 
 from redaudit.core.evidence_parser import (
+    _derive_descriptive_title,
     enrich_with_observations,
     extract_observations,
     parse_nikto_findings,
     parse_testssl_output,
+    save_raw_output,
 )
 
 
@@ -67,6 +69,12 @@ class TestEvidenceParserHelpers(unittest.TestCase):
         self.assertIn("TLS 1.0 enabled", observations)
         self.assertIn("SSLv3 enabled", observations)
 
+    def test_parse_testssl_output_sslv2_tls11(self):
+        data = {"protocols": {"SSLv2": True, "TLS1.1": True}}
+        observations = parse_testssl_output(data)
+        self.assertIn("SSLv2 enabled", observations)
+        self.assertIn("TLS 1.1 enabled", observations)
+
     def test_extract_observations_includes_whatweb_and_raw(self):
         record = {
             "nikto_findings": [
@@ -96,6 +104,39 @@ class TestEvidenceParserHelpers(unittest.TestCase):
 
         self.assertIn("raw_tool_output_sha256", enriched)
         self.assertIn("raw_tool_output_ref", enriched)
+
+    def test_save_raw_output_chmod_failures(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with unittest.mock.patch("os.chmod", side_effect=OSError("chmod fail")):
+                ref = save_raw_output("data", tmpdir, "1.2.3.4", 80)
+        self.assertTrue(ref.startswith("evidence/"))
+
+
+class TestEvidenceParserDescriptiveTitleHelpers(unittest.TestCase):
+    def test_descriptive_title_empty_and_non_str(self):
+        self.assertIsNone(_derive_descriptive_title([]))
+
+        class _DummyPattern:
+            @staticmethod
+            def search(_value):
+                return None
+
+        with unittest.mock.patch("redaudit.core.evidence_parser._CVE_PATTERN", _DummyPattern()):
+            title = _derive_descriptive_title([123, "Missing header"])
+        self.assertEqual(title, "Missing header")
+
+    def test_descriptive_title_tier2_and_fallback(self):
+        class _DummyPattern:
+            @staticmethod
+            def search(_value):
+                return None
+
+        with unittest.mock.patch("redaudit.core.evidence_parser._CVE_PATTERN", _DummyPattern()):
+            title = _derive_descriptive_title([123, "Info disclosure leak"])
+            self.assertEqual(title, "Info disclosure leak")
+
+            title = _derive_descriptive_title([None, "   ", "Server banner: Apache", "Useful info"])
+            self.assertEqual(title, "Useful info")
 
 
 class TestFallbackObservations(unittest.TestCase):
@@ -150,6 +191,24 @@ class TestFallbackObservations(unittest.TestCase):
         self.assertTrue(any("HSTS" in obs for obs in observations))
         # Should NOT have "Endpoint:" prefix from fallback
         self.assertFalse(any(obs.startswith("Endpoint:") for obs in observations))
+
+    def test_extract_observations_fallback_from_description(self):
+        record = {
+            "description": "Exposed service details",
+            "port": 8080,
+        }
+        observations, _ = extract_observations(record)
+        self.assertIn("Exposed service details", observations)
+
+
+def test_enrich_with_observations_extracts_cve_from_testssl():
+    record = {
+        "testssl_analysis": {
+            "vulnerabilities": ["VULNERABLE: BEAST", "CVE-2020-1234"],
+        }
+    }
+    enriched = enrich_with_observations(record)
+    assert "CVE-2020-1234" in enriched.get("cve_ids", [])
 
 
 if __name__ == "__main__":

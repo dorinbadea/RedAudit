@@ -3,6 +3,8 @@ Unit tests for redaudit.core.credentials module.
 """
 
 import os
+import sys
+import types
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -54,6 +56,18 @@ class TestCredentialDataclass(unittest.TestCase):
         cred = Credential(username="admin")
         repr_str = repr(cred)
         self.assertIn("password=None", repr_str)
+
+    def test_credential_provider_pass_methods(self):
+        class _DummyProvider(CredentialProvider):
+            def get_credential(self, target: str, protocol: str):
+                return super().get_credential(target, protocol)
+
+            def store_credential(self, target: str, protocol: str, credential: Credential) -> bool:
+                return super().store_credential(target, protocol, credential)
+
+        provider = _DummyProvider()
+        self.assertIsNone(provider.get_credential("x", "ssh"))
+        self.assertIsNone(provider.store_credential("x", "ssh", Credential(username="u")))
 
 
 class TestEnvironmentCredentialProvider(unittest.TestCase):
@@ -131,6 +145,60 @@ class TestKeyringCredentialProvider(unittest.TestCase):
                 provider = KeyringCredentialProvider()
                 self.assertFalse(provider._keyring_available)
 
+    def test_keyring_missing_alt_falls_back_to_env(self):
+        fake_keyring = types.ModuleType("keyring")
+        fake_errors = types.ModuleType("keyring.errors")
+
+        class _NoKeyringError(Exception):
+            pass
+
+        fake_errors.NoKeyringError = _NoKeyringError
+        fake_keyring.errors = fake_errors
+        fake_keyring.get_keyring = lambda: "fail"
+        fake_keyring.set_keyring = MagicMock()
+
+        with patch.dict(
+            sys.modules,
+            {
+                "keyring": fake_keyring,
+                "keyring.errors": fake_errors,
+            },
+        ):
+            provider = KeyringCredentialProvider()
+            self.assertFalse(provider._keyring_available)
+
+    def test_keyring_fallback_plaintext_backend(self):
+        fake_keyring = types.ModuleType("keyring")
+        fake_errors = types.ModuleType("keyring.errors")
+
+        class _NoKeyringError(Exception):
+            pass
+
+        fake_errors.NoKeyringError = _NoKeyringError
+        fake_keyring.errors = fake_errors
+        fake_keyring.get_keyring = lambda: "fail"
+        fake_keyring.set_keyring = MagicMock()
+
+        fake_alt_file = types.ModuleType("keyrings.alt.file")
+        fake_alt_file.PlaintextKeyring = MagicMock()
+        fake_alt = types.ModuleType("keyrings.alt")
+        fake_alt.file = fake_alt_file
+        fake_keyrings = types.ModuleType("keyrings")
+        fake_keyrings.alt = fake_alt
+
+        with patch.dict(
+            sys.modules,
+            {
+                "keyring": fake_keyring,
+                "keyring.errors": fake_errors,
+                "keyrings": fake_keyrings,
+                "keyrings.alt": fake_alt,
+                "keyrings.alt.file": fake_alt_file,
+            },
+        ):
+            provider = KeyringCredentialProvider()
+            self.assertTrue(provider._keyring_available)
+
     @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
     def test_keyring_get_credential_from_keyring(self, mock_init):
         """Test getting credential from keyring."""
@@ -151,6 +219,21 @@ class TestKeyringCredentialProvider(unittest.TestCase):
         self.assertEqual(cred.password, "sshpass")
 
     @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_keyring_get_credential_secret_blob_invalid_json(self, mock_init):
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+
+        provider._keyring.get_password.side_effect = lambda svc, key: {
+            ("redaudit-ssh", "192.168.1.1:username"): "sshuser",
+            ("redaudit-ssh", "192.168.1.1:secret"): "not-json",
+        }.get((svc, key))
+
+        cred = provider.get_credential("192.168.1.1", "ssh")
+        self.assertEqual(cred.password, "not-json")
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
     def test_keyring_get_credential_fallback_to_default(self, mock_init):
         """Test fallback to default credential when target-specific not found."""
         mock_init.return_value = None
@@ -169,6 +252,15 @@ class TestKeyringCredentialProvider(unittest.TestCase):
         self.assertEqual(cred.username, "defaultuser")
 
     @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_keyring_get_credential_fallback_when_unavailable(self, mock_init):
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = False
+        provider._fallback = MagicMock()
+        provider.get_credential("1.1.1.1", "ssh")
+        provider._fallback.get_credential.assert_called_once()
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
     def test_keyring_store_credential(self, mock_init):
         """Test storing credential in keyring."""
         mock_init.return_value = None
@@ -182,6 +274,35 @@ class TestKeyringCredentialProvider(unittest.TestCase):
         self.assertTrue(result)
         # Verify set_password was called
         self.assertTrue(provider._keyring.set_password.called)
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_keyring_store_credential_sets_key_and_passphrase(self, mock_init):
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+        cred = Credential(
+            username="newuser",
+            password="newpass",
+            private_key="/tmp/key",
+            private_key_passphrase="passphrase",
+        )
+        self.assertTrue(provider.store_credential("1.1.1.1", "ssh", cred))
+
+    def test_keyring_store_credential_unavailable(self):
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = False
+        self.assertFalse(provider.store_credential("1.1.1.1", "ssh", Credential(username="x")))
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_keyring_store_credential_exception(self, mock_init):
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+        provider._keyring.set_password.side_effect = RuntimeError("boom")
+        cred = Credential(username="user", password="pass", private_key_passphrase="p")
+        self.assertFalse(provider.store_credential("1.1.1.1", "ssh", cred))
 
     @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
     def test_has_saved_credentials(self, mock_init):
@@ -202,6 +323,16 @@ class TestKeyringCredentialProvider(unittest.TestCase):
         self.assertTrue(result["ssh"])
         self.assertTrue(result["smb"])
         self.assertFalse(result["snmp"])
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_has_saved_credentials_handles_exception(self, mock_init):
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+        provider._keyring.get_password.side_effect = RuntimeError("boom")
+        result = provider.has_saved_credentials()
+        self.assertFalse(result["ssh"])
 
     @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
     def test_has_saved_credentials_keyring_unavailable(self, mock_init):
@@ -239,6 +370,41 @@ class TestKeyringCredentialProvider(unittest.TestCase):
         self.assertEqual(result[0], ("SSH", "auditor", 0))
 
     @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_get_saved_credential_summary_spray_list(self, mock_init):
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+        provider._keyring.get_password.side_effect = lambda svc, key: {
+            ("redaudit-ssh", "default:username"): "auditor",
+            ("redaudit-ssh", "spray:list"): '[{"user":"a"}]',
+        }.get((svc, key))
+        result = provider.get_saved_credential_summary()
+        self.assertEqual(result[0][2], 1)
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_get_saved_credential_summary_exception(self, mock_init):
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+        provider._keyring.get_password.side_effect = RuntimeError("boom")
+        self.assertEqual(provider.get_saved_credential_summary(), [])
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_get_saved_credential_summary_spray_error(self, mock_init):
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+        provider._keyring.get_password.side_effect = lambda svc, key: {
+            ("redaudit-ssh", "default:username"): "auditor",
+            ("redaudit-ssh", "spray:list"): "not-json",
+        }.get((svc, key))
+        result = provider.get_saved_credential_summary()
+        self.assertEqual(result[0][0], "SSH")
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
     def test_get_saved_credential_summary_empty(self, mock_init):
         """Test summary returns empty list when no credentials saved."""
         mock_init.return_value = None
@@ -251,6 +417,11 @@ class TestKeyringCredentialProvider(unittest.TestCase):
 
         result = provider.get_saved_credential_summary()
         self.assertEqual(result, [])
+
+    def test_get_saved_credential_summary_unavailable(self):
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = False
+        self.assertEqual(provider.get_saved_credential_summary(), [])
 
     @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
     def test_get_all_credentials_reads_spray_list(self, mock_init):
