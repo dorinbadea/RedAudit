@@ -14,6 +14,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.15] - 2026-01-24
+
+### Mejorado
+
+- **Almacen de pistas de hostname**: Las pistas basadas en hostname ahora se cargan desde el archivo de firmas para mantener configurable la clasificacion de identidad y activos.
+
 ## [4.18.14] - 2026-01-24
 
 ### Aniadido

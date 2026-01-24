@@ -14,6 +14,12 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.15] - 2026-01-24
+
+### Improved
+
+- **Hostname Hint Store**: Hostname-based device hints now load from the signature data file for configurable identity and asset classification.
+
 ## [4.18.14] - 2026-01-24
 
 ### Added
