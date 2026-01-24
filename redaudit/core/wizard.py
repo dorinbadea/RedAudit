@@ -216,6 +216,18 @@ class Wizard:
             return text
         return f"{self.ui.colors['BOLD']}{self.ui.colors['OKBLUE']}{text}{self.ui.colors['ENDC']}"
 
+    def _style_default_hint(self, text: str, color_key: str) -> str:
+        if not text:
+            return text
+        color = self.ui.colors.get(color_key, "")
+        bold = self.ui.colors.get("BOLD", "")
+        return f"{bold}{color}{text}{self.ui.colors['ENDC']}"
+
+    def _style_default_value(self, text: str) -> str:
+        if not text:
+            return text
+        return f"{self.ui.colors['BOLD']}{self.ui.colors['OKGREEN']}{text}{self.ui.colors['ENDC']}"
+
     def _arrow_menu(
         self,
         question: str,
@@ -310,22 +322,24 @@ class Wizard:
 
         # Define label-color mappings
         labels = (
-            (self.ui.t("yes_default"), "OKGREEN"),
-            (self.ui.t("yes_option"), "OKGREEN"),
-            (self.ui.t("no_default"), "FAIL"),
-            (self.ui.t("no_option"), "FAIL"),
-            (self.ui.t("wizard_go_back"), "WARNING"),
-            (self.ui.t("go_back"), "WARNING"),
+            (self.ui.t("yes_default"), "OKGREEN", True),
+            (self.ui.t("yes_option"), "OKGREEN", False),
+            (self.ui.t("no_default"), "FAIL", True),
+            (self.ui.t("no_option"), "FAIL", False),
+            (self.ui.t("wizard_go_back"), "WARNING", False),
+            (self.ui.t("go_back"), "WARNING", False),
         )
 
         # Check for matching labels
-        for label, color in labels:
+        for label, color, is_default in labels:
             if label and stripped.startswith(label):
-                # v4.14: Use DIM for cancel/back options
+                dim = self.ui.colors.get("DIM", "")
+                bold = self.ui.colors.get("BOLD", "")
                 if color == "WARNING":
-                    dim = self.ui.colors.get("DIM", "")
                     return f"{dim}{self.ui.colors.get(color, '')}{option}{self.ui.colors['ENDC']}"
-                return f"{self.ui.colors.get(color, '')}{option}{self.ui.colors['ENDC']}"
+                if is_default:
+                    return f"{bold}{self.ui.colors.get(color, '')}{option}{self.ui.colors['ENDC']}"
+                return f"{dim}{self.ui.colors.get(color, '')}{option}{self.ui.colors['ENDC']}"
 
         # v4.14: Selected option gets bold cyan for prominence
         if is_selected:
@@ -416,11 +430,9 @@ class Wizard:
                 return self._arrow_menu(question, options, default_idx) == 0
             except Exception:
                 pass
-        opts = (
-            self.ui.t("ask_yes_no_opts")
-            if default in ("yes", "y", "s", "si", "sí")
-            else self.ui.t("ask_yes_no_opts_neg")
-        )
+        is_yes_default = default in ("yes", "y", "s", "si", "sí")
+        opts_raw = self.ui.t("ask_yes_no_opts") if is_yes_default else self.ui.t("ask_yes_no_opts_neg")
+        opts = self._style_default_hint(opts_raw, "OKGREEN" if is_yes_default else "FAIL")
         valid = {
             "yes": True,
             "y": True,
@@ -457,6 +469,7 @@ class Wizard:
         if isinstance(default, str) and default.lower() in ("all", "todos", "todo"):
             default_return = "all"
             default_display = "todos" if self.lang == "es" else "all"
+        default_display = self._style_default_value(str(default_display))
         while True:
             try:
                 print(f"\n{self.ui.colors['OKBLUE']}{'—' * 60}{self.ui.colors['ENDC']}")
@@ -498,8 +511,9 @@ class Wizard:
             print(f"  {marker} {i + 1}. {opt_display}")
         while True:
             try:
+                default_choice = self._style_default_value(str(default + 1))
                 ans = input(
-                    f"\n{self.ui.t('select_opt')} [1-{len(options)}] ({default + 1}): "
+                    f"\n{self.ui.t('select_opt')} [1-{len(options)}] ({default_choice}): "
                 ).strip()
                 if ans == "":
                     return default
