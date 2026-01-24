@@ -11,7 +11,7 @@ This file is the canonical operating guide for collaborators (human or non-human
 - Keep code/docs/tests consistent (no version drift, no "docs say X but CLI does Y").
 - Do not retag/rewrite published tags/releases. If something was released, publish a new version.
 - Do not commit private data. `scan_results_private/` must never be pushed.
-- Wait for CI to be green before merging to `main` (do not force-merge with failing checks). While working, do **not** idle waiting for CI; run `scripts/ci_local.sh` (or at least `pre-commit run --all-files` + `pytest tests/ -v`) and continue with other tasks.
+- Before merging to `main`, run the local quality gate (`scripts/ci_local.sh` or at least `pre-commit run --all-files` + `pytest tests/ -v`). CI can arrive after the merge; if any checks fail, treat it as a regression and fix it promptly. Do not force-merge with failing checks.
   Exception: documentation-only changes may merge with owner approval if checks are
   pending/skipped and there are no red failures.
 - **No Emojis**: Do not use emojis in documentation (`.md` files). Maintain a professional, neutral tone.
