@@ -3,7 +3,7 @@
 Tests for Auditor IP Exclusion logic in InteractiveNetworkAuditor.
 """
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from redaudit.core.auditor import InteractiveNetworkAuditor
 
 
@@ -58,6 +58,22 @@ class TestAuditorIpExclusion(unittest.TestCase):
         filtered = auditor._filter_auditor_ips(hosts)
 
         self.assertEqual(filtered, hosts)
+
+    def test_filter_auditor_ips_fallback_detect_all_networks(self):
+        """Fallback detection should exclude auditor IPs when primary sources are empty."""
+        auditor = InteractiveNetworkAuditor()
+        auditor.ui = MagicMock()
+        auditor.logger = MagicMock()
+        auditor.results["network_info"] = []
+        auditor.results["topology"] = {}
+
+        hosts = ["192.168.1.10", "192.168.1.50"]
+        fallback_nets = [{"ip": "192.168.1.50", "interface": "eth0"}]
+        with patch("redaudit.core.auditor.detect_all_networks", return_value=fallback_nets):
+            filtered = auditor._filter_auditor_ips(hosts)
+
+        self.assertNotIn("192.168.1.50", filtered)
+        self.assertIn("192.168.1.10", filtered)
 
     def test_filter_auditor_ips_uses_topology_src(self):
         """Topology src/interface IPs should be excluded when present."""
