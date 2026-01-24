@@ -541,6 +541,10 @@ class TestReporter(unittest.TestCase):
         self.assertIn("session_id", manifest)
         self.assertIn("artifacts", manifest)
         self.assertIsInstance(manifest["artifacts"], list)
+        self.assertIn("auditor_exclusions", manifest)
+        self.assertEqual(manifest["auditor_exclusions"]["count"], 0)
+        self.assertEqual(manifest["auditor_exclusions"]["items"], [])
+        self.assertIn("auditor_exclusions", manifest["pipeline"])
 
     def test_save_results_txt(self):
         """Test TXT report saving."""
