@@ -170,7 +170,7 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | Campo | Tipo | Descripción |
 | :--- | :--- | :--- |
 | `host_scan` | object | Targets + threads + args Nmap resueltos |
-| `net_discovery` | object | Conteos DHCP/ARP/NetBIOS/UPNP + redteam |
+| `net_discovery` | object | Conteos DHCP/ARP/NetBIOS/mDNS/UPNP + HyperScan TCP/UDP + redteam |
 | `agentless_verify` | object | Targets + completados + conteos por protocolo |
 | `nuclei` | object | Resumen Nuclei |
 | `vulnerability_scan` | object | Total de hallazgos + fuentes (+ conteo raw) |
@@ -186,6 +186,21 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `threads` | integer | Concurrencia usada |
 | `nmap_args` | string | Args Nmap resueltos para el modo seleccionado |
 | `nmap_timing` | string | Plantilla de timing Nmap (ej.: T4) |
+
+#### pipeline.net_discovery.counts
+
+| Campo | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `dhcp_servers` | integer | Servidores DHCP detectados |
+| `alive_hosts` | integer | Hosts activos detectados |
+| `netbios_hosts` | integer | Hosts NetBIOS detectados |
+| `arp_hosts` | integer | Hosts ARP detectados |
+| `mdns_services` | integer | Servicios mDNS detectados |
+| `upnp_devices` | integer | Dispositivos UPNP/SSDP detectados |
+| `candidate_vlans` | integer | VLANs candidatas detectadas |
+| `hyperscan_tcp_hosts` | integer | Hosts con puertos TCP de HyperScan |
+| `hyperscan_udp_ports` | integer | Total de puertos UDP de HyperScan |
+| `potential_backdoors` | integer | Señales de backdoors potenciales detectadas |
 
 #### pipeline.deep_scan (v4.18.9+)
 

@@ -176,7 +176,7 @@ Compact roll-up for dashboards.
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `host_scan` | object | Targets + threads + resolved Nmap args |
-| `net_discovery` | object | DHCP/ARP/NetBIOS/UPNP counts + redteam |
+| `net_discovery` | object | DHCP/ARP/NetBIOS/mDNS/UPNP counts + HyperScan TCP/UDP + redteam |
 | `agentless_verify` | object | Targets + completed + counts per protocol |
 | `nuclei` | object | Nuclei summary |
 | `vulnerability_scan` | object | Total findings + sources (+ raw count) |
@@ -192,6 +192,21 @@ Compact roll-up for dashboards.
 | `threads` | integer | Concurrency used |
 | `nmap_args` | string | Resolved Nmap args for the selected scan mode |
 | `nmap_timing` | string | Nmap timing template (e.g., T4) |
+
+#### pipeline.net_discovery.counts
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `dhcp_servers` | integer | DHCP servers detected |
+| `alive_hosts` | integer | Alive hosts detected |
+| `netbios_hosts` | integer | NetBIOS hosts detected |
+| `arp_hosts` | integer | ARP hosts detected |
+| `mdns_services` | integer | mDNS services detected |
+| `upnp_devices` | integer | UPNP/SSDP devices detected |
+| `candidate_vlans` | integer | Candidate VLANs detected |
+| `hyperscan_tcp_hosts` | integer | Hosts with TCP ports from HyperScan |
+| `hyperscan_udp_ports` | integer | Total UDP ports from HyperScan discovery |
+| `potential_backdoors` | integer | Potential backdoor signals detected |
 
 #### pipeline.deep_scan (v4.18.9+)
 
