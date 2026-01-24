@@ -384,6 +384,12 @@ class TestSIEM(unittest.TestCase):
         result2 = calculate_severity(finding2)
         self.assertEqual(result2, "info")
 
+    def test_calculate_severity_no_web_server_found(self):
+        """No web server found should be informational."""
+        finding = "+ No web server found on 192.168.1.10:55443"
+        result = calculate_severity(finding)
+        self.assertEqual(result, "info")
+
     # v4.6.19: Tests for SEVERITY_OVERRIDES patterns
     def test_calculate_severity_etag_inode_leak(self):
         """ETag inode leak should be info, not low."""

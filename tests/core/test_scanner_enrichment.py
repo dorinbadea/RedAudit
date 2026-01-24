@@ -198,6 +198,24 @@ weak cipher suites detected
     assert findings["protocols"]
 
 
+def test_ssl_deep_analysis_ignores_not_tested_vulns(monkeypatch):
+    output = """
+BREACH (CVE-2013-3587) not having provided client certificate and private key file, the client x509-based authentication prevents this from being tested
+TLS 1.2 offered
+"""
+
+    def _fake_make_runner(**_kwargs):
+        return SimpleNamespace(run=lambda *_args, **_kw: _result(stdout=output))
+
+    monkeypatch.setattr(scanner_enrichment, "_make_runner", _fake_make_runner)
+
+    findings = scanner.ssl_deep_analysis("1.2.3.4", 443, {"testssl.sh": "testssl.sh"})
+    assert findings
+    assert findings["vulnerabilities"] == []
+    assert findings["protocols"]
+    assert findings["summary"] == "No major issues detected"
+
+
 def test_ssl_deep_analysis_timeout(monkeypatch):
     def _fake_make_runner(**_kwargs):
         return SimpleNamespace(run=lambda *_args, **_kw: _result(timed_out=True))

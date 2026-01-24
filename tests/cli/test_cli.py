@@ -143,6 +143,7 @@ def _base_args(**overrides):
         "kerberos_userlist": None,
         "redteam_active_l2": False,
         "nuclei": False,
+        "nuclei_profile": "balanced",
         "agentless_verify_max_targets": 20,
         "windows_verify": False,
         "encrypt": False,
@@ -262,6 +263,13 @@ def test_configure_from_args_sets_max_hosts_all():
     args = _base_args(max_hosts=None)
     assert cli.configure_from_args(app, args) is True
     assert app.config["max_hosts_value"] == "all"
+
+
+def test_configure_from_args_sets_nuclei_profile():
+    app = _DummyApp()
+    args = _base_args(nuclei_profile="fast")
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["nuclei_profile"] == "fast"
 
 
 def test_configure_from_args_filters_net_discovery_protocols():
