@@ -431,7 +431,9 @@ class Wizard:
             except Exception:
                 pass
         is_yes_default = default in ("yes", "y", "s", "si", "sí")
-        opts_raw = self.ui.t("ask_yes_no_opts") if is_yes_default else self.ui.t("ask_yes_no_opts_neg")
+        opts_raw = (
+            self.ui.t("ask_yes_no_opts") if is_yes_default else self.ui.t("ask_yes_no_opts_neg")
+        )
         opts = self._style_default_hint(opts_raw, "OKGREEN" if is_yes_default else "FAIL")
         valid = {
             "yes": True,
