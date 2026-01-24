@@ -148,6 +148,18 @@ def test_parse_smb_nmap_edge():
     )
 
 
+def test_parse_smb_nmap_blank_domain_ignores_fqdn():
+    text = (
+        "| smb-os-discovery: \n"
+        "|   Computer name: 41c64e8260a5\n"
+        "|   Domain name: \n"
+        "|   FQDN: 41c64e8260a5\n"
+    )
+    res = agentless_verify.parse_smb_nmap(text)
+    assert res["computer_name"] == "41c64e8260a5"
+    assert "domain" not in res
+
+
 def test_parse_ldap_rootdse_edge():
     text = "dnsHostName: dc1.lab.local\ndefaultNamingContext: DC=lab,DC=local\nsupportedLDAPVersion: 2, 3"
     res = agentless_verify.parse_ldap_rootdse(text)

@@ -17,7 +17,7 @@ import sys
 import threading
 import time
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set
 
 from redaudit.utils.constants import (
     COLORS,
@@ -385,21 +385,51 @@ class InteractiveNetworkAuditor:
         Uses self.results['network_info'] as the source of truth.
         """
         network_info = self.results.get("network_info") or []
-        auditor_ips = {n.get("ip") for n in network_info if n.get("ip")}
+        auditor_ip_reasons: Dict[str, Set[str]] = {}
+
+        def _add_reason(ip: str, reason: str) -> None:
+            if not ip:
+                return
+            reasons = auditor_ip_reasons.setdefault(ip, set())
+            reasons.add(reason)
+
+        for entry in network_info:
+            ip = entry.get("ip")
+            iface = entry.get("interface")
+            reason = f"network_info:{iface}" if iface else "network_info"
+            _add_reason(ip, reason)
+
         topology = self.results.get("topology") or {}
         for route in topology.get("routes", []) or []:
             src_ip = route.get("src")
             if src_ip:
-                auditor_ips.add(src_ip)
+                dev = route.get("dev")
+                reason = f"topology.route_src:{dev}" if dev else "topology.route_src"
+                _add_reason(src_ip, reason)
         for iface in topology.get("interfaces", []) or []:
             iface_ip = iface.get("ip")
             if iface_ip:
-                auditor_ips.add(iface_ip)
+                iface_name = iface.get("interface")
+                reason = (
+                    f"topology.interface_ip:{iface_name}" if iface_name else "topology.interface_ip"
+                )
+                _add_reason(iface_ip, reason)
+
+        auditor_ips = set(auditor_ip_reasons)
         if not auditor_ips:
+            self.results["auditor_exclusions"] = {"count": 0, "items": []}
             return hosts
 
         filtered_hosts = [h for h in hosts if h not in auditor_ips]
-        excluded_count = len(hosts) - len(filtered_hosts)
+        excluded_hosts = [h for h in hosts if h in auditor_ips]
+        excluded_count = len(excluded_hosts)
+
+        items = []
+        if excluded_hosts:
+            for ip in sorted(set(excluded_hosts)):
+                reasons = sorted(auditor_ip_reasons.get(ip, set()))
+                items.append({"ip": ip, "reasons": reasons})
+        self.results["auditor_exclusions"] = {"count": excluded_count, "items": items}
 
         if excluded_count > 0:
             self.ui.print_status(

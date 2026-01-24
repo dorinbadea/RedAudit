@@ -452,6 +452,10 @@ def generate_summary(
             "low_impact_enrichment": results["config_snapshot"].get("low_impact_enrichment"),
         },
     }
+    auditor_exclusions = results.get("auditor_exclusions")
+    if not isinstance(auditor_exclusions, dict):
+        auditor_exclusions = {"count": 0, "items": []}
+    results["pipeline"]["auditor_exclusions"] = auditor_exclusions
 
     hyperscan_vs_final = _summarize_hyperscan_vs_final(
         results.get("hosts", []), results.get("net_discovery") or {}
@@ -1258,6 +1262,11 @@ def _write_output_manifest(
         },
         "artifacts": [],
     }
+    auditor_exclusions = results.get("auditor_exclusions")
+    if not isinstance(auditor_exclusions, dict):
+        auditor_exclusions = {"count": 0, "items": []}
+    manifest["auditor_exclusions"] = auditor_exclusions
+    manifest["counts"]["auditor_excluded"] = auditor_exclusions.get("count", 0)
     manifest["config_snapshot"] = results.get("config_snapshot", {}) or {}
     pipeline = results.get("pipeline") or {}
     manifest["pipeline"] = {
@@ -1267,6 +1276,7 @@ def _write_output_manifest(
         "nuclei": pipeline.get("nuclei") or {},
         "vulnerability_scan": pipeline.get("vulnerability_scan") or {},
         "hyperscan_vs_final": pipeline.get("hyperscan_vs_final") or {},
+        "auditor_exclusions": pipeline.get("auditor_exclusions") or {},
     }
     if raw_findings is not None:
         manifest["counts"]["findings_raw"] = raw_findings

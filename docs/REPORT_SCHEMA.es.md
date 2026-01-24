@@ -44,9 +44,11 @@ Metadatos del manifiesto usados para inventariar artefactos de salida en pipelin
 | `scanner_versions` | object | Versiones de herramientas externas capturadas en tiempo de ejecución |
 | `targets` | array | Redes objetivo o rangos IP |
 | `config_snapshot` | object | Snapshot de configuración sanitizada (sin secretos) |
-| `pipeline` | object | Resumen mínimo del pipeline (host_scan, deep_scan, net_discovery, nuclei, vulnerability_scan, hyperscan_vs_final) |
+| `pipeline` | object | Resumen mínimo del pipeline (host_scan, deep_scan, net_discovery, nuclei, vulnerability_scan, hyperscan_vs_final, auditor_exclusions) |
+| `auditor_exclusions` | object | IPs del auditor excluidas del listado de objetivos, con razones |
 | `counts` | object | Conteos de hosts, hallazgos y PCAPs |
 | `counts.findings_raw` | integer | (Opcional) Conteo bruto de hallazgos antes de normalizar |
+| `counts.auditor_excluded` | integer | Número de IPs del auditor eliminadas de los objetivos |
 | `artifacts` | array | Lista de archivos con `path` relativo y `size_bytes` |
 
 ## Definición del Esquema

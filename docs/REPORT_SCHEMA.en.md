@@ -44,9 +44,11 @@ Run manifest metadata used to inventory output artifacts for automation pipeline
 | `scanner_versions` | object | External tool versions captured at runtime |
 | `targets` | array | Target networks or IP ranges |
 | `config_snapshot` | object | Sanitized configuration snapshot (no secrets) |
-| `pipeline` | object | Minimal pipeline summary (host_scan, deep_scan, net_discovery, nuclei, vulnerability_scan, hyperscan_vs_final) |
+| `pipeline` | object | Minimal pipeline summary (host_scan, deep_scan, net_discovery, nuclei, vulnerability_scan, hyperscan_vs_final, auditor_exclusions) |
+| `auditor_exclusions` | object | Auditor IPs excluded from the scan target list, with reasons |
 | `counts` | object | Summary counts for hosts, findings, and PCAPs |
 | `counts.findings_raw` | integer | (Optional) Raw findings count before normalization |
+| `counts.auditor_excluded` | integer | Number of auditor IPs removed from targets |
 | `artifacts` | array | List of files with relative `path` and `size_bytes` |
 
 ## Schema Definition

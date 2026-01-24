@@ -14,6 +14,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.13] - 2026-01-24
+
+### Añadido
+
+- **Exclusiones del auditor**: Los manifiestos ahora incluyen las IPs del auditor excluidas y sus razones para transparencia en revisiones automáticas.
+
+### Corregido
+
+- **Parseo SMB de dominio**: El parser sin agente ya no arrastra líneas de FQDN cuando el campo de dominio está vacío.
+
 ## [4.18.12] - 2026-01-23
 
 ### Corregido
