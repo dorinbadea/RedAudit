@@ -797,8 +797,18 @@ def test_truncate_menu_text_zero_width():
 def test_format_menu_option_colors():
     wiz = _UIWizard()
     wiz.ui.colors["OKGREEN"] = "<G>"
+    wiz.ui.colors["FAIL"] = "<F>"
+    wiz.ui.colors["OKBLUE"] = "<B>"
+    wiz.ui.colors["DIM"] = "<D>"
+    wiz.ui.colors["BOLD"] = "<BO>"
+    wiz.ui.colors["CYAN"] = "<C>"
     wiz.ui.colors["ENDC"] = "<E>"
-    assert wiz._format_menu_option(wiz.t("yes_default")) == "<G>yes_default<E>"
+    assert wiz._format_menu_option(wiz.t("yes_default")) == "<BO><G>yes_default<E>"
+    assert wiz._format_menu_option(wiz.t("yes_option")) == "<D><G>yes_option<E>"
+    assert wiz._format_menu_option(wiz.t("no_default")) == "<BO><F>no_default<E>"
+    assert wiz._format_menu_option(wiz.t("no_option")) == "<D><F>no_option<E>"
+    assert wiz._format_menu_option("Option") == "<D><B>Option<E>"
+    assert wiz._format_menu_option("Selected", is_selected=True) == "<BO><C>Selected<E>"
 
     colored = "\x1b[31mAlready colored\x1b[0m"
     assert wiz._format_menu_option(colored) == colored
