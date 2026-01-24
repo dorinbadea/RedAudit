@@ -14,6 +14,16 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.13] - 2026-01-24
+
+### Added
+
+- **Auditor Exclusions**: Run manifests now include excluded auditor IPs and reasons for transparency in automated reviews.
+
+### Fixed
+
+- **SMB Domain Parsing**: SMB agentless parsing no longer falls through to FQDN lines when the domain field is blank.
+
 ## [4.18.12] - 2026-01-23
 
 ### Fixed
