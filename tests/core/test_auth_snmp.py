@@ -5,6 +5,8 @@ Unit tests for SNMP v3 Scanner (auth_snmp.py)
 
 import sys
 import unittest
+import importlib
+import builtins
 from unittest.mock import MagicMock, patch
 
 # Mock pysnmp to ensure auth_snmp imports these names even if library missing
@@ -172,6 +174,121 @@ class TestSNMPScanner(unittest.TestCase):
 
         res = scanner._walk_interfaces(MagicMock())
         self.assertEqual(res[0]["mac"], "aa:bb:cc")
+
+
+def test_auth_snmp_import_error_fallback():
+    import redaudit.core.auth_snmp as auth_module
+
+    module_path = auth_module.__file__
+    spec = importlib.util.spec_from_file_location("auth_snmp_no_pysnmp", module_path)
+    loaded = importlib.util.module_from_spec(spec)
+    orig_import = builtins.__import__
+
+    def _fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name.startswith("pysnmp"):
+            raise ImportError("no pysnmp")
+        return orig_import(name, globals, locals, fromlist, level)
+
+    with patch("builtins.__import__", side_effect=_fake_import):
+        spec.loader.exec_module(loaded)
+
+    assert loaded.PYSNMP_AVAILABLE is False
+    assert hasattr(loaded, "UsmUserData")
+
+
+@patch("redaudit.core.auth_snmp.getCmd")
+def test_get_system_info_error_status(mock_getCmd):
+    scanner = SNMPScanner(Credential(username="user", password="pass"))
+
+    class _Status:
+        def prettyPrint(self):
+            return "Bad"
+
+    var_binds = [("oid", "value")]
+    mock_getCmd.return_value = iter([(None, _Status(), 1, var_binds)])
+    info = scanner.get_system_info("127.0.0.1")
+    assert "Bad" in info.error
+
+
+@patch("redaudit.core.auth_snmp.getCmd")
+def test_get_system_info_exception(mock_getCmd):
+    scanner = SNMPScanner(Credential(username="user", password="pass"))
+    mock_getCmd.side_effect = RuntimeError("boom")
+    info = scanner.get_system_info("127.0.0.1")
+    assert "boom" in info.error
+
+
+@patch("redaudit.core.auth_snmp.nextCmd")
+def test_walk_oid_collects_rows_and_breaks_on_error(mock_nextCmd):
+    scanner = SNMPScanner(Credential(username="user", password="pass"))
+    row = [(None, "1"), (None, "2")]
+    mock_nextCmd.return_value = iter(
+        [
+            (None, 0, 0, row),
+            ("error", 0, 0, row),
+        ]
+    )
+    results = scanner._walk_oid(MagicMock(), "1.2.3")
+    assert results == [["1", "2"]]
+
+
+@patch("redaudit.core.auth_snmp.nextCmd")
+def test_walk_interfaces_breaks_on_error_indication(mock_nextCmd):
+    scanner = SNMPScanner(Credential(username="user", password="pass"))
+    mock_nextCmd.return_value = iter([("error", 0, 0, [])])
+    assert scanner._walk_interfaces(MagicMock()) == []
+
+
+@patch("redaudit.core.auth_snmp.nextCmd")
+def test_walk_interfaces_prettyprint_short_value(mock_nextCmd):
+    scanner = SNMPScanner(Credential(username="user", password="pass"))
+
+    class _Val:
+        def prettyPrint(self):
+            return "abcd"
+
+    row = [(None, "1"), (None, "eth0"), (None, "6"), (None, _Val()), (None, "1")]
+    mock_nextCmd.return_value = iter([(None, 0, 0, row)])
+    res = scanner._walk_interfaces(MagicMock())
+    assert res[0]["mac"] == "abcd"
+
+
+@patch("redaudit.core.auth_snmp.nextCmd")
+def test_walk_interfaces_prettyprint_exception(mock_nextCmd):
+    scanner = SNMPScanner(Credential(username="user", password="pass"))
+
+    class _Val:
+        def prettyPrint(self):
+            raise RuntimeError("bad")
+
+    row = [(None, "1"), (None, "eth0"), (None, "6"), (None, _Val()), (None, "1")]
+    mock_nextCmd.return_value = iter([(None, 0, 0, row)])
+    res = scanner._walk_interfaces(MagicMock())
+    assert "bad" not in res[0]["mac"]
+
+
+@patch("redaudit.core.auth_snmp.nextCmd")
+def test_walk_routes_error_and_exception(mock_nextCmd):
+    scanner = SNMPScanner(Credential(username="user", password="pass"))
+    route_row = [(None, "dest"), (None, "1"), (None, "0.0.0.0"), (None, "3"), (None, "mask")]
+    mock_nextCmd.return_value = iter([("error", 0, 0, route_row), (None, 0, 0, route_row)])
+    res = scanner._walk_routes(MagicMock())
+    assert len(res) == 1
+
+    mock_nextCmd.side_effect = Exception("boom")
+    assert scanner._walk_routes(MagicMock()) == []
+
+
+@patch("redaudit.core.auth_snmp.nextCmd")
+def test_walk_arp_as_numbers_and_error(mock_nextCmd):
+    scanner = SNMPScanner(Credential(username="user", password="pass"))
+
+    mac_val = MagicMock()
+    mac_val.asNumbers.return_value = [0xAA, 0xBB, 0xCC, 0xDD]
+    arp_row = [(None, "1"), (None, mac_val), (None, "10.0.0.1"), (None, "3")]
+    mock_nextCmd.return_value = iter([("error", 0, 0, arp_row), (None, 0, 0, arp_row)])
+    res = scanner._walk_arp(MagicMock())
+    assert res[0]["mac"] == "aa:bb:cc:dd"
 
 
 if __name__ == "__main__":

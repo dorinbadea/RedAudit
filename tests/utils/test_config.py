@@ -24,6 +24,8 @@ from redaudit.utils.config import (
     load_config,
     save_config,
     get_nvd_api_key,
+    set_nvd_api_key,
+    clear_nvd_api_key,
     get_persistent_defaults,
     update_persistent_defaults,
     DEFAULT_CONFIG,
@@ -31,6 +33,7 @@ from redaudit.utils.config import (
     ensure_config_dir,
     get_config_paths,
 )
+import redaudit.utils.config as config_module
 
 
 class TestValidateNvdApiKey(unittest.TestCase):
@@ -257,6 +260,114 @@ class TestPersistentDefaults(unittest.TestCase):
         self.assertEqual(defaults["windows_verify_enabled"], True)
         self.assertEqual(defaults["windows_verify_max_targets"], 25)
         self.assertNotIn("bogus_key", defaults)
+
+
+class TestConfigEdgeCases(unittest.TestCase):
+    def test_resolve_config_owner_sudo(self):
+        with (
+            patch("os.geteuid", return_value=0),
+            patch.dict(os.environ, {"SUDO_USER": "alice"}, clear=True),
+            patch.object(config_module, "pwd") as mock_pwd,
+        ):
+            mock_pwd.getpwnam.return_value = MagicMock(pw_uid=1000, pw_gid=1001)
+            assert config_module._resolve_config_owner() == (1000, 1001)
+
+    def test_resolve_config_owner_exception(self):
+        with (
+            patch("os.geteuid", return_value=0),
+            patch.dict(os.environ, {"SUDO_USER": "alice"}, clear=True),
+            patch.object(config_module, "pwd") as mock_pwd,
+        ):
+            mock_pwd.getpwnam.side_effect = RuntimeError("boom")
+            assert config_module._resolve_config_owner() is None
+
+    def test_get_config_paths_fallback_on_exception(self):
+        calls = {"count": 0}
+
+        def _expanduser(path):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise RuntimeError("boom")
+            return "/tmp/home"
+
+        with patch("os.path.expanduser", side_effect=_expanduser):
+            config_dir, config_file = config_module.get_config_paths()
+        assert config_dir == "/tmp/home/.redaudit"
+        assert config_file == "/tmp/home/.redaudit/config.json"
+
+    def test_maybe_chown_handles_error(self):
+        with (
+            patch.object(config_module, "_resolve_config_owner", return_value=(1, 2)),
+            patch("os.chown", side_effect=OSError("nope")),
+        ):
+            config_module._maybe_chown("/tmp/path")
+
+    def test_ensure_config_dir_creates_and_chmods(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = os.path.join(tmpdir, "config.json")
+            with (
+                patch("redaudit.utils.config.get_config_paths", return_value=(tmpdir, config_file)),
+                patch("os.path.isdir", return_value=False),
+                patch("os.makedirs") as mock_makedirs,
+                patch("os.chmod", side_effect=OSError("nope")),
+                patch.object(config_module, "_maybe_chown") as mock_chown,
+            ):
+                result = ensure_config_dir()
+        assert result == tmpdir
+        mock_makedirs.assert_called_once()
+        mock_chown.assert_called_once()
+
+    def test_load_config_decode_error_returns_defaults(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = os.path.join(tmpdir, "config.json")
+            with (
+                patch("redaudit.utils.config.get_config_paths", return_value=(tmpdir, config_file)),
+                patch("os.path.isfile", return_value=True),
+                patch("json.load", side_effect=json.JSONDecodeError("bad", "doc", 1)),
+                patch("builtins.open", MagicMock()),
+            ):
+                config = load_config()
+        assert config == DEFAULT_CONFIG
+
+    def test_save_config_raises_returns_false(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = os.path.join(tmpdir, "config.json")
+            with (
+                patch("redaudit.utils.config.get_config_paths", return_value=(tmpdir, config_file)),
+                patch("redaudit.utils.config.ensure_config_dir", return_value=tmpdir),
+                patch("os.replace", side_effect=OSError("nope")),
+            ):
+                assert save_config({"nvd_api_key": "x"}) is False
+
+    def test_set_and_clear_nvd_api_key(self):
+        with patch("redaudit.utils.config.load_config", return_value={}):
+            with patch("redaudit.utils.config.save_config", return_value=True) as mock_save:
+                assert set_nvd_api_key(" abc ") is True
+                saved = mock_save.call_args[0][0]
+                assert saved["nvd_api_key"] == "abc"
+                assert saved["nvd_api_key_storage"] == "config"
+
+        with patch("redaudit.utils.config.load_config", return_value={"nvd_api_key": "x"}):
+            with patch("redaudit.utils.config.save_config", return_value=True) as mock_save:
+                assert clear_nvd_api_key() is True
+                saved = mock_save.call_args[0][0]
+                assert saved["nvd_api_key"] is None
+                assert saved["nvd_api_key_storage"] is None
+
+    def test_get_persistent_defaults_root_rewrite_with_invoking_user(self):
+        with (
+            patch(
+                "redaudit.utils.config.load_config",
+                return_value={"defaults": {"output_dir": "/root"}},
+            ),
+            patch("redaudit.utils.config.get_invoking_user", return_value="user"),
+            patch(
+                "redaudit.utils.config.get_default_reports_base_dir",
+                return_value="/home/user/Documents/RedAuditReports",
+            ),
+        ):
+            defaults = get_persistent_defaults()
+        assert defaults["output_dir"] == "/home/user/Documents/RedAuditReports"
 
 
 class TestSudoConfigPaths(unittest.TestCase):
