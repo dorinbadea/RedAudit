@@ -10,7 +10,12 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from redaudit.core.nuclei import _normalize_nuclei_finding, _parse_nuclei_output, run_nuclei_scan
+from redaudit.core.nuclei import (
+    _normalize_nuclei_finding,
+    _parse_nuclei_output,
+    run_nuclei_scan,
+    NucleiProgressCallback,
+)
 
 
 def _fake_runner(stdout, returncode=0):
@@ -212,22 +217,38 @@ def test_run_nuclei_scan_internal_progress(tmp_path):
 
 def test_run_nuclei_scan_batch_size_zero():
     """Test run_nuclei_scan with batch_size < 1 (line 130)."""
-    with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
-        with patch("redaudit.core.nuclei.CommandRunner"):
-            # Should set size to 25 if batch_size=0
-            # We don't actually need to run it, just check the logic path
-            pass
+
+    class _Runner:
+        def __init__(self, *args, **kwargs):
+            self.last_cmd = None
+
+        def run(self, cmd, *args, **kwargs):
+            self.last_cmd = cmd
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+            with patch("redaudit.core.nuclei.CommandRunner", _Runner):
+                res = run_nuclei_scan(
+                    ["http://127.0.0.1:80"],
+                    tmpdir,
+                    batch_size=0,
+                    request_timeout=1,
+                    retries=5,
+                    templates="/tmp/tpl",
+                    profile="fast",
+                    use_internal_progress=False,
+                )
+    assert res["success"] is True
 
 
 def test_run_nuclei_scan_output_file_exception():
     """Test run_nuclei_scan failing to create initial output file (lines 173-175)."""
     with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
-        with patch("builtins.open", side_effect=[None, IOError("Permission denied")]):
+        with patch("builtins.open", side_effect=IOError("Permission denied")):
             with tempfile.TemporaryDirectory() as tmpdir:
-                # First open for targets_file succeeds (in mock it will be called)
-                # Second open for output_file fails
-                # Actually, better to patch open carefully or just one specific call
-                pass
+                result = run_nuclei_scan(["http://target"], tmpdir)
+    assert "Failed to create targets file" in result["error"]
 
 
 def test_run_nuclei_scan_output_file_failed():
@@ -330,6 +351,334 @@ def test_parse_nuclei_output_general_exception():
 def test_normalize_nuclei_finding_empty():
     """Test _normalize_nuclei_finding empty input (line 332)."""
     assert _normalize_nuclei_finding({}) is None
+
+
+def test_nuclei_progress_callback_protocol_call():
+    NucleiProgressCallback.__call__(object(), 0.0, 0, "")
+
+
+def test_get_nuclei_help_text_cache_and_exception():
+    from redaudit.core import nuclei
+
+    nuclei._NUCLEI_HELP_CACHE = None
+    runner = MagicMock()
+    runner.run.return_value = SimpleNamespace(stdout=b"help", stderr=b"err")
+    text = nuclei._get_nuclei_help_text(runner)
+    assert text == "help\nerr"
+    assert nuclei._get_nuclei_help_text(runner) == "help\nerr"
+
+    nuclei._NUCLEI_HELP_CACHE = None
+    runner.run.side_effect = RuntimeError("boom")
+    assert nuclei._get_nuclei_help_text(runner) == ""
+
+
+def test_nuclei_supports_flag_from_help_text():
+    from redaudit.core import nuclei
+
+    with patch("redaudit.core.nuclei._get_nuclei_help_text", return_value="--timeout -tags"):
+        assert nuclei._nuclei_supports_flag("--timeout", MagicMock()) is True
+        assert nuclei._nuclei_supports_flag("-retries", MagicMock()) is False
+
+
+def test_get_nuclei_version_fallback_first_line():
+    from redaudit.core import nuclei
+
+    version_output = "v1.2.3\nextra"
+    with patch("redaudit.core.nuclei.shutil.which", return_value="/usr/bin/nuclei"):
+        with patch(
+            "redaudit.core.nuclei.CommandRunner", lambda *_a, **_k: _fake_runner(version_output)
+        ):
+            assert nuclei.get_nuclei_version() == "v1.2.3"
+
+
+def test_get_nuclei_version_exception_returns_none():
+    from redaudit.core import nuclei
+
+    with patch("redaudit.core.nuclei.shutil.which", return_value="/usr/bin/nuclei"):
+        with patch("redaudit.core.nuclei.CommandRunner", side_effect=RuntimeError("boom")):
+            assert nuclei.get_nuclei_version() is None
+
+
+def test_run_nuclei_scan_dry_run_with_status(tmp_path):
+    calls = []
+
+    def _print_status(msg, level):
+        calls.append((msg, level))
+
+    with patch("redaudit.core.nuclei.shutil.which", return_value="/usr/bin/nuclei"):
+        res = run_nuclei_scan(
+            ["http://127.0.0.1:80"],
+            output_dir=str(tmp_path),
+            dry_run=True,
+            print_status=_print_status,
+        )
+    assert res["success"] is True
+    assert any("dry-run" in msg for msg, _ in calls)
+
+
+def test_run_nuclei_scan_targets_file_failure(tmp_path):
+    with patch("redaudit.core.nuclei.shutil.which", return_value="/usr/bin/nuclei"):
+        with patch("builtins.open", side_effect=IOError("nope")):
+            res = run_nuclei_scan(["http://127.0.0.1:80"], output_dir=str(tmp_path))
+    assert "Failed to create targets file" in res["error"]
+
+
+def test_run_nuclei_scan_timeout_and_retry_flags(tmp_path):
+    captured = {}
+
+    class _Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, cmd, *args, **kwargs):
+            captured["cmd"] = cmd
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    def _supports(flag, _runner):
+        return flag in ("-tags", "-timeout", "-retries")
+
+    with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+        with patch("redaudit.core.nuclei.CommandRunner", _Runner):
+            with patch("redaudit.core.nuclei._nuclei_supports_flag", side_effect=_supports):
+                res = run_nuclei_scan(
+                    ["http://127.0.0.1:80"],
+                    output_dir=str(tmp_path),
+                    request_timeout=1,
+                    retries=10,
+                    templates="/tmp/templates",
+                    profile="fast",
+                    batch_size=0,
+                    use_internal_progress=False,
+                )
+    assert res["success"] is True
+    assert "-timeout" in captured["cmd"]
+    assert "3" in captured["cmd"]
+    assert "-retries" in captured["cmd"]
+    assert "3" in captured["cmd"]
+    assert "-tags" in captured["cmd"]
+    assert "-t" in captured["cmd"]
+
+
+def test_run_nuclei_scan_long_flag_fallback(tmp_path):
+    captured = {}
+
+    class _Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, cmd, *args, **kwargs):
+            captured["cmd"] = cmd
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    def _supports(flag, _runner):
+        return flag in ("--timeout", "--retries")
+
+    with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+        with patch("redaudit.core.nuclei.CommandRunner", _Runner):
+            with patch("redaudit.core.nuclei._nuclei_supports_flag", side_effect=_supports):
+                res = run_nuclei_scan(
+                    ["http://127.0.0.1:80"],
+                    output_dir=str(tmp_path),
+                    request_timeout=100,
+                    retries=1,
+                    use_internal_progress=False,
+                )
+    assert res["success"] is True
+    assert "--timeout" in captured["cmd"]
+    assert "--retries" in captured["cmd"]
+
+
+def test_run_nuclei_scan_progress_loop_emits_updates(tmp_path):
+    from redaudit.core import nuclei
+
+    class _FakeEvent:
+        def __init__(self):
+            self._flag = False
+            self._calls = 0
+
+        def wait(self, timeout=None):
+            self._calls += 1
+            if self._calls == 1:
+                return False
+            return self._flag
+
+        def set(self):
+            self._flag = True
+
+    class _ImmediateThread:
+        def __init__(self, target=None, **_kwargs):
+            self._target = target
+
+        def start(self):
+            if self._target:
+                self._target()
+
+    class _ImmediateFuture:
+        def __init__(self, result):
+            self._result = result
+
+        def result(self):
+            return self._result
+
+    class _ImmediateExecutor:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def submit(self, func, *args, **kwargs):
+            return _ImmediateFuture(func(*args, **kwargs))
+
+    class _Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, cmd, *args, **kwargs):
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    progress_calls = []
+
+    def _cb(completed, total, eta, detail=""):
+        progress_calls.append((completed, total, eta, detail))
+
+    with patch("redaudit.core.nuclei.threading.Event", _FakeEvent):
+        with patch("redaudit.core.nuclei.threading.Thread", _ImmediateThread):
+            with patch("concurrent.futures.ThreadPoolExecutor", _ImmediateExecutor):
+                with patch("concurrent.futures.as_completed", side_effect=lambda fs: list(fs)):
+                    with patch("redaudit.core.nuclei.CommandRunner", _Runner):
+                        with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+                            res = nuclei.run_nuclei_scan(
+                                targets=["http://127.0.0.1:80"],
+                                output_dir=str(tmp_path),
+                                batch_size=1,
+                                progress_callback=_cb,
+                                use_internal_progress=False,
+                            )
+    assert res["nuclei_available"] is True
+    assert progress_calls
+
+
+def test_run_nuclei_scan_batch_timeout_sets_error(tmp_path):
+    class _Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, cmd, *args, **kwargs):
+            return SimpleNamespace(returncode=0, stdout="", stderr="", timed_out=True)
+
+    with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+        with patch("redaudit.core.nuclei.CommandRunner", _Runner):
+            res = run_nuclei_scan(
+                ["http://1", "http://2"],
+                output_dir=str(tmp_path),
+                batch_size=2,
+                use_internal_progress=False,
+            )
+    assert res["partial"] is True
+    assert res["error"] == "timeout"
+
+
+def test_run_nuclei_scan_fallback_print_status(tmp_path):
+    calls = []
+
+    def _print_status(msg, level):
+        calls.append((msg, level))
+
+    class _Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, cmd, *args, **kwargs):
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+        with patch("redaudit.core.nuclei.CommandRunner", _Runner):
+            with patch("rich.progress.Progress", side_effect=RuntimeError("boom")):
+                res = run_nuclei_scan(
+                    ["http://127.0.0.1:80"],
+                    output_dir=str(tmp_path),
+                    use_internal_progress=True,
+                    print_status=_print_status,
+                )
+    assert res["success"] is True
+    assert calls
+
+
+def test_run_nuclei_scan_no_internal_progress_print_status(tmp_path):
+    calls = []
+
+    def _print_status(msg, level):
+        calls.append((msg, level))
+
+    class _Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, cmd, *args, **kwargs):
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+        with patch("redaudit.core.nuclei.CommandRunner", _Runner):
+            res = run_nuclei_scan(
+                ["http://127.0.0.1:80"],
+                output_dir=str(tmp_path),
+                use_internal_progress=False,
+                print_status=_print_status,
+            )
+    assert res["success"] is True
+    assert calls
+
+
+def test_run_nuclei_scan_threadpool_exception_logs(tmp_path):
+    class _Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, *_args, **_kwargs):
+            raise RuntimeError("boom")
+
+    logger = MagicMock()
+    with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+        with patch("redaudit.core.nuclei.CommandRunner", _Runner):
+            res = run_nuclei_scan(
+                ["http://1", "http://2"],
+                output_dir=str(tmp_path),
+                batch_size=1,
+                progress_callback=lambda *_a, **_k: None,
+                use_internal_progress=False,
+                logger=logger,
+            )
+    assert res["success"] is False or res["success"] is True
+    logger.warning.assert_called()
+
+
+def test_parse_nuclei_output_skips_blank_lines(tmp_path):
+    payload = {"template-id": "t", "info": {"severity": "info"}}
+    output_file = tmp_path / "nuclei.json"
+    output_file.write_text("\n" + json.dumps(payload) + "\n", encoding="utf-8")
+    findings = _parse_nuclei_output(str(output_file))
+    assert len(findings) == 1
+
+
+def test_extract_cve_ids_handles_string():
+    from redaudit.core.nuclei import _extract_cve_ids
+
+    info = {"classification": {"cve-id": "CVE-2023-1111"}}
+    assert _extract_cve_ids(info) == ["CVE-2023-1111"]
+
+
+def test_get_http_targets_handles_missing_fields():
+    from redaudit.core.nuclei import get_http_targets_from_hosts
+    from redaudit.core.models import Host
+
+    host = Host(ip="10.0.0.1")
+    host.ports = [{"port": None, "service": "http", "is_web_service": True}]
+    targets = get_http_targets_from_hosts([{"ip": ""}, host])
+    assert targets == []
 
 
 class _FakeRunResult:

@@ -205,6 +205,42 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
                                     self.assertIn("1000", args)
                                     self.assertNotIn("-p-", args)
 
+    def test_trust_hyperscan_uses_discovered_ports(self):
+        app = InteractiveNetworkAuditor()
+        app.print_status = lambda *_args, **_kwargs: None
+        app.config["trust_hyperscan"] = True
+
+        ip = "192.168.1.55"
+        rec1 = {"stdout": "22/tcp open ssh OpenSSH 8.0\n", "stderr": "", "returncode": 0}
+
+        with (
+            patch("redaudit.core.auditor_scan.start_background_capture", return_value=None),
+            patch("redaudit.core.auditor_scan.stop_background_capture", return_value=None),
+            patch("redaudit.core.auditor_scan.output_has_identity", return_value=False),
+            patch("redaudit.core.auditor_scan.extract_vendor_mac", return_value=(None, None)),
+            patch("redaudit.core.auditor_scan.extract_os_detection", return_value=None),
+            patch(
+                "redaudit.core.auditor_scan.extract_detailed_identity",
+                return_value={
+                    "vendor": "VendorX",
+                    "model": "ModelY",
+                    "device_type": "router",
+                    "os_detected": "OSZ",
+                },
+            ),
+            patch("redaudit.core.auditor_scan.run_udp_probe", return_value=[]),
+            patch("redaudit.core.auditor_scan.get_neighbor_mac", return_value=None),
+            patch("redaudit.core.auditor_scan.run_nmap_command", return_value=rec1) as mock_run,
+        ):
+            deep = app.deep_scan_host(ip, trusted_ports=[22, 80])
+
+        args = mock_run.call_args[0][0]
+        self.assertIn("-p22,80", args)
+        self.assertEqual(deep.get("vendor"), "VendorX")
+        self.assertEqual(deep.get("model"), "ModelY")
+        self.assertEqual(deep.get("device_type"), "router")
+        self.assertEqual(deep.get("os_detected"), "OSZ")
+
 
 if __name__ == "__main__":
     unittest.main()
