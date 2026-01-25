@@ -141,6 +141,7 @@ def test_run_complete_scan_with_nuclei(tmp_path, monkeypatch):
     app.config["output_dir"] = str(tmp_path)
     app.config["scan_mode"] = "completo"
     app.config["nuclei_enabled"] = True
+    app.config["nuclei_timeout"] = "bad"
     app.config["scan_vulnerabilities"] = True
     app.config["no_hyperscan_first"] = True
     app.config["prevent_sleep"] = False
@@ -686,6 +687,62 @@ def test_run_complete_scan_nuclei_full_coverage_skips_auto_fast(tmp_path, monkey
     )
 
     assert app.run_complete_scan() is True
+
+
+def test_run_complete_scan_nuclei_full_coverage_bumps_timeout(tmp_path, monkeypatch):
+    app = InteractiveNetworkAuditor()
+    app.logger = _Logger()
+    app.ui = MagicMock()
+    app.ui.t.side_effect = lambda key, *args: key
+    app.scanner = MagicMock()
+    app.config["target_networks"] = ["10.0.0.0/24"]
+    app.config["output_dir"] = str(tmp_path)
+    app.config["scan_mode"] = "completo"
+    app.config["scan_vulnerabilities"] = True
+    app.config["nuclei_enabled"] = True
+    app.config["nuclei_full_coverage"] = True
+    app.config["nuclei_timeout"] = 10
+    app.config["prevent_sleep"] = False
+
+    monkeypatch.setattr(app, "start_heartbeat", lambda: None)
+    monkeypatch.setattr(app, "stop_heartbeat", lambda: None)
+    monkeypatch.setattr(app, "_progress_ui", _noop_cm)
+    monkeypatch.setattr(app, "_select_net_discovery_interface", lambda: None)
+    monkeypatch.setattr(app, "_filter_auditor_ips", lambda hosts: hosts)
+    monkeypatch.setattr(app, "_run_hyperscan_discovery", lambda *_a, **_k: {})
+    monkeypatch.setattr(app, "scan_network_discovery", lambda *a, **k: ["10.0.0.1"])
+    monkeypatch.setattr(app, "_collect_discovery_hosts", lambda *a, **k: [])
+    monkeypatch.setattr(app, "scan_hosts_concurrent", lambda *a, **k: [{"ip": "10.0.0.1"}])
+    monkeypatch.setattr(app, "run_agentless_verification", lambda *a, **k: None)
+    monkeypatch.setattr(app, "scan_vulnerabilities_concurrent", lambda *a, **k: None)
+    monkeypatch.setattr(app, "save_results", lambda *a, **k: None)
+    monkeypatch.setattr(app, "show_results", lambda *a, **k: None)
+
+    monkeypatch.setattr("redaudit.core.auditor.generate_summary", lambda *a, **k: None)
+    monkeypatch.setattr("redaudit.core.auditor.maybe_chown_to_invoking_user", lambda *a, **k: None)
+    monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **k: None)
+    monkeypatch.setattr("redaudit.utils.session_log.stop_session_log", lambda: None)
+    monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
+    monkeypatch.setattr(
+        "redaudit.core.auditor.get_http_targets_from_hosts",
+        lambda h: ["http://10.0.0.1:80", "https://10.0.0.1:443"],
+    )
+
+    captured = {}
+
+    def _run_nuclei_scan(**kwargs):
+        captured.update(kwargs)
+        return {"success": True, "findings": []}
+
+    monkeypatch.setattr("redaudit.core.auditor.run_nuclei_scan", _run_nuclei_scan)
+    monkeypatch.setattr(app, "_merge_nuclei_findings", lambda *_a, **_k: 0)
+    monkeypatch.setattr(
+        "redaudit.core.net_discovery.discover_networks",
+        lambda *_args, **_kwargs: {},
+    )
+
+    assert app.run_complete_scan() is True
+    assert captured["timeout"] == 900
 
 
 def test_run_complete_scan_nuclei_filter_exception(tmp_path, monkeypatch):
