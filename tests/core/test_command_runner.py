@@ -184,6 +184,32 @@ class TestCommandRunner(unittest.TestCase):
         self.assertEqual(result.returncode, 124)
         self.assertTrue(result.timed_out)
 
+    @patch("redaudit.core.command_runner.subprocess.run")
+    def test_nuclei_default_timeout_bumps_to_600(self, mock_run):
+        completed = MagicMock()
+        completed.returncode = 0
+        completed.stdout = ""
+        completed.stderr = ""
+        mock_run.return_value = completed
+
+        runner = CommandRunner(default_timeout=60)
+        runner.run(["nuclei", "-h"])
+        _, kwargs = mock_run.call_args
+        self.assertEqual(kwargs["timeout"], 600.0)
+
+    @patch("redaudit.core.command_runner.subprocess.run")
+    def test_nuclei_explicit_timeout_respected(self, mock_run):
+        completed = MagicMock()
+        completed.returncode = 0
+        completed.stdout = ""
+        completed.stderr = ""
+        mock_run.return_value = completed
+
+        runner = CommandRunner(default_timeout=900)
+        runner.run(["nuclei", "-h"], timeout=900)
+        _, kwargs = mock_run.call_args
+        self.assertEqual(kwargs["timeout"], 900)
+
     def test_command_wrapper_failures(self):
         logger = _Logger()
 
