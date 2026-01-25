@@ -231,7 +231,7 @@ Notas:
 
 - Los escáneres de aplicaciones web (sqlmap/ZAP) se omiten en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP.
 - Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
-- **Nuclei en redes con alta densidad web:** En redes con muchos servicios HTTP/HTTPS (p. ej., labs Docker, microservicios), los escaneos Nuclei pueden tardar significativamente mas (30-90+ minutos). Usa `--nuclei-timeout 600` para aumentar el timeout por lote, o `--no-nuclei` para omitir Nuclei si la velocidad es critica.
+- **Nuclei en redes con alta densidad web:** En redes con muchos servicios HTTP/HTTPS (p. ej., labs Docker, microservicios), los escaneos Nuclei pueden tardar significativamente mas (30-90+ minutos). Usa `--nuclei-timeout 600` para aumentar el timeout por lote, o `--no-nuclei` para omitir Nuclei si la velocidad es critica. Cuando se activa la cobertura completa, RedAudit eleva el timeout por lote a 900s si se ha configurado un valor inferior.
 
 ### Configuracion de Nuclei (v4.17+)
 
