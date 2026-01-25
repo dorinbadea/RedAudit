@@ -14,6 +14,12 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.21] - 2026-01-25
+
+### Improved
+
+- **Updater Home Refresh**: System updates now back up a dirty `~/RedAudit` folder and refresh the home copy so documentation stays current.
+
 ## [4.18.20] - 2026-01-25
 
 ### Improved

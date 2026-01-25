@@ -14,6 +14,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.21] - 2026-01-25
+
+### Mejorado
+
+- **Actualizacion de home**: Las actualizaciones del sistema ahora crean backup si `~/RedAudit` tiene cambios y refrescan la copia local para mantener la documentacion al dia.
+
 ## [4.18.20] - 2026-01-25
 
 ### Mejorado
