@@ -341,6 +341,8 @@ class TestReporter(unittest.TestCase):
             "scan_mode_cli": "fast",
             "threads": 4,
             "rate_limit": 0.5,
+            "deep_id_scan": False,
+            "trust_hyperscan": True,
             "udp_mode": "quick",
             "udp_top_ports": 100,
             "topology_enabled": True,
@@ -351,6 +353,7 @@ class TestReporter(unittest.TestCase):
             "nuclei_enabled": True,
             "nuclei_profile": "fast",
             "nuclei_full_coverage": True,
+            "nuclei_timeout": 600,
             "dry_run": True,
             "auditor_name": "tester",
         }
@@ -360,6 +363,8 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(snapshot["scan_mode_cli"], "fast")
         self.assertEqual(snapshot["threads"], 4)
         self.assertEqual(snapshot["rate_limit_delay"], 0.5)
+        self.assertFalse(snapshot["deep_id_scan"])
+        self.assertTrue(snapshot["trust_hyperscan"])
         self.assertEqual(snapshot["udp_mode"], "quick")
         self.assertEqual(snapshot["udp_top_ports"], 100)
         self.assertTrue(snapshot["topology_enabled"])
@@ -370,6 +375,7 @@ class TestReporter(unittest.TestCase):
         self.assertTrue(snapshot["nuclei_enabled"])
         self.assertEqual(snapshot["nuclei_profile"], "fast")
         self.assertTrue(snapshot["nuclei_full_coverage"])
+        self.assertEqual(snapshot["nuclei_timeout"], 600)
         self.assertTrue(snapshot["dry_run"])
         self.assertEqual(snapshot["auditor_name"], "tester")
 

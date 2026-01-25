@@ -3226,6 +3226,16 @@ def test_auditor_init_with_env():
         assert auditor.lang == "es"
 
 
+def test_auditor_lang_updates_ui_manager():
+    auditor = InteractiveNetworkAuditor()
+    auditor.lang = "es"
+    assert auditor.lang == "es"
+    assert auditor.ui.lang == "es"
+    auditor.lang = "xx"
+    assert auditor.lang == "en"
+    assert auditor.ui.lang == "en"
+
+
 def test_auditor_subprocess_management():
     """Test register/unregister/kill subprocesses (lines 866-892)."""
     auditor = InteractiveNetworkAuditor()

@@ -128,3 +128,45 @@ def test_auth_scan_connected_formats_protocol():
     assert "SMB" in result_es
     assert "{" not in result_en
     assert "{" not in result_es
+
+
+def test_scan_error_host_format():
+    """Ensure scan_error_host formats host and error."""
+    result_en = get_text("scan_error_host", "en", "10.0.0.1", "boom")
+    result_es = get_text("scan_error_host", "es", "10.0.0.1", "boom")
+    assert "10.0.0.1" in result_en
+    assert "boom" in result_en
+    assert "10.0.0.1" in result_es
+    assert "boom" in result_es
+
+
+def test_deep_scan_new_hosts_format():
+    """Ensure deep_scan_new_hosts formats count."""
+    result_en = get_text("deep_scan_new_hosts", "en", 2)
+    result_es = get_text("deep_scan_new_hosts", "es", 2)
+    assert "2" in result_en
+    assert "2" in result_es
+
+
+def test_cve_enrich_new_hosts_format():
+    """Ensure cve_enrich_new_hosts formats count."""
+    result_en = get_text("cve_enrich_new_hosts", "en", 3)
+    result_es = get_text("cve_enrich_new_hosts", "es", 3)
+    assert "3" in result_en
+    assert "3" in result_es
+
+
+def test_auth_failed_all_formats():
+    """Ensure auth failed messages format IP."""
+    result_en = get_text("ssh_auth_failed_all", "en", "10.0.0.2")
+    result_es = get_text("smb_auth_failed_all", "es", "10.0.0.2")
+    assert "10.0.0.2" in result_en
+    assert "10.0.0.2" in result_es
+
+
+def test_dependency_i18n_keys_exist():
+    """Ensure dependency status keys are present in both languages."""
+    assert "Impacket" in get_text("impacket_available", "en")
+    assert "Impacket" in get_text("impacket_available", "es")
+    assert "PySNMP" in get_text("pysnmp_available", "en")
+    assert "PySNMP" in get_text("pysnmp_available", "es")

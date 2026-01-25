@@ -197,6 +197,12 @@ class TestUIManagerProgress:
         assert ui._should_emit_during_progress("Backdoor detected", "WARN") is True
         assert ui._should_emit_during_progress("Scan complete", "WARN") is True
 
+    def test_should_emit_during_progress_warn_signal_spanish(self):
+        """Test _should_emit_during_progress emits WARN for Spanish signals."""
+        ui = UIManager(lang="es")
+        msg = "Escaneo de identidad profundo finalizado"
+        assert ui._should_emit_during_progress(msg, "WARN") is True
+
     def test_should_emit_during_progress_warn_routine(self):
         """Test _should_emit_during_progress suppresses routine WARN."""
         ui = UIManager()
