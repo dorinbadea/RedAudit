@@ -476,6 +476,97 @@ def test_perform_git_update_aborts_on_dirty_home_repo(tmp_path, monkeypatch):
     assert "update_home_changes_detected_abort" in msg
 
 
+def test_perform_git_update_dirty_home_repo_backed_up_when_system_updated(tmp_path, monkeypatch):
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    red_repo = home_dir / "RedAudit"
+    (red_repo / ".git").mkdir(parents=True)
+    temp_root = tmp_path / "tmp"
+    temp_root.mkdir()
+    clone_path = temp_root / "RedAudit"
+    source_module = clone_path / "redaudit"
+    install_path = "/usr/local/lib/redaudit"
+    staged_install_path = f"{install_path}.new"
+    staged_home_path = f"{red_repo}.new"
+
+    class _DirtyHomeRunner(_DummyRunner):
+        def check_output(self, args, **kwargs):
+            cmd = list(args)
+            if cmd[:3] == ["git", "status", "--porcelain"]:
+                if kwargs.get("cwd") == str(red_repo):
+                    return " M core.py\n"
+                return ""
+            return super().check_output(args, **kwargs)
+
+    messages = []
+
+    def _capture(msg, _status=None):
+        messages.append(msg)
+
+    monkeypatch.delenv("REDAUDIT_DRY_RUN", raising=False)
+    monkeypatch.setattr(updater, "CommandRunner", _DirtyHomeRunner)
+    monkeypatch.setattr(updater.subprocess, "Popen", _DummyPopen)
+    monkeypatch.setattr(updater.tempfile, "mkdtemp", lambda **_k: str(temp_root))
+    monkeypatch.setattr(updater.os, "geteuid", lambda: 0)
+    monkeypatch.setenv("SUDO_USER", "testuser")
+    dummy_user = type("Dummy", (), {"pw_dir": str(home_dir), "pw_uid": 1000, "pw_gid": 1000})
+    monkeypatch.setattr("pwd.getpwnam", lambda _u: dummy_user)
+    monkeypatch.setattr(
+        updater.os.path,
+        "expanduser",
+        lambda path: str(home_dir) if path == "~" else os.path.expanduser(path),
+    )
+    monkeypatch.setattr(updater, "_ensure_version_file", lambda *_a, **_k: True)
+    monkeypatch.setattr(updater, "_inject_default_lang", lambda *_a, **_k: True)
+    monkeypatch.setattr(
+        updater,
+        "compute_tree_diff",
+        lambda *_a, **_k: {"added": [], "modified": [], "removed": []},
+    )
+    monkeypatch.setattr(updater, "_maybe_sync_local_repo", lambda **_k: None)
+    monkeypatch.setattr(updater.os, "walk", lambda *_a, **_k: [("/tmp", [], [])])
+    monkeypatch.setattr(updater.os, "chmod", lambda *_a, **_k: None)
+    monkeypatch.setattr(updater.os, "chown", lambda *_a, **_k: None)
+    monkeypatch.setattr(shutil, "copytree", lambda *_a, **_k: None)
+    monkeypatch.setattr(shutil, "rmtree", lambda *_a, **_k: None)
+    monkeypatch.setattr(updater.os, "rename", lambda *_a, **_k: None)
+
+    def _isdir(path):
+        if path in (
+            str(clone_path),
+            str(source_module),
+            str(red_repo),
+            str(red_repo / ".git"),
+            install_path,
+        ):
+            return True
+        return False
+
+    def _isfile(path):
+        if path.endswith("redaudit_install.sh"):
+            return True
+        return True
+
+    def _exists(path):
+        if path in (str(red_repo), install_path, staged_install_path, staged_home_path):
+            return True
+        return False
+
+    monkeypatch.setattr(updater.os.path, "isdir", _isdir)
+    monkeypatch.setattr(updater.os.path, "isfile", _isfile)
+    monkeypatch.setattr(updater.os.path, "exists", _exists)
+
+    ok, msg = updater.perform_git_update(
+        repo_path=str(tmp_path),
+        lang="en",
+        print_fn=_capture,
+        t_fn=lambda key, *_args: key,
+    )
+
+    assert ok is True, msg
+    assert any("update_home_changes_detected_backup" in m for m in messages)
+
+
 def test_perform_git_update_dry_run_uses_sudo_user(monkeypatch, tmp_path):
     called = {"pwd": False}
 
@@ -546,9 +637,7 @@ def test_perform_git_update_install_script_failure(tmp_path, monkeypatch):
     assert msg == "UPDATE_SUCCESS_RESTART"
 
 
-def test_perform_git_update_dirty_home_repo_skips_home_copy_after_system_update(
-    tmp_path, monkeypatch
-):
+def test_perform_git_update_dirty_home_repo_backed_up_after_system_update(tmp_path, monkeypatch):
     home_dir, temp_root = _setup_root_update(monkeypatch, tmp_path, _DirtyHomeRunner)
     clone_path = temp_root / "RedAudit"
     install_path = "/usr/local/lib/redaudit"
@@ -560,6 +649,8 @@ def test_perform_git_update_dirty_home_repo_skips_home_copy_after_system_update(
     orig_isfile = updater.os.path.isfile
 
     def _isdir(path):
+        if path == str(clone_path):
+            return True
         if path == str(clone_path / "redaudit"):
             return True
         if path == install_path:
@@ -574,6 +665,8 @@ def test_perform_git_update_dirty_home_repo_skips_home_copy_after_system_update(
         if path.endswith("redaudit_install.sh"):
             return True
         if path.startswith(f"{staged_install_path}{os.sep}"):
+            return True
+        if path.startswith(f"{home_redaudit_path}.new{os.sep}"):
             return True
         if path.startswith(f"{install_path}{os.sep}"):
             return True
@@ -596,11 +689,11 @@ def test_perform_git_update_dirty_home_repo_skips_home_copy_after_system_update(
         repo_path=str(tmp_path), lang="en", logger=MagicMock(), print_fn=lambda *_a, **_k: None
     )
 
-    assert ok is True
+    assert ok is True, msg
     assert msg == "UPDATE_SUCCESS_RESTART"
 
 
-def test_perform_git_update_status_check_exception_skips_home_copy(tmp_path, monkeypatch):
+def test_perform_git_update_status_check_exception_backed_up(tmp_path, monkeypatch):
     home_dir, temp_root = _setup_root_update(monkeypatch, tmp_path, _StatusErrorRunner)
     clone_path = temp_root / "RedAudit"
     install_path = "/usr/local/lib/redaudit"
@@ -612,6 +705,8 @@ def test_perform_git_update_status_check_exception_skips_home_copy(tmp_path, mon
     orig_isfile = updater.os.path.isfile
 
     def _isdir(path):
+        if path == str(clone_path):
+            return True
         if path == str(clone_path / "redaudit"):
             return True
         if path == install_path:
@@ -626,6 +721,8 @@ def test_perform_git_update_status_check_exception_skips_home_copy(tmp_path, mon
         if path.endswith("redaudit_install.sh"):
             return True
         if path.startswith(f"{staged_install_path}{os.sep}"):
+            return True
+        if path.startswith(f"{home_redaudit_path}.new{os.sep}"):
             return True
         if path.startswith(f"{install_path}{os.sep}"):
             return True
@@ -648,7 +745,7 @@ def test_perform_git_update_status_check_exception_skips_home_copy(tmp_path, mon
         repo_path=str(tmp_path), lang="en", logger=MagicMock(), print_fn=lambda *_a, **_k: None
     )
 
-    assert ok is True
+    assert ok is True, msg
     assert msg == "UPDATE_SUCCESS_RESTART"
 
 
