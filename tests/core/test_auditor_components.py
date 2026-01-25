@@ -443,6 +443,18 @@ class _MockUI(AuditorUI):
         self.last_activity = None
 
 
+def test_ui_manager_lang_sync():
+    ui_owner = _MockUI()
+    manager = ui_owner.ui
+    assert manager.lang == "en"
+
+    ui_owner.lang = "es"
+    manager_again = ui_owner.ui
+    assert manager_again is manager
+    assert manager_again.lang == "es"
+    assert manager_again.t("verifying_env").startswith("Verificando")
+
+
 class _MockLogger(AuditorLogging):
     def __init__(self):
         self.logger = MagicMock()

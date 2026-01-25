@@ -157,3 +157,48 @@ class TestNucleiParallel(unittest.TestCase):
                 max_seen = val
 
         self.assertEqual(max_seen, 40.0, "Should have reached 100% (40 targets)")
+
+    def test_parallel_clamps_when_timeout_high(self):
+        targets = [f"http://127.0.0.{i}:80" for i in range(40)]
+        seen = {}
+
+        class _ImmediateFuture:
+            def __init__(self, fn, *args, **kwargs):
+                self._result = fn(*args, **kwargs)
+
+            def result(self):
+                return self._result
+
+        class _DummyExecutor:
+            def __init__(self, max_workers=None):
+                seen["max_workers"] = max_workers
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def submit(self, fn, *args, **kwargs):
+                return _ImmediateFuture(fn, *args, **kwargs)
+
+        def _as_completed(futures):
+            return futures
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("redaudit.core.nuclei.shutil.which", return_value="/usr/bin/nuclei"):
+                with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+                    with patch("redaudit.core.nuclei.CommandRunner", _FakeCommandRunnerParallel):
+                        with patch("concurrent.futures.ThreadPoolExecutor", _DummyExecutor):
+                            with patch("concurrent.futures.as_completed", _as_completed):
+                                res = run_nuclei_scan(
+                                    targets=targets,
+                                    output_dir=tmpdir,
+                                    batch_size=10,
+                                    timeout=900,
+                                    progress_callback=lambda c, t, e, detail="": None,
+                                    use_internal_progress=False,
+                                )
+
+        self.assertTrue(res["success"])
+        self.assertEqual(seen.get("max_workers"), 2)
