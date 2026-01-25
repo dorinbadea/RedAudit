@@ -49,6 +49,14 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.18.18 Contraste del Wizard y Enriquecimiento de Bajo Impacto (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Sonda HTTP para Vendor-Only** | Hecho (v4.18.18) | El enriquecimiento Phase 0 sondea HTTP/HTTPS cuando el host solo tiene vendor/MAC y cero puertos abiertos. |
+| **Contraste de valores por defecto** | Hecho (v4.18.18) | Las opciones no seleccionadas se muestran en azul y los valores por defecto se resaltan en los prompts. |
+| **Timeouts tras split de Nuclei** | Hecho (v4.18.18) | Los lotes divididos reducen el timeout para evitar esperas largas en objetivos lentos. |
+
 ### v4.18.17 Claridad de Reportes HyperScan (Hecho)
 
 | Funcionalidad | Estado | Descripción |

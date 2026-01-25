@@ -14,6 +14,21 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.18] - 2026-01-24
+
+### Added
+
+- **Low-Impact HTTP Probe**: Phase 0 enrichment now supports a short HTTP/HTTPS probe for vendor-only hosts with zero open ports when enabled.
+
+### Improved
+
+- **Wizard Contrast**: Non-selected menu options render in blue and default values are highlighted in prompts for readability.
+- **Nuclei Split Timeouts**: Batch split retries now clamp timeouts to avoid long stalls on slow targets.
+
+### Fixed
+
+- **Phase0 Summary Accounting**: Smart scan summaries now respect `low_impact_enrichment` when the config is a `ConfigurationContext`.
+
 ## [4.18.17] - 2026-01-24
 
 ### Added

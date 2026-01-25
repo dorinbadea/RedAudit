@@ -14,6 +14,21 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.18] - 2026-01-24
+
+### Añadido
+
+- **Sonda HTTP de bajo impacto**: El enriquecimiento Phase 0 ahora permite una sonda HTTP/HTTPS corta para hosts con solo vendor y cero puertos abiertos cuando esta activado.
+
+### Mejorado
+
+- **Contraste del wizard**: Las opciones no seleccionadas se muestran en azul y los valores por defecto se resaltan en los prompts.
+- **Timeouts tras split de Nuclei**: Los reintentos tras dividir lotes ahora limitan el timeout para evitar esperas largas en objetivos lentos.
+
+### Corregido
+
+- **Resumen Phase0**: El resumen smart scan ahora respeta `low_impact_enrichment` cuando la configuracion es `ConfigurationContext`.
+
 ## [4.18.17] - 2026-01-24
 
 ### Añadido

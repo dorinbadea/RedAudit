@@ -49,6 +49,14 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.18.18 Wizard Contrast and Low-Impact Enrichment (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Vendor-Only HTTP Probe** | Done (v4.18.18) | Phase 0 enrichment optionally probes HTTP/HTTPS when a host has vendor/MAC only and zero open ports. |
+| **Wizard Default Contrast** | Done (v4.18.18) | Non-selected options render in blue and default values are highlighted in prompts. |
+| **Nuclei Split Timeout Clamp** | Done (v4.18.18) | Split batches reduce timeout budgets to avoid long retries on slow targets. |
+
 ### v4.18.17 HyperScan Reporting Clarity (Done)
 
 | Feature | Status | Description |

@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-[![Version](https://img.shields.io/badge/version-4.18.17-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.18.18-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -332,6 +332,7 @@ The wizard offers 4 audit profiles:
 - **Custom**: Full 9-step wizard with back navigation for granular control.
 
 Phase 0 low-impact enrichment is an opt-in wizard prompt across all profiles (default off).
+When enabled, it runs DNS/mDNS/SNMP checks and a short HTTP/HTTPS probe for vendor-only hosts with zero open ports.
 
 Scan mode (`fast`/`normal`/`full`) controls coverage and depth; timing preset (Stealth/Normal/Aggressive) controls speed and noise. For full details, see `docs/MANUAL.en.md`.
 
