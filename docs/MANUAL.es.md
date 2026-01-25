@@ -271,11 +271,11 @@ Cuando está habilitado (por defecto), RedAudit realiza escaneos adicionales en 
 
 **Comportamiento:**
 
-0. (Opcional) Fase 0 de enriquecimiento de bajo impacto (DNS reverso, mDNS unicast, SNMP sysDescr) al activarlo en el asistente o con `--low-impact-enrichment`
+0. (Opcional) Fase 0 de enriquecimiento de bajo impacto (DNS reverso, mDNS unicast, SNMP sysDescr, y una sonda HTTP/HTTPS breve para hosts con solo fabricante y cero puertos abiertos) al activarlo en el asistente o con `--low-impact-enrichment`
 1. Fase 1: TCP agresivo (`-A -p- -sV -Pn`)
 2. Fase 2a: Sonda UDP prioritaria (17 puertos comunes incluyendo 500/4500)
 3. Fase 2b: UDP top-ports (`--udp-ports`) cuando el modo es `full` y la identidad sigue débil
-4. Hosts silenciosos con fabricante detectado y cero puertos abiertos pueden recibir una sonda HTTP/HTTPS breve en rutas habituales para resolver identidad antes
+4. Cuando la Fase 0 está activada, los hosts silenciosos con fabricante detectado y cero puertos abiertos pueden recibir una sonda HTTP/HTTPS breve en rutas habituales para resolver identidad antes
 
 Deshabilitar con `--no-deep-scan`.
 

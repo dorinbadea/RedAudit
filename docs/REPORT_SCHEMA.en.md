@@ -216,7 +216,7 @@ Compact roll-up for dashboards.
 | `deep_scan_budget` | integer | Max deep scans (0 = unlimited) |
 | `udp_mode` | string | UDP mode used (quick/full) |
 | `udp_top_ports` | integer | Top UDP ports when full mode is used |
-| `low_impact_enrichment` | boolean | Low impact enrichment enabled |
+| `low_impact_enrichment` | boolean | Low impact enrichment enabled (DNS/mDNS/SNMP plus short HTTP/HTTPS probe for vendor-only hosts with zero open ports) |
 
 #### pipeline.hyperscan_vs_final (v4.18.9+)
 

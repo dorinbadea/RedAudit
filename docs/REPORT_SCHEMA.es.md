@@ -210,7 +210,7 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `deep_scan_budget` | integer | Max deep scans (0 = ilimitado) |
 | `udp_mode` | string | Modo UDP usado (quick/full) |
 | `udp_top_ports` | integer | Top UDP ports cuando se usa full |
-| `low_impact_enrichment` | boolean | Enriquecimiento de bajo impacto |
+| `low_impact_enrichment` | boolean | Enriquecimiento de bajo impacto (DNS/mDNS/SNMP más sonda HTTP/HTTPS breve para hosts con solo fabricante y cero puertos abiertos) |
 
 #### pipeline.hyperscan_vs_final (v4.18.9+)
 

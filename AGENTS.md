@@ -10,6 +10,7 @@ This file is the canonical operating guide for collaborators (human or non-human
 - Hand off with clean `git status`.
 - Keep code/docs/tests consistent (no version drift, no "docs say X but CLI does Y").
 - **Coverage Rule:** Any code you modify must be covered at 100% in tests. This means the specific functions or files you touched must reach full coverage for the newly changed code paths in the same change set.
+- **Coverage Enforcement:** If you touch code, you must add or update tests so the exact changed code paths are fully exercised (100%) in the same change set. No exceptions.
 - Do not retag/rewrite published tags/releases. If something was released, publish a new version.
 - Do not commit private data. `scan_results_private/` must never be pushed.
 - Before merging to `main`, run the local quality gate (`scripts/ci_local.sh` or at least `pre-commit run --all-files` + `pytest tests/ -v`). CI can arrive after the merge; if any checks fail, treat it as a regression and fix it promptly. Do not force-merge with failing checks.

@@ -269,11 +269,11 @@ When enabled (default), RedAudit performs additional scanning on hosts where ini
 
 **Behavior:**
 
-0. (Optional) Phase 0 low-impact enrichment (DNS reverse, mDNS unicast, SNMP sysDescr) when enabled via the wizard prompt or `--low-impact-enrichment`
+0. (Optional) Phase 0 low-impact enrichment (DNS reverse, mDNS unicast, SNMP sysDescr, and a short HTTP/HTTPS probe for vendor-only hosts with zero open ports) when enabled via the wizard prompt or `--low-impact-enrichment`
 1. Phase 1: Aggressive TCP (`-A -p- -sV -Pn`)
 2. Phase 2a: Priority UDP probe (17 common ports including 500/4500)
 3. Phase 2b: UDP top-ports (`--udp-ports`) when mode is `full` and identity is still weak
-4. Quiet hosts with vendor hints and zero open ports may get a short HTTP/HTTPS probe on common paths to resolve identity early
+4. When Phase 0 is enabled, quiet hosts with vendor hints and zero open ports may get a short HTTP/HTTPS probe on common paths to resolve identity early
 
 Disable with `--no-deep-scan`.
 
