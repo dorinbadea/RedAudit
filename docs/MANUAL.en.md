@@ -314,6 +314,8 @@ RedAudit now integrates specialized tools for deep web application assessment:
 
 When Nuclei batch scans time out, the run is marked as partial and the report includes timeout and failed batch indexes.
 During long batches, the CLI shows time-based progress inside the batch (with elapsed time) so operators can confirm activity.
+When a timeout occurs, RedAudit splits the batch and keeps the configured `--nuclei-timeout` as a floor for retries to avoid
+dropping coverage on slow targets.
 
 ### Nuclei Profiles and Coverage (v4.17+)
 

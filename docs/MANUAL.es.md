@@ -311,6 +311,8 @@ RedAudit ahora integra herramientas especializadas para evaluación profunda de 
 
 Cuando los lotes de Nuclei agotan tiempo, la ejecución se marca como parcial y el informe incluye los índices de lotes con timeout y fallidos.
 Durante lotes largos, la CLI muestra progreso dentro del batch basado en tiempo (con tiempo transcurrido) para confirmar actividad.
+Cuando ocurre un timeout, RedAudit divide el lote y mantiene el `--nuclei-timeout` configurado como umbral mínimo para los
+reintentos, evitando perder cobertura en objetivos lentos.
 
 ### Perfiles y Cobertura de Nuclei (v4.17+)
 
