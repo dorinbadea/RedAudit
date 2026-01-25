@@ -7,6 +7,9 @@ v4.4.5: Comprehensive coverage push (21% → 90%+).
 """
 
 import asyncio
+import importlib
+import sys
+import types
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -21,6 +24,27 @@ from redaudit.core.syn_scanner import (
 
 class TestSynScanAvailability(unittest.TestCase):
     """Tests for is_syn_scan_available function."""
+
+    def test_import_sets_scapy_flags(self):
+        """Should set scapy flags when scapy is available at import time."""
+        original_module = sys.modules["redaudit.core.syn_scanner"]
+        fake_scapy = types.ModuleType("scapy")
+        fake_scapy_all = types.ModuleType("scapy.all")
+        fake_conf = types.SimpleNamespace(verb=1)
+        fake_scapy_all.conf = fake_conf
+        fake_scapy_all.IP = MagicMock()
+        fake_scapy_all.TCP = MagicMock()
+        fake_scapy_all.sr1 = MagicMock()
+        sys.modules["scapy"] = fake_scapy
+        sys.modules["scapy.all"] = fake_scapy_all
+        try:
+            reloaded = importlib.reload(original_module)
+            self.assertTrue(reloaded.SCAPY_AVAILABLE)
+            self.assertEqual(fake_conf.verb, 0)
+        finally:
+            sys.modules.pop("scapy.all", None)
+            sys.modules.pop("scapy", None)
+            importlib.reload(original_module)
 
     def test_not_available_without_root(self):
         """Should return unavailable when not running as root."""
@@ -266,6 +290,33 @@ class TestSynSweepBatch(unittest.TestCase):
                 )
                 # Should have timed out and logged warning
                 self.assertEqual(result, {})
+        finally:
+            syn_mod.SCAPY_AVAILABLE = original
+
+    def test_sweep_timeout_before_batch_skips_probes(self):
+        """Should skip probes when remaining time is exhausted."""
+        original = syn_mod.SCAPY_AVAILABLE
+        syn_mod.SCAPY_AVAILABLE = True
+        try:
+            logger = MagicMock()
+            with (
+                patch.object(syn_mod, "syn_probe_single") as probe,
+                patch("redaudit.core.syn_scanner.time.time", return_value=0),
+            ):
+                result = asyncio.run(
+                    syn_sweep_batch(
+                        ["192.168.1.1"],
+                        [80],
+                        batch_size=10,
+                        timeout=0.1,
+                        logger=logger,
+                        max_time_per_host=0,
+                    )
+                )
+            self.assertEqual(result, {})
+            probe.assert_not_called()
+            self.assertTrue(logger.warning.called)
+            self.assertIn("timeout reached", logger.warning.call_args_list[0][0][0])
         finally:
             syn_mod.SCAPY_AVAILABLE = original
 

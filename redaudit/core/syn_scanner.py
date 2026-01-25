@@ -152,7 +152,6 @@ async def syn_sweep_batch(
         # Process ports in batches
         for i in range(0, len(ports), port_batch_size):
             batch_ports = ports[i : i + port_batch_size]
-            tasks = [limited_probe(ip, port) for port in batch_ports]
 
             try:
                 # Apply timeout per batch
@@ -167,6 +166,7 @@ async def syn_sweep_batch(
                         )
                     break
 
+                tasks = [limited_probe(ip, port) for port in batch_ports]
                 batch_timeout = min(remaining_time, 30.0)  # Max 30s per batch
                 responses = await asyncio.wait_for(
                     asyncio.gather(*tasks, return_exceptions=True),

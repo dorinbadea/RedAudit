@@ -66,6 +66,34 @@ class TestLynisScanner(unittest.TestCase):
         res = self.scanner.run_audit(use_portable=True)
         self.assertIsNone(res)
 
+    def test_run_audit_missing_lynis_no_portable(self):
+        """Return None when Lynis is missing and portable mode is off."""
+        self.ssh.run_command.side_effect = [
+            ("", "", 1),  # which lynis
+        ]
+        with patch("redaudit.core.auth_lynis.logger") as log:
+            res = self.scanner.run_audit(use_portable=False)
+        self.assertIsNone(res)
+        log.info.assert_called_once_with("Lynis not found on target.")
+
+    def test_run_audit_portable_clone_failure(self):
+        """Return None when portable clone fails."""
+        self.ssh.run_command.side_effect = [
+            ("", "", 1),  # which lynis
+            ("", "", 0),  # which git
+            ("", "boom", 1),  # clone
+        ]
+        with patch("redaudit.core.auth_lynis.logger") as log:
+            res = self.scanner.run_audit(use_portable=True)
+        self.assertIsNone(res)
+        log.warning.assert_called_once_with("Failed to clone Lynis: boom")
+
+    def test_parse_lynis_output_suggestions(self):
+        """Parse suggestion lines into suggestions list."""
+        output = "* [SUG-1] Enable firewall\nTests performed: 10"
+        res = self.scanner._parse_lynis_output(output)
+        self.assertIn("* [SUG-1] Enable firewall", res.suggestions)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -170,6 +170,16 @@ class TestCredentialsManager:
         result = mgr.try_credentials("192.168.1.1", 9999, connect_func)
         assert result is None
 
+    def test_try_credentials_no_credentials(self):
+        """Test try_credentials returns None when no credentials are loaded."""
+        mgr = CredentialsManager([])
+
+        def connect_func(cred, host, port):
+            return (True, {})
+
+        result = mgr.try_credentials("192.168.1.1", 22, connect_func)
+        assert result is None
+
     def test_try_credentials_respects_max_attempts(self):
         """Test try_credentials stops after max failures."""
         mgr = CredentialsManager([{"user": f"user{i}", "pass": "pass"} for i in range(10)])
@@ -184,6 +194,17 @@ class TestCredentialsManager:
 
         # Should stop after MAX_ATTEMPTS_PER_HOST
         assert len(attempts) == mgr.MAX_ATTEMPTS_PER_HOST
+
+    def test_try_credentials_connect_exception_records_failure(self):
+        """Test exception path in connect_func."""
+        mgr = CredentialsManager([{"user": "admin", "pass": "secret"}])
+
+        def connect_func(_cred, _host, _port):
+            raise RuntimeError("boom")
+
+        result = mgr.try_credentials("192.168.1.1", 22, connect_func)
+        assert result is None
+        assert mgr._failed_attempts["192.168.1.1"] == 1
 
     def test_get_successful_credentials(self):
         """Test retrieving successful credentials."""
