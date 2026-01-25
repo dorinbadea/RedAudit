@@ -49,6 +49,12 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.18.21 Updater Home Refresh Safety (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Home Copy Backup** | Done (v4.18.21) | System updates back up dirty `~/RedAudit` copies and refresh documentation. |
+
 ### v4.18.20 Nuclei Resilience and UI Sync Refinement (Done)
 
 | Feature | Status | Description |

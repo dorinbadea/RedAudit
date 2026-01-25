@@ -112,7 +112,7 @@ docker run --rm --network host \
 ### Actualización
 
 RedAudit verifica actualizaciones al iniciar (modo interactivo). Para omitir: `--skip-update-check`.
-Si mantienes un checkout git en `~/RedAudit`, el updater refresca tags y hace fast‑forward de `main` cuando el repo está limpio para evitar prompts desfasados. Los cambios locales o ramas distintas de `main` no se tocan.
+Si mantienes un checkout git en `~/RedAudit`, las actualizaciones del sistema refrescan esa copia en home para mantener la documentación al día. Si se detectan cambios locales, el updater crea una copia de seguridad con sufijo de timestamp antes de actualizar; los repos limpios en `main` pueden avanzar, mientras que repos con cambios o ramas distintas de `main` no se tocan.
 
 ---
 

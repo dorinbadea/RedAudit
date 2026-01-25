@@ -112,7 +112,7 @@ docker run --rm --network host \
 ### Update
 
 RedAudit checks for updates on startup (interactive mode). To skip: `--skip-update-check`.
-If you keep a local `~/RedAudit` git checkout, the updater refreshes tags and fast-forwards `main` when the repo is clean to avoid stale version prompts. Local changes or non-`main` branches are left untouched.
+If you keep a local `~/RedAudit` git checkout, system updates refresh that home copy so documentation stays current. When local changes are detected, the updater backs up the folder with a timestamped suffix before updating; clean `main` repos may be fast-forwarded, while dirty or non-`main` branches are left untouched.
 
 ---
 

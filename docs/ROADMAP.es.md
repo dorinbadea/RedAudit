@@ -49,6 +49,12 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.18.21 Seguridad de refresco en home (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Backup de copia en home** | Hecho (v4.18.21) | Las actualizaciones del sistema hacen backup si `~/RedAudit` tiene cambios y refrescan la documentación. |
+
 ### v4.18.20 Resiliencia de Nuclei y ajuste de UI (Hecho)
 
 | Funcionalidad | Estado | Descripción |
