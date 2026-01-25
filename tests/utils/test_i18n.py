@@ -92,3 +92,39 @@ def test_hyperscan_start_sequential_key_es():
     assert "SYN" in result
     assert "secuencial" in result
     assert "{}" in result  # placeholder for host count
+
+
+def test_deep_scan_heartbeat_key_en():
+    """Ensure deep scan heartbeat formats in English."""
+    result = get_text("deep_scan_heartbeat", "en", 1, 2, 3, 4)
+    assert "DeepScan" in result
+    assert "1/2" in result
+    assert "3:04" in result
+
+
+def test_deep_scan_heartbeat_key_es():
+    """Ensure deep scan heartbeat formats in Spanish."""
+    result = get_text("deep_scan_heartbeat", "es", 1, 2, 3, 4)
+    assert "DeepScan" in result
+    assert "1/2" in result
+    assert "3:04" in result
+
+
+def test_deep_scan_progress_key():
+    """Ensure deep scan progress formats consistently."""
+    result_en = get_text("deep_scan_progress", "en", 1, 2)
+    result_es = get_text("deep_scan_progress", "es", 1, 2)
+    assert "DeepScan" in result_en
+    assert "1/2" in result_en
+    assert "DeepScan" in result_es
+    assert "1/2" in result_es
+
+
+def test_auth_scan_connected_formats_protocol():
+    """Ensure auth_scan_connected formats protocol label."""
+    result_en = get_text("auth_scan_connected", "en", "SSH")
+    result_es = get_text("auth_scan_connected", "es", "SMB")
+    assert "SSH" in result_en
+    assert "SMB" in result_es
+    assert "{" not in result_en
+    assert "{" not in result_es

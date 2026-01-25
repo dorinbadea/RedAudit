@@ -132,6 +132,32 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
         else:
             self.assertTrue(result.get("smart_scan", {}).get("deep_scan_suggested"))
 
+    def test_no_deep_scan_disables_hyperscan_override(self):
+        app = InteractiveNetworkAuditor()
+        app.print_status = lambda *_args, **_kwargs: None
+        app.config["scan_mode"] = "completo"
+        app.config["deep_id_scan"] = False
+
+        ip = "192.168.1.250"
+        fake_host = _FakeHost(
+            {
+                "tcp": {},  # No open ports from nmap
+                "addresses": {"mac": "00:11:22:33:44:55"},
+                "vendor": {"00:11:22:33:44:55": "Generic Corp"},
+            }
+        )
+        nm = _FakePortScanner(ip=ip, host=fake_host)
+        app.results = {"net_discovery": {"hyperscan_tcp_hosts": {ip: [80, 443]}}}
+
+        with patch.object(app, "_compute_identity_score", return_value=(0, [])):
+            with patch.object(app.scanner, "run_nmap_scan", return_value=(nm, "")):
+                result = app.scan_host_ports(ip)
+
+        smart_scan = result.smart_scan if hasattr(result, "smart_scan") else result.get("smart_scan")
+        self.assertFalse(smart_scan.get("trigger_deep"))
+        self.assertNotIn("hyperscan_ports_detected", smart_scan.get("reasons", []))
+        self.assertFalse(smart_scan.get("deep_scan_suggested", False))
+
     def test_udp_full_uses_configurable_top_ports(self):
         app = InteractiveNetworkAuditor()
         app.print_status = lambda *_args, **_kwargs: None
