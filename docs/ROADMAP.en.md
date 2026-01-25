@@ -49,6 +49,14 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.18.20 Nuclei Resilience and UI Sync Refinement (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Nuclei Parallel Clamp** | Done (v4.18.20) | Long Nuclei timeouts now clamp parallel batches to reduce full-scan timeouts. |
+| **UI Language Resync** | Done (v4.18.20) | UI manager now updates when CLI language changes after initialization. |
+| **ANSI Status Contrast** | Done (v4.18.20) | ANSI status lines now apply the status color to the full message text. |
+
 ### v4.18.19 UI Consistency and Snapshot Coverage (Done)
 
 | Feature | Status | Description |

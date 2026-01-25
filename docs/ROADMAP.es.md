@@ -49,6 +49,14 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.18.20 Resiliencia de Nuclei y ajuste de UI (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Limite de paralelismo en Nuclei** | Hecho (v4.18.20) | Los timeouts largos de Nuclei ahora limitan los lotes paralelos para evitar timeouts del escaneo completo. |
+| **Resincronizacion de idioma UI** | Hecho (v4.18.20) | El UI manager se actualiza cuando cambia el idioma del CLI tras la inicializacion. |
+| **Contraste de estado ANSI** | Hecho (v4.18.20) | Las lineas de estado en ANSI ahora aplican el color al texto completo. |
+
 ### v4.18.19 Consistencia de UI y Snapshot de Configuracion (Hecho)
 
 | Funcionalidad | Estado | Descripción |
