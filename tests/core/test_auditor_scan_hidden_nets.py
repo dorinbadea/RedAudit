@@ -1,3 +1,4 @@
+import builtins
 import unittest
 from unittest.mock import MagicMock, patch
 from redaudit.core.auditor_scan import AuditorScan
@@ -103,5 +104,25 @@ class TestAuditorScanHiddenNets(unittest.TestCase):
             args, _ = call
             if "net_discovery_routed_found" in str(args[0]):
                 self.fail("Prompt for hidden networks should not appear when no hidden nets exist")
+
+        self.assertEqual(result, ["192.168.1.0/24"])
+
+    def test_ask_network_range_import_error(self):
+        """Test ImportError in hidden network detection."""
+        auditor = MockAuditor()
+        auditor.scanner.detect_local_networks.return_value = [
+            {"interface": "eth0", "network": "192.168.1.0/24", "hosts_estimated": 254}
+        ]
+        auditor.ask_choice.return_value = 0
+
+        orig_import = builtins.__import__
+
+        def _fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == "redaudit.core.net_discovery":
+                raise ImportError("boom")
+            return orig_import(name, globals, locals, fromlist, level)
+
+        with patch("builtins.__import__", side_effect=_fake_import):
+            result = auditor.ask_network_range()
 
         self.assertEqual(result, ["192.168.1.0/24"])

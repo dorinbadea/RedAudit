@@ -405,6 +405,13 @@ class TestNetworkDetection:
         hosts = auditor._collect_discovery_hosts(["bad_cidr", "192.168.1.0/24"])
         assert hosts == ["192.168.1.10"]
 
+    def test_collect_discovery_hosts_ip_parse_value_error(self):
+        auditor = MockAuditorScan()
+        auditor.results["net_discovery"] = {"alive_hosts": ["bad_ip"]}
+        with patch("redaudit.core.auditor_scan.sanitize_ip", return_value="999.999.999.999"):
+            hosts = auditor._collect_discovery_hosts(["192.168.1.0/24"])
+        assert hosts == []
+
     def test_select_net_discovery_interface_explicit(self):
         """Test interface selection with explicit config."""
         auditor = MockAuditorScan()
@@ -487,6 +494,15 @@ class TestScanModes:
 
     def test_parse_host_timeout_non_str(self):
         result = AuditorScan._parse_host_timeout_s(None)
+        assert result is None
+
+    def test_parse_host_timeout_unexpected_unit_match(self):
+        class _Match:
+            def group(self, idx):
+                return "10" if idx == 1 else "x"
+
+        with patch("redaudit.core.auditor_scan.re.search", return_value=_Match()):
+            result = AuditorScan._parse_host_timeout_s("--host-timeout 10x")
         assert result is None
 
 
@@ -1641,6 +1657,127 @@ class TestHostPortScan:
         assert res.auth_scan["lynis_hardening_index"] == 75
         assert "Linux" in res.os_detected
 
+    def test_scan_host_ports_auth_ssh_success_skips_remaining_credentials(self):
+        auditor = MockAuditorScan()
+        auditor.config["auth_enabled"] = True
+        auditor.scanner.compute_identity_score.return_value = (0, [])
+        auditor._resolve_all_ssh_credentials = MagicMock(
+            return_value=[
+                Credential(username="root", password="pw"),
+                Credential(username="backup", password="pw2"),
+            ]
+        )
+        auditor._resolve_all_smb_credentials = MagicMock(return_value=[])
+
+        ports = {22: {"name": "ssh", "product": "", "version": "", "extrainfo": "", "cpe": []}}
+        host_data = _FakeNmapHost(protocols={"tcp": ports}, hostnames=[], state="up")
+        nm = _FakePortScanner({"1.1.1.1": host_data})
+        auditor.scanner.run_nmap_scan.return_value = (nm, "")
+        host_obj = Host(ip="1.1.1.1")
+        auditor.scanner.get_or_create_host.return_value = host_obj
+
+        @dataclass
+        class _SSHInfo:
+            os_name: str = "Linux"
+            os_version: str = "6.0"
+
+        ssh_instance = MagicMock()
+        ssh_instance.connect.return_value = True
+        ssh_instance.gather_host_info.return_value = _SSHInfo()
+        ssh_instance.close.return_value = None
+
+        with (
+            patch("redaudit.core.auditor_scan.SSHScanner", return_value=ssh_instance) as mock_cls,
+            patch.object(auditor, "_should_trigger_deep", return_value=(False, [])),
+            patch("redaudit.core.auditor_scan.enrich_host_with_dns"),
+            patch("redaudit.core.auditor_scan.enrich_host_with_whois"),
+            patch("redaudit.core.auditor_scan.finalize_host_status", return_value=STATUS_UP),
+        ):
+            res = auditor.scan_host_ports("1.1.1.1")
+
+        assert mock_cls.call_count == 1
+        assert res.auth_scan
+
+    def test_scan_host_ports_auth_ssh_lynis_exception_logs(self):
+        auditor = MockAuditorScan()
+        auditor.config["auth_enabled"] = True
+        auditor.config["lynis_enabled"] = True
+        auditor.scanner.compute_identity_score.return_value = (0, [])
+        auditor._resolve_all_ssh_credentials = MagicMock(
+            return_value=[Credential(username="root", password="pw")]
+        )
+        auditor._resolve_all_smb_credentials = MagicMock(return_value=[])
+
+        ports = {22: {"name": "ssh", "product": "", "version": "", "extrainfo": "", "cpe": []}}
+        host_data = _FakeNmapHost(protocols={"tcp": ports}, hostnames=[], state="up")
+        nm = _FakePortScanner({"1.1.1.1": host_data})
+        auditor.scanner.run_nmap_scan.return_value = (nm, "")
+        host_obj = Host(ip="1.1.1.1")
+        auditor.scanner.get_or_create_host.return_value = host_obj
+
+        @dataclass
+        class _SSHInfo:
+            os_name: str = "Linux"
+            os_version: str = "5.10"
+
+        class _FailLynis:
+            def __init__(self, *_args, **_kwargs):
+                pass
+
+            def run_audit(self, **_kwargs):
+                raise RuntimeError("boom")
+
+        ssh_instance = MagicMock()
+        ssh_instance.connect.return_value = True
+        ssh_instance.gather_host_info.return_value = _SSHInfo()
+        ssh_instance.close.return_value = None
+
+        with (
+            patch("redaudit.core.auditor_scan.SSHScanner", return_value=ssh_instance),
+            patch("redaudit.core.auth_lynis.LynisScanner", _FailLynis),
+            patch.object(auditor, "_should_trigger_deep", return_value=(False, [])),
+            patch("redaudit.core.auditor_scan.enrich_host_with_dns"),
+            patch("redaudit.core.auditor_scan.enrich_host_with_whois"),
+            patch("redaudit.core.auditor_scan.finalize_host_status", return_value=STATUS_UP),
+        ):
+            auditor.scan_host_ports("1.1.1.1")
+
+        assert auditor.logger.error.called
+
+    def test_scan_host_ports_auth_ssh_generic_exception_sets_error(self):
+        auditor = MockAuditorScan()
+        auditor.config["auth_enabled"] = True
+        auditor.scanner.compute_identity_score.return_value = (0, [])
+        auditor._resolve_all_ssh_credentials = MagicMock(
+            return_value=[Credential(username="root", password="pw")]
+        )
+        auditor._resolve_all_smb_credentials = MagicMock(return_value=[])
+
+        ports = {22: {"name": "ssh", "product": "", "version": "", "extrainfo": "", "cpe": []}}
+        host_data = _FakeNmapHost(protocols={"tcp": ports}, hostnames=[], state="up")
+        nm = _FakePortScanner({"1.1.1.1": host_data})
+        auditor.scanner.run_nmap_scan.return_value = (nm, "")
+        host_obj = Host(ip="1.1.1.1")
+        auditor.scanner.get_or_create_host.return_value = host_obj
+
+        class _FailSSHScanner:
+            def __init__(self, *_args, **_kwargs):
+                pass
+
+            def connect(self, *_args, **_kwargs):
+                raise RuntimeError("boom")
+
+        with (
+            patch("redaudit.core.auditor_scan.SSHScanner", _FailSSHScanner),
+            patch.object(auditor, "_should_trigger_deep", return_value=(False, [])),
+            patch("redaudit.core.auditor_scan.enrich_host_with_dns"),
+            patch("redaudit.core.auditor_scan.enrich_host_with_whois"),
+            patch("redaudit.core.auditor_scan.finalize_host_status", return_value=STATUS_UP),
+        ):
+            res = auditor.scan_host_ports("1.1.1.1")
+
+        assert res.auth_scan["error"] == "boom"
+
     def test_scan_host_ports_auth_ssh_failure_sets_error(self):
         auditor = MockAuditorScan()
         auditor.config["auth_enabled"] = True
@@ -1801,6 +1938,176 @@ class TestHostPortScan:
             auditor.scan_host_ports("1.1.1.1")
 
         assert auditor.ui.print_status.called
+
+    def test_scan_host_ports_smb_success_skips_remaining_credentials(self):
+        auditor = MockAuditorScan()
+        auditor.config["auth_enabled"] = True
+        auditor.scanner.compute_identity_score.return_value = (0, [])
+        auditor._resolve_all_ssh_credentials = MagicMock(return_value=[])
+        auditor._resolve_all_smb_credentials = MagicMock(
+            return_value=[
+                Credential(username="admin", password="pw"),
+                Credential(username="backup", password="pw2"),
+            ]
+        )
+
+        ports = {
+            445: {
+                "name": "microsoft-ds",
+                "product": "",
+                "version": "",
+                "extrainfo": "",
+                "cpe": [],
+            }
+        }
+        host_data = _FakeNmapHost(protocols={"tcp": ports}, hostnames=[], state="up")
+        nm = _FakePortScanner({"1.1.1.1": host_data})
+        auditor.scanner.run_nmap_scan.return_value = (nm, "")
+        host_obj = Host(ip="1.1.1.1")
+        auditor.scanner.get_or_create_host.return_value = host_obj
+
+        @dataclass
+        class _SMBInfo:
+            os_name: str = "Windows"
+            os_version: str = "11"
+            domain: str = "DOMAIN"
+
+        smb_instance = MagicMock()
+        smb_instance.connect.return_value = True
+        smb_instance.gather_host_info.return_value = _SMBInfo()
+        smb_instance.close.return_value = None
+
+        with (
+            patch("redaudit.core.auth_smb.SMBScanner", return_value=smb_instance) as mock_cls,
+            patch.object(auditor, "_should_trigger_deep", return_value=(False, [])),
+            patch("redaudit.core.auditor_scan.enrich_host_with_dns"),
+            patch("redaudit.core.auditor_scan.enrich_host_with_whois"),
+            patch("redaudit.core.auditor_scan.finalize_host_status", return_value=STATUS_UP),
+        ):
+            res = auditor.scan_host_ports("1.1.1.1")
+
+        assert mock_cls.call_count == 1
+        assert res.auth_scan["smb_user"] == "admin"
+
+    def test_scan_host_ports_smb_skips_none_credential(self):
+        auditor = MockAuditorScan()
+        auditor.config["auth_enabled"] = True
+        auditor.scanner.compute_identity_score.return_value = (0, [])
+        auditor._resolve_all_ssh_credentials = MagicMock(return_value=[])
+        auditor._resolve_all_smb_credentials = MagicMock(
+            return_value=[None, Credential(username="admin", password="pw")]
+        )
+
+        ports = {
+            445: {
+                "name": "microsoft-ds",
+                "product": "",
+                "version": "",
+                "extrainfo": "",
+                "cpe": [],
+            }
+        }
+        host_data = _FakeNmapHost(protocols={"tcp": ports}, hostnames=[], state="up")
+        nm = _FakePortScanner({"1.1.1.1": host_data})
+        auditor.scanner.run_nmap_scan.return_value = (nm, "")
+        host_obj = Host(ip="1.1.1.1")
+        auditor.scanner.get_or_create_host.return_value = host_obj
+
+        smb_instance = MagicMock()
+        smb_instance.connect.return_value = False
+
+        with (
+            patch("redaudit.core.auth_smb.SMBScanner", return_value=smb_instance) as mock_cls,
+            patch.object(auditor, "_should_trigger_deep", return_value=(False, [])),
+            patch("redaudit.core.auditor_scan.enrich_host_with_dns"),
+            patch("redaudit.core.auditor_scan.enrich_host_with_whois"),
+            patch("redaudit.core.auditor_scan.finalize_host_status", return_value=STATUS_UP),
+        ):
+            auditor.scan_host_ports("1.1.1.1")
+
+        assert mock_cls.call_count == 1
+
+    def test_scan_host_ports_smb_import_error_breaks(self):
+        auditor = MockAuditorScan()
+        auditor.config["auth_enabled"] = True
+        auditor.config["verbose"] = True
+        auditor.scanner.compute_identity_score.return_value = (0, [])
+        auditor._resolve_all_ssh_credentials = MagicMock(return_value=[])
+        auditor._resolve_all_smb_credentials = MagicMock(
+            return_value=[Credential(username="admin", password="pw")]
+        )
+
+        ports = {
+            445: {
+                "name": "microsoft-ds",
+                "product": "",
+                "version": "",
+                "extrainfo": "",
+                "cpe": [],
+            }
+        }
+        host_data = _FakeNmapHost(protocols={"tcp": ports}, hostnames=[], state="up")
+        nm = _FakePortScanner({"1.1.1.1": host_data})
+        auditor.scanner.run_nmap_scan.return_value = (nm, "")
+        host_obj = Host(ip="1.1.1.1")
+        auditor.scanner.get_or_create_host.return_value = host_obj
+
+        class _ImportErrorSMB:
+            def __init__(self, *_args, **_kwargs):
+                raise ImportError("boom")
+
+        with (
+            patch("redaudit.core.auth_smb.SMBScanner", _ImportErrorSMB),
+            patch.object(auditor, "_should_trigger_deep", return_value=(False, [])),
+            patch("redaudit.core.auditor_scan.enrich_host_with_dns"),
+            patch("redaudit.core.auditor_scan.enrich_host_with_whois"),
+            patch("redaudit.core.auditor_scan.finalize_host_status", return_value=STATUS_UP),
+        ):
+            auditor.scan_host_ports("1.1.1.1")
+
+        assert auditor.logger.warning.called
+
+    def test_scan_host_ports_smb_generic_exception_logs(self):
+        auditor = MockAuditorScan()
+        auditor.config["auth_enabled"] = True
+        auditor.scanner.compute_identity_score.return_value = (0, [])
+        auditor._resolve_all_ssh_credentials = MagicMock(return_value=[])
+        auditor._resolve_all_smb_credentials = MagicMock(
+            return_value=[Credential(username="admin", password="pw")]
+        )
+
+        ports = {
+            445: {
+                "name": "microsoft-ds",
+                "product": "",
+                "version": "",
+                "extrainfo": "",
+                "cpe": [],
+            }
+        }
+        host_data = _FakeNmapHost(protocols={"tcp": ports}, hostnames=[], state="up")
+        nm = _FakePortScanner({"1.1.1.1": host_data})
+        auditor.scanner.run_nmap_scan.return_value = (nm, "")
+        host_obj = Host(ip="1.1.1.1")
+        auditor.scanner.get_or_create_host.return_value = host_obj
+
+        class _FailSMBScanner:
+            def __init__(self, *_args, **_kwargs):
+                pass
+
+            def connect(self, *_args, **_kwargs):
+                raise RuntimeError("boom")
+
+        with (
+            patch("redaudit.core.auth_smb.SMBScanner", _FailSMBScanner),
+            patch.object(auditor, "_should_trigger_deep", return_value=(False, [])),
+            patch("redaudit.core.auditor_scan.enrich_host_with_dns"),
+            patch("redaudit.core.auditor_scan.enrich_host_with_whois"),
+            patch("redaudit.core.auditor_scan.finalize_host_status", return_value=STATUS_UP),
+        ):
+            auditor.scan_host_ports("1.1.1.1")
+
+        assert auditor.logger.debug.called
 
     def test_scan_host_ports_snmp_topology_updates_auth(self):
         auditor = MockAuditorScan()

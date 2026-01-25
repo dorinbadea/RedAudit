@@ -268,6 +268,13 @@ def test_walk_interfaces_prettyprint_exception(mock_nextCmd):
 
 
 @patch("redaudit.core.auth_snmp.nextCmd")
+def test_walk_interfaces_exception_returns_empty(mock_nextCmd):
+    scanner = SNMPScanner(Credential(username="user", password="pass"))
+    mock_nextCmd.side_effect = RuntimeError("boom")
+    assert scanner._walk_interfaces(MagicMock()) == []
+
+
+@patch("redaudit.core.auth_snmp.nextCmd")
 def test_walk_routes_error_and_exception(mock_nextCmd):
     scanner = SNMPScanner(Credential(username="user", password="pass"))
     route_row = [(None, "dest"), (None, "1"), (None, "0.0.0.0"), (None, "3"), (None, "mask")]
@@ -289,6 +296,24 @@ def test_walk_arp_as_numbers_and_error(mock_nextCmd):
     mock_nextCmd.return_value = iter([("error", 0, 0, arp_row), (None, 0, 0, arp_row)])
     res = scanner._walk_arp(MagicMock())
     assert res[0]["mac"] == "aa:bb:cc:dd"
+
+
+@patch("redaudit.core.auth_snmp.nextCmd")
+def test_walk_arp_prettyprint_exception_and_walk_failure(mock_nextCmd):
+    scanner = SNMPScanner(Credential(username="user", password="pass"))
+
+    class _Val:
+        def prettyPrint(self):
+            raise RuntimeError("bad")
+
+    val = _Val()
+    arp_row = [(None, "1"), (None, val), (None, "10.0.0.1"), (None, "3")]
+    mock_nextCmd.return_value = iter([(None, 0, 0, arp_row)])
+    res = scanner._walk_arp(MagicMock())
+    assert res[0]["mac"] == str(val)
+
+    mock_nextCmd.side_effect = RuntimeError("boom")
+    assert scanner._walk_arp(MagicMock()) == []
 
 
 if __name__ == "__main__":
