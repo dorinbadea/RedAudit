@@ -2719,9 +2719,7 @@ class AuditorScan:
 
                                     heartbeat_msg = Text()
                                     heartbeat_msg.append(
-                                        self.ui.t(
-                                            "deep_scan_heartbeat", done, total, mins, secs
-                                        ),
+                                        self.ui.t("deep_scan_heartbeat", done, total, mins, secs),
                                         style="dim",
                                     )
                                     progress.console.print(heartbeat_msg)

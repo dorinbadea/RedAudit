@@ -153,7 +153,9 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
             with patch.object(app.scanner, "run_nmap_scan", return_value=(nm, "")):
                 result = app.scan_host_ports(ip)
 
-        smart_scan = result.smart_scan if hasattr(result, "smart_scan") else result.get("smart_scan")
+        smart_scan = (
+            result.smart_scan if hasattr(result, "smart_scan") else result.get("smart_scan")
+        )
         self.assertFalse(smart_scan.get("trigger_deep"))
         self.assertNotIn("hyperscan_ports_detected", smart_scan.get("reasons", []))
         self.assertFalse(smart_scan.get("deep_scan_suggested", False))
