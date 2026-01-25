@@ -355,23 +355,17 @@ def run_nuclei_scan(
             base_timeout = float(timeout) if isinstance(timeout, (int, float)) else 600.0
             target_budget = float(request_timeout_s) * len(batch_targets) * 2
 
-            # Keep a higher minimum for the initial batch, but reduce
-            # timeouts after split to avoid multi-hour loops on slow targets.
+            # Keep a higher minimum for the initial batch; for split batches,
+            # honor the configured base timeout to preserve coverage.
             min_timeout_s = max(60.0, float(request_timeout_s) * 2.0)
             if split_depth == 0:
                 min_timeout_s = max(min_timeout_s, 300.0)
 
             batch_timeout_s = max(min_timeout_s, target_budget)
 
-            # Use base_timeout as a minimum on the first attempt only.
-            # After split, treat base_timeout as a cap to shorten retries.
             if base_timeout > 0:
-                if split_depth == 0 and retry_attempt == 0:
-                    batch_timeout_s = max(batch_timeout_s, base_timeout)
-                else:
-                    batch_timeout_s = min(batch_timeout_s, base_timeout)
-                    if batch_timeout_s < min_timeout_s:
-                        batch_timeout_s = min_timeout_s
+                # Honor base timeout as a floor to avoid partial coverage on slow targets.
+                batch_timeout_s = max(batch_timeout_s, base_timeout)
 
             # v4.6.23: Extend timeout on retry attempt
             if retry_attempt > 0:

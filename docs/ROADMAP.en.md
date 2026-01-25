@@ -49,6 +49,12 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.18.22 Nuclei Coverage Timeout Floor (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Nuclei Timeout Floor** | Done (v4.18.22) | Split retries keep the configured batch timeout as a floor to preserve coverage on slow targets. |
+
 ### v4.18.21 Updater Home Refresh Safety (Done)
 
 | Feature | Status | Description |

@@ -49,6 +49,12 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.18.22 Suelo de timeout en Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Suelo de timeout en Nuclei** | Hecho (v4.18.22) | Los reintentos tras split mantienen el timeout configurado como suelo para conservar cobertura. |
+
 ### v4.18.21 Seguridad de refresco en home (Hecho)
 
 | Funcionalidad | Estado | Descripción |

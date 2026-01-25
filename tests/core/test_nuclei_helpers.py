@@ -582,7 +582,7 @@ def test_run_nuclei_scan_batch_timeout_sets_error(tmp_path):
     assert res["error"] == "timeout"
 
 
-def test_run_nuclei_scan_split_reduces_timeout(tmp_path):
+def test_run_nuclei_scan_split_keeps_timeout_floor(tmp_path):
     timeouts = []
 
     class _Runner:
@@ -607,7 +607,7 @@ def test_run_nuclei_scan_split_reduces_timeout(tmp_path):
                 )
     assert res["success"] is True
     assert len(timeouts) >= 2
-    assert timeouts[0] > timeouts[1]
+    assert min(timeouts[1:]) >= timeouts[0]
 
 
 def test_run_nuclei_scan_fallback_print_status(tmp_path):

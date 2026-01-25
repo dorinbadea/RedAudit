@@ -14,6 +14,12 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.18.22] - 2026-01-25
+
+### Fixed
+
+- **Nuclei Timeout Floor**: Split retries keep the configured batch timeout as a floor to avoid coverage loss on slow targets.
+
 ## [4.18.21] - 2026-01-25
 
 ### Improved

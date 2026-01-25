@@ -14,6 +14,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.18.22] - 2026-01-25
+
+### Corregido
+
+- **Suelo de timeout de Nuclei**: Los reintentos tras split mantienen el timeout configurado como suelo para evitar perder cobertura en objetivos lentos.
+
 ## [4.18.21] - 2026-01-25
 
 ### Mejorado
