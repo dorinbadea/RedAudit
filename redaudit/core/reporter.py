@@ -81,6 +81,7 @@ def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
         "nuclei_profile": config.get("nuclei_profile"),
         "nuclei_full_coverage": config.get("nuclei_full_coverage"),
         "nuclei_timeout": config.get("nuclei_timeout"),
+        "nuclei_max_runtime": config.get("nuclei_max_runtime"),
         "cve_lookup_enabled": config.get("cve_lookup_enabled"),
         "dry_run": config.get("dry_run"),
         "prevent_sleep": config.get("prevent_sleep"),

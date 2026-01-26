@@ -129,6 +129,10 @@ Examples:
     if default_nuclei_profile not in ("fast", "balanced", "full"):
         default_nuclei_profile = "balanced"
 
+    default_nuclei_max_runtime = persisted_defaults.get("nuclei_max_runtime")
+    if not isinstance(default_nuclei_max_runtime, int) or default_nuclei_max_runtime < 0:
+        default_nuclei_max_runtime = 0
+
     default_windows_verify_enabled = persisted_defaults.get("windows_verify_enabled")
     if not isinstance(default_windows_verify_enabled, bool):
         default_windows_verify_enabled = False
@@ -297,6 +301,25 @@ Examples:
         choices=["fast", "balanced", "full"],
         default=default_nuclei_profile,
         help="Set Nuclei scan intensity/speed (fast, balanced, full)",
+    )
+    parser.add_argument(
+        "--nuclei-max-runtime",
+        type=int,
+        default=default_nuclei_max_runtime,
+        metavar="MIN",
+        help="Max Nuclei runtime in minutes (0 = unlimited)",
+    )
+    resume_group = parser.add_mutually_exclusive_group()
+    resume_group.add_argument(
+        "--nuclei-resume",
+        type=str,
+        metavar="PATH",
+        help="Resume pending Nuclei scan from a resume file or scan folder",
+    )
+    resume_group.add_argument(
+        "--nuclei-resume-latest",
+        action="store_true",
+        help="Resume latest pending Nuclei scan from default reports folder",
     )
     windows_verify_group = parser.add_mutually_exclusive_group()
     windows_verify_group.add_argument(
@@ -824,6 +847,10 @@ def configure_from_args(app, args) -> bool:
     if nuclei_profile not in ("fast", "balanced", "full"):
         nuclei_profile = "balanced"
     app.config["nuclei_profile"] = nuclei_profile
+    nuclei_max_runtime = getattr(args, "nuclei_max_runtime", 0)
+    if not isinstance(nuclei_max_runtime, int) or nuclei_max_runtime < 0:
+        nuclei_max_runtime = 0
+    app.config["nuclei_max_runtime"] = nuclei_max_runtime
 
     # v4.0: Authenticated Scanning
     app.config["auth_provider"] = getattr(args, "auth_provider", "keyring")
@@ -991,6 +1018,17 @@ def main():
     app.lang = detect_preferred_language(getattr(args, "lang", None))
     app.defaults_mode = getattr(args, "defaults", "ask")
 
+    if getattr(args, "nuclei_resume", None) or getattr(args, "nuclei_resume_latest", False):
+        resume_path = getattr(args, "nuclei_resume", None)
+        if getattr(args, "nuclei_resume_latest", False):
+            candidates = app._find_nuclei_resume_candidates(get_default_reports_base_dir())
+            resume_path = candidates[0]["path"] if candidates else None
+        if not resume_path:
+            app.print_status(app.t("nuclei_resume_none"), "INFO")
+            sys.exit(1)
+        ok = app.resume_nuclei_from_path(resume_path)
+        sys.exit(0 if ok else 1)
+
     # Non-interactive mode: allow forcing "factory" values even if persisted defaults exist.
     if args.target and getattr(args, "defaults", None) == "ignore":
         argv = sys.argv[1:]
@@ -1115,6 +1153,9 @@ def main():
                             app.print_status("Could not compare reports. Check file paths.", "FAIL")
                 except KeyboardInterrupt:
                     print("")
+
+            elif choice == 4:  # Resume Nuclei
+                app.resume_nuclei_interactive()
 
 
 if __name__ == "__main__":

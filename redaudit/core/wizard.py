@@ -14,6 +14,7 @@ import sys
 import platform
 import re
 import shutil
+import time
 from typing import Dict, List, Optional
 
 from redaudit.utils.constants import (
@@ -374,13 +375,14 @@ class Wizard:
         Display main menu and return user choice.
 
         Returns:
-            int: 0=exit, 1=scan, 2=update, 3=diff
+            int: 0=exit, 1=scan, 2=update, 3=diff, 4=resume nuclei
         """
         if self._use_arrow_menu():
             opts = [
                 f"1) {self.ui.t('menu_option_scan')}",
                 f"2) {self.ui.t('menu_option_update')}",
                 f"3) {self.ui.t('menu_option_diff')}",
+                f"4) {self.ui.t('menu_option_resume_nuclei')}",
                 f"0) {self.ui.t('menu_option_exit')}",
             ]
             choice = self._arrow_menu(
@@ -389,7 +391,7 @@ class Wizard:
                 0,
                 header=f"RedAudit v{VERSION}",
             )
-            return 0 if choice == 3 else choice + 1
+            return 0 if choice == 4 else choice + 1
 
         print(f"\n{self.ui.colors['HEADER']}RedAudit v{VERSION}{self.ui.colors['ENDC']}")
         print("─" * 60)
@@ -406,6 +408,10 @@ class Wizard:
             f"{self._style_prompt_text(self.ui.t('menu_option_diff'))}"
         )
         print(
+            f"  {self.ui.colors['CYAN']}4){self.ui.colors['ENDC']} "
+            f"{self._style_prompt_text(self.ui.t('menu_option_resume_nuclei'))}"
+        )
+        print(
             f"  {self.ui.colors['CYAN']}0){self.ui.colors['ENDC']} "
             f"{self._style_prompt_text(self.ui.t('menu_option_exit'))}"
         )
@@ -417,7 +423,7 @@ class Wizard:
                     f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                     f"{self._style_prompt_text(self.ui.t('menu_prompt'))} "
                 ).strip()
-                if ans in ("0", "1", "2", "3"):
+                if ans in ("0", "1", "2", "3", "4"):
                     return int(ans)
                 self.ui.print_status(self.ui.t("menu_invalid_option"), "WARNING")
             except KeyboardInterrupt:
@@ -478,6 +484,82 @@ class Wizard:
                 print("")
                 self.signal_handler(None, None)
                 sys.exit(0)
+
+    def ask_yes_no_with_timeout(
+        self, question: str, default: str = "no", timeout_s: int = 15
+    ) -> bool:
+        """Ask a yes/no question with a timeout; returns default on timeout."""
+        default = default.lower()
+        is_yes_default = default in ("yes", "y", "s", "si", "sí")
+        opts_raw = (
+            self.ui.t("ask_yes_no_opts") if is_yes_default else self.ui.t("ask_yes_no_opts_neg")
+        )
+        opts = self._style_default_hint(opts_raw, "OKGREEN" if is_yes_default else "FAIL")
+        prompt = (
+            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+            f"{self._style_prompt_text(question)}{opts}: "
+        )
+
+        def _resolve_answer(ans: str) -> Optional[bool]:
+            if ans == "":
+                return is_yes_default
+            val = ans.lower()
+            if val in ("yes", "y", "s", "si", "sí"):
+                return True
+            if val in ("no", "n"):
+                return False
+            return None
+
+        if timeout_s <= 0 or not (sys.stdin.isatty() and sys.stdout.isatty()):
+            return is_yes_default
+
+        countdown_label = self.ui.t("auto_continue_countdown")
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                buffer = ""
+                for remaining in range(int(timeout_s), 0, -1):
+                    sys.stdout.write(f"\r\x1b[2K{prompt}{countdown_label.format(remaining)}")
+                    sys.stdout.flush()
+                    start = time.time()
+                    while time.time() - start < 1.0:
+                        if msvcrt.kbhit():
+                            ch = msvcrt.getwch()
+                            if ch in ("\r", "\n"):
+                                sys.stdout.write("\n")
+                                sys.stdout.flush()
+                                resolved = _resolve_answer(buffer.strip())
+                                return resolved if resolved is not None else is_yes_default
+                            if ch == "\x03":
+                                sys.stdout.write("\n")
+                                sys.stdout.flush()
+                                return is_yes_default
+                            buffer += ch
+                        time.sleep(0.05)
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+                return is_yes_default
+
+            import select
+
+            for remaining in range(int(timeout_s), 0, -1):
+                sys.stdout.write(f"\r\x1b[2K{prompt}{countdown_label.format(remaining)}")
+                sys.stdout.flush()
+                ready, _, _ = select.select([sys.stdin], [], [], 1)
+                if ready:
+                    ans = sys.stdin.readline().strip()
+                    sys.stdout.write("\n")
+                    sys.stdout.flush()
+                    resolved = _resolve_answer(ans)
+                    return resolved if resolved is not None else is_yes_default
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+            return is_yes_default
+        except KeyboardInterrupt:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+            return is_yes_default
 
     def ask_number(self, question: str, default=10, min_val: int = 1, max_val: int = 1000):
         """Ask for a number within a range."""

@@ -222,6 +222,9 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | `--webhook URL` | Enviar alertas webhook (JSON) para hallazgos high/critical |
 | `--nuclei` | Habilitar escaneo de plantillas con Nuclei (requiere `nuclei`; solo en modo full; DESACTIVADO por defecto) |
 | `--nuclei-timeout S` | Timeout por lote de Nuclei en segundos (defecto: 300) |
+| `--nuclei-max-runtime MIN` | Tiempo maximo de Nuclei en minutos (0 = ilimitado). Crea un archivo de reanudacion si se supera. |
+| `--nuclei-resume PATH` | Reanudar objetivos pendientes de Nuclei desde un archivo de reanudacion o una carpeta de escaneo |
+| `--nuclei-resume-latest` | Reanudar la ultima ejecucion pendiente de Nuclei desde la carpeta por defecto |
 | `--no-nuclei` | Deshabilitar Nuclei (defecto) |
 | `--no-vuln-scan` | Omitir escaneo de vulnerabilidades Web/Nikto |
 | `--cve-lookup` | Correlar servicios con datos CVE NVD |
@@ -232,6 +235,7 @@ Notas:
 - Los escáneres de aplicaciones web (sqlmap/ZAP) se omiten en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP.
 - Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
 - **Nuclei en redes con alta densidad web:** En redes con muchos servicios HTTP/HTTPS (p. ej., labs Docker, microservicios), los escaneos Nuclei pueden tardar significativamente mas (30-90+ minutos). Usa `--nuclei-timeout 600` para aumentar el timeout por lote, o `--no-nuclei` para omitir Nuclei si la velocidad es critica. Cuando se activa la cobertura completa, RedAudit eleva el timeout por lote a 900s si se ha configurado un valor inferior.
+- Cuando se define un presupuesto de tiempo, RedAudit crea `nuclei_resume.json` y `nuclei_pending.txt` en la carpeta del escaneo y ofrece una pregunta de reanudacion con cuenta atras de 15 segundos. Si no respondes, el escaneo continua y la reanudacion queda disponible.
 
 ### Configuracion de Nuclei (v4.17+)
 

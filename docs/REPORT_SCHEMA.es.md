@@ -90,6 +90,7 @@ El objeto `config_snapshot` guarda la configuracion de ejecucion (sin secretos).
 | `deep_id_scan` | `boolean` | Indica si el deep identity scan esta activo. |
 | `trust_hyperscan` | `boolean` | Indica si DeepScan confia solo en los puertos de HyperScan. |
 | `nuclei_timeout` | `integer` | Timeout de Nuclei por objetivo en segundos. |
+| `nuclei_max_runtime` | `integer` | Tiempo maximo de Nuclei en minutos (0 = ilimitado). |
 
 ### summary.json (Resumen para dashboards)
 
@@ -144,6 +145,8 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `partial` | boolean | (Opcional) Uno o más lotes con timeout; resultados incompletos |
 | `timeout_batches` | array | (Opcional) Índices de lotes con timeout |
 | `failed_batches` | array | (Opcional) Índices de lotes fallidos tras reintento |
+| `resume_pending` | integer | (Opcional) Objetivos pendientes guardados cuando se alcanza el presupuesto de tiempo |
+| `resume` | object | (Opcional) Metadatos de reanudacion (added_findings, added_suspected, pending_targets) |
 | `output_file` | string | Ruta relativa al archivo de salida (best-effort) |
 | `error` | string | Error si Nuclei falló (best-effort, p. ej., timeout) |
 

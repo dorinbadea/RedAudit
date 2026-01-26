@@ -354,6 +354,7 @@ class TestReporter(unittest.TestCase):
             "nuclei_profile": "fast",
             "nuclei_full_coverage": True,
             "nuclei_timeout": 600,
+            "nuclei_max_runtime": 120,
             "dry_run": True,
             "auditor_name": "tester",
         }
@@ -376,6 +377,7 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(snapshot["nuclei_profile"], "fast")
         self.assertTrue(snapshot["nuclei_full_coverage"])
         self.assertEqual(snapshot["nuclei_timeout"], 600)
+        self.assertEqual(snapshot["nuclei_max_runtime"], 120)
         self.assertTrue(snapshot["dry_run"])
         self.assertEqual(snapshot["auditor_name"], "tester")
 

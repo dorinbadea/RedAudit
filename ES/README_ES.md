@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-[![Version](https://img.shields.io/badge/version-4.18.22-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.19.0-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -381,6 +381,8 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | `--net-discovery` | Descubrimiento L2/broadcast mejorado |
 | `--topology` | Activar descubrimiento de topología |
 | `--nuclei` | Habilitar escaneo de plantillas Nuclei (solo modo full) |
+| `--nuclei-max-runtime` | Tiempo maximo de Nuclei en minutos (0 = ilimitado; crea reanudacion) |
+| `--nuclei-resume` | Reanudar Nuclei pendiente desde carpeta o archivo de reanudacion |
 | `--html-report` | Generar dashboard HTML interactivo |
 | `--diff OLD NEW` | Análisis diferencial entre escaneos |
 

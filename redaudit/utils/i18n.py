@@ -174,6 +174,7 @@ TRANSLATIONS = {
         "defaults_summary_scan_mode": "Scan mode",
         "defaults_summary_web_vulns": "Web vulns scan",
         "defaults_summary_nuclei": "Nuclei templates",
+        "defaults_summary_nuclei_runtime": "Nuclei max runtime",
         "defaults_summary_net_discovery": "Net Discovery",
         "defaults_summary_redteam": "Red Team modules",
         "defaults_summary_active_l2": "Active L2 probing",
@@ -316,11 +317,13 @@ TRANSLATIONS = {
         "menu_option_scan": "Start scan (wizard)",
         "menu_option_update": "Check for updates",
         "menu_option_diff": "Diff reports (JSON)",
+        "menu_option_resume_nuclei": "Resume Nuclei (pending)",
         "menu_option_exit": "Exit",
-        "menu_prompt": "Select option [0-3]:",
+        "menu_prompt": "Select option [0-4]:",
         "menu_nav_hint": "Use ↑/↓/←/→ and Enter to select.",
         "wizard_go_back": "Cancel",
-        "menu_invalid_option": "Invalid option. Please select 0-3.",
+        "menu_invalid_option": "Invalid option. Please select 0-4.",
+        "auto_continue_countdown": "Auto-continue in {}s",
         "yes_option": "Yes",
         "yes_default": "Yes (default)",
         "no_option": "No",
@@ -373,6 +376,18 @@ TRANSLATIONS = {
         # v4.17: Full coverage option (v4.18: shortened to prevent truncation)
         "nuclei_full_coverage_q": (
             "Scan ALL detected HTTP ports? (beyond 80/443; increases targets)"
+        ),
+        "nuclei_budget_q": "Max Nuclei runtime in minutes (0 = unlimited)",
+        "nuclei_resume_saved": "Nuclei resume saved: {}",
+        "nuclei_resume_prompt": "Resume pending Nuclei targets now?",
+        "nuclei_resume_none": "No pending Nuclei resumes found.",
+        "nuclei_resume_select": "Select a pending Nuclei resume:",
+        "nuclei_resume_cancel": "Resume canceled.",
+        "nuclei_resume_running": "Resuming Nuclei on pending targets...",
+        "nuclei_resume_done": "Nuclei resume completed: {} findings added",
+        "nuclei_resume_failed": "Nuclei resume failed: {}",
+        "nuclei_resume_skipped": (
+            "Nuclei resume postponed. You can resume later from the main menu or with --nuclei-resume."
         ),
         "windows_verify_q": "Enable agentless verification (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Max targets for agentless verification (1-200; higher = slower):",
@@ -639,6 +654,7 @@ TRANSLATIONS = {
         "defaults_summary_scan_mode": "Modo de escaneo",
         "defaults_summary_web_vulns": "Escaneo vulns web",
         "defaults_summary_nuclei": "Templates Nuclei",
+        "defaults_summary_nuclei_runtime": "Tiempo maximo Nuclei",
         "defaults_summary_net_discovery": "Net Discovery",
         "defaults_summary_redteam": "Módulos Red Team",
         "defaults_summary_active_l2": "L2 activo",
@@ -791,11 +807,13 @@ TRANSLATIONS = {
         "menu_option_scan": "Iniciar escaneo (wizard)",
         "menu_option_update": "Buscar actualizaciones",
         "menu_option_diff": "Comparar informes (JSON)",
+        "menu_option_resume_nuclei": "Reanudar Nuclei (pendiente)",
         "menu_option_exit": "Salir",
-        "menu_prompt": "Selecciona una opción [0-3]:",
+        "menu_prompt": "Selecciona una opción [0-4]:",
         "menu_nav_hint": "Usa ↑/↓/←/→ y Enter para seleccionar.",
         "wizard_go_back": "Cancelar",
-        "menu_invalid_option": "Opción inválida. Selecciona 0-3.",
+        "menu_invalid_option": "Opción inválida. Selecciona 0-4.",
+        "auto_continue_countdown": "Continuar automáticamente en {}s",
         "yes_option": "Sí",
         "yes_default": "Sí (por defecto)",
         "no_option": "No",
@@ -848,6 +866,19 @@ TRANSLATIONS = {
         # v4.17: Opcion de cobertura completa (v4.18: abreviado)
         "nuclei_full_coverage_q": (
             "Escanear TODOS los puertos HTTP detectados? (además de 80/443; más objetivos)"
+        ),
+        "nuclei_budget_q": "Tiempo maximo de Nuclei en minutos (0 = ilimitado)",
+        "nuclei_resume_saved": "Reanudacion Nuclei guardada: {}",
+        "nuclei_resume_prompt": "¿Reanudar ahora los objetivos pendientes de Nuclei?",
+        "nuclei_resume_none": "No hay reanudaciones de Nuclei pendientes.",
+        "nuclei_resume_select": "Selecciona una reanudacion de Nuclei pendiente:",
+        "nuclei_resume_cancel": "Reanudacion cancelada.",
+        "nuclei_resume_running": "Reanudando Nuclei en objetivos pendientes...",
+        "nuclei_resume_done": "Reanudacion de Nuclei completada: {} hallazgos añadidos",
+        "nuclei_resume_failed": "Reanudacion de Nuclei fallida: {}",
+        "nuclei_resume_skipped": (
+            "Reanudacion de Nuclei pospuesta. Puedes reanudar luego desde el menu o con "
+            "--nuclei-resume."
         ),
         "windows_verify_q": "¿Activar verificación sin agente (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Máximo de objetivos para verificación sin agente (1-200; más alto = más lento):",

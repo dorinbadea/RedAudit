@@ -49,6 +49,13 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.0 Reanudacion de Nuclei por presupuesto (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Presupuesto de tiempo Nuclei** | Hecho (v4.19.0) | Presupuesto opcional que crea artefactos de reanudacion y mantiene el flujo del escaneo. |
+| **Flujo de reanudacion Nuclei** | Hecho (v4.19.0) | Reanudacion desde el menu o CLI, actualizando informes en la misma carpeta. |
+
 ### v4.18.22 Suelo de timeout en Nuclei (Hecho)
 
 | Funcionalidad | Estado | Descripción |

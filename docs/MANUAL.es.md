@@ -314,6 +314,22 @@ Durante lotes largos, la CLI muestra progreso dentro del batch basado en tiempo 
 Cuando ocurre un timeout, RedAudit divide el lote y mantiene el `--nuclei-timeout` configurado como umbral mínimo para los
 reintentos, evitando perder cobertura en objetivos lentos.
 
+### Presupuesto de Tiempo y Reanudacion de Nuclei
+
+Si defines un presupuesto de tiempo para Nuclei (asistente o `--nuclei-max-runtime`), Nuclei se detiene cuando se alcanza ese
+presupuesto y crea `nuclei_resume.json` y `nuclei_pending.txt` en la carpeta del escaneo. Se ofrece una pregunta para reanudar
+con una cuenta atras de 15 segundos; si no respondes, el escaneo continua y la reanudacion queda disponible.
+
+Puedes reanudar mas tarde desde el menu principal (**Reanudar Nuclei (pendiente)**) o desde la CLI:
+
+```bash
+redaudit --nuclei-resume /ruta/a/carpeta/de/escaneo
+redaudit --nuclei-resume /ruta/a/nuclei_resume.json
+redaudit --nuclei-resume-latest
+```
+
+Las reanudaciones actualizan la misma carpeta del escaneo y regeneran los informes.
+
 ### Perfiles y Cobertura de Nuclei (v4.17+)
 
 Nuclei tiene dos controles independientes en el asistente:
@@ -549,7 +565,10 @@ sudo redaudit -t 192.168.1.0/24 --credentials-file ~/.redaudit/credentials.json 
 | `--nuclei` | Habilitar escaneo de plantillas Nuclei (requiere `nuclei`) |
 | `--no-nuclei` | Deshabilitar Nuclei (ignora defaults) |
 | `--nuclei-timeout N` | Timeout por lote de Nuclei en segundos (defecto: 300; se eleva a 900 en cobertura completa si es menor) |
+| `--nuclei-max-runtime MIN` | Tiempo maximo de Nuclei en minutos (0 = ilimitado); crea un archivo de reanudacion si se supera |
 | `--profile {fast,balanced,full}` | Intensidad de escaneo Nuclei (v4.11+) |
+| `--nuclei-resume PATH` | Reanudar objetivos pendientes de Nuclei desde un archivo o carpeta de escaneo |
+| `--nuclei-resume-latest` | Reanudar la ultima ejecucion pendiente desde la carpeta por defecto |
 
 ### Verificación (Sin Agente)
 

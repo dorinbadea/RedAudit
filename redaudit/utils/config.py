@@ -54,6 +54,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "generate_html": None,  # True/False
         # v3.6.0+: Optional template scanner toggle (if nuclei is installed)
         "nuclei_enabled": None,  # True/False
+        "nuclei_max_runtime": None,  # int minutes | None
         # v3.6.0+: Net Discovery / Red Team defaults (wizard)
         "net_discovery_enabled": None,  # True/False
         "net_discovery_redteam": None,  # True/False

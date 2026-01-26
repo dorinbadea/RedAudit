@@ -22,6 +22,7 @@ def test_apply_run_defaults_valid():
         "rate_limit": 2.5,
         "scan_vulnerabilities": False,
         "nuclei_enabled": True,
+        "nuclei_max_runtime": 30,
         "cve_lookup_enabled": True,
     }
 
@@ -32,6 +33,7 @@ def test_apply_run_defaults_valid():
     assert auditor.rate_limit_delay == 2.5
     assert auditor.config["scan_vulnerabilities"] is False
     assert auditor.config["nuclei_enabled"] is True
+    assert auditor.config["nuclei_max_runtime"] == 30
     assert auditor.config["cve_lookup_enabled"] is True
 
 
@@ -40,9 +42,11 @@ def test_apply_run_defaults_invalid_values():
     defaults = {
         "threads": MAX_THREADS + 100,
         "rate_limit": -1,
+        "nuclei_max_runtime": -5,
     }
 
     InteractiveNetworkAuditor._apply_run_defaults(auditor, defaults)
 
     assert auditor.config["threads"] == DEFAULT_THREADS
     assert auditor.rate_limit_delay == 0.0
+    assert auditor.config["nuclei_max_runtime"] == 0

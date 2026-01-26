@@ -317,6 +317,22 @@ During long batches, the CLI shows time-based progress inside the batch (with el
 When a timeout occurs, RedAudit splits the batch and keeps the configured `--nuclei-timeout` as a floor for retries to avoid
 dropping coverage on slow targets.
 
+### Nuclei Runtime Budget and Resume
+
+If you set a Nuclei runtime budget (wizard or `--nuclei-max-runtime`), Nuclei stops once the budget is reached and creates
+`nuclei_resume.json` plus `nuclei_pending.txt` in the scan folder. You will be prompted to resume immediately with a
+15-second countdown; if you do nothing, the scan continues and the resume remains available.
+
+You can resume later from the main menu (**Resume Nuclei (pending)**) or from the CLI:
+
+```bash
+redaudit --nuclei-resume /path/to/scan/folder
+redaudit --nuclei-resume /path/to/nuclei_resume.json
+redaudit --nuclei-resume-latest
+```
+
+Resumed runs update the same scan folder and refresh reports in place.
+
 ### Nuclei Profiles and Coverage (v4.17+)
 
 Nuclei has two independent controls in the wizard:
@@ -553,7 +569,10 @@ sudo redaudit -t 192.168.1.0/24 --credentials-file ~/.redaudit/credentials.json 
 | `--nuclei` | Enable Nuclei template scanning (requires `nuclei`) |
 | `--no-nuclei` | Disable Nuclei (overrides defaults) |
 | `--nuclei-timeout N` | Nuclei batch timeout in seconds (default: 300; auto-raised to 900 in full coverage if lower) |
+| `--nuclei-max-runtime MIN` | Max Nuclei runtime in minutes (0 = unlimited); creates a resume file when exceeded |
 | `--profile {fast,balanced,full}` | Nuclei scan intensity (v4.11+) |
+| `--nuclei-resume PATH` | Resume pending Nuclei targets from a resume file or scan folder |
+| `--nuclei-resume-latest` | Resume latest pending Nuclei run from the default reports folder |
 
 ### Verification (Agentless)
 

@@ -827,6 +827,25 @@ def test_ask_yes_no_defaults(monkeypatch):
     assert wiz.ask_yes_no("q", default="no") is False
 
 
+def test_ask_yes_no_with_timeout_non_tty(monkeypatch):
+    wiz = _UIWizard()
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: False)
+    assert wiz.ask_yes_no_with_timeout("q", default="yes", timeout_s=5) is True
+    assert wiz.ask_yes_no_with_timeout("q", default="no", timeout_s=0) is False
+
+
+def test_ask_yes_no_with_timeout_posix_input(monkeypatch):
+    import select
+
+    wiz = _UIWizard()
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdin, "readline", lambda: "y\n")
+    monkeypatch.setattr(select, "select", lambda *_a, **_k: ([sys.stdin], [], []))
+    assert wiz.ask_yes_no_with_timeout("q", default="no", timeout_s=1) is True
+
+
 def test_ask_number_and_choice(monkeypatch):
     wiz = _UIWizard()
     monkeypatch.setattr(wiz, "_use_arrow_menu", lambda: False)
@@ -937,7 +956,10 @@ class TestWizardPrompts(unittest.TestCase):
             opts = app.ask_net_discovery_options()
 
         self.assertEqual(opts.get("snmp_community"), "public")
-        self.assertTrue(any("[public]" in p for p in prompts), "SNMP prompt should show [public]")
+        self.assertTrue(
+            any("public" in p and "[" in p for p in prompts),
+            "SNMP prompt should show the default value",
+        )
         self.assertTrue(
             any("ENTER" in p.upper() for p in prompts),
             "Prompt should clarify ENTER behavior",

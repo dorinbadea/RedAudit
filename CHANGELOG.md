@@ -14,6 +14,17 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.19.0] - 2026-01-26
+
+### Added
+
+- **Nuclei Runtime Budget + Resume**: Optional time budget creates `nuclei_resume.json` and `nuclei_pending.txt`, with a 15-second resume prompt.
+- **Resume Entry Points**: Main menu "Resume Nuclei (pending)" and CLI flags `--nuclei-resume` / `--nuclei-resume-latest`.
+
+### Improved
+
+- **Report Snapshot**: Config snapshot and schema now include `nuclei_max_runtime`, plus resume metadata in the Nuclei summary.
+
 ## [4.18.22] - 2026-01-25
 
 ### Fixed

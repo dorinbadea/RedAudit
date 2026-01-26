@@ -14,6 +14,17 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.19.0] - 2026-01-26
+
+### Añadido
+
+- **Presupuesto de tiempo y reanudacion de Nuclei**: Presupuesto opcional que crea `nuclei_resume.json` y `nuclei_pending.txt`, con pregunta de reanudacion y cuenta atras de 15 segundos.
+- **Puntos de reanudacion**: Menu principal "Reanudar Nuclei (pendiente)" y flags `--nuclei-resume` / `--nuclei-resume-latest`.
+
+### Mejorado
+
+- **Snapshot y esquema**: El snapshot incluye `nuclei_max_runtime` y el resumen de Nuclei incluye metadatos de reanudacion.
+
 ## [4.18.22] - 2026-01-25
 
 ### Corregido

@@ -8,6 +8,7 @@ Main orchestrator class for network auditing operations.
 """
 
 import ipaddress
+import json
 import math
 import os
 import shutil
@@ -18,7 +19,7 @@ import sys
 import threading
 import time
 from datetime import datetime
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from redaudit.utils.constants import (
     COLORS,
@@ -362,6 +363,7 @@ class InteractiveNetworkAuditor:
                     scan_mode=self.config.get("scan_mode"),
                     scan_vulnerabilities=self.config.get("scan_vulnerabilities"),
                     nuclei_enabled=self.config.get("nuclei_enabled"),
+                    nuclei_max_runtime=self.config.get("nuclei_max_runtime"),
                     cve_lookup_enabled=self.config.get("cve_lookup_enabled"),
                     generate_txt=self.config.get("save_txt_report"),
                     generate_html=self.config.get("save_html_report"),
@@ -1010,16 +1012,25 @@ class InteractiveNetworkAuditor:
                         # Prefer a single Progress instance managed by the auditor to avoid
                         # competing Rich Live displays (which can cause flicker/no output).
                         nuclei_result = None
+                        nuclei_severity = "low,medium,high,critical"
+                        nuclei_timeout_s = self.config.get("nuclei_timeout", 300)
+                        nuclei_request_timeout_s = 10
+                        nuclei_retries = 1
+                        nuclei_max_runtime_minutes = self.config.get("nuclei_max_runtime", 0)
+                        try:
+                            nuclei_max_runtime_minutes = int(nuclei_max_runtime_minutes)
+                        except Exception:
+                            nuclei_max_runtime_minutes = 0
+                        if nuclei_max_runtime_minutes < 0:
+                            nuclei_max_runtime_minutes = 0
+                        nuclei_max_runtime_s = (
+                            nuclei_max_runtime_minutes * 60 if nuclei_max_runtime_minutes else None
+                        )
+                        # v4.6.34: Smaller batches for faster parallel completion
+                        batch_size = 10
                         try:
                             from rich.progress import Progress
 
-                            batch_size = (
-                                10  # v4.6.34: Smaller batches for faster parallel completion
-                            )
-                            # v4.6.20: Use configurable timeout from CLI
-                            nuclei_timeout_s = self.config.get("nuclei_timeout", 300)
-                            nuclei_request_timeout_s = 10
-                            nuclei_retries = 1
                             total_targets = len(nuclei_targets)
                             try:
                                 nuclei_timeout_s = int(nuclei_timeout_s)
@@ -1087,11 +1098,12 @@ class InteractiveNetworkAuditor:
                                 nuclei_result = run_nuclei_scan(
                                     targets=nuclei_targets,
                                     output_dir=output_dir,
-                                    severity="low,medium,high,critical",
+                                    severity=nuclei_severity,
                                     timeout=nuclei_timeout_s,
                                     batch_size=batch_size,
                                     request_timeout=nuclei_request_timeout_s,
                                     retries=nuclei_retries,
+                                    max_runtime_s=nuclei_max_runtime_s,
                                     progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
                                         c,
                                         t,
@@ -1112,13 +1124,15 @@ class InteractiveNetworkAuditor:
                                     profile=nuclei_profile,
                                 )
                         except Exception:
+                            nuclei_severity = "medium,high,critical"
                             nuclei_result = run_nuclei_scan(
                                 targets=nuclei_targets,
                                 output_dir=output_dir,
-                                severity="medium,high,critical",
+                                severity=nuclei_severity,
                                 timeout=self.config.get("nuclei_timeout", 300),
                                 request_timeout=10,
                                 retries=1,
+                                max_runtime_s=nuclei_max_runtime_s,
                                 logger=self.logger,
                                 dry_run=bool(self.config.get("dry_run", False)),
                                 print_status=self.ui.print_status,
@@ -1215,6 +1229,43 @@ class InteractiveNetworkAuditor:
                                 ),
                                 "WARNING",
                             )
+                        pending_targets = nuclei_result.get("pending_targets") or []
+                        if pending_targets:
+                            resume_state = self._build_nuclei_resume_state(
+                                output_dir=output_dir,
+                                pending_targets=pending_targets,
+                                total_targets=len(nuclei_targets),
+                                profile=nuclei_profile,
+                                full_coverage=bool(nuclei_full_coverage),
+                                severity=nuclei_severity,
+                                timeout_s=nuclei_timeout_s,
+                                request_timeout_s=nuclei_request_timeout_s,
+                                retries=nuclei_retries,
+                                batch_size=batch_size,
+                                max_runtime_minutes=nuclei_max_runtime_minutes,
+                                output_file=nuclei_result.get("raw_output_file"),
+                            )
+                            resume_path = self._write_nuclei_resume_state(output_dir, resume_state)
+                            if resume_path:
+                                self.results["nuclei"]["resume_pending"] = len(pending_targets)
+                                self.ui.print_status(
+                                    self.ui.t("nuclei_resume_saved", resume_path), "WARNING"
+                                )
+                                resume_now = self.ask_yes_no_with_timeout(
+                                    self.ui.t("nuclei_resume_prompt"),
+                                    default="no",
+                                    timeout_s=15,
+                                )
+                                if resume_now:
+                                    self._resume_nuclei_from_state(
+                                        resume_state=resume_state,
+                                        resume_path=resume_path,
+                                        output_dir=output_dir,
+                                        use_existing_results=True,
+                                        save_after=False,
+                                    )
+                                else:
+                                    self.ui.print_status(self.ui.t("nuclei_resume_skipped"), "INFO")
                 except Exception as e:
                     if self.logger:
                         self.logger.warning("Nuclei scan failed: %s", e, exc_info=True)
@@ -1876,6 +1927,10 @@ class InteractiveNetworkAuditor:
         # 5. Vulnerabilities
         self.config["scan_vulnerabilities"] = defaults_for_run.get("scan_vulnerabilities", True)
         self.config["nuclei_enabled"] = bool(defaults_for_run.get("nuclei_enabled", False))
+        nuclei_max_runtime = defaults_for_run.get("nuclei_max_runtime")
+        if not isinstance(nuclei_max_runtime, int) or nuclei_max_runtime < 0:
+            nuclei_max_runtime = 0
+        self.config["nuclei_max_runtime"] = nuclei_max_runtime
         self.config["cve_lookup_enabled"] = defaults_for_run.get("cve_lookup_enabled", False)
 
         # 6. Output Dir
@@ -2136,9 +2191,16 @@ class InteractiveNetworkAuditor:
                 self.config["nuclei_full_coverage"] = self.ask_yes_no(
                     self.ui.t("nuclei_full_coverage_q"), default=full_coverage_default
                 )
+                runtime_default = defaults_for_run.get("nuclei_max_runtime")
+                if not isinstance(runtime_default, int) or runtime_default < 0:
+                    runtime_default = 0
+                self.config["nuclei_max_runtime"] = self.ask_number(
+                    self.ui.t("nuclei_budget_q"), default=runtime_default, min_val=0, max_val=1440
+                )
             else:
                 self.config["nuclei_profile"] = "balanced"  # Default for non-interactive
                 self.config["nuclei_full_coverage"] = False
+                self.config["nuclei_max_runtime"] = 0
 
             # NVD/CVE - enable if API key is configured, otherwise show reminder
             if is_nvd_api_key_configured():
@@ -2396,8 +2458,18 @@ class InteractiveNetworkAuditor:
                         self.config["nuclei_full_coverage"] = self.ask_yes_no(
                             self.ui.t("nuclei_full_coverage_q"), default=full_coverage_default
                         )
+                        runtime_default = defaults_for_run.get("nuclei_max_runtime")
+                        if not isinstance(runtime_default, int) or runtime_default < 0:
+                            runtime_default = 0
+                        self.config["nuclei_max_runtime"] = self.ask_number(
+                            self.ui.t("nuclei_budget_q"),
+                            default=runtime_default,
+                            min_val=0,
+                            max_val=1440,
+                        )
                     else:
                         self.config["nuclei_full_coverage"] = False
+                        self.config["nuclei_max_runtime"] = 0
                 # Only ask if vuln scan is enabled
                 if self.config.get("scan_vulnerabilities"):
                     sql_opts = [
@@ -2870,6 +2942,17 @@ class InteractiveNetworkAuditor:
                 return "-"
             return self.ui.t("enabled") if val else self.ui.t("disabled")
 
+        def fmt_runtime_minutes(val):
+            if val is None:
+                return "-"
+            try:
+                minutes = int(val)
+            except Exception:
+                return "-"
+            if minutes < 0:
+                minutes = 0
+            return f"{minutes} min"
+
         # Display all saved defaults
         fields = [
             ("defaults_summary_targets", fmt_targets(persisted_defaults.get("target_networks"))),
@@ -2906,6 +2989,10 @@ class InteractiveNetworkAuditor:
             (
                 "defaults_summary_nuclei",
                 fmt_bool(persisted_defaults.get("nuclei_enabled")),
+            ),
+            (
+                "defaults_summary_nuclei_runtime",
+                fmt_runtime_minutes(persisted_defaults.get("nuclei_max_runtime")),
             ),
             (
                 "defaults_summary_cve_lookup",
@@ -3040,3 +3127,383 @@ class InteractiveNetworkAuditor:
             )
         except Exception:
             pass
+
+    def _build_nuclei_resume_state(
+        self,
+        *,
+        output_dir: str,
+        pending_targets: List[str],
+        total_targets: int,
+        profile: str,
+        full_coverage: bool,
+        severity: str,
+        timeout_s: int,
+        request_timeout_s: int,
+        retries: int,
+        batch_size: int,
+        max_runtime_minutes: int,
+        output_file: Optional[str],
+    ) -> Dict[str, Any]:
+        output_rel = "nuclei_output.json"
+        if output_file and isinstance(output_file, str):
+            try:
+                output_rel = os.path.relpath(output_file, output_dir)
+            except Exception:
+                output_rel = output_file
+        return {
+            "version": 1,
+            "created_at": datetime.now().isoformat(),
+            "output_dir": os.path.abspath(output_dir),
+            "pending_targets": pending_targets,
+            "total_targets": int(total_targets),
+            "output_file": output_rel,
+            "nuclei": {
+                "profile": profile,
+                "full_coverage": bool(full_coverage),
+                "severity": severity,
+                "timeout_s": int(timeout_s),
+                "request_timeout_s": int(request_timeout_s),
+                "retries": int(retries),
+                "batch_size": int(batch_size),
+                "max_runtime_minutes": int(max_runtime_minutes),
+            },
+        }
+
+    def _write_nuclei_resume_state(
+        self, output_dir: str, resume_state: Dict[str, Any]
+    ) -> Optional[str]:
+        try:
+            pending_targets = resume_state.get("pending_targets") or []
+            if not isinstance(pending_targets, list) or not pending_targets:
+                return None
+            resume_state["updated_at"] = datetime.now().isoformat()
+            os.makedirs(output_dir, exist_ok=True)
+            resume_path = os.path.join(output_dir, "nuclei_resume.json")
+            with open(resume_path, "w", encoding="utf-8") as handle:
+                json.dump(resume_state, handle, indent=2)
+            pending_path = os.path.join(output_dir, "nuclei_pending.txt")
+            with open(pending_path, "w", encoding="utf-8") as handle:
+                for target in pending_targets:
+                    handle.write(f"{target}\n")
+            return resume_path
+        except Exception:
+            if self.logger:
+                self.logger.debug("Failed to write nuclei resume state", exc_info=True)
+            return None
+
+    def _clear_nuclei_resume_state(self, resume_path: str, output_dir: str) -> None:
+        for path in (
+            resume_path,
+            os.path.join(output_dir, "nuclei_pending.txt"),
+        ):
+            try:
+                if path and os.path.exists(path):
+                    os.remove(path)
+            except Exception:
+                if self.logger:
+                    self.logger.debug("Failed to remove %s", path, exc_info=True)
+
+    def _load_nuclei_resume_state(self, resume_path: str) -> Optional[Dict[str, Any]]:
+        try:
+            if not resume_path or not os.path.exists(resume_path):
+                return None
+            with open(resume_path, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+            pending_targets = data.get("pending_targets") or []
+            if not isinstance(pending_targets, list) or not pending_targets:
+                return None
+            output_dir = data.get("output_dir")
+            if not output_dir:
+                output_dir = os.path.dirname(resume_path)
+                data["output_dir"] = output_dir
+            return data
+        except Exception:
+            if self.logger:
+                self.logger.debug("Failed to load nuclei resume state", exc_info=True)
+            return None
+
+    def _find_nuclei_resume_candidates(self, base_dir: str) -> List[Dict[str, Any]]:
+        candidates: List[Dict[str, Any]] = []
+        if not base_dir or not os.path.isdir(base_dir):
+            return candidates
+        try:
+            for entry in os.listdir(base_dir):
+                scan_dir = os.path.join(base_dir, entry)
+                if not os.path.isdir(scan_dir):
+                    continue
+                resume_path = os.path.join(scan_dir, "nuclei_resume.json")
+                if not os.path.exists(resume_path):
+                    continue
+                state = self._load_nuclei_resume_state(resume_path)
+                if not state:
+                    continue
+                pending = state.get("pending_targets") or []
+                created_at = state.get("created_at") or ""
+                candidates.append(
+                    {
+                        "path": resume_path,
+                        "label": f"{entry} ({len(pending)} targets)",
+                        "pending": len(pending),
+                        "created_at": created_at,
+                        "output_dir": state.get("output_dir"),
+                    }
+                )
+        except Exception:
+            if self.logger:
+                self.logger.debug("Failed to list nuclei resumes", exc_info=True)
+        candidates.sort(key=lambda item: item.get("created_at") or "", reverse=True)
+        return candidates
+
+    def _find_latest_report_json(self, output_dir: str) -> Optional[str]:
+        if not output_dir or not os.path.isdir(output_dir):
+            return None
+        candidates = []
+        for name in os.listdir(output_dir):
+            if not name.endswith(".json"):
+                continue
+            if not (name.startswith("redaudit_") or name.startswith("PARTIAL_redaudit_")):
+                continue
+            if name in ("run_manifest.json", "nuclei_resume.json"):
+                continue
+            path = os.path.join(output_dir, name)
+            if os.path.isfile(path):
+                candidates.append(path)
+        if not candidates:
+            return None
+        return max(candidates, key=lambda p: os.path.getmtime(p))
+
+    def _detect_report_artifact(self, output_dir: str, suffixes: tuple[str, ...]) -> bool:
+        if not output_dir or not os.path.isdir(output_dir):
+            return False
+        for name in os.listdir(output_dir):
+            if name.endswith(suffixes) and (
+                name.startswith("redaudit_") or name.startswith("PARTIAL_redaudit_")
+            ):
+                return True
+        return False
+
+    def _load_resume_context(self, output_dir: str) -> bool:
+        report_path = self._find_latest_report_json(output_dir)
+        if not report_path:
+            self.ui.print_status(
+                self.ui.t("nuclei_resume_failed", "missing JSON report"), "WARNING"
+            )
+            return False
+        try:
+            with open(report_path, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except Exception:
+            self.ui.print_status(
+                self.ui.t("nuclei_resume_failed", "failed to read JSON report"), "WARNING"
+            )
+            return False
+        if not isinstance(data, dict):
+            self.ui.print_status(self.ui.t("nuclei_resume_failed", "invalid report"), "WARNING")
+            return False
+        self.results = data
+        snapshot = data.get("config_snapshot") or {}
+        if not isinstance(snapshot, dict):
+            snapshot = {}
+        self.config = snapshot.copy()
+        self.config["output_dir"] = output_dir
+        self.config["_actual_output_dir"] = output_dir
+        self.config["lang"] = self.config.get("lang") or self.lang
+        self.config["save_txt_report"] = self._detect_report_artifact(
+            output_dir, (".txt", ".txt.enc")
+        )
+        self.config["save_html_report"] = self._detect_report_artifact(
+            output_dir, (".html", ".html.enc")
+        )
+        self.encryption_enabled = False
+        self.encryption_key = None
+        return True
+
+    def _append_nuclei_output(self, source_path: str, dest_path: str) -> None:
+        if not source_path or not os.path.exists(source_path):
+            return
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        with (
+            open(source_path, "r", encoding="utf-8", errors="ignore") as fin,
+            open(dest_path, "a", encoding="utf-8") as fout,
+        ):
+            for line in fin:
+                if not line.strip():
+                    continue
+                fout.write(line if line.endswith("\n") else line + "\n")
+
+    def _resume_nuclei_from_state(
+        self,
+        *,
+        resume_state: Dict[str, Any],
+        resume_path: str,
+        output_dir: str,
+        use_existing_results: bool,
+        save_after: bool,
+    ) -> bool:
+        if not use_existing_results:
+            if not self._load_resume_context(output_dir):
+                return False
+
+        pending_targets = resume_state.get("pending_targets") or []
+        if not isinstance(pending_targets, list) or not pending_targets:
+            self.ui.print_status(self.ui.t("nuclei_resume_none"), "INFO")
+            return False
+
+        nuclei_cfg = resume_state.get("nuclei") or {}
+        profile = nuclei_cfg.get("profile") or "balanced"
+        severity = nuclei_cfg.get("severity") or "low,medium,high,critical"
+        timeout_s = nuclei_cfg.get("timeout_s") or 300
+        request_timeout_s = nuclei_cfg.get("request_timeout_s") or 10
+        retries = nuclei_cfg.get("retries") or 1
+        batch_size = nuclei_cfg.get("batch_size") or 10
+        max_runtime_minutes = nuclei_cfg.get("max_runtime_minutes") or 0
+        max_runtime_s = max_runtime_minutes * 60 if max_runtime_minutes else None
+
+        self.ui.print_status(self.ui.t("nuclei_resume_running"), "INFO")
+        resume_output_file = os.path.join(output_dir, "nuclei_output_resume.json")
+        if os.path.exists(resume_output_file):
+            try:
+                os.remove(resume_output_file)
+            except Exception:
+                pass
+
+        resume_result = run_nuclei_scan(
+            targets=pending_targets,
+            output_dir=output_dir,
+            severity=severity,
+            timeout=timeout_s,
+            batch_size=batch_size,
+            request_timeout=request_timeout_s,
+            retries=retries,
+            max_runtime_s=max_runtime_s,
+            output_file=resume_output_file,
+            append_output=False,
+            logger=self.logger,
+            dry_run=bool(self.config.get("dry_run", False)),
+            print_status=self.ui.print_status,
+            proxy_manager=self.proxy_manager,
+            profile=profile,
+            use_internal_progress=True,
+        )
+
+        base_output_rel = resume_state.get("output_file") or "nuclei_output.json"
+        base_output_path = (
+            base_output_rel
+            if os.path.isabs(base_output_rel)
+            else os.path.join(output_dir, base_output_rel)
+        )
+        self._append_nuclei_output(resume_output_file, base_output_path)
+
+        new_findings = resume_result.get("findings") or []
+        suspected: List[Dict[str, Any]] = []
+        if new_findings:
+            try:
+                from redaudit.core.verify_vuln import filter_nuclei_false_positives
+
+                host_agentless = {}
+                for host in self.results.get("hosts", []) or []:
+                    if isinstance(host, dict):
+                        ip = host.get("ip")
+                        agentless = host.get("agentless_fingerprint") or {}
+                    else:
+                        ip = getattr(host, "ip", None)
+                        agentless = getattr(host, "agentless_fingerprint", {}) or {}
+                    if ip and agentless:
+                        host_agentless[ip] = agentless
+                new_findings, suspected = filter_nuclei_false_positives(
+                    new_findings,
+                    host_agentless,
+                    self.logger,
+                    host_records=self.results.get("hosts", []),
+                )
+            except Exception as filter_err:
+                if self.logger:
+                    self.logger.warning(
+                        "Nuclei FP filter skipped on resume: %s", filter_err, exc_info=True
+                    )
+
+        merged = self._merge_nuclei_findings(new_findings)
+        nuclei_summary = self.results.get("nuclei") or {}
+        if not isinstance(nuclei_summary, dict):
+            nuclei_summary = {}
+        nuclei_summary["findings"] = int(nuclei_summary.get("findings") or 0) + len(new_findings)
+        nuclei_summary["findings_total"] = int(nuclei_summary.get("findings_total") or 0) + len(
+            resume_result.get("findings") or []
+        )
+        nuclei_summary["findings_suspected"] = int(
+            nuclei_summary.get("findings_suspected") or 0
+        ) + len(suspected)
+        nuclei_summary["success"] = bool(nuclei_summary.get("success")) or bool(
+            resume_result.get("success")
+        )
+        if resume_result.get("error"):
+            nuclei_summary["error"] = resume_result.get("error")
+        if base_output_path and isinstance(base_output_path, str):
+            try:
+                nuclei_summary["output_file"] = os.path.relpath(base_output_path, output_dir)
+            except Exception:
+                nuclei_summary["output_file"] = base_output_path
+
+        pending_after = resume_result.get("pending_targets") or []
+        if pending_after:
+            nuclei_summary["partial"] = True
+            nuclei_summary["resume_pending"] = len(pending_after)
+            resume_state["pending_targets"] = pending_after
+            self._write_nuclei_resume_state(output_dir, resume_state)
+        else:
+            if resume_result.get("partial"):
+                nuclei_summary["partial"] = True
+            else:
+                nuclei_summary.pop("partial", None)
+            nuclei_summary.pop("resume_pending", None)
+            self._clear_nuclei_resume_state(resume_path, output_dir)
+
+        nuclei_summary["resume"] = {
+            "added_findings": len(new_findings),
+            "added_suspected": len(suspected),
+            "pending_targets": len(pending_after),
+        }
+        self.results["nuclei"] = nuclei_summary
+
+        if merged > 0:
+            self.ui.print_status(self.ui.t("nuclei_resume_done", merged), "OK")
+        else:
+            self.ui.print_status(self.ui.t("nuclei_resume_done", 0), "INFO")
+
+        if save_after:
+            hosts = self.results.get("hosts") or []
+            generate_summary(self.results, self.config, hosts, hosts, datetime.now())
+            self.save_results(partial=bool(resume_result.get("partial")))
+
+        return bool(resume_result.get("success"))
+
+    def resume_nuclei_from_path(self, resume_path: str) -> bool:
+        if resume_path and os.path.isdir(resume_path):
+            resume_path = os.path.join(resume_path, "nuclei_resume.json")
+        resume_state = self._load_nuclei_resume_state(resume_path)
+        if not resume_state:
+            self.ui.print_status(self.ui.t("nuclei_resume_none"), "INFO")
+            return False
+        output_dir = resume_state.get("output_dir") or os.path.dirname(resume_path)
+        return self._resume_nuclei_from_state(
+            resume_state=resume_state,
+            resume_path=resume_path,
+            output_dir=output_dir,
+            use_existing_results=False,
+            save_after=True,
+        )
+
+    def resume_nuclei_interactive(self) -> bool:
+        base_dir = get_default_reports_base_dir()
+        candidates = self._find_nuclei_resume_candidates(base_dir)
+        if not candidates:
+            self.ui.print_status(self.ui.t("nuclei_resume_none"), "INFO")
+            return False
+        options = [c["label"] for c in candidates]
+        options.append(self.ui.t("wizard_go_back"))
+        choice = self.ask_choice(self.ui.t("nuclei_resume_select"), options, default=0)
+        if choice == len(options) - 1:
+            self.ui.print_status(self.ui.t("nuclei_resume_cancel"), "INFO")
+            return False
+        resume_path = candidates[choice]["path"]
+        return self.resume_nuclei_from_path(resume_path)

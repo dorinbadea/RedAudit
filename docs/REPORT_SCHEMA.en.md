@@ -90,6 +90,7 @@ The `config_snapshot` object stores sanitized run configuration (no secrets).
 | `deep_id_scan` | `boolean` | Whether deep identity scan is enabled for the run. |
 | `trust_hyperscan` | `boolean` | Whether DeepScan trusts HyperScan discovery ports only. |
 | `nuclei_timeout` | `integer` | Nuclei timeout per target in seconds. |
+| `nuclei_max_runtime` | `integer` | Nuclei max runtime in minutes (0 = unlimited). |
 
 ### summary.json (Dashboard Summary)
 
@@ -146,6 +147,8 @@ Appears only when Nuclei scanning is enabled and available.
 | `partial` | boolean | (Optional) One or more batches timed out; results may be incomplete |
 | `timeout_batches` | array | (Optional) Batch indexes that timed out |
 | `failed_batches` | array | (Optional) Batch indexes that failed after retry |
+| `resume_pending` | integer | (Optional) Pending targets saved for resume when a runtime budget is hit |
+| `resume` | object | (Optional) Resume metadata (added_findings, added_suspected, pending_targets) |
 | `output_file` | string | Relative path to output file (best-effort) |
 | `error` | string | Error if Nuclei failed (best-effort, e.g., timeout) |
 

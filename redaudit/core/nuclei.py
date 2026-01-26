@@ -139,6 +139,9 @@ def run_nuclei_scan(
     print_status=None,
     proxy_manager=None,
     profile: str = "balanced",  # v4.11.0: Scan profile (full/balanced/fast)
+    max_runtime_s: Optional[int] = None,
+    append_output: bool = False,
+    output_file: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Run Nuclei scan against HTTP/HTTPS targets.
@@ -157,6 +160,9 @@ def run_nuclei_scan(
         dry_run: If True, print command but don't execute
         print_status: Optional status print function
         profile: Scan profile - 'full', 'balanced', or 'fast' (default: balanced)
+        max_runtime_s: Optional max runtime budget in seconds (None/unset = unlimited)
+        append_output: If True, append to existing output file instead of truncating
+        output_file: Optional explicit output file path for nuclei JSONL
 
     Returns:
         Dict with scan results and findings
@@ -171,6 +177,8 @@ def run_nuclei_scan(
         "partial": False,
         "timeout_batches": [],
         "failed_batches": [],
+        "pending_targets": [],
+        "budget_exceeded": False,
     }
 
     if not result["nuclei_available"]:
@@ -191,7 +199,7 @@ def run_nuclei_scan(
     # Create targets file for nuclei
     os.makedirs(output_dir, exist_ok=True)
     targets_file = os.path.join(output_dir, "nuclei_targets.txt")
-    output_file = os.path.join(output_dir, "nuclei_output.json")
+    output_file = output_file or os.path.join(output_dir, "nuclei_output.json")
 
     try:
         with open(targets_file, "w") as f:
@@ -326,10 +334,15 @@ def run_nuclei_scan(
                 "INFO",
             )
 
-        # Ensure output_file exists and is empty before appending batch outputs.
+        # Ensure output_file exists before appending batch outputs.
         try:
-            with open(output_file, "w", encoding="utf-8") as f_out:
-                f_out.write("")
+            if append_output:
+                if not os.path.exists(output_file):
+                    with open(output_file, "w", encoding="utf-8") as f_out:
+                        f_out.write("")
+            else:
+                with open(output_file, "w", encoding="utf-8") as f_out:
+                    f_out.write("")
         except Exception as e:
             result["error"] = f"Failed to create nuclei output file: {e}"
             return result
@@ -519,7 +532,16 @@ def run_nuclei_scan(
                     max_parallel,
                 )
 
-        if progress_callback is not None:
+        try:
+            runtime_budget_s = (
+                int(max_runtime_s) if isinstance(max_runtime_s, int) and max_runtime_s > 0 else None
+            )
+        except Exception:
+            runtime_budget_s = None
+        budget_start = time.time()
+        force_sequential = runtime_budget_s is not None
+
+        if progress_callback is not None and not force_sequential:
             # v4.6.24: Parallel batch execution with ThreadPoolExecutor
             from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -555,7 +577,7 @@ def run_nuclei_scan(
                     except Exception as e:
                         if logger:
                             logger.warning("Nuclei batch failed: %s", e)
-        elif use_internal_progress:
+        elif use_internal_progress and not force_sequential:
             # Rich progress UI (best-effort)
             try:
                 from rich.progress import (
@@ -628,6 +650,17 @@ def run_nuclei_scan(
         else:
             # No internal UI: batch-by-batch status
             for idx, batch in enumerate(batches, start=1):
+                if runtime_budget_s is not None:
+                    elapsed = time.time() - budget_start
+                    if elapsed >= runtime_budget_s:
+                        remaining_targets: List[str] = []
+                        for remain_batch in batches[idx - 1 :]:
+                            remaining_targets.extend(remain_batch)
+                        result["pending_targets"] = remaining_targets
+                        result["targets_scanned"] = len(targets) - len(remaining_targets)
+                        result["budget_exceeded"] = True
+                        result["partial"] = True
+                        break
                 if print_status:
                     print_status(
                         f"[nuclei] batch {idx}/{total_batches} ({len(batch)} targets)", "INFO"

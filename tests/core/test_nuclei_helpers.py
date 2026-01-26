@@ -776,3 +776,47 @@ class TestNucleiProgress(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertEqual(calls[-1][0], calls[-1][1])
         self.assertTrue(str(calls[-1][2]).startswith("ETA≈ "))
+
+
+def test_run_nuclei_scan_budget_sets_pending_targets(tmp_path):
+    from redaudit.core.nuclei import run_nuclei_scan
+
+    targets = ["http://127.0.0.1:80", "http://127.0.0.2:80"]
+    with patch("redaudit.core.nuclei.shutil.which", return_value="/usr/bin/nuclei"):
+        with patch("redaudit.core.nuclei.CommandRunner", _FakeCommandRunner):
+            with patch("redaudit.core.nuclei.time.time", side_effect=[0, 10, 10]):
+                res = run_nuclei_scan(
+                    targets=targets,
+                    output_dir=str(tmp_path),
+                    batch_size=1,
+                    max_runtime_s=1,
+                    use_internal_progress=False,
+                    print_status=None,
+                )
+
+    assert res.get("budget_exceeded") is True
+    assert res.get("pending_targets") == targets
+    assert res.get("targets_scanned") == 0
+
+
+def test_run_nuclei_scan_append_output_preserves_existing(tmp_path):
+    from redaudit.core.nuclei import run_nuclei_scan
+
+    output_file = tmp_path / "nuclei_output.json"
+    output_file.write_text('{"existing": true}\n', encoding="utf-8")
+
+    with patch("redaudit.core.nuclei.shutil.which", return_value="/usr/bin/nuclei"):
+        with patch("redaudit.core.nuclei.CommandRunner", _FakeCommandRunner):
+            res = run_nuclei_scan(
+                targets=["http://127.0.0.1:80"],
+                output_dir=str(tmp_path),
+                output_file=str(output_file),
+                append_output=True,
+                use_internal_progress=False,
+                print_status=None,
+            )
+
+    assert res.get("success") is True
+    content = output_file.read_text(encoding="utf-8")
+    assert '"existing"' in content
+    assert "unit-test-template" in content

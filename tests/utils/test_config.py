@@ -112,6 +112,7 @@ class TestDefaultConfig(unittest.TestCase):
             "topology_enabled",
             "lang",
             "nuclei_enabled",
+            "nuclei_max_runtime",
             "net_discovery_enabled",
             "net_discovery_redteam",
             "net_discovery_active_l2",

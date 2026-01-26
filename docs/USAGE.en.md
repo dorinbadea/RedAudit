@@ -220,6 +220,9 @@ Grouped by operational function. Verified against the current codebase.
 | `--webhook URL` | Send webhook alerts (JSON) for high/critical findings |
 | `--nuclei` | Enable Nuclei template scanning (requires `nuclei`; runs in full mode only; OFF by default) |
 | `--nuclei-timeout S` | Nuclei batch timeout in seconds (default: 300) |
+| `--nuclei-max-runtime MIN` | Max Nuclei runtime in minutes (0 = unlimited). Creates a resume file when exceeded. |
+| `--nuclei-resume PATH` | Resume pending Nuclei targets from a resume file or scan folder |
+| `--nuclei-resume-latest` | Resume the latest pending Nuclei run from the default reports folder |
 | `--no-nuclei` | Disable Nuclei template scanning (default) |
 | `--no-vuln-scan` | Skip Nikto/Web vulnerability scanning |
 | `--cve-lookup` | Correlate services with NVD CVE data |
@@ -230,6 +233,7 @@ Notes:
 - Web app scanners (sqlmap/ZAP) are skipped on infrastructure UIs when identity evidence indicates router/switch/AP devices.
 - Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.
 - **Nuclei on web-dense networks:** On networks with many HTTP/HTTPS services (e.g., Docker labs, microservices), Nuclei scans may take significantly longer (30-90+ minutes). Use `--nuclei-timeout 600` to increase the batch timeout, or `--no-nuclei` to skip Nuclei entirely if speed is critical. When full coverage is enabled, RedAudit raises the batch timeout to 900s if a lower value is configured.
+- When a runtime budget is set, RedAudit writes `nuclei_resume.json` and `nuclei_pending.txt` in the scan folder and offers a 15-second resume prompt. If you do nothing, the scan continues and the resume stays available.
 
 ### Nuclei Configuration (v4.17+)
 

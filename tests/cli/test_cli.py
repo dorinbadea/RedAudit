@@ -144,6 +144,9 @@ def _base_args(**overrides):
         "redteam_active_l2": False,
         "nuclei": False,
         "nuclei_profile": "balanced",
+        "nuclei_max_runtime": 0,
+        "nuclei_resume": None,
+        "nuclei_resume_latest": False,
         "agentless_verify_max_targets": 20,
         "windows_verify": False,
         "encrypt": False,
@@ -298,6 +301,13 @@ def test_configure_from_args_invalid_nuclei_settings():
     assert cli.configure_from_args(app, args) is True
     assert app.config["nuclei_timeout"] == 300
     assert app.config["nuclei_profile"] == "balanced"
+
+
+def test_configure_from_args_sets_nuclei_max_runtime():
+    app = _DummyApp()
+    args = _base_args(nuclei_max_runtime=45)
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["nuclei_max_runtime"] == 45
 
 
 def test_configure_from_args_invalid_dead_host_retries():

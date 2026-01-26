@@ -49,6 +49,13 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.0 Nuclei Runtime Resume (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Nuclei Runtime Budget** | Done (v4.19.0) | Optional runtime budget writes resume artifacts and keeps the scan moving. |
+| **Nuclei Resume Flow** | Done (v4.19.0) | Resume from main menu or CLI, updating reports in the same scan folder. |
+
 ### v4.18.22 Nuclei Coverage Timeout Floor (Done)
 
 | Feature | Status | Description |

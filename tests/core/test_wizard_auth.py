@@ -68,7 +68,7 @@ class TestWizard(unittest.TestCase):
         choice = self.wizard.show_main_menu()
         self.assertEqual(choice, 0)
 
-    @patch("redaudit.core.wizard.Wizard._arrow_menu", return_value=3)  # Exit
+    @patch("redaudit.core.wizard.Wizard._arrow_menu", return_value=4)  # Exit
     @patch("redaudit.core.wizard.Wizard._use_arrow_menu", return_value=True)
     def test_show_main_menu_arrow(self, mock_use_arrow, mock_arrow_menu):
         choice = self.wizard.show_main_menu()

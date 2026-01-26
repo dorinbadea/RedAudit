@@ -5,6 +5,9 @@ Tests for InteractiveNetworkAuditor high-level flows, error handling, and cleanu
 """
 
 import contextlib
+import json
+import os
+import tempfile
 import time
 import unittest
 from types import SimpleNamespace
@@ -73,7 +76,7 @@ class TestAuditorOrchestrator(unittest.TestCase):
                 self.auditor.run_complete_scan()
 
             # Verify cleanup (finally block)
-            self.auditor.stop_heartbeat.assert_called()
+        self.auditor.stop_heartbeat.assert_called()
 
     def test_run_complete_scan_general_exception(self):
         """Test general exception handling during run_complete_scan."""
@@ -231,6 +234,7 @@ class TestAuditorOrchestrator(unittest.TestCase):
         self.auditor.ui.t.side_effect = lambda key, *args: key
         self.auditor.ask_choice = MagicMock()
         self.auditor.ask_yes_no = MagicMock()
+        self.auditor.ask_number = MagicMock(return_value=0)
         self.auditor._ask_auditor_and_output_dir = MagicMock()
         self.auditor.ask_auth_config = MagicMock(return_value={})
 
@@ -255,6 +259,7 @@ class TestAuditorOrchestrator(unittest.TestCase):
         self.auditor.ui.t.side_effect = lambda key, *args: key
         self.auditor.ask_choice = MagicMock()
         self.auditor.ask_yes_no = MagicMock()
+        self.auditor.ask_number = MagicMock(return_value=0)
         self.auditor._ask_auditor_and_output_dir = MagicMock()
         self.auditor.ask_auth_config = MagicMock(return_value={})
 
@@ -271,6 +276,7 @@ class TestAuditorOrchestrator(unittest.TestCase):
         self.auditor.ui.t.side_effect = lambda key, *args: key
         self.auditor.ask_choice = MagicMock()
         self.auditor.ask_yes_no = MagicMock()
+        self.auditor._runtime.ask_number = MagicMock(return_value=0)
         self.auditor._ask_auditor_and_output_dir = MagicMock()
         self.auditor.ask_auth_config = MagicMock(return_value={})
 
@@ -877,6 +883,423 @@ def test_run_complete_scan_with_nuclei_and_cve(tmp_path, monkeypatch):
 
     assert auditor.run_complete_scan() is True
     assert "nuclei" in auditor.results
+
+
+def _make_resume_auditor():
+    mock_ui_manager = MagicMock()
+    mock_ui_manager.colors = COLORS
+    mock_ui_manager.t.side_effect = lambda key, *args: key.format(*args) if args else key
+    with patch("redaudit.core.ui_manager.UIManager", return_value=mock_ui_manager):
+        auditor = InteractiveNetworkAuditor()
+    auditor.logger = MagicMock()
+    auditor.print_status = MagicMock()
+    return auditor
+
+
+def test_nuclei_resume_state_roundtrip():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=5,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        assert resume_path and os.path.exists(resume_path)
+        assert os.path.exists(os.path.join(tmpdir, "nuclei_pending.txt"))
+        loaded = auditor._load_nuclei_resume_state(resume_path)
+        assert loaded and loaded.get("pending_targets") == ["http://127.0.0.1:80"]
+        auditor._clear_nuclei_resume_state(resume_path, tmpdir)
+        assert not os.path.exists(resume_path)
+
+
+def test_load_nuclei_resume_state_missing():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        missing = os.path.join(tmpdir, "missing.json")
+        assert auditor._load_nuclei_resume_state(missing) is None
+
+
+def test_write_nuclei_resume_state_empty_pending():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=os.path.join(tmpdir, "nuclei_output.json"),
+        )
+        state["pending_targets"] = []
+        assert auditor._write_nuclei_resume_state(tmpdir, state) is None
+
+
+def test_find_nuclei_resume_candidates():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scan_dir = os.path.join(tmpdir, "RedAudit_2026-01-01_00-00-00")
+        os.makedirs(scan_dir, exist_ok=True)
+        state = auditor._build_nuclei_resume_state(
+            output_dir=scan_dir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=os.path.join(scan_dir, "nuclei_output.json"),
+        )
+        auditor._write_nuclei_resume_state(scan_dir, state)
+        candidates = auditor._find_nuclei_resume_candidates(tmpdir)
+        assert len(candidates) == 1
+        assert candidates[0]["pending"] == 1
+
+
+def test_find_latest_report_json_none():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        assert auditor._find_latest_report_json(tmpdir) is None
+
+
+def test_detect_report_artifact_false():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        assert auditor._detect_report_artifact(tmpdir, (".txt",)) is False
+
+
+def test_load_resume_context_detects_reports():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        report_path = os.path.join(tmpdir, "redaudit_20260101_000000.json")
+        with open(report_path, "w", encoding="utf-8") as handle:
+            json.dump({"config_snapshot": {"scan_mode": "completo"}, "hosts": []}, handle)
+        txt_path = os.path.join(tmpdir, "redaudit_20260101_000000.txt")
+        with open(txt_path, "w", encoding="utf-8") as handle:
+            handle.write("report")
+        assert auditor._load_resume_context(tmpdir) is True
+        assert auditor.config["save_txt_report"] is True
+
+
+def test_load_resume_context_missing_report():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        assert auditor._load_resume_context(tmpdir) is False
+
+
+def test_append_nuclei_output_appends_lines():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        source = os.path.join(tmpdir, "nuclei_output_resume.json")
+        dest = os.path.join(tmpdir, "nuclei_output.json")
+        with open(source, "w", encoding="utf-8") as handle:
+            handle.write('{"a": 1}\n')
+        with open(dest, "w", encoding="utf-8") as handle:
+            handle.write('{"existing": true}\n')
+        auditor._append_nuclei_output(source, dest)
+        with open(dest, "r", encoding="utf-8") as handle:
+            content = handle.read()
+        assert '"existing"' in content
+        assert '"a": 1' in content
+
+
+def test_resume_nuclei_from_state_updates_results():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        auditor.results = {"hosts": [], "vulnerabilities": [], "nuclei": {"findings": 0}}
+        auditor.config = {"dry_run": False}
+        auditor.proxy_manager = None
+
+        def _fake_nuclei_scan(**_kwargs):
+            return {
+                "findings": [
+                    {
+                        "matched_at": "http://127.0.0.1:80/",
+                        "template_id": "t1",
+                        "name": "test",
+                        "severity": "high",
+                    }
+                ],
+                "success": True,
+                "pending_targets": [],
+                "raw_output_file": _kwargs.get("output_file"),
+            }
+
+        with (
+            patch("redaudit.core.auditor.run_nuclei_scan", side_effect=_fake_nuclei_scan),
+            patch(
+                "redaudit.core.verify_vuln.filter_nuclei_false_positives",
+                lambda findings, *_a, **_k: (findings, []),
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+        ):
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=False,
+            )
+        assert ok is True
+        assert auditor.results["nuclei"]["findings"] == 1
+        assert "resume_pending" not in auditor.results["nuclei"]
+        assert not os.path.exists(resume_path)
+
+
+def test_resume_nuclei_from_state_keeps_pending():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        auditor.results = {"hosts": [], "vulnerabilities": [], "nuclei": {"findings": 0}}
+        auditor.config = {"dry_run": False}
+        auditor.proxy_manager = None
+
+        def _fake_nuclei_scan(**_kwargs):
+            return {
+                "findings": [],
+                "success": True,
+                "pending_targets": ["http://127.0.0.2:80"],
+                "raw_output_file": _kwargs.get("output_file"),
+                "partial": True,
+                "error": "timeout",
+            }
+
+        with (
+            patch("redaudit.core.auditor.run_nuclei_scan", side_effect=_fake_nuclei_scan),
+            patch(
+                "redaudit.core.verify_vuln.filter_nuclei_false_positives",
+                lambda findings, *_a, **_k: (findings, []),
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+        ):
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=False,
+            )
+        assert ok is True
+        assert auditor.results["nuclei"].get("partial") is True
+        assert auditor.results["nuclei"].get("resume_pending") == 1
+        assert os.path.exists(resume_path)
+
+
+def test_resume_nuclei_from_state_no_pending():
+    auditor = _make_resume_auditor()
+    state = auditor._build_nuclei_resume_state(
+        output_dir="/tmp",
+        pending_targets=["http://127.0.0.1:80"],
+        total_targets=1,
+        profile="balanced",
+        full_coverage=False,
+        severity="low",
+        timeout_s=300,
+        request_timeout_s=10,
+        retries=1,
+        batch_size=10,
+        max_runtime_minutes=0,
+        output_file="/tmp/nuclei_output.json",
+    )
+    state["pending_targets"] = []
+    auditor.results = {"hosts": [], "vulnerabilities": [], "nuclei": {"findings": 0}}
+    auditor.config = {"dry_run": False}
+    ok = auditor._resume_nuclei_from_state(
+        resume_state=state,
+        resume_path="/tmp/nuclei_resume.json",
+        output_dir="/tmp",
+        use_existing_results=True,
+        save_after=False,
+    )
+    assert ok is False
+
+
+def test_resume_nuclei_from_state_save_after():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        auditor.results = {"hosts": [], "vulnerabilities": [], "nuclei": {"findings": 0}}
+        auditor.config = {"dry_run": False, "output_dir": tmpdir, "_actual_output_dir": tmpdir}
+        auditor.proxy_manager = None
+
+        def _fake_nuclei_scan(**_kwargs):
+            return {
+                "findings": [],
+                "success": True,
+                "pending_targets": [],
+                "raw_output_file": _kwargs.get("output_file"),
+            }
+
+        with (
+            patch("redaudit.core.auditor.run_nuclei_scan", side_effect=_fake_nuclei_scan),
+            patch(
+                "redaudit.core.verify_vuln.filter_nuclei_false_positives",
+                lambda findings, *_a, **_k: (findings, []),
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+            patch.object(auditor, "save_results") as mock_save,
+            patch("redaudit.core.auditor.generate_summary", lambda *_a, **_k: None),
+        ):
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=True,
+            )
+        assert ok is True
+        assert mock_save.called
+
+
+def test_resume_nuclei_from_state_load_context_failure():
+    auditor = _make_resume_auditor()
+    state = auditor._build_nuclei_resume_state(
+        output_dir="/tmp",
+        pending_targets=["http://127.0.0.1:80"],
+        total_targets=1,
+        profile="balanced",
+        full_coverage=False,
+        severity="low",
+        timeout_s=300,
+        request_timeout_s=10,
+        retries=1,
+        batch_size=10,
+        max_runtime_minutes=0,
+        output_file="/tmp/nuclei_output.json",
+    )
+    with patch.object(auditor, "_load_resume_context", return_value=False):
+        ok = auditor._resume_nuclei_from_state(
+            resume_state=state,
+            resume_path="/tmp/nuclei_resume.json",
+            output_dir="/tmp",
+            use_existing_results=False,
+            save_after=False,
+        )
+    assert ok is False
+
+
+def test_resume_nuclei_from_path_accepts_directory():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=os.path.join(tmpdir, "nuclei_output.json"),
+        )
+        auditor._write_nuclei_resume_state(tmpdir, state)
+        with patch.object(auditor, "_resume_nuclei_from_state", return_value=True) as mock_run:
+            assert auditor.resume_nuclei_from_path(tmpdir) is True
+            assert mock_run.called
+
+
+def test_resume_nuclei_from_path_missing():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        missing = os.path.join(tmpdir, "missing.json")
+        assert auditor.resume_nuclei_from_path(missing) is False
+
+
+def test_resume_nuclei_interactive_no_candidates():
+    auditor = _make_resume_auditor()
+    with patch.object(auditor, "_find_nuclei_resume_candidates", return_value=[]):
+        assert auditor.resume_nuclei_interactive() is False
+
+
+def test_resume_nuclei_interactive_runs_selected():
+    auditor = _make_resume_auditor()
+    candidate = {"path": "/tmp/scan/nuclei_resume.json", "label": "scan (1 targets)"}
+    with (
+        patch.object(auditor, "_find_nuclei_resume_candidates", return_value=[candidate]),
+        patch.object(auditor, "ask_choice", return_value=0),
+        patch.object(auditor, "resume_nuclei_from_path", return_value=True) as mock_resume,
+    ):
+        assert auditor.resume_nuclei_interactive() is True
+        mock_resume.assert_called_with(candidate["path"])
+
+
+def test_resume_nuclei_interactive_cancel():
+    auditor = _make_resume_auditor()
+    candidate = {"path": "/tmp/scan/nuclei_resume.json", "label": "scan (1 targets)"}
+    with (
+        patch.object(auditor, "_find_nuclei_resume_candidates", return_value=[candidate]),
+        patch.object(auditor, "ask_choice", return_value=1),
+    ):
+        assert auditor.resume_nuclei_interactive() is False
 
 
 if __name__ == "__main__":
