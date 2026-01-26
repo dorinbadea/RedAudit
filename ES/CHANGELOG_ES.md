@@ -14,6 +14,17 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.19.2] - 2026-01-26
+
+### Mejorado
+
+- **Progreso en reanudacion de Nuclei**: Las reanudaciones muestran progreso Rich incluso con presupuesto de tiempo.
+- **Orden de reanudaciones**: Las reanudaciones pendientes se ordenan por la fecha de ultima actualizacion.
+
+### Corregido
+
+- **Claridad en reanudacion**: Las reanudaciones con presupuesto/parcial ahora muestran avisos y el resumen guarda metadatos de presupuesto/timeouts.
+
 ## [4.19.1] - 2026-01-26
 
 ### Mejorado

@@ -49,6 +49,14 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.2 Progreso en reanudacion de Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **UI de progreso en reanudacion** | Hecho (v4.19.2) | Las reanudaciones usan el UI de progreso estandar incluso con presupuesto. |
+| **Orden de reanudaciones** | Hecho (v4.19.2) | Las reanudaciones se ordenan por la fecha de ultima actualizacion. |
+| **Avisos en reanudacion** | Hecho (v4.19.2) | Se muestran avisos de presupuesto/timeout cuando quedan objetivos pendientes. |
+
 ### v4.19.1 Presupuesto de Nuclei con límite real (Hecho)
 
 | Funcionalidad | Estado | Descripción |

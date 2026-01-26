@@ -14,6 +14,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from rich.console import Console
 
 from redaudit.core.auditor import InteractiveNetworkAuditor
 from redaudit.core.auditor_runtime import AuditorRuntime
@@ -1112,6 +1113,8 @@ def test_resume_nuclei_from_state_keeps_pending():
                 "pending_targets": ["http://127.0.0.2:80"],
                 "raw_output_file": _kwargs.get("output_file"),
                 "partial": True,
+                "budget_exceeded": True,
+                "timeout_batches": [1],
                 "error": "timeout",
             }
 
@@ -1133,7 +1136,139 @@ def test_resume_nuclei_from_state_keeps_pending():
         assert ok is True
         assert auditor.results["nuclei"].get("partial") is True
         assert auditor.results["nuclei"].get("resume_pending") == 1
+        assert auditor.results["nuclei"].get("budget_exceeded") is True
+        assert auditor.results["nuclei"].get("timeout_batches") == [1]
         assert os.path.exists(resume_path)
+
+
+def test_resume_nuclei_from_state_uses_progress_callback(monkeypatch):
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        auditor.results = {"hosts": [], "vulnerabilities": [], "nuclei": {"findings": 0}}
+        auditor.config = {"dry_run": False}
+        auditor.proxy_manager = None
+
+        captured = {}
+
+        def _fake_nuclei_scan(**_kwargs):
+            captured["progress_callback"] = _kwargs.get("progress_callback")
+            captured["use_internal_progress"] = _kwargs.get("use_internal_progress")
+            return {
+                "findings": [],
+                "success": True,
+                "pending_targets": [],
+                "raw_output_file": _kwargs.get("output_file"),
+            }
+
+        class _Progress:
+            def __init__(self, *args, **kwargs):
+                self.console = kwargs.get("console")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_a):
+                return False
+
+            def add_task(self, *_a, **_k):
+                return "task"
+
+            def update(self, *_a, **_k):
+                return None
+
+        with (
+            patch("redaudit.core.auditor.run_nuclei_scan", side_effect=_fake_nuclei_scan),
+            patch(
+                "redaudit.core.verify_vuln.filter_nuclei_false_positives",
+                lambda findings, *_a, **_k: (findings, []),
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+        ):
+            monkeypatch.setattr("rich.progress.Progress", _Progress)
+            monkeypatch.setattr(auditor, "_progress_columns", lambda **_k: [])
+            monkeypatch.setattr(auditor, "_progress_console", lambda: Console())
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=False,
+            )
+        assert ok is True
+        assert captured.get("progress_callback") is not None
+        assert captured.get("use_internal_progress") is False
+
+
+def test_resume_nuclei_from_state_progress_fallback(monkeypatch):
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        auditor.results = {"hosts": [], "vulnerabilities": [], "nuclei": {"findings": 0}}
+        auditor.config = {"dry_run": False}
+        auditor.proxy_manager = None
+
+        captured = {}
+
+        def _fake_nuclei_scan(**_kwargs):
+            captured["progress_callback"] = _kwargs.get("progress_callback")
+            captured["use_internal_progress"] = _kwargs.get("use_internal_progress")
+            return {
+                "findings": [],
+                "success": True,
+                "pending_targets": [],
+                "raw_output_file": _kwargs.get("output_file"),
+            }
+
+        with (
+            patch("redaudit.core.auditor.run_nuclei_scan", side_effect=_fake_nuclei_scan),
+            patch(
+                "redaudit.core.verify_vuln.filter_nuclei_false_positives",
+                lambda findings, *_a, **_k: (findings, []),
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+        ):
+            monkeypatch.setattr(auditor, "_progress_console", lambda: None)
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=False,
+            )
+        assert ok is True
+        assert captured.get("progress_callback") is None
+        assert captured.get("use_internal_progress") is True
 
 
 def test_resume_nuclei_from_state_no_pending():

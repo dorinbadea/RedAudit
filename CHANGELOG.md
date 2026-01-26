@@ -14,6 +14,17 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.19.2] - 2026-01-26
+
+### Improved
+
+- **Nuclei Resume Progress**: Resume runs now show Rich progress updates even with runtime budgets.
+- **Resume Ordering**: Pending Nuclei resumes are sorted by the latest update timestamp.
+
+### Fixed
+
+- **Nuclei Resume Clarity**: Budget/partial resumes now emit explicit warnings, and summaries capture budget/timeout metadata.
+
 ## [4.19.1] - 2026-01-26
 
 ### Improved

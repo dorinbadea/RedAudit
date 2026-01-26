@@ -3252,13 +3252,17 @@ class InteractiveNetworkAuditor:
                         "label": f"{entry} ({len(pending)} targets)",
                         "pending": len(pending),
                         "created_at": created_at,
+                        "updated_at": state.get("updated_at") or "",
                         "output_dir": state.get("output_dir"),
                     }
                 )
         except Exception:
             if self.logger:
                 self.logger.debug("Failed to list nuclei resumes", exc_info=True)
-        candidates.sort(key=lambda item: item.get("created_at") or "", reverse=True)
+        candidates.sort(
+            key=lambda item: item.get("updated_at") or item.get("created_at") or "",
+            reverse=True,
+        )
         return candidates
 
     def _find_latest_report_json(self, output_dir: str) -> Optional[str]:
@@ -3373,25 +3377,83 @@ class InteractiveNetworkAuditor:
                 os.remove(resume_output_file)
             except Exception:
                 pass
+        run_kwargs = {
+            "targets": pending_targets,
+            "output_dir": output_dir,
+            "severity": severity,
+            "timeout": timeout_s,
+            "batch_size": batch_size,
+            "request_timeout": request_timeout_s,
+            "retries": retries,
+            "max_runtime_s": max_runtime_s,
+            "output_file": resume_output_file,
+            "append_output": False,
+            "logger": self.logger,
+            "dry_run": bool(self.config.get("dry_run", False)),
+            "print_status": self.ui.print_status,
+            "proxy_manager": self.proxy_manager,
+            "profile": profile,
+        }
+        resume_result = None
+        progress_console = self._progress_console()
+        try:
+            from rich.console import Console
 
-        resume_result = run_nuclei_scan(
-            targets=pending_targets,
-            output_dir=output_dir,
-            severity=severity,
-            timeout=timeout_s,
-            batch_size=batch_size,
-            request_timeout=request_timeout_s,
-            retries=retries,
-            max_runtime_s=max_runtime_s,
-            output_file=resume_output_file,
-            append_output=False,
-            logger=self.logger,
-            dry_run=bool(self.config.get("dry_run", False)),
-            print_status=self.ui.print_status,
-            proxy_manager=self.proxy_manager,
-            profile=profile,
-            use_internal_progress=True,
-        )
+            if not isinstance(progress_console, Console):
+                progress_console = None
+        except ImportError:
+            progress_console = None
+        if progress_console is not None:
+            try:
+                from rich.progress import Progress
+
+                total_targets = len(pending_targets)
+                total_batches = max(1, int(math.ceil(total_targets / max(1, int(batch_size)))))
+                progress_start_t = time.time()
+                self._nuclei_progress_state = {
+                    "total_targets": int(total_targets),
+                    "max_targets": 0,
+                }
+                with Progress(
+                    *self._progress_columns(
+                        show_detail=True,
+                        show_eta=True,
+                        show_elapsed=False,
+                    ),
+                    console=progress_console,
+                    transient=False,
+                    refresh_per_second=4,
+                ) as progress:
+                    task = progress.add_task(
+                        f"[cyan]Nuclei (0/{total_targets})",
+                        total=total_targets,
+                        eta_upper=self._format_eta(total_batches * int(timeout_s)),
+                        eta_est="",
+                        detail=f"{total_targets} targets",
+                    )
+                    resume_result = run_nuclei_scan(
+                        **run_kwargs,
+                        progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
+                            c,
+                            t,
+                            e,
+                            progress,
+                            task,
+                            progress_start_t,
+                            int(timeout_s),
+                            total_targets,
+                            int(batch_size),
+                            detail=d,
+                        ),
+                        use_internal_progress=False,
+                    )
+            except Exception:
+                resume_result = None
+        if resume_result is None:
+            resume_result = run_nuclei_scan(
+                **run_kwargs,
+                use_internal_progress=True,
+            )
 
         base_output_rel = resume_state.get("output_file") or "nuclei_output.json"
         base_output_path = (
@@ -3445,6 +3507,8 @@ class InteractiveNetworkAuditor:
         )
         if resume_result.get("error"):
             nuclei_summary["error"] = resume_result.get("error")
+        if resume_result.get("budget_exceeded"):
+            nuclei_summary["budget_exceeded"] = True
         if base_output_path and isinstance(base_output_path, str):
             try:
                 nuclei_summary["output_file"] = os.path.relpath(base_output_path, output_dir)
@@ -3465,6 +3529,14 @@ class InteractiveNetworkAuditor:
             nuclei_summary.pop("resume_pending", None)
             self._clear_nuclei_resume_state(resume_path, output_dir)
 
+        if resume_result.get("partial"):
+            timeout_batches = resume_result.get("timeout_batches") or []
+            failed_batches = resume_result.get("failed_batches") or []
+            if timeout_batches:
+                nuclei_summary["timeout_batches"] = timeout_batches
+            if failed_batches:
+                nuclei_summary["failed_batches"] = failed_batches
+
         nuclei_summary["resume"] = {
             "added_findings": len(new_findings),
             "added_suspected": len(suspected),
@@ -3481,6 +3553,18 @@ class InteractiveNetworkAuditor:
             hosts = self.results.get("hosts") or []
             generate_summary(self.results, self.config, hosts, hosts, datetime.now())
             self.save_results(partial=bool(resume_result.get("partial")))
+
+        if resume_result.get("budget_exceeded"):
+            self.ui.print_status(self.ui.t("nuclei_budget_exceeded"), "WARNING")
+        timeout_batches = resume_result.get("timeout_batches") or []
+        failed_batches = resume_result.get("failed_batches") or []
+        if timeout_batches or failed_batches:
+            self.ui.print_status(
+                self.ui.t("nuclei_partial", len(timeout_batches), len(failed_batches)),
+                "WARNING",
+            )
+        if pending_after:
+            self.ui.print_status(self.ui.t("nuclei_resume_saved", resume_path), "WARNING")
 
         return bool(resume_result.get("success"))
 

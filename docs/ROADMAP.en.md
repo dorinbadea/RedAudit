@@ -49,6 +49,14 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.2 Nuclei Resume Progress (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Resume Progress UI** | Done (v4.19.2) | Resume runs use the standard progress UI even when a runtime budget is set. |
+| **Resume Sorting** | Done (v4.19.2) | Resume candidates are ordered by the latest update timestamp. |
+| **Resume Warnings** | Done (v4.19.2) | Budget/timeout warnings are shown after resume runs with pending targets. |
+
 ### v4.19.1 Nuclei Budget Enforcement (Done)
 
 | Feature | Status | Description |
