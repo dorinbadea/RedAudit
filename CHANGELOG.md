@@ -14,6 +14,17 @@ Release notes live under `docs/releases/` for additional context.
 
 - None.
 
+## [4.19.1] - 2026-01-26
+
+### Improved
+
+- **Nuclei Summary Metadata**: Report summaries now include `budget_exceeded` when a runtime budget ends the run.
+
+### Fixed
+
+- **Nuclei Budget Enforcement**: Batches are capped to the remaining runtime budget and stop mid-batch with pending targets preserved.
+- **Nuclei Progress Clarity**: Progress detail lines use the status color and budget-only stops no longer show timeout warnings.
+
 ## [4.19.0] - 2026-01-26
 
 ### Added
