@@ -697,7 +697,8 @@ def run_nuclei_scan(
                     for remain_batch in batches[idx - 1 :]:
                         remaining_targets_mid.extend(remain_batch)
                     result["pending_targets"] = remaining_targets_mid
-                    result["targets_scanned"] = max(0, min(len(targets), int(max_progress_targets)))
+                    scanned_floor = max(0, len(targets) - len(remaining_targets_mid))
+                    result["targets_scanned"] = max(scanned_floor, int(max_progress_targets))
                     result["budget_exceeded"] = True
                     result["partial"] = True
                     break

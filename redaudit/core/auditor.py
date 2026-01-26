@@ -1189,6 +1189,8 @@ class InteractiveNetworkAuditor:
                                 nuclei_summary["timeout_batches"] = timeout_batches
                             if failed_batches:
                                 nuclei_summary["failed_batches"] = failed_batches
+                        if nuclei_result.get("budget_exceeded"):
+                            nuclei_summary["budget_exceeded"] = True
                         if suspected:
                             nuclei_summary["suspected"] = [
                                 {
