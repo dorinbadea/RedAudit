@@ -49,6 +49,13 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.1 Nuclei Budget Enforcement (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Nuclei Budget Cap** | Done (v4.19.1) | Runtime budget caps batches to remaining time and saves pending targets mid-batch. |
+| **Nuclei Budget UX** | Done (v4.19.1) | Progress detail uses status color and budget-only stops avoid timeout warnings. |
+
 ### v4.19.0 Nuclei Runtime Resume (Done)
 
 | Feature | Status | Description |

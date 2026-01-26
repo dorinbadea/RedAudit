@@ -1189,6 +1189,8 @@ class InteractiveNetworkAuditor:
                                 nuclei_summary["timeout_batches"] = timeout_batches
                             if failed_batches:
                                 nuclei_summary["failed_batches"] = failed_batches
+                        if nuclei_result.get("budget_exceeded"):
+                            nuclei_summary["budget_exceeded"] = True
                         if suspected:
                             nuclei_summary["suspected"] = [
                                 {
@@ -1218,17 +1220,20 @@ class InteractiveNetworkAuditor:
                                 )
                         else:
                             self.ui.print_status(self.ui.t("nuclei_no_findings"), "INFO")
+                        if nuclei_result.get("budget_exceeded"):
+                            self.ui.print_status(self.ui.t("nuclei_budget_exceeded"), "WARNING")
                         if nuclei_result.get("partial"):
                             timeout_batches = nuclei_result.get("timeout_batches") or []
                             failed_batches = nuclei_result.get("failed_batches") or []
-                            self.ui.print_status(
-                                self.ui.t(
-                                    "nuclei_partial",
-                                    len(timeout_batches),
-                                    len(failed_batches),
-                                ),
-                                "WARNING",
-                            )
+                            if timeout_batches or failed_batches:
+                                self.ui.print_status(
+                                    self.ui.t(
+                                        "nuclei_partial",
+                                        len(timeout_batches),
+                                        len(failed_batches),
+                                    ),
+                                    "WARNING",
+                                )
                         pending_targets = nuclei_result.get("pending_targets") or []
                         if pending_targets:
                             resume_state = self._build_nuclei_resume_state(
@@ -3108,6 +3113,8 @@ class InteractiveNetworkAuditor:
                 approx_targets = max_seen
             else:
                 state["max_targets"] = approx_targets
+            if isinstance(detail_text, str) and detail_text:
+                detail_text = f"[bright_blue]{detail_text}[/]"
             remaining_batches = max(0.0, float(total) - float(completed))
             remaining_targets = max(0, int(total_targets) - approx_targets)
             ela_s = max(0.001, time.time() - start_time)

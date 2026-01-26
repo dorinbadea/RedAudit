@@ -233,7 +233,7 @@ Notes:
 - Web app scanners (sqlmap/ZAP) are skipped on infrastructure UIs when identity evidence indicates router/switch/AP devices.
 - Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.
 - **Nuclei on web-dense networks:** On networks with many HTTP/HTTPS services (e.g., Docker labs, microservices), Nuclei scans may take significantly longer (30-90+ minutes). Use `--nuclei-timeout 600` to increase the batch timeout, or `--no-nuclei` to skip Nuclei entirely if speed is critical. When full coverage is enabled, RedAudit raises the batch timeout to 900s if a lower value is configured.
-- When a runtime budget is set, RedAudit writes `nuclei_resume.json` and `nuclei_pending.txt` in the scan folder and offers a 15-second resume prompt. If you do nothing, the scan continues and the resume stays available.
+- When a runtime budget is set, it is a **total wall-clock limit for the Nuclei phase** (not per batch). RedAudit runs batches sequentially, caps the current batch to the remaining budget, and saves `nuclei_resume.json` + `nuclei_pending.txt` when the budget is reached. If you do nothing, the **audit continues after Nuclei** and the resume stays available.
 
 ### Nuclei Configuration (v4.17+)
 

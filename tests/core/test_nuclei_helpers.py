@@ -459,6 +459,30 @@ def test_run_nuclei_scan_timeout_and_retry_flags(tmp_path):
     assert "-t" in captured["cmd"]
 
 
+def test_run_nuclei_scan_budget_exceeded_sets_pending(tmp_path):
+    class _Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, cmd, *args, **kwargs):
+            return SimpleNamespace(returncode=124, stdout="", stderr="", timed_out=True)
+
+    with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+        with patch("redaudit.core.nuclei.CommandRunner", _Runner):
+            result = run_nuclei_scan(
+                ["http://t1", "http://t2"],
+                output_dir=str(tmp_path),
+                max_runtime_s=1,
+                batch_size=10,
+                use_internal_progress=False,
+            )
+
+    assert result["budget_exceeded"] is True
+    assert result["partial"] is True
+    assert set(result["pending_targets"]) == {"http://t1", "http://t2"}
+    assert result["timeout_batches"] == []
+
+
 def test_run_nuclei_scan_long_flag_fallback(tmp_path):
     captured = {}
 

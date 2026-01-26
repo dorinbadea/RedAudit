@@ -49,6 +49,13 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.1 Presupuesto de Nuclei con límite real (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Límite de presupuesto Nuclei** | Hecho (v4.19.1) | El presupuesto limita los lotes al tiempo restante y guarda objetivos pendientes a mitad de lote. |
+| **UX de presupuesto Nuclei** | Hecho (v4.19.1) | El detalle del progreso usa el color de estado y las paradas por presupuesto no muestran avisos de timeout. |
+
 ### v4.19.0 Reanudacion de Nuclei por presupuesto (Hecho)
 
 | Funcionalidad | Estado | Descripción |

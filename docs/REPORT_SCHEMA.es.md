@@ -90,7 +90,7 @@ El objeto `config_snapshot` guarda la configuracion de ejecucion (sin secretos).
 | `deep_id_scan` | `boolean` | Indica si el deep identity scan esta activo. |
 | `trust_hyperscan` | `boolean` | Indica si DeepScan confia solo en los puertos de HyperScan. |
 | `nuclei_timeout` | `integer` | Timeout de Nuclei por objetivo en segundos. |
-| `nuclei_max_runtime` | `integer` | Tiempo maximo de Nuclei en minutos (0 = ilimitado). |
+| `nuclei_max_runtime` | `integer` | Presupuesto total de tiempo de Nuclei en minutos (0 = ilimitado). |
 
 ### summary.json (Resumen para dashboards)
 
@@ -224,6 +224,25 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `udp_mode` | string | Modo UDP usado (quick/full) |
 | `udp_top_ports` | integer | Top UDP ports cuando se usa full |
 | `low_impact_enrichment` | boolean | Enriquecimiento de bajo impacto (DNS/mDNS/SNMP más sonda HTTP/HTTPS breve para hosts con solo fabricante y cero puertos abiertos) |
+
+#### pipeline.nuclei (resumen)
+
+| Campo | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `targets` | integer | Objetivos HTTP enviados a Nuclei |
+| `findings` | integer | Hallazgos tras filtrado |
+| `findings_total` | integer | Hallazgos brutos antes de filtrado |
+| `findings_suspected` | integer | Sospechas de falsos positivos |
+| `profile` | string | Perfil de Nuclei (fast/balanced/full) |
+| `full_coverage` | boolean | Cobertura completa habilitada (todos los puertos HTTP) |
+| `partial` | boolean | Ejecucion parcial (timeouts o presupuesto) |
+| `timeout_batches` | array | Indices de lotes con timeout |
+| `failed_batches` | array | Indices de lotes fallidos |
+| `budget_exceeded` | boolean | Presupuesto de tiempo agotado |
+| `resume_pending` | integer | Objetivos pendientes guardados para reanudar |
+| `output_file` | string | Ruta relativa a nuclei_output.json |
+| `success` | boolean | Exito de Nuclei |
+| `error` | string | Mensaje de error si existe |
 
 #### pipeline.hyperscan_vs_final (v4.18.9+)
 

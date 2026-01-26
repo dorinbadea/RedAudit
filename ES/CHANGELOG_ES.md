@@ -14,6 +14,17 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - Ninguno.
 
+## [4.19.1] - 2026-01-26
+
+### Mejorado
+
+- **Metadatos de Nuclei**: El resumen ahora incluye `budget_exceeded` cuando el presupuesto termina la ejecucion.
+
+### Corregido
+
+- **Presupuesto de Nuclei**: Los lotes se limitan al tiempo restante y se guardan objetivos pendientes si se agota en mitad de un lote.
+- **Claridad en progreso**: Las lineas de detalle usan el color de estado y las paradas por presupuesto no muestran avisos de timeout.
+
 ## [4.19.0] - 2026-01-26
 
 ### Añadido

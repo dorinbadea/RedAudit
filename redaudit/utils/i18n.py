@@ -367,6 +367,7 @@ TRANSLATIONS = {
         "nuclei_no_findings": "Nuclei scan completed (no findings)",
         "nuclei_suspected": "Nuclei flagged {} suspected false positive(s)",
         "nuclei_partial": "Nuclei scan partial: {} timeout batch(es), {} failed",
+        "nuclei_budget_exceeded": "Nuclei runtime budget reached; resume saved for pending targets",
         "nuclei_q": "Run Nuclei (specialized for HTTP/Web services)?",
         # v4.11.0: Nuclei profile selector
         "nuclei_profile_q": "Nuclei scan profile:",
@@ -857,6 +858,7 @@ TRANSLATIONS = {
         "nuclei_no_findings": "Escaneo Nuclei completado (sin hallazgos)",
         "nuclei_suspected": "Nuclei marcó {} falso(s) positivo(s) sospechado(s)",
         "nuclei_partial": "Escaneo Nuclei parcial: {} lote(s) con timeout, {} fallidos",
+        "nuclei_budget_exceeded": "Presupuesto de tiempo de Nuclei agotado; reanudacion guardada",
         "nuclei_q": "¿Ejecutar Nuclei (especializado para servicios HTTP/Web)?",
         # v4.11.0: Selector de perfil Nuclei
         "nuclei_profile_q": "Perfil de escaneo Nuclei:",
