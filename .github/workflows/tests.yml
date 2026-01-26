@@ -40,7 +40,7 @@ jobs:
 
       - name: Check coverage threshold
         run: |
-          coverage report --fail-under=25
+          coverage report --fail-under=80
 
       - name: Upload coverage to Codecov
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
@@ -73,7 +73,6 @@ jobs:
 
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@2.0.0
-        continue-on-error: true # TODO: Fix shellcheck warnings then remove
         with:
           scandir: "."
           severity: warning
