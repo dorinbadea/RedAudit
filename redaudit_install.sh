@@ -120,7 +120,15 @@ else
 fi
 
 if $INSTALL; then
-    apt update && apt install -y $EXTRA_PKGS || { echo "$MSG_APT_ERR"; exit 1; }
+    read -r -a extra_pkgs <<< "$EXTRA_PKGS"
+    if ! apt update; then
+        echo "$MSG_APT_ERR"
+        exit 1
+    fi
+    if ! apt install -y "${extra_pkgs[@]}"; then
+        echo "$MSG_APT_ERR"
+        exit 1
+    fi
 
 
 
@@ -136,14 +144,15 @@ if $INSTALL; then
     echo "[INFO] Installing Python packages for authenticated scanning..."
 
     PIP_PKGS="paramiko impacket pysnmp keyring keyrings.alt"
-    if pip3 install $PIP_PKGS; then
+    read -r -a pip_pkgs <<< "$PIP_PKGS"
+    if pip3 install "${pip_pkgs[@]}"; then
         echo "[OK] Python packages installed via pip"
     else
         echo "[WARN] Standard pip3 install failed. Checking for PEP 668 managed environment..."
         # Retry with --break-system-packages if relevant (modern Kali/Ubuntu/Debian)
         if pip3 install --help | grep -q "\-\-break\-system\-packages"; then
              echo "[INFO] Retrying with --break-system-packages (required for system-wide install on modern distros)..."
-             pip3 install $PIP_PKGS --break-system-packages || echo "[WARN] pip install failed even with break-system-packages"
+             pip3 install "${pip_pkgs[@]}" --break-system-packages || echo "[WARN] pip install failed even with break-system-packages"
         else
              echo "[WARN] pip install failed and --break-system-packages flag is not supported."
         fi

@@ -167,14 +167,30 @@ install_targets() {
 start_lab() {
     check_docker
     echo -e "${GREEN}[+] Starting all containers in $LAB_NET...${NC}"
-    docker start $(docker ps -aq --filter "network=$LAB_NET") 2>/dev/null
+    containers=()
+    while IFS= read -r line; do
+        if [[ -n "$line" ]]; then
+            containers+=("$line")
+        fi
+    done < <(docker ps -aq --filter "network=$LAB_NET")
+    if [[ ${#containers[@]} -gt 0 ]]; then
+        docker start "${containers[@]}" 2>/dev/null
+    fi
     echo -e "${GREEN}[OK] Lab started.${NC}"
 }
 
 stop_lab() {
     check_docker
     echo -e "${GREEN}[+] Stopping all containers in $LAB_NET...${NC}"
-    docker stop $(docker ps -aq --filter "network=$LAB_NET") 2>/dev/null
+    containers=()
+    while IFS= read -r line; do
+        if [[ -n "$line" ]]; then
+            containers+=("$line")
+        fi
+    done < <(docker ps -aq --filter "network=$LAB_NET")
+    if [[ ${#containers[@]} -gt 0 ]]; then
+        docker stop "${containers[@]}" 2>/dev/null
+    fi
     echo -e "${GREEN}[OK] Lab stopped.${NC}"
 }
 
@@ -184,7 +200,15 @@ remove_lab() {
     read -p "Are you sure? [y/N] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        docker rm -f $(docker ps -aq --filter "network=$LAB_NET") 2>/dev/null
+        containers=()
+        while IFS= read -r line; do
+            if [[ -n "$line" ]]; then
+                containers+=("$line")
+            fi
+        done < <(docker ps -aq --filter "network=$LAB_NET")
+        if [[ ${#containers[@]} -gt 0 ]]; then
+            docker rm -f "${containers[@]}" 2>/dev/null
+        fi
         docker network rm "$LAB_NET" 2>/dev/null
         docker volume rm samba_ad_data samba_ad_cfg 2>/dev/null
         sudo rm -rf /srv/lab_smb 2>/dev/null
