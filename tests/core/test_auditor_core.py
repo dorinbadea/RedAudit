@@ -3826,6 +3826,43 @@ class TestHyperScanDiscovery(unittest.TestCase):
 
         assert ports["10.0.0.3"] == []
 
+    def test_run_hyperscan_discovery_uses_masscan_when_empty(self):
+        auditor = MockAuditorScan()
+        auditor.config["scan_mode"] = "completo"
+        auditor.ui.get_progress_console.return_value = None
+        auditor.results["net_discovery"] = {
+            "redteam": {"masscan": {"open_ports": [{"ip": "10.0.0.5", "port": 8080}]}}
+        }
+
+        class _ImmediateFuture:
+            def __init__(self, func, *args, **kwargs):
+                func(*args, **kwargs)
+
+        class _ImmediateExecutor:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def submit(self, func, *args, **kwargs):
+                return _ImmediateFuture(func, *args, **kwargs)
+
+            def shutdown(self, **_kwargs):
+                return None
+
+        with (
+            patch("redaudit.core.auditor_scan.ThreadPoolExecutor", _ImmediateExecutor),
+            patch("redaudit.core.auditor_scan.as_completed", side_effect=lambda fs: list(fs)),
+            patch("redaudit.core.hyperscan.hyperscan_full_port_sweep", return_value=[]),
+        ):
+            ports = auditor._run_hyperscan_discovery(["10.0.0.5"])
+
+        assert ports["10.0.0.5"] == [8080]
+
     def test_run_hyperscan_discovery_worker_exception(self):
         auditor = MockAuditorScan()
         auditor.config["scan_mode"] = "completo"

@@ -154,6 +154,35 @@ class TestNetworkDetection(unittest.TestCase):
         self.assertEqual(len(nets), 1)
         self.assertEqual(nets[0]["ip_version"], 4)
 
+    def test_detect_networks_netifaces_excludes_docker(self):
+        class _DummyNetifaces:
+            AF_INET = 2
+            AF_INET6 = 10
+
+            @staticmethod
+            def interfaces():
+                return ["eth0", "docker0"]
+
+            @staticmethod
+            def ifaddresses(iface):
+                if iface == "eth0":
+                    return {
+                        _DummyNetifaces.AF_INET: [
+                            {"addr": "192.168.10.5", "netmask": "255.255.255.0"}
+                        ]
+                    }
+                if iface == "docker0":
+                    return {
+                        _DummyNetifaces.AF_INET: [{"addr": "172.17.0.1", "netmask": "255.255.0.0"}]
+                    }
+                return {}
+
+        with patch.dict(sys.modules, {"netifaces": _DummyNetifaces}):
+            nets = detect_networks_netifaces(include_ipv6=False)
+
+        self.assertEqual(len(nets), 1)
+        self.assertEqual(nets[0]["interface"], "eth0")
+
     def test_detect_networks_netifaces_missing(self):
         real_import = __import__
 
