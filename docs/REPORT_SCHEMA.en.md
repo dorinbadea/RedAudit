@@ -90,7 +90,7 @@ The `config_snapshot` object stores sanitized run configuration (no secrets).
 | `deep_id_scan` | `boolean` | Whether deep identity scan is enabled for the run. |
 | `trust_hyperscan` | `boolean` | Whether DeepScan trusts HyperScan discovery ports only. |
 | `nuclei_timeout` | `integer` | Nuclei timeout per target in seconds. |
-| `nuclei_max_runtime` | `integer` | Nuclei max runtime in minutes (0 = unlimited). |
+| `nuclei_max_runtime` | `integer` | Total Nuclei runtime budget in minutes (0 = unlimited). |
 
 ### summary.json (Dashboard Summary)
 
@@ -230,6 +230,25 @@ Compact roll-up for dashboards.
 | `udp_mode` | string | UDP mode used (quick/full) |
 | `udp_top_ports` | integer | Top UDP ports when full mode is used |
 | `low_impact_enrichment` | boolean | Low impact enrichment enabled (DNS/mDNS/SNMP plus short HTTP/HTTPS probe for vendor-only hosts with zero open ports) |
+
+#### pipeline.nuclei (summary)
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `targets` | integer | Total HTTP targets sent to Nuclei |
+| `findings` | integer | Findings after filtering |
+| `findings_total` | integer | Raw findings before filtering |
+| `findings_suspected` | integer | Suspected false positives |
+| `profile` | string | Nuclei profile (fast/balanced/full) |
+| `full_coverage` | boolean | Full coverage enabled (all HTTP ports) |
+| `partial` | boolean | Partial run (timeouts or budget) |
+| `timeout_batches` | array | Batch indexes that timed out |
+| `failed_batches` | array | Batch indexes that failed |
+| `budget_exceeded` | boolean | Runtime budget ended the run |
+| `resume_pending` | integer | Pending targets saved for resume |
+| `output_file` | string | Relative path to nuclei_output.json |
+| `success` | boolean | Nuclei success flag |
+| `error` | string | Error message, if any |
 
 #### pipeline.hyperscan_vs_final (v4.18.9+)
 
