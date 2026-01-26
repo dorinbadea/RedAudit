@@ -769,6 +769,53 @@ def test_run_complete_scan_auth_and_snmp_topology(tmp_path, monkeypatch):
     assert called.get("snmp") is True
 
 
+def test_run_complete_scan_auth_snmp_topology_without_cve(tmp_path, monkeypatch):
+    app = InteractiveNetworkAuditor()
+    app.logger = MagicMock()
+    app.ui = MagicMock()
+    app.ui.t.side_effect = lambda key, *args: key
+    app.scanner = MagicMock()
+    app.config["target_networks"] = ["10.0.0.0/24"]
+    app.config["output_dir"] = str(tmp_path)
+    app.config["auth_enabled"] = True
+    app.config["snmp_topology"] = True
+    app.config["cve_lookup_enabled"] = False
+    app.config["scan_vulnerabilities"] = False
+    app.config["prevent_sleep"] = False
+
+    monkeypatch.setattr(app, "start_heartbeat", lambda: None)
+    monkeypatch.setattr(app, "stop_heartbeat", lambda: None)
+    monkeypatch.setattr(app, "_progress_ui", _noop_cm)
+    monkeypatch.setattr(app, "_select_net_discovery_interface", lambda: None)
+    monkeypatch.setattr(app, "_filter_auditor_ips", lambda hosts: hosts)
+    monkeypatch.setattr(app, "scan_network_discovery", lambda *a, **k: ["10.0.0.1"])
+    monkeypatch.setattr(app, "_collect_discovery_hosts", lambda *a, **k: [])
+    monkeypatch.setattr(app, "scan_hosts_concurrent", lambda *a, **k: [{"ip": "10.0.0.1"}])
+    monkeypatch.setattr(app, "run_agentless_verification", lambda *a, **k: None)
+    monkeypatch.setattr(app, "_run_hyperscan_discovery", lambda *_a, **_k: {})
+    monkeypatch.setattr(app, "save_results", lambda *a, **k: None)
+    monkeypatch.setattr(app, "show_results", lambda *a, **k: None)
+    monkeypatch.setattr("redaudit.core.auditor.generate_summary", lambda *a, **k: None)
+    monkeypatch.setattr("redaudit.core.auditor.maybe_chown_to_invoking_user", lambda *a, **k: None)
+    monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **k: None)
+    monkeypatch.setattr("redaudit.utils.session_log.stop_session_log", lambda: None)
+    monkeypatch.setattr(
+        "redaudit.core.net_discovery.discover_networks",
+        lambda *_args, **_kwargs: {},
+    )
+
+    monkeypatch.setattr(app, "_run_authenticated_scans", lambda *_a, **_k: None)
+    captured = {}
+
+    def _capture_snmp(*_a, **_k):
+        captured["api_key"] = _k.get("api_key")
+
+    monkeypatch.setattr(app, "_process_snmp_topology", _capture_snmp)
+
+    assert app.run_complete_scan() is True
+    assert captured.get("api_key") is None
+
+
 def test_run_complete_scan_risk_recalc_exception(tmp_path, monkeypatch):
     app = InteractiveNetworkAuditor()
     app.logger = MagicMock()

@@ -129,6 +129,13 @@ class TestTypedProperties:
         assert cfg.topology_enabled is True
         assert cfg.windows_verify_enabled is True
 
+    def test_nuclei_timeout_default(self):
+        cfg = ConfigurationContext()
+        assert cfg.nuclei_timeout == 300
+
+        cfg = ConfigurationContext({"nuclei_timeout": 450})
+        assert cfg.nuclei_timeout == 450
+
     def test_prevent_sleep_default(self):
         """Test prevent_sleep defaults to True."""
         cfg = ConfigurationContext({})

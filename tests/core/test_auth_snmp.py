@@ -24,7 +24,17 @@ mock_pysnmp.ObjectType = MagicMock()
 mock_pysnmp.ObjectIdentity = MagicMock()
 mock_pysnmp.usmHMACSHAAuthProtocol = MagicMock()
 mock_pysnmp.usmAesCfb128Protocol = MagicMock()
+mock_pysnmp.usmHMACMD5AuthProtocol = MagicMock()
+mock_pysnmp.usmHMACSHA224AuthProtocol = MagicMock()
+mock_pysnmp.usmHMACSHA256AuthProtocol = MagicMock()
+mock_pysnmp.usmHMACSHA384AuthProtocol = MagicMock()
+mock_pysnmp.usmHMACSHA512AuthProtocol = MagicMock()
+mock_pysnmp.usmAesCfb192Protocol = MagicMock()
+mock_pysnmp.usmAesCfb256Protocol = MagicMock()
+mock_pysnmp.usmDESPrivProtocol = MagicMock()
+mock_pysnmp.usm3DESEDEPrivProtocol = MagicMock()
 
+from redaudit.core import auth_snmp  # noqa: E402
 from redaudit.core.auth_snmp import SNMPScanner  # noqa: E402
 from redaudit.core.credentials import Credential  # noqa: E402
 
@@ -151,6 +161,36 @@ class TestSNMPScanner(unittest.TestCase):
         mock_getCmd.return_value = iter([("Timeout", 0, 0, [])])
         info = scanner.get_topology_info("192.168.1.1")
         self.assertEqual(info.error, "Timeout")
+
+    @patch("redaudit.core.auth_snmp.UsmUserData")
+    def test_protocol_mapping_uses_snmp_fields(self, mock_user_data):
+        cred = Credential(username="snmpuser")
+        cred.snmp_auth_pass = "authpass"
+        cred.snmp_auth_proto = "SHA256"
+        cred.snmp_priv_pass = "privpass"
+        cred.snmp_priv_proto = "AES256"
+
+        scanner = SNMPScanner(cred)
+
+        self.assertEqual(scanner.auth_key, "authpass")
+        self.assertEqual(scanner.auth_proto, auth_snmp.hlapi.usmHMACSHA256AuthProtocol)
+        self.assertEqual(scanner.priv_proto, auth_snmp.hlapi.usmAesCfb256Protocol)
+        mock_user_data.assert_called_with(
+            "snmpuser",
+            "authpass",
+            scanner.auth_proto,
+            "privpass",
+            scanner.priv_proto,
+        )
+
+    def test_protocol_map_fallbacks(self):
+        scanner = SNMPScanner(self.credential)
+        custom_obj = object()
+
+        self.assertIs(scanner.auth_protocol_map(custom_obj), custom_obj)
+        self.assertIs(scanner.priv_protocol_map(custom_obj), custom_obj)
+        self.assertEqual(scanner.auth_protocol_map("bogus"), mock_pysnmp.usmHMACSHAAuthProtocol)
+        self.assertEqual(scanner.priv_protocol_map("bogus"), mock_pysnmp.usmAesCfb128Protocol)
 
     @patch("redaudit.core.auth_snmp.nextCmd")
     def test_walk_oid_handles_exception(self, mock_nextCmd):

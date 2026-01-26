@@ -157,7 +157,7 @@ def test_extract_web_vulns_with_whatweb_and_testssl():
                 "host": "10.0.0.1",
                 "vulnerabilities": [
                     {"nikto_findings": ["find1", "find2"]},
-                    {"whatweb_results": {"server": "nginx"}},  # Line 113
+                    {"whatweb": {"server": "nginx"}},  # Line 113
                     {"testssl": {"vulnerabilities": ["vuln1", "vuln2"]}},  # Lines 118-119
                 ],
             },
