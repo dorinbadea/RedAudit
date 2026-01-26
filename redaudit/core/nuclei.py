@@ -360,9 +360,12 @@ def run_nuclei_scan(
             rate_limit_override: Optional[int] = None,
             split_depth: int = 0,
             retry_attempt: int = 0,  # v4.6.23: Simple retry before split
-        ) -> None:
+            budget_deadline: Optional[float] = None,
+        ) -> bool:
             nonlocal completed_targets, max_progress_targets
             batch_start = time.time()
+            if budget_deadline is not None and batch_start >= budget_deadline:
+                return True
             # v4.7.2: Increased default timeout to 600s and minimum from 60s to 300s
             # 60s was causing 100% batch timeout rate on medium-sized networks
             base_timeout = float(timeout) if isinstance(timeout, (int, float)) else 600.0
@@ -383,6 +386,14 @@ def run_nuclei_scan(
             # v4.6.23: Extend timeout on retry attempt
             if retry_attempt > 0:
                 batch_timeout_s = batch_timeout_s * 1.5
+            budget_cap_active = False
+            if budget_deadline is not None:
+                remaining_budget = budget_deadline - time.time()
+                if remaining_budget <= 0:
+                    return True
+                if remaining_budget < batch_timeout_s:
+                    batch_timeout_s = max(1.0, remaining_budget)
+                    budget_cap_active = True
 
             with tempfile.TemporaryDirectory(prefix="nuclei_tmp_", dir=output_dir) as tmpdir:
                 batch_targets_file = os.path.join(tmpdir, f"targets_{batch_idx}.txt")
@@ -464,37 +475,44 @@ def run_nuclei_scan(
                 if res is None:
                     raise RuntimeError("Nuclei batch did not return a result")
                 timed_out = bool(getattr(res, "timed_out", False))
+                budget_exceeded = bool(timed_out and budget_cap_active)
                 if timed_out:
-                    # v4.6.24: Split immediately on timeout (no extended retry)
-                    # This avoids the infinite retry loop bug
-                    # If retry also timed out, try splitting
-                    if allow_retry and len(batch_targets) > 1 and split_depth < max_split_depth:
-                        mid = max(1, len(batch_targets) // 2)
-                        reduced_rate = max(25, int((rate_limit_override or rate_limit) / 2))
-                        _run_one_batch(
-                            batch_idx,
-                            batch_targets[:mid],
-                            allow_retry=True,
-                            rate_limit_override=reduced_rate,
-                            split_depth=split_depth + 1,
-                            retry_attempt=0,
-                        )
-                        _run_one_batch(
-                            batch_idx,
-                            batch_targets[mid:],
-                            allow_retry=True,
-                            rate_limit_override=reduced_rate,
-                            split_depth=split_depth + 1,
-                            retry_attempt=0,
-                        )
-                        return
-                    with scan_lock:
-                        timed_out_batches.add(batch_idx)
-                        failed_batches.add(batch_idx)
+                    if not budget_exceeded:
+                        # v4.6.24: Split immediately on timeout (no extended retry)
+                        # This avoids the infinite retry loop bug
+                        # If retry also timed out, try splitting
+                        if allow_retry and len(batch_targets) > 1 and split_depth < max_split_depth:
+                            mid = max(1, len(batch_targets) // 2)
+                            reduced_rate = max(25, int((rate_limit_override or rate_limit) / 2))
+                            _run_one_batch(
+                                batch_idx,
+                                batch_targets[:mid],
+                                allow_retry=True,
+                                rate_limit_override=reduced_rate,
+                                split_depth=split_depth + 1,
+                                retry_attempt=0,
+                            )
+                            _run_one_batch(
+                                batch_idx,
+                                batch_targets[mid:],
+                                allow_retry=True,
+                                rate_limit_override=reduced_rate,
+                                split_depth=split_depth + 1,
+                                retry_attempt=0,
+                            )
+                            return False
+                        with scan_lock:
+                            timed_out_batches.add(batch_idx)
+                            failed_batches.add(batch_idx)
 
                 # Append JSONL output to the consolidated file, if present.
                 # Copy partial output unless we timed out AND will actually retry.
-                can_retry = allow_retry and len(batch_targets) > 1 and split_depth < max_split_depth
+                can_retry = (
+                    allow_retry
+                    and len(batch_targets) > 1
+                    and split_depth < max_split_depth
+                    and not budget_exceeded
+                )
                 if os.path.exists(batch_output_file) and not (timed_out and can_retry):
                     with scan_lock:
                         if os.path.exists(batch_output_file):
@@ -513,11 +531,16 @@ def run_nuclei_scan(
 
             with scan_lock:
                 batch_durations.append(time.time() - batch_start)
-                completed_targets += len(batch_targets)
                 # Remove from active progress as it is now fully in completed_targets
                 active_batch_progress.pop(batch_idx, None)
-                if completed_targets > max_progress_targets:
-                    max_progress_targets = completed_targets
+                if not budget_exceeded:
+                    completed_targets += len(batch_targets)
+                    if completed_targets > max_progress_targets:
+                        max_progress_targets = completed_targets
+
+            if budget_exceeded:
+                return True
+            return False
 
         max_parallel = min(4, max(1, len(batches)))  # Up to 4 parallel batches
         try:
@@ -538,7 +561,10 @@ def run_nuclei_scan(
             )
         except Exception:
             runtime_budget_s = None
+        if print_status and runtime_budget_s is not None:
+            print_status("[nuclei] runtime budget enabled; running batches sequentially", "INFO")
         budget_start = time.time()
+        budget_deadline = budget_start + runtime_budget_s if runtime_budget_s else None
         force_sequential = runtime_budget_s is not None
 
         if progress_callback is not None and not force_sequential:
@@ -653,11 +679,11 @@ def run_nuclei_scan(
                 if runtime_budget_s is not None:
                     elapsed = time.time() - budget_start
                     if elapsed >= runtime_budget_s:
-                        remaining_targets: List[str] = []
+                        remaining_targets_budget: List[str] = []
                         for remain_batch in batches[idx - 1 :]:
-                            remaining_targets.extend(remain_batch)
-                        result["pending_targets"] = remaining_targets
-                        result["targets_scanned"] = len(targets) - len(remaining_targets)
+                            remaining_targets_budget.extend(remain_batch)
+                        result["pending_targets"] = remaining_targets_budget
+                        result["targets_scanned"] = len(targets) - len(remaining_targets_budget)
                         result["budget_exceeded"] = True
                         result["partial"] = True
                         break
@@ -665,7 +691,16 @@ def run_nuclei_scan(
                     print_status(
                         f"[nuclei] batch {idx}/{total_batches} ({len(batch)} targets)", "INFO"
                     )
-                _run_one_batch(idx, batch)
+                budget_exceeded = _run_one_batch(idx, batch, budget_deadline=budget_deadline)
+                if budget_exceeded:
+                    remaining_targets_mid: List[str] = []
+                    for remain_batch in batches[idx - 1 :]:
+                        remaining_targets_mid.extend(remain_batch)
+                    result["pending_targets"] = remaining_targets_mid
+                    result["targets_scanned"] = max(0, min(len(targets), int(max_progress_targets)))
+                    result["budget_exceeded"] = True
+                    result["partial"] = True
+                    break
 
         if os.path.exists(output_file):
             result["findings"] = _parse_nuclei_output(output_file, logger)
