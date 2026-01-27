@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.4] - 2026-01-27
+
+### Improved
+
+- **Nuclei Resume Budget Override**: Resume prompts allow changing the runtime budget (or disabling it) and CLI resume accepts `--nuclei-max-runtime`.
+- **Budget-Aware Batching**: When a runtime budget is set, RedAudit avoids starting a new batch if remaining time cannot cover the estimated batch runtime.
+
 ## [4.19.3] - 2026-01-27
 
 ### Improved

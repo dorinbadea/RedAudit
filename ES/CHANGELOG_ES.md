@@ -10,6 +10,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.4] - 2026-01-27
+
+### Mejorado
+
+- **Override de presupuesto en reanudacion**: La reanudacion permite cambiar el presupuesto (o desactivarlo) y la CLI acepta `--nuclei-max-runtime`.
+- **Lotes con presupuesto**: Cuando hay presupuesto, RedAudit evita iniciar un lote nuevo si el tiempo restante no cubre el tiempo estimado del lote.
+
 ## [4.19.3] - 2026-01-27
 
 ### Mejorado
