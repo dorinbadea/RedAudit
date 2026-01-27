@@ -252,6 +252,24 @@ def run_nuclei_scan(
         active_batch_progress: Dict[int, float] = {}  # Track partial progress per batch
         max_split_depth = 6
 
+        def _estimate_batch_timeout(
+            batch_targets: List[str],
+            *,
+            split_depth: int = 0,
+            retry_attempt: int = 0,
+        ) -> float:
+            base_timeout = float(timeout) if isinstance(timeout, (int, float)) else 600.0
+            target_budget = float(request_timeout_s) * len(batch_targets) * 2
+            min_timeout_s = max(60.0, float(request_timeout_s) * 2.0)
+            if split_depth == 0:
+                min_timeout_s = max(min_timeout_s, 300.0)
+            batch_timeout_s = max(min_timeout_s, target_budget)
+            if base_timeout > 0:
+                batch_timeout_s = max(batch_timeout_s, base_timeout)
+            if retry_attempt > 0:
+                batch_timeout_s = batch_timeout_s * 1.5
+            return batch_timeout_s
+
         def _build_cmd(
             targets_path: str,
             out_path: str,
@@ -368,24 +386,11 @@ def run_nuclei_scan(
                 return True
             # v4.7.2: Increased default timeout to 600s and minimum from 60s to 300s
             # 60s was causing 100% batch timeout rate on medium-sized networks
-            base_timeout = float(timeout) if isinstance(timeout, (int, float)) else 600.0
-            target_budget = float(request_timeout_s) * len(batch_targets) * 2
-
-            # Keep a higher minimum for the initial batch; for split batches,
-            # honor the configured base timeout to preserve coverage.
-            min_timeout_s = max(60.0, float(request_timeout_s) * 2.0)
-            if split_depth == 0:
-                min_timeout_s = max(min_timeout_s, 300.0)
-
-            batch_timeout_s = max(min_timeout_s, target_budget)
-
-            if base_timeout > 0:
-                # Honor base timeout as a floor to avoid partial coverage on slow targets.
-                batch_timeout_s = max(batch_timeout_s, base_timeout)
-
-            # v4.6.23: Extend timeout on retry attempt
-            if retry_attempt > 0:
-                batch_timeout_s = batch_timeout_s * 1.5
+            batch_timeout_s = _estimate_batch_timeout(
+                batch_targets,
+                split_depth=split_depth,
+                retry_attempt=retry_attempt,
+            )
             budget_cap_active = False
             if budget_deadline is not None:
                 remaining_budget = budget_deadline - time.time()
@@ -678,12 +683,28 @@ def run_nuclei_scan(
             for idx, batch in enumerate(batches, start=1):
                 if runtime_budget_s is not None:
                     elapsed = time.time() - budget_start
-                    if elapsed >= runtime_budget_s:
+                    remaining = runtime_budget_s - elapsed
+                    if remaining <= 0:
                         remaining_targets_budget: List[str] = []
                         for remain_batch in batches[idx - 1 :]:
                             remaining_targets_budget.extend(remain_batch)
                         result["pending_targets"] = remaining_targets_budget
                         result["targets_scanned"] = len(targets) - len(remaining_targets_budget)
+                        result["budget_exceeded"] = True
+                        result["partial"] = True
+                        break
+                    expected_batch_timeout = _estimate_batch_timeout(batch)
+                    if remaining < expected_batch_timeout:
+                        if print_status:
+                            print_status(
+                                "[nuclei] budget too low for next batch; deferring remaining targets",
+                                "INFO",
+                            )
+                        remaining_targets_budget = []
+                        for remain_batch in batches[idx - 1 :]:
+                            remaining_targets_budget.extend(remain_batch)
+                        result["pending_targets"] = remaining_targets_budget
+                        result["targets_scanned"] = max(0, int(max_progress_targets))
                         result["budget_exceeded"] = True
                         result["partial"] = True
                         break

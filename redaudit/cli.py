@@ -1026,7 +1026,13 @@ def main():
         if not resume_path:
             app.print_status(app.t("nuclei_resume_none"), "INFO")
             sys.exit(1)
-        ok = app.resume_nuclei_from_path(resume_path)
+        override_budget = None
+        if any(arg.startswith("--nuclei-max-runtime") for arg in sys.argv[1:]):
+            override_budget = getattr(args, "nuclei_max_runtime", None)
+        ok = app.resume_nuclei_from_path(
+            resume_path,
+            override_max_runtime_minutes=override_budget,
+        )
         sys.exit(0 if ok else 1)
 
     # Non-interactive mode: allow forcing "factory" values even if persisted defaults exist.

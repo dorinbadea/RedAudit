@@ -1268,6 +1268,7 @@ class InteractiveNetworkAuditor:
                                         output_dir=output_dir,
                                         use_existing_results=True,
                                         save_after=False,
+                                        prompt_budget_override=True,
                                     )
                                 else:
                                     self.ui.print_status(self.ui.t("nuclei_resume_skipped"), "INFO")
@@ -3351,6 +3352,8 @@ class InteractiveNetworkAuditor:
         output_dir: str,
         use_existing_results: bool,
         save_after: bool,
+        override_max_runtime_minutes: Optional[int] = None,
+        prompt_budget_override: bool = False,
     ) -> bool:
         if not use_existing_results:
             if not self._load_resume_context(output_dir):
@@ -3369,6 +3372,37 @@ class InteractiveNetworkAuditor:
         retries = nuclei_cfg.get("retries") or 1
         batch_size = nuclei_cfg.get("batch_size") or 10
         max_runtime_minutes = nuclei_cfg.get("max_runtime_minutes") or 0
+        if override_max_runtime_minutes is not None:
+            try:
+                max_runtime_minutes = int(override_max_runtime_minutes)
+            except Exception:
+                max_runtime_minutes = int(nuclei_cfg.get("max_runtime_minutes") or 0)
+        elif prompt_budget_override:
+            saved_minutes = int(max_runtime_minutes) if str(max_runtime_minutes).isdigit() else 0
+            if saved_minutes > 0:
+                keep_budget = self.ask_yes_no(
+                    self.ui.t("nuclei_resume_budget_keep", saved_minutes), default="yes"
+                )
+            else:
+                keep_budget = self.ask_yes_no(
+                    self.ui.t("nuclei_resume_budget_keep_unlimited"), default="yes"
+                )
+            if not keep_budget:
+                new_minutes = self.ask_number(
+                    self.ui.t("nuclei_resume_budget_prompt"),
+                    default=saved_minutes,
+                    min_val=0,
+                    max_val=1440,
+                )
+                if isinstance(new_minutes, str):
+                    max_runtime_minutes = 0
+                else:
+                    max_runtime_minutes = int(new_minutes)
+        if max_runtime_minutes < 0:
+            max_runtime_minutes = 0
+        if isinstance(resume_state, dict):
+            nuclei_cfg["max_runtime_minutes"] = int(max_runtime_minutes)
+            resume_state["nuclei"] = nuclei_cfg
         max_runtime_s = max_runtime_minutes * 60 if max_runtime_minutes else None
 
         self.ui.print_status(self.ui.t("nuclei_resume_running"), "INFO")
@@ -3569,7 +3603,13 @@ class InteractiveNetworkAuditor:
 
         return bool(resume_result.get("success"))
 
-    def resume_nuclei_from_path(self, resume_path: str) -> bool:
+    def resume_nuclei_from_path(
+        self,
+        resume_path: str,
+        *,
+        override_max_runtime_minutes: Optional[int] = None,
+        prompt_budget_override: bool = False,
+    ) -> bool:
         if resume_path and os.path.isdir(resume_path):
             resume_path = os.path.join(resume_path, "nuclei_resume.json")
         resume_state = self._load_nuclei_resume_state(resume_path)
@@ -3583,6 +3623,8 @@ class InteractiveNetworkAuditor:
             output_dir=output_dir,
             use_existing_results=False,
             save_after=True,
+            override_max_runtime_minutes=override_max_runtime_minutes,
+            prompt_budget_override=prompt_budget_override,
         )
 
     def resume_nuclei_interactive(self) -> bool:
@@ -3598,4 +3640,4 @@ class InteractiveNetworkAuditor:
             self.ui.print_status(self.ui.t("nuclei_resume_cancel"), "INFO")
             return False
         resume_path = candidates[choice]["path"]
-        return self.resume_nuclei_from_path(resume_path)
+        return self.resume_nuclei_from_path(resume_path, prompt_budget_override=True)
