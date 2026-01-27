@@ -11,6 +11,7 @@ import ipaddress
 import json
 import math
 import os
+import re
 import shutil
 import signal
 import socket
@@ -18,7 +19,7 @@ import subprocess
 import sys
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
 
 from redaudit.utils.constants import (
@@ -3318,6 +3319,10 @@ class InteractiveNetworkAuditor:
         if not isinstance(snapshot, dict):
             snapshot = {}
         self.config = snapshot.copy()
+        if not self.config.get("target_networks"):
+            resume_targets = self.config.get("targets") or data.get("targets") or []
+            if isinstance(resume_targets, list) and resume_targets:
+                self.config["target_networks"] = list(resume_targets)
         self.config["output_dir"] = output_dir
         self.config["_actual_output_dir"] = output_dir
         self.config["lang"] = self.config.get("lang") or self.lang
@@ -3330,6 +3335,48 @@ class InteractiveNetworkAuditor:
         self.encryption_enabled = False
         self.encryption_key = None
         return True
+
+    @staticmethod
+    def _parse_duration_to_timedelta(value: Any) -> Optional[timedelta]:
+        if isinstance(value, timedelta):
+            return value
+        if isinstance(value, (int, float)):
+            return timedelta(seconds=int(value))
+        if not isinstance(value, str):
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        days = 0
+        time_part = text
+        day_match = re.match(r"^(\d+)\s+day[s]?,\s*(\d+:\d{2}:\d{2})$", text)
+        if day_match:
+            days = int(day_match.group(1))
+            time_part = day_match.group(2)
+        time_match = re.match(r"^(\d+):([0-5]\d):([0-5]\d)$", time_part)
+        if not time_match:
+            return None
+        hours = int(time_match.group(1))
+        minutes = int(time_match.group(2))
+        seconds = int(time_match.group(3))
+        return timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
+
+    def _resume_scan_start_time(
+        self, resume_finished_at: datetime, resume_elapsed: Optional[timedelta]
+    ) -> Optional[datetime]:
+        previous_duration = self._parse_duration_to_timedelta(
+            (self.results.get("summary") or {}).get("duration")
+        )
+        total = None
+        if previous_duration and resume_elapsed:
+            total = previous_duration + resume_elapsed
+        elif previous_duration:
+            total = previous_duration
+        elif resume_elapsed:
+            total = resume_elapsed
+        if total is None:
+            return self.scan_start_time
+        return resume_finished_at - total
 
     def _append_nuclei_output(self, source_path: str, dest_path: str) -> None:
         if not source_path or not os.path.exists(source_path):
@@ -3406,6 +3453,7 @@ class InteractiveNetworkAuditor:
         max_runtime_s = max_runtime_minutes * 60 if max_runtime_minutes else None
 
         self.ui.print_status(self.ui.t("nuclei_resume_running"), "INFO")
+        resume_started_at = datetime.now()
         resume_output_file = os.path.join(output_dir, "nuclei_output_resume.json")
         if os.path.exists(resume_output_file):
             try:
@@ -3586,7 +3634,10 @@ class InteractiveNetworkAuditor:
 
         if save_after:
             hosts = self.results.get("hosts") or []
-            generate_summary(self.results, self.config, hosts, hosts, datetime.now())
+            resume_finished_at = datetime.now()
+            resume_elapsed = resume_finished_at - resume_started_at
+            scan_start_time = self._resume_scan_start_time(resume_finished_at, resume_elapsed)
+            generate_summary(self.results, self.config, hosts, hosts, scan_start_time)
             self.save_results(partial=bool(resume_result.get("partial")))
 
         if resume_result.get("budget_exceeded"):

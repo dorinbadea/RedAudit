@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.5] - 2026-01-28
+
+### Fixed
+
+- **Nuclei Resume Metadata**: Resume runs now preserve target networks and total duration in report summaries/manifests.
+
 ## [4.19.4] - 2026-01-27
 
 ### Improved

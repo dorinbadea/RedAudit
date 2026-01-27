@@ -1002,6 +1002,30 @@ def test_load_resume_context_detects_reports():
         assert auditor.config["save_txt_report"] is True
 
 
+def test_load_resume_context_restores_target_networks():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        report_path = os.path.join(tmpdir, "redaudit_20260101_000000.json")
+        payload = {
+            "config_snapshot": {"targets": ["10.0.0.0/24"]},
+            "targets": ["10.0.0.0/24"],
+            "hosts": [],
+        }
+        with open(report_path, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle)
+        assert auditor._load_resume_context(tmpdir) is True
+        assert auditor.config["target_networks"] == ["10.0.0.0/24"]
+
+
+def test_parse_duration_to_timedelta():
+    auditor = _make_resume_auditor()
+    parsed = auditor._parse_duration_to_timedelta("1 day, 2:03:04")
+    assert parsed and int(parsed.total_seconds()) == 93784
+    parsed = auditor._parse_duration_to_timedelta("0:00:10")
+    assert parsed and int(parsed.total_seconds()) == 10
+    assert auditor._parse_duration_to_timedelta("not-a-duration") is None
+
+
 def test_load_resume_context_missing_report():
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -1081,6 +1105,74 @@ def test_resume_nuclei_from_state_updates_results():
         assert auditor.results["nuclei"]["findings"] == 1
         assert "resume_pending" not in auditor.results["nuclei"]
         assert not os.path.exists(resume_path)
+
+
+def test_resume_nuclei_from_state_preserves_duration_and_targets():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        auditor.results = {
+            "hosts": [],
+            "vulnerabilities": [],
+            "nuclei": {"findings": 0},
+            "summary": {"duration": "0:10:00"},
+        }
+        auditor.config = {"dry_run": False, "target_networks": ["10.0.0.0/24"]}
+        auditor.proxy_manager = None
+        auditor.save_results = MagicMock()
+
+        def _fake_nuclei_scan(**_kwargs):
+            return {
+                "findings": [],
+                "success": True,
+                "pending_targets": [],
+                "raw_output_file": _kwargs.get("output_file"),
+            }
+
+        def _duration_seconds(value: str) -> int:
+            if not value:
+                return 0
+            days = 0
+            time_part = value
+            if "day" in value:
+                day_part, time_part = value.split(",", 1)
+                days = int(day_part.split()[0])
+            hours, minutes, seconds = time_part.strip().split(":")
+            return days * 86400 + int(hours) * 3600 + int(minutes) * 60 + int(seconds)
+
+        with (
+            patch("redaudit.core.auditor.run_nuclei_scan", side_effect=_fake_nuclei_scan),
+            patch(
+                "redaudit.core.verify_vuln.filter_nuclei_false_positives",
+                lambda findings, *_a, **_k: (findings, []),
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+        ):
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=True,
+            )
+        assert ok is True
+        assert auditor.results["targets"] == ["10.0.0.0/24"]
+        assert _duration_seconds(auditor.results["summary"]["duration"]) >= 600
 
 
 def test_resume_nuclei_from_state_overrides_budget():

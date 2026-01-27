@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.5] - 2026-01-28
+
+### Corregido
+
+- **Metadatos en reanudacion de Nuclei**: Las reanudaciones preservan redes objetivo y duracion total en resumen/manifiesto.
+
 ## [4.19.4] - 2026-01-27
 
 ### Mejorado

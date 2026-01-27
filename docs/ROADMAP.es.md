@@ -49,6 +49,13 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.5 Metadatos de reanudacion de Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Restauracion de redes objetivo** | Hecho (v4.19.5) | Las reanudaciones preservan redes objetivo en resumen/manifiesto. |
+| **Preservacion de duracion** | Hecho (v4.19.5) | El resumen conserva la duracion total en lugar de reiniciar a cero. |
+
 ### v4.19.4 Control de presupuesto en reanudacion de Nuclei (Hecho)
 
 | Funcionalidad | Estado | Descripción |

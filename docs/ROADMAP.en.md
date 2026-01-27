@@ -49,6 +49,13 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.5 Nuclei Resume Metadata Alignment (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Resume Targets Restore** | Done (v4.19.5) | Resume runs now preserve target networks in report summaries/manifests. |
+| **Resume Duration Preservation** | Done (v4.19.5) | Resume summaries retain total scan duration instead of resetting to zero. |
+
 ### v4.19.4 Nuclei Resume Budget Control (Done)
 
 | Feature | Status | Description |
