@@ -70,6 +70,27 @@ def test_lookup_vendor_online_short_mac(monkeypatch):
     assert oui_lookup.lookup_vendor_online("aa:bb") is None
 
 
+def test_lookup_vendor_online_ext_prefix_longer_than_mac(monkeypatch):
+    class _Response:
+        status_code = 404
+        text = "Not found"
+
+    oui_lookup.clear_cache()
+    oui_lookup._LAST_REQUEST_TIME = 0.0
+
+    monkeypatch.setattr(oui_lookup, "_OFFLINE_CACHE", {})
+    monkeypatch.setattr(oui_lookup, "_OFFLINE_CACHE_EXT", {36: {"AABBCCDDE": "Vendor"}})
+
+    monkeypatch.setattr(time, "time", lambda: 1000.0)
+    monkeypatch.setattr(time, "sleep", lambda *_args, **_kwargs: None)
+
+    dummy_requests = types.SimpleNamespace(get=lambda *_args, **_kwargs: _Response())
+    monkeypatch.setitem(sys.modules, "requests", dummy_requests)
+
+    vendor = oui_lookup.lookup_vendor_online("aa:bb:cc:dd")
+    assert vendor is None
+
+
 def test_lookup_vendor_online_request_exception(monkeypatch):
     class _Requests:
         def get(self, *_args, **_kwargs):

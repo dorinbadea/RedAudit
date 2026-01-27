@@ -192,6 +192,30 @@ class TestSNMPScanner(unittest.TestCase):
         self.assertEqual(scanner.auth_protocol_map("bogus"), mock_pysnmp.usmHMACSHAAuthProtocol)
         self.assertEqual(scanner.priv_protocol_map("bogus"), mock_pysnmp.usmAesCfb128Protocol)
 
+    def test_protocol_map_defaults_and_normalize(self):
+        scanner = SNMPScanner(self.credential)
+        self.assertEqual(scanner._normalize_proto_name(object()), "")
+        self.assertEqual(scanner.auth_protocol_map(None), auth_snmp.usmHMACSHAAuthProtocol)
+        self.assertEqual(scanner.priv_protocol_map(None), auth_snmp.usmAesCfb128Protocol)
+
+    def test_protocol_map_known_but_unsupported_warns(self):
+        scanner = SNMPScanner(self.credential)
+        with patch.object(auth_snmp, "logger") as mock_logger:
+            with patch.object(auth_snmp.hlapi, "usmHMACSHA224AuthProtocol", None):
+                self.assertEqual(
+                    scanner.auth_protocol_map("sha-224"),
+                    auth_snmp.usmHMACSHAAuthProtocol,
+                )
+                self.assertTrue(mock_logger.warning.called)
+
+        with patch.object(auth_snmp, "logger") as mock_logger:
+            with patch.object(auth_snmp.hlapi, "usmAesCfb192Protocol", None):
+                self.assertEqual(
+                    scanner.priv_protocol_map("aes_192"),
+                    auth_snmp.usmAesCfb128Protocol,
+                )
+                self.assertTrue(mock_logger.warning.called)
+
     @patch("redaudit.core.auth_snmp.nextCmd")
     def test_walk_oid_handles_exception(self, mock_nextCmd):
         scanner = SNMPScanner(self.credential)
@@ -354,6 +378,20 @@ def test_walk_arp_prettyprint_exception_and_walk_failure(mock_nextCmd):
 
     mock_nextCmd.side_effect = RuntimeError("boom")
     assert scanner._walk_arp(MagicMock()) == []
+
+
+@patch("redaudit.core.auth_snmp.nextCmd")
+def test_walk_arp_prettyprint_short_value(mock_nextCmd):
+    scanner = SNMPScanner(Credential(username="user", password="pass"))
+
+    class _Val:
+        def prettyPrint(self):
+            return "0x1234"
+
+    arp_row = [(None, "1"), (None, _Val()), (None, "10.0.0.1"), (None, "3")]
+    mock_nextCmd.return_value = iter([(None, 0, 0, arp_row)])
+    res = scanner._walk_arp(MagicMock())
+    assert res[0]["mac"] == "1234"
 
 
 if __name__ == "__main__":

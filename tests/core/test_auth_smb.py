@@ -1,6 +1,8 @@
+import builtins
+import importlib.util
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
-import sys
 
 # Mock Impacket modules before importing SMBScanner
 sys.modules["impacket"] = MagicMock()
@@ -153,3 +155,23 @@ class TestSMBScanner(unittest.TestCase):
         self.assertEqual(len(info.shares), 1)
         self.assertEqual(info.shares[0]["name"], "MyShare")
         self.assertEqual(info.shares[0]["remark"], "My Remark")
+
+
+def test_auth_smb_import_error_fallback():
+    import redaudit.core.auth_smb as auth_module
+
+    module_path = auth_module.__file__
+    spec = importlib.util.spec_from_file_location("auth_smb_no_impacket", module_path)
+    loaded = importlib.util.module_from_spec(spec)
+    orig_import = builtins.__import__
+
+    def _fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name.startswith("impacket"):
+            raise ImportError("no impacket")
+        return orig_import(name, globals, locals, fromlist, level)
+
+    with patch("builtins.__import__", side_effect=_fake_import):
+        spec.loader.exec_module(loaded)
+
+    assert loaded.IMPACKET_AVAILABLE is False
+    assert loaded.SMBConnection is object

@@ -287,3 +287,67 @@ def test_generate_diff_report_error_on_missing_file(tmp_path):
 
     result = diff.generate_diff_report(old_path, new_path)
     assert result is None
+
+
+def test_format_diff_text_includes_closed_ports():
+    """Test line 357: closed ports in text report."""
+    diff_report = {
+        "generated_at": "2025-01-01",
+        "old_report": {"path": "old.json", "timestamp": "t1", "total_hosts": 1},
+        "new_report": {"path": "new.json", "timestamp": "t2", "total_hosts": 1},
+        "changes": {
+            "new_hosts": [],
+            "removed_hosts": [],
+            "changed_hosts": [
+                {
+                    "ip": "10.0.0.1",
+                    "hostname": "server1",
+                    "new_ports": [],
+                    "closed_ports": [{"port": 22, "service": "ssh"}],
+                    "new_vulnerabilities": [],
+                }
+            ],
+            "web_vuln_changes": [],
+        },
+        "summary": {
+            "new_hosts_count": 0,
+            "removed_hosts_count": 0,
+            "changed_hosts_count": 1,
+            "total_new_ports": 0,
+            "total_closed_ports": 1,
+            "total_new_vulnerabilities": 0,
+            "web_vuln_delta": 0,
+            "has_changes": True,
+        },
+    }
+
+    text = diff.format_diff_text(diff_report)
+    assert "[-] Port 22/ssh" in text
+
+
+def test_format_diff_markdown_no_changes_message():
+    """Test lines 508-509: markdown no-changes summary."""
+    diff_report = {
+        "generated_at": "2025-01-01",
+        "old_report": {"path": "old.json", "timestamp": "t1", "total_hosts": 1},
+        "new_report": {"path": "new.json", "timestamp": "t2", "total_hosts": 1},
+        "changes": {
+            "new_hosts": [],
+            "removed_hosts": [],
+            "changed_hosts": [],
+            "web_vuln_changes": [],
+        },
+        "summary": {
+            "new_hosts_count": 0,
+            "removed_hosts_count": 0,
+            "changed_hosts_count": 0,
+            "total_new_ports": 0,
+            "total_closed_ports": 0,
+            "total_new_vulnerabilities": 0,
+            "web_vuln_delta": 0,
+            "has_changes": False,
+        },
+    }
+
+    md = diff.format_diff_markdown(diff_report)
+    assert "> No changes detected between the two reports." in md

@@ -310,6 +310,13 @@ def test_configure_from_args_sets_nuclei_max_runtime():
     assert app.config["nuclei_max_runtime"] == 45
 
 
+def test_configure_from_args_invalid_nuclei_max_runtime():
+    app = _DummyApp()
+    args = _base_args(nuclei_max_runtime=-5)
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["nuclei_max_runtime"] == 0
+
+
 def test_configure_from_args_invalid_dead_host_retries():
     app = _DummyApp()
     args = _base_args(dead_host_retries=-1)
@@ -415,6 +422,66 @@ def test_main_resume_uses_budget_override(monkeypatch):
     assert captured["override"] == 15
 
 
+def test_main_resume_latest_uses_first_candidate(monkeypatch):
+    captured = {}
+
+    class _ResumeAuditor(_DummyAuditor):
+        def __init__(self):
+            super().__init__()
+            self.lang = "en"
+
+        def _find_nuclei_resume_candidates(self, _base_dir):
+            return [{"path": "/tmp/a"}, {"path": "/tmp/b"}]
+
+        def resume_nuclei_from_path(self, resume_path, **_kwargs):
+            captured["path"] = resume_path
+            return True
+
+    args = _base_args(target=None, nuclei_resume_latest=True)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _ResumeAuditor)
+    monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(sys, "argv", ["redaudit", "--nuclei-resume-latest"])
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+
+    assert excinfo.value.code == 0
+    assert captured["path"] == "/tmp/a"
+
+
+def test_main_resume_latest_no_candidates_exits(monkeypatch):
+    captured = {}
+
+    class _ResumeAuditor(_DummyAuditor):
+        def __init__(self):
+            super().__init__()
+            self.lang = "en"
+            self._statuses = []
+            captured["app"] = self
+
+        def _find_nuclei_resume_candidates(self, _base_dir):
+            return []
+
+        def print_status(self, message, _level="INFO"):
+            self._statuses.append(message)
+
+        def resume_nuclei_from_path(self, *_args, **_kwargs):
+            raise AssertionError("resume should not be called without candidates")
+
+    args = _base_args(target=None, nuclei_resume_latest=True)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _ResumeAuditor)
+    monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(sys, "argv", ["redaudit", "--nuclei-resume-latest"])
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+
+    assert excinfo.value.code == 1
+    assert "nuclei_resume_none" in captured["app"]._statuses
+
+
 def test_main_proxy_success(monkeypatch):
     class _Proxy:
         def __init__(self, _url):
@@ -433,6 +500,31 @@ def test_main_proxy_success(monkeypatch):
     monkeypatch.setattr("redaudit.core.proxy.is_proxychains_available", lambda: True)
     with pytest.raises(SystemExit):
         cli.main()
+
+
+def test_main_menu_resume_nuclei_interactive(monkeypatch):
+    captured = {}
+
+    class _ResumeMenuAuditor(_DummyAuditor):
+        def __init__(self):
+            super().__init__()
+            self.lang = "en"
+            self.choices = [4, 0]
+
+        def resume_nuclei_interactive(self):
+            captured["called"] = True
+
+    args = _base_args(target=None)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _ResumeMenuAuditor)
+    monkeypatch.setattr("redaudit.core.updater.interactive_update_check", lambda **_k: False)
+    monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+
+    assert excinfo.value.code == 0
+    assert captured.get("called") is True
 
 
 def test_main_interactive_start_scan_success(monkeypatch):
