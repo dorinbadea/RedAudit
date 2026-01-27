@@ -385,6 +385,36 @@ def test_main_generate_credentials_template(monkeypatch):
         cli.main()
 
 
+def test_main_resume_uses_budget_override(monkeypatch):
+    captured = {}
+
+    class _ResumeAuditor(_DummyAuditor):
+        def __init__(self):
+            super().__init__()
+            self.lang = "en"
+
+        def resume_nuclei_from_path(self, resume_path, **kwargs):
+            captured["path"] = resume_path
+            captured["override"] = kwargs.get("override_max_runtime_minutes")
+            return True
+
+    args = _base_args(target=None, nuclei_resume="/tmp/scan", nuclei_max_runtime=15)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _ResumeAuditor)
+    monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["redaudit", "--nuclei-resume", "/tmp/scan", "--nuclei-max-runtime", "15"],
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+
+    assert excinfo.value.code == 0
+    assert captured["override"] == 15
+
+
 def test_main_proxy_success(monkeypatch):
     class _Proxy:
         def __init__(self, _url):
