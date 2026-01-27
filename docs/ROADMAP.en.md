@@ -49,6 +49,14 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.4 Nuclei Resume Budget Control (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Resume Budget Override** | Done (v4.19.4) | Resume prompts let operators change or disable the saved runtime budget. |
+| **CLI Resume Override** | Done (v4.19.4) | `--nuclei-max-runtime` applies when resuming from CLI. |
+| **Budget-Aware Batching** | Done (v4.19.4) | Budget runs skip starting a new batch if remaining time cannot cover the estimated batch runtime. |
+
 ### v4.19.3 Audit Follow-ups (Done)
 
 | Feature | Status | Description |

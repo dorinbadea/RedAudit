@@ -317,8 +317,9 @@ reintentos, evitando perder cobertura en objetivos lentos.
 Si defines un presupuesto de tiempo para Nuclei (asistente o `--nuclei-max-runtime`), el presupuesto es un **limite total de
 tiempo real para toda la fase de Nuclei** (no por lote). Sin presupuesto, Nuclei puede ejecutar lotes en paralelo (hasta 4;
 se limita cuando los timeouts son largos). Cuando hay presupuesto, RedAudit ejecuta los lotes de forma secuencial para
-respetar el limite. Cada lote se limita al tiempo restante; si se agota en mitad de un lote, el lote se
-detiene y todos los objetivos restantes (incluido el lote actual) se guardan en `nuclei_resume.json` y `nuclei_pending.txt`.
+respetar el limite. Antes de iniciar un nuevo lote, RedAudit compara el tiempo restante con el tiempo estimado del lote; si
+es insuficiente, se aplaza el lote y los objetivos pendientes se guardan en `nuclei_resume.json` y `nuclei_pending.txt`.
+Si se agota el presupuesto a mitad de un lote (caso raro), el lote actual también se aplaza.
 
 Se ofrece una pregunta para reanudar con una cuenta atras de 15 segundos; si no respondes, **la auditoria continua tras
 Nuclei** y la reanudacion queda disponible.
@@ -334,7 +335,8 @@ redaudit --nuclei-resume /ruta/a/nuclei_resume.json
 redaudit --nuclei-resume-latest
 ```
 
-Las reanudaciones actualizan la misma carpeta del escaneo y regeneran los informes.
+Las reanudaciones actualizan la misma carpeta del escaneo y regeneran los informes. La reanudacion usa el presupuesto
+guardado salvo que lo sobrescribas (prompt en wizard o `--nuclei-max-runtime`; `0` desactiva el presupuesto).
 
 ### Perfiles y Cobertura de Nuclei (v4.17+)
 

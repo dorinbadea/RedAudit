@@ -322,8 +322,9 @@ dropping coverage on slow targets.
 If you set a Nuclei runtime budget (wizard or `--nuclei-max-runtime`), the budget is a **total wall-clock limit for the
 entire Nuclei phase** (not per batch). Without a budget, Nuclei batches may run in parallel (up to 4; clamped for long
 timeouts). When a budget is set, RedAudit runs Nuclei batches sequentially to respect the cap.
-Each batch is also capped to the remaining budget; if the budget is reached mid-batch, the batch stops and all remaining
-targets (including the current batch) are written to `nuclei_resume.json` and `nuclei_pending.txt`.
+Before starting a new batch, RedAudit checks the remaining budget against the estimated batch runtime; if it is too low,
+the batch is deferred and pending targets are written to `nuclei_resume.json` and `nuclei_pending.txt`. If the budget is
+reached mid-batch (rare edge case), the current batch is also deferred.
 
 You will be prompted to resume immediately with a 15-second countdown; if you do nothing, **the audit continues after
 Nuclei** and the resume remains available.
@@ -339,7 +340,8 @@ redaudit --nuclei-resume /path/to/nuclei_resume.json
 redaudit --nuclei-resume-latest
 ```
 
-Resumed runs update the same scan folder and refresh reports in place.
+Resumed runs update the same scan folder and refresh reports in place. The resume uses the saved budget unless you
+override it (wizard prompt or `--nuclei-max-runtime`; `0` disables the budget).
 
 ### Nuclei Profiles and Coverage (v4.17+)
 

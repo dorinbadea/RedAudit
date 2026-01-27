@@ -49,6 +49,14 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.4 Control de presupuesto en reanudacion de Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Override de presupuesto en reanudacion** | Hecho (v4.19.4) | El prompt de reanudacion permite cambiar o desactivar el presupuesto guardado. |
+| **Override en CLI** | Hecho (v4.19.4) | `--nuclei-max-runtime` aplica al reanudar desde CLI. |
+| **Lotes con presupuesto** | Hecho (v4.19.4) | Con presupuesto, se evita iniciar un lote si el tiempo restante no cubre el tiempo estimado. |
+
 ### v4.19.3 Ajustes de auditoría (Hecho)
 
 | Funcionalidad | Estado | Descripción |
