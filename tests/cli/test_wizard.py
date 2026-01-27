@@ -814,6 +814,28 @@ def test_format_menu_option_colors():
     assert wiz._format_menu_option(colored) == colored
 
 
+def test_format_menu_option_avoids_no_prefix_match():
+    wiz = _UIWizard()
+    wiz.ui.colors["OKGREEN"] = "<G>"
+    wiz.ui.colors["FAIL"] = "<F>"
+    wiz.ui.colors["OKBLUE"] = "<B>"
+    wiz.ui.colors["DIM"] = "<D>"
+    wiz.ui.colors["BOLD"] = "<BO>"
+    wiz.ui.colors["CYAN"] = "<C>"
+    wiz.ui.colors["ENDC"] = "<E>"
+    labels = {
+        "yes_default": "Si (por defecto)",
+        "yes_option": "Si",
+        "no_default": "No (por defecto)",
+        "no_option": "No",
+        "wizard_go_back": "Cancelar",
+        "go_back": "Volver",
+    }
+    wiz.ui.t.side_effect = lambda k, *a: labels.get(k, str(k))
+    assert wiz._format_menu_option("Normal - Equilibrio") == "<B>Normal - Equilibrio<E>"
+    assert wiz._format_menu_option("No") == "<D><F>No<E>"
+
+
 def test_format_menu_option_empty():
     wiz = _UIWizard()
     assert wiz._format_menu_option("") == ""

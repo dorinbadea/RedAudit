@@ -334,6 +334,17 @@ class Wizard:
             return option
         stripped = option.strip()
 
+        def _label_matches(value: str, label: str) -> bool:
+            if not label:
+                return False
+            if value == label:
+                return True
+            if not value.startswith(label):
+                return False
+            if len(value) == len(label):
+                return True
+            return not value[len(label)].isalnum()
+
         # Define label-color mappings
         labels = (
             (self.ui.t("yes_default"), "OKGREEN", True),
@@ -346,7 +357,7 @@ class Wizard:
 
         # Check for matching labels
         for label, color, is_default in labels:
-            if label and stripped.startswith(label):
+            if _label_matches(stripped, label):
                 dim = self.ui.colors.get("DIM", "")
                 bold = self.ui.colors.get("BOLD", "")
                 if color == "WARNING":
