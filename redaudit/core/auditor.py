@@ -3424,6 +3424,20 @@ class InteractiveNetworkAuditor:
         if not isinstance(pending_targets, list) or not pending_targets:
             self.ui.print_status(self.ui.t("nuclei_resume_none"), "INFO")
             return False
+        if not self.config.get("target_networks"):
+            resume_targets = self.config.get("targets") or self.results.get("targets") or []
+            if isinstance(resume_targets, list) and resume_targets:
+                self.config["target_networks"] = list(resume_targets)
+        if not self.config.get("_actual_output_dir"):
+            self.config["_actual_output_dir"] = output_dir
+
+        try:
+            resume_total_targets = int(resume_state.get("total_targets") or 0)
+        except Exception:
+            resume_total_targets = 0
+        if resume_total_targets < len(pending_targets):
+            resume_total_targets = len(pending_targets)
+        completed_offset = max(0, resume_total_targets - len(pending_targets))
 
         nuclei_cfg = resume_state.get("nuclei") or {}
         profile = nuclei_cfg.get("profile") or "balanced"
@@ -3466,6 +3480,16 @@ class InteractiveNetworkAuditor:
             resume_state["nuclei"] = nuclei_cfg
         max_runtime_s = max_runtime_minutes * 60 if max_runtime_minutes else None
 
+        session_log_started = False
+        try:
+            from redaudit.utils.session_log import start_session_log
+
+            resume_stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            session_log_started = start_session_log(output_dir, f"resume_{resume_stamp}")
+        except Exception:
+            if self.logger:
+                self.logger.debug("Failed to start resume session log", exc_info=True)
+
         self.ui.print_status(self.ui.t("nuclei_resume_running"), "INFO")
         resume_started_at = datetime.now()
         resume_output_file = os.path.join(output_dir, "nuclei_output_resume.json")
@@ -3485,6 +3509,7 @@ class InteractiveNetworkAuditor:
             "max_runtime_s": max_runtime_s,
             "output_file": resume_output_file,
             "append_output": False,
+            "targets_file": os.path.join(output_dir, "nuclei_pending.txt"),
             "logger": self.logger,
             "dry_run": bool(self.config.get("dry_run", False)),
             "print_status": self.ui.print_status,
@@ -3504,8 +3529,9 @@ class InteractiveNetworkAuditor:
             try:
                 from rich.progress import Progress
 
-                total_targets = len(pending_targets)
-                total_batches = max(1, int(math.ceil(total_targets / max(1, int(batch_size)))))
+                pending_total = len(pending_targets)
+                total_targets = resume_total_targets or pending_total
+                total_batches = max(1, int(math.ceil(pending_total / max(1, int(batch_size)))))
                 progress_start_t = time.time()
                 self._nuclei_progress_state = {
                     "total_targets": int(total_targets),
@@ -3526,13 +3552,16 @@ class InteractiveNetworkAuditor:
                         total=total_targets,
                         eta_upper=self._format_eta(total_batches * int(timeout_s)),
                         eta_est="",
-                        detail=f"{total_targets} targets",
+                        detail=f"{pending_total} pending",
                     )
+                    total_hint = total_targets
+                    offset = completed_offset
+                    pending_label = "resume " if offset else ""
                     resume_result = run_nuclei_scan(
                         **run_kwargs,
                         progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
-                            c,
-                            t,
+                            float(c) + offset,
+                            total_hint,
                             e,
                             progress,
                             task,
@@ -3540,7 +3569,7 @@ class InteractiveNetworkAuditor:
                             int(timeout_s),
                             total_targets,
                             int(batch_size),
-                            detail=d,
+                            detail=f"{pending_label}{d}" if d else None,
                         ),
                         use_internal_progress=False,
                     )
@@ -3648,10 +3677,18 @@ class InteractiveNetworkAuditor:
 
         if save_after:
             hosts = self.results.get("hosts") or []
+            host_ips = []
+            for host in hosts:
+                if isinstance(host, dict):
+                    ip = host.get("ip")
+                else:
+                    ip = getattr(host, "ip", None)
+                if ip:
+                    host_ips.append(ip)
             resume_finished_at = datetime.now()
             resume_elapsed = resume_finished_at - resume_started_at
             scan_start_time = self._resume_scan_start_time(resume_finished_at, resume_elapsed)
-            generate_summary(self.results, self.config, hosts, hosts, scan_start_time)
+            generate_summary(self.results, self.config, host_ips, hosts, scan_start_time)
             self.save_results(partial=bool(resume_result.get("partial")))
 
         if resume_result.get("budget_exceeded"):
@@ -3665,6 +3702,17 @@ class InteractiveNetworkAuditor:
             )
         if pending_after:
             self.ui.print_status(self.ui.t("nuclei_resume_saved", resume_path), "WARNING")
+
+        if session_log_started:
+            try:
+                from redaudit.utils.session_log import stop_session_log
+
+                session_log_path = stop_session_log()
+                if session_log_path and self.logger:
+                    self.logger.info("Session log saved: %s", session_log_path)
+            except Exception:
+                if self.logger:
+                    self.logger.debug("Failed to stop resume session log", exc_info=True)
 
         return bool(resume_result.get("success"))
 

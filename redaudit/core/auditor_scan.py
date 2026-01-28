@@ -1077,8 +1077,10 @@ class AuditorScan:
         self._set_ui_detail(f"[deep] {safe_ip} tcp")
         deep_obj: Dict[str, Any] = {"strategy": "adaptive_v2.8", "commands": []}
 
+        strategy_label = self.ui.t("deep_strategy_adaptive")
+        strategy_label = re.sub(r"\s*\([^)]*\)", "", strategy_label).strip()
         self.ui.print_status(
-            self.ui.t("deep_identity_start", safe_ip, self.ui.t("deep_strategy_adaptive")),
+            self.ui.t("deep_identity_start", safe_ip, strategy_label),
             "WARNING",
         )
 
