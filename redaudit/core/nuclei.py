@@ -694,8 +694,8 @@ def run_nuclei_scan(
             for idx, batch in enumerate(batches, start=1):
                 if runtime_budget_s is not None:
                     elapsed = time.time() - budget_start
-                    remaining = runtime_budget_s - elapsed
-                    if remaining <= 0:
+                    remaining_budget = runtime_budget_s - elapsed
+                    if remaining_budget <= 0:
                         remaining_targets_budget: List[str] = []
                         for remain_batch in batches[idx - 1 :]:
                             remaining_targets_budget.extend(remain_batch)
@@ -705,7 +705,7 @@ def run_nuclei_scan(
                         result["partial"] = True
                         break
                     expected_batch_timeout = _estimate_batch_timeout(batch)
-                    if remaining < expected_batch_timeout:
+                    if remaining_budget < expected_batch_timeout:
                         if print_status:
                             print_status(
                                 "[nuclei] budget too low for next batch; deferring remaining targets",
