@@ -1534,7 +1534,12 @@ def test_discover_networks_parallel_merge(monkeypatch):
     monkeypatch.setattr(
         net_discovery, "upnp_discover", lambda *_a, **_k: {"devices": [{"ip": "10.0.0.7"}]}
     )
-    monkeypatch.setattr(net_discovery, "run_redteam_discovery", lambda *_a, **_k: None)
+    redteam_kwargs = {}
+
+    def _run_redteam(*_a, **_k):
+        redteam_kwargs.update(_k)
+
+    monkeypatch.setattr(net_discovery, "run_redteam_discovery", _run_redteam)
 
     import redaudit.core.hyperscan as hyperscan
 
@@ -1554,6 +1559,7 @@ def test_discover_networks_parallel_merge(monkeypatch):
         ["10.0.0.0/24"],
         protocols=["dhcp", "routing", "fping", "netbios", "arp", "mdns", "upnp", "hyperscan"],
         redteam=True,
+        exclude_ips={"10.0.0.4"},
         progress_callback=progress_cb,
         logger=logger,
     )
@@ -1562,6 +1568,7 @@ def test_discover_networks_parallel_merge(monkeypatch):
     assert "l2_warning_note" in result
     assert result["hyperscan_udp_ports"]["10.0.0.9"] == [161]
     assert "potential_backdoors" in result
+    assert redteam_kwargs["exclude_ips"] == {"10.0.0.4"}
     assert calls
 
 

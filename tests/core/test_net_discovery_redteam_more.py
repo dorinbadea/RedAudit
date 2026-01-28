@@ -261,6 +261,21 @@ def test_filter_targets_helpers():
     assert redteam._filter_targets_by_any_port(targets, open_tcp, ["bad"], 1) == ["1.1.1.1"]
 
 
+def test_gather_redteam_targets_excludes_ips():
+    discovery = {
+        "alive_hosts": ["10.0.0.1", "10.0.0.2"],
+        "arp_hosts": [{"ip": "10.0.0.3"}],
+        "netbios_hosts": [{"ip": "10.0.0.4"}],
+        "dhcp_servers": [{"ip": "10.0.0.5"}],
+    }
+    result = redteam._gather_redteam_targets(
+        discovery,
+        max_targets=10,
+        exclude_ips={"10.0.0.2", "10.0.0.3"},
+    )
+    assert result == ["10.0.0.1", "10.0.0.4", "10.0.0.5"]
+
+
 def test_redteam_snmp_walk_error_and_timeout(monkeypatch):
     monkeypatch.setattr(redteam.shutil, "which", lambda _name: "/usr/bin/snmpwalk")
 
