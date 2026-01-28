@@ -125,9 +125,7 @@ def run_redteam_discovery(
     active_l2 = bool(options.get("active_l2", False))
 
     exclude_set = {ip for ip in (exclude_ips or set()) if isinstance(ip, str) and ip}
-    target_ips = _gather_redteam_targets(
-        result, max_targets=max_targets, exclude_ips=exclude_set
-    )
+    target_ips = _gather_redteam_targets(result, max_targets=max_targets, exclude_ips=exclude_set)
 
     rustscan_res = {}
     if options.get("use_masscan", True):
