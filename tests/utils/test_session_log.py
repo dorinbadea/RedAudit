@@ -61,6 +61,22 @@ class TestTeeStream(unittest.TestCase):
         stream.write("\n")
         self.assertEqual(log.getvalue(), "ab\n")
 
+    def test_isatty_delegates_to_terminal(self):
+        terminal = MagicMock()
+        terminal.isatty.return_value = True
+        log = io.StringIO()
+        lock = MagicMock()
+        stream = TeeStream(terminal, log, lock, mode="lines")
+        self.assertTrue(stream.isatty())
+
+    def test_isatty_handles_exception(self):
+        terminal = MagicMock()
+        terminal.isatty.side_effect = RuntimeError("boom")
+        log = io.StringIO()
+        lock = MagicMock()
+        stream = TeeStream(terminal, log, lock, mode="lines")
+        self.assertFalse(stream.isatty())
+
 
 def test_session_log_handler_emit_handles_error():
     logger = MagicMock()

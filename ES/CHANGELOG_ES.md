@@ -10,6 +10,20 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.8] - 2026-01-29
+
+### Corregido
+
+- **Resumenes en reanudacion**: Las reanudaciones ahora cuentan hosts desde resultados existentes y preservan redes objetivo en los resumenes.
+- **Registro de objetivos Nuclei**: Las reanudaciones ya no sobrescriben `nuclei_targets.txt`; los pendientes quedan en `nuclei_pending.txt`.
+- **Integridad de activos JSONL**: Se agregan activos minimos para hosts con hallazgos, evitando `asset_id` vacio.
+- **Colores en logs de sesion**: Los flujos tee reportan TTY correctamente y mantienen INFO coloreado durante el escaneo.
+- **Avisos de identidad profunda**: Las etiquetas de estrategia ya no muestran sufijos de version heredados.
+
+### Mejorado
+
+- **Contexto de progreso en reanudacion**: El progreso de reanudacion de Nuclei refleja el total de objetivos con contexto de reanudacion.
+
 ## [4.19.7] - 2026-01-28
 
 ### Corregido

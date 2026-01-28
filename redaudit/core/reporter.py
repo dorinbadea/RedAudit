@@ -14,7 +14,7 @@ import uuid
 import re
 import ipaddress
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from redaudit.utils.constants import (
     DEFAULT_IDENTITY_THRESHOLD,
@@ -383,6 +383,49 @@ def _summarize_vulnerabilities_for_pipeline(vuln_entries: list) -> Dict[str, Any
     return {"total": total, "sources": sources}
 
 
+def _collect_host_ips(host_entries: list) -> Set[str]:
+    ips: Set[str] = set()
+    for entry in host_entries or []:
+        ip = None
+        if isinstance(entry, str):
+            ip = entry
+        elif isinstance(entry, dict):
+            ip = entry.get("ip")
+        else:
+            ip = getattr(entry, "ip", None)
+        if not ip:
+            continue
+        ip_str = str(ip).strip()
+        if ip_str:
+            ips.add(ip_str)
+    return ips
+
+
+def _ensure_hosts_for_vulnerabilities(results: Dict) -> None:
+    hosts = results.get("hosts")
+    if not isinstance(hosts, list):
+        return
+    known = _collect_host_ips(hosts)
+    for entry in results.get("vulnerabilities", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        host_ip = entry.get("host")
+        if not host_ip:
+            continue
+        host_ip = str(host_ip).strip()
+        if not host_ip or host_ip in known:
+            continue
+        hosts.append(
+            {
+                "ip": host_ip,
+                "hostname": "",
+                "status": "unknown",
+                "ports": [],
+            }
+        )
+        known.add(host_ip)
+
+
 def generate_summary(
     results: Dict,
     config: Dict,
@@ -423,9 +466,19 @@ def generate_summary(
     if results.get("hosts"):
         results["hosts"] = [h.to_dict() if isinstance(h, Host) else h for h in results["hosts"]]
 
-    unique_hosts = {h for h in (all_hosts or []) if isinstance(h, str) and h.strip()}
+    target_networks = (
+        config.get("target_networks") or config.get("targets") or results.get("targets")
+    )
+    if not isinstance(target_networks, list):
+        target_networks = []
+
+    _ensure_hosts_for_vulnerabilities(results)
+
+    unique_hosts = _collect_host_ips(all_hosts)
+    unique_hosts.update(_collect_host_ips(scanned_results))
+    unique_hosts.update(_collect_host_ips(results.get("hosts", [])))
     summary = {
-        "networks": len(config.get("target_networks", [])),
+        "networks": len(target_networks),
         "hosts_found": len(unique_hosts),
         "hosts_scanned": len(scanned_results),
         "vulns_found": raw_vulns,
@@ -489,7 +542,7 @@ def generate_summary(
         "mode": config.get("scan_mode", "normal"),
         "mode_cli": config.get("scan_mode_cli", config.get("scan_mode", "normal")),
     }
-    results["targets"] = config.get("target_networks", [])
+    results["targets"] = target_networks
 
     # v2.9: Entity Resolution - consolidate multi-interface hosts
     hosts = results.get("hosts", [])

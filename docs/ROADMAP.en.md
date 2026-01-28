@@ -49,6 +49,16 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.8 Resume Artifact Integrity (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Resume Summary Integrity** | Done (v4.19.8) | Resume runs keep host/target counts aligned with existing results. |
+| **Nuclei Targets Preservation** | Done (v4.19.8) | Resume runs no longer overwrite `nuclei_targets.txt`; pending targets stay separate. |
+| **JSONL Asset Backfill** | Done (v4.19.8) | Findings ensure matching asset entries for vulnerability-only hosts. |
+| **Session Log TTY Colors** | Done (v4.19.8) | Session logs retain INFO color by honoring terminal TTY status. |
+| **Deep Identity Label Cleanup** | Done (v4.19.8) | Deep identity warnings omit legacy strategy version suffixes. |
+
 ### v4.19.7 Red Team Self-Target Exclusion (Done)
 
 | Feature | Status | Description |

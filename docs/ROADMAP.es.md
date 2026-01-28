@@ -49,6 +49,16 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.8 Integridad de artefactos de reanudacion (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Resumenes de reanudacion** | Hecho (v4.19.8) | Las reanudaciones mantienen recuentos de host/objetivos alineados con resultados existentes. |
+| **Objetivos Nuclei preservados** | Hecho (v4.19.8) | Las reanudaciones ya no sobrescriben `nuclei_targets.txt`; los pendientes quedan separados. |
+| **Backfill de activos JSONL** | Hecho (v4.19.8) | Los hallazgos aseguran activos asociados para hosts con vulnerabilidades. |
+| **Colores TTY en logs de sesion** | Hecho (v4.19.8) | Los logs mantienen el color INFO al respetar el estado TTY del terminal. |
+| **Limpieza de etiqueta de identidad** | Hecho (v4.19.8) | Los avisos de identidad profunda omiten sufijos de version heredados. |
+
 ### v4.19.7 Exclusión de autoobjetivo Red Team (Hecho)
 
 | Funcionalidad | Estado | Descripción |

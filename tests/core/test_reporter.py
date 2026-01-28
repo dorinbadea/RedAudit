@@ -110,6 +110,28 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(summary["vulns_found"], 1)
         self.assertIn("duration", summary)
 
+    def test_generate_summary_accepts_host_dicts_for_all_hosts(self):
+        results = {"hosts": [{"ip": "10.0.0.5"}], "vulnerabilities": []}
+        config = {"target_networks": ["10.0.0.0/24"], "scan_mode": "normal"}
+        summary = generate_summary(
+            results,
+            config,
+            [{"ip": "10.0.0.5"}],
+            results["hosts"],
+            datetime.now(),
+        )
+        self.assertEqual(summary["hosts_found"], 1)
+
+    def test_generate_summary_backfills_missing_vuln_hosts(self):
+        results = {
+            "hosts": [],
+            "vulnerabilities": [{"host": "10.0.0.99", "vulnerabilities": [{"severity": "low"}]}],
+        }
+        config = {"target_networks": ["10.0.0.0/24"], "scan_mode": "normal"}
+        generate_summary(results, config, [], [], datetime.now())
+        host_ips = {h.get("ip") for h in results["hosts"]}
+        self.assertIn("10.0.0.99", host_ips)
+
     def test_generate_summary_tracks_raw_and_consolidated(self):
         results = {
             "hosts": [{"ip": "192.168.1.10"}],

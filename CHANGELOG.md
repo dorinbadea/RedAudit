@@ -10,6 +10,20 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.8] - 2026-01-29
+
+### Fixed
+
+- **Resume Summaries**: Resume runs now count hosts from existing results and preserve target networks in summaries.
+- **Nuclei Targets Record**: Resume runs no longer overwrite `nuclei_targets.txt`; pending targets stay in `nuclei_pending.txt`.
+- **JSONL Asset Integrity**: Vulnerability-only hosts are backfilled as stub assets so findings keep `asset_id` populated.
+- **Session Log Colors**: Tee streams now report TTY status correctly, keeping INFO output colored during scans.
+- **Deep Identity Warnings**: Strategy labels no longer include legacy version suffixes.
+
+### Improved
+
+- **Resume Progress Context**: Nuclei resume progress reflects overall target counts with resume context.
+
 ## [4.19.7] - 2026-01-28
 
 ### Fixed

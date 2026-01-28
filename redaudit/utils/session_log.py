@@ -324,6 +324,13 @@ class TeeStream(io.TextIOBase):
 
         return len(data)
 
+    def isatty(self) -> bool:
+        """Report TTY status of the underlying terminal stream."""
+        try:
+            return bool(self.terminal.isatty())
+        except Exception:
+            return False
+
     def _write_lines(self, data: str) -> None:
         """
         Log only stable newline-terminated output with smart filtering.
@@ -479,10 +486,6 @@ class TeeStream(io.TextIOBase):
                 self.log_file.flush()
         except Exception:
             pass
-
-    def isatty(self) -> bool:
-        """Return terminal's isatty status."""
-        return self.terminal.isatty()
 
     @property
     def encoding(self) -> str:  # type: ignore[override]

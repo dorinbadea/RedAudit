@@ -23,6 +23,15 @@ from redaudit.core.models import Host
 from redaudit.utils.constants import COLORS, MAX_THREADS
 
 
+@pytest.fixture
+def resume_session_log_stub():
+    with (
+        patch("redaudit.utils.session_log.start_session_log", return_value=True),
+        patch("redaudit.utils.session_log.stop_session_log", return_value=""),
+    ):
+        yield
+
+
 class TestAuditorOrchestrator(unittest.TestCase):
     def setUp(self):
         self.mock_ui_manager = MagicMock()
@@ -1048,7 +1057,7 @@ def test_append_nuclei_output_appends_lines():
         assert '"a": 1' in content
 
 
-def test_resume_nuclei_from_state_updates_results():
+def test_resume_nuclei_from_state_updates_results(resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
         output_file = os.path.join(tmpdir, "nuclei_output.json")
@@ -1071,7 +1080,10 @@ def test_resume_nuclei_from_state_updates_results():
         auditor.config = {"dry_run": False}
         auditor.proxy_manager = None
 
+        captured = {}
+
         def _fake_nuclei_scan(**_kwargs):
+            captured["targets_file"] = _kwargs.get("targets_file")
             return {
                 "findings": [
                     {
@@ -1105,9 +1117,10 @@ def test_resume_nuclei_from_state_updates_results():
         assert auditor.results["nuclei"]["findings"] == 1
         assert "resume_pending" not in auditor.results["nuclei"]
         assert not os.path.exists(resume_path)
+        assert captured["targets_file"] == os.path.join(tmpdir, "nuclei_pending.txt")
 
 
-def test_resume_nuclei_from_state_preserves_duration_and_targets():
+def test_resume_nuclei_from_state_preserves_duration_and_targets(resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
         output_file = os.path.join(tmpdir, "nuclei_output.json")
@@ -1175,7 +1188,7 @@ def test_resume_nuclei_from_state_preserves_duration_and_targets():
         assert _duration_seconds(auditor.results["summary"]["duration"]) >= 600
 
 
-def test_resume_nuclei_from_state_overrides_budget():
+def test_resume_nuclei_from_state_overrides_budget(resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
         output_file = os.path.join(tmpdir, "nuclei_output.json")
@@ -1230,7 +1243,7 @@ def test_resume_nuclei_from_state_overrides_budget():
         assert state["nuclei"]["max_runtime_minutes"] == 0
 
 
-def test_resume_nuclei_from_state_prompt_budget_override():
+def test_resume_nuclei_from_state_prompt_budget_override(resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
         output_file = os.path.join(tmpdir, "nuclei_output.json")
@@ -1286,7 +1299,7 @@ def test_resume_nuclei_from_state_prompt_budget_override():
         assert captured["max_runtime_s"] == 60
 
 
-def test_resume_nuclei_from_state_prompt_keeps_unlimited():
+def test_resume_nuclei_from_state_prompt_keeps_unlimited(resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
         output_file = os.path.join(tmpdir, "nuclei_output.json")
@@ -1346,7 +1359,7 @@ def test_resume_nuclei_from_state_prompt_keeps_unlimited():
         assert captured["max_runtime_s"] is None
 
 
-def test_resume_nuclei_from_state_keeps_pending():
+def test_resume_nuclei_from_state_keeps_pending(resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
         output_file = os.path.join(tmpdir, "nuclei_output.json")
@@ -1404,7 +1417,7 @@ def test_resume_nuclei_from_state_keeps_pending():
         assert os.path.exists(resume_path)
 
 
-def test_resume_nuclei_from_state_uses_progress_callback(monkeypatch):
+def test_resume_nuclei_from_state_uses_progress_callback(monkeypatch, resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
         output_file = os.path.join(tmpdir, "nuclei_output.json")
@@ -1478,7 +1491,7 @@ def test_resume_nuclei_from_state_uses_progress_callback(monkeypatch):
         assert captured.get("use_internal_progress") is False
 
 
-def test_resume_nuclei_from_state_progress_fallback(monkeypatch):
+def test_resume_nuclei_from_state_progress_fallback(monkeypatch, resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
         output_file = os.path.join(tmpdir, "nuclei_output.json")
@@ -1534,7 +1547,7 @@ def test_resume_nuclei_from_state_progress_fallback(monkeypatch):
         assert captured.get("use_internal_progress") is True
 
 
-def test_resume_nuclei_from_state_no_pending():
+def test_resume_nuclei_from_state_no_pending(resume_session_log_stub):
     auditor = _make_resume_auditor()
     state = auditor._build_nuclei_resume_state(
         output_dir="/tmp",
@@ -1563,7 +1576,7 @@ def test_resume_nuclei_from_state_no_pending():
     assert ok is False
 
 
-def test_resume_nuclei_from_state_save_after():
+def test_resume_nuclei_from_state_save_after(resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
         output_file = os.path.join(tmpdir, "nuclei_output.json")
@@ -1615,7 +1628,7 @@ def test_resume_nuclei_from_state_save_after():
         assert mock_save.called
 
 
-def test_resume_nuclei_from_state_load_context_failure():
+def test_resume_nuclei_from_state_load_context_failure(resume_session_log_stub):
     auditor = _make_resume_auditor()
     state = auditor._build_nuclei_resume_state(
         output_dir="/tmp",

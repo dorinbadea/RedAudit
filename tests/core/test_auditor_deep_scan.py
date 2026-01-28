@@ -196,6 +196,35 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
         self.assertIn("--top-ports", full_udp_cmd)
         self.assertIn("222", full_udp_cmd)
 
+    def test_deep_scan_strategy_label_strips_parenthetical(self):
+        app = InteractiveNetworkAuditor()
+        app.ui = Mock()
+
+        def _t(key, *args):
+            labels = {
+                "deep_strategy_adaptive": "Adaptativo (3 fases v2.8)",
+                "deep_identity_start": "Escaneo de identidad profundo para {} (estrategia: {})",
+            }
+            val = labels.get(key, key)
+            return val.format(*args) if args else val
+
+        app.ui.t.side_effect = _t
+        app.ui.print_status = Mock()
+        app.config["output_dir"] = "/tmp"
+        app.results = {"network_info": []}
+
+        with patch(
+            "redaudit.core.auditor_scan.start_background_capture",
+            side_effect=RuntimeError("boom"),
+        ):
+            with self.assertRaises(RuntimeError):
+                app.deep_scan_host("192.168.1.10")
+
+        message = app.ui.print_status.call_args[0][0]
+        self.assertIn("Adaptativo", message)
+        self.assertNotIn("3 fases", message)
+        self.assertNotIn("v2.8", message)
+
     def test_trust_hyperscan_quiet_host_uses_sanity_check(self):
         """v4.6.2: Quiet hosts with trust_hyperscan should use sanity check (top-1000) not -p-."""
         app = InteractiveNetworkAuditor()

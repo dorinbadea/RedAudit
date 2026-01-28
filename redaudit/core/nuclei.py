@@ -142,6 +142,7 @@ def run_nuclei_scan(
     max_runtime_s: Optional[int] = None,
     append_output: bool = False,
     output_file: Optional[str] = None,
+    targets_file: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Run Nuclei scan against HTTP/HTTPS targets.
@@ -163,6 +164,7 @@ def run_nuclei_scan(
         max_runtime_s: Optional max runtime budget in seconds (None/unset = unlimited)
         append_output: If True, append to existing output file instead of truncating
         output_file: Optional explicit output file path for nuclei JSONL
+        targets_file: Optional path to persist the target list (defaults to nuclei_targets.txt)
 
     Returns:
         Dict with scan results and findings
@@ -198,7 +200,11 @@ def run_nuclei_scan(
 
     # Create targets file for nuclei
     os.makedirs(output_dir, exist_ok=True)
-    targets_file = os.path.join(output_dir, "nuclei_targets.txt")
+    if targets_file:
+        if not os.path.isabs(targets_file):
+            targets_file = os.path.join(output_dir, targets_file)
+    else:
+        targets_file = os.path.join(output_dir, "nuclei_targets.txt")
     output_file = output_file or os.path.join(output_dir, "nuclei_output.json")
 
     try:

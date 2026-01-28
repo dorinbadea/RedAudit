@@ -423,6 +423,29 @@ def test_run_nuclei_scan_targets_file_failure(tmp_path):
     assert "Failed to create targets file" in res["error"]
 
 
+def test_run_nuclei_scan_custom_targets_file(tmp_path):
+    class _Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, *_args, **_kwargs):
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    custom_path = tmp_path / "custom_targets.txt"
+
+    with patch("redaudit.core.nuclei.shutil.which", return_value="/usr/bin/nuclei"):
+        with patch("redaudit.core.nuclei.CommandRunner", _Runner):
+            res = run_nuclei_scan(
+                ["http://127.0.0.1:80"],
+                output_dir=str(tmp_path),
+                targets_file=str(custom_path),
+                use_internal_progress=False,
+            )
+    assert res["success"] is True
+    assert custom_path.exists()
+    assert "http://127.0.0.1:80" in custom_path.read_text(encoding="utf-8")
+
+
 def test_run_nuclei_scan_timeout_and_retry_flags(tmp_path):
     captured = {}
 
