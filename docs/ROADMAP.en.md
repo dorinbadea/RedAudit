@@ -49,6 +49,12 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.7 Red Team Self-Target Exclusion (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Red Team Self-IP Exclusion** | Done (v4.19.7) | Red Team target selection now excludes auditor IPs to prevent self-enumeration. |
+
 ### v4.19.6 Nuclei Progress Detail and INFO Contrast (Done)
 
 | Feature | Status | Description |

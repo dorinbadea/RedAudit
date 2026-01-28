@@ -49,6 +49,12 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.7 Exclusión de autoobjetivo Red Team (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Exclusion de IP del auditor en Red Team** | Hecho (v4.19.7) | La seleccion de objetivos Red Team excluye IPs del auditor para evitar auto-enumeracion. |
+
 ### v4.19.6 Progreso de Nuclei y contraste INFO (Hecho)
 
 | Funcionalidad | Estado | Descripción |
