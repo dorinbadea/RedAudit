@@ -18,3 +18,24 @@ def test_installer_includes_python3_pip_in_toolchain() -> None:
 def test_installer_attempts_python3_impacket_apt_install() -> None:
     content = _read_installer()
     assert re.search(r"apt install -y python3-impacket", content)
+
+
+def test_installer_attempts_python3_paramiko_apt_install() -> None:
+    content = _read_installer()
+    assert re.search(r"apt install -y python3-paramiko", content)
+
+
+def test_installer_attempts_python3_keyrings_alt_apt_install() -> None:
+    content = _read_installer()
+    assert re.search(r"apt install -y python3-keyrings-alt", content)
+
+
+def test_installer_checks_python_modules_before_pip() -> None:
+    content = _read_installer()
+    assert "python_module_available" in content
+    assert "keyrings.alt:keyrings.alt" in content
+
+
+def test_installer_has_exploitdb_archive_fallback() -> None:
+    content = _read_installer()
+    assert "exploitdb/archive/refs/heads/master.zip" in content

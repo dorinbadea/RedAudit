@@ -49,6 +49,14 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.13 Estabilidad Python del instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Pip solo si falta** | Hecho (v4.19.13) | El instalador solo instala por pip los modulos que faltan para evitar conflictos en entornos gestionados. |
+| **Fallback de archivo exploitdb** | Hecho (v4.19.13) | El instalador descarga exploitdb via archivo si falla el git clone. |
+| **Helpers apt Python** | Hecho (v4.19.13) | Se intentan instalar python3-paramiko y python3-keyrings-alt via apt. |
+
 ### v4.19.12 Dependencias Python del instalador (Hecho)
 
 | Funcionalidad | Estado | Descripción |
