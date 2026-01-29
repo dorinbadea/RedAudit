@@ -163,7 +163,7 @@ fi
 
 apt_pkg_exists() {
     local pkg="$1"
-    apt-cache show "$pkg" >/dev/null 2>&1
+    apt-cache show "$pkg" 2>/dev/null | grep -q "^Package:"
 }
 
 enable_ubuntu_repos() {
