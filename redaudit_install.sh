@@ -182,6 +182,20 @@ enable_ubuntu_repos() {
     fi
 }
 
+python_module_available() {
+    local module="$1"
+    python3 - <<PY >/dev/null 2>&1
+import importlib
+import sys
+
+try:
+    importlib.import_module("${module}")
+except Exception:
+    sys.exit(1)
+sys.exit(0)
+PY
+}
+
 install_exploitdb_fallback() {
     if command -v searchsploit >/dev/null 2>&1; then
         return 0
@@ -195,6 +209,23 @@ install_exploitdb_fallback() {
             return 0
         fi
     fi
+    local tmp_zip="/tmp/exploitdb.zip"
+    if curl -fsSL -o "$tmp_zip" "https://github.com/offensive-security/exploitdb/archive/refs/heads/master.zip" \
+        2>/dev/null; then
+        rm -rf /opt/exploitdb 2>/dev/null || true
+        if unzip -o "$tmp_zip" -d /opt >/dev/null 2>&1; then
+            if [[ -d "/opt/exploitdb-master" ]]; then
+                mv /opt/exploitdb-master /opt/exploitdb
+            fi
+            if [[ -f "/opt/exploitdb/searchsploit" ]]; then
+                chmod +x /opt/exploitdb/searchsploit
+                ln -sf /opt/exploitdb/searchsploit /usr/local/bin/searchsploit
+                rm -f "$tmp_zip" 2>/dev/null || true
+                return 0
+            fi
+        fi
+    fi
+    rm -f "$tmp_zip" 2>/dev/null || true
     echo "$MSG_INSTALL_EXPLOITDB_FAIL"
     return 1
 }
@@ -324,22 +355,69 @@ if $INSTALL; then
         echo "[INFO] Trying to install python3-impacket via apt (optional)..."
     fi
     apt install -y python3-impacket 2>/dev/null || true
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Intentando instalar python3-paramiko via apt (opcional)..."
+    else
+        echo "[INFO] Trying to install python3-paramiko via apt (optional)..."
+    fi
+    apt install -y python3-paramiko 2>/dev/null || true
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Intentando instalar python3-keyrings-alt via apt (opcional)..."
+    else
+        echo "[INFO] Trying to install python3-keyrings-alt via apt (optional)..."
+    fi
+    apt install -y python3-keyrings-alt 2>/dev/null || true
 
     # Python packages for authenticated scanning (Phase 4: SSH/SMB/SNMP + Keyring)
     echo "[INFO] Installing Python packages for authenticated scanning..."
 
-    PIP_PKGS="paramiko impacket pysnmp keyring keyrings.alt"
-    read -r -a pip_pkgs <<< "$PIP_PKGS"
-    if pip3 install "${pip_pkgs[@]}"; then
-        echo "[OK] Python packages installed via pip"
-    else
-        echo "[WARN] Standard pip3 install failed. Checking for PEP 668 managed environment..."
-        # Retry with --break-system-packages if relevant (modern Kali/Ubuntu/Debian)
-        if pip3 install --help | grep -q "\-\-break\-system\-packages"; then
-             echo "[INFO] Retrying with --break-system-packages (required for system-wide install on modern distros)..."
-             pip3 install "${pip_pkgs[@]}" --break-system-packages || echo "[WARN] pip install failed even with break-system-packages"
+    pip_pkgs=()
+    pip_checks=("paramiko:paramiko" "impacket:impacket" "pysnmp:pysnmp" "keyring:keyring" "keyrings.alt:keyrings.alt")
+    for item in "${pip_checks[@]}"; do
+        pkg="${item%%:*}"
+        mod="${item#*:}"
+        if ! python_module_available "$mod"; then
+            pip_pkgs+=("$pkg")
+        fi
+    done
+    if [[ ${#pip_pkgs[@]} -eq 0 ]]; then
+        if [[ "$LANG_CODE" == "es" ]]; then
+            echo "[OK] Paquetes Python ya disponibles"
         else
-             echo "[WARN] pip install failed and --break-system-packages flag is not supported."
+            echo "[OK] Python packages already available"
+        fi
+    else
+        pep668=false
+        for f in /usr/lib/python3*/EXTERNALLY-MANAGED /usr/lib/python3/dist-packages/EXTERNALLY-MANAGED; do
+            if [[ -f "$f" ]]; then
+                pep668=true
+                break
+            fi
+        done
+        if $pep668 && pip3 install --help | grep -q "\-\-break\-system\-packages"; then
+            if [[ "$LANG_CODE" == "es" ]]; then
+                echo "[INFO] Usando --break-system-packages por entorno PEP 668..."
+            else
+                echo "[INFO] Using --break-system-packages due to PEP 668 environment..."
+            fi
+            pip3 install "${pip_pkgs[@]}" --break-system-packages --upgrade-strategy only-if-needed \
+                || echo "[WARN] pip install failed even with break-system-packages"
+        elif pip3 install "${pip_pkgs[@]}" --upgrade-strategy only-if-needed; then
+            if [[ "$LANG_CODE" == "es" ]]; then
+                echo "[OK] Paquetes Python instalados via pip"
+            else
+                echo "[OK] Python packages installed via pip"
+            fi
+        else
+            echo "[WARN] Standard pip3 install failed. Checking for PEP 668 managed environment..."
+            # Retry with --break-system-packages if relevant (modern Kali/Ubuntu/Debian)
+            if pip3 install --help | grep -q "\-\-break\-system\-packages"; then
+                 echo "[INFO] Retrying with --break-system-packages (required for system-wide install on modern distros)..."
+                 pip3 install "${pip_pkgs[@]}" --break-system-packages --upgrade-strategy only-if-needed \
+                     || echo "[WARN] pip install failed even with break-system-packages"
+            else
+                 echo "[WARN] pip install failed and --break-system-packages flag is not supported."
+            fi
         fi
     fi
 
