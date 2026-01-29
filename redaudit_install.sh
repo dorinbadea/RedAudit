@@ -35,6 +35,30 @@ if [[ "$TOOLCHAIN_MODE" != "latest" ]]; then
     TOOLCHAIN_MODE="pinned"
 fi
 
+# Detect distro for dependency strategy
+OS_ID=""
+OS_LIKE=""
+OS_VERSION=""
+if [[ -f /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    OS_ID="${ID:-}"
+    OS_LIKE="${ID_LIKE:-}"
+    OS_VERSION="${VERSION_ID:-}"
+fi
+IS_UBUNTU=false
+IS_KALI=false
+IS_DEBIAN=false
+if [[ "$OS_ID" == "ubuntu" || "$OS_LIKE" == *"ubuntu"* ]]; then
+    IS_UBUNTU=true
+fi
+if [[ "$OS_ID" == "kali" || "$OS_LIKE" == *"kali"* ]]; then
+    IS_KALI=true
+fi
+if [[ "$OS_ID" == "debian" || "$OS_LIKE" == *"debian"* ]]; then
+    IS_DEBIAN=true
+fi
+
 # Determine real user early (before any operations that need it)
 REAL_USER=${SUDO_USER:-$USER}
 REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
@@ -78,6 +102,15 @@ if [[ "$LANG_OPT" == "2" ]]; then
     MSG_TESTSSL_SKIP="[WARN] testssl.sh no instalado. Los análisis TLS profundos no estarán disponibles."
     MSG_TESTSSL_HINT="Ejecuta de nuevo el instalador y acepta el toolchain principal para habilitarlo."
     MSG_APT_ERR="[ERROR] Error con apt."
+    MSG_APT_MISSING="[WARN] Algunos paquetes no están disponibles via apt. Se usarán alternativas cuando existan."
+    MSG_ENABLE_UNIVERSE="[INFO] Habilitando repositorios Universe/Multiverse en Ubuntu..."
+    MSG_ENABLE_UNIVERSE_FAIL="[WARN] No se pudieron habilitar Universe/Multiverse. Continuando."
+    MSG_INSTALL_NUCLEI="[INFO] Instalando Nuclei desde GitHub..."
+    MSG_INSTALL_NUCLEI_FAIL="[WARN] Falló la instalación de Nuclei desde GitHub."
+    MSG_INSTALL_EXPLOITDB="[INFO] Instalando exploitdb/searchsploit desde GitHub..."
+    MSG_INSTALL_EXPLOITDB_FAIL="[WARN] Falló la instalación de exploitdb/searchsploit."
+    MSG_INSTALL_ENUM4LINUX="[INFO] Instalando enum4linux-ng desde GitHub..."
+    MSG_INSTALL_ENUM4LINUX_FAIL="[WARN] Falló la instalación de enum4linux-ng."
 else
     LANG_CODE="en"
     MSG_INSTALL="[INFO] Installing/updating RedAudit v${REDAUDIT_VERSION}..."
@@ -91,6 +124,15 @@ else
     MSG_TESTSSL_SKIP="[WARN] testssl.sh not installed. TLS deep checks will be unavailable."
     MSG_TESTSSL_HINT="Re-run the installer and accept the core toolchain to enable it."
     MSG_APT_ERR="❌ apt error."
+    MSG_APT_MISSING="[WARN] Some packages are not available via apt. Using fallbacks when possible."
+    MSG_ENABLE_UNIVERSE="[INFO] Enabling Ubuntu Universe/Multiverse repositories..."
+    MSG_ENABLE_UNIVERSE_FAIL="[WARN] Could not enable Universe/Multiverse. Continuing."
+    MSG_INSTALL_NUCLEI="[INFO] Installing Nuclei from GitHub..."
+    MSG_INSTALL_NUCLEI_FAIL="[WARN] Failed to install Nuclei from GitHub."
+    MSG_INSTALL_EXPLOITDB="[INFO] Installing exploitdb/searchsploit from GitHub..."
+    MSG_INSTALL_EXPLOITDB_FAIL="[WARN] Failed to install exploitdb/searchsploit."
+    MSG_INSTALL_ENUM4LINUX="[INFO] Installing enum4linux-ng from GitHub..."
+    MSG_INSTALL_ENUM4LINUX_FAIL="[WARN] Failed to install enum4linux-ng."
 fi
 
 echo "$MSG_INSTALL"
@@ -99,7 +141,7 @@ echo "$MSG_INSTALL"
 # 2) Dependencies
 # -------------------------------------------
 
-EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 python3-keyring exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4 nuclei whatweb nikto sqlmap traceroute"
+EXTRA_PKGS="curl wget openssl unzip nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 python3-keyring exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4 nuclei whatweb nikto sqlmap traceroute"
 
 echo ""
 echo "$MSG_PKGS"
@@ -119,15 +161,152 @@ else
     [[ -z "$INSTALL" || "$INSTALL" =~ ^(y|yes)$ ]] && INSTALL=true || INSTALL=false
 fi
 
+apt_pkg_exists() {
+    local pkg="$1"
+    apt-cache show "$pkg" >/dev/null 2>&1
+}
+
+enable_ubuntu_repos() {
+    if ! $IS_UBUNTU; then
+        return
+    fi
+    echo "$MSG_ENABLE_UNIVERSE"
+    if ! command -v add-apt-repository >/dev/null 2>&1; then
+        apt install -y software-properties-common >/dev/null 2>&1 || true
+    fi
+    if command -v add-apt-repository >/dev/null 2>&1; then
+        add-apt-repository -y universe >/dev/null 2>&1 || echo "$MSG_ENABLE_UNIVERSE_FAIL"
+        add-apt-repository -y multiverse >/dev/null 2>&1 || echo "$MSG_ENABLE_UNIVERSE_FAIL"
+    else
+        echo "$MSG_ENABLE_UNIVERSE_FAIL"
+    fi
+}
+
+install_exploitdb_fallback() {
+    if command -v searchsploit >/dev/null 2>&1; then
+        return 0
+    fi
+    echo "$MSG_INSTALL_EXPLOITDB"
+    rm -rf /opt/exploitdb 2>/dev/null || true
+    if git clone --depth 1 https://github.com/offensive-security/exploitdb.git /opt/exploitdb 2>/dev/null; then
+        if [[ -f "/opt/exploitdb/searchsploit" ]]; then
+            chmod +x /opt/exploitdb/searchsploit
+            ln -sf /opt/exploitdb/searchsploit /usr/local/bin/searchsploit
+            return 0
+        fi
+    fi
+    echo "$MSG_INSTALL_EXPLOITDB_FAIL"
+    return 1
+}
+
+install_enum4linux_fallback() {
+    if command -v enum4linux >/dev/null 2>&1; then
+        return 0
+    fi
+    echo "$MSG_INSTALL_ENUM4LINUX"
+    rm -rf /opt/enum4linux-ng 2>/dev/null || true
+    if git clone --depth 1 https://github.com/cddmp/enum4linux-ng.git /opt/enum4linux-ng 2>/dev/null; then
+        if [[ -f "/opt/enum4linux-ng/enum4linux-ng.py" ]]; then
+            cat > /usr/local/bin/enum4linux <<'EOF'
+#!/bin/bash
+exec /usr/bin/env python3 /opt/enum4linux-ng/enum4linux-ng.py "$@"
+EOF
+            chmod +x /usr/local/bin/enum4linux
+            ln -sf /usr/local/bin/enum4linux /usr/local/bin/enum4linux-ng
+            return 0
+        fi
+    fi
+    echo "$MSG_INSTALL_ENUM4LINUX_FAIL"
+    return 1
+}
+
+install_nuclei_fallback() {
+    if command -v nuclei >/dev/null 2>&1; then
+        return 0
+    fi
+    local version="${NUCLEI_VERSION:-}"
+    if [[ -z "$version" ]]; then
+        if [[ "$TOOLCHAIN_MODE" == "latest" ]]; then
+            version="latest"
+        else
+            version="v3.2.4"
+        fi
+    fi
+    local arch
+    case "$(uname -m)" in
+        x86_64|amd64)
+            arch="amd64"
+            ;;
+        aarch64|arm64)
+            arch="arm64"
+            ;;
+        *)
+            arch="amd64"
+            ;;
+    esac
+    local url=""
+    if [[ "$version" == "latest" ]]; then
+        url=$(curl -sL https://api.github.com/repos/projectdiscovery/nuclei/releases/latest \
+            | grep -Eo "https://[^\"]+nuclei_[0-9.]+_linux_${arch}\\.zip" \
+            | head -n 1)
+    else
+        local version_num="${version#v}"
+        url="https://github.com/projectdiscovery/nuclei/releases/download/${version}/nuclei_${version_num}_linux_${arch}.zip"
+    fi
+    if [[ -z "$url" ]]; then
+        echo "$MSG_INSTALL_NUCLEI_FAIL"
+        return 1
+    fi
+    echo "$MSG_INSTALL_NUCLEI"
+    local tmp_zip="/tmp/nuclei_${arch}.zip"
+    local tmp_dir="/tmp/nuclei_unpack"
+    rm -rf "$tmp_dir" "$tmp_zip" 2>/dev/null || true
+    if curl -fsSL -o "$tmp_zip" "$url" 2>/dev/null; then
+        mkdir -p "$tmp_dir"
+        if unzip -o "$tmp_zip" -d "$tmp_dir" >/dev/null 2>&1; then
+            if [[ -f "$tmp_dir/nuclei" ]]; then
+                mv "$tmp_dir/nuclei" /usr/local/bin/nuclei
+                chmod +x /usr/local/bin/nuclei
+                rm -rf "$tmp_dir" "$tmp_zip" 2>/dev/null || true
+                return 0
+            fi
+        fi
+    fi
+    echo "$MSG_INSTALL_NUCLEI_FAIL"
+    return 1
+}
+
 if $INSTALL; then
     read -r -a extra_pkgs <<< "$EXTRA_PKGS"
     if ! apt update; then
         echo "$MSG_APT_ERR"
         exit 1
     fi
-    if ! apt install -y "${extra_pkgs[@]}"; then
-        echo "$MSG_APT_ERR"
-        exit 1
+    enable_ubuntu_repos
+    if $IS_UBUNTU; then
+        if ! apt update; then
+            echo "$MSG_APT_ERR"
+            exit 1
+        fi
+    fi
+    apt_pkgs=()
+    missing_pkgs=()
+    for pkg in "${extra_pkgs[@]}"; do
+        if apt_pkg_exists "$pkg"; then
+            apt_pkgs+=("$pkg")
+        else
+            missing_pkgs+=("$pkg")
+        fi
+    done
+    if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
+        echo "$MSG_APT_MISSING"
+        echo "   ${missing_pkgs[*]}"
+    fi
+    if [[ ${#apt_pkgs[@]} -gt 0 ]]; then
+        if ! apt install -y "${apt_pkgs[@]}"; then
+            echo "$MSG_APT_ERR"
+            exit 1
+        fi
     fi
 
 
@@ -157,6 +336,11 @@ if $INSTALL; then
              echo "[WARN] pip install failed and --break-system-packages flag is not supported."
         fi
     fi
+
+    # Fallback installs for packages missing from apt (Ubuntu/Debian)
+    install_nuclei_fallback || true
+    install_exploitdb_fallback || true
+    install_enum4linux_fallback || true
 
     # -------------------------------------------
     # 2b) Install testssl.sh from GitHub
