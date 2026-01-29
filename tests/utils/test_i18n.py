@@ -170,3 +170,55 @@ def test_dependency_i18n_keys_exist():
     assert "Impacket" in get_text("impacket_available", "es")
     assert "PySNMP" in get_text("pysnmp_available", "en")
     assert "PySNMP" in get_text("pysnmp_available", "es")
+
+
+def test_new_progress_i18n_keys_formatting():
+    """Ensure new progress-related keys format correctly in both languages."""
+    en = get_text("scanning_hosts_heartbeat", "en", 1, 2, 3, 4)
+    es = get_text("scanning_hosts_heartbeat", "es", 1, 2, 3, 4)
+    assert "1/2" in en
+    assert "1/2" in es
+    assert "3:04" in en
+    assert "3:04" in es
+
+    en = get_text("progress_elapsed", "en", 1, 2, 3, 4)
+    es = get_text("progress_elapsed", "es", 1, 2, 3, 4)
+    assert "1/2" in en
+    assert "1/2" in es
+    assert "3:04" in en
+    assert "3:04" in es
+
+    en = get_text("net_discovery_heartbeat", "en", 3, 4)
+    es = get_text("net_discovery_heartbeat", "es", 3, 4)
+    assert "3:04" in en
+    assert "3:04" in es
+
+
+def test_new_nuclei_i18n_keys_formatting():
+    """Ensure new Nuclei keys format correctly in both languages."""
+    en = get_text("nuclei_scanning_batches", "en", 3, 4)
+    es = get_text("nuclei_scanning_batches", "es", 3, 4)
+    assert "3" in en and "4" in en
+    assert "3" in es and "4" in es
+
+    en = get_text("nuclei_detail_parallel_running", "en", 1, 2, "0:10")
+    es = get_text("nuclei_detail_parallel_running", "es", 1, 2, "0:10")
+    assert "1/2" in en
+    assert "1/2" in es
+    assert "0:10" in en
+    assert "0:10" in es
+
+    en = get_text("nuclei_resume_pending", "en", 5)
+    es = get_text("nuclei_resume_pending", "es", 5)
+    assert "5" in en
+    assert "5" in es
+
+    en = get_text("output_dir_q", "en")
+    es = get_text("output_dir_q", "es")
+    assert "Output" in en
+    assert "Directorio" in es
+
+    en = get_text("running_cve_correlation", "en")
+    es = get_text("running_cve_correlation", "es")
+    assert "CVE" in en
+    assert "CVE" in es

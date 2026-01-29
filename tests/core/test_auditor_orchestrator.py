@@ -1120,6 +1120,86 @@ def test_resume_nuclei_from_state_updates_results(resume_session_log_stub):
         assert captured["targets_file"] == os.path.join(tmpdir, "nuclei_pending.txt")
 
 
+def test_resume_nuclei_progress_uses_pending_total(resume_session_log_stub):
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80", "http://127.0.0.2:80"],
+            total_targets=5,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=1,
+            max_runtime_minutes=0,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        auditor.results = {"hosts": [], "vulnerabilities": [], "nuclei": {"findings": 0}}
+        auditor.config = {"dry_run": False}
+        auditor.proxy_manager = None
+
+        updates = {}
+
+        class _DummyProgress:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def add_task(self, description, total, **kwargs):
+                updates["task_total"] = total
+                updates["task_desc"] = description
+                updates["task_detail"] = kwargs.get("detail")
+                return "task"
+
+            def update(self, task, **kwargs):
+                updates["update"] = kwargs
+
+        def _fake_nuclei_scan(**_kwargs):
+            cb = _kwargs.get("progress_callback")
+            if cb:
+                cb(1, 2, "", "batch 1/2 running 0:01 elapsed")
+            return {
+                "findings": [],
+                "success": True,
+                "pending_targets": [],
+                "raw_output_file": _kwargs.get("output_file"),
+            }
+
+        with (
+            patch("redaudit.core.auditor.run_nuclei_scan", side_effect=_fake_nuclei_scan),
+            patch(
+                "redaudit.core.verify_vuln.filter_nuclei_false_positives",
+                lambda findings, *_a, **_k: (findings, []),
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+            patch.object(auditor, "_progress_console", return_value=Console()),
+            patch("rich.progress.Progress", _DummyProgress),
+        ):
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=False,
+            )
+
+        assert ok is True
+        assert updates.get("task_total") == 2
+        assert "Nuclei (0/2)" in updates.get("task_desc", "")
+        assert updates.get("task_detail") is not None
+        assert "Nuclei (1/2)" in updates.get("update", {}).get("description", "")
+
+
 def test_resume_nuclei_from_state_preserves_duration_and_targets(resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
