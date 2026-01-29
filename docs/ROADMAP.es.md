@@ -49,6 +49,12 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.14 Fallback de searchsploit (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Fallback Snap** | Hecho (v4.19.14) | El instalador usa `snap install searchsploit` cuando fallan los metodos de GitHub. |
+
 ### v4.19.13 Estabilidad Python del instalador (Hecho)
 
 | Funcionalidad | Estado | Descripción |
