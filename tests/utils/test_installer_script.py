@@ -39,3 +39,8 @@ def test_installer_checks_python_modules_before_pip() -> None:
 def test_installer_has_exploitdb_archive_fallback() -> None:
     content = _read_installer()
     assert "exploitdb/archive/refs/heads/master.zip" in content
+
+
+def test_installer_has_searchsploit_snap_fallback() -> None:
+    content = _read_installer()
+    assert "snap install searchsploit" in content

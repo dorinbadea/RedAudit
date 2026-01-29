@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.14] - 2026-01-29
+
+### Fixed
+
+- **Installer Searchsploit**: searchsploit now falls back to a snap install when GitHub-based install methods fail.
+
 ## [4.19.13] - 2026-01-29
 
 ### Fixed

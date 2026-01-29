@@ -49,6 +49,12 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.14 Searchsploit Fallback (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Snap Fallback** | Done (v4.19.14) | Installer falls back to `snap install searchsploit` when GitHub-based installs fail. |
+
 ### v4.19.13 Installer Python Stability (Done)
 
 | Feature | Status | Description |
