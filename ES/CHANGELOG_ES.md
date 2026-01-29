@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.14] - 2026-01-29
+
+### Corregido
+
+- **Searchsploit en instalador**: searchsploit ahora usa fallback via snap cuando fallan los metodos de GitHub.
+
 ## [4.19.13] - 2026-01-29
 
 ### Corregido
