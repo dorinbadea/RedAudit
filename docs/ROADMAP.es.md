@@ -49,6 +49,13 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.11 Robustez del instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Repositorios Ubuntu** | Hecho (v4.19.11) | El instalador habilita Universe/Multiverse cuando hace falta. |
+| **Instalaciones desde GitHub** | Hecho (v4.19.11) | Herramientas ausentes (Nuclei, exploitdb/searchsploit, enum4linux) se instalan desde GitHub si apt no las ofrece. |
+
 ### v4.19.9 Consistencia de UI en reanudacion de Nuclei (Hecho)
 
 | Funcionalidad | Estado | Descripción |
