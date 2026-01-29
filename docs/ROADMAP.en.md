@@ -49,6 +49,13 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.11 Installer Toolchain Resilience (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Ubuntu Repo Enablement** | Done (v4.19.11) | Installer enables Universe/Multiverse when required for toolchain availability. |
+| **GitHub Fallback Installs** | Done (v4.19.11) | Missing tools (Nuclei, exploitdb/searchsploit, enum4linux) are installed from GitHub when apt lacks them. |
+
 ### v4.19.9 Nuclei Resume UI Consistency (Done)
 
 | Feature | Status | Description |

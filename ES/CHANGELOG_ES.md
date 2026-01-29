@@ -10,6 +10,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.11] - 2026-01-29
+
+### Corregido
+
+- **Instalacion en Ubuntu**: El instalador habilita Universe/Multiverse cuando es necesario y evita fallos de apt por paquetes ausentes.
+- **Instalaciones de respaldo**: Nuclei, exploitdb/searchsploit y enum4linux se instalan desde GitHub cuando no estan disponibles via apt.
+
 ## [4.19.10] - 2026-01-29
 
 ### Corregido

@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.11] - 2026-01-29
+
+### Fixed
+
+- **Ubuntu Toolchain Install**: The installer now enables Universe/Multiverse when needed and avoids apt failures on missing packages.
+- **Fallback Tool Installs**: Missing packages such as Nuclei, exploitdb/searchsploit, and enum4linux are installed from GitHub when not available via apt.
+
 ## [4.19.10] - 2026-01-29
 
 ### Fixed
