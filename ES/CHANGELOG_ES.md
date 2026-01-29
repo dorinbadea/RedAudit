@@ -10,6 +10,18 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.9] - 2026-01-29
+
+### Corregido
+
+- **Detalle secuencial de Nuclei**: El progreso ya no informa lotes paralelos cuando el presupuesto fuerza ejecucion secuencial.
+- **Totales en reanudacion**: La reanudacion de Nuclei ahora muestra solo objetivos pendientes, evitando recuentos confusos.
+- **CLI en español**: Correlacion CVE, prompt de directorio de salida, heartbeat de hosts y elapsed en Net Discovery quedan localizados.
+
+### Mejorado
+
+- **Mensajes de estado de Nuclei**: Texto de lotes y detalles de progreso con terminologia localizada y consistente.
+
 ## [4.19.8] - 2026-01-29
 
 ### Corregido
