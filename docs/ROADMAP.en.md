@@ -49,6 +49,14 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.13 Installer Python Stability (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Pip Missing-Only Install** | Done (v4.19.13) | Installer only pip-installs missing Python modules to avoid conflicts on managed environments. |
+| **ExploitDB Archive Fallback** | Done (v4.19.13) | Installer can download exploitdb via archive when git clone fails. |
+| **Apt Python Helpers** | Done (v4.19.13) | Optional apt installs include python3-paramiko and python3-keyrings-alt. |
+
 ### v4.19.12 Installer Python Dependencies (Done)
 
 | Feature | Status | Description |
