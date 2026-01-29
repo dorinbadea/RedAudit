@@ -141,7 +141,7 @@ echo "$MSG_INSTALL"
 # 2) Dependencies
 # -------------------------------------------
 
-EXTRA_PKGS="curl wget openssl unzip nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 python3-keyring exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4 nuclei whatweb nikto sqlmap traceroute"
+EXTRA_PKGS="curl wget openssl unzip nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 python3-keyring python3-pip exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4 nuclei whatweb nikto sqlmap traceroute"
 
 echo ""
 echo "$MSG_PKGS"
@@ -318,6 +318,12 @@ if $INSTALL; then
         echo "[INFO] Trying to install python3-pysnmp via apt (optional)..."
     fi
     apt install -y python3-pysnmp 2>/dev/null || true
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Intentando instalar python3-impacket via apt (opcional)..."
+    else
+        echo "[INFO] Trying to install python3-impacket via apt (optional)..."
+    fi
+    apt install -y python3-impacket 2>/dev/null || true
 
     # Python packages for authenticated scanning (Phase 4: SSH/SMB/SNMP + Keyring)
     echo "[INFO] Installing Python packages for authenticated scanning..."
