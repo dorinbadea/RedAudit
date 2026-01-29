@@ -22,6 +22,10 @@ import threading
 # ANSI escape code pattern for stripping colors
 ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
+# v4.19.10: ANSI line-clearing codes pattern (clear line, clear to end of line)
+# These codes are used by progress/countdown displays that update in-place
+ANSI_LINE_CLEAR = re.compile(r"\x1B\[2?K")
+
 
 class SessionLogHandler(logging.Handler):
     """Logging handler that redirects to SessionLogger."""
@@ -346,8 +350,11 @@ class TeeStream(io.TextIOBase):
         self._log_buf += data
 
         # Drop overwritten frames (common in progress redraws)
+        # v4.19.10: Also strip ANSI line-clear codes (\x1b[2K, \x1b[K) to prevent
+        # countdown prompts from appearing concatenated in session logs
         if "\n" not in self._log_buf and "\r" in self._log_buf:
-            self._log_buf = self._log_buf.split("\r")[-1]
+            last_frame = self._log_buf.split("\r")[-1]
+            self._log_buf = ANSI_LINE_CLEAR.sub("", last_frame)
 
         # Keep memory bounded if a tool writes without newlines
         if len(self._log_buf) > self._max_buf and "\n" not in self._log_buf:

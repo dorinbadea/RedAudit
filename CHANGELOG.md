@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.10] - 2026-01-29
+
+### Fixed
+
+- **Session Log Countdown**: ANSI line-clear codes are now stripped when processing carriage return frames, preventing countdown prompts from appearing concatenated in session logs.
+
 ## [4.19.9] - 2026-01-29
 
 ### Fixed

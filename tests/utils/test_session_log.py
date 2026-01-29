@@ -40,6 +40,23 @@ class TestTeeStream(unittest.TestCase):
         stream.write("\n")
         self.assertEqual(log.getvalue(), "frame3\n")
 
+    def test_lines_mode_strips_ansi_line_clear_codes(self):
+        """v4.19.10: ANSI line-clear codes should be stripped from countdown prompts."""
+        terminal = io.StringIO()
+        log = io.StringIO()
+        lock = MagicMock()
+        stream = TeeStream(terminal, log, lock, mode="lines")
+
+        # Simulate countdown updates with \r and ANSI clear-line codes
+        stream.write(
+            "Prompt: Countdown 15s\r\x1b[2KPrompt: Countdown 14s\r\x1b[2KPrompt: Countdown 13s"
+        )
+        self.assertEqual(log.getvalue(), "")
+
+        stream.write("\n")
+        # Only the last frame should be logged, without ANSI codes
+        self.assertEqual(log.getvalue(), "Prompt: Countdown 13s\n")
+
     def test_lines_mode_prefixes_stderr_lines(self):
         terminal = io.StringIO()
         log = io.StringIO()

@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.10] - 2026-01-29
+
+### Corregido
+
+- **Countdown en logs de sesion**: Los codigos ANSI de limpieza de linea ahora se eliminan al procesar frames con retorno de carro, evitando que los prompts de countdown aparezcan concatenados en los logs de sesion.
+
 ## [4.19.9] - 2026-01-29
 
 ### Corregido
