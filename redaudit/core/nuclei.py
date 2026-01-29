@@ -18,6 +18,7 @@ from typing import Any, Callable, Dict, List, Optional, Protocol, TypedDict, cas
 from redaudit.core.command_runner import CommandRunner
 from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.utils.dry_run import is_dry_run
+from redaudit.utils.i18n import get_text
 from redaudit.core.verify_vuln import check_nuclei_false_positive
 
 
@@ -143,6 +144,8 @@ def run_nuclei_scan(
     append_output: bool = False,
     output_file: Optional[str] = None,
     targets_file: Optional[str] = None,
+    translate: Optional[Callable[..., str]] = None,
+    lang: str = "en",
 ) -> Dict[str, Any]:
     """
     Run Nuclei scan against HTTP/HTTPS targets.
@@ -165,6 +168,8 @@ def run_nuclei_scan(
         append_output: If True, append to existing output file instead of truncating
         output_file: Optional explicit output file path for nuclei JSONL
         targets_file: Optional path to persist the target list (defaults to nuclei_targets.txt)
+        translate: Optional translation function (e.g., UIManager.t)
+        lang: Language code for fallback translations (default: en)
 
     Returns:
         Dict with scan results and findings
@@ -183,6 +188,14 @@ def run_nuclei_scan(
         "budget_exceeded": False,
     }
 
+    def _t(key: str, *args) -> str:
+        if translate:
+            try:
+                return str(translate(key, *args))
+            except Exception:
+                pass
+        return get_text(key, lang, *args)
+
     if not result["nuclei_available"]:
         result["error"] = "nuclei not installed"
         return result
@@ -193,7 +206,7 @@ def run_nuclei_scan(
 
     if dry_run or is_dry_run():
         if print_status:
-            print_status("[dry-run] nuclei scan skipped", "INFO")
+            print_status(_t("nuclei_dry_run_skipped"), "INFO")
         result["success"] = True
         result["error"] = "dry-run mode"
         return result
@@ -354,7 +367,7 @@ def run_nuclei_scan(
 
         if print_status:
             print_status(
-                f"[nuclei] scanning {len(targets)} targets in {total_batches} batch(es)...",
+                _t("nuclei_scanning_batches", len(targets), total_batches),
                 "INFO",
             )
 
@@ -458,15 +471,19 @@ def run_nuclei_scan(
 
                             eta_batch = _format_eta(max(0.0, timeout_s - elapsed))
                             active_count = len(active_batch_progress)
-                            if max_parallel > 1 and total_batches > 1:
-                                detail = (
-                                    f"parallel batches {active_count}/{total_batches} running "
-                                    f"{_format_eta(elapsed)} elapsed"
+                            if not force_sequential and max_parallel > 1 and total_batches > 1:
+                                detail = _t(
+                                    "nuclei_detail_parallel_running",
+                                    active_count,
+                                    total_batches,
+                                    _format_eta(elapsed),
                                 )
                             else:
-                                detail = (
-                                    f"batch {batch_idx}/{total_batches} running "
-                                    f"{_format_eta(elapsed)} elapsed"
+                                detail = _t(
+                                    "nuclei_detail_batch_running",
+                                    batch_idx,
+                                    total_batches,
+                                    _format_eta(elapsed),
                                 )
                             eta_label = f"ETA≈ {eta_batch}" if eta_batch != "--:--" else ""
                             _emit_progress(final_display_val, total_targets, eta_label, detail)
@@ -580,7 +597,7 @@ def run_nuclei_scan(
         except Exception:
             runtime_budget_s = None
         if print_status and runtime_budget_s is not None:
-            print_status("[nuclei] runtime budget enabled; running batches sequentially", "INFO")
+            print_status(_t("nuclei_runtime_budget_enabled"), "INFO")
         budget_start = time.time()
         budget_deadline = budget_start + runtime_budget_s if runtime_budget_s else None
         force_sequential = runtime_budget_s is not None
@@ -618,7 +635,11 @@ def run_nuclei_scan(
                             min(float(total_targets), max_progress_targets),
                             total_targets,
                             f"ETA≈ {eta}",
-                            f"batches {completed_batches}/{total_batches} complete",
+                            _t(
+                                "nuclei_detail_batches_complete",
+                                completed_batches,
+                                total_batches,
+                            ),
                         )
                     except Exception as e:
                         if logger:
@@ -691,7 +712,7 @@ def run_nuclei_scan(
                 for idx, batch in enumerate(batches, start=1):
                     if print_status:
                         print_status(
-                            f"[nuclei] batch {idx}/{total_batches} ({len(batch)} targets)",
+                            _t("nuclei_batch_status", idx, total_batches, len(batch)),
                             "INFO",
                         )
                     _run_one_batch(idx, batch)
@@ -714,7 +735,7 @@ def run_nuclei_scan(
                     if remaining_budget < expected_batch_timeout:
                         if print_status:
                             print_status(
-                                "[nuclei] budget too low for next batch; deferring remaining targets",
+                                _t("nuclei_budget_too_low"),
                                 "INFO",
                             )
                         remaining_targets_budget = []
@@ -727,7 +748,8 @@ def run_nuclei_scan(
                         break
                 if print_status:
                     print_status(
-                        f"[nuclei] batch {idx}/{total_batches} ({len(batch)} targets)", "INFO"
+                        _t("nuclei_batch_status", idx, total_batches, len(batch)),
+                        "INFO",
                     )
                 budget_exceeded = _run_one_batch(idx, batch, budget_deadline=budget_deadline)
                 if budget_exceeded:

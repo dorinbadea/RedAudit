@@ -10,6 +10,18 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.9] - 2026-01-29
+
+### Fixed
+
+- **Nuclei Sequential Detail**: Progress no longer reports parallel batches when runtime budget forces sequential execution.
+- **Resume Progress Totals**: Nuclei resume now shows pending-only totals instead of full target counts.
+- **Spanish CLI Strings**: CVE correlation, output directory prompt, host scan heartbeat, and net discovery elapsed messages are localized.
+
+### Improved
+
+- **Nuclei Status Messages**: Batch and progress detail text now use localized, consistent wording.
+
 ## [4.19.8] - 2026-01-29
 
 ### Fixed

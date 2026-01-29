@@ -232,6 +232,61 @@ class TestNucleiParallel(unittest.TestCase):
             "Expected parallel batch detail updates",
         )
 
+    def test_sequential_detail_avoids_parallel_label_with_budget(self):
+        targets = [f"http://127.0.0.{i}:80" for i in range(20)]
+        details = []
+
+        def _cb(_completed, _total, _eta, detail=""):
+            if detail:
+                details.append(detail)
+
+        class _FakeCommandRunnerSlowLong:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def run(self, cmd, *args, **kwargs):
+                time.sleep(3.1)
+                if "-o" in cmd:
+                    try:
+                        idx = cmd.index("-o") + 1
+                        out_path = cmd[idx]
+                        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+                        with open(out_path, "w", encoding="utf-8") as f:
+                            payload = {
+                                "template-id": "parallel-test",
+                                "info": {"name": "Parallel Test", "severity": "info"},
+                                "host": "http://127.0.0.1",
+                                "matched-at": "http://127.0.0.1",
+                            }
+                            f.write(json.dumps(payload) + "\n")
+                    except Exception:
+                        pass
+                return _FakeRunResult()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("redaudit.core.nuclei.shutil.which", return_value="/usr/bin/nuclei"):
+                with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+                    with patch("redaudit.core.nuclei.CommandRunner", _FakeCommandRunnerSlowLong):
+                        res = run_nuclei_scan(
+                            targets=targets,
+                            output_dir=tmpdir,
+                            batch_size=10,
+                            max_runtime_s=1000,
+                            progress_callback=_cb,
+                            use_internal_progress=False,
+                        )
+
+        self.assertTrue(res["success"])
+        self.assertTrue(details, "Expected progress detail updates")
+        self.assertTrue(
+            any("batch" in detail for detail in details),
+            "Expected sequential batch detail updates",
+        )
+        self.assertFalse(
+            any("parallel batches" in detail for detail in details),
+            "Sequential mode should not report parallel batches",
+        )
+
     def test_parallel_clamps_when_timeout_high(self):
         targets = [f"http://127.0.0.{i}:80" for i in range(40)]
         seen = {}

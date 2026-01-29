@@ -49,6 +49,14 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.9 Consistencia de UI en reanudacion de Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Totales solo pendientes** | Hecho (v4.19.9) | El progreso de reanudacion ahora refleja solo objetivos pendientes. |
+| **Detalle secuencial preciso** | Hecho (v4.19.9) | El detalle ya no informa lotes paralelos cuando el presupuesto fuerza secuencial. |
+| **Mensajes localizados** | Hecho (v4.19.9) | Nuclei y heartbeats muestran texto alineado con el idioma activo. |
+
 ### v4.19.8 Integridad de artefactos de reanudacion (Hecho)
 
 | Funcionalidad | Estado | Descripción |
