@@ -10,6 +10,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.13] - 2026-01-29
+
+### Corregido
+
+- **Estabilidad Python en instalador**: El instalador evita conflictos de pip instalando solo modulos faltantes y agrega fallback de archivo para exploitdb/searchsploit si falla git.
+- **Apt opcional**: Se intenta instalar python3-paramiko y python3-keyrings-alt via apt para reducir instalaciones via pip.
+
 ## [4.19.12] - 2026-01-29
 
 ### Corregido

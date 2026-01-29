@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.13] - 2026-01-29
+
+### Fixed
+
+- **Installer Python Stability**: The installer now avoids pip conflicts by only installing missing modules and adds an archive fallback for exploitdb/searchsploit when git clone fails.
+- **Apt Python Helpers**: Optional apt installs now include python3-paramiko and python3-keyrings-alt to reduce pip-only installs.
+
 ## [4.19.12] - 2026-01-29
 
 ### Fixed
