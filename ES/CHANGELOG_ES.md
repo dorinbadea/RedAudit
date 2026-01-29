@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.12] - 2026-01-29
+
+### Corregido
+
+- **Dependencias Python en instalador**: El instalador asegura `python3-pip` y prueba `python3-impacket` via apt para reducir faltas de Impacket/PySNMP en Ubuntu limpio.
+
 ## [4.19.11] - 2026-01-29
 
 ### Corregido

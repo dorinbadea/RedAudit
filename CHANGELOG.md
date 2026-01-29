@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.12] - 2026-01-29
+
+### Fixed
+
+- **Installer Python Deps**: The installer ensures `python3-pip` is available and attempts `python3-impacket` via apt to reduce missing Impacket/PySNMP on clean Ubuntu installs.
+
 ## [4.19.11] - 2026-01-29
 
 ### Fixed
