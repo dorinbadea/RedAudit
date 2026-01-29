@@ -1137,6 +1137,7 @@ class InteractiveNetworkAuditor:
                                     print_status=self.ui.print_status,
                                     proxy_manager=self.proxy_manager,
                                     profile=nuclei_profile,
+                                    translate=self.ui.t,
                                 )
                         except Exception:
                             nuclei_severity = "medium,high,critical"
@@ -1153,6 +1154,7 @@ class InteractiveNetworkAuditor:
                                 print_status=self.ui.print_status,
                                 proxy_manager=self.proxy_manager,
                                 profile=nuclei_profile,
+                                translate=self.ui.t,
                             )
 
                         findings = nuclei_result.get("findings") or []
@@ -1297,7 +1299,7 @@ class InteractiveNetworkAuditor:
             # This ensures all version data from nikto/whatweb/testssl/nuclei is available
             if self.config.get("cve_lookup_enabled") and not self.interrupted:
                 try:
-                    self.ui.print_status("Running CVE correlation (NVD)...", "INFO")
+                    self.ui.print_status(self.ui.t("running_cve_correlation"), "INFO")
                     # Ensure API key is loaded
                     if not self.config.get("nvd_api_key"):
                         self.setup_nvd_api_key(non_interactive=True)
@@ -3072,7 +3074,7 @@ class InteractiveNetworkAuditor:
             if now - self._nd_last_heartbeat >= 30.0:
                 elapsed = int(now - start_time)
                 mins, secs = divmod(elapsed, 60)
-                msg = f"Net Discovery en progreso... ({mins}:{secs:02d} elapsed)"
+                msg = self.ui.t("net_discovery_heartbeat", mins, secs)
                 # v4.18: Use Text() to avoid Rich markup issues
                 if hasattr(progress, "console"):
                     from rich.text import Text
@@ -3431,14 +3433,6 @@ class InteractiveNetworkAuditor:
         if not self.config.get("_actual_output_dir"):
             self.config["_actual_output_dir"] = output_dir
 
-        try:
-            resume_total_targets = int(resume_state.get("total_targets") or 0)
-        except Exception:
-            resume_total_targets = 0
-        if resume_total_targets < len(pending_targets):
-            resume_total_targets = len(pending_targets)
-        completed_offset = max(0, resume_total_targets - len(pending_targets))
-
         nuclei_cfg = resume_state.get("nuclei") or {}
         profile = nuclei_cfg.get("profile") or "balanced"
         severity = nuclei_cfg.get("severity") or "low,medium,high,critical"
@@ -3530,7 +3524,7 @@ class InteractiveNetworkAuditor:
                 from rich.progress import Progress
 
                 pending_total = len(pending_targets)
-                total_targets = resume_total_targets or pending_total
+                total_targets = pending_total
                 total_batches = max(1, int(math.ceil(pending_total / max(1, int(batch_size)))))
                 progress_start_t = time.time()
                 self._nuclei_progress_state = {
@@ -3552,16 +3546,13 @@ class InteractiveNetworkAuditor:
                         total=total_targets,
                         eta_upper=self._format_eta(total_batches * int(timeout_s)),
                         eta_est="",
-                        detail=f"{pending_total} pending",
+                        detail=self.ui.t("nuclei_resume_pending", pending_total),
                     )
-                    total_hint = total_targets
-                    offset = completed_offset
-                    pending_label = "resume " if offset else ""
                     resume_result = run_nuclei_scan(
                         **run_kwargs,
                         progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
-                            float(c) + offset,
-                            total_hint,
+                            float(c),
+                            total_targets,
                             e,
                             progress,
                             task,
@@ -3569,9 +3560,10 @@ class InteractiveNetworkAuditor:
                             int(timeout_s),
                             total_targets,
                             int(batch_size),
-                            detail=f"{pending_label}{d}" if d else None,
+                            detail=d,
                         ),
                         use_internal_progress=False,
+                        translate=self.ui.t,
                     )
             except Exception:
                 resume_result = None
@@ -3579,6 +3571,7 @@ class InteractiveNetworkAuditor:
             resume_result = run_nuclei_scan(
                 **run_kwargs,
                 use_internal_progress=True,
+                translate=self.ui.t,
             )
 
         base_output_rel = resume_state.get("output_file") or "nuclei_output.json"

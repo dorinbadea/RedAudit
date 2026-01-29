@@ -2877,8 +2877,9 @@ class AuditorScan:
                                     heartbeat_msg = Text()
                                     heartbeat_msg.append("[INFO] ", style="cyan")
                                     heartbeat_msg.append(
-                                        f"{self.ui.t('scanning_hosts')}... "
-                                        f"{done}/{total} ({mins}:{secs:02d} elapsed)"
+                                        self.ui.t(
+                                            "scanning_hosts_heartbeat", done, total, mins, secs
+                                        )
                                     )
                                     progress.console.print(heartbeat_msg)
                                     last_heartbeat = now
@@ -2945,8 +2946,7 @@ class AuditorScan:
                             elapsed = int(time.time() - start_t)
                             mins, secs = divmod(elapsed, 60)
                             self.ui.print_status(
-                                f"{self.ui.t('progress', done, total)} "
-                                f"({mins}:{secs:02d} transcurrido)",
+                                self.ui.t("progress_elapsed", done, total, mins, secs),
                                 "INFO",
                                 update_activity=False,
                                 force=True,
