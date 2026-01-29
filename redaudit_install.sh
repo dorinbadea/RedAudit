@@ -109,6 +109,8 @@ if [[ "$LANG_OPT" == "2" ]]; then
     MSG_INSTALL_NUCLEI_FAIL="[WARN] Falló la instalación de Nuclei desde GitHub."
     MSG_INSTALL_EXPLOITDB="[INFO] Instalando exploitdb/searchsploit desde GitHub..."
     MSG_INSTALL_EXPLOITDB_FAIL="[WARN] Falló la instalación de exploitdb/searchsploit."
+    MSG_INSTALL_EXPLOITDB_SNAP="[INFO] Instalando searchsploit via snap..."
+    MSG_INSTALL_EXPLOITDB_SNAP_FAIL="[WARN] Falló la instalación de searchsploit via snap."
     MSG_INSTALL_ENUM4LINUX="[INFO] Instalando enum4linux-ng desde GitHub..."
     MSG_INSTALL_ENUM4LINUX_FAIL="[WARN] Falló la instalación de enum4linux-ng."
 else
@@ -131,6 +133,8 @@ else
     MSG_INSTALL_NUCLEI_FAIL="[WARN] Failed to install Nuclei from GitHub."
     MSG_INSTALL_EXPLOITDB="[INFO] Installing exploitdb/searchsploit from GitHub..."
     MSG_INSTALL_EXPLOITDB_FAIL="[WARN] Failed to install exploitdb/searchsploit."
+    MSG_INSTALL_EXPLOITDB_SNAP="[INFO] Installing searchsploit via snap..."
+    MSG_INSTALL_EXPLOITDB_SNAP_FAIL="[WARN] Failed to install searchsploit via snap."
     MSG_INSTALL_ENUM4LINUX="[INFO] Installing enum4linux-ng from GitHub..."
     MSG_INSTALL_ENUM4LINUX_FAIL="[WARN] Failed to install enum4linux-ng."
 fi
@@ -216,6 +220,8 @@ install_exploitdb_fallback() {
         if unzip -o "$tmp_zip" -d /opt >/dev/null 2>&1; then
             if [[ -d "/opt/exploitdb-master" ]]; then
                 mv /opt/exploitdb-master /opt/exploitdb
+            elif [[ -d "/opt/exploitdb-main" ]]; then
+                mv /opt/exploitdb-main /opt/exploitdb
             fi
             if [[ -f "/opt/exploitdb/searchsploit" ]]; then
                 chmod +x /opt/exploitdb/searchsploit
@@ -226,6 +232,16 @@ install_exploitdb_fallback() {
         fi
     fi
     rm -f "$tmp_zip" 2>/dev/null || true
+    if command -v snap >/dev/null 2>&1; then
+        echo "$MSG_INSTALL_EXPLOITDB_SNAP"
+        if snap install searchsploit >/dev/null 2>&1; then
+            hash -r 2>/dev/null || true
+            if command -v searchsploit >/dev/null 2>&1; then
+                return 0
+            fi
+        fi
+        echo "$MSG_INSTALL_EXPLOITDB_SNAP_FAIL"
+    fi
     echo "$MSG_INSTALL_EXPLOITDB_FAIL"
     return 1
 }
