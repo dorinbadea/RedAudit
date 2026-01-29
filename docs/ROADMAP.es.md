@@ -49,6 +49,13 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.12 Dependencias Python del instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Bootstrap de pip** | Hecho (v4.19.12) | El instalador incluye `python3-pip` para garantizar instalacion de dependencias Python en sistemas limpios. |
+| **Fallback Impacket apt** | Hecho (v4.19.12) | El instalador intenta `python3-impacket` via apt cuando esta disponible. |
+
 ### v4.19.11 Robustez del instalador (Hecho)
 
 | Funcionalidad | Estado | Descripción |

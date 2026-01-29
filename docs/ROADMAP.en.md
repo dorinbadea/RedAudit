@@ -49,6 +49,13 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.12 Installer Python Dependencies (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Pip Bootstrap** | Done (v4.19.12) | Installer includes `python3-pip` to ensure Python dependency installs succeed on fresh systems. |
+| **Impacket Apt Fallback** | Done (v4.19.12) | Installer attempts `python3-impacket` via apt when available. |
+
 ### v4.19.11 Installer Toolchain Resilience (Done)
 
 | Feature | Status | Description |
