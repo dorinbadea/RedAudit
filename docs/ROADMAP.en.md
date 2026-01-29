@@ -49,6 +49,14 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.9 Nuclei Resume UI Consistency (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Pending-Only Resume Totals** | Done (v4.19.9) | Resume progress bars now reflect only pending Nuclei targets. |
+| **Sequential Detail Accuracy** | Done (v4.19.9) | Progress detail no longer reports parallel batches when budgets force sequential. |
+| **Localized Scan Messages** | Done (v4.19.9) | Nuclei batch/start and scan heartbeat strings align with the active language. |
+
 ### v4.19.8 Resume Artifact Integrity (Done)
 
 | Feature | Status | Description |
