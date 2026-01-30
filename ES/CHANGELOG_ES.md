@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.15] - 2026-01-29
+
+### Corregido
+
+- **ShellCheck en instalador**: Se eliminaron variables de distro sin uso para evitar fallos de ShellCheck sin cambiar el comportamiento.
+
 ## [4.19.14] - 2026-01-29
 
 ### Corregido

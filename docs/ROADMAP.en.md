@@ -49,6 +49,12 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.15 Installer ShellCheck Cleanup (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Unused Distro Vars** | Done (v4.19.15) | Removed unused distro variables to keep ShellCheck clean without behavior changes. |
+
 ### v4.19.14 Searchsploit Fallback (Done)
 
 | Feature | Status | Description |
