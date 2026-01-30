@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.15] - 2026-01-29
+
+### Fixed
+
+- **Installer ShellCheck**: Removed unused distro variables to keep ShellCheck clean without altering install behavior.
+
 ## [4.19.14] - 2026-01-29
 
 ### Fixed
