@@ -38,25 +38,15 @@ fi
 # Detect distro for dependency strategy
 OS_ID=""
 OS_LIKE=""
-OS_VERSION=""
 if [[ -f /etc/os-release ]]; then
     # shellcheck disable=SC1091
     . /etc/os-release
     OS_ID="${ID:-}"
     OS_LIKE="${ID_LIKE:-}"
-    OS_VERSION="${VERSION_ID:-}"
 fi
 IS_UBUNTU=false
-IS_KALI=false
-IS_DEBIAN=false
 if [[ "$OS_ID" == "ubuntu" || "$OS_LIKE" == *"ubuntu"* ]]; then
     IS_UBUNTU=true
-fi
-if [[ "$OS_ID" == "kali" || "$OS_LIKE" == *"kali"* ]]; then
-    IS_KALI=true
-fi
-if [[ "$OS_ID" == "debian" || "$OS_LIKE" == *"debian"* ]]; then
-    IS_DEBIAN=true
 fi
 
 # Determine real user early (before any operations that need it)
