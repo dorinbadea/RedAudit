@@ -157,6 +157,38 @@ def test_arrow_menu_skips_empty_key(monkeypatch):
     assert choice == 0
 
 
+def test_format_menu_option_does_not_mark_normal_as_no():
+    wiz = _UIWizard()
+    wiz.ui.colors = {
+        "FAIL": "<R>",
+        "OKBLUE": "<B>",
+        "ENDC": "</>",
+        "DIM": "<D>",
+        "BOLD": "<BD>",
+        "WARNING": "<Y>",
+        "OKGREEN": "<G>",
+        "CYAN": "<C>",
+        "HEADER": "<H>",
+    }
+    labels = {
+        "yes_default": "Si (por defecto)",
+        "yes_option": "Si",
+        "no_default": "No (por defecto)",
+        "no_option": "No",
+        "wizard_go_back": "Cancelar",
+        "go_back": "Cancelar",
+    }
+    wiz.ui.t.side_effect = lambda key, *args: labels.get(key, key)
+
+    option = "Normal - Equilibrio velocidad/cobertura (sin retardo)"
+    out = wiz._format_menu_option(option, is_selected=False)
+    assert "<R>" not in out
+    assert out.startswith("<B>")
+
+    out_no = wiz._format_menu_option("No (por defecto)", is_selected=False)
+    assert "<R>" in out_no
+
+
 # --- Flow and prompt helpers ---
 
 

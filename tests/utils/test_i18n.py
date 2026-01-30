@@ -213,6 +213,16 @@ def test_new_nuclei_i18n_keys_formatting():
     assert "5" in en
     assert "5" in es
 
+    en = get_text("nuclei_no_findings_partial", "en")
+    es = get_text("nuclei_no_findings_partial", "es")
+    assert "Nuclei" in en
+    assert "Nuclei" in es
+
+    en = get_text("nuclei_suspected_only", "en", 2)
+    es = get_text("nuclei_suspected_only", "es", 2)
+    assert "2" in en
+    assert "2" in es
+
     en = get_text("output_dir_q", "en")
     es = get_text("output_dir_q", "es")
     assert "Output" in en

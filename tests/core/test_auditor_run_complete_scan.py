@@ -30,6 +30,48 @@ def _noop_cm():
     yield
 
 
+def _setup_nuclei_app(tmp_path, monkeypatch):
+    app = InteractiveNetworkAuditor()
+    app.logger = _Logger()
+    app.scanner = MagicMock()
+    app.config["target_networks"] = ["10.0.0.0/24"]
+    app.config["output_dir"] = str(tmp_path)
+    app.config["scan_mode"] = "completo"
+    app.config["nuclei_enabled"] = True
+    app.config["nuclei_timeout"] = "bad"
+    app.config["scan_vulnerabilities"] = True
+    app.config["no_hyperscan_first"] = True
+    app.config["prevent_sleep"] = False
+
+    monkeypatch.setattr(app, "start_heartbeat", lambda: None)
+    monkeypatch.setattr(app, "stop_heartbeat", lambda: None)
+    monkeypatch.setattr(app, "_progress_ui", _noop_cm)
+    monkeypatch.setattr(app, "scan_network_discovery", lambda *a, **kw: ["10.0.0.1"])
+    monkeypatch.setattr(app, "_collect_discovery_hosts", lambda *a, **kw: [])
+    monkeypatch.setattr(
+        app,
+        "scan_hosts_concurrent",
+        lambda *a, **kw: [{"ip": "10.0.0.1", "ports": [{"port": 80, "service": "http"}]}],
+    )
+    monkeypatch.setattr(app, "run_agentless_verification", lambda *a, **kw: None)
+    monkeypatch.setattr(app, "scan_vulnerabilities_concurrent", lambda *a, **kw: None)
+    monkeypatch.setattr(app, "save_results", lambda *a, **kw: None)
+    monkeypatch.setattr(app, "show_results", lambda *a, **kw: None)
+
+    monkeypatch.setattr("redaudit.core.auditor.generate_summary", lambda *a, **kw: None)
+    monkeypatch.setattr("redaudit.core.auditor.maybe_chown_to_invoking_user", lambda *a, **kw: None)
+    monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **kw: None)
+    monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
+    monkeypatch.setattr(
+        "redaudit.core.auditor.get_http_targets_from_hosts", lambda h: ["http://10.0.0.1:80"]
+    )
+    monkeypatch.setattr(
+        "redaudit.core.net_discovery.discover_networks",
+        lambda *_args, **_kwargs: {},
+    )
+    return app
+
+
 def test_run_complete_scan_orchestration(tmp_path, monkeypatch):
     app = InteractiveNetworkAuditor()
     app.logger = _Logger()
@@ -134,51 +176,58 @@ def test_run_complete_scan_no_hosts(tmp_path, monkeypatch):
 
 def test_run_complete_scan_with_nuclei(tmp_path, monkeypatch):
     """Test nuclei integration branch."""
-    app = InteractiveNetworkAuditor()
-    app.logger = _Logger()
-    app.scanner = MagicMock()
-    app.config["target_networks"] = ["10.0.0.0/24"]
-    app.config["output_dir"] = str(tmp_path)
-    app.config["scan_mode"] = "completo"
-    app.config["nuclei_enabled"] = True
-    app.config["nuclei_timeout"] = "bad"
-    app.config["scan_vulnerabilities"] = True
-    app.config["no_hyperscan_first"] = True
-    app.config["prevent_sleep"] = False
-
-    monkeypatch.setattr(app, "start_heartbeat", lambda: None)
-    monkeypatch.setattr(app, "stop_heartbeat", lambda: None)
-    monkeypatch.setattr(app, "_progress_ui", _noop_cm)
-    monkeypatch.setattr(app, "scan_network_discovery", lambda *a, **kw: ["10.0.0.1"])
-    monkeypatch.setattr(app, "_collect_discovery_hosts", lambda *a, **kw: [])
-    monkeypatch.setattr(
-        app,
-        "scan_hosts_concurrent",
-        lambda *a, **kw: [{"ip": "10.0.0.1", "ports": [{"port": 80, "service": "http"}]}],
-    )
-    monkeypatch.setattr(app, "run_agentless_verification", lambda *a, **kw: None)
-    monkeypatch.setattr(app, "scan_vulnerabilities_concurrent", lambda *a, **kw: None)
-    monkeypatch.setattr(app, "save_results", lambda *a, **kw: None)
-    monkeypatch.setattr(app, "show_results", lambda *a, **kw: None)
-
-    monkeypatch.setattr("redaudit.core.auditor.generate_summary", lambda *a, **kw: None)
-    monkeypatch.setattr("redaudit.core.auditor.maybe_chown_to_invoking_user", lambda *a, **kw: None)
-    monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **kw: None)
-    monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
-    monkeypatch.setattr(
-        "redaudit.core.auditor.get_http_targets_from_hosts", lambda h: ["http://10.0.0.1:80"]
-    )
+    app = _setup_nuclei_app(tmp_path, monkeypatch)
     monkeypatch.setattr(
         "redaudit.core.auditor.run_nuclei_scan",
         lambda **kw: {"success": True, "findings": [{"template_id": "test", "matched_at": "x"}]},
     )
 
+    assert app.run_complete_scan() is True
+
+
+def test_run_complete_scan_with_nuclei_suspected_only(tmp_path, monkeypatch):
+    app = _setup_nuclei_app(tmp_path, monkeypatch)
+    messages = []
+    app.ui.t = lambda key, *args: key
+    app.ui.print_status = lambda message, *_args, **_kwargs: messages.append(message)
+
     monkeypatch.setattr(
-        "redaudit.core.net_discovery.discover_networks",
-        lambda *_args, **_kwargs: {},
+        "redaudit.core.auditor.run_nuclei_scan",
+        lambda **kw: {
+            "success": True,
+            "findings": [{"template_id": "test", "matched_at": "x"}],
+        },
+    )
+    monkeypatch.setattr(
+        "redaudit.core.verify_vuln.filter_nuclei_false_positives",
+        lambda findings, *_a, **_k: ([], [{"template_id": "fp", "matched_at": "x"}]),
     )
 
     assert app.run_complete_scan() is True
+    assert "nuclei_suspected_only" in messages
+
+
+def test_run_complete_scan_with_nuclei_partial_no_findings(tmp_path, monkeypatch):
+    app = _setup_nuclei_app(tmp_path, monkeypatch)
+    messages = []
+    app.ui.t = lambda key, *args: key
+    app.ui.print_status = lambda message, *_args, **_kwargs: messages.append(message)
+
+    monkeypatch.setattr(
+        "redaudit.core.auditor.run_nuclei_scan",
+        lambda **kw: {
+            "success": True,
+            "findings": [],
+            "partial": True,
+            "timeout_batches": [1],
+            "failed_batches": [1],
+            "error": "timeout",
+        },
+    )
+
+    assert app.run_complete_scan() is True
+    assert "nuclei_no_findings_partial" in messages
+    assert app.results["nuclei"]["success"] is False
 
 
 def test_run_complete_scan_nuclei_budget_resume_skipped(tmp_path, monkeypatch):
