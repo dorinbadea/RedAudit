@@ -49,6 +49,13 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.17 Installer Snap Bootstrap (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Snapd Bootstrap** | Done (v4.19.17) | Installer provisions snapd on Ubuntu-like systems when snap packages are required. |
+| **Snap Tool Availability** | Done (v4.19.17) | Searchsploit and ZAP snap installs now work when apt packages are missing. |
+
 ### v4.19.16 Nuclei Output Coherence (Done)
 
 | Feature | Status | Description |

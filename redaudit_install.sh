@@ -103,6 +103,8 @@ if [[ "$LANG_OPT" == "2" ]]; then
     MSG_INSTALL_EXPLOITDB_SNAP_FAIL="[WARN] Falló la instalación de searchsploit via snap."
     MSG_INSTALL_ENUM4LINUX="[INFO] Instalando enum4linux-ng desde GitHub..."
     MSG_INSTALL_ENUM4LINUX_FAIL="[WARN] Falló la instalación de enum4linux-ng."
+    MSG_INSTALL_SNAPD="[INFO] Instalando snapd para habilitar paquetes snap..."
+    MSG_INSTALL_SNAPD_FAIL="[WARN] No se pudo instalar snapd. Continuando sin snap."
 else
     LANG_CODE="en"
     MSG_INSTALL="[INFO] Installing/updating RedAudit v${REDAUDIT_VERSION}..."
@@ -127,6 +129,8 @@ else
     MSG_INSTALL_EXPLOITDB_SNAP_FAIL="[WARN] Failed to install searchsploit via snap."
     MSG_INSTALL_ENUM4LINUX="[INFO] Installing enum4linux-ng from GitHub..."
     MSG_INSTALL_ENUM4LINUX_FAIL="[WARN] Failed to install enum4linux-ng."
+    MSG_INSTALL_SNAPD="[INFO] Installing snapd to enable snap packages..."
+    MSG_INSTALL_SNAPD_FAIL="[WARN] Could not install snapd. Continuing without snap."
 fi
 
 echo "$MSG_INSTALL"
@@ -158,6 +162,33 @@ fi
 apt_pkg_exists() {
     local pkg="$1"
     apt-cache show "$pkg" 2>/dev/null | grep -q "^Package:"
+}
+
+ensure_snapd() {
+    if [[ -d /snap/bin && ":$PATH:" != *":/snap/bin:"* ]]; then
+        export PATH="/snap/bin:$PATH"
+    fi
+    if command -v snap >/dev/null 2>&1; then
+        return 0
+    fi
+    if ! $IS_UBUNTU; then
+        return 1
+    fi
+    echo "$MSG_INSTALL_SNAPD"
+    if apt install -y snapd >/dev/null 2>&1; then
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl enable --now snapd.socket >/dev/null 2>&1 || true
+        fi
+        if [[ -d /snap/bin && ":$PATH:" != *":/snap/bin:"* ]]; then
+            export PATH="/snap/bin:$PATH"
+        fi
+        hash -r 2>/dev/null || true
+        if command -v snap >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    echo "$MSG_INSTALL_SNAPD_FAIL"
+    return 1
 }
 
 enable_ubuntu_repos() {
@@ -222,10 +253,14 @@ install_exploitdb_fallback() {
         fi
     fi
     rm -f "$tmp_zip" 2>/dev/null || true
-    if command -v snap >/dev/null 2>&1; then
+    if ensure_snapd; then
         echo "$MSG_INSTALL_EXPLOITDB_SNAP"
         if snap install searchsploit >/dev/null 2>&1; then
             hash -r 2>/dev/null || true
+            if [[ -f "/snap/bin/searchsploit" ]]; then
+                mkdir -p /usr/local/bin 2>/dev/null || true
+                ln -sf /snap/bin/searchsploit /usr/local/bin/searchsploit 2>/dev/null || true
+            fi
             if command -v searchsploit >/dev/null 2>&1; then
                 return 0
             fi
@@ -636,11 +671,12 @@ if ! command -v zap.sh >/dev/null 2>&1 && ! command -v zaproxy >/dev/null 2>&1; 
             echo "[INFO] apt failed, trying snap..."
         fi
 
-        if command -v snap >/dev/null 2>&1; then
+        if ensure_snapd; then
             if snap install zaproxy --classic 2>/dev/null; then
                 ZAP_INSTALLED=true
                 # Create symlink for zap.sh detection
                 if [[ -f "/snap/bin/zaproxy" ]]; then
+                    mkdir -p /usr/local/bin 2>/dev/null || true
                     ln -sf /snap/bin/zaproxy /usr/local/bin/zap.sh 2>/dev/null || true
                 fi
                 if [[ "$LANG_CODE" == "es" ]]; then

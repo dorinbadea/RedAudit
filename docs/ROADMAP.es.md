@@ -49,6 +49,13 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.17 Bootstrap de snap en instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Bootstrap de snapd** | Hecho (v4.19.17) | El instalador prepara snapd en sistemas basados en Ubuntu cuando se requieren snaps. |
+| **Disponibilidad vía snap** | Hecho (v4.19.17) | Searchsploit y ZAP vía snap funcionan cuando apt no ofrece paquetes. |
+
 ### v4.19.16 Coherencia de salida Nuclei (Hecho)
 
 | Funcionalidad | Estado | Descripción |

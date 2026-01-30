@@ -44,3 +44,9 @@ def test_installer_has_exploitdb_archive_fallback() -> None:
 def test_installer_has_searchsploit_snap_fallback() -> None:
     content = _read_installer()
     assert "snap install searchsploit" in content
+
+
+def test_installer_bootstraps_snapd() -> None:
+    content = _read_installer()
+    assert "ensure_snapd()" in content
+    assert "apt install -y snapd" in content

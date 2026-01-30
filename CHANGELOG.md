@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.17] - 2026-01-30
+
+### Fixed
+
+- **Installer Snap Bootstrap**: The installer now provisions snapd on Ubuntu-like systems when needed, improving searchsploit and ZAP availability when apt packages are missing.
+
 ## [4.19.16] - 2026-01-30
 
 ### Fixed
