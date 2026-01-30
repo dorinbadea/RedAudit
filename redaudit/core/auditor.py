@@ -1187,6 +1187,13 @@ class InteractiveNetworkAuditor:
                                     self.logger.warning(
                                         "Nuclei FP filter skipped: %s", filter_err, exc_info=True
                                     )
+                        nuclei_partial = bool(nuclei_result.get("partial"))
+                        nuclei_error = nuclei_result.get("error")
+                        nuclei_success = self._resolve_nuclei_success(
+                            bool(nuclei_result.get("success")),
+                            partial=nuclei_partial,
+                            error=nuclei_error,
+                        )
                         nuclei_summary = {
                             "enabled": True,
                             "profile": nuclei_profile,
@@ -1195,10 +1202,10 @@ class InteractiveNetworkAuditor:
                             "findings": len(findings),
                             "findings_total": len(nuclei_result.get("findings") or []),
                             "findings_suspected": len(suspected),
-                            "success": bool(nuclei_result.get("success")),
-                            "error": nuclei_result.get("error"),
+                            "success": nuclei_success,
+                            "error": nuclei_error,
                         }
-                        if nuclei_result.get("partial"):
+                        if nuclei_partial:
                             nuclei_summary["partial"] = True
                             timeout_batches = nuclei_result.get("timeout_batches") or []
                             failed_batches = nuclei_result.get("failed_batches") or []
@@ -1229,14 +1236,24 @@ class InteractiveNetworkAuditor:
                         self.results["nuclei"] = nuclei_summary
 
                         merged = self._merge_nuclei_findings(findings)
+                        suspected_count = len(suspected)
                         if merged > 0:
                             self.ui.print_status(self.ui.t("nuclei_findings", merged), "OK")
-                            if suspected:
+                            if suspected_count:
                                 self.ui.print_status(
-                                    self.ui.t("nuclei_suspected", len(suspected)), "WARNING"
+                                    self.ui.t("nuclei_suspected", suspected_count), "WARNING"
                                 )
                         else:
-                            self.ui.print_status(self.ui.t("nuclei_no_findings"), "INFO")
+                            if suspected_count:
+                                self.ui.print_status(
+                                    self.ui.t("nuclei_suspected_only", suspected_count), "WARNING"
+                                )
+                            elif nuclei_partial or nuclei_error:
+                                self.ui.print_status(
+                                    self.ui.t("nuclei_no_findings_partial"), "INFO"
+                                )
+                            else:
+                                self.ui.print_status(self.ui.t("nuclei_no_findings"), "INFO")
                         if nuclei_result.get("budget_exceeded"):
                             self.ui.print_status(self.ui.t("nuclei_budget_exceeded"), "WARNING")
                         if nuclei_result.get("partial"):
@@ -3377,6 +3394,12 @@ class InteractiveNetworkAuditor:
         seconds = int(time_match.group(3))
         return timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
 
+    @staticmethod
+    def _resolve_nuclei_success(success_flag: bool, *, partial: bool, error: Optional[str]) -> bool:
+        if partial or error:
+            return False
+        return bool(success_flag)
+
     def _resume_scan_start_time(
         self, resume_finished_at: datetime, resume_elapsed: Optional[timedelta]
     ) -> Optional[datetime]:
@@ -3621,11 +3644,10 @@ class InteractiveNetworkAuditor:
         nuclei_summary["findings_suspected"] = int(
             nuclei_summary.get("findings_suspected") or 0
         ) + len(suspected)
-        nuclei_summary["success"] = bool(nuclei_summary.get("success")) or bool(
-            resume_result.get("success")
-        )
-        if resume_result.get("error"):
-            nuclei_summary["error"] = resume_result.get("error")
+        combined_success = bool(nuclei_summary.get("success")) or bool(resume_result.get("success"))
+        combined_error = nuclei_summary.get("error") or resume_result.get("error")
+        if combined_error:
+            nuclei_summary["error"] = combined_error
         if resume_result.get("budget_exceeded"):
             nuclei_summary["budget_exceeded"] = True
         if base_output_path and isinstance(base_output_path, str):
@@ -3635,26 +3657,41 @@ class InteractiveNetworkAuditor:
                 nuclei_summary["output_file"] = base_output_path
 
         pending_after = resume_result.get("pending_targets") or []
+        timeout_batches = resume_result.get("timeout_batches") or []
+        failed_batches = resume_result.get("failed_batches") or []
+        partial_flag = bool(resume_result.get("partial")) or bool(timeout_batches or failed_batches)
+
         if pending_after:
-            nuclei_summary["partial"] = True
+            partial_flag = True
             nuclei_summary["resume_pending"] = len(pending_after)
             resume_state["pending_targets"] = pending_after
             self._write_nuclei_resume_state(output_dir, resume_state)
         else:
-            if resume_result.get("partial"):
-                nuclei_summary["partial"] = True
-            else:
-                nuclei_summary.pop("partial", None)
             nuclei_summary.pop("resume_pending", None)
             self._clear_nuclei_resume_state(resume_path, output_dir)
 
-        if resume_result.get("partial"):
-            timeout_batches = resume_result.get("timeout_batches") or []
-            failed_batches = resume_result.get("failed_batches") or []
+        if partial_flag:
+            nuclei_summary["partial"] = True
             if timeout_batches:
-                nuclei_summary["timeout_batches"] = timeout_batches
+                existing_timeouts = nuclei_summary.get("timeout_batches") or []
+                nuclei_summary["timeout_batches"] = sorted(
+                    set(existing_timeouts + list(timeout_batches))
+                )
             if failed_batches:
-                nuclei_summary["failed_batches"] = failed_batches
+                existing_failed = nuclei_summary.get("failed_batches") or []
+                nuclei_summary["failed_batches"] = sorted(
+                    set(existing_failed + list(failed_batches))
+                )
+        else:
+            nuclei_summary.pop("partial", None)
+            nuclei_summary.pop("timeout_batches", None)
+            nuclei_summary.pop("failed_batches", None)
+
+        nuclei_summary["success"] = self._resolve_nuclei_success(
+            combined_success,
+            partial=partial_flag,
+            error=combined_error,
+        )
 
         nuclei_summary["resume"] = {
             "added_findings": len(new_findings),
