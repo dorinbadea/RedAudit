@@ -49,6 +49,15 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.16 Nuclei Output Coherence (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Nuclei Summary Coherence** | Done (v4.19.16) | Partial/timeouts now clear success and avoid misleading no-findings messaging. |
+| **Resume Status Tracking** | Done (v4.19.16) | Resume summaries retain timeout/failed batch info and recompute success. |
+| **Batch Activity Wording** | Done (v4.19.16) | Progress detail now reflects active batches to reduce parallelism confusion. |
+| **Wizard Color Guardrail** | Done (v4.19.16) | Yes/No label matching no longer mis-colors "Normal" timing option. |
+
 ### v4.19.15 Installer ShellCheck Cleanup (Done)
 
 | Feature | Status | Description |
