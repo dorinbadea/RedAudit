@@ -49,6 +49,12 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.15 Limpieza de ShellCheck en instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Variables de distro sin uso** | Hecho (v4.19.15) | Se eliminaron variables de distro sin uso para evitar fallos de ShellCheck sin cambios de comportamiento. |
+
 ### v4.19.14 Fallback de searchsploit (Hecho)
 
 | Funcionalidad | Estado | Descripción |
