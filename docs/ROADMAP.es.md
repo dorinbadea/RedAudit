@@ -49,6 +49,15 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.16 Coherencia de salida Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Coherencia del resumen Nuclei** | Hecho (v4.19.16) | Los parciales/timeouts ahora desactivan el éxito y evitan mensajes de no-hallazgos engañosos. |
+| **Estado de reanudación** | Hecho (v4.19.16) | La reanudación conserva lotes con timeout/fallidos y recomputa el éxito. |
+| **Detalle de actividad** | Hecho (v4.19.16) | El detalle de progreso refleja lotes activos para reducir la confusión sobre el paralelismo. |
+| **Guardia de color del menú** | Hecho (v4.19.16) | La detección Sí/No ya no colorea "Normal" como "No". |
+
 ### v4.19.15 Limpieza de ShellCheck en instalador (Hecho)
 
 | Funcionalidad | Estado | Descripción |

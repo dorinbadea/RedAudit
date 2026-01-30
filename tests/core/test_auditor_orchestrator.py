@@ -121,6 +121,12 @@ class TestAuditorOrchestrator(unittest.TestCase):
         mock_proc_2.terminate.assert_not_called()
         self.assertEqual(len(self.auditor._active_subprocesses), 0)
 
+    def test_resolve_nuclei_success_requires_clean_run(self):
+        assert self.auditor._resolve_nuclei_success(True, partial=False, error=None) is True
+        assert self.auditor._resolve_nuclei_success(True, partial=True, error=None) is False
+        assert self.auditor._resolve_nuclei_success(True, partial=False, error="timeout") is False
+        assert self.auditor._resolve_nuclei_success(False, partial=False, error=None) is False
+
     def test_filter_auditor_ips(self):
         """Test _filter_auditor_ips removes self-IPs."""
         self.auditor.results["network_info"] = [
@@ -1494,7 +1500,65 @@ def test_resume_nuclei_from_state_keeps_pending(resume_session_log_stub):
         assert auditor.results["nuclei"].get("resume_pending") == 1
         assert auditor.results["nuclei"].get("budget_exceeded") is True
         assert auditor.results["nuclei"].get("timeout_batches") == [1]
+        assert auditor.results["nuclei"].get("success") is False
         assert os.path.exists(resume_path)
+
+
+def test_resume_nuclei_from_state_tracks_partial_without_pending(resume_session_log_stub):
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        auditor.results = {"hosts": [], "vulnerabilities": [], "nuclei": {"findings": 0}}
+        auditor.config = {"dry_run": False}
+        auditor.proxy_manager = None
+
+        def _fake_nuclei_scan(**_kwargs):
+            return {
+                "findings": [],
+                "success": True,
+                "pending_targets": [],
+                "raw_output_file": _kwargs.get("output_file"),
+                "partial": True,
+                "timeout_batches": [1],
+                "failed_batches": [1],
+                "error": "timeout",
+            }
+
+        with (
+            patch("redaudit.core.auditor.run_nuclei_scan", side_effect=_fake_nuclei_scan),
+            patch(
+                "redaudit.core.verify_vuln.filter_nuclei_false_positives",
+                lambda findings, *_a, **_k: (findings, []),
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+        ):
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=False,
+            )
+        assert ok is True
+        assert auditor.results["nuclei"].get("partial") is True
+        assert auditor.results["nuclei"].get("timeout_batches") == [1]
+        assert auditor.results["nuclei"].get("failed_batches") == [1]
+        assert auditor.results["nuclei"].get("success") is False
 
 
 def test_resume_nuclei_from_state_uses_progress_callback(monkeypatch, resume_session_log_stub):

@@ -10,6 +10,15 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.16] - 2026-01-30
+
+### Corregido
+
+- **Coherencia del resumen de Nuclei**: Los parciales/timeouts ahora desactivan el estado de éxito y evitan el mensaje de "completado (sin hallazgos)" cuando el resultado es incompleto.
+- **Estado de reanudación Nuclei**: Los resúmenes de reanudación conservan lotes con timeout/fallidos y recomputan el estado de éxito de forma consistente.
+- **Detalle de progreso Nuclei**: La redacción de actividad de lotes ahora refleja lotes activos para reducir la confusión sobre el paralelismo.
+- **Colores del menú**: Se ajustó la detección de etiquetas Sí/No para evitar colorear "Normal" como "No".
+
 ## [4.19.15] - 2026-01-29
 
 ### Corregido

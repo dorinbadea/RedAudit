@@ -343,7 +343,12 @@ class Wizard:
                 return False
             if len(value) == len(label):
                 return True
-            return not value[len(label)].isalnum()
+            next_char = value[len(label)]
+            if next_char.isspace():
+                return True
+            if next_char in ("(", "[", "-", "—", ":", "/"):
+                return True
+            return False
 
         # Define label-color mappings
         labels = (

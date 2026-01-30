@@ -10,6 +10,15 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.16] - 2026-01-30
+
+### Fixed
+
+- **Nuclei Summary Coherence**: Partial/timeouts now clear success and avoid "completed (no findings)" messaging when results are incomplete.
+- **Nuclei Resume Status**: Resume summaries now retain timeout/failed batches and recompute success consistently.
+- **Nuclei Progress Detail**: Batch activity wording now reflects active batches to reduce parallelism confusion.
+- **Wizard Menu Colors**: Tightened yes/no label matching to avoid mis-coloring "Normal" timing options.
+
 ## [4.19.15] - 2026-01-29
 
 ### Fixed
