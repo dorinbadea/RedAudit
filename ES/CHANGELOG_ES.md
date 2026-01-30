@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.17] - 2026-01-30
+
+### Corregido
+
+- **Bootstrap de snap en instalador**: El instalador ahora prepara snapd en sistemas basados en Ubuntu cuando hace falta, mejorando la disponibilidad de searchsploit y ZAP si apt no los ofrece.
+
 ## [4.19.16] - 2026-01-30
 
 ### Corregido
