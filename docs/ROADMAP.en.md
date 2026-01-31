@@ -49,6 +49,12 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.21 Resume Sleep Inhibition (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Resume Sleep Prevention** | Done (v4.19.21) | Resume runs now activate sleep prevention when configured. |
+
 ### v4.19.20 Resume HTML Refresh (Done)
 
 | Feature | Status | Description |

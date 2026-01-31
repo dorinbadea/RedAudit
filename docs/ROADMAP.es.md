@@ -49,6 +49,12 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.21 Inhibición de suspensión en reanudación (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Prevención de suspensión en reanudación** | Hecho (v4.19.21) | Las reanudaciones activan la prevención de suspensión cuando está configurada. |
+
 ### v4.19.20 Actualización de HTML en reanudaciones (Hecho)
 
 | Funcionalidad | Estado | Descripción |
