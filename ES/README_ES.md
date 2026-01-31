@@ -37,7 +37,8 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 2. **Deep Scan Adaptativo**: Enumeración dirigida basada en la identidad del host.
 3. **Resolución de Entidad**: Consolidación basada en identidad de dispositivos multi-interfaz (heurística).
 4. **Filtrado Inteligente**: Reducción de ruido vía verificación consciente del contexto (`verify_vuln.py`).
-5. **Resiliencia**: **Reintentos de Host Muerto** automáticos para abandonar hosts que no responden y evitar bloqueos.
+5. **Selección de Nuclei**: Selección de objetivos basada en identidad con reintentos por excepción para evitar redundancia.
+6. **Resiliencia**: **Reintentos de Host Muerto** automáticos para abandonar hosts que no responden y evitar bloqueos.
 
 ![Vista General del Sistema](../docs/images/system_overview_v4_es.png)
 
@@ -382,6 +383,7 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | `--topology` | Activar descubrimiento de topología |
 | `--nuclei` | Habilitar escaneo de plantillas Nuclei (solo modo full) |
 | `--nuclei-max-runtime` | Tiempo maximo de Nuclei en minutos (0 = ilimitado; crea reanudacion) |
+| `--nuclei-exclude` | Excluir objetivos de Nuclei (host, host:puerto, URL; repetible) |
 | `--nuclei-resume` | Reanudar Nuclei pendiente desde carpeta o archivo de reanudacion |
 | `--html-report` | Generar dashboard HTML interactivo |
 | `--diff OLD NEW` | Análisis diferencial entre escaneos |

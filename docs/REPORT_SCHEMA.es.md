@@ -137,6 +137,11 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | :--- | :--- | :--- |
 | `enabled` | boolean | True cuando Nuclei se ejecutó (best-effort) |
 | `targets` | integer | Targets HTTP/HTTPS enviados a Nuclei |
+| `targets_total` | integer | Targets HTTP/HTTPS totales antes de la optimizacion |
+| `targets_exception` | integer | Targets tratados como excepcion (cobertura completa + reintentos) |
+| `targets_optimized` | integer | Targets seleccionados tras la optimizacion |
+| `targets_excluded` | integer | Targets excluidos por filtros del usuario |
+| `fatigue_limit` | integer | Profundidad maxima de split para reintentos por excepcion (limite de fatiga) |
 | `findings` | integer | Hallazgos Nuclei parseados |
 | `findings_total` | integer | Hallazgos Nuclei totales antes de filtrar falsos positivos |
 | `findings_suspected` | integer | Hallazgos Nuclei marcados como falsos positivos sospechados |
@@ -230,6 +235,11 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | Campo | Tipo | Descripción |
 | :--- | :--- | :--- |
 | `targets` | integer | Objetivos HTTP enviados a Nuclei |
+| `targets_total` | integer | Objetivos HTTP totales antes de optimizar |
+| `targets_exception` | integer | Objetivos tratados como excepcion (cobertura completa + reintentos) |
+| `targets_optimized` | integer | Objetivos seleccionados tras optimizar |
+| `targets_excluded` | integer | Objetivos excluidos por filtros del usuario |
+| `fatigue_limit` | integer | Profundidad maxima de split para reintentos por excepcion (limite de fatiga) |
 | `findings` | integer | Hallazgos tras filtrado |
 | `findings_total` | integer | Hallazgos brutos antes de filtrado |
 | `findings_suspected` | integer | Sospechas de falsos positivos |

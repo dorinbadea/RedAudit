@@ -41,7 +41,8 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 2. **Adaptive Deep Scan**: Targeted enumeration based on host identity.
 3. **Entity Resolution**: Identity-Based consolidation of multi-interface devices (heuristic).
 4. **Smart Filtering**: Reducing noise via context-aware verification (`verify_vuln.py`).
-5. **Resilience**: Automatic **Dead Host Retries** to abandon unresponsive hosts and prevent scan stalls.
+5. **Nuclei Targeting**: Identity-aware target selection with exception-based retries to avoid redundant web scans.
+6. **Resilience**: Automatic **Dead Host Retries** to abandon unresponsive hosts and prevent scan stalls.
 
 ![System Overview](docs/images/system_overview_v4_en.png)
 
@@ -380,6 +381,7 @@ redaudit --diff ~/reports/monday.json ~/reports/friday.json
 | `--topology` | Enable network topology discovery |
 | `--nuclei` | Enable Nuclei template scanning (full mode only) |
 | `--nuclei-max-runtime` | Max Nuclei runtime in minutes (0 = unlimited; creates resume) |
+| `--nuclei-exclude` | Exclude Nuclei targets (host, host:port, URL; repeatable) |
 | `--nuclei-resume` | Resume pending Nuclei run from a scan folder or resume file |
 | `--html-report` | Generate interactive HTML dashboard |
 | `--diff OLD NEW` | Differential analysis between scans |

@@ -49,6 +49,14 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.18 Nuclei Control and Timeout Clarity (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Nuclei Exclude List** | Done (v4.19.18) | CLI/wizard support for excluding targets by host, host:port, or URL. |
+| **Retry/Split Progress Detail** | Done (v4.19.18) | Progress detail now exposes retry attempts and split depth. |
+| **Timeout Target Summary** | Done (v4.19.18) | Timeout warnings summarize common hosts/ports in stalled batches. |
+
 ### v4.19.17 Installer Snap Bootstrap (Done)
 
 | Feature | Status | Description |

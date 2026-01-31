@@ -311,6 +311,9 @@ Cuando los lotes de Nuclei agotan tiempo, la ejecución se marca como parcial y 
 Durante lotes largos, la CLI muestra progreso dentro del batch basado en tiempo (con tiempo transcurrido) para confirmar actividad.
 Cuando ocurre un timeout, RedAudit divide el lote y mantiene el `--nuclei-timeout` configurado como umbral mínimo para los
 reintentos, evitando perder cobertura en objetivos lentos.
+Los objetivos de Nuclei se seleccionan con conciencia de identidad: los hosts con identidad fuerte se limitan a puertos
+prioritarios, mientras que los hosts ambiguos conservan cobertura completa. Los reintentos/divisiones se reservan para
+objetivos de excepcion y se limitan por fatiga para evitar bloqueos repetidos.
 
 ### Presupuesto de Tiempo y Reanudacion de Nuclei
 
@@ -340,12 +343,16 @@ guardado salvo que lo sobrescribas (prompt en wizard o `--nuclei-max-runtime`; `
 
 ### Perfiles y Cobertura de Nuclei (v4.17+)
 
-Nuclei tiene dos controles independientes en el asistente:
+Nuclei tiene tres controles independientes en el asistente:
 
 - **Perfil (plantillas)**: `full`, `balanced`, `fast` controla qué plantillas y severidades se ejecutan.
 - **Cobertura completa (objetivos)**: "Escanear TODOS los puertos HTTP detectados?" controla cuántas URLs HTTP por host se escanean.
   - **No** (por defecto en balanced/fast): Máx 2 URLs por host multipuerto (prioriza 80/443).
-  - **Sí** (por defecto en full): Escanea todos los puertos HTTP detectados por host (además de 80/443).
+  - **Sí** (por defecto en full): Escanea todos los puertos HTTP detectados en hosts ambiguos; los hosts con identidad fuerte se limitan a puertos prioritarios.
+- **Límite de fatiga (excepciones)**: "Límite de fatiga de Nuclei (profundidad de división, 0-10)" limita cuántas divisiones
+  de reintento se permiten para objetivos de excepción (por defecto 3). Valores bajos mantienen rapidez; valores altos priorizan certeza.
+- **Lista de exclusion (objetivos)**: `--nuclei-exclude` (o el prompt del asistente) omite objetivos por host, host:puerto o
+  URL completa para saltar endpoints lentos o irrelevantes.
 
 Estas opciones son distintas: el perfil define el alcance de plantillas y la cobertura completa define el alcance de objetivos.
 

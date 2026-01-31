@@ -316,6 +316,9 @@ When Nuclei batch scans time out, the run is marked as partial and the report in
 During long batches, the CLI shows time-based progress inside the batch (with elapsed time) so operators can confirm activity.
 When a timeout occurs, RedAudit splits the batch and keeps the configured `--nuclei-timeout` as a floor for retries to avoid
 dropping coverage on slow targets.
+Nuclei targets are selected with identity awareness: strong-identity hosts are capped to priority ports, while ambiguous
+hosts retain full target coverage. Retry/split behavior is reserved for exception targets and is fatigue-limited to avoid
+repeated stalls.
 
 ### Nuclei Runtime Budget and Resume
 
@@ -345,12 +348,16 @@ override it (wizard prompt or `--nuclei-max-runtime`; `0` disables the budget).
 
 ### Nuclei Profiles and Coverage (v4.17+)
 
-Nuclei has two independent controls in the wizard:
+Nuclei has three independent controls in the wizard:
 
 - **Profile (templates)**: `full`, `balanced`, `fast` controls which templates and severities run.
 - **Full Coverage (targets)**: "Scan ALL detected HTTP ports?" controls how many HTTP URLs per host are scanned.
   - **No** (default for balanced/fast): Max 2 URLs per multi-port host (prioritizes 80/443).
-  - **Yes** (default for full): Scan all detected HTTP ports per host (beyond 80/443).
+  - **Yes** (default for full): Scan all detected HTTP ports on ambiguous hosts; strong-identity hosts stay capped to priority ports.
+- **Fatigue Limit (exceptions)**: "Nuclei fatigue limit (split depth, 0-10)" caps how many retry splits are allowed for
+  exception targets (default 3). Lower values keep scans fast; higher values prioritize certainty for ambiguous hosts.
+- **Exclude List (targets)**: `--nuclei-exclude` (or the wizard prompt) omits targets by host, host:port, or full URL to
+  skip known slow or irrelevant endpoints.
 
 These options are separate: profile defines template scope, full coverage defines target scope.
 

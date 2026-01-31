@@ -139,6 +139,11 @@ Appears only when Nuclei scanning is enabled and available.
 | :--- | :--- | :--- |
 | `enabled` | boolean | True when Nuclei was executed (best-effort) |
 | `targets` | integer | HTTP/HTTPS targets sent to Nuclei |
+| `targets_total` | integer | Total HTTP/HTTPS targets before optimization |
+| `targets_exception` | integer | Targets treated as exceptions (full coverage + retries) |
+| `targets_optimized` | integer | Targets selected after optimization |
+| `targets_excluded` | integer | Targets excluded by user filters |
+| `fatigue_limit` | integer | Max split depth for exception retries (fatigue cap) |
 | `findings` | integer | Nuclei findings parsed |
 | `findings_total` | integer | Total Nuclei findings before false-positive filtering |
 | `findings_suspected` | integer | Nuclei findings flagged as suspected false positives |
@@ -236,6 +241,11 @@ Compact roll-up for dashboards.
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `targets` | integer | Total HTTP targets sent to Nuclei |
+| `targets_total` | integer | Total HTTP targets before optimization |
+| `targets_exception` | integer | Targets treated as exceptions (full coverage + retries) |
+| `targets_optimized` | integer | Targets selected after optimization |
+| `targets_excluded` | integer | Targets excluded by user filters |
+| `fatigue_limit` | integer | Max split depth for exception retries (fatigue cap) |
 | `findings` | integer | Findings after filtering |
 | `findings_total` | integer | Raw findings before filtering |
 | `findings_suspected` | integer | Suspected false positives |

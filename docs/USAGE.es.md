@@ -223,6 +223,7 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | `--nuclei` | Habilitar escaneo de plantillas con Nuclei (requiere `nuclei`; solo en modo full; DESACTIVADO por defecto) |
 | `--nuclei-timeout S` | Timeout por lote de Nuclei en segundos (defecto: 300) |
 | `--nuclei-max-runtime MIN` | Tiempo maximo de Nuclei en minutos (0 = ilimitado). Crea un archivo de reanudacion si se supera. |
+| `--nuclei-exclude TARGET` | Excluir objetivos de Nuclei (host, host:puerto, URL; repetible o separado por comas) |
 | `--nuclei-resume PATH` | Reanudar objetivos pendientes de Nuclei desde un archivo de reanudacion o una carpeta de escaneo |
 | `--nuclei-resume-latest` | Reanudar la ultima ejecucion pendiente de Nuclei desde la carpeta por defecto |
 | `--no-nuclei` | Deshabilitar Nuclei (defecto) |
@@ -233,13 +234,14 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 Notas:
 
 - Los escáneres de aplicaciones web (sqlmap/ZAP) se omiten en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP.
+- Los objetivos de Nuclei se optimizan por identidad: hosts con identidad fuerte se limitan a puertos prioritarios, mientras que los hosts ambiguos mantienen la cobertura completa y reciben reintentos solo por excepcion (con limite de fatiga; por defecto en el asistente: 3).
 - Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
 - **Nuclei en redes con alta densidad web:** En redes con muchos servicios HTTP/HTTPS (p. ej., labs Docker, microservicios), los escaneos Nuclei pueden tardar significativamente mas (30-90+ minutos). Usa `--nuclei-timeout 600` para aumentar el timeout por lote, o `--no-nuclei` para omitir Nuclei si la velocidad es critica. Cuando se activa la cobertura completa, RedAudit eleva el timeout por lote a 900s si se ha configurado un valor inferior.
 - Cuando se define un presupuesto de tiempo, es un **limite total de tiempo real para la fase de Nuclei** (no por lote). RedAudit ejecuta lotes de forma secuencial y evita iniciar un nuevo lote si el tiempo restante no cubre el tiempo estimado del lote. Guarda `nuclei_resume.json` + `nuclei_pending.txt` al agotarse el presupuesto. Si no respondes, **la auditoria continua tras Nuclei** y la reanudacion queda disponible. La reanudacion usa el presupuesto guardado salvo que lo sobrescribas (pasa `--nuclei-max-runtime` al reanudar o define un nuevo valor en el wizard; `0` desactiva el presupuesto).
 
 ### Configuracion de Nuclei (v4.17+)
 
-El escaneo con Nuclei tiene dos opciones de configuracion independientes:
+El escaneo con Nuclei tiene tres opciones de configuracion independientes:
 
 **1. Perfil de escaneo (`--profile`)**
 
@@ -258,10 +260,20 @@ Durante el modo interactivo, el asistente pregunta "Escanear TODOS los puertos H
 | Opcion | Comportamiento |
 |:-------|:---------------|
 | **No (por defecto en balanced/fast)** | Max 2 URLs por host multipuerto (prioriza 80, 443) |
-| **Si (por defecto en full)** | Escanea TODOS los puertos HTTP detectados en cada host (además de 80/443) |
+| **Si (por defecto en full)** | Escanea TODOS los puertos HTTP detectados en hosts ambiguos; los hosts con identidad fuerte se limitan a puertos prioritarios |
 
 Nota: Esta opcion solo esta disponible en el asistente interactivo, no via flags CLI.
 Cuando la cobertura completa esta activada, se omite el cambio automatico a auto-fast para respetar el perfil seleccionado.
+
+**3. Limite de fatiga (solo en asistente)**
+
+Controla cuantas veces los objetivos de excepcion se pueden dividir/reintentar en timeouts (profundidad 0-10; por defecto 3).
+Valores bajos mantienen los escaneos rapidos; valores altos priorizan la certeza en hosts ambiguos.
+
+**4. Lista de exclusion (CLI o asistente)**
+
+Usa `--nuclei-exclude` (repetible o separado por comas) o el prompt del asistente para omitir objetivos lentos o irrelevantes.
+Acepta host, host:puerto o URL completa.
 
 **Cuando usar cada combinacion:**
 
