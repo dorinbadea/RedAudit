@@ -3232,7 +3232,11 @@ class InteractiveNetworkAuditor:
                 approx_targets = int(round(float(completed)))
             approx_targets = max(0, min(total_targets_i, approx_targets))
             detail_text = detail or f"batch {completed}/{total}"
-            is_running = isinstance(detail_text, str) and "running" in detail_text
+            if isinstance(detail_text, str):
+                detail_lower = detail_text.lower()
+            else:
+                detail_lower = ""
+            is_running = any(token in detail_lower for token in ("running", "en curso"))
             if is_running and total_targets_i > 0:
                 approx_targets = min(approx_targets, total_targets_i - 1)
 
