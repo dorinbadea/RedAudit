@@ -10,6 +10,18 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.18] - 2026-01-31
+
+### Añadido
+
+- **Lista de exclusion Nuclei**: Añadido `--nuclei-exclude` (CLI) y prompt del asistente para omitir objetivos por host, host:puerto o URL.
+
+### Mejorado
+
+- **Detalle de progreso Nuclei**: El progreso ahora muestra reintentos y profundidad de split en lotes largos.
+- **Diagnostico de timeouts**: Los avisos de timeout incluyen resumen de hosts/puertos mas frecuentes en el lote.
+- **Metadatos de resumen Nuclei**: Los informes ahora incluyen `targets_excluded` para rastrear filtros de usuario.
+
 ## [4.19.17] - 2026-01-30
 
 ### Corregido

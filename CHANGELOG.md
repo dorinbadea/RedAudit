@@ -10,6 +10,18 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.18] - 2026-01-31
+
+### Added
+
+- **Nuclei Exclusion List**: Added `--nuclei-exclude` (CLI) and wizard prompt to skip targets by host, host:port, or URL.
+
+### Improved
+
+- **Nuclei Progress Detail**: Batch progress now shows retry attempts and split depth to clarify long-running batches.
+- **Timeout Diagnostics**: Timeout warnings now summarize the most common hosts/ports in a stalled batch.
+- **Nuclei Summary Metadata**: Reports now include `targets_excluded` to track user-filtered targets.
+
 ## [4.19.17] - 2026-01-30
 
 ### Fixed
