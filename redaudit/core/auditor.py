@@ -3564,6 +3564,16 @@ class InteractiveNetworkAuditor:
         if not self.config.get("_actual_output_dir"):
             self.config["_actual_output_dir"] = output_dir
 
+        inhibitor = None
+        if self.config.get("prevent_sleep", True):
+            try:
+                from redaudit.core.power import SleepInhibitor
+
+                inhibitor = SleepInhibitor(logger=self.logger)
+                inhibitor.start()
+            except Exception:
+                inhibitor = None
+
         nuclei_cfg = resume_state.get("nuclei") or {}
         profile = nuclei_cfg.get("profile") or "balanced"
         severity = nuclei_cfg.get("severity") or "low,medium,high,critical"
@@ -3619,253 +3629,265 @@ class InteractiveNetworkAuditor:
 
         session_log_started = False
         try:
-            from redaudit.utils.session_log import start_session_log
-
-            resume_stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            session_log_started = start_session_log(output_dir, f"resume_{resume_stamp}")
-        except Exception:
-            if self.logger:
-                self.logger.debug("Failed to start resume session log", exc_info=True)
-
-        self.ui.print_status(self.ui.t("nuclei_resume_running"), "INFO")
-        resume_started_at = datetime.now()
-        resume_output_file = os.path.join(output_dir, "nuclei_output_resume.json")
-        if os.path.exists(resume_output_file):
             try:
-                os.remove(resume_output_file)
-            except Exception:
-                pass
-        run_kwargs = {
-            "targets": pending_targets,
-            "output_dir": output_dir,
-            "severity": severity,
-            "timeout": timeout_s,
-            "batch_size": batch_size,
-            "request_timeout": request_timeout_s,
-            "retries": retries,
-            "max_runtime_s": max_runtime_s,
-            "fatigue_limit": fatigue_limit,
-            "output_file": resume_output_file,
-            "append_output": False,
-            "targets_file": os.path.join(output_dir, "nuclei_pending.txt"),
-            "logger": self.logger,
-            "dry_run": bool(self.config.get("dry_run", False)),
-            "print_status": self.ui.print_status,
-            "proxy_manager": self.proxy_manager,
-            "profile": profile,
-        }
-        resume_result = None
-        progress_console = self._progress_console()
-        try:
-            from rich.console import Console
+                from redaudit.utils.session_log import start_session_log
 
-            if not isinstance(progress_console, Console):
+                resume_stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                session_log_started = start_session_log(output_dir, f"resume_{resume_stamp}")
+            except Exception:
+                if self.logger:
+                    self.logger.debug("Failed to start resume session log", exc_info=True)
+
+            self.ui.print_status(self.ui.t("nuclei_resume_running"), "INFO")
+            resume_started_at = datetime.now()
+            resume_output_file = os.path.join(output_dir, "nuclei_output_resume.json")
+            if os.path.exists(resume_output_file):
+                try:
+                    os.remove(resume_output_file)
+                except Exception:
+                    pass
+            run_kwargs = {
+                "targets": pending_targets,
+                "output_dir": output_dir,
+                "severity": severity,
+                "timeout": timeout_s,
+                "batch_size": batch_size,
+                "request_timeout": request_timeout_s,
+                "retries": retries,
+                "max_runtime_s": max_runtime_s,
+                "fatigue_limit": fatigue_limit,
+                "output_file": resume_output_file,
+                "append_output": False,
+                "targets_file": os.path.join(output_dir, "nuclei_pending.txt"),
+                "logger": self.logger,
+                "dry_run": bool(self.config.get("dry_run", False)),
+                "print_status": self.ui.print_status,
+                "proxy_manager": self.proxy_manager,
+                "profile": profile,
+            }
+            resume_result = None
+            progress_console = self._progress_console()
+            try:
+                from rich.console import Console
+
+                if not isinstance(progress_console, Console):
+                    progress_console = None
+            except ImportError:
                 progress_console = None
-        except ImportError:
-            progress_console = None
-        if progress_console is not None:
-            try:
-                from rich.progress import Progress
+            if progress_console is not None:
+                try:
+                    from rich.progress import Progress
 
-                pending_total = len(pending_targets)
-                total_targets = pending_total
-                total_batches = max(1, int(math.ceil(pending_total / max(1, int(batch_size)))))
-                progress_start_t = time.time()
-                self._nuclei_progress_state = {
-                    "total_targets": int(total_targets),
-                    "max_targets": 0,
-                }
-                with Progress(
-                    *self._progress_columns(
-                        show_detail=True,
-                        show_eta=True,
-                        show_elapsed=False,
-                    ),
-                    console=progress_console,
-                    transient=False,
-                    refresh_per_second=4,
-                ) as progress:
-                    task = progress.add_task(
-                        f"[cyan]Nuclei (0/{total_targets})",
-                        total=total_targets,
-                        eta_upper=self._format_eta(total_batches * int(timeout_s)),
-                        eta_est="",
-                        detail=self.ui.t("nuclei_resume_pending", pending_total),
-                    )
-                    resume_result = run_nuclei_scan(
-                        **run_kwargs,
-                        progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
-                            float(c),
-                            total_targets,
-                            e,
-                            progress,
-                            task,
-                            progress_start_t,
-                            int(timeout_s),
-                            total_targets,
-                            int(batch_size),
-                            detail=d,
+                    pending_total = len(pending_targets)
+                    total_targets = pending_total
+                    total_batches = max(1, int(math.ceil(pending_total / max(1, int(batch_size)))))
+                    progress_start_t = time.time()
+                    self._nuclei_progress_state = {
+                        "total_targets": int(total_targets),
+                        "max_targets": 0,
+                    }
+                    with Progress(
+                        *self._progress_columns(
+                            show_detail=True,
+                            show_eta=True,
+                            show_elapsed=False,
                         ),
-                        use_internal_progress=False,
-                        translate=self.ui.t,
+                        console=progress_console,
+                        transient=False,
+                        refresh_per_second=4,
+                    ) as progress:
+                        task = progress.add_task(
+                            f"[cyan]Nuclei (0/{total_targets})",
+                            total=total_targets,
+                            eta_upper=self._format_eta(total_batches * int(timeout_s)),
+                            eta_est="",
+                            detail=self.ui.t("nuclei_resume_pending", pending_total),
+                        )
+                        resume_result = run_nuclei_scan(
+                            **run_kwargs,
+                            progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
+                                float(c),
+                                total_targets,
+                                e,
+                                progress,
+                                task,
+                                progress_start_t,
+                                int(timeout_s),
+                                total_targets,
+                                int(batch_size),
+                                detail=d,
+                            ),
+                            use_internal_progress=False,
+                            translate=self.ui.t,
+                        )
+                except Exception:
+                    resume_result = None
+            if resume_result is None:
+                resume_result = run_nuclei_scan(
+                    **run_kwargs,
+                    use_internal_progress=True,
+                    translate=self.ui.t,
+                )
+
+            base_output_rel = resume_state.get("output_file") or "nuclei_output.json"
+            base_output_path = (
+                base_output_rel
+                if os.path.isabs(base_output_rel)
+                else os.path.join(output_dir, base_output_rel)
+            )
+            self._append_nuclei_output(resume_output_file, base_output_path)
+
+            new_findings = resume_result.get("findings") or []
+            suspected: List[Dict[str, Any]] = []
+            if new_findings:
+                try:
+                    from redaudit.core.verify_vuln import filter_nuclei_false_positives
+
+                    host_agentless = {}
+                    for host in self.results.get("hosts", []) or []:
+                        if isinstance(host, dict):
+                            ip = host.get("ip")
+                            agentless = host.get("agentless_fingerprint") or {}
+                        else:
+                            ip = getattr(host, "ip", None)
+                            agentless = getattr(host, "agentless_fingerprint", {}) or {}
+                        if ip and agentless:
+                            host_agentless[ip] = agentless
+                    new_findings, suspected = filter_nuclei_false_positives(
+                        new_findings,
+                        host_agentless,
+                        self.logger,
+                        host_records=self.results.get("hosts", []),
                     )
-            except Exception:
-                resume_result = None
-        if resume_result is None:
-            resume_result = run_nuclei_scan(
-                **run_kwargs,
-                use_internal_progress=True,
-                translate=self.ui.t,
+                except Exception as filter_err:
+                    if self.logger:
+                        self.logger.warning(
+                            "Nuclei FP filter skipped on resume: %s", filter_err, exc_info=True
+                        )
+
+            merged = self._merge_nuclei_findings(new_findings)
+            nuclei_summary = self.results.get("nuclei") or {}
+            if not isinstance(nuclei_summary, dict):
+                nuclei_summary = {}
+            nuclei_summary["findings"] = int(nuclei_summary.get("findings") or 0) + len(
+                new_findings
+            )
+            nuclei_summary["findings_total"] = int(nuclei_summary.get("findings_total") or 0) + len(
+                resume_result.get("findings") or []
+            )
+            nuclei_summary["findings_suspected"] = int(
+                nuclei_summary.get("findings_suspected") or 0
+            ) + len(suspected)
+            combined_success = bool(nuclei_summary.get("success")) or bool(
+                resume_result.get("success")
+            )
+            combined_error = nuclei_summary.get("error") or resume_result.get("error")
+            if combined_error:
+                nuclei_summary["error"] = combined_error
+            if resume_result.get("budget_exceeded"):
+                nuclei_summary["budget_exceeded"] = True
+            if base_output_path and isinstance(base_output_path, str):
+                try:
+                    nuclei_summary["output_file"] = os.path.relpath(base_output_path, output_dir)
+                except Exception:
+                    nuclei_summary["output_file"] = base_output_path
+
+            pending_after = resume_result.get("pending_targets") or []
+            timeout_batches = resume_result.get("timeout_batches") or []
+            failed_batches = resume_result.get("failed_batches") or []
+            partial_flag = bool(resume_result.get("partial")) or bool(
+                timeout_batches or failed_batches
             )
 
-        base_output_rel = resume_state.get("output_file") or "nuclei_output.json"
-        base_output_path = (
-            base_output_rel
-            if os.path.isabs(base_output_rel)
-            else os.path.join(output_dir, base_output_rel)
-        )
-        self._append_nuclei_output(resume_output_file, base_output_path)
+            if pending_after:
+                partial_flag = True
+                nuclei_summary["resume_pending"] = len(pending_after)
+                resume_state["pending_targets"] = pending_after
+                self._write_nuclei_resume_state(output_dir, resume_state)
+            else:
+                nuclei_summary.pop("resume_pending", None)
+                self._clear_nuclei_resume_state(resume_path, output_dir)
 
-        new_findings = resume_result.get("findings") or []
-        suspected: List[Dict[str, Any]] = []
-        if new_findings:
-            try:
-                from redaudit.core.verify_vuln import filter_nuclei_false_positives
+            if partial_flag:
+                nuclei_summary["partial"] = True
+                if timeout_batches:
+                    existing_timeouts = nuclei_summary.get("timeout_batches") or []
+                    nuclei_summary["timeout_batches"] = sorted(
+                        set(existing_timeouts + list(timeout_batches))
+                    )
+                if failed_batches:
+                    existing_failed = nuclei_summary.get("failed_batches") or []
+                    nuclei_summary["failed_batches"] = sorted(
+                        set(existing_failed + list(failed_batches))
+                    )
+            else:
+                nuclei_summary.pop("partial", None)
+                nuclei_summary.pop("timeout_batches", None)
+                nuclei_summary.pop("failed_batches", None)
 
-                host_agentless = {}
-                for host in self.results.get("hosts", []) or []:
+            nuclei_summary["success"] = self._resolve_nuclei_success(
+                combined_success,
+                partial=partial_flag,
+                error=combined_error,
+            )
+
+            nuclei_summary["resume"] = {
+                "added_findings": len(new_findings),
+                "added_suspected": len(suspected),
+                "pending_targets": len(pending_after),
+            }
+            self.results["nuclei"] = nuclei_summary
+
+            if merged > 0:
+                self.ui.print_status(self.ui.t("nuclei_resume_done", merged), "OK")
+            else:
+                self.ui.print_status(self.ui.t("nuclei_resume_done", 0), "INFO")
+
+            if save_after:
+                hosts = self.results.get("hosts") or []
+                host_ips = []
+                for host in hosts:
                     if isinstance(host, dict):
                         ip = host.get("ip")
-                        agentless = host.get("agentless_fingerprint") or {}
                     else:
                         ip = getattr(host, "ip", None)
-                        agentless = getattr(host, "agentless_fingerprint", {}) or {}
-                    if ip and agentless:
-                        host_agentless[ip] = agentless
-                new_findings, suspected = filter_nuclei_false_positives(
-                    new_findings,
-                    host_agentless,
-                    self.logger,
-                    host_records=self.results.get("hosts", []),
+                    if ip:
+                        host_ips.append(ip)
+                resume_finished_at = datetime.now()
+                resume_elapsed = resume_finished_at - resume_started_at
+                scan_start_time = self._resume_scan_start_time(resume_finished_at, resume_elapsed)
+                generate_summary(self.results, self.config, host_ips, hosts, scan_start_time)
+                self.save_results(partial=bool(resume_result.get("partial")))
+
+            if resume_result.get("budget_exceeded"):
+                self.ui.print_status(self.ui.t("nuclei_budget_exceeded"), "WARNING")
+            timeout_batches = resume_result.get("timeout_batches") or []
+            failed_batches = resume_result.get("failed_batches") or []
+            if timeout_batches or failed_batches:
+                self.ui.print_status(
+                    self.ui.t("nuclei_partial", len(timeout_batches), len(failed_batches)),
+                    "WARNING",
                 )
-            except Exception as filter_err:
-                if self.logger:
-                    self.logger.warning(
-                        "Nuclei FP filter skipped on resume: %s", filter_err, exc_info=True
-                    )
+            if pending_after:
+                self.ui.print_status(self.ui.t("nuclei_resume_saved", resume_path), "WARNING")
 
-        merged = self._merge_nuclei_findings(new_findings)
-        nuclei_summary = self.results.get("nuclei") or {}
-        if not isinstance(nuclei_summary, dict):
-            nuclei_summary = {}
-        nuclei_summary["findings"] = int(nuclei_summary.get("findings") or 0) + len(new_findings)
-        nuclei_summary["findings_total"] = int(nuclei_summary.get("findings_total") or 0) + len(
-            resume_result.get("findings") or []
-        )
-        nuclei_summary["findings_suspected"] = int(
-            nuclei_summary.get("findings_suspected") or 0
-        ) + len(suspected)
-        combined_success = bool(nuclei_summary.get("success")) or bool(resume_result.get("success"))
-        combined_error = nuclei_summary.get("error") or resume_result.get("error")
-        if combined_error:
-            nuclei_summary["error"] = combined_error
-        if resume_result.get("budget_exceeded"):
-            nuclei_summary["budget_exceeded"] = True
-        if base_output_path and isinstance(base_output_path, str):
-            try:
-                nuclei_summary["output_file"] = os.path.relpath(base_output_path, output_dir)
-            except Exception:
-                nuclei_summary["output_file"] = base_output_path
+            return bool(resume_result.get("success"))
+        finally:
+            if session_log_started:
+                try:
+                    from redaudit.utils.session_log import stop_session_log
 
-        pending_after = resume_result.get("pending_targets") or []
-        timeout_batches = resume_result.get("timeout_batches") or []
-        failed_batches = resume_result.get("failed_batches") or []
-        partial_flag = bool(resume_result.get("partial")) or bool(timeout_batches or failed_batches)
-
-        if pending_after:
-            partial_flag = True
-            nuclei_summary["resume_pending"] = len(pending_after)
-            resume_state["pending_targets"] = pending_after
-            self._write_nuclei_resume_state(output_dir, resume_state)
-        else:
-            nuclei_summary.pop("resume_pending", None)
-            self._clear_nuclei_resume_state(resume_path, output_dir)
-
-        if partial_flag:
-            nuclei_summary["partial"] = True
-            if timeout_batches:
-                existing_timeouts = nuclei_summary.get("timeout_batches") or []
-                nuclei_summary["timeout_batches"] = sorted(
-                    set(existing_timeouts + list(timeout_batches))
-                )
-            if failed_batches:
-                existing_failed = nuclei_summary.get("failed_batches") or []
-                nuclei_summary["failed_batches"] = sorted(
-                    set(existing_failed + list(failed_batches))
-                )
-        else:
-            nuclei_summary.pop("partial", None)
-            nuclei_summary.pop("timeout_batches", None)
-            nuclei_summary.pop("failed_batches", None)
-
-        nuclei_summary["success"] = self._resolve_nuclei_success(
-            combined_success,
-            partial=partial_flag,
-            error=combined_error,
-        )
-
-        nuclei_summary["resume"] = {
-            "added_findings": len(new_findings),
-            "added_suspected": len(suspected),
-            "pending_targets": len(pending_after),
-        }
-        self.results["nuclei"] = nuclei_summary
-
-        if merged > 0:
-            self.ui.print_status(self.ui.t("nuclei_resume_done", merged), "OK")
-        else:
-            self.ui.print_status(self.ui.t("nuclei_resume_done", 0), "INFO")
-
-        if save_after:
-            hosts = self.results.get("hosts") or []
-            host_ips = []
-            for host in hosts:
-                if isinstance(host, dict):
-                    ip = host.get("ip")
-                else:
-                    ip = getattr(host, "ip", None)
-                if ip:
-                    host_ips.append(ip)
-            resume_finished_at = datetime.now()
-            resume_elapsed = resume_finished_at - resume_started_at
-            scan_start_time = self._resume_scan_start_time(resume_finished_at, resume_elapsed)
-            generate_summary(self.results, self.config, host_ips, hosts, scan_start_time)
-            self.save_results(partial=bool(resume_result.get("partial")))
-
-        if resume_result.get("budget_exceeded"):
-            self.ui.print_status(self.ui.t("nuclei_budget_exceeded"), "WARNING")
-        timeout_batches = resume_result.get("timeout_batches") or []
-        failed_batches = resume_result.get("failed_batches") or []
-        if timeout_batches or failed_batches:
-            self.ui.print_status(
-                self.ui.t("nuclei_partial", len(timeout_batches), len(failed_batches)),
-                "WARNING",
-            )
-        if pending_after:
-            self.ui.print_status(self.ui.t("nuclei_resume_saved", resume_path), "WARNING")
-
-        if session_log_started:
-            try:
-                from redaudit.utils.session_log import stop_session_log
-
-                session_log_path = stop_session_log()
-                if session_log_path and self.logger:
-                    self.logger.info("Session log saved: %s", session_log_path)
-            except Exception:
-                if self.logger:
-                    self.logger.debug("Failed to stop resume session log", exc_info=True)
-
-        return bool(resume_result.get("success"))
+                    session_log_path = stop_session_log()
+                    if session_log_path and self.logger:
+                        self.logger.info("Session log saved: %s", session_log_path)
+                except Exception:
+                    if self.logger:
+                        self.logger.debug("Failed to stop resume session log", exc_info=True)
+            if inhibitor is not None:
+                try:
+                    inhibitor.stop()
+                except Exception:
+                    pass
 
     def resume_nuclei_from_path(
         self,
