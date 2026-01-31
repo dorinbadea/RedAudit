@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-[![Version](https://img.shields.io/badge/version-4.19.17-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.19.18-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -41,7 +41,8 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 2. **Adaptive Deep Scan**: Targeted enumeration based on host identity.
 3. **Entity Resolution**: Identity-Based consolidation of multi-interface devices (heuristic).
 4. **Smart Filtering**: Reducing noise via context-aware verification (`verify_vuln.py`).
-5. **Resilience**: Automatic **Dead Host Retries** to abandon unresponsive hosts and prevent scan stalls.
+5. **Nuclei Targeting**: Identity-aware target selection with exception-based retries to avoid redundant web scans.
+6. **Resilience**: Automatic **Dead Host Retries** to abandon unresponsive hosts and prevent scan stalls.
 
 ![System Overview](docs/images/system_overview_v4_en.png)
 
@@ -380,6 +381,7 @@ redaudit --diff ~/reports/monday.json ~/reports/friday.json
 | `--topology` | Enable network topology discovery |
 | `--nuclei` | Enable Nuclei template scanning (full mode only) |
 | `--nuclei-max-runtime` | Max Nuclei runtime in minutes (0 = unlimited; creates resume) |
+| `--nuclei-exclude` | Exclude Nuclei targets (host, host:port, URL; repeatable) |
 | `--nuclei-resume` | Resume pending Nuclei run from a scan folder or resume file |
 | `--html-report` | Generate interactive HTML dashboard |
 | `--diff OLD NEW` | Differential analysis between scans |

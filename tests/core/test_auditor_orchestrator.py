@@ -317,6 +317,7 @@ class TestAuditorOrchestrator(unittest.TestCase):
             patch("redaudit.utils.config.is_nvd_api_key_configured", return_value=True),
             patch("redaudit.core.auditor_runtime.AuditorRuntime.setup_nvd_api_key"),
             patch("shutil.which", return_value="/usr/bin/zap.sh"),
+            patch("builtins.input", return_value=""),
         ):
             self.auditor._configure_scan_interactive(defaults)
 
@@ -831,13 +832,20 @@ def test_run_complete_scan_with_nuclei_and_cve(tmp_path, monkeypatch):
     )
     monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
     monkeypatch.setattr(
-        "redaudit.core.auditor.get_http_targets_from_hosts",
-        lambda *_a, **_k: [
-            "http://10.0.0.1:80",
-            "https://10.0.0.1:443",
-            "http://10.0.0.1:8080",
-            "http://10.0.0.2:80",
-        ],
+        "redaudit.core.auditor.select_nuclei_targets",
+        lambda *_a, **_k: {
+            "targets": [
+                "http://10.0.0.1:80",
+                "https://10.0.0.1:443",
+                "http://10.0.0.1:8080",
+                "http://10.0.0.2:80",
+            ],
+            "targets_total": 4,
+            "targets_exception": 0,
+            "targets_optimized": 0,
+            "selected_by_host": {"10.0.0.1": ["http://10.0.0.1:80"]},
+            "exception_targets": set(),
+        },
     )
     monkeypatch.setattr("redaudit.core.auditor.get_api_key_from_config", lambda: "key")
     monkeypatch.setattr("redaudit.core.auditor.enrich_host_with_cves", lambda h, **_k: h)
@@ -928,6 +936,7 @@ def test_nuclei_resume_state_roundtrip():
             retries=1,
             batch_size=10,
             max_runtime_minutes=5,
+            fatigue_limit=4,
             output_file=output_file,
         )
         resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
@@ -935,6 +944,7 @@ def test_nuclei_resume_state_roundtrip():
         assert os.path.exists(os.path.join(tmpdir, "nuclei_pending.txt"))
         loaded = auditor._load_nuclei_resume_state(resume_path)
         assert loaded and loaded.get("pending_targets") == ["http://127.0.0.1:80"]
+        assert loaded and loaded.get("nuclei", {}).get("fatigue_limit") == 4
         auditor._clear_nuclei_resume_state(resume_path, tmpdir)
         assert not os.path.exists(resume_path)
 
@@ -1079,6 +1089,7 @@ def test_resume_nuclei_from_state_updates_results(resume_session_log_stub):
             retries=1,
             batch_size=10,
             max_runtime_minutes=0,
+            fatigue_limit=2,
             output_file=output_file,
         )
         resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
@@ -1090,6 +1101,7 @@ def test_resume_nuclei_from_state_updates_results(resume_session_log_stub):
 
         def _fake_nuclei_scan(**_kwargs):
             captured["targets_file"] = _kwargs.get("targets_file")
+            captured["fatigue_limit"] = _kwargs.get("fatigue_limit")
             return {
                 "findings": [
                     {
@@ -1124,6 +1136,7 @@ def test_resume_nuclei_from_state_updates_results(resume_session_log_stub):
         assert "resume_pending" not in auditor.results["nuclei"]
         assert not os.path.exists(resume_path)
         assert captured["targets_file"] == os.path.join(tmpdir, "nuclei_pending.txt")
+        assert captured["fatigue_limit"] == 2
 
 
 def test_resume_nuclei_progress_uses_pending_total(resume_session_log_stub):

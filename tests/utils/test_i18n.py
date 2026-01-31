@@ -218,6 +218,46 @@ def test_new_nuclei_i18n_keys_formatting():
     assert "Nuclei" in en
     assert "Nuclei" in es
 
+    en = get_text("nuclei_targets_optimized", "en", 1, 2, 3)
+    es = get_text("nuclei_targets_optimized", "es", 1, 2, 3)
+    assert "1" in en and "2" in en and "3" in en
+    assert "1" in es and "2" in es and "3" in es
+
+    en = get_text("nuclei_optimization_note", "en")
+    es = get_text("nuclei_optimization_note", "es")
+    assert "identity" in en
+    assert "identidad" in es
+
+    en = get_text("nuclei_fatigue_q", "en")
+    es = get_text("nuclei_fatigue_q", "es")
+    assert "fatigue" in en
+    assert "fatiga" in es
+
+    en = get_text("nuclei_exclude_q", "en")
+    es = get_text("nuclei_exclude_q", "es")
+    assert "exclude" in en
+    assert "exclusion" in es or "exclu" in es
+
+    en = get_text("nuclei_detail_retry", "en", 2)
+    es = get_text("nuclei_detail_retry", "es", 2)
+    assert "2" in en
+    assert "2" in es
+
+    en = get_text("nuclei_detail_split", "en", 1, 3)
+    es = get_text("nuclei_detail_split", "es", 1, 3)
+    assert "1" in en and "3" in en
+    assert "1" in es and "3" in es
+
+    en = get_text("nuclei_timeout_detail", "en", 1, 4, "hosts 1; ports 80")
+    es = get_text("nuclei_timeout_detail", "es", 1, 4, "hosts 1; ports 80")
+    assert "1/4" in en
+    assert "1/4" in es
+
+    en = get_text("nuclei_timeout_targets", "en", "1.2.3.4(2)", "80,443")
+    es = get_text("nuclei_timeout_targets", "es", "1.2.3.4(2)", "80,443")
+    assert "1.2.3.4" in en
+    assert "1.2.3.4" in es
+
     en = get_text("nuclei_suspected_only", "en", 2)
     es = get_text("nuclei_suspected_only", "es", 2)
     assert "2" in en

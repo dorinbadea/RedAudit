@@ -26,6 +26,7 @@ from redaudit.utils.constants import (
 from redaudit.utils.i18n import TRANSLATIONS, detect_preferred_language
 from redaudit.utils.paths import expand_user_path, get_default_reports_base_dir
 from redaudit.utils.targets import parse_target_tokens
+from redaudit.core.nuclei import normalize_nuclei_exclude
 
 
 def parse_arguments():
@@ -132,6 +133,12 @@ Examples:
     default_nuclei_max_runtime = persisted_defaults.get("nuclei_max_runtime")
     if not isinstance(default_nuclei_max_runtime, int) or default_nuclei_max_runtime < 0:
         default_nuclei_max_runtime = 0
+
+    default_nuclei_exclude = persisted_defaults.get("nuclei_exclude")
+    if isinstance(default_nuclei_exclude, str):
+        default_nuclei_exclude = [default_nuclei_exclude]
+    elif not isinstance(default_nuclei_exclude, list):
+        default_nuclei_exclude = []
 
     default_windows_verify_enabled = persisted_defaults.get("windows_verify_enabled")
     if not isinstance(default_windows_verify_enabled, bool):
@@ -308,6 +315,15 @@ Examples:
         default=default_nuclei_max_runtime,
         metavar="MIN",
         help="Max Nuclei runtime in minutes (0 = unlimited)",
+    )
+    parser.add_argument(
+        "--nuclei-exclude",
+        action="append",
+        default=list(default_nuclei_exclude),
+        metavar="TARGET",
+        help=(
+            "Exclude Nuclei targets (host, host:port, URL). " "Can be repeated or comma-separated."
+        ),
     )
     resume_group = parser.add_mutually_exclusive_group()
     resume_group.add_argument(
@@ -851,6 +867,8 @@ def configure_from_args(app, args) -> bool:
     if not isinstance(nuclei_max_runtime, int) or nuclei_max_runtime < 0:
         nuclei_max_runtime = 0
     app.config["nuclei_max_runtime"] = nuclei_max_runtime
+    nuclei_exclude = getattr(args, "nuclei_exclude", None)
+    app.config["nuclei_exclude"] = normalize_nuclei_exclude(nuclei_exclude)
 
     # v4.0: Authenticated Scanning
     app.config["auth_provider"] = getattr(args, "auth_provider", "keyring")

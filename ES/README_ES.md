@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-[![Version](https://img.shields.io/badge/version-4.19.17-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.19.18-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -37,7 +37,8 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 2. **Deep Scan Adaptativo**: Enumeración dirigida basada en la identidad del host.
 3. **Resolución de Entidad**: Consolidación basada en identidad de dispositivos multi-interfaz (heurística).
 4. **Filtrado Inteligente**: Reducción de ruido vía verificación consciente del contexto (`verify_vuln.py`).
-5. **Resiliencia**: **Reintentos de Host Muerto** automáticos para abandonar hosts que no responden y evitar bloqueos.
+5. **Selección de Nuclei**: Selección de objetivos basada en identidad con reintentos por excepción para evitar redundancia.
+6. **Resiliencia**: **Reintentos de Host Muerto** automáticos para abandonar hosts que no responden y evitar bloqueos.
 
 ![Vista General del Sistema](../docs/images/system_overview_v4_es.png)
 
@@ -382,6 +383,7 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | `--topology` | Activar descubrimiento de topología |
 | `--nuclei` | Habilitar escaneo de plantillas Nuclei (solo modo full) |
 | `--nuclei-max-runtime` | Tiempo maximo de Nuclei en minutos (0 = ilimitado; crea reanudacion) |
+| `--nuclei-exclude` | Excluir objetivos de Nuclei (host, host:puerto, URL; repetible) |
 | `--nuclei-resume` | Reanudar Nuclei pendiente desde carpeta o archivo de reanudacion |
 | `--html-report` | Generar dashboard HTML interactivo |
 | `--diff OLD NEW` | Análisis diferencial entre escaneos |

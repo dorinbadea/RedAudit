@@ -49,6 +49,14 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.18 Control y claridad de timeouts Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Lista de exclusion Nuclei** | Hecho (v4.19.18) | Soporte CLI/asistente para excluir objetivos por host, host:puerto o URL. |
+| **Detalle de reintento/split** | Hecho (v4.19.18) | El progreso muestra reintentos y profundidad de split. |
+| **Resumen de objetivos en timeout** | Hecho (v4.19.18) | Avisos de timeout resumen hosts/puertos mas frecuentes en lotes bloqueados. |
+
 ### v4.19.17 Bootstrap de snap en instalador (Hecho)
 
 | Funcionalidad | Estado | Descripción |

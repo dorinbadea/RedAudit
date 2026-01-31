@@ -447,6 +447,57 @@ def test_wizard_custom_profile():
             assert auditor.config["scan_mode"] == "completo"
 
 
+def test_wizard_custom_profile_nuclei_fatigue(monkeypatch):
+    """Ensure Nuclei fatigue limit is prompted and stored in Custom profile."""
+    auditor = MockWizardAuditor()
+    auditor.ui.t = lambda key, *args: key
+
+    def _ask_choice(q, _opts, default=0):
+        if q == "wizard_profile_q":
+            return 3
+        if q == "nuclei_profile_q":
+            return 1
+        return default
+
+    def _ask_choice_with_back(q, _opts, default=0, **kwargs):
+        if q == "scan_mode":
+            return 2
+        if q == "auth_mode_q":
+            return -1
+        if q == "auth_scan_q":
+            return 1
+        return default
+
+    def _ask_yes_no(q, default="yes", **kwargs):
+        if q == "nuclei_q":
+            return True
+        if q == "nuclei_full_coverage_q":
+            return False
+        return default == "yes"
+
+    def _ask_number(q, default="all", **kwargs):
+        if q == "nuclei_budget_q":
+            return 12
+        if q == "nuclei_fatigue_q":
+            return 4
+        return default
+
+    monkeypatch.setattr(auditor, "ask_choice", _ask_choice)
+    monkeypatch.setattr(auditor, "ask_choice_with_back", _ask_choice_with_back)
+    monkeypatch.setattr(auditor, "ask_yes_no", _ask_yes_no)
+    monkeypatch.setattr(auditor, "ask_number", _ask_number)
+    monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
+    monkeypatch.setattr("redaudit.utils.config.is_nvd_api_key_configured", lambda: False)
+    monkeypatch.setattr("builtins.input", lambda *_a, **_k: "")
+
+    auditor._configure_scan_interactive({})
+
+    assert auditor.config["scan_mode"] == "completo"
+    assert auditor.config["nuclei_enabled"] is True
+    assert auditor.config["nuclei_max_runtime"] == 12
+    assert auditor.config["nuclei_fatigue_limit"] == 4
+
+
 def test_wizard_exhaustive_profile():
     """Test Exhaustive profile configuration (profile 2)."""
     auditor = MockWizardAuditor()
@@ -464,3 +515,20 @@ def test_wizard_exhaustive_profile():
                 auditor._configure_scan_interactive({})
                 assert auditor.config["scan_mode"] == "completo"
                 assert auditor.config["scan_vulnerabilities"] is True
+
+
+def test_wizard_exhaustive_profile_nuclei_fatigue():
+    """Ensure Nuclei fatigue limit is prompted and stored in Exhaustive profile."""
+    auditor = MockWizardAuditor()
+    with patch.object(auditor, "ask_choice", side_effect=[2, 2, 1]):
+        with patch.object(auditor, "ask_yes_no", side_effect=[True, False, False]):
+            with patch.object(auditor, "ask_auth_config", return_value={}):
+                with patch.object(auditor, "ask_number", side_effect=[15, 4]):
+                    with (
+                        patch("redaudit.utils.config.is_nvd_api_key_configured", lambda: False),
+                        patch("builtins.input", return_value=""),
+                    ):
+                        auditor._configure_scan_interactive({})
+    assert auditor.config["nuclei_enabled"] is True
+    assert auditor.config["nuclei_max_runtime"] == 15
+    assert auditor.config["nuclei_fatigue_limit"] == 4

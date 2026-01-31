@@ -62,14 +62,58 @@ def _setup_nuclei_app(tmp_path, monkeypatch):
     monkeypatch.setattr("redaudit.core.auditor.maybe_chown_to_invoking_user", lambda *a, **kw: None)
     monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **kw: None)
     monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
-    monkeypatch.setattr(
-        "redaudit.core.auditor.get_http_targets_from_hosts", lambda h: ["http://10.0.0.1:80"]
-    )
+    monkeypatch.setattr("redaudit.core.auditor.select_nuclei_targets", _select_single_target)
     monkeypatch.setattr(
         "redaudit.core.net_discovery.discover_networks",
         lambda *_args, **_kwargs: {},
     )
     return app
+
+
+def _select_single_target(*_args, **_kwargs):
+    return {
+        "targets": ["http://10.0.0.1:80"],
+        "targets_total": 1,
+        "targets_exception": 1,
+        "targets_optimized": 0,
+        "targets_by_host": {"10.0.0.1": ["http://10.0.0.1:80"]},
+        "selected_by_host": {"10.0.0.1": ["http://10.0.0.1:80"]},
+        "exception_targets": {"http://10.0.0.1:80"},
+    }
+
+
+def _select_two_targets(*_args, **_kwargs):
+    targets = ["http://10.0.0.1:80", "https://10.0.0.1:443"]
+    return {
+        "targets": targets,
+        "targets_total": len(targets),
+        "targets_exception": len(targets),
+        "targets_optimized": 0,
+        "targets_by_host": {"10.0.0.1": list(targets)},
+        "selected_by_host": {"10.0.0.1": list(targets)},
+        "exception_targets": set(targets),
+    }
+
+
+def _select_auto_fast_targets(*_args, **_kwargs):
+    targets_host_1 = ["http://10.0.0.1:80", "https://10.0.0.1:443", "http://10.0.0.1:8080"]
+    targets_host_2 = ["http://10.0.0.2:80", "http://10.0.0.2:8081"]
+    targets = targets_host_1 + targets_host_2
+    return {
+        "targets": targets,
+        "targets_total": len(targets) + 1,
+        "targets_exception": len(targets_host_1),
+        "targets_optimized": len(targets_host_2),
+        "targets_by_host": {
+            "10.0.0.1": list(targets_host_1),
+            "10.0.0.2": list(targets_host_2),
+        },
+        "selected_by_host": {
+            "10.0.0.1": list(targets_host_1),
+            "10.0.0.2": list(targets_host_2),
+        },
+        "exception_targets": set(targets),
+    }
 
 
 def test_run_complete_scan_orchestration(tmp_path, monkeypatch):
@@ -265,9 +309,7 @@ def test_run_complete_scan_nuclei_budget_resume_skipped(tmp_path, monkeypatch):
     monkeypatch.setattr("redaudit.core.auditor.maybe_chown_to_invoking_user", lambda *a, **kw: None)
     monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **kw: None)
     monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
-    monkeypatch.setattr(
-        "redaudit.core.auditor.get_http_targets_from_hosts", lambda h: ["http://10.0.0.1:80"]
-    )
+    monkeypatch.setattr("redaudit.core.auditor.select_nuclei_targets", _select_single_target)
     monkeypatch.setattr(
         "redaudit.core.auditor.run_nuclei_scan",
         lambda **kw: {
@@ -321,9 +363,7 @@ def test_run_complete_scan_nuclei_budget_resume_now(tmp_path, monkeypatch):
     monkeypatch.setattr("redaudit.core.auditor.maybe_chown_to_invoking_user", lambda *a, **kw: None)
     monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **kw: None)
     monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
-    monkeypatch.setattr(
-        "redaudit.core.auditor.get_http_targets_from_hosts", lambda h: ["http://10.0.0.1:80"]
-    )
+    monkeypatch.setattr("redaudit.core.auditor.select_nuclei_targets", _select_single_target)
     monkeypatch.setattr(
         "redaudit.core.auditor.run_nuclei_scan",
         lambda **kw: {
@@ -379,9 +419,7 @@ def test_run_complete_scan_nuclei_budget_message(tmp_path, monkeypatch):
     monkeypatch.setattr("redaudit.core.auditor.maybe_chown_to_invoking_user", lambda *a, **kw: None)
     monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **kw: None)
     monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
-    monkeypatch.setattr(
-        "redaudit.core.auditor.get_http_targets_from_hosts", lambda h: ["http://10.0.0.1:80"]
-    )
+    monkeypatch.setattr("redaudit.core.auditor.select_nuclei_targets", _select_single_target)
     monkeypatch.setattr(
         "redaudit.core.auditor.run_nuclei_scan",
         lambda **kw: {
@@ -538,25 +576,9 @@ def test_run_complete_scan_nuclei_auto_fast_and_risk_recalc(tmp_path, monkeypatc
 
     monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
     monkeypatch.setattr(
-        "redaudit.core.auditor.get_http_targets_from_hosts",
-        lambda _r: [
-            "http://10.0.0.1:80",
-            "https://10.0.0.1:443",
-            "http://10.0.0.1:8080",
-            "http://10.0.0.2:80",
-            "http://10.0.0.2:8081",
-            "bad://url",
-        ],
+        "redaudit.core.auditor.select_nuclei_targets",
+        _select_auto_fast_targets,
     )
-
-    from urllib.parse import urlparse as real_urlparse
-
-    def _urlparse(url):
-        if url == "bad://url":
-            raise ValueError("bad url")
-        return real_urlparse(url)
-
-    monkeypatch.setattr("urllib.parse.urlparse", _urlparse)
 
     monkeypatch.setattr(
         "redaudit.core.auditor.run_nuclei_scan",
@@ -658,9 +680,7 @@ def test_run_complete_scan_nuclei_failure(tmp_path, monkeypatch):
     monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **k: None)
     monkeypatch.setattr("redaudit.utils.session_log.stop_session_log", lambda: None)
     monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
-    monkeypatch.setattr(
-        "redaudit.core.auditor.get_http_targets_from_hosts", lambda h: ["http://10.0.0.1:80"]
-    )
+    monkeypatch.setattr("redaudit.core.auditor.select_nuclei_targets", _select_single_target)
     monkeypatch.setattr(
         "redaudit.core.auditor.run_nuclei_scan",
         lambda **_k: (_ for _ in ()).throw(RuntimeError("boom")),
@@ -940,14 +960,7 @@ def test_run_complete_scan_nuclei_full_coverage_skips_auto_fast(tmp_path, monkey
     monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **k: None)
     monkeypatch.setattr("redaudit.utils.session_log.stop_session_log", lambda: None)
     monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
-    monkeypatch.setattr(
-        "redaudit.core.auditor.get_http_targets_from_hosts",
-        lambda h: [
-            "http://10.0.0.1:80",
-            "https://10.0.0.1:443",
-            "http://10.0.0.1:8080",
-        ],
-    )
+    monkeypatch.setattr("redaudit.core.auditor.select_nuclei_targets", _select_auto_fast_targets)
     monkeypatch.setattr(
         "redaudit.core.auditor.run_nuclei_scan",
         lambda **_k: {"success": True, "findings": []},
@@ -995,10 +1008,7 @@ def test_run_complete_scan_nuclei_full_coverage_bumps_timeout(tmp_path, monkeypa
     monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **k: None)
     monkeypatch.setattr("redaudit.utils.session_log.stop_session_log", lambda: None)
     monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
-    monkeypatch.setattr(
-        "redaudit.core.auditor.get_http_targets_from_hosts",
-        lambda h: ["http://10.0.0.1:80", "https://10.0.0.1:443"],
-    )
+    monkeypatch.setattr("redaudit.core.auditor.select_nuclei_targets", _select_two_targets)
 
     captured = {}
 
@@ -1049,10 +1059,7 @@ def test_run_complete_scan_nuclei_filter_exception(tmp_path, monkeypatch):
     monkeypatch.setattr("redaudit.utils.session_log.start_session_log", lambda *a, **k: None)
     monkeypatch.setattr("redaudit.utils.session_log.stop_session_log", lambda: None)
     monkeypatch.setattr("redaudit.core.auditor.is_nuclei_available", lambda: True)
-    monkeypatch.setattr(
-        "redaudit.core.auditor.get_http_targets_from_hosts",
-        lambda h: ["http://10.0.0.1:80"],
-    )
+    monkeypatch.setattr("redaudit.core.auditor.select_nuclei_targets", _select_single_target)
     monkeypatch.setattr(
         "redaudit.core.auditor.run_nuclei_scan",
         lambda **_k: {"success": True, "findings": [{"template_id": "t1"}]},

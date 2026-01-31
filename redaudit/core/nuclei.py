@@ -13,7 +13,19 @@ import shutil
 import tempfile
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Protocol, TypedDict, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Protocol,
+    Set,
+    Tuple,
+    TypedDict,
+    cast,
+)
 
 from redaudit.core.command_runner import CommandRunner
 from redaudit.core.proxy import get_proxy_command_wrapper
@@ -144,6 +156,8 @@ def run_nuclei_scan(
     append_output: bool = False,
     output_file: Optional[str] = None,
     targets_file: Optional[str] = None,
+    exception_targets: Optional[Set[str]] = None,
+    fatigue_limit: Optional[int] = None,
     translate: Optional[Callable[..., str]] = None,
     lang: str = "en",
 ) -> Dict[str, Any]:
@@ -168,6 +182,8 @@ def run_nuclei_scan(
         append_output: If True, append to existing output file instead of truncating
         output_file: Optional explicit output file path for nuclei JSONL
         targets_file: Optional path to persist the target list (defaults to nuclei_targets.txt)
+        exception_targets: Optional set of targets eligible for retries/splitting on timeout
+        fatigue_limit: Optional max split depth for exception targets (None = default)
         translate: Optional translation function (e.g., UIManager.t)
         lang: Language code for fallback translations (default: en)
 
@@ -261,7 +277,21 @@ def run_nuclei_scan(
         size = int(effective_batch_size) if isinstance(effective_batch_size, int) else 10
         if size < 1:
             size = 10
-        batches = [targets[i : i + size] for i in range(0, len(targets), size)]
+        exception_set = set(exception_targets) if exception_targets is not None else None
+        if exception_set is not None:
+            exception_list = [t for t in targets if t in exception_set]
+            optimized_list = [t for t in targets if t not in exception_set]
+            exception_batches = [
+                exception_list[i : i + size] for i in range(0, len(exception_list), size)
+            ]
+            optimized_batches = [
+                optimized_list[i : i + size] for i in range(0, len(optimized_list), size)
+            ]
+            batches = exception_batches + optimized_batches
+            batch_retry_flags = [True] * len(exception_batches) + [False] * len(optimized_batches)
+        else:
+            batches = [targets[i : i + size] for i in range(0, len(targets), size)]
+            batch_retry_flags = [True] * len(batches)
         total_batches = len(batches)
         total_targets = len(targets)
         completed_targets = 0.0
@@ -270,6 +300,11 @@ def run_nuclei_scan(
         scan_lock = threading.Lock()
         active_batch_progress: Dict[int, float] = {}  # Track partial progress per batch
         max_split_depth = 6
+        if fatigue_limit is not None:
+            try:
+                max_split_depth = max(0, int(fatigue_limit))
+            except Exception:
+                max_split_depth = 6
 
         def _estimate_batch_timeout(
             batch_targets: List[str],
@@ -418,6 +453,7 @@ def run_nuclei_scan(
                 if remaining_budget < batch_timeout_s:
                     batch_timeout_s = max(1.0, remaining_budget)
                     budget_cap_active = True
+            retry_suffix = _format_retry_suffix(split_depth, retry_attempt, max_split_depth, _t)
 
             with tempfile.TemporaryDirectory(prefix="nuclei_tmp_", dir=output_dir) as tmpdir:
                 batch_targets_file = os.path.join(tmpdir, f"targets_{batch_idx}.txt")
@@ -485,6 +521,8 @@ def run_nuclei_scan(
                                     total_batches,
                                     _format_eta(elapsed),
                                 )
+                            if retry_suffix:
+                                detail = f"{detail}{retry_suffix}"
                             eta_label = f"ETA≈ {eta_batch}" if eta_batch != "--:--" else ""
                             _emit_progress(final_display_val, total_targets, eta_label, detail)
                     except KeyboardInterrupt:
@@ -512,6 +550,18 @@ def run_nuclei_scan(
                 timed_out = bool(getattr(res, "timed_out", False))
                 budget_exceeded = bool(timed_out and budget_cap_active)
                 if timed_out:
+                    if print_status:
+                        host_list, port_list = _summarize_batch_targets(batch_targets)
+                        if host_list or port_list:
+                            detail = _t(
+                                "nuclei_timeout_targets",
+                                host_list or "-",
+                                port_list or "-",
+                            )
+                            print_status(
+                                _t("nuclei_timeout_detail", batch_idx, total_batches, detail),
+                                "WARNING",
+                            )
                     if not budget_exceeded:
                         # v4.6.24: Split immediately on timeout (no extended retry)
                         # This avoids the infinite retry loop bug
@@ -609,14 +659,17 @@ def run_nuclei_scan(
             batch_lock = threading.Lock()
 
             def _run_batch_wrapper(idx_batch):
-                idx, batch = idx_batch
-                _run_one_batch(idx, batch)
+                idx, batch, can_retry = idx_batch
+                _run_one_batch(idx, batch, allow_retry=bool(can_retry))
                 return idx
 
             completed_batches = 0
             with ThreadPoolExecutor(max_workers=max_parallel) as executor:
                 futures = {
-                    executor.submit(_run_batch_wrapper, (idx, batch)): idx
+                    executor.submit(
+                        _run_batch_wrapper,
+                        (idx, batch, batch_retry_flags[idx - 1]),
+                    ): idx
                     for idx, batch in enumerate(batches, start=1)
                 }
                 for future in as_completed(futures):
@@ -680,14 +733,17 @@ def run_nuclei_scan(
                     batch_lock = threading.Lock()
 
                     def _run_batch_wrapper(idx_batch):
-                        idx, batch = idx_batch
-                        _run_one_batch(idx, batch)
+                        idx, batch, can_retry = idx_batch
+                        _run_one_batch(idx, batch, allow_retry=bool(can_retry))
                         return idx
 
                     completed_batches = 0
                     with ThreadPoolExecutor(max_workers=max_parallel) as executor:
                         futures = {
-                            executor.submit(_run_batch_wrapper, (idx, batch)): idx
+                            executor.submit(
+                                _run_batch_wrapper,
+                                (idx, batch, batch_retry_flags[idx - 1]),
+                            ): idx
                             for idx, batch in enumerate(batches, start=1)
                         }
                         for future in as_completed(futures):
@@ -751,7 +807,12 @@ def run_nuclei_scan(
                         _t("nuclei_batch_status", idx, total_batches, len(batch)),
                         "INFO",
                     )
-                budget_exceeded = _run_one_batch(idx, batch, budget_deadline=budget_deadline)
+                budget_exceeded = _run_one_batch(
+                    idx,
+                    batch,
+                    allow_retry=bool(batch_retry_flags[idx - 1]),
+                    budget_deadline=budget_deadline,
+                )
                 if budget_exceeded:
                     remaining_targets_mid: List[str] = []
                     for remain_batch in batches[idx - 1 :]:
@@ -942,3 +1003,316 @@ def get_http_targets_from_hosts(hosts: List[Dict]) -> List[str]:
                 targets.append(f"http://{ip}:{port}")
 
     return list(set(targets))
+
+
+def get_http_targets_by_host(hosts: List[Dict]) -> Dict[str, List[str]]:
+    """
+    Extract HTTP/HTTPS URLs grouped by host IP.
+
+    Returns:
+        Dict mapping IP -> list of URLs (deduped, stable order).
+    """
+    # Common HTTPS ports beyond 443
+    HTTPS_PORTS = {443, 8443, 4443, 9443, 49443}
+    targets_by_host: Dict[str, List[str]] = {}
+    seen_by_host: Dict[str, set] = {}
+
+    from redaudit.core.models import Host
+
+    for host in hosts:
+        if isinstance(host, Host):
+            host = host.to_dict()
+        ip = host.get("ip", "")
+        if not ip:
+            continue
+
+        ports = host.get("ports", [])
+        for port_info in ports:
+            port = port_info.get("port")
+            if not port:
+                continue
+
+            if not port_info.get("is_web_service"):
+                continue
+
+            service = str(port_info.get("service", "")).lower()
+            if port in HTTPS_PORTS or "https" in service or "ssl" in service:
+                url = f"https://{ip}:{port}"
+            else:
+                url = f"http://{ip}:{port}"
+
+            host_list = targets_by_host.setdefault(ip, [])
+            host_seen = seen_by_host.setdefault(ip, set())
+            if url not in host_seen:
+                host_list.append(url)
+                host_seen.add(url)
+
+    return targets_by_host
+
+
+def _parse_target_port(url: str) -> int:
+    try:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        if parsed.port:
+            return int(parsed.port)
+        if parsed.scheme == "https":
+            return 443
+        if parsed.scheme == "http":
+            return 80
+    except Exception:
+        return 0
+    return 0
+
+
+def _parse_target_host(url: str) -> str:
+    try:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        if parsed.hostname:
+            return str(parsed.hostname)
+    except Exception:
+        return ""
+    return ""
+
+
+def _normalize_exclude_patterns(exclude: Optional[Iterable[str]]) -> List[str]:
+    patterns: List[str] = []
+    if not exclude:
+        return patterns
+    if isinstance(exclude, str):
+        exclude = [exclude]
+    for item in exclude:
+        if item is None:
+            continue
+        if not isinstance(item, str):
+            item = str(item)
+        for part in item.split(","):
+            cleaned = part.strip()
+            if cleaned:
+                patterns.append(cleaned)
+    return patterns
+
+
+def normalize_nuclei_exclude(exclude: Optional[Iterable[str]]) -> List[str]:
+    return _normalize_exclude_patterns(exclude)
+
+
+def _is_target_excluded(target: str, patterns: List[str]) -> bool:
+    if not patterns:
+        return False
+    target_clean = target.strip().rstrip("/")
+    host = _parse_target_host(target)
+    port = _parse_target_port(target)
+    host_lower = host.lower() if host else ""
+    for raw in patterns:
+        pattern = raw.strip()
+        if not pattern:
+            continue
+        if "://" in pattern:
+            if target_clean == pattern.rstrip("/"):
+                return True
+            continue
+        candidate = pattern
+        candidate_host = candidate
+        candidate_port = None
+        if ":" in candidate and candidate.count(":") == 1:
+            left, right = candidate.rsplit(":", 1)
+            if right.isdigit():
+                candidate_host = left
+                candidate_port = int(right)
+        candidate_host_lower = candidate_host.lower()
+        if host_lower == candidate_host_lower:
+            if candidate_port is None or candidate_port == port:
+                return True
+    return False
+
+
+def _summarize_batch_targets(
+    batch_targets: List[str], *, max_hosts: int = 3, max_ports: int = 6
+) -> Tuple[str, str]:
+    if not batch_targets:
+        return "", ""
+    host_counts: Dict[str, int] = {}
+    port_counts: Dict[int, int] = {}
+    for target in batch_targets:
+        host = _parse_target_host(target)
+        if host:
+            host_counts[host] = host_counts.get(host, 0) + 1
+        port = _parse_target_port(target)
+        if port:
+            port_counts[port] = port_counts.get(port, 0) + 1
+    host_items = sorted(host_counts.items(), key=lambda item: (-item[1], item[0]))
+    port_items = sorted(port_counts.items(), key=lambda item: (-item[1], item[0]))
+    host_list = ", ".join(f"{host}({count})" for host, count in host_items[:max_hosts])
+    port_list = ", ".join(str(port) for port, _count in port_items[:max_ports])
+    return host_list, port_list
+
+
+def _format_retry_suffix(
+    split_depth: int, retry_attempt: int, max_split_depth: int, translate: Callable[..., str]
+) -> str:
+    parts: List[str] = []
+    if retry_attempt > 0:
+        parts.append(translate("nuclei_detail_retry", retry_attempt))
+    if split_depth > 0:
+        parts.append(translate("nuclei_detail_split", split_depth, max_split_depth))
+    if not parts:
+        return ""
+    return " | " + " ".join(parts)
+
+
+def _is_exception_host(host: Dict[str, Any], identity_threshold: int) -> Tuple[bool, str]:
+    smart_scan = host.get("smart_scan") or {}
+    trigger_deep = bool(smart_scan.get("trigger_deep"))
+    identity_score = smart_scan.get("identity_score")
+    threshold = smart_scan.get("identity_threshold")
+    try:
+        threshold_val = int(threshold) if threshold is not None else int(identity_threshold)
+    except Exception:
+        threshold_val = int(identity_threshold)
+
+    reasons = smart_scan.get("reasons") or []
+    if not isinstance(reasons, list):
+        reasons = [str(reasons)]
+
+    suspicious = "suspicious_service" in reasons
+    low_visibility = any(
+        r in reasons for r in ("ghost_identity", "low_visibility", "no_version_info")
+    )
+
+    if identity_score is None:
+        return True, "identity_missing"
+    try:
+        identity_val = int(identity_score)
+    except Exception:
+        identity_val = 0
+
+    identity_weak = identity_val < threshold_val
+
+    if suspicious:
+        return True, "suspicious_service"
+    if low_visibility:
+        return True, "low_visibility"
+    if trigger_deep:
+        return True, "trigger_deep"
+    if identity_weak:
+        return True, "identity_weak"
+    return False, "identity_strong"
+
+
+def _limit_targets_for_host(
+    urls: List[str],
+    *,
+    priority_ports: Optional[Set[int]],
+    max_targets: int,
+) -> List[str]:
+    if max_targets <= 0:
+        return []
+    if not urls:
+        return []
+    if not priority_ports:
+        return urls[:max_targets]
+
+    priority: List[str] = []
+    fallback: List[str] = []
+    for url in urls:
+        port = _parse_target_port(url)
+        if port in priority_ports:
+            priority.append(url)
+        else:
+            fallback.append(url)
+
+    selected: List[str] = []
+    for url in priority:
+        if url not in selected:
+            selected.append(url)
+        if len(selected) >= max_targets:
+            return selected
+    for url in fallback:
+        if url not in selected:
+            selected.append(url)
+        if len(selected) >= max_targets:
+            break
+    return selected
+
+
+def select_nuclei_targets(
+    hosts: List[Dict[str, Any]],
+    *,
+    identity_threshold: int,
+    priority_ports: Optional[Set[int]] = None,
+    max_targets_per_host: int = 2,
+    exclude_patterns: Optional[Iterable[str]] = None,
+) -> Dict[str, Any]:
+    """
+    Select Nuclei targets using optimization-by-default and resilience-by-exception.
+
+    - Exception hosts (ambiguous identity) receive all web targets.
+    - Strong identity hosts are limited to priority ports with a small cap.
+    """
+    targets_by_host = get_http_targets_by_host(hosts)
+    exception_hosts: Set[str] = set()
+    optimized_hosts: Set[str] = set()
+    exception_targets: List[str] = []
+    optimized_targets: List[str] = []
+    selected_by_host: Dict[str, List[str]] = {}
+    host_reasons: Dict[str, str] = {}
+    exclude_list = _normalize_exclude_patterns(exclude_patterns)
+    excluded_targets: Set[str] = set()
+
+    for host in hosts:
+        if isinstance(host, dict):
+            ip = host.get("ip")
+            host_record = host
+        else:
+            ip = getattr(host, "ip", None)
+            host_record = getattr(host, "to_dict", lambda: {})()
+        if not ip:
+            continue
+        urls = targets_by_host.get(ip) or []
+        if not urls:
+            continue
+
+        is_exception, reason = _is_exception_host(host_record, identity_threshold)
+        host_reasons[str(ip)] = reason
+        if is_exception:
+            exception_hosts.add(str(ip))
+            filtered = [url for url in urls if not _is_target_excluded(url, exclude_list)]
+            if len(filtered) != len(urls):
+                excluded_targets.update({url for url in urls if url not in filtered})
+            if not filtered:
+                continue
+            exception_targets.extend(filtered)
+            selected_by_host[str(ip)] = list(filtered)
+        else:
+            optimized_hosts.add(str(ip))
+            limited = _limit_targets_for_host(
+                urls,
+                priority_ports=priority_ports,
+                max_targets=max_targets_per_host,
+            )
+            filtered = [url for url in limited if not _is_target_excluded(url, exclude_list)]
+            if len(filtered) != len(limited):
+                excluded_targets.update({url for url in limited if url not in filtered})
+            if not filtered:
+                continue
+            optimized_targets.extend(filtered)
+            selected_by_host[str(ip)] = list(filtered)
+
+    targets = exception_targets + optimized_targets
+    return {
+        "targets": targets,
+        "targets_by_host": targets_by_host,
+        "selected_by_host": selected_by_host,
+        "exception_targets": set(exception_targets),
+        "exception_hosts": exception_hosts,
+        "optimized_hosts": optimized_hosts,
+        "targets_total": sum(len(v) for v in targets_by_host.values()),
+        "targets_exception": len(exception_targets),
+        "targets_optimized": len(optimized_targets),
+        "targets_excluded": len(excluded_targets),
+        "host_reasons": host_reasons,
+    }

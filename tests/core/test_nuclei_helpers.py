@@ -15,6 +15,17 @@ from redaudit.core.nuclei import (
     _parse_nuclei_output,
     run_nuclei_scan,
     NucleiProgressCallback,
+    get_http_targets_by_host,
+    select_nuclei_targets,
+    _is_exception_host,
+    _limit_targets_for_host,
+    _parse_target_port,
+    _parse_target_host,
+    _normalize_exclude_patterns,
+    _is_target_excluded,
+    _summarize_batch_targets,
+    _format_retry_suffix,
+    normalize_nuclei_exclude,
 )
 
 
@@ -120,6 +131,182 @@ def test_get_http_targets_from_hosts_dedupes_and_schemes():
     assert "https://10.0.0.1:443" in targets
 
 
+def test_get_http_targets_by_host_groups_and_dedupes():
+    hosts = [
+        {
+            "ip": "10.0.0.1",
+            "ports": [
+                {"port": 80, "service": "http", "is_web_service": True},
+                {"port": 80, "service": "http", "is_web_service": True},
+                {"port": 443, "service": "https", "is_web_service": True},
+            ],
+        }
+    ]
+    targets = get_http_targets_by_host(hosts)
+    assert targets["10.0.0.1"] == ["http://10.0.0.1:80", "https://10.0.0.1:443"]
+
+
+def test_select_nuclei_targets_exception_and_optimized():
+    hosts = [
+        {
+            "ip": "10.0.0.1",
+            "ports": [
+                {"port": 80, "service": "http", "is_web_service": True},
+                {"port": 8080, "service": "http", "is_web_service": True},
+            ],
+            "smart_scan": {
+                "identity_score": 1,
+                "identity_threshold": 3,
+                "reasons": ["low_visibility"],
+            },
+        },
+        {
+            "ip": "10.0.0.3",
+            "ports": [
+                {"port": 443, "service": "https", "is_web_service": True},
+            ],
+        },
+        {
+            "ip": "10.0.0.2",
+            "ports": [
+                {"port": 80, "service": "http", "is_web_service": True},
+                {"port": 8443, "service": "https", "is_web_service": True},
+            ],
+            "smart_scan": {
+                "identity_score": 5,
+                "identity_threshold": 3,
+                "reasons": ["identity_strong"],
+            },
+        },
+    ]
+    selected = select_nuclei_targets(
+        hosts,
+        identity_threshold=3,
+        priority_ports={80, 443},
+        max_targets_per_host=1,
+    )
+    targets = selected["targets"]
+    assert targets[0].startswith("http://10.0.0.1:")
+    assert selected["targets_exception"] == 3
+    assert selected["targets_optimized"] == 1
+    assert "http://10.0.0.2:80" in targets
+
+
+def test_is_exception_host_variants():
+    assert _is_exception_host({"smart_scan": {}}, 3)[0] is True
+    assert (
+        _is_exception_host(
+            {"smart_scan": {"identity_score": 5, "reasons": ["suspicious_service"]}},
+            3,
+        )[1]
+        == "suspicious_service"
+    )
+    assert (
+        _is_exception_host(
+            {"smart_scan": {"identity_score": 5, "reasons": ["ghost_identity"]}},
+            3,
+        )[1]
+        == "low_visibility"
+    )
+    assert (
+        _is_exception_host(
+            {"smart_scan": {"identity_score": 5, "trigger_deep": True}},
+            3,
+        )[1]
+        == "trigger_deep"
+    )
+    assert (
+        _is_exception_host(
+            {"smart_scan": {"identity_score": 1, "identity_threshold": 3}},
+            3,
+        )[1]
+        == "identity_weak"
+    )
+    assert _is_exception_host({"smart_scan": {"identity_score": 5}}, 3)[0] is False
+
+
+def test_limit_targets_for_host_priority_and_fallback():
+    urls = ["http://10.0.0.1:8080", "http://10.0.0.1:80"]
+    selected = _limit_targets_for_host(urls, priority_ports={80}, max_targets=1)
+    assert selected == ["http://10.0.0.1:80"]
+    fallback = _limit_targets_for_host(urls, priority_ports={443}, max_targets=1)
+    assert fallback == ["http://10.0.0.1:8080"]
+    no_priority = _limit_targets_for_host(urls, priority_ports=None, max_targets=1)
+    assert no_priority == ["http://10.0.0.1:8080"]
+
+
+def test_parse_target_port_handles_exception():
+    with patch("urllib.parse.urlparse", side_effect=RuntimeError("boom")):
+        assert _parse_target_port("http://10.0.0.1:80") == 0
+
+
+def test_parse_target_host_handles_exception():
+    with patch("urllib.parse.urlparse", side_effect=RuntimeError("boom")):
+        assert _parse_target_host("http://10.0.0.1:80") == ""
+
+
+def test_normalize_exclude_patterns_splits_and_cleans():
+    patterns = _normalize_exclude_patterns(["10.0.0.1:80, 10.0.0.2", "http://a/b/"])
+    assert patterns == ["10.0.0.1:80", "10.0.0.2", "http://a/b/"]
+    assert normalize_nuclei_exclude([]) == []
+    assert _normalize_exclude_patterns("10.0.0.1:80,10.0.0.2") == [
+        "10.0.0.1:80",
+        "10.0.0.2",
+    ]
+
+
+def test_is_target_excluded_matches_host_port_and_url():
+    patterns = ["10.0.0.1:80", "10.0.0.2", "http://10.0.0.3:8080"]
+    assert _is_target_excluded("http://10.0.0.1:80", patterns) is True
+    assert _is_target_excluded("http://10.0.0.2:443", patterns) is True
+    assert _is_target_excluded("http://10.0.0.3:8080/", patterns) is True
+    assert _is_target_excluded("http://10.0.0.4:8080", patterns) is False
+
+
+def test_select_nuclei_targets_applies_exclude_patterns():
+    hosts = [
+        {
+            "ip": "10.0.0.1",
+            "ports": [
+                {"port": 80, "service": "http", "is_web_service": True},
+                {"port": 443, "service": "https", "is_web_service": True},
+            ],
+            "smart_scan": {"identity_score": 5, "identity_threshold": 3},
+        }
+    ]
+    selected = select_nuclei_targets(
+        hosts,
+        identity_threshold=3,
+        priority_ports={80, 443},
+        max_targets_per_host=2,
+        exclude_patterns=["10.0.0.1:443"],
+    )
+    assert "http://10.0.0.1:80" in selected["targets"]
+    assert "https://10.0.0.1:443" not in selected["targets"]
+    assert selected["targets_excluded"] == 1
+
+
+def test_summarize_batch_targets():
+    targets = [
+        "http://10.0.0.1:80",
+        "https://10.0.0.1:443",
+        "http://10.0.0.2:8080",
+    ]
+    hosts, ports = _summarize_batch_targets(targets, max_hosts=2, max_ports=2)
+    assert "10.0.0.1" in hosts
+    assert "10.0.0.2" in hosts
+    assert "80" in ports
+    assert "443" in ports or "8080" in ports
+
+
+def test_format_retry_suffix_uses_translate():
+    translate = lambda key, *args: f"{key}:{','.join(str(a) for a in args)}"
+    assert _format_retry_suffix(0, 0, 3, translate) == ""
+    suffix = _format_retry_suffix(1, 2, 3, translate)
+    assert "nuclei_detail_retry:2" in suffix
+    assert "nuclei_detail_split:1,3" in suffix
+
+
 def test_run_nuclei_scan_internal_progress(tmp_path):
     import sys
     from types import SimpleNamespace
@@ -213,6 +400,44 @@ def test_run_nuclei_scan_internal_progress(tmp_path):
             sys.modules["rich.console"] = prev_console
 
     assert res["success"] is True
+
+
+def test_run_nuclei_scan_timeout_detail_prints(tmp_path):
+    class _FakeResult:
+        def __init__(self):
+            self.returncode = 0
+            self.stdout = ""
+            self.stderr = ""
+            self.timed_out = True
+
+    class _FakeRunner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, *_args, **_kwargs):
+            return _FakeResult()
+
+    statuses = []
+
+    def _print_status(message, _level="INFO"):
+        statuses.append(message)
+
+    translate = lambda key, *args: f"{key}:{','.join(str(a) for a in args)}"
+
+    with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+        with patch("redaudit.core.nuclei.CommandRunner", _FakeRunner):
+            run_nuclei_scan(
+                ["http://10.0.0.1:80"],
+                str(tmp_path),
+                batch_size=1,
+                use_internal_progress=False,
+                print_status=_print_status,
+                translate=translate,
+            )
+
+    assert any("nuclei_timeout_detail" in msg for msg in statuses)
+    assert any("10.0.0.1(1)" in msg for msg in statuses)
+    assert any("80" in msg for msg in statuses)
 
 
 def test_run_nuclei_scan_batch_size_zero():
@@ -634,6 +859,32 @@ def test_run_nuclei_scan_batch_timeout_sets_error(tmp_path):
             )
     assert res["partial"] is True
     assert res["error"] == "timeout"
+
+
+def test_run_nuclei_scan_exception_targets_skip_retry(tmp_path):
+    calls = []
+
+    class _Runner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, cmd, *args, **kwargs):
+            calls.append(cmd)
+            return SimpleNamespace(returncode=0, stdout="", stderr="", timed_out=True)
+
+    with patch("redaudit.core.nuclei.is_nuclei_available", return_value=True):
+        with patch("redaudit.core.nuclei.CommandRunner", _Runner):
+            res = run_nuclei_scan(
+                ["http://1", "http://2"],
+                output_dir=str(tmp_path),
+                batch_size=2,
+                use_internal_progress=False,
+                exception_targets=set(),
+                fatigue_limit=1,
+            )
+    assert res["partial"] is True
+    assert res["error"] == "timeout"
+    assert len(calls) == 1
 
 
 def test_run_nuclei_scan_split_keeps_timeout_floor(tmp_path):

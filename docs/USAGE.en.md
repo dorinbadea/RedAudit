@@ -221,6 +221,7 @@ Grouped by operational function. Verified against the current codebase.
 | `--nuclei` | Enable Nuclei template scanning (requires `nuclei`; runs in full mode only; OFF by default) |
 | `--nuclei-timeout S` | Nuclei batch timeout in seconds (default: 300) |
 | `--nuclei-max-runtime MIN` | Max Nuclei runtime in minutes (0 = unlimited). Creates a resume file when exceeded. |
+| `--nuclei-exclude TARGET` | Exclude Nuclei targets (host, host:port, URL; repeatable or comma-separated) |
 | `--nuclei-resume PATH` | Resume pending Nuclei targets from a resume file or scan folder |
 | `--nuclei-resume-latest` | Resume the latest pending Nuclei run from the default reports folder |
 | `--no-nuclei` | Disable Nuclei template scanning (default) |
@@ -231,13 +232,14 @@ Grouped by operational function. Verified against the current codebase.
 Notes:
 
 - Web app scanners (sqlmap/ZAP) are skipped on infrastructure UIs when identity evidence indicates router/switch/AP devices.
+- Nuclei targets are optimized by identity: strong-identity hosts are limited to priority ports, while ambiguous hosts keep full target coverage and receive exception-only retries (fatigue-limited; wizard default is 3).
 - Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.
 - **Nuclei on web-dense networks:** On networks with many HTTP/HTTPS services (e.g., Docker labs, microservices), Nuclei scans may take significantly longer (30-90+ minutes). Use `--nuclei-timeout 600` to increase the batch timeout, or `--no-nuclei` to skip Nuclei entirely if speed is critical. When full coverage is enabled, RedAudit raises the batch timeout to 900s if a lower value is configured.
 - When a runtime budget is set, it is a **total wall-clock limit for the Nuclei phase** (not per batch). RedAudit runs batches sequentially and stops before starting a new batch if the remaining budget cannot cover the estimated batch runtime. It saves `nuclei_resume.json` + `nuclei_pending.txt` when the budget is reached. If you do nothing, the **audit continues after Nuclei** and the resume stays available. Resume uses the saved budget unless overridden (pass `--nuclei-max-runtime` during resume or set a new value in the wizard; `0` disables the budget).
 
 ### Nuclei Configuration (v4.17+)
 
-Nuclei scanning has two independent configuration options:
+Nuclei scanning has three independent configuration options:
 
 **1. Scan Profile (`--profile`)**
 
@@ -256,10 +258,20 @@ During interactive mode, the wizard asks "Scan ALL detected HTTP ports?" This co
 | Option | Behavior |
 |:-------|:---------|
 | **No (default for balanced/fast)** | Max 2 URLs per multi-port host (prioritizes 80, 443) |
-| **Yes (default for full)** | Scan ALL detected HTTP ports on every host (beyond 80/443) |
+| **Yes (default for full)** | Scan ALL detected HTTP ports on ambiguous hosts; strong-identity hosts remain capped to priority ports |
 
 Note: This option is only available in the interactive wizard, not via CLI flags.
 When full coverage is enabled, the auto-fast profile switch is skipped so the selected profile is honored.
+
+**3. Fatigue Limit (wizard only)**
+
+Controls how many times exception targets can be split/retried on timeouts (depth 0-10; default 3). Lower values keep
+scans fast; higher values prioritize certainty for ambiguous hosts.
+
+**4. Exclude List (CLI or wizard)**
+
+Use `--nuclei-exclude` (repeatable or comma-separated) or the wizard prompt to skip known slow or irrelevant targets.
+Accepts host, host:port, or full URL.
 
 **When to use each combination:**
 
