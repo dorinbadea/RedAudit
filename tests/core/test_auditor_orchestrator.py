@@ -1043,8 +1043,12 @@ def test_load_resume_context_detects_reports():
         txt_path = os.path.join(tmpdir, "redaudit_20260101_000000.txt")
         with open(txt_path, "w", encoding="utf-8") as handle:
             handle.write("report")
+        html_path = os.path.join(tmpdir, "report.html")
+        with open(html_path, "w", encoding="utf-8") as handle:
+            handle.write("<html></html>")
         assert auditor._load_resume_context(tmpdir) is True
         assert auditor.config["save_txt_report"] is True
+        assert auditor.config["save_html_report"] is True
 
 
 def test_load_resume_context_restores_target_networks():
