@@ -49,6 +49,14 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.19 Correcciones de renderizado del progreso Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Colores de estado** | Hecho (v4.19.19) | Los mensajes warning/error se renderizan con colores correctos durante el progreso Rich. |
+| **Clamp de lotes en curso** | Hecho (v4.19.19) | El progreso ya no llega al 100% mientras los lotes de Nuclei siguen en curso (detalle ES). |
+| **Objetivos pendientes por timeout** | Hecho (v4.19.19) | Las ejecuciones parciales por timeout guardan objetivos pendientes para reanudar. |
+
 ### v4.19.18 Control y claridad de timeouts Nuclei (Hecho)
 
 | Funcionalidad | Estado | Descripción |

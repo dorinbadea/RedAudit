@@ -326,7 +326,8 @@ If you set a Nuclei runtime budget (wizard or `--nuclei-max-runtime`), the budge
 entire Nuclei phase** (not per batch). Without a budget, Nuclei batches may run in parallel (up to 4; clamped for long
 timeouts). When a budget is set, RedAudit runs Nuclei batches sequentially to respect the cap.
 Before starting a new batch, RedAudit checks the remaining budget against the estimated batch runtime; if it is too low,
-the batch is deferred and pending targets are written to `nuclei_resume.json` and `nuclei_pending.txt`. If the budget is
+the batch is deferred and pending targets are written to `nuclei_resume.json` and `nuclei_pending.txt`. Timeouts that
+end Nuclei as a partial run also save the pending targets for resume. If the budget is
 reached mid-batch (rare edge case), the current batch is also deferred.
 
 You will be prompted to resume immediately with a 15-second countdown; if you do nothing, **the audit continues after

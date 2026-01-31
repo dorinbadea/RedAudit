@@ -322,6 +322,7 @@ tiempo real para toda la fase de Nuclei** (no por lote). Sin presupuesto, Nuclei
 se limita cuando los timeouts son largos). Cuando hay presupuesto, RedAudit ejecuta los lotes de forma secuencial para
 respetar el limite. Antes de iniciar un nuevo lote, RedAudit compara el tiempo restante con el tiempo estimado del lote; si
 es insuficiente, se aplaza el lote y los objetivos pendientes se guardan en `nuclei_resume.json` y `nuclei_pending.txt`.
+Los timeouts que dejan la ejecucion como parcial tambien guardan objetivos pendientes para reanudar.
 Si se agota el presupuesto a mitad de un lote (caso raro), el lote actual también se aplaza.
 
 Se ofrece una pregunta para reanudar con una cuenta atras de 15 segundos; si no respondes, **la auditoria continua tras

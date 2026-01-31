@@ -100,6 +100,18 @@ class TestUIManagerPrintStatus:
         assert "Error" in captured.out
         assert "FAIL" in captured.out
 
+    def test_print_status_uses_rich_when_active_console(self):
+        """Ensure print_status prefers Rich when a progress console is active."""
+        ui = UIManager()
+        ui._active_progress_console = object()
+        with (
+            patch.object(ui, "_print_with_rich") as print_rich,
+            patch.object(ui, "_print_ansi") as print_ansi,
+        ):
+            ui.print_status("Test message", "WARNING")
+        assert print_rich.called is True
+        assert print_ansi.called is False
+
     def test_print_status_updates_activity(self):
         """Test that print_status updates last_activity."""
         ui = UIManager()

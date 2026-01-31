@@ -123,7 +123,8 @@ class UIManager:
             lines.extend(wrapped if wrapped else [""])
 
         with self._print_lock:
-            if progress_active:
+            use_rich = progress_active or self._active_progress_console is not None
+            if use_rich:
                 self._print_with_rich(ts, status_display, rich_style, lines)
             else:
                 self._print_ansi(ts, status_display, color, endc, lines)
