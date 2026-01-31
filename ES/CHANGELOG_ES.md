@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.20] - 2026-01-31
+
+### Corregido
+
+- **Detección de HTML en reanudación**: Las reanudaciones regeneran los informes HTML cuando existen `report.html`.
+
 ## [4.19.19] - 2026-01-31
 
 ### Corregido
