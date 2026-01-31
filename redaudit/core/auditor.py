@@ -3431,7 +3431,8 @@ class InteractiveNetworkAuditor:
             if (
                 name.startswith("redaudit_")
                 or name.startswith("PARTIAL_redaudit_")
-                or name in ("report.html", "report_es.html", "report.html.enc", "report_es.html.enc")
+                or name
+                in ("report.html", "report_es.html", "report.html.enc", "report_es.html.enc")
             ):
                 return True
         return False
