@@ -423,6 +423,7 @@ def run_nuclei_scan(
 
         timed_out_batches: set[int] = set()
         failed_batches: set[int] = set()
+        timeout_targets: set[str] = set()
 
         def _run_one_batch(
             batch_idx: int,
@@ -589,6 +590,7 @@ def run_nuclei_scan(
                         with scan_lock:
                             timed_out_batches.add(batch_idx)
                             failed_batches.add(batch_idx)
+                            timeout_targets.update(batch_targets)
 
                 # Append JSONL output to the consolidated file, if present.
                 # Copy partial output unless we timed out AND will actually retry.
@@ -834,6 +836,11 @@ def run_nuclei_scan(
             result["failed_batches"] = sorted(failed_batches)
             if not result.get("error"):
                 result["error"] = "timeout"
+        if timeout_targets and not result.get("budget_exceeded"):
+            ordered_timeout = [t for t in targets if t in timeout_targets]
+            result["timeout_targets"] = ordered_timeout
+            if not result.get("pending_targets"):
+                result["pending_targets"] = ordered_timeout
 
         # v4.11.0: Success if we have findings, even if some batches failed
         # Previously: result["success"] = os.path.exists(output_file) and not failed_batches
