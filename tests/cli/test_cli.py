@@ -145,6 +145,7 @@ def _base_args(**overrides):
         "nuclei": False,
         "nuclei_profile": "balanced",
         "nuclei_max_runtime": 0,
+        "nuclei_exclude": None,
         "nuclei_resume": None,
         "nuclei_resume_latest": False,
         "agentless_verify_max_targets": 20,
@@ -308,6 +309,13 @@ def test_configure_from_args_sets_nuclei_max_runtime():
     args = _base_args(nuclei_max_runtime=45)
     assert cli.configure_from_args(app, args) is True
     assert app.config["nuclei_max_runtime"] == 45
+
+
+def test_configure_from_args_sets_nuclei_exclude():
+    app = _DummyApp()
+    args = _base_args(nuclei_exclude=["10.0.0.1:80,10.0.0.2"])
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["nuclei_exclude"] == ["10.0.0.1:80", "10.0.0.2"]
 
 
 def test_configure_from_args_invalid_nuclei_max_runtime():
