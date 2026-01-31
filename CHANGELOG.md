@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.20] - 2026-01-31
+
+### Fixed
+
+- **Resume HTML Detection**: Resume runs now regenerate HTML reports when `report.html` artifacts exist.
+
 ## [4.19.19] - 2026-01-31
 
 ### Fixed

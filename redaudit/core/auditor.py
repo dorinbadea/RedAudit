@@ -3426,8 +3426,13 @@ class InteractiveNetworkAuditor:
         if not output_dir or not os.path.isdir(output_dir):
             return False
         for name in os.listdir(output_dir):
-            if name.endswith(suffixes) and (
-                name.startswith("redaudit_") or name.startswith("PARTIAL_redaudit_")
+            if not name.endswith(suffixes):
+                continue
+            if (
+                name.startswith("redaudit_")
+                or name.startswith("PARTIAL_redaudit_")
+                or name
+                in ("report.html", "report_es.html", "report.html.enc", "report_es.html.enc")
             ):
                 return True
         return False

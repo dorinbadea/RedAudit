@@ -49,6 +49,12 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.20 Resume HTML Refresh (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Resume HTML Detection** | Done (v4.19.20) | Resume runs regenerate HTML when `report.html` artifacts exist. |
+
 ### v4.19.19 Nuclei Progress Rendering Fixes (Done)
 
 | Feature | Status | Description |
