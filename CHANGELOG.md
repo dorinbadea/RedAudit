@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.21] - 2026-01-31
+
+### Fixed
+
+- **Resume Sleep Inhibition**: Resume runs now apply sleep prevention when `prevent_sleep` is enabled.
+
 ## [4.19.20] - 2026-01-31
 
 ### Fixed
