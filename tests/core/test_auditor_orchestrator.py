@@ -578,6 +578,26 @@ class TestAuditorOrchestratorExtras(unittest.TestCase):
         )
         self.assertTrue(progress.update.called)
 
+    def test_nuclei_progress_callback_running_spanish_clamps(self):
+        progress = MagicMock()
+        self.auditor._touch_activity = MagicMock()
+        self.auditor._format_eta = lambda *_a: "00:00"
+        self.auditor._nuclei_progress_state = {"total_targets": 10, "max_targets": 0}
+        self.auditor._nuclei_progress_callback(
+            completed=10,
+            total=10,
+            eta="",
+            progress=progress,
+            task="task",
+            start_time=time.time() - 1,
+            timeout=30,
+            total_targets=10,
+            batch_size=1,
+            detail="lote 1/4 en curso 0:01 transcurrido",
+        )
+        called_kwargs = progress.update.call_args.kwargs
+        self.assertEqual(called_kwargs.get("completed"), 9)
+
     def test_nd_progress_callback_handles_exception(self):
         class _Progress:
             def update(self, *_a, **_k):
