@@ -5,7 +5,7 @@
 
 ## Summary
 
-Fixes Nuclei progress rendering: status colors now appear correctly during Rich progress, and running batches no longer show 100% completion.
+Fixes Nuclei progress rendering and saves pending targets when timeouts end a run as partial.
 
 ## Added
 
@@ -19,6 +19,7 @@ Fixes Nuclei progress rendering: status colors now appear correctly during Rich 
 
 - Status messages now respect warning/error colors during Rich progress output.
 - Nuclei progress no longer reports 100% while batches are still running (ES detail handling).
+- Partial runs from timeouts now save pending targets for resume.
 
 ## Testing
 

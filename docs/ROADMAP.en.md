@@ -55,6 +55,7 @@ These items are ordered chronologically (most recent first).
 | --- | --- | --- |
 | **Progress Status Colors** | Done (v4.19.19) | Warning/error status lines render with the correct colors during Rich progress. |
 | **Running Batch Clamp** | Done (v4.19.19) | Progress no longer reaches 100% while Nuclei batches are still running (ES detail handling). |
+| **Timeout Resume Targets** | Done (v4.19.19) | Partial runs caused by timeouts now save pending targets for resume. |
 
 ### v4.19.18 Nuclei Control and Timeout Clarity (Done)
 

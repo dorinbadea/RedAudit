@@ -5,7 +5,7 @@
 
 ## Summary
 
-Corrige el renderizado del progreso de Nuclei: los colores de estado se muestran bien durante el progreso Rich y los lotes en curso ya no muestran 100%.
+Corrige el renderizado del progreso de Nuclei y guarda objetivos pendientes cuando los timeouts dejan la ejecucion como parcial.
 
 ## Added
 
@@ -19,6 +19,7 @@ Corrige el renderizado del progreso de Nuclei: los colores de estado se muestran
 
 - Los mensajes de estado respetan los colores de warning/error durante el progreso Rich.
 - El progreso de Nuclei ya no reporta 100% mientras los lotes siguen ejecutándose (detalle ES).
+- Las ejecuciones parciales por timeout guardan objetivos pendientes para reanudar.
 
 ## Testing
 

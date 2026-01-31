@@ -16,6 +16,7 @@ Release notes live under `docs/releases/` for additional context.
 
 - **Nuclei Progress Colors**: Status lines now respect warning/error colors during Rich progress output.
 - **Nuclei Progress Accuracy**: Running batches no longer report 100% completion while still in progress (ES detail handling).
+- **Nuclei Timeout Resume**: Partial runs from timeouts now save pending targets for resume.
 
 ## [4.19.18] - 2026-01-31
 
