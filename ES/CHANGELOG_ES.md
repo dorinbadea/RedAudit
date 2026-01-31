@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.21] - 2026-01-31
+
+### Corregido
+
+- **Inhibición de suspensión en reanudación**: Las reanudaciones aplican prevención de suspensión cuando `prevent_sleep` está activo.
+
 ## [4.19.20] - 2026-01-31
 
 ### Corregido

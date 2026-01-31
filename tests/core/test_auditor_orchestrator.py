@@ -1163,6 +1163,51 @@ def test_resume_nuclei_from_state_updates_results(resume_session_log_stub):
         assert captured["fatigue_limit"] == 2
 
 
+def test_resume_nuclei_from_state_applies_sleep_inhibitor(resume_session_log_stub):
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            fatigue_limit=2,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        auditor.results = {"hosts": [], "vulnerabilities": [], "nuclei": {"findings": 0}}
+        auditor.config = {"dry_run": False, "prevent_sleep": True}
+        auditor.proxy_manager = None
+        inhibitor = MagicMock()
+
+        with (
+            patch(
+                "redaudit.core.auditor.run_nuclei_scan",
+                return_value={"findings": [], "success": True, "pending_targets": []},
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+            patch("redaudit.core.power.SleepInhibitor", return_value=inhibitor),
+        ):
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=False,
+            )
+        assert ok is True
+        inhibitor.start.assert_called_once()
+        inhibitor.stop.assert_called_once()
+
+
 def test_resume_nuclei_progress_uses_pending_total(resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
