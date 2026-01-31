@@ -49,6 +49,12 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.20 Actualización de HTML en reanudaciones (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Detección de HTML en reanudación** | Hecho (v4.19.20) | Las reanudaciones regeneran HTML cuando existen artefactos `report.html`. |
+
 ### v4.19.19 Correcciones de renderizado del progreso Nuclei (Hecho)
 
 | Funcionalidad | Estado | Descripción |
