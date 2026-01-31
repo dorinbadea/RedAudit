@@ -370,14 +370,25 @@ TRANSLATIONS = {
         "nuclei_scan_start": "Running Nuclei template scan on HTTP targets...",
         "nuclei_dry_run_skipped": "[dry-run] Nuclei scan skipped",
         "nuclei_scanning_batches": "[nuclei] scanning {0} targets in {1} batches...",
+        "nuclei_targets_optimized": "Nuclei targets optimized: {0} selected / {1} total (exceptions: {2})",
+        "nuclei_targets_excluded": "Nuclei targets excluded: {0}",
+        "nuclei_optimization_note": (
+            "Nuclei uses identity-aware targeting; ambiguous hosts keep full coverage and retries."
+        ),
         "nuclei_runtime_budget_enabled": "[nuclei] runtime budget enabled; running batches sequentially",
         "nuclei_budget_too_low": (
             "[nuclei] budget too low for next batch; deferring remaining targets"
         ),
+        "nuclei_fatigue_q": "Nuclei fatigue limit (split depth, 0-10):",
+        "nuclei_exclude_q": "Nuclei exclude list (host, host:port, URL; comma-separated; empty = none):",
         "nuclei_batch_status": "[nuclei] batch {0}/{1} ({2} targets)",
         "nuclei_detail_parallel_running": "active batches {0}/{1} running {2} elapsed",
         "nuclei_detail_batch_running": "batch {0}/{1} running {2} elapsed",
         "nuclei_detail_batches_complete": "batches {0}/{1} complete",
+        "nuclei_detail_retry": "retry {0}",
+        "nuclei_detail_split": "split {0}/{1}",
+        "nuclei_timeout_detail": "Nuclei timeout in batch {0}/{1}: {2}",
+        "nuclei_timeout_targets": "hosts {0}; ports {1}",
         "nuclei_resume_pending": "{0} pending",
         "nuclei_findings": "✓ Nuclei found {} vulnerabilities",
         "nuclei_no_findings": "Nuclei scan completed (no findings)",
@@ -882,14 +893,29 @@ TRANSLATIONS = {
         "nuclei_scan_start": "Ejecutando escaneo de templates Nuclei en objetivos HTTP...",
         "nuclei_dry_run_skipped": "[dry-run] Escaneo Nuclei omitido",
         "nuclei_scanning_batches": "[nuclei] escaneando {0} objetivos en {1} lotes...",
+        "nuclei_targets_optimized": (
+            "Objetivos Nuclei optimizados: {0} seleccionados / {1} totales (excepciones: {2})"
+        ),
+        "nuclei_targets_excluded": "Objetivos Nuclei excluidos: {0}",
+        "nuclei_optimization_note": (
+            "Nuclei usa selección basada en identidad; los hosts ambiguos mantienen cobertura completa y reintentos."
+        ),
         "nuclei_runtime_budget_enabled": "[nuclei] presupuesto activo; ejecutando lotes de forma secuencial",
         "nuclei_budget_too_low": (
             "[nuclei] presupuesto insuficiente para el siguiente lote; se posponen objetivos"
+        ),
+        "nuclei_fatigue_q": "Límite de fatiga de Nuclei (profundidad de división, 0-10):",
+        "nuclei_exclude_q": (
+            "Lista de exclusion de Nuclei (host, host:puerto, URL; separada por comas; vacio = ninguno):"
         ),
         "nuclei_batch_status": "[nuclei] lote {0}/{1} ({2} objetivos)",
         "nuclei_detail_parallel_running": "lotes activos {0}/{1} en curso {2} transcurrido",
         "nuclei_detail_batch_running": "lote {0}/{1} en curso {2} transcurrido",
         "nuclei_detail_batches_complete": "lotes {0}/{1} completados",
+        "nuclei_detail_retry": "reintento {0}",
+        "nuclei_detail_split": "division {0}/{1}",
+        "nuclei_timeout_detail": "Timeout de Nuclei en lote {0}/{1}: {2}",
+        "nuclei_timeout_targets": "hosts {0}; puertos {1}",
         "nuclei_resume_pending": "{0} pendientes",
         "nuclei_findings": "✓ Nuclei encontró {} vulnerabilidades",
         "nuclei_no_findings": "Escaneo Nuclei completado (sin hallazgos)",

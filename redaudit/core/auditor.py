@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from redaudit.utils.constants import (
     COLORS,
+    DEFAULT_IDENTITY_THRESHOLD,
     DEFAULT_LANG,
     DEFAULT_THREADS,
     MAX_THREADS,
@@ -44,8 +45,9 @@ from redaudit.core.auditor_components import _ActivityIndicator
 from redaudit.core.auditor_runtime import AuditorRuntime
 from redaudit.core.nuclei import (
     is_nuclei_available,
+    normalize_nuclei_exclude,
     run_nuclei_scan,
-    get_http_targets_from_hosts,
+    select_nuclei_targets,
 )
 from redaudit.core.network import detect_all_networks
 from redaudit.core.crypto import is_crypto_available
@@ -931,7 +933,27 @@ class InteractiveNetworkAuditor:
             ):
                 self.ui.print_status(self.ui.t("nuclei_scan_start"), "INFO")
                 try:
-                    nuclei_targets = get_http_targets_from_hosts(results)
+                    identity_threshold = self.config.get(
+                        "identity_threshold", DEFAULT_IDENTITY_THRESHOLD
+                    )
+                    try:
+                        identity_threshold = int(identity_threshold)
+                    except Exception:
+                        identity_threshold = DEFAULT_IDENTITY_THRESHOLD
+                    if (
+                        self.config.get("scan_mode") in ("completo", "full")
+                        and identity_threshold < 4
+                    ):
+                        identity_threshold = 4
+
+                    selection = select_nuclei_targets(
+                        results,
+                        identity_threshold=identity_threshold,
+                        priority_ports={80, 443, 8080, 8443},
+                        max_targets_per_host=2,
+                        exclude_patterns=self.config.get("nuclei_exclude"),
+                    )
+                    nuclei_targets = selection.get("targets") or []
                     if nuclei_targets:
                         output_dir = (
                             self.config.get("_actual_output_dir")
@@ -942,17 +964,13 @@ class InteractiveNetworkAuditor:
                         # v4.15: Auto-detect multi-port hosts and switch to 'fast' profile
                         # Hosts with 3+ HTTP ports cause timeout issues with full template set
                         nuclei_profile = self.config.get("nuclei_profile", "balanced")
-                        from urllib.parse import urlparse
-
+                        selected_by_host = selection.get("selected_by_host") or {}
                         host_port_count: Dict[str, int] = {}
-                        for url in nuclei_targets:
+                        for host, urls in selected_by_host.items():
                             try:
-                                parsed = urlparse(url)
-                                host = parsed.hostname or ""
-                                if host:
-                                    host_port_count[host] = host_port_count.get(host, 0) + 1
+                                host_port_count[str(host)] = len(urls)
                             except Exception:
-                                pass
+                                host_port_count[str(host)] = 0
 
                         multi_port_hosts = [h for h, c in host_port_count.items() if c >= 3]
                         nuclei_full_coverage = bool(self.config.get("nuclei_full_coverage", False))
@@ -977,52 +995,32 @@ class InteractiveNetworkAuditor:
                                     "Auto-fast Nuclei profile skipped (full coverage enabled)"
                                 )
 
-                        # v4.16: For audit-focused scans, limit multi-port hosts to 2 URLs
-                        # Prioritize standard HTTP ports (80, 443) to avoid timeout issues
-                        # Rationale: Auditing seeks critical CVEs on main services, not full pentesting
-                        # v4.17: Skip limiting if nuclei_full_coverage is enabled
-                        if multi_port_hosts and not self.config.get("nuclei_full_coverage", False):
-                            priority_ports = {80, 443, 8080, 8443}  # Standard HTTP/HTTPS ports
-                            filtered_targets: list = []
-                            host_url_count: Dict[str, int] = {}
-
-                            # First pass: add priority port URLs (max 2 per host)
-                            for url in nuclei_targets:
-                                try:
-                                    parsed = urlparse(url)
-                                    host = parsed.hostname or ""
-                                    port = parsed.port or (443 if parsed.scheme == "https" else 80)
-                                    if host and port in priority_ports:
-                                        if host_url_count.get(host, 0) < 2:
-                                            filtered_targets.append(url)
-                                            host_url_count[host] = host_url_count.get(host, 0) + 1
-                                except Exception:
-                                    pass
-
-                            # Second pass: add remaining URLs for hosts not in multi_port_hosts
-                            for url in nuclei_targets:
-                                try:
-                                    parsed = urlparse(url)
-                                    host = parsed.hostname or ""
-                                    if host and host not in multi_port_hosts:
-                                        if url not in filtered_targets:
-                                            filtered_targets.append(url)
-                                except Exception:
-                                    pass
-
-                            original_count = len(nuclei_targets)
-                            nuclei_targets = filtered_targets
-                            if len(nuclei_targets) < original_count:
-                                if self.logger:
-                                    self.logger.info(
-                                        "Nuclei targets limited: %d -> %d (audit focus)",
-                                        original_count,
-                                        len(nuclei_targets),
-                                    )
-                                self.ui.print_status(
-                                    f"Nuclei: {original_count} -> {len(nuclei_targets)} targets (audit focus)",
-                                    "INFO",
+                        targets_total = int(selection.get("targets_total") or len(nuclei_targets))
+                        targets_exception = int(selection.get("targets_exception") or 0)
+                        targets_optimized = int(selection.get("targets_optimized") or 0)
+                        targets_excluded = int(selection.get("targets_excluded") or 0)
+                        if targets_total > len(nuclei_targets):
+                            if self.logger:
+                                self.logger.info(
+                                    "Nuclei targets optimized: %d -> %d (exceptions %d)",
+                                    targets_total,
+                                    len(nuclei_targets),
+                                    targets_exception,
                                 )
+                            self.ui.print_status(
+                                self.ui.t(
+                                    "nuclei_targets_optimized",
+                                    len(nuclei_targets),
+                                    targets_total,
+                                    targets_exception,
+                                ),
+                                "INFO",
+                            )
+                        if targets_excluded > 0:
+                            self.ui.print_status(
+                                self.ui.t("nuclei_targets_excluded", targets_excluded),
+                                "INFO",
+                            )
 
                         # Prefer a single Progress instance managed by the auditor to avoid
                         # competing Rich Live displays (which can cause flicker/no output).
@@ -1032,6 +1030,14 @@ class InteractiveNetworkAuditor:
                         nuclei_request_timeout_s = 10
                         nuclei_retries = 1
                         nuclei_max_runtime_minutes = self.config.get("nuclei_max_runtime", 0)
+                        exception_targets = selection.get("exception_targets") or set()
+                        nuclei_fatigue_limit = self.config.get("nuclei_fatigue_limit", 3)
+                        try:
+                            nuclei_fatigue_limit = int(nuclei_fatigue_limit)
+                        except Exception:
+                            nuclei_fatigue_limit = 3
+                        if nuclei_fatigue_limit < 0:
+                            nuclei_fatigue_limit = 0
                         try:
                             nuclei_max_runtime_minutes = int(nuclei_max_runtime_minutes)
                         except Exception:
@@ -1119,6 +1125,8 @@ class InteractiveNetworkAuditor:
                                     request_timeout=nuclei_request_timeout_s,
                                     retries=nuclei_retries,
                                     max_runtime_s=nuclei_max_runtime_s,
+                                    exception_targets=exception_targets,
+                                    fatigue_limit=nuclei_fatigue_limit,
                                     progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
                                         c,
                                         t,
@@ -1149,6 +1157,8 @@ class InteractiveNetworkAuditor:
                                 request_timeout=10,
                                 retries=1,
                                 max_runtime_s=nuclei_max_runtime_s,
+                                exception_targets=exception_targets,
+                                fatigue_limit=nuclei_fatigue_limit,
                                 logger=self.logger,
                                 dry_run=bool(self.config.get("dry_run", False)),
                                 print_status=self.ui.print_status,
@@ -1199,6 +1209,11 @@ class InteractiveNetworkAuditor:
                             "profile": nuclei_profile,
                             "full_coverage": bool(nuclei_full_coverage),
                             "targets": len(nuclei_targets),
+                            "targets_total": targets_total,
+                            "targets_exception": targets_exception,
+                            "targets_optimized": targets_optimized,
+                            "targets_excluded": targets_excluded,
+                            "fatigue_limit": nuclei_fatigue_limit,
                             "findings": len(findings),
                             "findings_total": len(nuclei_result.get("findings") or []),
                             "findings_suspected": len(suspected),
@@ -1282,6 +1297,7 @@ class InteractiveNetworkAuditor:
                                 retries=nuclei_retries,
                                 batch_size=batch_size,
                                 max_runtime_minutes=nuclei_max_runtime_minutes,
+                                fatigue_limit=nuclei_fatigue_limit,
                                 output_file=nuclei_result.get("raw_output_file"),
                             )
                             resume_path = self._write_nuclei_resume_state(output_dir, resume_state)
@@ -2216,6 +2232,11 @@ class InteractiveNetworkAuditor:
             # v4.8.0: Nuclei OFF by default (use --nuclei to enable)
             # PROMPT: Ask usage for granular control in Exhaustive mode
             self.config["nuclei_enabled"] = self.ask_yes_no(self.ui.t("nuclei_q"), default="no")
+            fatigue_default = defaults_for_run.get("nuclei_fatigue_limit")
+            if not isinstance(fatigue_default, int) or fatigue_default < 0:
+                fatigue_default = 3
+            if fatigue_default > 10:
+                fatigue_default = 10
             # v4.11.0: Nuclei profile selector (full/balanced/fast)
             if self.config["nuclei_enabled"]:
                 profile_opts = [
@@ -2232,16 +2253,47 @@ class InteractiveNetworkAuditor:
                 self.config["nuclei_full_coverage"] = self.ask_yes_no(
                     self.ui.t("nuclei_full_coverage_q"), default=full_coverage_default
                 )
+                self.ui.print_status(self.ui.t("nuclei_optimization_note"), "INFO")
                 runtime_default = defaults_for_run.get("nuclei_max_runtime")
                 if not isinstance(runtime_default, int) or runtime_default < 0:
                     runtime_default = 0
                 self.config["nuclei_max_runtime"] = self.ask_number(
                     self.ui.t("nuclei_budget_q"), default=runtime_default, min_val=0, max_val=1440
                 )
+                self.config["nuclei_fatigue_limit"] = self.ask_number(
+                    self.ui.t("nuclei_fatigue_q"),
+                    default=fatigue_default,
+                    min_val=0,
+                    max_val=10,
+                )
+                exclude_default = defaults_for_run.get("nuclei_exclude")
+                if isinstance(exclude_default, list):
+                    exclude_default = ", ".join([str(item) for item in exclude_default if item])
+                elif not isinstance(exclude_default, str):
+                    exclude_default = ""
+                exclude_prompt = self._style_prompt_text(self.ui.t("nuclei_exclude_q"))
+                exclude_default_display = (
+                    self._style_default_value(exclude_default) if exclude_default else ""
+                )
+                exclude_text = input(
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {exclude_prompt} "
+                    f"[{exclude_default_display}]: "
+                ).strip()
+                if not exclude_text:
+                    exclude_text = exclude_default
+                self.config["nuclei_exclude"] = normalize_nuclei_exclude(
+                    [exclude_text] if exclude_text else []
+                )
             else:
                 self.config["nuclei_profile"] = "balanced"  # Default for non-interactive
                 self.config["nuclei_full_coverage"] = False
                 self.config["nuclei_max_runtime"] = 0
+                self.config["nuclei_fatigue_limit"] = fatigue_default
+                self.config["nuclei_exclude"] = normalize_nuclei_exclude(
+                    [defaults_for_run.get("nuclei_exclude")]
+                    if defaults_for_run.get("nuclei_exclude")
+                    else []
+                )
 
             # NVD/CVE - enable if API key is configured, otherwise show reminder
             if is_nvd_api_key_configured():
@@ -2471,6 +2523,11 @@ class InteractiveNetworkAuditor:
                 # Nuclei (conditional) - v4.8.0: OFF by default due to slow scans
                 self.config["nuclei_enabled"] = False
                 self.config["nuclei_profile"] = "balanced"  # Default
+                fatigue_default = defaults_for_run.get("nuclei_fatigue_limit")
+                if not isinstance(fatigue_default, int) or fatigue_default < 0:
+                    fatigue_default = 3
+                if fatigue_default > 10:
+                    fatigue_default = 10
                 if (
                     self.config.get("scan_vulnerabilities")
                     and self.config.get("scan_mode") == "completo"
@@ -2499,6 +2556,7 @@ class InteractiveNetworkAuditor:
                         self.config["nuclei_full_coverage"] = self.ask_yes_no(
                             self.ui.t("nuclei_full_coverage_q"), default=full_coverage_default
                         )
+                        self.ui.print_status(self.ui.t("nuclei_optimization_note"), "INFO")
                         runtime_default = defaults_for_run.get("nuclei_max_runtime")
                         if not isinstance(runtime_default, int) or runtime_default < 0:
                             runtime_default = 0
@@ -2508,9 +2566,48 @@ class InteractiveNetworkAuditor:
                             min_val=0,
                             max_val=1440,
                         )
+                        self.config["nuclei_fatigue_limit"] = self.ask_number(
+                            self.ui.t("nuclei_fatigue_q"),
+                            default=fatigue_default,
+                            min_val=0,
+                            max_val=10,
+                        )
+                        exclude_default = defaults_for_run.get("nuclei_exclude")
+                        if isinstance(exclude_default, list):
+                            exclude_default = ", ".join(
+                                [str(item) for item in exclude_default if item]
+                            )
+                        elif not isinstance(exclude_default, str):
+                            exclude_default = ""
+                        exclude_prompt = self._style_prompt_text(self.ui.t("nuclei_exclude_q"))
+                        exclude_default_display = (
+                            self._style_default_value(exclude_default) if exclude_default else ""
+                        )
+                        exclude_text = input(
+                            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {exclude_prompt} "
+                            f"[{exclude_default_display}]: "
+                        ).strip()
+                        if not exclude_text:
+                            exclude_text = exclude_default
+                        self.config["nuclei_exclude"] = normalize_nuclei_exclude(
+                            [exclude_text] if exclude_text else []
+                        )
                     else:
                         self.config["nuclei_full_coverage"] = False
                         self.config["nuclei_max_runtime"] = 0
+                        self.config["nuclei_fatigue_limit"] = fatigue_default
+                        self.config["nuclei_exclude"] = normalize_nuclei_exclude(
+                            [defaults_for_run.get("nuclei_exclude")]
+                            if defaults_for_run.get("nuclei_exclude")
+                            else []
+                        )
+                else:
+                    self.config["nuclei_fatigue_limit"] = fatigue_default
+                    self.config["nuclei_exclude"] = normalize_nuclei_exclude(
+                        [defaults_for_run.get("nuclei_exclude")]
+                        if defaults_for_run.get("nuclei_exclude")
+                        else []
+                    )
                 # Only ask if vuln scan is enabled
                 if self.config.get("scan_vulnerabilities"):
                     sql_opts = [
@@ -3185,6 +3282,7 @@ class InteractiveNetworkAuditor:
         retries: int,
         batch_size: int,
         max_runtime_minutes: int,
+        fatigue_limit: Optional[int] = None,
         output_file: Optional[str],
     ) -> Dict[str, Any]:
         output_rel = "nuclei_output.json"
@@ -3209,6 +3307,7 @@ class InteractiveNetworkAuditor:
                 "retries": int(retries),
                 "batch_size": int(batch_size),
                 "max_runtime_minutes": int(max_runtime_minutes),
+                "fatigue_limit": fatigue_limit,
             },
         }
 
@@ -3464,6 +3563,17 @@ class InteractiveNetworkAuditor:
         retries = nuclei_cfg.get("retries") or 1
         batch_size = nuclei_cfg.get("batch_size") or 10
         max_runtime_minutes = nuclei_cfg.get("max_runtime_minutes") or 0
+        fatigue_limit = nuclei_cfg.get("fatigue_limit")
+        if fatigue_limit is None:
+            fatigue_limit = self.config.get("nuclei_fatigue_limit", 3)
+        try:
+            fatigue_limit = int(fatigue_limit)
+        except Exception:
+            fatigue_limit = 3
+        if fatigue_limit < 0:
+            fatigue_limit = 0
+        if fatigue_limit > 10:
+            fatigue_limit = 10
         if override_max_runtime_minutes is not None:
             try:
                 max_runtime_minutes = int(override_max_runtime_minutes)
@@ -3494,6 +3604,7 @@ class InteractiveNetworkAuditor:
             max_runtime_minutes = 0
         if isinstance(resume_state, dict):
             nuclei_cfg["max_runtime_minutes"] = int(max_runtime_minutes)
+            nuclei_cfg["fatigue_limit"] = int(fatigue_limit)
             resume_state["nuclei"] = nuclei_cfg
         max_runtime_s = max_runtime_minutes * 60 if max_runtime_minutes else None
 
@@ -3524,6 +3635,7 @@ class InteractiveNetworkAuditor:
             "request_timeout": request_timeout_s,
             "retries": retries,
             "max_runtime_s": max_runtime_s,
+            "fatigue_limit": fatigue_limit,
             "output_file": resume_output_file,
             "append_output": False,
             "targets_file": os.path.join(output_dir, "nuclei_pending.txt"),
