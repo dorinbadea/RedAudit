@@ -10,6 +10,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.19] - 2026-01-31
+
+### Corregido
+
+- **Colores del progreso de Nuclei**: Los mensajes de estado respetan los colores de warning/error durante el progreso Rich.
+- **Precisión del progreso de Nuclei**: Los lotes en curso ya no muestran 100% mientras siguen ejecutándose (detalle ES).
+
 ## [4.19.18] - 2026-01-31
 
 ### Añadido

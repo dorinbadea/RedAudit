@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.19] - 2026-01-31
+
+### Fixed
+
+- **Nuclei Progress Colors**: Status lines now respect warning/error colors during Rich progress output.
+- **Nuclei Progress Accuracy**: Running batches no longer report 100% completion while still in progress (ES detail handling).
+
 ## [4.19.18] - 2026-01-31
 
 ### Added
