@@ -859,6 +859,7 @@ def test_run_nuclei_scan_batch_timeout_sets_error(tmp_path):
             )
     assert res["partial"] is True
     assert res["error"] == "timeout"
+    assert res.get("pending_targets") == ["http://1", "http://2"]
 
 
 def test_run_nuclei_scan_exception_targets_skip_retry(tmp_path):
