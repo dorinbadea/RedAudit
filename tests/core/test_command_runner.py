@@ -12,6 +12,7 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.utils.constants import NUCLEI_DEFAULT_TIMEOUT_S
 
 
 class _Logger:
@@ -195,7 +196,7 @@ class TestCommandRunner(unittest.TestCase):
         runner = CommandRunner(default_timeout=60)
         runner.run(["nuclei", "-h"])
         _, kwargs = mock_run.call_args
-        self.assertEqual(kwargs["timeout"], 600.0)
+        self.assertEqual(kwargs["timeout"], NUCLEI_DEFAULT_TIMEOUT_S)
 
     @patch("redaudit.core.command_runner.subprocess.run")
     def test_nuclei_explicit_timeout_respected(self, mock_run):

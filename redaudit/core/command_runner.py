@@ -15,6 +15,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
+from redaudit.utils.constants import NUCLEI_DEFAULT_TIMEOUT_S
+
 
 @dataclass(frozen=True)
 class CommandResult:
@@ -110,7 +112,7 @@ class CommandRunner:
                 # Only apply the bump when the caller did not pass an explicit timeout.
                 if timeout is None and cmd and "nuclei" in cmd[0]:
                     if timeout_val is None or timeout_val <= 60:
-                        timeout_val = 600.0
+                        timeout_val = NUCLEI_DEFAULT_TIMEOUT_S
                 completed = subprocess.run(
                     list(cmd),
                     cwd=cwd,
