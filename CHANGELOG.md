@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.26] - 2026-02-01
+
+### Fixed
+
+- **Seed Keyring Script**: `scripts/seed_keyring.py` now runs correctly when invoked via `bash` by rerouting to Python.
+
 ## [4.19.25] - 2026-02-01
 
 ### Fixed

@@ -49,6 +49,12 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.26 Compatibilidad del script seed del keyring con bash (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Script seed del keyring** | Hecho (v4.19.26) | `scripts/seed_keyring.py` redirige a Python cuando se invoca con `bash`. |
+
 ### v4.19.25 Limpieza de BetterCAP (Hecho)
 
 | Funcionalidad | Estado | Descripción |
