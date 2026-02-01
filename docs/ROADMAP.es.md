@@ -49,6 +49,15 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.24 Endurecimiento de reportes + docs de reanudación (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **CSP en reportes** | Hecho (v4.19.24) | Los reportes HTML incluyen meta Content-Security-Policy. |
+| **Logs de chown** | Hecho (v4.19.24) | El chown best-effort registra debug cuando falla. |
+| **Constante de timeout Nuclei** | Hecho (v4.19.24) | El override por defecto de Nuclei se centraliza. |
+| **Docs de limpieza de reanudación** | Hecho (v4.19.24) | Se documenta la actualización en sitio y la limpieza de archivos pendientes. |
+
 ### v4.19.23 Endurecimiento de seguridad (Hecho)
 
 | Funcionalidad | Estado | Descripción |

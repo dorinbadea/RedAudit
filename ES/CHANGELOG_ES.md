@@ -10,6 +10,18 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.24] - 2026-02-01
+
+### Mejorado
+
+- **CSP en reportes**: Se añade un meta Content-Security-Policy en los HTML para defense-in-depth.
+- **Observabilidad de chown**: Los chown best-effort ahora registran debug cuando fallan.
+- **Constante de timeout Nuclei**: El override por defecto de Nuclei se centraliza en una constante compartida.
+
+### Docs
+
+- **Limpieza de reanudaciones**: Se documenta que la reanudacion se actualiza en el mismo sitio y cómo limpiar archivos pendientes.
+
 ## [4.19.23] - 2026-02-01
 
 ### Corregido
