@@ -70,8 +70,8 @@ def test_send_webhook_success(monkeypatch):
         def __init__(self):
             self.calls = []
 
-        def post(self, url, json, headers, timeout):
-            self.calls.append((url, json, headers, timeout))
+        def post(self, url, json, headers, timeout, **kwargs):
+            self.calls.append((url, json, headers, timeout, kwargs))
             return _Response()
 
     dummy = _Requests()
@@ -81,11 +81,12 @@ def test_send_webhook_success(monkeypatch):
     payload = {"k": "v"}
     assert webhook.send_webhook("https://example.com", payload, timeout=5) is True
     assert dummy.calls
-    url, sent_payload, headers, timeout = dummy.calls[0]
+    url, sent_payload, headers, timeout, kwargs = dummy.calls[0]
     assert url == "https://example.com"
     assert sent_payload == payload
     assert headers["Content-Type"] == "application/json"
     assert timeout == 5
+    assert kwargs.get("allow_redirects") is False
 
 
 def test_send_webhook_custom_headers(monkeypatch):
@@ -103,8 +104,8 @@ def test_send_webhook_custom_headers(monkeypatch):
         def __init__(self):
             self.calls = []
 
-        def post(self, url, json, headers, timeout):
-            self.calls.append((url, json, headers, timeout))
+        def post(self, url, json, headers, timeout, **kwargs):
+            self.calls.append((url, json, headers, timeout, kwargs))
             return _Response()
 
     dummy = _Requests()
@@ -215,3 +216,47 @@ def test_process_findings_for_alerts_skips_without_url():
     results = {"vulnerabilities": []}
     count = webhook.process_findings_for_alerts(results, webhook_url="", config={})
     assert count == 0
+
+
+def test_send_webhook_rejects_unsupported_scheme(monkeypatch):
+    class _Requests:
+        class exceptions:
+            Timeout = type("Timeout", (Exception,), {})
+            RequestException = type("RequestException", (Exception,), {})
+
+        def post(self, *_args, **_kwargs):
+            raise AssertionError("request should not be sent for unsupported scheme")
+
+    dummy = _Requests()
+    monkeypatch.setattr(webhook, "REQUESTS_AVAILABLE", True)
+    monkeypatch.setattr(webhook, "requests", dummy)
+
+    assert webhook.send_webhook("ftp://example.com", {"a": 1}) is False
+
+
+def test_send_webhook_rejects_http(monkeypatch):
+    class _Requests:
+        class exceptions:
+            Timeout = type("Timeout", (Exception,), {})
+            RequestException = type("RequestException", (Exception,), {})
+
+        def post(self, *_args, **_kwargs):
+            raise AssertionError("request should not be sent for http scheme")
+
+    dummy = _Requests()
+    monkeypatch.setattr(webhook, "REQUESTS_AVAILABLE", True)
+    monkeypatch.setattr(webhook, "requests", dummy)
+
+    assert webhook.send_webhook("http://example.com/webhook", {"a": 1}) is False
+
+
+def test_sanitize_url_for_log_strips_sensitive_bits():
+    url = "https://user:pass@example.com:8443/path?token=abc#frag"
+    assert webhook._sanitize_url_for_log(url) == "https://example.com:8443/path"
+
+
+def test_is_supported_webhook_url():
+    assert webhook._is_supported_webhook_url("https://example.com") is True
+    assert webhook._is_supported_webhook_url("http://example.com") is False
+    assert webhook._is_supported_webhook_url("ftp://example.com") is False
+    assert webhook._is_supported_webhook_url("example.com") is False

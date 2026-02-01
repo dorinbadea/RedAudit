@@ -168,7 +168,7 @@ RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `
 ### Alertas Webhook (`--webhook`)
 
 - **Transmisión de Datos Sensibles**: Esta función envía detalles del hallazgo (IP Objetivo, Título Vulnerabilidad, Severidad) a la URL configurada.
-- **HTTPS Requerido**: Usa siempre URLs de webhook `https://` para proteger estos datos en tránsito.
+- **HTTPS Requerido**: Solo se aceptan URLs `https://` para proteger estos datos en tránsito.
 - **Verificación**: Asegúrate de que la URL del webhook es correcta y confiable (ej: tu instancia interna de Slack/Teams) para evitar filtrar datos de vulnerabilidades a terceros.
 
 ## 12. Licencia

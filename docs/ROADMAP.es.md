@@ -49,6 +49,15 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.23 Endurecimiento de seguridad (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **HTTPS en Webhooks** | Hecho (v4.19.23) | Los webhooks rechazan URLs no HTTPS y evitan redirects. |
+| **Sondeo HTTP verify-first** | Hecho (v4.19.23) | Se verifica TLS primero y solo se usa modo inseguro si falla. |
+| **Limpieza segura de terminal** | Hecho (v4.19.23) | Se evita ejecutar shell; usa ejecucion directa y fallback ANSI. |
+| **Permisos de temporales proxy** | Hecho (v4.19.23) | El config temporal de proxychains se crea con permisos restrictivos. |
+
 ### v4.19.22 Volver en wizard + aviso de duración (Hecho)
 
 | Funcionalidad | Estado | Descripción |

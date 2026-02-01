@@ -219,7 +219,7 @@ Grouped by operational function. Verified against the current codebase.
 | `--lang` | Interface/report language (en/es) |
 | `--html-report` | Generate interactive dashboard (HTML) |
 | `--no-txt-report` | Disable TXT report generation |
-| `--webhook URL` | Send webhook alerts (JSON) for high/critical findings |
+| `--webhook URL` | Send webhook alerts (JSON) for high/critical findings (HTTPS only) |
 | `--nuclei` | Enable Nuclei template scanning (requires `nuclei`; runs in full mode only; OFF by default) |
 | `--nuclei-timeout S` | Nuclei batch timeout in seconds (default: 300) |
 | `--nuclei-max-runtime MIN` | Max Nuclei runtime in minutes (0 = unlimited). Creates a resume file when exceeded. |

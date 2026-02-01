@@ -714,7 +714,7 @@ done
 
 ### Alertas Webhook
 
-`--webhook URL` envía HTTP POST para cada hallazgo high/critical. Compatible con endpoints que aceptan JSON (p. ej., Slack, Teams, PagerDuty).
+`--webhook URL` envía HTTPS POST para cada hallazgo high/critical. Solo se aceptan endpoints `https://`. Compatible con endpoints que aceptan JSON (p. ej., Slack, Teams, PagerDuty).
 
 ---
 

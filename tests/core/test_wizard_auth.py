@@ -36,15 +36,16 @@ class TestWizard(unittest.TestCase):
 
     def test_clear_screen_dry_run(self):
         self.wizard.config["dry_run"] = True
-        with patch("os.system") as mock_system:
+        with patch("subprocess.run") as mock_system:
             self.wizard.clear_screen()
             mock_system.assert_not_called()
 
     def test_clear_screen_real(self):
         self.wizard.config["dry_run"] = False
-        with patch("os.system") as mock_system, patch("os.name", "posix"):
-            self.wizard.clear_screen()
-            mock_system.assert_called_with("clear")
+        with patch("redaudit.core.wizard.shutil.which", return_value="/usr/bin/clear"):
+            with patch("subprocess.run") as mock_system, patch("os.name", "posix"):
+                self.wizard.clear_screen()
+        mock_system.assert_called_once_with(["/usr/bin/clear"], check=False)
 
     def test_print_banner(self):
         with patch("builtins.print") as mock_print:

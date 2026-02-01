@@ -14,6 +14,7 @@ import sys
 import platform
 import re
 import shutil
+import subprocess
 import time
 from typing import Dict, List, Optional
 
@@ -45,7 +46,21 @@ class Wizard:
         """Clear the terminal screen."""
         if is_dry_run(self.config.get("dry_run")):
             return
-        os.system("clear" if os.name == "posix" else "cls")
+        try:
+            if os.name == "posix":
+                clear_cmd = shutil.which("clear")
+                if clear_cmd:
+                    subprocess.run([clear_cmd], check=False)
+                    return
+            else:
+                subprocess.run(["cmd", "/c", "cls"], check=False)
+                return
+        except Exception:
+            pass
+        try:
+            print("\033[2J\033[H", end="", flush=True)
+        except Exception:
+            return
 
     def print_banner(self) -> None:
         """Print the RedAudit banner."""

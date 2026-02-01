@@ -10,6 +10,15 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.23] - 2026-02-01
+
+### Fixed
+
+- **Webhook HTTPS Enforcement**: Webhook delivery now rejects non-HTTPS endpoints and avoids redirects.
+- **TLS Probe Hardening**: HTTP enrichment verifies TLS first and only falls back to insecure probes when needed.
+- **Terminal Clear Safety**: Terminal clearing no longer shells out; uses direct command execution or ANSI fallback.
+- **Proxy Temp Permissions**: Proxychains temp config is now created with restrictive permissions.
+
 ## [4.19.22] - 2026-02-01
 
 ### Fixed

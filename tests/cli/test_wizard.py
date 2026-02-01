@@ -608,14 +608,35 @@ def test_use_arrow_menu_non_tty(monkeypatch):
 def test_clear_screen_respects_dry_run():
     wiz = _UIWizard()
     wiz.config["dry_run"] = True
-    with patch("os.system") as mocked:
+    with patch("subprocess.run") as mocked:
         wiz.clear_screen()
     mocked.assert_not_called()
 
     wiz.config["dry_run"] = False
-    with patch("os.system") as mocked:
+    with patch("redaudit.core.wizard.shutil.which", return_value="/usr/bin/clear"):
+        with patch("subprocess.run") as mocked:
+            wiz.clear_screen()
+    mocked.assert_called_once_with(["/usr/bin/clear"], check=False)
+
+
+def test_clear_screen_falls_back_to_ansi(monkeypatch, capsys):
+    wiz = _UIWizard()
+    wiz.config["dry_run"] = False
+    monkeypatch.setattr("redaudit.core.wizard.shutil.which", lambda *_a, **_k: None)
+    with patch("subprocess.run") as mocked:
         wiz.clear_screen()
-    mocked.assert_called_once()
+    mocked.assert_not_called()
+    captured = capsys.readouterr().out
+    assert "\033[2J" in captured
+
+
+def test_clear_screen_windows_branch(monkeypatch):
+    wiz = _UIWizard()
+    wiz.config["dry_run"] = False
+    monkeypatch.setattr("redaudit.core.wizard.os.name", "nt")
+    with patch("subprocess.run") as mocked:
+        wiz.clear_screen()
+    mocked.assert_called_once_with(["cmd", "/c", "cls"], check=False)
 
 
 def test_print_banner_outputs_subtitle(capsys):
