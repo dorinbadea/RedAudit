@@ -720,7 +720,7 @@ done
 
 ### Webhook Alerts
 
-`--webhook URL` sends HTTP POST for each high/critical finding. Compatible with endpoints that accept JSON payloads (e.g., Slack, Teams, PagerDuty).
+`--webhook URL` sends HTTPS POST for each high/critical finding. Only `https://` endpoints are accepted. Compatible with endpoints that accept JSON payloads (e.g., Slack, Teams, PagerDuty).
 
 ---
 

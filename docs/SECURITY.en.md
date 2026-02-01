@@ -183,7 +183,7 @@ RedAudit v3.2 introduces **Active Reconnaissance** capabilities (`--redteam`, `-
 ### Webhook Alerts (`--webhook`)
 
 - **Sensitive Data Transmission**: This feature sends finding details (Target IP, Vulnerability Title, Severity) to the configured URL.
-- **HTTPS Required**: Always use `https://` webhook URLs to protect this data in transit.
+- **HTTPS Required**: Only `https://` webhook URLs are accepted to protect this data in transit.
 - **Verification**: Ensure the webhook URL is correct and trusted (e.g., your internal Slack/Teams instance) to avoid leaking vulnerability data to third parties.
 
 ## 12. License

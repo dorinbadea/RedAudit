@@ -221,7 +221,7 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 | `--lang` | Idioma de interfaz/reporte (en/es) |
 | `--html-report` | Generar dashboard interactivo (HTML) |
 | `--no-txt-report` | Desactivar generacion de reporte TXT |
-| `--webhook URL` | Enviar alertas webhook (JSON) para hallazgos high/critical |
+| `--webhook URL` | Enviar alertas webhook (JSON) para hallazgos high/critical (solo HTTPS) |
 | `--nuclei` | Habilitar escaneo de plantillas con Nuclei (requiere `nuclei`; solo en modo full; DESACTIVADO por defecto) |
 | `--nuclei-timeout S` | Timeout por lote de Nuclei en segundos (defecto: 300) |
 | `--nuclei-max-runtime MIN` | Tiempo maximo de Nuclei en minutos (0 = ilimitado). Crea un archivo de reanudacion si se supera. |
