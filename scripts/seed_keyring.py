@@ -14,8 +14,8 @@ Usage:
 Lab Network: 172.20.0.0/24 (lab_seguridad Docker network)
 """
 
-import json
-import sys
+import json  # noqa: E402
+import sys  # noqa: E402
 
 # ============================================================================
 # ALL LAB CREDENTIALS - RedAudit Docker Lab (Phase 4)
