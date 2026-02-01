@@ -3,6 +3,7 @@
 RedAudit - Path Helpers Tests
 """
 
+import logging
 import os
 import sys
 import tempfile
@@ -330,20 +331,24 @@ def test_resolve_invoking_user_owner_pwd_exception():
                 assert result is None
 
 
-def test_maybe_chown_exception():
+def test_maybe_chown_exception(caplog):
     """Test maybe_chown_to_invoking_user with exception (lines 269-270)."""
     with patch("redaudit.utils.paths.resolve_invoking_user_owner", return_value=(1000, 1000)):
         with patch("os.chown", side_effect=PermissionError("Access denied")):
+            caplog.set_level(logging.DEBUG)
             maybe_chown_to_invoking_user("/tmp/test")
             # Should not raise
+            assert "Failed to chown path to invoking user" in caplog.text
 
 
-def test_maybe_chown_tree_root_exception():
+def test_maybe_chown_tree_root_exception(caplog):
     """Test maybe_chown_tree_to_invoking_user with root exception (lines 289-290)."""
     with patch("redaudit.utils.paths.resolve_invoking_user_owner", return_value=(1000, 1000)):
         with patch("os.chown", side_effect=PermissionError("Access denied")):
+            caplog.set_level(logging.DEBUG)
             maybe_chown_tree_to_invoking_user("/tmp/test")
             # Should not raise
+            assert "Failed to chown root path to invoking user" in caplog.text
 
 
 def test_maybe_chown_tree_dir_exception():
@@ -359,12 +364,14 @@ def test_maybe_chown_tree_dir_exception():
                 # Should handle exception gracefully
 
 
-def test_maybe_chown_tree_walk_exception():
+def test_maybe_chown_tree_walk_exception(caplog):
     """Test maybe_chown_tree_to_invoking_user with walk exception (lines 302-305)."""
     with patch("redaudit.utils.paths.resolve_invoking_user_owner", return_value=(1000, 1000)):
         with patch("os.walk", side_effect=Exception("Walk failed")):
+            caplog.set_level(logging.DEBUG)
             maybe_chown_tree_to_invoking_user("/tmp/test")
             # Should not raise
+            assert "Failed to walk path for chown" in caplog.text
 
 
 def test_is_root_exception_returns_false():

@@ -9,6 +9,7 @@ artifacts (reports, defaults) should be stored under the invoking user whenever 
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Optional, Tuple
 
@@ -16,6 +17,9 @@ try:
     import pwd  # Unix-only
 except ImportError:  # pragma: no cover
     pwd = None
+
+
+logger = logging.getLogger(__name__)
 
 
 def _is_root() -> bool:
@@ -267,6 +271,7 @@ def maybe_chown_to_invoking_user(path: str) -> None:
     try:
         os.chown(path, uid, gid)
     except Exception:
+        logger.debug("Failed to chown path to invoking user: %s", path, exc_info=True)
         return
 
 
@@ -287,6 +292,7 @@ def maybe_chown_tree_to_invoking_user(root_path: str) -> None:
     try:
         os.chown(root_path, uid, gid)
     except Exception:
+        logger.debug("Failed to chown root path to invoking user: %s", root_path, exc_info=True)
         pass
 
     try:
@@ -295,11 +301,22 @@ def maybe_chown_tree_to_invoking_user(root_path: str) -> None:
                 try:
                     os.chown(os.path.join(dirpath, name), uid, gid)
                 except Exception:
+                    logger.debug(
+                        "Failed to chown dir to invoking user: %s",
+                        os.path.join(dirpath, name),
+                        exc_info=True,
+                    )
                     pass
             for name in filenames:
                 try:
                     os.chown(os.path.join(dirpath, name), uid, gid)
                 except Exception:
+                    logger.debug(
+                        "Failed to chown file to invoking user: %s",
+                        os.path.join(dirpath, name),
+                        exc_info=True,
+                    )
                     pass
     except Exception:
+        logger.debug("Failed to walk path for chown: %s", root_path, exc_info=True)
         return
