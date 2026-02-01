@@ -73,6 +73,9 @@ TRANSLATIONS = {
         "timing_stealth": "Stealth — Slow, low noise (2s delay)",
         "timing_normal": "Normal — Balanced speed/coverage (no delay)",
         "timing_aggressive": "Aggressive — Max speed, more noise (parallel bursts)",
+        "long_scan_warning": (
+            "Warning: Full or Nuclei-enabled modes can exceed 4 hours depending on target size."
+        ),
         "go_back": "Cancel",
         "threads": "Concurrent threads (higher = faster/noisier):",
         "threads_suggested": "Concurrent threads (higher = faster/noisier) [suggested: {} based on {} cores]:",
@@ -586,6 +589,10 @@ TRANSLATIONS = {
         "timing_stealth": "Sigiloso — Lento, bajo ruido (2s de retardo)",
         "timing_normal": "Normal — Equilibrio velocidad/cobertura (sin retardo)",
         "timing_aggressive": "Agresivo — Velocidad máxima, más ruido (ráfagas paralelas)",
+        "long_scan_warning": (
+            "Aviso: En modo completo o con Nuclei activado, el escaneo puede superar 4 horas "
+            "según el tamaño de los objetivos."
+        ),
         "go_back": "Cancelar",
         "threads": "Hilos concurrentes (más alto = más rápido/ruidoso):",
         "threads_suggested": "Hilos concurrentes (más alto = más rápido/ruidoso) [sugerido: {} según {} cores]:",
