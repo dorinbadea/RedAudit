@@ -172,6 +172,10 @@ def create_temp_proxychains_config(proxy: Dict) -> Optional[str]:
         fd, path = tempfile.mkstemp(prefix="redaudit_proxy_", suffix=".conf")
         with os.fdopen(fd, "w") as f:
             f.write(config_content)
+        try:
+            os.chmod(path, 0o600)
+        except Exception:
+            pass
 
         return path
     except Exception:

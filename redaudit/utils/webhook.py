@@ -9,6 +9,7 @@ v3.3: Send real-time alerts to external services (Slack, Teams, PagerDuty, etc.)
 
 import logging
 import re
+from urllib.parse import urlparse
 from datetime import datetime
 from typing import Dict, Optional, Any
 
@@ -28,6 +29,36 @@ logger = logging.getLogger(__name__)
 ALERT_SEVERITIES = {"critical", "high"}
 
 CVE_REGEX = re.compile(r"\bCVE-\d{4}-\d{4,7}\b", re.IGNORECASE)
+
+
+def _sanitize_url_for_log(url: str) -> str:
+    if not isinstance(url, str) or not url:
+        return ""
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname or ""
+        if parsed.port:
+            host = f"{host}:{parsed.port}"
+        path = parsed.path or ""
+        if parsed.scheme and host:
+            return f"{parsed.scheme}://{host}{path}"
+        return url.split("?", 1)[0].split("#", 1)[0]
+    except Exception:
+        return url.split("?", 1)[0].split("#", 1)[0]
+
+
+def _is_supported_webhook_url(url: str) -> bool:
+    if not isinstance(url, str) or not url:
+        return False
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    if not parsed.netloc:
+        return False
+    return True
 
 
 def _extract_cve_ids(finding: Dict) -> list[str]:
@@ -148,6 +179,9 @@ def send_webhook(
     """
     if not url:
         return False
+    if not _is_supported_webhook_url(url):
+        logger.warning("Webhook skipped: unsupported URL scheme or invalid URL")
+        return False
 
     if not REQUESTS_AVAILABLE or requests is None:
         logger.warning("Webhook skipped: python requests not available")
@@ -160,16 +194,21 @@ def send_webhook(
     if headers:
         request_headers.update(headers)
 
+    sanitized_url = _sanitize_url_for_log(url)
+    if urlparse(url).scheme == "http":
+        logger.warning("Webhook endpoint is not HTTPS: %s", sanitized_url)
+
     try:
         response = requests.post(
             url,
             json=payload,
             headers=request_headers,
             timeout=timeout,
+            allow_redirects=False,
         )
 
         if response.ok:
-            logger.debug("Webhook sent successfully to %s", url)
+            logger.debug("Webhook sent successfully to %s", sanitized_url)
             return True
         else:
             logger.warning(
@@ -181,7 +220,7 @@ def send_webhook(
             return False
 
     except requests.exceptions.Timeout:
-        logger.warning("Webhook timeout after %ds: %s", timeout, url)
+        logger.warning("Webhook timeout after %ds: %s", timeout, sanitized_url)
         return False
     except requests.exceptions.RequestException as e:
         logger.warning("Webhook error: %s", e)
