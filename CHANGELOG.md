@@ -10,6 +10,18 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.24] - 2026-02-01
+
+### Improved
+
+- **Report CSP**: Added a Content-Security-Policy meta header to HTML reports for defense-in-depth.
+- **Chown Observability**: Best-effort chown operations now log debug details on failure.
+- **Nuclei Timeout Constant**: Centralized the default Nuclei timeout override into a shared constant.
+
+### Docs
+
+- **Resume Cleanup**: Documented that Nuclei resumes are refreshed in place and how to clean stale resume files.
+
 ## [4.19.23] - 2026-02-01
 
 ### Fixed

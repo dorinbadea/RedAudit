@@ -49,6 +49,15 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.24 Report Hardening + Resume Docs (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Report CSP** | Done (v4.19.24) | HTML reports include a Content-Security-Policy meta header. |
+| **Chown Debug Logs** | Done (v4.19.24) | Best-effort chown now logs debug details when it fails. |
+| **Nuclei Timeout Constant** | Done (v4.19.24) | Default Nuclei timeout override is centralized. |
+| **Resume Cleanup Docs** | Done (v4.19.24) | Documents that resumes refresh in place and how to clean stale files. |
+
 ### v4.19.23 Security Hardening (Done)
 
 | Feature | Status | Description |
