@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.26] - 2026-02-01
+
+### Corregido
+
+- **Script de seed del keyring**: `scripts/seed_keyring.py` ahora se ejecuta correctamente al invocarlo con `bash`, redirigiendo a Python.
+
 ## [4.19.25] - 2026-02-01
 
 ### Corregido

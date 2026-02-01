@@ -49,6 +49,12 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.26 Seed Keyring Script Bash Compatibility (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Seed Keyring Script** | Done (v4.19.26) | `scripts/seed_keyring.py` now re-routes to Python when invoked via `bash`. |
+
 ### v4.19.25 BetterCAP Cleanup (Done)
 
 | Feature | Status | Description |
