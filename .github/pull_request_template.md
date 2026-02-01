@@ -1,37 +1,12 @@
-## Description
-<!-- Briefly describe what this PR does -->
+## Workflow Checklist (AGENTS.md)
 
-## Type of Change
-<!-- Mark with 'x' -->
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-- [ ] Code refactoring
-- [ ] Performance improvement
+- [ ] I read `AGENTS.md` and followed the workflow
+- [ ] I worked on a branch and did not commit directly to `main`
+- [ ] I ran `pre-commit run --all-files` after changes were final
+- [ ] I ran `pytest tests/ -v` (or `scripts/ci_local.sh`)
+- [ ] EN/ES docs are in sync (if user-facing behavior changed)
+- [ ] No private data is included (`scan_results_private/`)
 
-## Related Issues
-<!-- Link to related issues using #123 -->
-Closes #
+## Summary
 
-## Testing
-<!-- Describe how you tested your changes -->
-- [ ] Tested manually with:
-- [ ] All tests pass locally (`python3 -m unittest discover tests/`)
-- [ ] Added new tests for this feature
-
-## Checklist
-
-- [ ] I have read and followed the guidelines in `AGENTS.md` (mandatory)
-- [ ] My code follows the code style of this project
-- [ ] I have updated the documentation accordingly
-- [ ] I have added tests to cover my changes
-- [ ] All new and existing tests passed
-- [ ] My changes generate no new warnings
-- [ ] I have checked my code for security vulnerabilities
-
-## Screenshots (if applicable)
-<!-- Add screenshots to demonstrate the changes -->
-
-## Additional Notes
-<!-- Any other information that reviewers should know -->
+Describe the change briefly.
