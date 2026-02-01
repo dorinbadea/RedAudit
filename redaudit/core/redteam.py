@@ -1405,7 +1405,32 @@ def _redteam_bettercap_recon(
         payload["raw_sample"] = _safe_truncate(snippet, 1600)
     if rc != 0 and err.strip():
         payload["error"] = _safe_truncate(err.strip(), 200)
+    _terminate_bettercap(safe_iface, logger=logger)
     return payload
+
+
+def _terminate_bettercap(iface: str, logger=None) -> None:
+    """Best-effort cleanup for bettercap processes started during recon."""
+    if not iface:
+        return
+    if not _is_root():
+        return
+    if not shutil.which("pkill"):
+        return
+    # Try to match the interface argument to avoid killing unrelated sessions.
+    pattern = f"bettercap.*-iface {re.escape(iface)}"
+    runner = CommandRunner(
+        logger=logger,
+        dry_run=is_dry_run(),
+        default_timeout=3.0,
+        default_retries=0,
+        backoff_base_s=0.0,
+    )
+    try:
+        runner.run(["pkill", "-f", pattern], capture_output=True, check=False, text=True)
+    except Exception:
+        if logger:
+            logger.debug("Failed to terminate bettercap process", exc_info=True)
 
 
 def _redteam_scapy_custom(

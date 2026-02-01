@@ -740,8 +740,10 @@ def test_redteam_bettercap_recon_edge():
     with patch("redaudit.core.redteam._is_root", return_value=True):
         with patch("shutil.which", return_value="bettercap"):
             with patch("redaudit.core.redteam._run_cmd", return_value=(1, "", "Fatal error")):
-                res = _redteam_bettercap_recon("eth0", {"bettercap": True}, active_l2=True)
-                assert res["error"] == "Fatal error"
+                with patch("redaudit.core.redteam._terminate_bettercap") as mock_term:
+                    res = _redteam_bettercap_recon("eth0", {"bettercap": True}, active_l2=True)
+                    assert res["error"] == "Fatal error"
+                    mock_term.assert_called_once()
 
 
 def test_redteam_scapy_custom_exception():

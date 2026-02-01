@@ -669,9 +669,10 @@ class TestRedTeamFeaturesEdgeCases(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings("ignore")
 
+    @patch("redaudit.core.redteam._terminate_bettercap")
     @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
-    def test_redteam_bettercap(self, mock_which, mock_run_cmd):
+    def test_redteam_bettercap(self, mock_which, mock_run_cmd, mock_terminate):
         from redaudit.core.redteam import _redteam_bettercap_recon
 
         mock_which.return_value = "/usr/bin/bettercap"
@@ -686,6 +687,7 @@ class TestRedTeamFeaturesEdgeCases(unittest.TestCase):
             res = _redteam_bettercap_recon("eth0", tools={"bettercap": True}, active_l2=True)
             self.assertEqual(res["status"], "ok")
             self.assertIn("192.168.1.10", res["raw_sample"])
+            mock_terminate.assert_called_once()
 
     @patch("redaudit.core.redteam._run_cmd")
     @patch("shutil.which")
