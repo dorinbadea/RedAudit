@@ -225,14 +225,14 @@ class TestAuditorOrchestrator(unittest.TestCase):
         self.auditor.ui = MagicMock()
         self.auditor.ui.t.side_effect = lambda key, *args: key
         self.auditor.ask_choice = MagicMock()
-        self.auditor.ask_yes_no = MagicMock()
+        self.auditor.ask_choice_with_back = MagicMock()
         self.auditor._ask_auditor_and_output_dir = MagicMock()
 
         # Profile 0: Express
         self.auditor.ask_choice.return_value = 0
 
-        # low_impact_enrichment
-        self.auditor.ask_yes_no.return_value = True
+        # low_impact_enrichment: Yes
+        self.auditor.ask_choice_with_back.return_value = 0
 
         defaults = {"low_impact_enrichment": "yes"}
         self.auditor._configure_scan_interactive(defaults)
@@ -249,7 +249,7 @@ class TestAuditorOrchestrator(unittest.TestCase):
         self.auditor.ui = MagicMock()
         self.auditor.ui.t.side_effect = lambda key, *args: key
         self.auditor.ask_choice = MagicMock()
-        self.auditor.ask_yes_no = MagicMock()
+        self.auditor.ask_choice_with_back = MagicMock()
         self.auditor.ask_number = MagicMock(return_value=0)
         self.auditor._ask_auditor_and_output_dir = MagicMock()
         self.auditor.ask_auth_config = MagicMock(return_value={})
@@ -259,7 +259,8 @@ class TestAuditorOrchestrator(unittest.TestCase):
         # 2. Timing: Stealth (index 0)
         self.auditor.ask_choice.side_effect = [1, 0]
 
-        self.auditor.ask_yes_no.return_value = False
+        # low_impact_enrichment: No, trust_hyperscan: No
+        self.auditor.ask_choice_with_back.side_effect = [1, 1]
 
         defaults = {}
         self.auditor._configure_scan_interactive(defaults)
@@ -274,14 +275,15 @@ class TestAuditorOrchestrator(unittest.TestCase):
         self.auditor.ui = MagicMock()
         self.auditor.ui.t.side_effect = lambda key, *args: key
         self.auditor.ask_choice = MagicMock()
-        self.auditor.ask_yes_no = MagicMock()
+        self.auditor.ask_choice_with_back = MagicMock()
         self.auditor.ask_number = MagicMock(return_value=0)
         self.auditor._ask_auditor_and_output_dir = MagicMock()
         self.auditor.ask_auth_config = MagicMock(return_value={})
 
         # Profile 1 (Standard), Timing 2 (Aggressive)
         self.auditor.ask_choice.side_effect = [1, 2]
-        self.auditor.ask_yes_no.side_effect = [False, True]
+        # low_impact_enrichment: No, trust_hyperscan: Yes
+        self.auditor.ask_choice_with_back.side_effect = [1, 0]
 
         self.auditor._configure_scan_interactive({})
         self.assertEqual(self.auditor.config["threads"], MAX_THREADS)
@@ -291,7 +293,7 @@ class TestAuditorOrchestrator(unittest.TestCase):
         self.auditor.ui = MagicMock()
         self.auditor.ui.t.side_effect = lambda key, *args: key
         self.auditor.ask_choice = MagicMock()
-        self.auditor.ask_yes_no = MagicMock()
+        self.auditor.ask_choice_with_back = MagicMock()
         self.auditor._runtime.ask_number = MagicMock(return_value=0)
         self.auditor._ask_auditor_and_output_dir = MagicMock()
         self.auditor.ask_auth_config = MagicMock(return_value={})
@@ -299,14 +301,13 @@ class TestAuditorOrchestrator(unittest.TestCase):
         # Sequence of choices:
         # 1. Profile: Exhaustive (index 2)
         # 2. Timing: Normal (index 1) - T4
-        # 3. Nuclei Profile: Full (index 0) - Only asked if Nuclei is enabled
-        self.auditor.ask_choice.side_effect = [2, 1, 0]
-
-        # Sequence of yes/no:
-        # 1. Nuclei enabled? True
-        # 2. Nuclei full coverage? True (v4.17+)
-        # 3. Trust Hyperscan? True
-        self.auditor.ask_yes_no.side_effect = [True, True, True]
+        self.auditor.ask_choice.side_effect = [2, 1]
+        # Sequence of back-aware prompts:
+        # 1. Nuclei enabled? Yes
+        # 2. Nuclei profile? Full
+        # 3. Nuclei full coverage? Yes
+        # 4. Trust Hyperscan? Yes
+        self.auditor.ask_choice_with_back.side_effect = [0, 0, 0, 0]
 
         defaults = {}
         # Patch is_nvd_api_key_configured to avoid NVD warning path

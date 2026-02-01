@@ -541,7 +541,7 @@ def test_wizard_exhaustive_profile_nuclei_fatigue():
     """Ensure Nuclei fatigue limit is prompted and stored in Exhaustive profile."""
     auditor = MockWizardAuditor()
     with patch.object(auditor, "ask_choice", side_effect=[2, 2, 1]):
-        with patch.object(auditor, "ask_yes_no", side_effect=[True, False, False]):
+        with patch.object(auditor, "ask_choice_with_back", side_effect=[0, 1, 1, 1]):
             with patch.object(auditor, "ask_auth_config", return_value={}):
                 with patch.object(auditor, "ask_number", side_effect=[15, 4]):
                     with (
