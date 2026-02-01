@@ -49,6 +49,13 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.22 Volver en wizard + aviso de duración (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Navegación atrás en wizard** | Hecho (v4.19.22) | Se añade volver/cancelar en perfiles Standard y Exhaustive. |
+| **Aviso de duración** | Hecho (v4.19.22) | Se avisa cuando el modo completo o con Nuclei puede superar 4 horas. |
+
 ### v4.19.21 Inhibición de suspensión en reanudación (Hecho)
 
 | Funcionalidad | Estado | Descripción |

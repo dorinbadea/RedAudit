@@ -157,6 +157,7 @@ Pre-configured profiles adjust dozens of parameters automatically:
 - **Web:** Full scan (Nikto, Nuclei, SSL).
 - **Authentication:** Optional setup for SSH/SMB/SNMP credentials.
 - **Ideal for:** Penetration testing, compliance (PCI-DSS, ISO 27001), pre-production validation.
+**Runtime note:** Exhaustive or Nuclei-enabled scans can exceed 4 hours depending on target size and timeouts.
 
 #### 4. Custom (Tailored)
 

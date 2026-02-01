@@ -2092,276 +2092,334 @@ class InteractiveNetworkAuditor:
 
         # Note: is_nuclei_available is already imported at module level from nuclei.py
 
-        # v3.9.0: Loop for profile selection with back navigation from timing
-        profile_choice = None
-        timing_delay = 0.0
-        timing_nmap_template = "T4"  # Default
-        timing_threads_boost = False  # Aggressive mode boosts threads
-
-        while profile_choice is None:
-            profile_options = [
-                self.ui.t("wizard_profile_express"),
-                self.ui.t("wizard_profile_standard"),
-                self.ui.t("wizard_profile_exhaustive"),
-                self.ui.t("wizard_profile_custom"),
+        def _ask_yes_no_with_back(question: str, default: str = "yes") -> Optional[bool]:
+            default = default.lower()
+            is_yes_default = default in ("yes", "y", "s", "si", "sí")
+            options = [
+                self.ui.t("yes_default") if is_yes_default else self.ui.t("yes_option"),
+                self.ui.t("no_default") if not is_yes_default else self.ui.t("no_option"),
             ]
-            profile_idx = self.ask_choice(self.ui.t("wizard_profile_q"), profile_options, default=1)
-
-            # For profiles that ask timing, include a back option
-            if profile_idx in (1, 2):  # Standard or Exhaustive
-                timing_options = [
-                    self.ui.t("timing_stealth"),
-                    self.ui.t("timing_normal"),
-                    self.ui.t("timing_aggressive"),
-                    self.ui.t("go_back"),
-                ]
-                timing_choice = self.ask_choice(self.ui.t("timing_q"), timing_options, default=1)
-                if timing_choice == 3:  # Go back
-                    continue  # Re-show profile selector
-
-                # v3.9.0: Real timing differences
-                if timing_choice == 0:  # Stealth
-                    timing_delay = 2.0
-                    timing_nmap_template = "T1"  # Paranoid
-                    timing_threads_boost = False
-                elif timing_choice == 1:  # Normal
-                    timing_delay = 0.0
-                    timing_nmap_template = "T4"  # Aggressive (nmap default for speed)
-                    timing_threads_boost = False
-                elif timing_choice == 2:  # Aggressive
-                    timing_delay = 0.0
-                    timing_nmap_template = "T5"  # Insane
-                    timing_threads_boost = True  # Will use MAX_THREADS
-
-            profile_choice = profile_idx
-
-        # PROFILE 0: Express - Fast scan with minimal config
-        if profile_choice == 0:
-            self.config["scan_mode"] = "rapido"
-            self.config["max_hosts_value"] = "all"
-            self.config["threads"] = DEFAULT_THREADS
-            self.config["scan_vulnerabilities"] = False
-            self.config["nuclei_enabled"] = False
-            self.config["cve_lookup_enabled"] = False
-            self.config["topology_enabled"] = True
-            self.config["net_discovery_enabled"] = True
-            self.config["net_discovery_redteam"] = False
-            self.config["windows_verify_enabled"] = False
-            self.config["save_txt_report"] = True
-            self.config["save_html_report"] = True
-            persisted_low_impact = defaults_for_run.get("low_impact_enrichment")
-            low_impact_default = "yes" if persisted_low_impact else "no"
-            self.config["low_impact_enrichment"] = self.ask_yes_no(
-                self.ui.t("low_impact_enrichment_q"), default=low_impact_default
+            default_idx = 0 if is_yes_default else 1
+            choice = self.ask_choice_with_back(
+                question,
+                options,
+                default_idx,
+                step_num=2,
+                total_steps=2,
             )
-            # v3.9.0: Ask auditor name and output dir for all profiles
-            self._ask_auditor_and_output_dir(defaults_for_run)
-            self.rate_limit_delay = 0.0  # Express = always fast
-            self.config["hyperscan_mode"] = "auto"  # v4.3: Fast = auto-detect best mode
-            self.config["trust_hyperscan"] = True  # v4.6.0: Max speed
-            return
+            if choice == self.WIZARD_BACK:
+                return None
+            return choice == 0
 
-        # PROFILE 1: Standard - Balance (equivalent to old normal mode)
-        if profile_choice == 1:
-            self.config["scan_mode"] = "normal"
-            self.config["max_hosts_value"] = "all"
-            self.config["threads"] = DEFAULT_THREADS
-            self.config["scan_vulnerabilities"] = True
-            self.config["nuclei_enabled"] = False
-            self.config["cve_lookup_enabled"] = False
-            self.config["topology_enabled"] = True
-            self.config["net_discovery_enabled"] = True
-            self.config["net_discovery_redteam"] = False
-            self.config["windows_verify_enabled"] = False
-            self.config["save_txt_report"] = True
-            self.config["save_html_report"] = True
-            persisted_low_impact = defaults_for_run.get("low_impact_enrichment")
-            low_impact_default = "yes" if persisted_low_impact else "no"
-            self.config["low_impact_enrichment"] = self.ask_yes_no(
-                self.ui.t("low_impact_enrichment_q"), default=low_impact_default
-            )
-            # v3.9.0: Ask auditor name and output dir for all profiles
-            self._ask_auditor_and_output_dir(defaults_for_run)
+        # v3.9.0: Loop for profile selection with back navigation from timing
+        while True:
+            profile_choice = None
+            timing_delay = 0.0
+            timing_nmap_template = "T4"  # Default
+            timing_threads_boost = False  # Aggressive mode boosts threads
 
-            # v4.5.0: Ask for Authentication (Phase 4)
-            auth_config = self.ask_auth_config()
-            self.config.update(auth_config)
-
-            # v3.9.0: Apply timing settings
-            self.config["nmap_timing"] = timing_nmap_template
-            if timing_threads_boost:
-                self.config["threads"] = MAX_THREADS
-            self.rate_limit_delay = timing_delay
-            # v4.3: HyperScan mode based on timing
-            if timing_nmap_template == "T1":  # Stealth
-                self.config["hyperscan_mode"] = "connect"  # Connect is stealthier than SYN
-            else:
-                self.config["hyperscan_mode"] = "auto"  # Let it auto-detect
-            self.config["trust_hyperscan"] = self.ask_yes_no(
-                self.ui.t("trust_hyperscan_q"),
-                default="yes",
-            )
-            return
-
-        # PROFILE 2: Exhaustive - Maximum discovery (auto-configures everything)
-        if profile_choice == 2:
-            self.ui.print_status(self.ui.t("exhaustive_mode_applying"), "INFO")
-
-            # Core scan settings - maximum
-            self.config["scan_mode"] = "completo"
-            self.config["max_hosts_value"] = "all"
-            # v3.9.0: Threads depend on timing choice
-            # Stealth = reduced threads for IDS evasion, otherwise MAX
-            if timing_nmap_template == "T1":  # Stealth
-                self.config["threads"] = 2  # Very slow, IDS evasion
-            else:
-                self.config["threads"] = MAX_THREADS
-            self.config["deep_id_scan"] = True
-            # v3.9.0: Apply nmap timing template
-            self.config["nmap_timing"] = timing_nmap_template
-
-            # UDP - full scan
-            self.config["udp_mode"] = UDP_SCAN_MODE_FULL
-            self.config["udp_top_ports"] = 500  # ~98% coverage (was 200)
-
-            # Vulnerability scanning - enabled (nikto, whatweb, etc.)
-            self.config["scan_vulnerabilities"] = True
-
-            # v4.8.0: Nuclei OFF by default (use --nuclei to enable)
-            # Reason: Slow on web-dense networks, marginal value for network audits
-            # v4.8.0: Nuclei OFF by default (use --nuclei to enable)
-            # PROMPT: Ask usage for granular control in Exhaustive mode
-            self.config["nuclei_enabled"] = self.ask_yes_no(self.ui.t("nuclei_q"), default="no")
-            fatigue_default = defaults_for_run.get("nuclei_fatigue_limit")
-            if not isinstance(fatigue_default, int) or fatigue_default < 0:
-                fatigue_default = 3
-            if fatigue_default > 10:
-                fatigue_default = 10
-            # v4.11.0: Nuclei profile selector (full/balanced/fast)
-            if self.config["nuclei_enabled"]:
-                profile_opts = [
-                    self.ui.t("nuclei_full"),
-                    self.ui.t("nuclei_balanced"),
-                    self.ui.t("nuclei_fast"),
+            while profile_choice is None:
+                profile_options = [
+                    self.ui.t("wizard_profile_express"),
+                    self.ui.t("wizard_profile_standard"),
+                    self.ui.t("wizard_profile_exhaustive"),
+                    self.ui.t("wizard_profile_custom"),
                 ]
                 profile_idx = self.ask_choice(
-                    self.ui.t("nuclei_profile_q"), profile_opts, default=1
-                )
-                self.config["nuclei_profile"] = ["full", "balanced", "fast"][profile_idx]
-                # v4.17: Full coverage option - default YES only when Nuclei profile is full
-                full_coverage_default = "yes" if self.config["nuclei_profile"] == "full" else "no"
-                self.config["nuclei_full_coverage"] = self.ask_yes_no(
-                    self.ui.t("nuclei_full_coverage_q"), default=full_coverage_default
-                )
-                self.ui.print_status(self.ui.t("nuclei_optimization_note"), "INFO")
-                runtime_default = defaults_for_run.get("nuclei_max_runtime")
-                if not isinstance(runtime_default, int) or runtime_default < 0:
-                    runtime_default = 0
-                self.config["nuclei_max_runtime"] = self.ask_number(
-                    self.ui.t("nuclei_budget_q"), default=runtime_default, min_val=0, max_val=1440
-                )
-                self.config["nuclei_fatigue_limit"] = self.ask_number(
-                    self.ui.t("nuclei_fatigue_q"),
-                    default=fatigue_default,
-                    min_val=0,
-                    max_val=10,
-                )
-                exclude_default = defaults_for_run.get("nuclei_exclude")
-                if isinstance(exclude_default, list):
-                    exclude_default = ", ".join([str(item) for item in exclude_default if item])
-                elif not isinstance(exclude_default, str):
-                    exclude_default = ""
-                exclude_prompt = self._style_prompt_text(self.ui.t("nuclei_exclude_q"))
-                exclude_default_display = (
-                    self._style_default_value(exclude_default) if exclude_default else ""
-                )
-                exclude_text = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {exclude_prompt} "
-                    f"[{exclude_default_display}]: "
-                ).strip()
-                if not exclude_text:
-                    exclude_text = exclude_default
-                self.config["nuclei_exclude"] = normalize_nuclei_exclude(
-                    [exclude_text] if exclude_text else []
-                )
-            else:
-                self.config["nuclei_profile"] = "balanced"  # Default for non-interactive
-                self.config["nuclei_full_coverage"] = False
-                self.config["nuclei_max_runtime"] = 0
-                self.config["nuclei_fatigue_limit"] = fatigue_default
-                self.config["nuclei_exclude"] = normalize_nuclei_exclude(
-                    [defaults_for_run.get("nuclei_exclude")]
-                    if defaults_for_run.get("nuclei_exclude")
-                    else []
+                    self.ui.t("wizard_profile_q"), profile_options, default=1
                 )
 
-            # NVD/CVE - enable if API key is configured, otherwise show reminder
-            if is_nvd_api_key_configured():
-                self.config["cve_lookup_enabled"] = True
-                self.setup_nvd_api_key(non_interactive=True)
-            else:
+                # For profiles that ask timing, include a back option
+                if profile_idx in (1, 2):  # Standard or Exhaustive
+                    timing_options = [
+                        self.ui.t("timing_stealth"),
+                        self.ui.t("timing_normal"),
+                        self.ui.t("timing_aggressive"),
+                        self.ui.t("go_back"),
+                    ]
+                    timing_choice = self.ask_choice(
+                        self.ui.t("timing_q"), timing_options, default=1
+                    )
+                    if timing_choice == 3:  # Go back
+                        continue  # Re-show profile selector
+
+                    # v3.9.0: Real timing differences
+                    if timing_choice == 0:  # Stealth
+                        timing_delay = 2.0
+                        timing_nmap_template = "T1"  # Paranoid
+                        timing_threads_boost = False
+                    elif timing_choice == 1:  # Normal
+                        timing_delay = 0.0
+                        timing_nmap_template = "T4"  # Aggressive (nmap default for speed)
+                        timing_threads_boost = False
+                    elif timing_choice == 2:  # Aggressive
+                        timing_delay = 0.0
+                        timing_nmap_template = "T5"  # Insane
+                        timing_threads_boost = True  # Will use MAX_THREADS
+
+                profile_choice = profile_idx
+
+            # PROFILE 0: Express - Fast scan with minimal config
+            if profile_choice == 0:
+                self.config["scan_mode"] = "rapido"
+                self.config["max_hosts_value"] = "all"
+                self.config["threads"] = DEFAULT_THREADS
+                self.config["scan_vulnerabilities"] = False
+                self.config["nuclei_enabled"] = False
                 self.config["cve_lookup_enabled"] = False
-                self.ui.print_status(self.ui.t("nvd_not_configured_reminder"), "WARNING")
-                print(
-                    f"  {self.ui.colors['CYAN']}{self.ui.t('nvd_get_key_hint')}"
-                    f"{self.ui.colors['ENDC']}"
+                self.config["topology_enabled"] = True
+                self.config["net_discovery_enabled"] = True
+                self.config["net_discovery_redteam"] = False
+                self.config["windows_verify_enabled"] = False
+                self.config["save_txt_report"] = True
+                self.config["save_html_report"] = True
+                persisted_low_impact = defaults_for_run.get("low_impact_enrichment")
+                low_impact_default = "yes" if persisted_low_impact else "no"
+                low_impact = _ask_yes_no_with_back(
+                    self.ui.t("low_impact_enrichment_q"), default=low_impact_default
                 )
+                if low_impact is None:
+                    continue
+                self.config["low_impact_enrichment"] = low_impact
+                # v3.9.0: Ask auditor name and output dir for all profiles
+                self._ask_auditor_and_output_dir(defaults_for_run)
+                self.rate_limit_delay = 0.0  # Express = always fast
+                self.config["hyperscan_mode"] = "auto"  # v4.3: Fast = auto-detect best mode
+                self.config["trust_hyperscan"] = True  # v4.6.0: Max speed
+                return
 
-            # Discovery - all enabled
-            self.config["topology_enabled"] = True
-            self.config["topology_only"] = False
-            self.config["net_discovery_enabled"] = True
-            self.config["net_discovery_redteam"] = True
-            self.config["net_discovery_active_l2"] = True
-            self.config["net_discovery_kerberos_userenum"] = False  # Requires realm
-            self.config["net_discovery_snmp_community"] = "public"
-            self.config["net_discovery_dns_zone"] = ""
-            self.config["net_discovery_max_targets"] = 100
+            # PROFILE 1: Standard - Balance (equivalent to old normal mode)
+            if profile_choice == 1:
+                self.config["scan_mode"] = "normal"
+                self.config["max_hosts_value"] = "all"
+                self.config["threads"] = DEFAULT_THREADS
+                self.config["scan_vulnerabilities"] = True
+                self.config["nuclei_enabled"] = False
+                self.config["cve_lookup_enabled"] = False
+                self.config["topology_enabled"] = True
+                self.config["net_discovery_enabled"] = True
+                self.config["net_discovery_redteam"] = False
+                self.config["windows_verify_enabled"] = False
+                self.config["save_txt_report"] = True
+                self.config["save_html_report"] = True
+                persisted_low_impact = defaults_for_run.get("low_impact_enrichment")
+                low_impact_default = "yes" if persisted_low_impact else "no"
+                low_impact = _ask_yes_no_with_back(
+                    self.ui.t("low_impact_enrichment_q"), default=low_impact_default
+                )
+                if low_impact is None:
+                    continue
+                self.config["low_impact_enrichment"] = low_impact
+                # v3.9.0: Ask auditor name and output dir for all profiles
+                self._ask_auditor_and_output_dir(defaults_for_run)
 
-            # Windows verification
-            self.config["windows_verify_enabled"] = True
-            self.config["windows_verify_max_targets"] = 50
+                # v4.5.0: Ask for Authentication (Phase 4)
+                auth_config = self.ask_auth_config()
+                self.config.update(auth_config)
 
-            # Reports
-            self.config["save_txt_report"] = True
-            self.config["save_html_report"] = True
-            self.config["output_dir"] = get_default_reports_base_dir()
+                # v3.9.0: Apply timing settings
+                self.config["nmap_timing"] = timing_nmap_template
+                if timing_threads_boost:
+                    self.config["threads"] = MAX_THREADS
+                self.rate_limit_delay = timing_delay
+                # v4.3: HyperScan mode based on timing
+                if timing_nmap_template == "T1":  # Stealth
+                    self.config["hyperscan_mode"] = "connect"  # Connect is stealthier than SYN
+                else:
+                    self.config["hyperscan_mode"] = "auto"  # Let it auto-detect
+                trust_hyperscan = _ask_yes_no_with_back(
+                    self.ui.t("trust_hyperscan_q"),
+                    default="yes",
+                )
+                if trust_hyperscan is None:
+                    continue
+                self.config["trust_hyperscan"] = trust_hyperscan
+                return
 
-            # Webhook off by default
-            self.config["webhook_url"] = ""
+            # PROFILE 2: Exhaustive - Maximum discovery (auto-configures everything)
+            if profile_choice == 2:
+                self.ui.print_status(self.ui.t("exhaustive_mode_applying"), "INFO")
 
-            # v3.10.1: Auto-enable Phase 0 in Exhaustive mode (Goal: maximize information)
-            self.config["low_impact_enrichment"] = True
+                # Core scan settings - maximum
+                self.config["scan_mode"] = "completo"
+                self.config["max_hosts_value"] = "all"
+                # v3.9.0: Threads depend on timing choice
+                # Stealth = reduced threads for IDS evasion, otherwise MAX
+                if timing_nmap_template == "T1":  # Stealth
+                    self.config["threads"] = 2  # Very slow, IDS evasion
+                else:
+                    self.config["threads"] = MAX_THREADS
+                self.config["deep_id_scan"] = True
+                # v3.9.0: Apply nmap timing template
+                self.config["nmap_timing"] = timing_nmap_template
 
-            # v4.2: Enable web app security tools in Exhaustive (full assessment)
-            if shutil.which("zap.sh"):
-                self.config["zap_enabled"] = True
-            # SQLMap: level 3 = thorough, risk 2 = medium-high (risk 3 = destructive)
-            self.config["sqlmap_level"] = 3
-            self.config["sqlmap_risk"] = 2
+                # UDP - full scan
+                self.config["udp_mode"] = UDP_SCAN_MODE_FULL
+                self.config["udp_top_ports"] = 500  # ~98% coverage (was 200)
 
-            # v3.9.0: Ask auditor name and output dir for all profiles
-            self._ask_auditor_and_output_dir(defaults_for_run)
+                # Vulnerability scanning - enabled (nikto, whatweb, etc.)
+                self.config["scan_vulnerabilities"] = True
 
-            # v4.5.0: Ask for Authentication (Phase 4)
-            auth_config = self.ask_auth_config()
-            self.config.update(auth_config)
+                # v4.8.0: Nuclei OFF by default (use --nuclei to enable)
+                # Reason: Slow on web-dense networks, marginal value for network audits
+                # v4.8.0: Nuclei OFF by default (use --nuclei to enable)
+                # PROMPT: Ask usage for granular control in Exhaustive mode
+                nuclei_enabled = _ask_yes_no_with_back(self.ui.t("nuclei_q"), default="no")
+                if nuclei_enabled is None:
+                    continue
+                self.config["nuclei_enabled"] = nuclei_enabled
+                fatigue_default = defaults_for_run.get("nuclei_fatigue_limit")
+                if not isinstance(fatigue_default, int) or fatigue_default < 0:
+                    fatigue_default = 3
+                if fatigue_default > 10:
+                    fatigue_default = 10
+                # v4.11.0: Nuclei profile selector (full/balanced/fast)
+                if self.config["nuclei_enabled"]:
+                    profile_opts = [
+                        self.ui.t("nuclei_full"),
+                        self.ui.t("nuclei_balanced"),
+                        self.ui.t("nuclei_fast"),
+                    ]
+                    profile_idx = self.ask_choice_with_back(
+                        self.ui.t("nuclei_profile_q"),
+                        profile_opts,
+                        default=1,
+                        step_num=2,
+                        total_steps=2,
+                    )
+                    if profile_idx == self.WIZARD_BACK:
+                        continue
+                    self.config["nuclei_profile"] = ["full", "balanced", "fast"][profile_idx]
+                    # v4.17: Full coverage option - default YES only when Nuclei profile is full
+                    full_coverage_default = (
+                        "yes" if self.config["nuclei_profile"] == "full" else "no"
+                    )
+                    full_coverage = _ask_yes_no_with_back(
+                        self.ui.t("nuclei_full_coverage_q"), default=full_coverage_default
+                    )
+                    if full_coverage is None:
+                        continue
+                    self.config["nuclei_full_coverage"] = full_coverage
+                    self.ui.print_status(self.ui.t("nuclei_optimization_note"), "INFO")
+                    runtime_default = defaults_for_run.get("nuclei_max_runtime")
+                    if not isinstance(runtime_default, int) or runtime_default < 0:
+                        runtime_default = 0
+                    self.config["nuclei_max_runtime"] = self.ask_number(
+                        self.ui.t("nuclei_budget_q"),
+                        default=runtime_default,
+                        min_val=0,
+                        max_val=1440,
+                    )
+                    self.config["nuclei_fatigue_limit"] = self.ask_number(
+                        self.ui.t("nuclei_fatigue_q"),
+                        default=fatigue_default,
+                        min_val=0,
+                        max_val=10,
+                    )
+                    exclude_default = defaults_for_run.get("nuclei_exclude")
+                    if isinstance(exclude_default, list):
+                        exclude_default = ", ".join([str(item) for item in exclude_default if item])
+                    elif not isinstance(exclude_default, str):
+                        exclude_default = ""
+                    exclude_prompt = self._style_prompt_text(self.ui.t("nuclei_exclude_q"))
+                    exclude_default_display = (
+                        self._style_default_value(exclude_default) if exclude_default else ""
+                    )
+                    exclude_text = input(
+                        f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {exclude_prompt} "
+                        f"[{exclude_default_display}]: "
+                    ).strip()
+                    if not exclude_text:
+                        exclude_text = exclude_default
+                    self.config["nuclei_exclude"] = normalize_nuclei_exclude(
+                        [exclude_text] if exclude_text else []
+                    )
+                else:
+                    self.config["nuclei_profile"] = "balanced"  # Default for non-interactive
+                    self.config["nuclei_full_coverage"] = False
+                    self.config["nuclei_max_runtime"] = 0
+                    self.config["nuclei_fatigue_limit"] = fatigue_default
+                    self.config["nuclei_exclude"] = normalize_nuclei_exclude(
+                        [defaults_for_run.get("nuclei_exclude")]
+                        if defaults_for_run.get("nuclei_exclude")
+                        else []
+                    )
 
-            # Rate limiting - already asked in profile selection loop
-            self.rate_limit_delay = timing_delay
-            # v4.3: HyperScan mode based on timing (Stealth = connect, else auto)
-            if timing_nmap_template == "T1":  # Stealth
-                self.config["hyperscan_mode"] = "connect"
-            else:
-                self.config["hyperscan_mode"] = "auto"
-            self.config["trust_hyperscan"] = self.ask_yes_no(
-                self.ui.t("trust_hyperscan_q"),
-                default="no",
-            )
-            return
+                # NVD/CVE - enable if API key is configured, otherwise show reminder
+                if is_nvd_api_key_configured():
+                    self.config["cve_lookup_enabled"] = True
+                    self.setup_nvd_api_key(non_interactive=True)
+                else:
+                    self.config["cve_lookup_enabled"] = False
+                    self.ui.print_status(self.ui.t("nvd_not_configured_reminder"), "WARNING")
+                    print(
+                        f"  {self.ui.colors['CYAN']}{self.ui.t('nvd_get_key_hint')}"
+                        f"{self.ui.colors['ENDC']}"
+                    )
+
+                # Discovery - all enabled
+                self.config["topology_enabled"] = True
+                self.config["topology_only"] = False
+                self.config["net_discovery_enabled"] = True
+                self.config["net_discovery_redteam"] = True
+                self.config["net_discovery_active_l2"] = True
+                self.config["net_discovery_kerberos_userenum"] = False  # Requires realm
+                self.config["net_discovery_snmp_community"] = "public"
+                self.config["net_discovery_dns_zone"] = ""
+                self.config["net_discovery_max_targets"] = 100
+
+                # Windows verification
+                self.config["windows_verify_enabled"] = True
+                self.config["windows_verify_max_targets"] = 50
+
+                # Reports
+                self.config["save_txt_report"] = True
+                self.config["save_html_report"] = True
+                self.config["output_dir"] = get_default_reports_base_dir()
+
+                # Webhook off by default
+                self.config["webhook_url"] = ""
+
+                # v3.10.1: Auto-enable Phase 0 in Exhaustive mode (Goal: maximize information)
+                self.config["low_impact_enrichment"] = True
+
+                # v4.2: Enable web app security tools in Exhaustive (full assessment)
+                if shutil.which("zap.sh"):
+                    self.config["zap_enabled"] = True
+                # SQLMap: level 3 = thorough, risk 2 = medium-high (risk 3 = destructive)
+                self.config["sqlmap_level"] = 3
+                self.config["sqlmap_risk"] = 2
+
+                # v3.9.0: Ask auditor name and output dir for all profiles
+                self._ask_auditor_and_output_dir(defaults_for_run)
+
+                # v4.5.0: Ask for Authentication (Phase 4)
+                auth_config = self.ask_auth_config()
+                self.config.update(auth_config)
+
+                # Rate limiting - already asked in profile selection loop
+                self.rate_limit_delay = timing_delay
+                # v4.3: HyperScan mode based on timing (Stealth = connect, else auto)
+                if timing_nmap_template == "T1":  # Stealth
+                    self.config["hyperscan_mode"] = "connect"
+                else:
+                    self.config["hyperscan_mode"] = "auto"
+                trust_hyperscan = _ask_yes_no_with_back(
+                    self.ui.t("trust_hyperscan_q"),
+                    default="no",
+                )
+                if trust_hyperscan is None:
+                    continue
+                self.config["trust_hyperscan"] = trust_hyperscan
+                self.ui.print_status(self.ui.t("long_scan_warning"), "WARNING")
+                return
+
+            if profile_choice == 3:
+                break
 
         # PROFILE 3: Custom - Full wizard with 9 steps (original behavior)
         # v3.8.1: Wizard step machine for "Cancel" navigation
+
         TOTAL_STEPS = 9
         step = 1
 
@@ -3059,6 +3117,9 @@ class InteractiveNetworkAuditor:
 
                 step += 1
                 continue
+
+        if self.config.get("scan_mode") == "completo" or self.config.get("nuclei_enabled"):
+            self.ui.print_status(self.ui.t("long_scan_warning"), "WARNING")
 
         # Final step: Encryption setup
         self.setup_encryption()

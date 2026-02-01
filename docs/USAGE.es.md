@@ -36,6 +36,8 @@ sudo redaudit
 - **Normal**: Equilibrio entre velocidad y fiabilidad.
 - **Agresivo**: El más rápido, más ruido; puede perder servicios lentos/filtrados.
 
+**Nota de duración:** El modo completo o con Nuclei activado puede superar 4 horas según el tamaño de los objetivos y los timeouts.
+
 ### Inventario rápido (LAN)
 
 ```bash

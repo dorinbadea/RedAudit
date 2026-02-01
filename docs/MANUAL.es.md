@@ -157,6 +157,7 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 - **Web:** Escaneo completo (Nikto, Nuclei, SSL).
 - **Autenticación:** Configuración opcional de credenciales SSH/SMB/SNMP.
 - **Ideal para:** Pentesting, compliance (PCI-DSS, ISO 27001), validación pre-producción.
+**Nota de duración:** El modo Exhaustive o con Nuclei activado puede superar 4 horas según el tamaño de los objetivos y los timeouts.
 
 #### 4. Custom (A Medida)
 

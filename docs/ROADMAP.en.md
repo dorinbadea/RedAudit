@@ -49,6 +49,13 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.22 Wizard Back + Long Scan Warning (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Wizard Back Navigation** | Done (v4.19.22) | Added back/cancel support in Standard and Exhaustive profile prompts. |
+| **Long Scan Warning** | Done (v4.19.22) | Warns when full or Nuclei-enabled modes can exceed 4 hours. |
+
 ### v4.19.21 Resume Sleep Inhibition (Done)
 
 | Feature | Status | Description |

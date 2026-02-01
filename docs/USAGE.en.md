@@ -40,6 +40,8 @@ sudo redaudit
 - **Normal**: Balanced speed and reliability.
 - **Aggressive**: Fastest, more noise; can miss slow/filtered services.
 
+**Runtime note:** Full (exhaustive) or Nuclei-enabled modes can exceed 4 hours depending on target size and timeouts.
+
 ### Fast Inventory (LAN)
 
 ```bash

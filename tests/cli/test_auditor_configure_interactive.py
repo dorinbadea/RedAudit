@@ -123,17 +123,13 @@ def test_configure_scan_interactive_standard_profile(monkeypatch, tmp_path):
     # Select Standard profile (index 1), then timing Normal (index 1)
     choice_iter = iter([1, 1])
     monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: next(choice_iter))
+    # Low impact (No), trust hyperscan (No)
+    back_iter = iter([1, 1])
+    monkeypatch.setattr(app, "ask_choice_with_back", lambda *_a, **_k: next(back_iter))
     # v3.9.0: Mock input() for auditor_name and output_dir prompts
     input_iter = iter(["", ""])  # Accept defaults for both
-    # v4.5.0: Standard profile now asks for Auth configuration (SSH, SMB, SNMP)
-    # and low impact enrichment.
-    # 1. Low impact? No
-    # 2. SSH? No
-    # 3. SMB? No
-    # 4. SNMP? No
-    yes_no_iter = iter([False, False, False, False] + [False] * 10)
-    monkeypatch.setattr(app, "ask_yes_no", lambda *_a, **_k: next(yes_no_iter))
     monkeypatch.setattr("builtins.input", lambda *_a, **_k: next(input_iter))
+    monkeypatch.setattr(app, "ask_auth_config", lambda *_a, **_k: {"auth_enabled": False})
 
     app._configure_scan_interactive({})
 
@@ -144,21 +140,44 @@ def test_configure_scan_interactive_standard_profile(monkeypatch, tmp_path):
     assert app.rate_limit_delay == 0.0  # Normal timing
 
 
+def test_configure_scan_interactive_back_from_profile_prompt(monkeypatch):
+    """Ensure back/cancel reopens profile selection."""
+    app = InteractiveNetworkAuditor()
+
+    # Select Standard profile (index 1), timing Normal (index 1), then Express (index 0)
+    choice_iter = iter([1, 1, 0])
+    monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: next(choice_iter))
+
+    # First low-impact prompt returns back, second returns Yes
+    back_iter = iter([app.WIZARD_BACK, 0])
+    monkeypatch.setattr(app, "ask_choice_with_back", lambda *_a, **_k: next(back_iter))
+
+    monkeypatch.setattr(app, "_ask_auditor_and_output_dir", lambda *_a, **_k: None)
+
+    app._configure_scan_interactive({})
+
+    assert app.config["scan_mode"] == "rapido"
+
+
 def test_configure_scan_interactive_exhaustive_profile(monkeypatch, tmp_path):
     """Test Exhaustive profile auto-configuration with NVD reminder."""
     app = InteractiveNetworkAuditor()
+    app.ui.print_status = MagicMock()
+    app.ui.t = lambda key, *args: key
 
     # Select Exhaustive profile (index 2), then timing Stealth (index 0)
     choice_iter = iter([2, 0])
     monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: next(choice_iter))
-    monkeypatch.setattr(app, "print_status", lambda *_a, **_k: None)
-    monkeypatch.setattr(app, "ask_yes_no", lambda *_a, **_k: False)
+    # Nuclei enabled? No. Trust hyperscan? No.
+    back_iter = iter([1, 1])
+    monkeypatch.setattr(app, "ask_choice_with_back", lambda *_a, **_k: next(back_iter))
     monkeypatch.setattr("redaudit.core.auditor.get_default_reports_base_dir", lambda: str(tmp_path))
     # Mock NVD not configured
     monkeypatch.setattr("redaudit.utils.config.is_nvd_api_key_configured", lambda: False)
     # v3.9.0: Mock input() for auditor_name and output_dir prompts
     input_iter = iter(["", ""])  # Accept defaults for both
     monkeypatch.setattr("builtins.input", lambda *_a, **_k: next(input_iter))
+    monkeypatch.setattr(app, "ask_auth_config", lambda *_a, **_k: {"auth_enabled": False})
 
     app._configure_scan_interactive({})
 
@@ -175,6 +194,7 @@ def test_configure_scan_interactive_exhaustive_profile(monkeypatch, tmp_path):
     assert app.config["cve_lookup_enabled"] is False
     # Stealth timing
     assert app.rate_limit_delay == 2.0
+    app.ui.print_status.assert_any_call("long_scan_warning", "WARNING")
 
 
 def test_interactive_setup_with_defaults_use(monkeypatch, tmp_path):
@@ -521,7 +541,7 @@ def test_wizard_exhaustive_profile_nuclei_fatigue():
     """Ensure Nuclei fatigue limit is prompted and stored in Exhaustive profile."""
     auditor = MockWizardAuditor()
     with patch.object(auditor, "ask_choice", side_effect=[2, 2, 1]):
-        with patch.object(auditor, "ask_yes_no", side_effect=[True, False, False]):
+        with patch.object(auditor, "ask_choice_with_back", side_effect=[0, 1, 1, 1]):
             with patch.object(auditor, "ask_auth_config", return_value={}):
                 with patch.object(auditor, "ask_number", side_effect=[15, 4]):
                     with (
