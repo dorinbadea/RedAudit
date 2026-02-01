@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.25] - 2026-02-01
+
+### Corregido
+
+- **Limpieza de BetterCAP**: Terminación best-effort de BetterCAP tras recon L2 para evitar procesos activos.
+
 ## [4.19.24] - 2026-02-01
 
 ### Mejorado

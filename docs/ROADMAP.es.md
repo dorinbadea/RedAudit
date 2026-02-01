@@ -49,6 +49,12 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.25 Limpieza de BetterCAP (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Limpieza de BetterCAP** | Hecho (v4.19.25) | La recon L2 ahora termina BetterCAP de forma best-effort tras usarlo. |
+
 ### v4.19.24 Endurecimiento de reportes + docs de reanudación (Hecho)
 
 | Funcionalidad | Estado | Descripción |

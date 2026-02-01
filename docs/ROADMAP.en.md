@@ -49,6 +49,12 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.25 BetterCAP Cleanup (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **BetterCAP Cleanup** | Done (v4.19.25) | L2 recon now performs a best-effort BetterCAP termination after use. |
+
 ### v4.19.24 Report Hardening + Resume Docs (Done)
 
 | Feature | Status | Description |

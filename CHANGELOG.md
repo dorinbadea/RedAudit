@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.25] - 2026-02-01
+
+### Fixed
+
+- **BetterCAP Cleanup**: Best-effort termination of BetterCAP after L2 recon to avoid lingering processes.
+
 ## [4.19.24] - 2026-02-01
 
 ### Improved
