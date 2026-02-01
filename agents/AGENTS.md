@@ -13,6 +13,7 @@ Minimum expectations before opening a PR:
 - Never merge or push to `main` without explicit owner approval.
 - Run `pre-commit run --all-files` and commit any formatter changes as `chore(pre-commit): apply formatting fixes`.
 - Run tests: `pytest tests/ -v` (or `scripts/ci_local.sh` for CI parity).
+- Run the quality gate once after changes are final; re-run only if files changed afterward.
 - Do not idle waiting for CI; run `scripts/ci_local.sh` and proceed with other tasks. CI can arrive after merge; if any checks fail, fix before further releases.
 - Keep EN/ES documentation consistent when user-facing behavior changes.
 - Do not commit private data; `scan_results_private/` must never be pushed.

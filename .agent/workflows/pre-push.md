@@ -25,6 +25,8 @@ pre-commit run --all-files
 4. [ ] `bash scripts/ci_local.sh` passes (Local CI parity, optional but recommended)
 5. [ ] `git status` is clean
 
+Run the gate once after your changes are final. Re-run only if files change after that.
+
 ## Common Issues
 
 - **Extra blank lines**: Black requires exactly 1 blank line before comments after code blocks

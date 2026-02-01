@@ -28,7 +28,7 @@ description: RedAudit Engineering Workflow
   - Always include the "Ver en Español" / "View in English" badge at the top.
   - Use absolute URLs for all badge links in releases.
   - Follow the standard structure: Summary, Added, Improved, Fixed, Testing, Upgrade.
-- **CI Safety**: Ensure all tests and lints pass locally before pushing.
+- **CI Safety**: Ensure all tests and lints pass locally before pushing. Run the quality gate once after changes are final, and re-run only if files change afterward.
 - **Parsing Fragility**: If touching `agentless_verify.py` or `scanner_versions.py`, validate against real tool outputs.
 - **Search Discipline**: Prefer `rg` for searching and `rg --files` for discovery.
 

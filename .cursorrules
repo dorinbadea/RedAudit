@@ -11,7 +11,7 @@ These rules are lifted from `AGENTS.md` and must be followed. If anything confli
 - **No Emojis**: Do not use emojis in documentation, release notes, or release payloads.
 - **Work on a Branch**: Never commit directly to `main`. Use `feature/`, `hotfix/`, `docs/`.
 - **Owner Approval**: Never merge or push to `main` without explicit owner approval.
-- **Local Gate First**: Run the local quality gate before merging; if CI fails after merge, fix immediately and do not force-merge with failing checks.
+- **Local Gate First**: Run the local quality gate before merging; run it once after changes are final, and re-run only if files change after that. If CI fails after merge, fix immediately and do not force-merge with failing checks.
 - **Clean Handoff**: `git status` must be clean before finishing a task.
 - **No Retags**: Do not rewrite or retag published releases.
 - **Private Data**: `scan_results_private/` must never be pushed.
