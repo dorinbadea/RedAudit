@@ -665,3 +665,51 @@ def test_redteam_scapy_custom_on_pkt_error(monkeypatch):
     monkeypatch.setitem(sys.modules, "scapy.all", fake_all)
     res = redteam._redteam_scapy_custom("eth0", {"scapy": True}, active_l2=True)
     assert res["status"] == "no_data"
+
+
+def test_terminate_bettercap_skips_empty_iface():
+    redteam._terminate_bettercap("")
+
+
+def test_terminate_bettercap_skips_not_root(monkeypatch):
+    monkeypatch.setattr(redteam, "_is_root", lambda: False)
+    monkeypatch.setattr(redteam.shutil, "which", lambda _name: "/usr/bin/pkill")
+
+    class _BoomRunner:
+        def __init__(self, **_kwargs):
+            raise RuntimeError("should not instantiate")
+
+    monkeypatch.setattr(redteam, "CommandRunner", _BoomRunner)
+    redteam._terminate_bettercap("eth0")
+
+
+def test_terminate_bettercap_skips_without_pkill(monkeypatch):
+    monkeypatch.setattr(redteam, "_is_root", lambda: True)
+    monkeypatch.setattr(redteam.shutil, "which", lambda _name: None)
+
+    class _BoomRunner:
+        def __init__(self, **_kwargs):
+            raise RuntimeError("should not instantiate")
+
+    monkeypatch.setattr(redteam, "CommandRunner", _BoomRunner)
+    redteam._terminate_bettercap("eth0")
+
+
+def test_terminate_bettercap_runs(monkeypatch):
+    monkeypatch.setattr(redteam, "_is_root", lambda: True)
+    monkeypatch.setattr(redteam.shutil, "which", lambda _name: "/usr/bin/pkill")
+    monkeypatch.setattr(redteam, "is_dry_run", lambda: True)
+    calls = {}
+
+    class _Runner:
+        def __init__(self, **_kwargs):
+            pass
+
+        def run(self, args, **_kwargs):
+            calls["args"] = args
+            return None
+
+    monkeypatch.setattr(redteam, "CommandRunner", _Runner)
+    redteam._terminate_bettercap("eth0")
+    assert calls["args"][0] == "pkill"
+    assert "eth0" in calls["args"][2]
