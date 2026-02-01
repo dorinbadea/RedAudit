@@ -54,7 +54,7 @@ def _is_supported_webhook_url(url: str) -> bool:
         parsed = urlparse(url)
     except Exception:
         return False
-    if parsed.scheme not in {"http", "https"}:
+    if parsed.scheme != "https":
         return False
     if not parsed.netloc:
         return False
@@ -195,8 +195,9 @@ def send_webhook(
         request_headers.update(headers)
 
     sanitized_url = _sanitize_url_for_log(url)
-    if urlparse(url).scheme == "http":
-        logger.warning("Webhook endpoint is not HTTPS: %s", sanitized_url)
+    if urlparse(url).scheme != "https":
+        logger.warning("Webhook endpoint must be HTTPS: %s", sanitized_url)
+        return False
 
     try:
         response = requests.post(

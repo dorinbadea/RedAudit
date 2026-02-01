@@ -323,11 +323,17 @@ def test_enrich_host_with_whois_exception():
 
 
 def test_fetch_http_headers_https_k():
-    """Test _fetch_http_headers with https -k (line 87)."""
+    """Test _fetch_http_headers retries with https -k after verify attempt."""
     with patch("redaudit.core.scanner.enrichment._make_runner") as mock_runner_cls:
+        mock_runner_cls.return_value.run.side_effect = [
+            MagicMock(stdout=""),
+            MagicMock(stdout="OK"),
+        ]
         _fetch_http_headers("https://target", {"curl": "curl"})
-        args = mock_runner_cls.return_value.run.call_args[0][0]
-        assert "-k" in args
+        first_args = mock_runner_cls.return_value.run.call_args_list[0][0][0]
+        second_args = mock_runner_cls.return_value.run.call_args_list[1][0][0]
+        assert "-k" not in first_args
+        assert "-k" in second_args
 
 
 def test_fetch_http_headers_curl_exception():
@@ -339,11 +345,17 @@ def test_fetch_http_headers_curl_exception():
 
 
 def test_fetch_http_headers_wget_https():
-    """Test _fetch_http_headers wget https (line 110)."""
+    """Test _fetch_http_headers wget https retries with --no-check-certificate."""
     with patch("redaudit.core.scanner.enrichment._make_runner") as mock_runner_cls:
+        mock_runner_cls.return_value.run.side_effect = [
+            MagicMock(stderr=""),
+            MagicMock(stderr="OK"),
+        ]
         _fetch_http_headers("https://target", {"wget": "wget"})
-        args = mock_runner_cls.return_value.run.call_args[0][0]
-        assert "--no-check-certificate" in args
+        first_args = mock_runner_cls.return_value.run.call_args_list[0][0][0]
+        second_args = mock_runner_cls.return_value.run.call_args_list[1][0][0]
+        assert "--no-check-certificate" not in first_args
+        assert "--no-check-certificate" in second_args
 
 
 def test_fetch_http_headers_wget_exception():
@@ -355,11 +367,17 @@ def test_fetch_http_headers_wget_exception():
 
 
 def test_fetch_http_body_https_k():
-    """Test _fetch_http_body with https -k (line 143)."""
+    """Test _fetch_http_body with https -k retry."""
     with patch("redaudit.core.scanner.enrichment._make_runner") as mock_runner_cls:
+        mock_runner_cls.return_value.run.side_effect = [
+            MagicMock(stdout=""),
+            MagicMock(stdout="OK"),
+        ]
         _fetch_http_body("https://target", {"curl": "curl"})
-        args = mock_runner_cls.return_value.run.call_args[0][0]
-        assert "-k" in args
+        first_args = mock_runner_cls.return_value.run.call_args_list[0][0][0]
+        second_args = mock_runner_cls.return_value.run.call_args_list[1][0][0]
+        assert "-k" not in first_args
+        assert "-k" in second_args
 
 
 def test_fetch_http_body_curl_exception():
@@ -371,11 +389,17 @@ def test_fetch_http_body_curl_exception():
 
 
 def test_fetch_http_body_wget_https():
-    """Test _fetch_http_body wget https (line 166)."""
+    """Test _fetch_http_body wget https retries with --no-check-certificate."""
     with patch("redaudit.core.scanner.enrichment._make_runner") as mock_runner_cls:
+        mock_runner_cls.return_value.run.side_effect = [
+            MagicMock(stdout=""),
+            MagicMock(stdout="OK"),
+        ]
         _fetch_http_body("https://target", {"wget": "wget"})
-        args = mock_runner_cls.return_value.run.call_args[0][0]
-        assert "--no-check-certificate" in args
+        first_args = mock_runner_cls.return_value.run.call_args_list[0][0][0]
+        second_args = mock_runner_cls.return_value.run.call_args_list[1][0][0]
+        assert "--no-check-certificate" not in first_args
+        assert "--no-check-certificate" in second_args
 
 
 def test_fetch_http_body_wget_exception():

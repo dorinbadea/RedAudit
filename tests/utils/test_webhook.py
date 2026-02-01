@@ -234,32 +234,20 @@ def test_send_webhook_rejects_unsupported_scheme(monkeypatch):
     assert webhook.send_webhook("ftp://example.com", {"a": 1}) is False
 
 
-def test_send_webhook_allows_http(monkeypatch):
-    class _Response:
-        ok = True
-        status_code = 200
-        reason = "OK"
-        text = "ok"
-
+def test_send_webhook_rejects_http(monkeypatch):
     class _Requests:
         class exceptions:
             Timeout = type("Timeout", (Exception,), {})
             RequestException = type("RequestException", (Exception,), {})
 
-        def __init__(self):
-            self.calls = []
-
-        def post(self, url, json, headers, timeout, **kwargs):
-            self.calls.append((url, json, headers, timeout, kwargs))
-            return _Response()
+        def post(self, *_args, **_kwargs):
+            raise AssertionError("request should not be sent for http scheme")
 
     dummy = _Requests()
     monkeypatch.setattr(webhook, "REQUESTS_AVAILABLE", True)
     monkeypatch.setattr(webhook, "requests", dummy)
 
-    payload = {"k": "v"}
-    assert webhook.send_webhook("http://example.com/webhook", payload, timeout=5) is True
-    assert dummy.calls
+    assert webhook.send_webhook("http://example.com/webhook", {"a": 1}) is False
 
 
 def test_sanitize_url_for_log_strips_sensitive_bits():
@@ -269,6 +257,6 @@ def test_sanitize_url_for_log_strips_sensitive_bits():
 
 def test_is_supported_webhook_url():
     assert webhook._is_supported_webhook_url("https://example.com") is True
-    assert webhook._is_supported_webhook_url("http://example.com") is True
+    assert webhook._is_supported_webhook_url("http://example.com") is False
     assert webhook._is_supported_webhook_url("ftp://example.com") is False
     assert webhook._is_supported_webhook_url("example.com") is False
