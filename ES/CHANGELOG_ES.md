@@ -10,6 +10,15 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.23] - 2026-02-01
+
+### Corregido
+
+- **HTTPS en Webhooks**: El envio de webhooks rechaza endpoints no HTTPS y evita redirects.
+- **Endurecimiento de sondeo TLS**: El enriquecimiento HTTP verifica TLS primero y solo cae a modo inseguro si falla.
+- **Limpieza segura de terminal**: Se evita ejecutar shell; se usa ejecucion directa o fallback ANSI.
+- **Permisos de temporales proxy**: El config temporal de proxychains se crea con permisos restrictivos.
+
 ## [4.19.22] - 2026-02-01
 
 ### Corregido

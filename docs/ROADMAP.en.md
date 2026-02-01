@@ -49,6 +49,15 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.23 Security Hardening (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Webhook HTTPS Enforcement** | Done (v4.19.23) | Webhooks reject non-HTTPS URLs and avoid redirects. |
+| **Verify-First HTTP Probes** | Done (v4.19.23) | TLS verification is attempted first, with insecure fallback only on failure. |
+| **Safer Terminal Clear** | Done (v4.19.23) | Terminal clear avoids shell execution and uses safe fallbacks. |
+| **Proxy Temp Permissions** | Done (v4.19.23) | Proxychains temp config is written with restrictive permissions. |
+
 ### v4.19.22 Wizard Back + Long Scan Warning (Done)
 
 | Feature | Status | Description |
