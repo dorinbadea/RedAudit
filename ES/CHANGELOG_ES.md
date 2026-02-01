@@ -10,6 +10,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.22] - 2026-02-01
+
+### Corregido
+
+- **Navegación atrás en el wizard**: Se añade volver/cancelar en los prompts de perfiles Standard/Exhaustive.
+- **Aviso de duración**: Se avisa cuando el modo completo o con Nuclei puede superar 4 horas.
+
 ## [4.19.21] - 2026-01-31
 
 ### Corregido

@@ -10,6 +10,13 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.22] - 2026-02-01
+
+### Fixed
+
+- **Wizard Back Navigation**: Added back/cancel support in Standard/Exhaustive profile prompts.
+- **Long Scan Warning**: Warns when full or Nuclei-enabled modes may exceed 4 hours.
+
 ## [4.19.21] - 2026-01-31
 
 ### Fixed
