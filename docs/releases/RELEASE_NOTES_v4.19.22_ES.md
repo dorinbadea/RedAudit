@@ -1,7 +1,6 @@
 # RedAudit v4.19.22 - Volver en wizard y aviso de duración
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/v4.19.22/docs/releases/RELEASE_NOTES_v4.19.22.md)
-[![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](https://github.com/dorinbadea/RedAudit/blob/v4.19.22/docs/releases/RELEASE_NOTES_v4.19.22_ES.md)
 
 ## Summary
 
