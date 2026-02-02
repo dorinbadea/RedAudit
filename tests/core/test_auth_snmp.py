@@ -323,12 +323,15 @@ def test_walk_interfaces_prettyprint_exception(mock_nextCmd):
 
     class _Val:
         def prettyPrint(self):
-            raise RuntimeError("bad")
+            raise RuntimeError("prettyprint_failed")
 
     row = [(None, "1"), (None, "eth0"), (None, "6"), (None, _Val()), (None, "1")]
     mock_nextCmd.return_value = iter([(None, 0, 0, row)])
     res = scanner._walk_interfaces(MagicMock())
-    assert "bad" not in res[0]["mac"]
+    # When prettyPrint raises, fallback is str(mac_raw) which produces object repr.
+    # Verify it falls back to a non-empty string and doesn't expose the exception message.
+    assert res[0]["mac"]  # non-empty
+    assert "prettyprint_failed" not in res[0]["mac"]
 
 
 @patch("redaudit.core.auth_snmp.nextCmd")
