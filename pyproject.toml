@@ -110,7 +110,7 @@ auth = ["paramiko", "impacket", "pysnmp"]
 packages = ["redaudit", "redaudit.core", "redaudit.utils", "redaudit.templates"]
 
 [tool.setuptools.package-data]
-"redaudit" = ["templates/*.j2", "data/*.json"]
+"redaudit" = ["templates/*.j2", "data/*.json", "data/*.js"]
 
 [tool.black]
 line-length = 100

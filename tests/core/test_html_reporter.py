@@ -292,6 +292,30 @@ def test_generate_and_save_html_report(tmp_path):
         )
         assert path is not None
         assert Path(path).read_text(encoding="utf-8") == "<html>normal</html>"
+        chart_path = out_dir / html_reporter.CHART_JS_FILENAME
+        assert chart_path.exists()
+        assert chart_path.stat().st_size > 0
+
+
+def test_write_chart_js_asset_success(tmp_path):
+    source_path = tmp_path / "chart_src.js"
+    source_path.write_text("chart", encoding="utf-8")
+    with patch(
+        "redaudit.core.html_reporter._get_chart_js_source_path",
+        return_value=str(source_path),
+    ):
+        assert html_reporter._write_chart_js_asset(str(tmp_path)) is True
+        dest_path = tmp_path / html_reporter.CHART_JS_FILENAME
+        assert dest_path.read_text(encoding="utf-8") == "chart"
+
+
+def test_write_chart_js_asset_missing(tmp_path):
+    missing_path = tmp_path / "missing.js"
+    with patch(
+        "redaudit.core.html_reporter._get_chart_js_source_path",
+        return_value=str(missing_path),
+    ):
+        assert html_reporter._write_chart_js_asset(str(tmp_path)) is False
 
 
 def test_get_reverse_dns_empty():

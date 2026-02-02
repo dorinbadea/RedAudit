@@ -19,6 +19,8 @@ from redaudit.utils.constants import SECURE_FILE_MODE, VERSION
 from redaudit.utils.vendor_hints import get_best_vendor
 from redaudit.core.siem import extract_finding_title
 
+CHART_JS_FILENAME = "chart.umd.min.js"
+
 
 def _get_reverse_dns(host: Dict) -> str:
     """Extract first reverse DNS entry for hostname fallback."""
@@ -59,6 +61,30 @@ def get_template_env():
 
     env.filters["basename"] = basename_filter
     return env
+
+
+def _get_chart_js_source_path() -> str:
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", CHART_JS_FILENAME))
+
+
+def _write_chart_js_asset(output_dir: str) -> bool:
+    source_path = _get_chart_js_source_path()
+    if not os.path.exists(source_path):
+        return False
+
+    dest_path = os.path.join(output_dir, CHART_JS_FILENAME)
+    try:
+        with open(source_path, "r", encoding="utf-8") as src_file:
+            content = src_file.read()
+        with open(dest_path, "w", encoding="utf-8") as dest_file:
+            dest_file.write(content)
+        try:
+            os.chmod(dest_path, SECURE_FILE_MODE)
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
 
 
 def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dict:
@@ -476,6 +502,8 @@ def save_html_report(
             os.chmod(output_path, SECURE_FILE_MODE)
         except Exception:
             pass
+
+        _write_chart_js_asset(output_dir)
 
         return output_path
     except Exception as e:
