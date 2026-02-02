@@ -56,6 +56,12 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 | **Aviso de duración Nuclei** | Hecho (v4.19.27) | El aviso se centra en Nuclei y aparece antes de iniciar el escaneo. |
 | **Cancelación de reanudación** | Hecho (v4.19.27) | Ctrl+C durante la reanudación cancela limpiamente sin stack trace. |
 
+### v4.19.29 Persistencia de playbooks (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Playbooks persistentes** | Hecho (v4.19.29) | Los playbooks se guardan en JSON y se regeneran para HTML si faltan. |
+
 ### v4.19.28 Gráficos HTML + Higiene Docs (Hecho)
 
 | Funcionalidad | Estado | Descripción |

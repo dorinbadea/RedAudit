@@ -1367,6 +1367,24 @@ def test_save_results_logs_and_failures(tmp_path):
         logger.debug.assert_any_call("Run manifest generation failed: %s", err, exc_info=True)
 
 
+def test_save_results_persists_playbooks_in_json(tmp_path):
+    results = {"summary": {}, "vulnerabilities": []}
+    output_dir = str(tmp_path)
+    config = {"output_dir": output_dir}
+
+    with patch(
+        "redaudit.core.playbook_generator.save_playbooks",
+        return_value=(1, [{"host": "1.1.1.1", "title": "PB"}]),
+    ):
+        assert save_results(results, config) is True
+
+    json_files = list(tmp_path.rglob("redaudit_*.json"))
+    assert len(json_files) == 1
+    with json_files[0].open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    assert data.get("playbooks") == [{"host": "1.1.1.1", "title": "PB"}]
+
+
 def test_write_output_manifest_exceptions():
     results = {"hosts": [{"deep_scan": "not-a-dict"}]}
     with patch("os.walk", side_effect=Exception("Walk Error")):

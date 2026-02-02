@@ -283,8 +283,15 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
         ],
     }
 
-    # Extract playbooks from results
+    # Extract playbooks from results (fallback to generator when missing)
     playbooks = results.get("playbooks", []) or []
+    if not playbooks:
+        try:
+            from redaudit.core.playbook_generator import get_playbooks_for_results
+
+            playbooks = get_playbooks_for_results(results) or []
+        except Exception:
+            playbooks = []
 
     # Extract artifacts/evidence
     artifacts = results.get("artifacts", []) or []

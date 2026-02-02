@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.29] - 2026-02-02
+
+### Fixed
+
+- **Playbook Remediation**: Playbooks are now persisted in JSON reports and regenerated for HTML if missing.
+
 ## [4.19.28] - 2026-02-02
 
 - **HTML Reports**: Ship Chart.js locally so report charts render with CSP enabled.

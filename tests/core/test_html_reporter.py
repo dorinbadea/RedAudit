@@ -52,6 +52,21 @@ def test_prepare_report_data_with_playbooks():
     assert len(data["playbooks"]) == 1
 
 
+def test_prepare_report_data_generates_playbooks_when_missing():
+    results = {
+        "summary": {"networks": 1, "hosts_found": 1, "hosts_scanned": 1, "vulns_found": 0},
+        "hosts": [{"ip": "1.1.1.1"}],
+        "vulnerabilities": [],
+    }
+    with patch(
+        "redaudit.core.playbook_generator.get_playbooks_for_results",
+        return_value=[{"host": "1.1.1.1", "title": "PB"}],
+    ) as get_playbooks:
+        data = html_reporter.prepare_report_data(results, {})
+        assert len(data["playbooks"]) == 1
+        get_playbooks.assert_called_once_with(results)
+
+
 def test_generate_html_report_minimal():
     # Provide a minimal valid data structure that Jinja2 won't crash on
     results = {
