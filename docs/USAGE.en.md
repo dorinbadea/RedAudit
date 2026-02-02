@@ -40,7 +40,7 @@ sudo redaudit
 - **Normal**: Balanced speed and reliability.
 - **Aggressive**: Fastest, more noise; can miss slow/filtered services.
 
-**Runtime note:** Full (exhaustive) or Nuclei-enabled modes can exceed 4 hours depending on target size and timeouts.
+**Runtime note:** With Nuclei enabled, scans can run significantly longer (e.g., >2-4 hours) depending on the number of targets (hosts) and detected services.
 
 ### Fast Inventory (LAN)
 

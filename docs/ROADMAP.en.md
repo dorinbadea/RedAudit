@@ -49,6 +49,13 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.27 Nuclei Warning + Resume Cancel (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Nuclei Runtime Warning** | Done (v4.19.27) | Warning is Nuclei-specific and shown before the scan starts. |
+| **Resume Cancel** | Done (v4.19.27) | Ctrl+C during resume cancels cleanly without a stack trace. |
+
 ### v4.19.26 Seed Keyring Script Bash Compatibility (Done)
 
 | Feature | Status | Description |

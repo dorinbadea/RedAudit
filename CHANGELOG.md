@@ -10,6 +10,17 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.27] - 2026-02-02
+
+### Fixed
+
+- **Nuclei Runtime Warning**: Message now focuses on Nuclei and appears before starting the scan.
+- **Nuclei Resume Cancel**: Ctrl+C during resume now cancels cleanly without a stack trace.
+
+### Docs
+
+- **Lab Timings**: Updated Docker lab timing guidance based on observed runs.
+
 ## [4.19.26] - 2026-02-01
 
 ### Fixed

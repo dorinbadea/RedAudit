@@ -49,6 +49,13 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.27 Aviso Nuclei + Cancelación de reanudación (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Aviso de duración Nuclei** | Hecho (v4.19.27) | El aviso se centra en Nuclei y aparece antes de iniciar el escaneo. |
+| **Cancelación de reanudación** | Hecho (v4.19.27) | Ctrl+C durante la reanudación cancela limpiamente sin stack trace. |
+
 ### v4.19.26 Compatibilidad del script seed del keyring con bash (Hecho)
 
 | Funcionalidad | Estado | Descripción |

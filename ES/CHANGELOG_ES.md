@@ -10,6 +10,17 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.27] - 2026-02-02
+
+### Corregido
+
+- **Aviso de duracion Nuclei**: El mensaje se centra en Nuclei y aparece antes de iniciar el escaneo.
+- **Cancelacion en reanudacion**: Ctrl+C durante reanudacion cancela limpiamente sin stack trace.
+
+### Docs
+
+- **Tiempos del lab**: Actualizada la guia de tiempos del laboratorio Docker segun ejecuciones observadas.
+
 ## [4.19.26] - 2026-02-01
 
 ### Corregido
