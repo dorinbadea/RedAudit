@@ -56,6 +56,12 @@ These items are ordered chronologically (most recent first).
 | **Nuclei Runtime Warning** | Done (v4.19.27) | Warning is Nuclei-specific and shown before the scan starts. |
 | **Resume Cancel** | Done (v4.19.27) | Ctrl+C during resume cancels cleanly without a stack trace. |
 
+### v4.19.29 Playbook Remediation Persistence (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Playbook Persistence** | Done (v4.19.29) | Playbooks are stored in JSON reports and regenerated for HTML when missing. |
+
 ### v4.19.28 HTML Charts + Docs Hygiene (Done)
 
 | Feature | Status | Description |

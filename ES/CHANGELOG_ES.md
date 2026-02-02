@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.29] - 2026-02-02
+
+### Corregido
+
+- **Playbooks de remediacion**: Los playbooks se guardan en el JSON y se regeneran para HTML si faltan.
+
 ## [4.19.28] - 2026-02-02
 
 - **Reportes HTML**: Chart.js se entrega local para que los graficos rendericen con CSP activo.
