@@ -7,7 +7,7 @@
 
 This hotfix addresses a UX issue where the "Trust HyperScan" optimization was available in the CLI but missing from the Interactive Wizard.
 
-### 🐛 Bug Fixes & UX Improvements
+###  Bug Fixes & UX Improvements
 
 - **Wizard**: Added missing interactive prompt for "Trust HyperScan" in the **Custom** profile (Step 2).
 - **Defaults**: Enabled `Trust HyperScan` by default in **Express** and **Standard** profiles for immediate performance benefits on quiet networks.

@@ -5,7 +5,7 @@
 **Fecha**: 2025-12-18
 **Tipo**: Patch Release (Hotfix)
 
-## 📌 Novedades
+##  Novedades
 
 ### Corrección de detección de versión en instalaciones del sistema
 

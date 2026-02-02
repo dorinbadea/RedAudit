@@ -5,7 +5,7 @@
 **Date**: 2025-12-18
 **Type**: Patch Release (Hotfix)
 
-## 📌 Highlights
+##  Highlights
 
 ### Version detection fix for system installs
 

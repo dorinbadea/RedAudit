@@ -7,7 +7,7 @@
 
 Este hotfix soluciona un problema de UX donde la optimización "Trust HyperScan" estaba disponible vía CLI pero ausente en el Asistente Interactivo.
 
-### 🐛 Correcciones y Mejoras UX
+###  Correcciones y Mejoras UX
 
 - **Asistente**: Añadido el prompt interactivo faltante para "Trust HyperScan" en el perfil **Custom** (Paso 2).
 - **Valores por defecto**: `Trust HyperScan` activado por defecto en los perfiles **Express** y **Standard** para un rendimiento inmediato en redes silenciosas.
