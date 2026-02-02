@@ -1,6 +1,6 @@
 # RedAudit v3.9.0 Notas de Lanzamiento
 
-[![English Version](https://img.shields.io/badge/🇬🇧-English-blue)](./RELEASE_NOTES_v3.9.0.md)
+[![English Version](https://img.shields.io/badge/-English-blue)](./RELEASE_NOTES_v3.9.0.md)
 
 **Fecha de Lanzamiento**: 2025-12-27
 

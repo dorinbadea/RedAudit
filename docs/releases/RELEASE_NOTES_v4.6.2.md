@@ -17,7 +17,7 @@ Previously, if **HyperScan** (Phase 0) found **0 open ports** on a host, RedAudi
 - If HyperScan discovers 0 ports, RedAudit executes a **Sanity Check** (`--top-ports 1000`) instead of `-p-`.
 - **Result**: Scan time for these devices drops from ~25 minutes to <1 minute while maintaining a reasonable safety margin.
 
-### 🐛 Bug Fixes
+###  Bug Fixes
 
 - **CI/Type Checking**: Resolved 12 `mypy` type errors in `auditor_scan.py` to ensure robust CI pipelines.
 

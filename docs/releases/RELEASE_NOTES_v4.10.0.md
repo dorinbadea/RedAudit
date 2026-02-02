@@ -4,7 +4,7 @@ This release introduces powerful new network topology discovery capabilities, br
 
 ## New Features
 
-### 🔍 Advanced L2/L3 Discovery
+###  Advanced L2/L3 Discovery
 
 - **SNMP Topology Discovery** (`--snmp-topology`):
   - Queries SNMP-enabled routers for routing tables, ARP caches, and interface lists.
@@ -17,7 +17,7 @@ This release introduces powerful new network topology discovery capabilities, br
   - **CDP**: Captures Cisco Discovery Protocol frames via `tcpdump`.
   - **VLAN Detection**: Identifies 802.1Q VLAN tags on the local interface using `ifconfig`/`ip link` and passive packet sniffing.
 
-### 🪄 Wizard Enhancements
+###  Wizard Enhancements
 
 - Integrated new interactive prompts in the auditing wizard to easily enable SNMP topology discovery and route following without remembering CLI flags.
 

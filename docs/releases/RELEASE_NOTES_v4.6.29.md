@@ -2,7 +2,7 @@
 
 ![Version](https://img.shields.io/badge/version-v4.6.29-blue?style=flat-square) [![Ver en Español](https://img.shields.io/badge/Ver%20en%20Español-red?style=flat-square)](RELEASE_NOTES_v4.6.29_ES.md)
 
-## 🚀 Performance Unlocked: Thread Limits Unleashed
+##  Performance Unlocked: Thread Limits Unleashed
 
 In response to modern hardware capabilities (M2/M3 chips, Threadrippers), we have significantly increased the concurrency limits for RedAudit.
 
@@ -14,7 +14,7 @@ In response to modern hardware capabilities (M2/M3 chips, Threadrippers), we hav
 
 ---
 
-### 🛠️ Key Changes
+### ️ Key Changes
 
 #### Performance
 

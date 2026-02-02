@@ -15,8 +15,8 @@ Sprint de rendimiento y UX centrado en paralelismo de HyperScan, optimizacion de
 
 - **Paralelismo Real HyperScan**: Eliminado bloqueo de escaneo SYN que estaba serializando escaneos debido a problemas de contencion de scapy legacy. RustScan/asyncio ahora ejecutan en modo paralelo real.
 - **Emojis Minimalistas en Terminal**: Reemplazados emojis coloridos por alternativas Unicode monocromaticas en 48 instancias en 10+ archivos:
-  - Marca de verificacion: `✔`
-  - Marca de error: `✖`
+  - Marca de verificacion: ``
+  - Marca de error: ``
   - Advertencia: `⚠`
 - **Correcciones de Tests**: Actualizado `test_session_log.py` para usar nuevos emojis minimalistas.
 

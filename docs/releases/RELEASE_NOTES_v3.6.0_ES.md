@@ -5,7 +5,7 @@
 **Fecha**: 2025-12-18
 **Tipo**: Minor Release
 
-## 📌 Novedades
+##  Novedades
 
 ### Nuclei ahora es accesible de forma correcta (opt-in)
 

@@ -15,8 +15,8 @@ Performance and UX sprint focused on HyperScan parallelism, Nuclei scan optimiza
 
 - **HyperScan True Parallelism**: Removed SYN scan lock that was serializing scans due to legacy scapy contention concerns. RustScan/asyncio now run in true parallel mode.
 - **Minimalist Terminal Emojis**: Replaced colorful emojis with monochrome Unicode alternatives across 48 instances in 10+ files:
-  - Check mark: `✔`
-  - Cross mark: `✖`
+  - Check mark: ``
+  - Cross mark: ``
   - Warning: `⚠`
 - **Test Fixes**: Updated `test_session_log.py` to use new minimalist emojis.
 

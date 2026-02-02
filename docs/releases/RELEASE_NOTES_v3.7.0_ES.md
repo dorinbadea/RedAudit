@@ -2,7 +2,7 @@
 
 **Fecha de Lanzamiento:** 2025-12-18
 
-[![View in English](https://img.shields.io/badge/🇬🇧_English-blue?style=flat-square)](RELEASE_NOTES_v3.7.0.md)
+[![View in English](https://img.shields.io/badge/_English-blue?style=flat-square)](RELEASE_NOTES_v3.7.0.md)
 
 ## Descripción
 

@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-[![Version](https://img.shields.io/badge/version-4.19.27-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.19.28-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -20,7 +20,7 @@ Orquesta un toolchain completo (nmap, nikto, nuclei, whatweb, testssl.sh, sqlmap
 
 **Casos de uso**: Hardening defensivo, acotación de pentests, seguimiento de cambios entre evaluaciones.
 
-**Diferenciador clave**: Optimización de velocidad **HyperScan-First** que alimenta un motor de escalado por identidad (Deep TCP → sondas UDP), combinado con filtrado **Smart-Check** para reducir drásticamente los falsos positivos sin perder activos críticos.
+**Diferenciador clave**: Optimización de velocidad **HyperScan-first** que alimenta un motor de escalado por identidad (Deep TCP a sondas UDP), combinado con filtrado **Smart-Check** para reducir falsos positivos sin perder activos críticos.
 
 ---
 
@@ -36,7 +36,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 1. **HyperScan**: Descubrimiento async UDP/TCP con control de congestión **Smart-Throttle (AIMD)**.
 2. **Deep Scan Adaptativo**: Enumeración dirigida basada en la identidad del host.
 3. **Resolución de Entidad**: Consolidación basada en identidad de dispositivos multi-interfaz (heurística).
-4. **Filtrado Inteligente**: Reducción de ruido vía verificación consciente del contexto (`verify_vuln.py`).
+4. **Filtrado Inteligente**: Reducción de ruido vía verificación consciente del contexto.
 5. **Selección de Nuclei**: Selección de objetivos basada en identidad con reintentos por excepción para evitar redundancia.
 6. **Resiliencia**: **Reintentos de Host Muerto** automáticos para abandonar hosts que no responden y evitar bloqueos.
 
@@ -48,8 +48,16 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│       PHASE 0: HyperScan / RustScan Discovery (Opcional)    │
-│       Alimenta puertos abiertos a Fase 1 (Velocidad)        │
+│         FASE 0: HyperScan Discovery (Opcional)              │
+│   (Opcional RustScan/Masscan en modo Red Team)              │
+│       Alimenta puertos abiertos a Fase 1                    │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│   FASE 0b: Enriquecimiento de bajo impacto (optativo)        │
+│   DNS/mDNS/SNMP + sonda HTTP/HTTPS breve para               │
+│   hosts con fabricante y cero puertos abiertos              │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
@@ -162,7 +170,7 @@ sudo redaudit
 ```
 
 > **¿Quieres probar RedAudit de forma segura?**
-> Configura nuestro Laboratorio Vulnerable usando Docker: **[Guia del Laboratorio](docs/LAB_SETUP_ES.md)**
+> Configura nuestro Laboratorio Vulnerable usando Docker: **[Guía del Laboratorio](../docs/LAB_SETUP_ES.md)**
 
 ---
 
@@ -172,7 +180,7 @@ sudo redaudit
 
 | Capacidad | Descripción |
 | :--- | :--- |
-| **Deep Scan Paralelo** | Fase de deep scan totalmente desacoplada ejecutándose en paralelo (hasta 50 hilos) para aceleración masiva |
+| **Deep Scan Paralelo** | Tareas de deep scan en paralelo dentro del pool de hosts (hasta 100 hilos) |
 | **HyperScan** | Barrido TCP asíncrono + sondas UDP de descubrimiento (incluye broadcast cuando procede) + ARP agresivo |
 | **Smart-Throttle** | Control de congestión adaptativo (AIMD) que previene la pérdida de paquetes ajustando dinámicamente los lotes de escaneo |
 | **Descubrimiento de Topología** | Mapeo L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para contexto de red |
@@ -210,29 +218,23 @@ sudo redaudit
 | **Targeting basado en Generadores** | Procesador de targets en streaming para tamaño de red ilimitado (ej. /16 o /8) sin agotar la RAM |
 | **Webhooks Interactivos** | Alertas por webhook para hallazgos high/critical (asistente o CLI) |
 | **Logging de Sesión** | Captura de salida terminal en doble formato (`.log` raw + `.txt` limpio) |
-| **Escaneo con Timeout** | Escaneos de host con timeout duro; progreso con ETA límite |
+| **Escaneo con Timeout** | Escaneos de host con timeout duro; progreso con ETA de límite superior |
 | **Soporte IPv6 + Proxy** | Escaneo dual-stack con pivoting SOCKS5 vía proxychains4 (solo TCP connect) |
 | **Rate Limiting** | Retardo inter-host configurable con jitter ±30% para entornos sensibles a IDS |
 | **Interfaz Bilingüe** | Localización completa Inglés/Español |
 | **Auto-Actualización** | Actualizaciones atómicas staged con rollback automático en caso de fallo |
 
-### Nuevo en v4.4: Escalabilidad Enterprise y Smart-Throttle
+### Mejoras Recientes
 
-> **Escala Masiva + Velocidad Adaptativa.**
+**Smart-Throttle:** Control de congestión adaptativo basado en AIMD que ajusta el tamaño de los lotes según las condiciones de la red.
 
-**Smart-Throttle:** Se acabó el tuning manual. RedAudit ahora "siente" la congestión de la red usando un algoritmo AIMD (Incremento Aditivo, Decremento Multiplicativo). Frena cuando hay pérdida de paquetes y acelera en enlaces estables, asegurando la máxima velocidad sin romper la red objetivo.
+**Targeting basado en Generadores:** Arquitectura en streaming para soportar redes grandes (por ejemplo, /16 o /8) sin agotar memoria.
 
-**Targeting basado en Generadores:** Se ha reescrito el motor de targeting para usar generadores en streaming. Ahora puedes alimentar una red `/8` o millones de IPs aleatorias sin llenar tu RAM.
+**Escalado de Hilos:** `MAX_THREADS` aumentado de 16 a 100 (v4.6.29) para aprovechar hardware moderno.
 
-**Risk Scoring V2:** El motor de riesgos ahora integra la severidad de los hallazgos (low/med/high/crit) de Nikto y Nuclei en la puntuación final. Un host con cero CVEs pero fallos críticos de configuración (ej. falta de auth) ahora reflejará correctamente un riesgo alto.
+**Risk Scoring Integrado:** Hallazgos de configuración (Nikto/Nuclei) integrados en la matriz de decisión con severidades Low/Medium/High.
 
-**Optimización Docker/Deep (H2):**
-
-- **Nikto**: Timeouts extendidos (5m) y perfiles de tuning completos.
-- **Nuclei**: Añadidos hallazgos de severidad "Low" (ej. fugas de info, paneles expuestos) a la matriz de decisión.
-- **Silencio Scapy**: Supresión de advertencias ARP de bajo nivel para una salida más limpia.
-
-Ver [NOTAS DE LANZAMIENTO](../docs/releases/RELEASE_NOTES_v4.4.4_ES.md) para más detalles.
+Consulta [CHANGELOG](../CHANGELOG.md) para el historial completo.
 
 ---
 
@@ -466,7 +468,7 @@ RedAudit orquesta estas herramientas:
 | **DNS/Whois** | `dig`, `whois` | DNS inverso y consulta de propiedad |
 | **Topología** | `arp-scan`, `ip route` | Descubrimiento L2, detección VLAN, mapeo gateway |
 | **Descubrimiento Red** | `nbtscan`, `netdiscover`, `fping`, `avahi` | Descubrimiento broadcast/L2 |
-| **Red Team Recon** | `snmpwalk`, `enum4linux`, `masscan`, `kerbrute` | Enumeración activa opcional (opt-in) |
+| **Red Team Recon** | `snmpwalk`, `enum4linux`, `rustscan`, `masscan`, `kerbrute` | Enumeración activa opcional (opt-in) |
 | **Cifrado** | `python3-cryptography` | Cifrado AES-128 para informes |
 
 ### Estructura del Proyecto
@@ -476,7 +478,7 @@ redaudit/
 ├── core/                   # Funcionalidad Core
 │   ├── auditor.py          # Orquestador principal
 │   ├── auditor_components.py # Helpers compartidos de orquestacion
-│   ├── auditor_scan.py     # Lógica de escaneo (Nmap/Masscan/HyperScan adapter)
+│   ├── auditor_scan.py     # Lógica de escaneo (Nmap + HyperScan + integración de seeds)
 │   ├── auditor_vuln.py     # Escaneo de vulnerabilidades (Nikto/Nuclei/Exploits)
 │   ├── auditor_runtime.py  # Adaptador de composición
 │   ├── wizard.py           # Interfaz Interactiva (Wizard)
@@ -511,6 +513,7 @@ redaudit/
 │   ├── power.py            # Inhibición de suspensión
 │   ├── proxy.py            # Manejo de proxy
 │   ├── tool_compat.py      # Helpers de compatibilidad del toolchain
+│   ├── signature_store.py  # Helpers de almacenamiento de firmas
 │   ├── scanner_versions.py # Detección de versiones de herramientas externas
 │   ├── verify_vuln.py      # Filtro de falsos positivos Smart-Check
 │   ├── credentials.py      # Proveedor de credenciales (keyring/env/file)
@@ -529,10 +532,11 @@ redaudit/
 
 | Término | Definición |
 | :--- | :--- |
-| **Deep Scan** | Escalado selectivo (fingerprinting TCP + UDP) cuando la identidad es debil o el host no responde |
-| **HyperScan** | Modulo de descubrimiento async ultrarrapido (batch TCP, UDP IoT, ARP agresivo) |
-| **IoT sin puertos TCP** | Dispositivos sin puertos TCP abiertos (WiZ, Tapo) detectados via sondas UDP broadcast |
-| **Smart-Check** | Filtro de falsos positivos en 3 capas (Content-Type, tamano, magic bytes) |
+| **Deep Scan** | Escalado selectivo (fingerprinting TCP + UDP) cuando la identidad es débil o el host no responde |
+| **HyperScan** | Módulo de descubrimiento async ultrarrápido (batch TCP, UDP IoT, ARP agresivo) |
+| **Fase 0 Enriquecimiento** | DNS/mDNS/SNMP de bajo impacto y sonda HTTP/HTTPS breve para hosts con fabricante y cero puertos |
+| **IoT sin puertos TCP** | Dispositivos sin puertos TCP abiertos (WiZ, Tapo) detectados vía sondas UDP broadcast |
+| **Smart-Check** | Filtro de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |
 | **Entity Resolution** | Consolidación de dispositivos multi-interfaz en activos unificados |
 | **ECS** | Elastic Common Schema (ECS) para compatibilidad SIEM |
 | **Finding ID** | Hash SHA256 determinístico para correlación entre escaneos |
@@ -546,7 +550,7 @@ redaudit/
 
 ### Solución de Problemas
 
-Para solución de problemas completa, consulta: 📖 **[Guía Completa de Solución de Problemas](../docs/TROUBLESHOOTING.es.md)**
+Para solución de problemas completa, consulta: **[Guía Completa de Solución de Problemas](../docs/TROUBLESHOOTING.es.md)**
 
 **Enlaces Rápidos**:
 
@@ -579,8 +583,15 @@ RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**. Cons
 
 RedAudit integra los siguientes proyectos de código abierto:
 
-- **[RustScan](https://github.com/RustScan/RustScan)** - Escáner de puertos ultra-rápido por [@bee-san](https://github.com/bee-san). Licenciado bajo GPLv3.
-- **[Nmap](https://nmap.org/)** - El mapeador de red por Gordon Lyon (Fyodor). Licenciado bajo Nmap Public Source License.
+- **[RustScan](https://github.com/RustScan/RustScan)** - Escáner de puertos ultra-rápido por [@bee-san](https://github.com/bee-san).
+- **[Nmap](https://nmap.org/)** - El mapeador de red por Gordon Lyon (Fyodor).
+- **[Nuclei](https://github.com/projectdiscovery/nuclei)** - Escáner de plantillas por [@projectdiscovery](https://github.com/projectdiscovery).
+- **[Nikto](https://github.com/sullo/nikto)** - Escáner web por [@sullo](https://github.com/sullo).
+- **[WhatWeb](https://github.com/urbanadventurer/whatweb)** - Fingerprinting web por [@urbanadventurer](https://github.com/urbanadventurer) y [@bcoles](https://github.com/bcoles).
+- **[testssl.sh](https://github.com/testssl/testssl.sh)** - Escáner de configuración TLS por [@testssl](https://github.com/testssl).
+- **[sqlmap](https://github.com/sqlmapproject/sqlmap)** - Herramienta de inyección SQL por [@sqlmapproject](https://github.com/sqlmapproject).
+- **[OWASP ZAP](https://github.com/zaproxy/zaproxy)** - Escáner DAST por [@zaproxy](https://github.com/zaproxy).
+- **[masscan](https://github.com/robertdavidgraham/masscan)** - Escáner de puertos de alta velocidad por [@robertdavidgraham](https://github.com/robertdavidgraham).
 
 ---
 

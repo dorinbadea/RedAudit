@@ -2,7 +2,7 @@
 
 ![Versión](https://img.shields.io/badge/versión-v4.6.29-blue?style=flat-square) [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v4.6.29.md)
 
-## 🚀 Rendimiento Desbloqueado: Límites de Hilos
+##  Rendimiento Desbloqueado: Límites de Hilos
 
 En respuesta a las capacidades del hardware moderno (chips M2/M3, Threadrippers), hemos aumentado significativamente los límites de concurrencia de RedAudit.
 
@@ -14,7 +14,7 @@ En respuesta a las capacidades del hardware moderno (chips M2/M3, Threadrippers)
 
 ---
 
-### 🛠️ Cambios Clave
+### ️ Cambios Clave
 
 #### Rendimiento
 

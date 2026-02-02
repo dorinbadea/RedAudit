@@ -17,7 +17,7 @@ Anteriormente, si **HyperScan** (Fase 0) encontraba **0 puertos abiertos** en un
 - Si HyperScan descubre 0 puertos, RedAudit ejecuta una **Verificación de Cordura** (`Sanity Check`, `--top-ports 1000`) en lugar de `-p-`.
 - **Resultado**: El tiempo de escaneo para estos dispositivos baja de ~25 minutos a <1 minuto, manteniendo un margen de seguridad razonable.
 
-### 🐛 Correcciones
+###  Correcciones
 
 - **CI/Type Checking**: Resueltos 12 errores de tipado `mypy` en `auditor_scan.py` para asegurar pipelines de CI robustos.
 

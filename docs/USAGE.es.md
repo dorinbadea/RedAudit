@@ -389,7 +389,7 @@ Dependencias faltantes en el PATH.
 **Solución:** Ejecutar `sudo bash redaudit_install.sh` o revisar `/usr/local/lib/redaudit`.
 
 **`testssl.sh not found`**
-Los checks TLS profundos se omiten en modo full.
+Los checks TLS profundos se omiten si `testssl.sh` no esta disponible.
 **Solución:** Ejecutar `sudo bash redaudit_install.sh` para instalar el toolchain principal.
 
 **`Decryption failed`**
