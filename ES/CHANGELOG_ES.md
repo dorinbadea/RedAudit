@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.28] - 2026-02-02
+
+- **Reportes HTML**: Chart.js se entrega local para que los graficos rendericen con CSP activo.
+- **Documentacion**: Se actualiza README con arquitectura/toolchain y aviso de Nuclei alineado.
+- **Higiene Docs**: Se eliminan emojis de notas historicas para cumplir el estilo.
+
 ## [4.19.27] - 2026-02-02
 
 ### Corregido

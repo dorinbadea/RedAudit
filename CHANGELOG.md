@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.28] - 2026-02-02
+
+- **HTML Reports**: Ship Chart.js locally so report charts render with CSP enabled.
+- **Documentation**: Refresh README architecture/toolchain details and align Nuclei warning language.
+- **Docs Hygiene**: Remove emojis from historical release notes to enforce style guidelines.
+
 ## [4.19.27] - 2026-02-02
 
 ### Fixed

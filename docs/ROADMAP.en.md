@@ -56,6 +56,13 @@ These items are ordered chronologically (most recent first).
 | **Nuclei Runtime Warning** | Done (v4.19.27) | Warning is Nuclei-specific and shown before the scan starts. |
 | **Resume Cancel** | Done (v4.19.27) | Ctrl+C during resume cancels cleanly without a stack trace. |
 
+### v4.19.28 HTML Charts + Docs Hygiene (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **HTML Charts** | Done (v4.19.28) | Chart.js is bundled locally so CSP does not block report charts. |
+| **Docs Cleanup** | Done (v4.19.28) | README and release notes align with current style and toolchain. |
+
 ### v4.19.26 Seed Keyring Script Bash Compatibility (Done)
 
 | Feature | Status | Description |

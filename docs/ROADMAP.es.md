@@ -56,6 +56,13 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 | **Aviso de duración Nuclei** | Hecho (v4.19.27) | El aviso se centra en Nuclei y aparece antes de iniciar el escaneo. |
 | **Cancelación de reanudación** | Hecho (v4.19.27) | Ctrl+C durante la reanudación cancela limpiamente sin stack trace. |
 
+### v4.19.28 Gráficos HTML + Higiene Docs (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Gráficos HTML** | Hecho (v4.19.28) | Chart.js se integra localmente para que CSP no bloquee los gráficos. |
+| **Limpieza de Docs** | Hecho (v4.19.28) | README y notas de versión alineadas con estilo y toolchain. |
+
 ### v4.19.26 Compatibilidad del script seed del keyring con bash (Hecho)
 
 | Funcionalidad | Estado | Descripción |
