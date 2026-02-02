@@ -194,7 +194,52 @@ def test_configure_scan_interactive_exhaustive_profile(monkeypatch, tmp_path):
     assert app.config["cve_lookup_enabled"] is False
     # Stealth timing
     assert app.rate_limit_delay == 2.0
-    app.ui.print_status.assert_any_call("long_scan_warning", "WARNING")
+    # Warning now emitted before scan start prompt in interactive setup.
+
+
+def test_interactive_setup_warns_before_start_when_nuclei_enabled(monkeypatch):
+    app = InteractiveNetworkAuditor()
+    app.ui = MagicMock()
+    app.ui.t = lambda key, *args: key
+
+    call_order = []
+
+    def _print_status(msg, *_args, **_kwargs):
+        if msg == "long_scan_warning":
+            call_order.append("warning")
+
+    app.ui.print_status = MagicMock(side_effect=_print_status)
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", lambda: {})
+    monkeypatch.setattr(app, "clear_screen", lambda: None)
+    monkeypatch.setattr(app, "print_banner", lambda: None)
+    monkeypatch.setattr(app, "check_dependencies", lambda: True)
+    monkeypatch.setattr(app, "show_legal_warning", lambda: True)
+    monkeypatch.setattr(app, "ask_network_range", lambda: ["192.168.1.0/24"])
+    monkeypatch.setattr(app, "_show_target_summary", lambda: None)
+
+    def _configure(_defaults):
+        app.config["nuclei_enabled"] = True
+        app.config["scan_mode"] = "completo"
+
+    monkeypatch.setattr(app, "_configure_scan_interactive", _configure)
+
+    def _show_summary():
+        call_order.append("summary")
+
+    monkeypatch.setattr(app, "show_config_summary", _show_summary)
+
+    def _ask_yes_no(*_args, **_kwargs):
+        call_order.append("start")
+        return False
+
+    monkeypatch.setattr(app, "ask_yes_no", _ask_yes_no)
+
+    app.interactive_setup()
+
+    assert "warning" in call_order
+    assert call_order.index("warning") > call_order.index("summary")
+    assert call_order.index("warning") < call_order.index("start")
 
 
 def test_interactive_setup_with_defaults_use(monkeypatch, tmp_path):
