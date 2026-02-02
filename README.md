@@ -16,7 +16,7 @@
 
 ## What is RedAudit?
 
-RedAudit is an **automated network auditing framework** for authorized assessments. It coordinates discovery, identity resolution, and vulnerability checks with evidence-driven escalation, then consolidates results into structured reports (JSON, TXT, HTML, plus JSONL exports).
+RedAudit is an **automated network auditing framework** for authorized assessments. It coordinates discovery, identity resolution, and vulnerability checks with evidence-driven escalation, then consolidates results into structured reports (JSON, TXT, HTML, and JSONL exports).
 
 Instead of running every tool against every host, RedAudit escalates scanning only when identity remains weak or signals are ambiguous, reducing noise while preserving coverage for hard-to-identify devices. HTTP title/server hints and device-type fingerprints help avoid unnecessary deep scans and heavy web-app scanners on infrastructure devices.
 
@@ -24,7 +24,7 @@ It orchestrates a comprehensive toolchain (nmap, nikto, nuclei, whatweb, testssl
 
 **Use cases**: Defensive hardening, penetration test scoping, change tracking between assessments.
 
-**Key differentiator**: **HyperScan-First speed optimization** feeds into an identity-driven escalation engine (Deep TCP → UDP probes), combined with **Smart-Check** filtering to drastically reduce false positives without missing critical assets.
+**Key differentiator**: **HyperScan-first speed optimization** feeds an identity-driven escalation engine (Deep TCP to UDP probes), combined with **Smart-Check** filtering to reduce false positives without missing critical assets.
 
 ---
 
@@ -40,7 +40,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 1. **HyperScan**: Async UDP/TCP discovery with **Smart-Throttle (AIMD)** congestion control.
 2. **Adaptive Deep Scan**: Targeted enumeration based on host identity.
 3. **Entity Resolution**: Identity-Based consolidation of multi-interface devices (heuristic).
-4. **Smart Filtering**: Reducing noise via context-aware verification (`verify_vuln.py`).
+4. **Smart Filtering**: Reducing noise via context-aware verification.
 5. **Nuclei Targeting**: Identity-aware target selection with exception-based retries to avoid redundant web scans.
 6. **Resilience**: Automatic **Dead Host Retries** to abandon unresponsive hosts and prevent scan stalls.
 
@@ -52,8 +52,17 @@ RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runt
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│       PHASE 0: HyperScan / RustScan Discovery (Optional)    │
-│       Feeds discovered ports to Phase 1 (Speed/Stealth)     │
+│         PHASE 0: HyperScan Discovery (Optional)             │
+│   (Optional RustScan/Masscan seed in Red Team mode)         │
+│       Feeds discovered ports to Phase 1                     │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ▼
+
+┌─────────────────────────────────────────────────────────────┐
+│   PHASE 0b: Low-impact enrichment (optional, opt-in)         │
+│   DNS/mDNS/SNMP + short HTTP/HTTPS probe for                 │
+│   vendor-only hosts with zero open ports                     │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
@@ -175,7 +184,7 @@ sudo redaudit
 
 | Capability | Description |
 |:---|:---|
-| **Parallel Deep Scan** | Fully decoupled deep scan phase running in parallel (up to 100 threads) for massive speedups |
+| **Parallel Deep Scan** | Deep scan tasks run in parallel within the host thread pool (up to 100 threads) |
 | **HyperScan** | Async TCP sweep + UDP discovery probes (including broadcast where supported) + aggressive ARP for fast inventory |
 | **Smart-Throttle** | AIMD-based adaptive congestion control that prevents packet loss by dynamically sizing scan batches |
 | **Topology Discovery** | L2/L3 mapping (ARP/VLAN/LLDP + gateway/routes) for network context |
@@ -213,7 +222,7 @@ sudo redaudit
 | **Generator-based Targeting** | Streaming target processor for unlimited network size (e.g. /16 or /8) without memory/RAM exhaustion |
 | **Interactive Webhooks** | Webhook alerts for high/critical findings (wizard or CLI) |
 | **Session Logging** | Dual-format terminal output capture (`.log` raw + `.txt` clean) for audit trails |
-| **Timeout-Safe Scanning** | Host scans are bounded by hard timeouts; progress shows upper-bound ETA |
+| **Timeout-Safe Scanning** | Host scans are bounded by hard timeouts; progress shows an upper-bound ETA |
 | **IPv6 + Proxy Support** | Dual-stack scanning with SOCKS5 pivoting via proxychains4 (TCP connect only) |
 | **Rate Limiting** | Configurable inter-host delay with ±30% jitter to reduce predictability |
 | **Bilingual Interface** | Complete English/Spanish localization |
@@ -464,7 +473,7 @@ RedAudit orchestrates these tools:
 | **DNS/Whois** | `dig`, `whois` | Reverse DNS and ownership lookup |
 | **Topology** | `arp-scan`, `ip route` | L2 discovery, VLAN detection, gateway mapping |
 | **Net Discovery** | `nbtscan`, `netdiscover`, `fping`, `avahi` | Broadcast/L2 discovery |
-| **Red Team Recon** | `snmpwalk`, `enum4linux`, `rustscan`, `kerbrute` | Optional active enumeration (opt-in) |
+| **Red Team Recon** | `snmpwalk`, `enum4linux`, `rustscan`, `masscan`, `kerbrute` | Optional active enumeration (opt-in) |
 | **Encryption** | `python3-cryptography` | AES-128 encryption for reports |
 
 ### Project Structure
@@ -474,7 +483,7 @@ redaudit/
 ├── core/                   # Core functionality
 │   ├── auditor.py          # Main orchestrator (composition entrypoint)
 │   ├── auditor_components.py # Shared orchestration helpers
-│   ├── auditor_scan.py     # Scanning logic (Nmap/Masscan/HyperScan adapter)
+│   ├── auditor_scan.py     # Scanning logic (Nmap + HyperScan + seed integration)
 │   ├── auditor_vuln.py     # Vulnerability scanning (Nikto/Nuclei/Exploits)
 │   ├── auditor_runtime.py  # Composition adapter (auditor component bridge)
 │   ├── wizard.py           # Interactive UI (Wizard component)
@@ -509,6 +518,7 @@ redaudit/
 │   ├── power.py            # Sleep inhibition helpers
 │   ├── proxy.py            # Proxy handling
 │   ├── tool_compat.py      # Toolchain feature/compatibility helpers
+│   ├── signature_store.py  # Signature storage and lookup helpers
 │   ├── scanner_versions.py # External tool version detection
 │   ├── verify_vuln.py      # Smart-Check false positive filter
 │   ├── credentials.py      # Credential provider (keyring/env/file)
@@ -529,6 +539,7 @@ redaudit/
 |:---|:---|
 | **Deep Scan** | Selective escalation (TCP + UDP fingerprinting) when identity is weak or host is unresponsive |
 | **HyperScan** | Ultra-fast async discovery module (batch TCP, UDP IoT, aggressive ARP) |
+| **Phase 0 Enrichment** | Low-impact DNS/mDNS/SNMP checks and short HTTP/HTTPS probe for vendor-only hosts |
 | **Closed-Port IoT** | Devices with no open TCP ports (WiZ, Tapo) detected via UDP broadcast probes |
 | **Smart-Check** | 3-layer false positive filter (Content-Type, size, magic bytes) |
 | **Entity Resolution** | Consolidation of multi-interface devices into unified assets |
@@ -544,7 +555,7 @@ redaudit/
 
 ### Troubleshooting
 
-For comprehensive troubleshooting, see: 📖 **[Complete Troubleshooting Guide](docs/TROUBLESHOOTING.en.md)**
+For comprehensive troubleshooting, see: **[Complete Troubleshooting Guide](docs/TROUBLESHOOTING.en.md)**
 
 **Quick Links**:
 
@@ -577,8 +588,15 @@ RedAudit is released under the **GNU General Public License v3.0 (GPLv3)**. See 
 
 RedAudit integrates the following open source projects:
 
-- **[RustScan](https://github.com/RustScan/RustScan)** - Ultra-fast port scanner by [@bee-san](https://github.com/bee-san). Licensed under GPLv3.
-- **[Nmap](https://nmap.org/)** - The network mapper by Gordon Lyon (Fyodor). Licensed under Nmap Public Source License.
+- **[RustScan](https://github.com/RustScan/RustScan)** - Ultra-fast port scanner by [@bee-san](https://github.com/bee-san).
+- **[Nmap](https://nmap.org/)** - The network mapper by Gordon Lyon (Fyodor).
+- **[Nuclei](https://github.com/projectdiscovery/nuclei)** - Template scanner by [@projectdiscovery](https://github.com/projectdiscovery).
+- **[Nikto](https://github.com/sullo/nikto)** - Web server scanner by [@sullo](https://github.com/sullo).
+- **[WhatWeb](https://github.com/urbanadventurer/whatweb)** - Web fingerprinting by [@urbanadventurer](https://github.com/urbanadventurer) and [@bcoles](https://github.com/bcoles).
+- **[testssl.sh](https://github.com/testssl/testssl.sh)** - TLS configuration scanner by [@testssl](https://github.com/testssl).
+- **[sqlmap](https://github.com/sqlmapproject/sqlmap)** - SQL injection tool by [@sqlmapproject](https://github.com/sqlmapproject).
+- **[OWASP ZAP](https://github.com/zaproxy/zaproxy)** - DAST scanner by [@zaproxy](https://github.com/zaproxy).
+- **[masscan](https://github.com/robertdavidgraham/masscan)** - High-speed port scanner by [@robertdavidgraham](https://github.com/robertdavidgraham).
 
 ---
 
