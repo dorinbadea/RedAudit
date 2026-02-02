@@ -192,6 +192,35 @@ def test_select_nuclei_targets_exception_and_optimized():
     assert "http://10.0.0.2:80" in targets
 
 
+def test_select_nuclei_targets_full_coverage_includes_all_ports():
+    hosts = [
+        {
+            "ip": "10.0.0.5",
+            "ports": [
+                {"port": 80, "service": "http", "is_web_service": True},
+                {"port": 8080, "service": "http", "is_web_service": True},
+                {"port": 8443, "service": "https", "is_web_service": True},
+            ],
+            "smart_scan": {
+                "identity_score": 6,
+                "identity_threshold": 3,
+                "reasons": ["identity_strong"],
+            },
+        }
+    ]
+    selected = select_nuclei_targets(
+        hosts,
+        identity_threshold=3,
+        priority_ports=None,
+        max_targets_per_host=None,
+    )
+    targets = selected["targets"]
+    assert len(targets) == 3
+    assert "http://10.0.0.5:80" in targets
+    assert "http://10.0.0.5:8080" in targets
+    assert "https://10.0.0.5:8443" in targets
+
+
 def test_is_exception_host_variants():
     assert _is_exception_host({"smart_scan": {}}, 3)[0] is True
     assert (
