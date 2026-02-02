@@ -342,6 +342,9 @@ class InteractiveNetworkAuditor:
         self._show_target_summary()
         self.show_config_summary()
 
+        if self.config.get("nuclei_enabled"):
+            self.ui.print_status(self.ui.t("long_scan_warning"), "WARNING")
+
         if auto_start:
             return True
 
@@ -2411,7 +2414,6 @@ class InteractiveNetworkAuditor:
                 if trust_hyperscan is None:
                     continue
                 self.config["trust_hyperscan"] = trust_hyperscan
-                self.ui.print_status(self.ui.t("long_scan_warning"), "WARNING")
                 return
 
             if profile_choice == 3:
@@ -3117,9 +3119,6 @@ class InteractiveNetworkAuditor:
 
                 step += 1
                 continue
-
-        if self.config.get("scan_mode") == "completo" or self.config.get("nuclei_enabled"):
-            self.ui.print_status(self.ui.t("long_scan_warning"), "WARNING")
 
         # Final step: Encryption setup
         self.setup_encryption()
@@ -3957,22 +3956,26 @@ class InteractiveNetworkAuditor:
         override_max_runtime_minutes: Optional[int] = None,
         prompt_budget_override: bool = False,
     ) -> bool:
-        if resume_path and os.path.isdir(resume_path):
-            resume_path = os.path.join(resume_path, "nuclei_resume.json")
-        resume_state = self._load_nuclei_resume_state(resume_path)
-        if not resume_state:
-            self.ui.print_status(self.ui.t("nuclei_resume_none"), "INFO")
+        try:
+            if resume_path and os.path.isdir(resume_path):
+                resume_path = os.path.join(resume_path, "nuclei_resume.json")
+            resume_state = self._load_nuclei_resume_state(resume_path)
+            if not resume_state:
+                self.ui.print_status(self.ui.t("nuclei_resume_none"), "INFO")
+                return False
+            output_dir = resume_state.get("output_dir") or os.path.dirname(resume_path)
+            return self._resume_nuclei_from_state(
+                resume_state=resume_state,
+                resume_path=resume_path,
+                output_dir=output_dir,
+                use_existing_results=False,
+                save_after=True,
+                override_max_runtime_minutes=override_max_runtime_minutes,
+                prompt_budget_override=prompt_budget_override,
+            )
+        except KeyboardInterrupt:
+            self.ui.print_status(self.ui.t("nuclei_resume_cancel"), "INFO")
             return False
-        output_dir = resume_state.get("output_dir") or os.path.dirname(resume_path)
-        return self._resume_nuclei_from_state(
-            resume_state=resume_state,
-            resume_path=resume_path,
-            output_dir=output_dir,
-            use_existing_results=False,
-            save_after=True,
-            override_max_runtime_minutes=override_max_runtime_minutes,
-            prompt_budget_override=prompt_budget_override,
-        )
 
     def resume_nuclei_interactive(self) -> bool:
         base_dir = get_default_reports_base_dir()
@@ -3987,4 +3990,8 @@ class InteractiveNetworkAuditor:
             self.ui.print_status(self.ui.t("nuclei_resume_cancel"), "INFO")
             return False
         resume_path = candidates[choice]["path"]
-        return self.resume_nuclei_from_path(resume_path, prompt_budget_override=True)
+        try:
+            return self.resume_nuclei_from_path(resume_path, prompt_budget_override=True)
+        except KeyboardInterrupt:
+            self.ui.print_status(self.ui.t("nuclei_resume_cancel"), "INFO")
+            return False
