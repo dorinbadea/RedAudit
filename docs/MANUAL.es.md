@@ -157,7 +157,7 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 - **Web:** Escaneo completo (Nikto, Nuclei, SSL).
 - **Autenticación:** Configuración opcional de credenciales SSH/SMB/SNMP.
 - **Ideal para:** Pentesting, compliance (PCI-DSS, ISO 27001), validación pre-producción.
-**Nota de duración:** El modo Exhaustive o con Nuclei activado puede superar 4 horas según el tamaño de los objetivos y los timeouts.
+**Nota de duración:** Con Nuclei activado, el escaneo puede prolongarse significativamente (p. ej., >2-4 horas) según el número de objetivos (hosts) y los servicios detectados.
 
 #### 4. Custom (A Medida)
 
@@ -347,6 +347,7 @@ termina como parcial otra vez, `nuclei_resume.json`/`nuclei_pending.txt` se actu
 reanudaciones antiguas, borra esos dos archivos dentro de las carpetas que ya no vas a reanudar. Puedes listarlos primero
 con `find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt` y luego borrar con
 `find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt -delete`.
+Si interrumpes una reanudacion con Ctrl+C, la reanudacion se cancela limpiamente y vuelves al menu.
 
 ### Perfiles y Cobertura de Nuclei (v4.17+)
 

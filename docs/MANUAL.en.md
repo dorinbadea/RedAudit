@@ -157,7 +157,7 @@ Pre-configured profiles adjust dozens of parameters automatically:
 - **Web:** Full scan (Nikto, Nuclei, SSL).
 - **Authentication:** Optional setup for SSH/SMB/SNMP credentials.
 - **Ideal for:** Penetration testing, compliance (PCI-DSS, ISO 27001), pre-production validation.
-**Runtime note:** Exhaustive or Nuclei-enabled scans can exceed 4 hours depending on target size and timeouts.
+**Runtime note:** With Nuclei enabled, scans can run significantly longer (e.g., >2-4 hours) depending on the number of targets (hosts) and detected services.
 
 #### 4. Custom (Tailored)
 
@@ -347,6 +347,7 @@ redaudit --nuclei-resume-latest
 
 Resumed runs update the same scan folder and refresh reports in place. The resume uses the saved budget unless you
 override it (wizard prompt or `--nuclei-max-runtime`; `0` disables the budget).
+If you interrupt a resume with Ctrl+C, the resume is canceled cleanly and you return to the menu.
 Resumes are stored in the same scan folder and are updated in place. If a resume run ends as partial again, the
 existing `nuclei_resume.json`/`nuclei_pending.txt` is refreshed (not duplicated). To clean old resumes, delete those
 two files inside scan folders you no longer need to resume. List them first with

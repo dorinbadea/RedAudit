@@ -36,7 +36,7 @@ sudo redaudit
 - **Normal**: Equilibrio entre velocidad y fiabilidad.
 - **Agresivo**: El más rápido, más ruido; puede perder servicios lentos/filtrados.
 
-**Nota de duración:** El modo completo o con Nuclei activado puede superar 4 horas según el tamaño de los objetivos y los timeouts.
+**Nota de duración:** Con Nuclei activado, el escaneo puede prolongarse significativamente (p. ej., >2-4 horas) según el número de objetivos (hosts) y los servicios detectados.
 
 ### Inventario rápido (LAN)
 
