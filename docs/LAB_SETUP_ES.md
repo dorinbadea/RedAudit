@@ -223,6 +223,18 @@ Una vez que el laboratorio este funcionando (`status` muestra UP):
 
 4. **Asistente**: El asistente detectara la red, ofrecera cargar credenciales guardadas y luego preguntara si deseas anadir mas.
 
+## Tiempos Observados (Docker Lab)
+
+Estos tiempos provienen de un escaneo autenticado real sobre este lab (`172.20.0.0/24`)
+con perfil **Exhaustivo** y **Nuclei (equilibrado)** activado. Los tiempos varian segun
+hardware, numero de hosts vivos y numero de servicios HTTP.
+
+- **Duracion total**: ~1h46m para 14 hosts vivos.
+- **Fase Nuclei**: ~1h25m para 17 objetivos HTTP (timeouts observados; reanudacion guardada).
+- **Reanudacion**: ~1h35m para completar objetivos pendientes con timeouts adicionales.
+
+Estas ejecuciones muestran que Nuclei es el principal factor de duracion cuando hay muchos servicios HTTP.
+
 ## Solución de Problemas
 
 ### Target Windows (.30) No Inicia / Error Samba
@@ -254,7 +266,7 @@ docker run -d --name target-windows --net lab_seguridad --ip 172.20.0.30 \
 
 **Comportamiento esperado**:
 
-- Tiempo de escaneo: ~1 minuto por host Docker (en lugar de segundos con RustScan)
+- Tiempo de escaneo: minutos por host Docker son esperables en redes bridge.
 - Deteccion de puertos: Precisa (via fallback Scapy)
 - No se requiere accion - el fallback es automatico
 

@@ -74,7 +74,8 @@ TRANSLATIONS = {
         "timing_normal": "Normal — Balanced speed/coverage (no delay)",
         "timing_aggressive": "Aggressive — Max speed, more noise (parallel bursts)",
         "long_scan_warning": (
-            "Warning: Full or Nuclei-enabled modes can exceed 4 hours depending on target size."
+            "Warning: With Nuclei enabled, the scan can run significantly longer "
+            "(e.g., >2-4 hours) depending on the number of targets (hosts) and detected services."
         ),
         "go_back": "Cancel",
         "threads": "Concurrent threads (higher = faster/noisier):",
@@ -590,8 +591,8 @@ TRANSLATIONS = {
         "timing_normal": "Normal — Equilibrio velocidad/cobertura (sin retardo)",
         "timing_aggressive": "Agresivo — Velocidad máxima, más ruido (ráfagas paralelas)",
         "long_scan_warning": (
-            "Aviso: En modo completo o con Nuclei activado, el escaneo puede superar 4 horas "
-            "según el tamaño de los objetivos."
+            "Aviso: con Nuclei activado, el escaneo puede prolongarse significativamente "
+            "(p. ej., >2-4 horas) en funcion del numero de objetivos (hosts) y de los servicios detectados."
         ),
         "go_back": "Cancelar",
         "threads": "Hilos concurrentes (más alto = más rápido/ruidoso):",

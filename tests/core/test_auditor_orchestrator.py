@@ -1912,6 +1912,13 @@ def test_resume_nuclei_from_path_missing():
         assert auditor.resume_nuclei_from_path(missing) is False
 
 
+def test_resume_nuclei_from_path_keyboard_interrupt():
+    auditor = _make_resume_auditor()
+    with patch.object(auditor, "_load_nuclei_resume_state", side_effect=KeyboardInterrupt):
+        assert auditor.resume_nuclei_from_path("/tmp/nuclei_resume.json") is False
+    auditor.ui.print_status.assert_any_call("nuclei_resume_cancel", "INFO")
+
+
 def test_resume_nuclei_interactive_no_candidates():
     auditor = _make_resume_auditor()
     with patch.object(auditor, "_find_nuclei_resume_candidates", return_value=[]):
@@ -1938,6 +1945,18 @@ def test_resume_nuclei_interactive_cancel():
         patch.object(auditor, "ask_choice", return_value=1),
     ):
         assert auditor.resume_nuclei_interactive() is False
+
+
+def test_resume_nuclei_interactive_keyboard_interrupt():
+    auditor = _make_resume_auditor()
+    candidate = {"path": "/tmp/scan/nuclei_resume.json", "label": "scan (1 targets)"}
+    with (
+        patch.object(auditor, "_find_nuclei_resume_candidates", return_value=[candidate]),
+        patch.object(auditor, "ask_choice", return_value=0),
+        patch.object(auditor, "resume_nuclei_from_path", side_effect=KeyboardInterrupt),
+    ):
+        assert auditor.resume_nuclei_interactive() is False
+    auditor.ui.print_status.assert_any_call("nuclei_resume_cancel", "INFO")
 
 
 if __name__ == "__main__":

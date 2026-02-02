@@ -223,6 +223,18 @@ Once the lab is running (`status` shows UP):
 
 4. **Wizard**: The wizard will detect the network, offer to load saved credentials, and then ask if you want to add more.
 
+## Observed Timings (Docker Lab)
+
+The following timings are from a real authenticated scan against this lab (`172.20.0.0/24`)
+using **Exhaustive** profile with **Nuclei (balanced)** enabled. Your results will vary
+with hardware, number of live hosts, and number of HTTP services.
+
+- **Total duration**: ~1h46m for 14 live hosts.
+- **Nuclei phase**: ~1h25m for 17 HTTP targets (timeouts observed; resume saved).
+- **Resume run**: ~1h35m to complete pending Nuclei targets with additional timeouts.
+
+These runs show that Nuclei is the primary time driver when many HTTP services are detected.
+
 ## Troubleshooting
 
 ### Target Windows (.30) Not Starting / Samba Error
@@ -254,7 +266,7 @@ docker run -d --name target-windows --net lab_seguridad --ip 172.20.0.30 \
 
 **Expected behavior**:
 
-- Scan times: ~1 minute per Docker host (instead of seconds with RustScan)
+- Scan times: minutes per Docker host are expected on Docker bridge networks.
 - Port detection: Accurate (via Scapy fallback)
 - No action required - the fallback is automatic
 
