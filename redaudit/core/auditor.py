@@ -949,11 +949,15 @@ class InteractiveNetworkAuditor:
                     ):
                         identity_threshold = 4
 
+                    nuclei_full_coverage = bool(self.config.get("nuclei_full_coverage", False))
+                    priority_ports = None if nuclei_full_coverage else {80, 443, 8080, 8443}
+                    max_targets_per_host = None if nuclei_full_coverage else 2
+
                     selection = select_nuclei_targets(
                         results,
                         identity_threshold=identity_threshold,
-                        priority_ports={80, 443, 8080, 8443},
-                        max_targets_per_host=2,
+                        priority_ports=priority_ports,
+                        max_targets_per_host=max_targets_per_host,
                         exclude_patterns=self.config.get("nuclei_exclude"),
                     )
                     nuclei_targets = selection.get("targets") or []
@@ -976,7 +980,6 @@ class InteractiveNetworkAuditor:
                                 host_port_count[str(host)] = 0
 
                         multi_port_hosts = [h for h, c in host_port_count.items() if c >= 3]
-                        nuclei_full_coverage = bool(self.config.get("nuclei_full_coverage", False))
                         if (
                             multi_port_hosts
                             and nuclei_profile != "fast"

@@ -1214,8 +1214,10 @@ def _limit_targets_for_host(
     urls: List[str],
     *,
     priority_ports: Optional[Set[int]],
-    max_targets: int,
+    max_targets: Optional[int],
 ) -> List[str]:
+    if max_targets is None:
+        return list(urls)
     if max_targets <= 0:
         return []
     if not urls:
@@ -1251,14 +1253,15 @@ def select_nuclei_targets(
     *,
     identity_threshold: int,
     priority_ports: Optional[Set[int]] = None,
-    max_targets_per_host: int = 2,
+    max_targets_per_host: Optional[int] = 2,
     exclude_patterns: Optional[Iterable[str]] = None,
 ) -> Dict[str, Any]:
     """
     Select Nuclei targets using optimization-by-default and resilience-by-exception.
 
     - Exception hosts (ambiguous identity) receive all web targets.
-    - Strong identity hosts are limited to priority ports with a small cap.
+    - Strong identity hosts are limited to priority ports with a small cap unless max_targets_per_host
+      is None (full coverage).
     """
     targets_by_host = get_http_targets_by_host(hosts)
     exception_hosts: Set[str] = set()
