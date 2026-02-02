@@ -62,6 +62,12 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 |---|---|---|
 | **Playbooks persistentes** | Hecho (v4.19.29) | Los playbooks se guardan en JSON y se regeneran para HTML si faltan. |
 
+### v4.19.30 Targets de cobertura total Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Cobertura total de targets** | Hecho (v4.19.30) | La cobertura total ahora incluye todos los puertos HTTP detectados en hosts con identidad fuerte. |
+
 ### v4.19.28 Gráficos HTML + Higiene Docs (Hecho)
 
 | Funcionalidad | Estado | Descripción |

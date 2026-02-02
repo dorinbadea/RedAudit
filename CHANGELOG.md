@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.30] - 2026-02-02
+
+### Fixed
+
+- **Nuclei Full Coverage**: "Scan all HTTP ports" now includes all detected HTTP ports for strong-identity hosts.
+
 ## [4.19.29] - 2026-02-02
 
 ### Fixed

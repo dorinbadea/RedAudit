@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.30] - 2026-02-02
+
+### Corregido
+
+- **Cobertura total Nuclei**: "Escanear todos los puertos HTTP" ahora incluye todos los puertos HTTP detectados en hosts con identidad fuerte.
+
 ## [4.19.29] - 2026-02-02
 
 ### Corregido

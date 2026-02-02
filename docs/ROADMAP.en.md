@@ -62,6 +62,12 @@ These items are ordered chronologically (most recent first).
 | --- | --- | --- |
 | **Playbook Persistence** | Done (v4.19.29) | Playbooks are stored in JSON reports and regenerated for HTML when missing. |
 
+### v4.19.30 Nuclei Full Coverage Targets (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Full Coverage Targets** | Done (v4.19.30) | Full coverage now includes all detected HTTP ports for strong-identity hosts. |
+
 ### v4.19.28 HTML Charts + Docs Hygiene (Done)
 
 | Feature | Status | Description |
