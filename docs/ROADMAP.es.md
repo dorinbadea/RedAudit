@@ -62,6 +62,12 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 |---|---|---|
 | **Playbooks persistentes** | Hecho (v4.19.29) | Los playbooks se guardan en JSON y se regeneran para HTML si faltan. |
 
+### v4.19.33 Fiabilidad del workflow de releases (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Workflow de releases** | Hecho (v4.19.33) | El job de release ahora actualiza releases existentes y usa notas versionadas. |
+
 ### v4.19.32 Corrección ShellCheck del instalador (Hecho)
 
 | Funcionalidad | Estado | Descripción |

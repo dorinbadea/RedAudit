@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.33] - 2026-02-03
+
+### Fixed
+
+- **Release Workflow**: The release job now updates existing releases and uses versioned release notes, avoiding failures when a release already exists.
+
 ## [4.19.32] - 2026-02-03
 
 ### Fixed
