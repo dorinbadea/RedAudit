@@ -10,6 +10,12 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.32] - 2026-02-03
+
+### Fixed
+
+- **Installer ShellCheck**: OUI seeding helper is now defined before use to satisfy ShellCheck and keep auto-install reliable.
+
 ## [4.19.31] - 2026-02-03
 
 ### Added

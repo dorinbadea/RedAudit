@@ -62,6 +62,12 @@ These items are ordered chronologically (most recent first).
 | --- | --- | --- |
 | **Playbook Persistence** | Done (v4.19.29) | Playbooks are stored in JSON reports and regenerated for HTML when missing. |
 
+### v4.19.32 Installer ShellCheck Fix (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Installer ShellCheck** | Done (v4.19.32) | OUI seeding helper is defined before use to satisfy ShellCheck. |
+
 ### v4.19.31 OUI Seeded Installer + Trust Signals (Done)
 
 | Feature | Status | Description |
