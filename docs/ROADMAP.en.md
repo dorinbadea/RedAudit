@@ -62,6 +62,12 @@ These items are ordered chronologically (most recent first).
 | --- | --- | --- |
 | **Playbook Persistence** | Done (v4.19.29) | Playbooks are stored in JSON reports and regenerated for HTML when missing. |
 
+### v4.19.33 Release Workflow Reliability (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Release Workflow** | Done (v4.19.33) | Release job now updates existing releases and uses versioned release notes. |
+
 ### v4.19.32 Installer ShellCheck Fix (Done)
 
 | Feature | Status | Description |

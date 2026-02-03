@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.33] - 2026-02-03
+
+### Corregido
+
+- **Workflow de releases**: El job de release ahora actualiza releases existentes y usa notas versionadas, evitando fallos cuando la release ya existe.
+
 ## [4.19.32] - 2026-02-03
 
 ### Corregido
