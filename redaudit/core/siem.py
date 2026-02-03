@@ -43,6 +43,20 @@ def _severity_from_label(label: str) -> Tuple[str, int]:
     return value, SEVERITY_LEVELS[value]["score"]
 
 
+def _testssl_is_experimental(testssl: Dict) -> bool:
+    """Detect low-confidence TestSSL findings marked as experimental/potentially vulnerable."""
+    if not isinstance(testssl, dict):
+        return False
+    vulns = testssl.get("vulnerabilities", [])
+    if not isinstance(vulns, list):
+        return False
+    for vuln in vulns:
+        text = str(vuln).lower()
+        if "experimental" in text or "potentially vulnerable" in text:
+            return True
+    return False
+
+
 # Keywords to detect severity from findings
 SEVERITY_KEYWORDS = {
     "critical": [
@@ -1097,6 +1111,7 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
 
     # Check TestSSL vulnerabilities
     testssl = vuln_record.get("testssl_analysis", {})
+    testssl_experimental = _testssl_is_experimental(testssl)
     if testssl.get("vulnerabilities"):
         # TestSSL vulnerabilities are typically high severity
         if max_score < 70:
@@ -1164,6 +1179,9 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
 
     # v3.1.4: Detect potential false positives via cross-validation
     fps = detect_nikto_false_positives(vuln_record)
+    if testssl_experimental:
+        fps = list(fps) if fps else []
+        fps.append("TestSSL reported experimental/potentially vulnerable signal")
     if fps:
         enriched["potential_false_positives"] = fps
         # v3.6.1: Degrade severity when cross-validation proves finding is wrong
@@ -1222,9 +1240,10 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
 
     # v4.6.19: Add confirmed_exploitable flag for findings with CVE or Nuclei validation
     has_cve = bool(cve_ids) or "cve-" in primary_finding.lower()
+    has_cve_confident = has_cve and not testssl_experimental
     has_nuclei = source == "nuclei" or bool(template_id)
     has_known_exploit = bool(vuln_record.get("known_exploits"))
-    enriched["confirmed_exploitable"] = has_cve or has_nuclei or has_known_exploit
+    enriched["confirmed_exploitable"] = has_cve_confident or has_nuclei or has_known_exploit
 
     # v4.6.19: Calculate priority_score for finding ordering
     # Higher = more critical (0-100 scale)
@@ -1235,7 +1254,7 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
         priority += 20
 
     # Boost for CVE findings (evidence of real vulnerability)
-    if has_cve:
+    if has_cve_confident:
         priority += 10
 
     # Penalty for likely false positives
@@ -1255,10 +1274,12 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
     # Boost for confirmed sources
     if enriched["confirmed_exploitable"]:
         confidence += 0.3
-    if has_cve:
+    if has_cve_confident:
         confidence += 0.1
-    if vuln_record.get("testssl_analysis"):
+    if vuln_record.get("testssl_analysis") and not testssl_experimental:
         confidence += 0.1  # TestSSL findings are high-confidence
+    if testssl_experimental:
+        confidence -= 0.2
 
     # Penalty for potential false positives
     if enriched.get("potential_false_positives"):

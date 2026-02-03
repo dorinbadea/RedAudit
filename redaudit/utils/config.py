@@ -32,6 +32,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "version": CONFIG_VERSION,
     "nvd_api_key": None,
     "nvd_api_key_storage": None,  # "config", "env", or None
+    # Optional OUI database override (Wireshark manuf format)
+    "oui_db_path": None,  # str | None
+    "oui_db_paths": None,  # list[str] | None
     # v3.1+: Persistent defaults for common CLI/interactive settings.
     # v3.2.3: Expanded to cover all scan parameters
     "defaults": {

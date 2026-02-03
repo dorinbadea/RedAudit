@@ -66,7 +66,17 @@ PLAYBOOK_PATTERNS = {
 # Commands and steps vary based on device type/vendor
 DEVICE_REMEDIATION_TEMPLATES = {
     "embedded_device": {
-        "vendors": ["avm", "fritz", "mikrotik", "ubiquiti", "netgear", "tp-link", "asus"],
+        "vendors": [
+            "avm",
+            "fritz",
+            "mikrotik",
+            "ubiquiti",
+            "netgear",
+            "tp-link",
+            "asus",
+            "sercomm",
+            "vodafone",
+        ],
         "steps": [
             "Access device web interface at http://{host}",
             "Navigate to System/Administration > Firmware Update",
@@ -193,32 +203,93 @@ def _extract_port(finding: Dict) -> Optional[int]:
     return None
 
 
+def _is_experimental_testssl(finding: Dict) -> bool:
+    testssl = finding.get("testssl_analysis", {})
+    if not isinstance(testssl, dict):
+        return False
+    vulns = testssl.get("vulnerabilities", [])
+    if not isinstance(vulns, list):
+        return False
+    for vuln in vulns:
+        text = str(vuln).lower()
+        if "experimental" in text or "potentially vulnerable" in text:
+            return True
+    return False
+
+
+def _should_skip_playbook(finding: Dict) -> bool:
+    fps = finding.get("potential_false_positives") or []
+    if fps:
+        return True
+    source = finding.get("source") or (finding.get("original_severity") or {}).get("tool")
+    confidence = finding.get("confidence_score")
+    if source == "testssl":
+        if _is_experimental_testssl(finding):
+            return True
+        if isinstance(confidence, (int, float)) and confidence < 0.6:
+            return True
+    return False
+
+
 def _detect_device_type(vendor: Optional[str], device_type: Optional[str]) -> str:
     """
     Detect remediation template type based on vendor and device type.
     """
     # Type safety: vendor and device_type must be strings
-    if not vendor or not isinstance(vendor, str):
-        return "linux_server"  # Default fallback
-
-    vendor_lower = vendor.lower()
+    vendor_lower = vendor.lower() if isinstance(vendor, str) else ""
 
     # Check templates for vendor match
-    for template_name, template in DEVICE_REMEDIATION_TEMPLATES.items():
-        if any(v in vendor_lower for v in template["vendors"]):
-            return template_name
+    if vendor_lower:
+        for template_name, template in DEVICE_REMEDIATION_TEMPLATES.items():
+            if any(v in vendor_lower for v in template["vendors"]):
+                return template_name
 
     # Check generic device types
     if device_type and isinstance(device_type, str):
         dt_lower = device_type.lower()
-        if "router" in dt_lower or "switch" in dt_lower or "firewall" in dt_lower:
+        if "routeros" in dt_lower or "switch" in dt_lower or "firewall" in dt_lower:
             return "network_device"
-        if "embedded" in dt_lower or "iot" in dt_lower or "printer" in dt_lower:
+        if any(x in dt_lower for x in ("router", "gateway", "modem", "ont", "cpe")):
+            enterprise = DEVICE_REMEDIATION_TEMPLATES.get("network_device", {}).get("vendors", [])
+            if any(v in vendor_lower for v in enterprise):
+                return "network_device"
+            return "embedded_device"
+        if any(x in dt_lower for x in ("embedded", "iot", "printer", "smart_tv", "camera")):
             return "embedded_device"
         if "windows" in dt_lower:
             return "windows"
 
     return "linux_server"
+
+
+def _select_device_type(
+    device_type: Optional[str], device_type_hints: Optional[List[str]]
+) -> Optional[str]:
+    if isinstance(device_type, str):
+        value = device_type.strip().lower()
+        if value and value != "unknown":
+            return value
+
+    hints = []
+    if isinstance(device_type_hints, list):
+        hints = [str(h).strip().lower() for h in device_type_hints if h]
+
+    if not hints:
+        return None
+
+    for preferred in (
+        "router",
+        "firewall",
+        "gateway",
+        "vpn",
+        "printer",
+        "smart_tv",
+        "iot",
+    ):
+        if preferred in hints:
+            return preferred
+
+    return hints[0] if hints else None
 
 
 def classify_finding(finding: Dict) -> Optional[str]:
@@ -498,9 +569,15 @@ def get_playbooks_for_results(results: Dict) -> List[Dict]:
                 deep_scan = {}
             if not isinstance(identity, dict):
                 identity = {}
+            selected_type = _select_device_type(
+                identity.get("device_type") or host_entry.get("device_type"),
+                host_entry.get("device_type_hints"),
+            )
             host_info[ip] = {
-                "vendor": deep_scan.get("vendor") or identity.get("vendor"),
-                "device_type": identity.get("device_type"),
+                "vendor": deep_scan.get("vendor")
+                or identity.get("vendor")
+                or host_entry.get("vendor"),
+                "device_type": selected_type,
             }
 
     for vuln_entry in results.get("vulnerabilities", []):
@@ -520,6 +597,8 @@ def get_playbooks_for_results(results: Dict) -> List[Dict]:
         for vuln in vuln_entry.get("vulnerabilities", []):
             # Type safety: vuln must be a dict for classify_finding
             if not isinstance(vuln, dict):
+                continue
+            if _should_skip_playbook(vuln):
                 continue
             category = classify_finding(vuln)
             if not category:

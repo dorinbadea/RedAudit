@@ -562,6 +562,15 @@
                             </ul>
                             {% endif %}
 
+                            {% if finding.potential_false_positives %}
+                            <strong style="color: var(--text-secondary); font-size: 0.8rem;">Possible False Positives:</strong>
+                            <ul class="observations" style="margin-bottom: 0.75rem;">
+                                {% for fp in finding.potential_false_positives %}
+                                <li>{{ fp }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+
                             {% if finding.references %}
                             <strong style="color: var(--text-secondary); font-size: 0.8rem;">References:</strong>
                             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem;">
