@@ -62,6 +62,12 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 |---|---|---|
 | **Playbooks persistentes** | Hecho (v4.19.29) | Los playbooks se guardan en JSON y se regeneran para HTML si faltan. |
 
+### v4.19.32 Corrección ShellCheck del instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **ShellCheck del instalador** | Hecho (v4.19.32) | El helper de OUI se define antes de usarse para cumplir ShellCheck. |
+
 ### v4.19.31 Instalador con OUI + señales de confianza (Hecho)
 
 | Funcionalidad | Estado | Descripción |

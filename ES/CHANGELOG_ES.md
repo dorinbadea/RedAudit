@@ -10,6 +10,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.32] - 2026-02-03
+
+### Corregido
+
+- **ShellCheck del instalador**: El helper de OUI se define antes de usarse para cumplir ShellCheck y mantener el auto-instalado fiable.
+
 ## [4.19.31] - 2026-02-03
 
 ### Added
