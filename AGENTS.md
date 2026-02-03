@@ -19,6 +19,8 @@ This file is the canonical operating guide for collaborators (human or non-human
   pending/skipped and there are no red failures.
 - **No Emojis**: Do not use emojis in documentation (`.md` files). Maintain a professional, neutral tone.
 
+**Codex exception:** When working inside Codex, the environment enforces a `codex/` branch prefix. In that case, `codex/*` is acceptable and compliant with this workflow. If preferred, the branch can be renamed to `feature/*`, `hotfix/*`, or `docs/*` before merge.
+
 ## Workflow Overview (Default Path)
 
 1. Create a branch; never commit directly to `main`.
