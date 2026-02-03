@@ -123,6 +123,7 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
 ```
 
 
+
 En modo **full/completo**, el perfil base ya es agresivo, por lo que el deep scan se activa menos y solo cuando la identidad
 sigue siendo débil o hay señales sospechosas.
 
