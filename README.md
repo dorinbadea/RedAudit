@@ -52,79 +52,74 @@ RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runt
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│         PHASE 0: HyperScan Discovery (Optional)             │
-│   (Optional RustScan/Masscan seed in Red Team mode)         │
-│       Feeds discovered ports to Phase 1                     │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
+│               PHASE 0: HyperScan Discovery (Optional)       │
+│     (Optional RustScan/Masscan seed in Red Team mode)       │
+│               Feeds discovered ports to Phase 1             │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
 
 ┌─────────────────────────────────────────────────────────────┐
-│   PHASE 0b: Low-impact enrichment (optional, opt-in)         │
-│   DNS/mDNS/SNMP + short HTTP/HTTPS probe for                 │
-│   vendor-only hosts with zero open ports                     │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
+│     PHASE 0b: Low-impact enrichment (optional, opt-in)      │
+│     DNS/mDNS/SNMP + short HTTP/HTTPS probe for              │
+│           vendor-only hosts with zero open ports            │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
 
 ┌─────────────────────────────────────────────────────────────┐
 │           PHASE 1: Nmap profile based on scan mode          │
-│          fast/normal/full define the base scan              │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
-              ┌───────────────────────┐
-              │  Identity Evaluation  │
-              │  • MAC/vendor?        │
-              │  • Hostname/DNS?      │
-              │  • Service version?   │
-              │  • CPE/banner?        │
-              │  • HTTP title/header? │
-              │  • Agentless hints?   │
-              └───────────┬───────────┘
-                          │
-            ┌─────────────┴─────────────┐
-            │                           │
-            ▼                           ▼
-    ┌───────────────┐          ┌────────────────┐
-    │  SUFFICIENT   │          │ AMBIGUOUS HOST │
-    │  Stop scan    │          │ Trigger Deep   │
-    └───────────────┘          └───────┬────────┘
-                                       │
-                                       ▼
+│             fast/normal/full define the base scan           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+              ┌────────────────────────────────┐
+              │         Identity Evaluation     │
+              │  • MAC/vendor?                  │
+              │  • Hostname/DNS?                │
+              │  • Service version?             │
+              │  • CPE/banner?                  │
+              │  • HTTP title/header?           │
+              │  • Agentless hints?             │
+              └────────────────┬───────────────┘
+                              │
+            ┌─────────────────┴─────────────────┐
+            │                                   │
+            ▼                                   ▼
+    ┌──────────────────┐               ┌──────────────────┐
+    │    SUFFICIENT    │               │  AMBIGUOUS HOST  │
+    │    Stop scan     │               │   Trigger Deep   │
+    └──────────────────┘               └────────┬─────────┘
+                                               │
+                                               ▼
                     ┌──────────────────────────────────────┐
                     │      DEEP PHASE 1: Aggressive TCP    │
-                    │      nmap -p- -A --open              │
+                    │        nmap -p- -A --open            │
                     └──────────────────┬───────────────────┘
                                        │
                           ┌────────────┴────────────┐
                           │                         │
                           ▼                         ▼
-                  ┌───────────────┐        ┌────────────────┐
-                  │  Identity OK  │        │ Still ambiguous│
-                  │  Stop         │        │ Continue...    │
-                  └───────────────┘        └───────┬────────┘
-                                                   │
-                                                   ▼
+                  ┌──────────────────┐      ┌──────────────────┐
+                  │    Identity OK   │      │  Still ambiguous │
+                  │      Stop        │      │   Continue...    │
+                  └──────────────────┘      └────────┬─────────┘
+                                                     │
+                                                     ▼
                                 ┌──────────────────────────────────────┐
                                 │      DEEP PHASE 2a: Priority UDP     │
                                 │      17 common ports (DNS/DHCP/etc)  │
                                 └──────────────────┬───────────────────┘
-                                                   │
-                                      ┌────────────┴────────────┐
-                                      │                         │
-                                      ▼                         ▼
-                              ┌───────────────┐        ┌────────────────┐
-                              │  Identity OK  │        │ Still ambiguous│
-                              │  Stop         │        │ (full mode)    │
-                              └───────────────┘        └───────┬────────┘
-                                                               │
-                                                               ▼
-                                          ┌─────────────────────────────────┐
-                                          │     DEEP PHASE 2b: Extended UDP │
-                                          │     --top-ports N (up to 500)   │
-                                          └─────────────────────────────────┘
+                                                     │
+                                      ┌──────────────┴──────────────┐
+                                      │                             │
+                                      ▼                             ▼
+                              ┌──────────────────┐         ┌──────────────────┐
+                              │    Identity OK   │         │  Still ambiguous │
+                              │      Stop        │         │   (full mode)    │
+                              └──────────────────┘         └────────┬─────────┘
 ```
+
 
 In **full/completo** mode, the base profile is already aggressive, so deep identity scan triggers less often and only when identity remains weak or signals are suspicious.
 
