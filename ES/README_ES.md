@@ -48,70 +48,72 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│         FASE 0: HyperScan Discovery (Opcional)              │
-│   (Opcional RustScan/Masscan en modo Red Team)              │
-│       Alimenta puertos abiertos a Fase 1                    │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
+│            FASE 0: HyperScan Discovery (Opcional)           │
+│        (Opcional RustScan/Masscan en modo Red Team)         │
+│              Alimenta puertos abiertos a Fase 1             │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+
 ┌─────────────────────────────────────────────────────────────┐
-│   FASE 0b: Enriquecimiento de bajo impacto (optativo)        │
-│   DNS/mDNS/SNMP + sonda HTTP/HTTPS breve para               │
-│   hosts con fabricante y cero puertos abiertos              │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
+│    FASE 0b: Enriquecimiento de bajo impacto (optativo)      │
+│     DNS/mDNS/SNMP + sonda HTTP/HTTPS breve para             │
+│          hosts con fabricante y cero puertos abiertos       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+
 ┌─────────────────────────────────────────────────────────────┐
-│         FASE 1: Perfil Nmap según el modo de escaneo        │
-│        rápido/normal/completo definen el scan base          │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
-              ┌───────────────────────┐
-              │  Evaluación Identidad │
-              │  • ¿MAC/fabricante?   │
-              │  • ¿Hostname/DNS?     │
-              │  • ¿Versión servicio? │
-              │  • ¿CPE/banner?       │
-              │  • HTTP título/encab.?│
-              │  • ¿Hints sin agente? │
-              └───────────┬───────────┘
-                          │
-            ┌─────────────┴─────────────┐
-            │                           │
-            ▼                           ▼
-    ┌───────────────┐          ┌────────────────┐
-    │  SUFICIENTE   │          │ HOST AMBIGUO   │
-    │  Detener scan │          │ Trigger Deep   │
-    └───────────────┘          └───────┬────────┘
-                                       │
-                                       ▼
+│        FASE 1: Perfil Nmap según el modo de escaneo         │
+│           rapido/normal/completo definen el scan base       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+              ┌────────────────────────────────┐
+              │       Evaluacion de identidad  │
+              │  • ¿MAC/fabricante?            │
+              │  • ¿Hostname/DNS?              │
+              │  • ¿Version de servicio?       │
+              │  • ¿CPE/banner?                │
+              │  • ¿HTTP titulo/encab.?        │
+              │  • ¿Hints sin agente?          │
+              └────────────────┬───────────────┘
+                              │
+            ┌─────────────────┴─────────────────┐
+            │                                   │
+            ▼                                   ▼
+    ┌──────────────────┐               ┌──────────────────┐
+    │    SUFICIENTE    │               │   HOST AMBIGUO   │
+    │   Detener scan   │               │   Trigger Deep   │
+    └──────────────────┘               └────────┬─────────┘
+                                               │
+                                               ▼
                     ┌──────────────────────────────────────┐
                     │      DEEP PHASE 1: TCP Agresivo      │
-                    │      nmap -p- -A --open              │
+                    │        nmap -p- -A --open            │
                     └──────────────────┬───────────────────┘
                                        │
                           ┌────────────┴────────────┐
                           │                         │
                           ▼                         ▼
-                  ┌───────────────┐        ┌────────────────┐
-                  │  Identidad OK │        │ Sigue ambiguo  │
-                  │  Stop         │        │ Continuar...   │
-                  └───────────────┘        └───────┬────────┘
-                                                   │
-                                                   ▼
+                  ┌──────────────────┐      ┌──────────────────┐
+                  │   Identidad OK   │      │   Sigue ambiguo  │
+                  │      Stop        │      │   Continuar...   │
+                  └──────────────────┘      └────────┬─────────┘
+                                                     │
+                                                     ▼
                                 ┌──────────────────────────────────────┐
                                 │      DEEP PHASE 2a: UDP Prioritario  │
                                 │      17 puertos (DNS/DHCP/etc)       │
                                 └──────────────────┬───────────────────┘
-                                                   │
-                                      ┌────────────┴────────────┐
-                                      │                         │
-                                      ▼                         ▼
-                              ┌───────────────┐        ┌────────────────┐
-                              │  Identidad OK │        │ Sigue ambiguo  │
-                              │  Stop         │        │ (modo full)    │
-                              └───────────────┘        └───────┬────────┘
+                                                     │
+                                      ┌──────────────┴──────────────┐
+                                      │                             │
+                                      ▼                             ▼
+                              ┌──────────────────┐         ┌──────────────────┐
+                              │   Identidad OK   │         │   Sigue ambiguo  │
+                              │      Stop        │         │    (modo full)   │
+                              └──────────────────┘         └────────┬─────────┘
                                                                │
                                                                ▼
                                           ┌─────────────────────────────────┐
@@ -119,6 +121,7 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
                                           │     --top-ports N (hasta 500)   │
                                           └─────────────────────────────────┘
 ```
+
 
 En modo **full/completo**, el perfil base ya es agresivo, por lo que el deep scan se activa menos y solo cuando la identidad
 sigue siendo débil o hay señales sospechosas.
