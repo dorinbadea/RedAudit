@@ -44,6 +44,7 @@ class TestJsonlExporter(unittest.TestCase):
                     "risk_score": 0,
                     "total_ports_found": 1,
                     "web_ports_count": 0,
+                    "ports": [{"port": 80, "protocol": "tcp", "service": "http"}],
                     "observable_hash": "asset-1",
                     "tags": ["test"],
                     "ecs_host": {"mac": ["00:11:22:33:44:55"], "vendor": "TestVendor"},
@@ -66,6 +67,14 @@ class TestJsonlExporter(unittest.TestCase):
                 }
             ],
             "summary": {"duration": "0:10:00", "max_risk_score": 0, "high_risk_hosts": 0},
+            "auth_scan": {
+                "enabled": True,
+                "targets": 1,
+                "completed": 0,
+                "ssh_success": 0,
+                "lynis_success": 0,
+                "errors": [{"ip": "192.168.1.10", "error": "All credentials failed"}],
+            },
         }
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -89,6 +98,7 @@ class TestJsonlExporter(unittest.TestCase):
                 asset = json.loads(f.readline())
             for key in ("session_id", "schema_version", "scanner", "scanner_version"):
                 self.assertIn(key, asset)
+            self.assertIn("open_ports", asset)
             self.assertEqual(asset["session_id"], "session-123")
             self.assertEqual(asset["scanner"], "RedAudit")
             self.assertEqual(asset["scanner_version"], "3.5.0")
@@ -98,6 +108,7 @@ class TestJsonlExporter(unittest.TestCase):
             self.assertEqual(summary.get("session_id"), "session-123")
             self.assertEqual(summary.get("redaudit_version"), "3.5.0")
             self.assertEqual(summary.get("total_findings_raw"), summary.get("total_findings"))
+            self.assertIn("auth_scan", summary)
 
     def test_extract_title_from_observations(self):
         vuln = {"parsed_observations": ["Missing HSTS on endpoint"]}

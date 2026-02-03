@@ -104,6 +104,34 @@ def test_generate_html_report_minimal_es():
     assert "Content-Security-Policy" in res
 
 
+def test_generate_html_report_includes_auth_failures():
+    results = {
+        "summary": {},
+        "hosts": [],
+        "vulnerabilities": [],
+        "auth_scan": {
+            "enabled": True,
+            "targets": 1,
+            "completed": 1,
+            "ssh_success": 0,
+            "lynis_success": 0,
+            "errors": [{"ip": "1.2.3.4", "error": "Authentication failed"}],
+        },
+        "pipeline": {
+            "net_discovery": {"counts": {}},
+            "host_scan": {"targets": 0},
+            "agentless_verify": {"completed": 0, "signals": {}},
+            "nuclei": {"findings": 0},
+            "vulnerability_scan": {"sources": {}},
+            "auth_scan": {"lynis_success": 0},
+            "deep_scan": {"identity_threshold": 0},
+        },
+    }
+    res = html_reporter.generate_html_report(results, {})
+    assert "Failures" in res
+    assert "Authentication failed" in res
+
+
 def test_generate_html_report_includes_false_positive_notes():
     results = {
         "summary": {},
@@ -311,6 +339,20 @@ def test_prepare_report_data_translates_auth_errors_es():
 
     data = html_reporter.prepare_report_data(results, config, lang="es")
     assert data["auth_scan"]["errors"] == ["1.2.3.4: Todas las credenciales fallaron"]
+    assert data["auth_scan"]["failures"] == 1
+
+
+def test_prepare_report_data_auth_failures_count_en():
+    results = {
+        "hosts": [],
+        "vulnerabilities": [],
+        "summary": {},
+        "auth_scan": {"errors": [{"ip": "1.2.3.4", "error": "Authentication failed"}]},
+    }
+    config = {"target_networks": [], "scan_mode": "normal"}
+
+    data = html_reporter.prepare_report_data(results, config, lang="en")
+    assert data["auth_scan"]["failures"] == 1
 
 
 def test_generate_and_save_html_report(tmp_path):

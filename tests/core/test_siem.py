@@ -152,6 +152,7 @@ class TestSIEM(unittest.TestCase):
         self.assertIn("score", result)
         self.assertIn("breakdown", result)
         self.assertEqual(result["breakdown"]["max_cvss"], 9.8)
+        self.assertEqual(result["breakdown"]["max_cvss_source"], "evidence")
         self.assertEqual(result["breakdown"]["exposure_multiplier"], 1.15)
         self.assertTrue(result["breakdown"]["has_exposed_port"])
         self.assertGreater(result["score"], 0)
@@ -164,6 +165,15 @@ class TestSIEM(unittest.TestCase):
         }
         score = calculate_risk_score(host)
         self.assertGreaterEqual(score, 15)  # At least exploit penalty
+
+    def test_calculate_risk_score_breakdown_heuristics(self):
+        """Heuristic services should be visible without counting as evidence vulns."""
+        host = {"ip": "192.168.1.2", "ports": [{"port": 23, "service": "telnet"}]}
+        result = calculate_risk_score_with_breakdown(host)
+        breakdown = result["breakdown"]
+        self.assertEqual(breakdown["evidence_vulns"], 0)
+        self.assertIn("telnet", breakdown["heuristic_flags"])
+        self.assertEqual(breakdown["max_cvss_source"], "heuristic")
 
     def test_generate_observable_hash(self):
         """Test observable hash generation."""
