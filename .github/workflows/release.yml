@@ -28,7 +28,9 @@ jobs:
         run: twine check dist/*
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: ncipollo/release-action@v1
         with:
-          files: dist/*
-          generate_release_notes: true
+          artifacts: dist/*
+          bodyFile: docs/releases/RELEASE_NOTES_${{ github.ref_name }}.md
+          generateReleaseNotes: false
+          allowUpdates: true
