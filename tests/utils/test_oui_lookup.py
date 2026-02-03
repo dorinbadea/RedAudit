@@ -238,3 +238,25 @@ def test_get_vendor_with_fallback_online(monkeypatch):
     monkeypatch.setattr(oui_lookup, "lookup_vendor_online", lambda _m: "OnlineVendor")
     result = oui_lookup.get_vendor_with_fallback("00:11:22:33:44:55", local_vendor=None)
     assert result == "OnlineVendor"
+
+
+def test_reload_oui_db_custom_path(tmp_path):
+    manuf = tmp_path / "manuf"
+    manuf.write_text("00:11:22\tAcme\tAcme Inc\n", encoding="utf-8")
+    oui_lookup.reload_oui_db([str(manuf)])
+    vendor = oui_lookup.get_vendor_with_fallback(
+        "00:11:22:11:22:33", local_vendor=None, online_fallback=True
+    )
+    assert vendor == "Acme Inc"
+
+
+def test_custom_oui_db_env(monkeypatch, tmp_path):
+    manuf = tmp_path / "manuf"
+    manuf.write_text("0C:00:00\tWidget\tWidget Corp\n", encoding="utf-8")
+    monkeypatch.setenv("REDAUDIT_OUI_DB", str(manuf))
+    oui_lookup._CUSTOM_OUI_LOADED = False
+    oui_lookup.reload_oui_db()
+    vendor = oui_lookup.get_vendor_with_fallback(
+        "0C:00:00:00:11:22", local_vendor=None, online_fallback=True
+    )
+    assert vendor == "Widget Corp"

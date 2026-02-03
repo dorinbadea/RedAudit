@@ -50,3 +50,9 @@ def test_installer_bootstraps_snapd() -> None:
     content = _read_installer()
     assert "ensure_snapd()" in content
     assert "apt install -y snapd" in content
+
+
+def test_installer_installs_oui_db() -> None:
+    content = _read_installer()
+    assert "install_oui_db" in content
+    assert ".redaudit/manuf" in content

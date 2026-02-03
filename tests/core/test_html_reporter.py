@@ -104,6 +104,38 @@ def test_generate_html_report_minimal_es():
     assert "Content-Security-Policy" in res
 
 
+def test_generate_html_report_includes_false_positive_notes():
+    results = {
+        "summary": {},
+        "hosts": [],
+        "vulnerabilities": [
+            {
+                "host": "1.1.1.1",
+                "vulnerabilities": [
+                    {
+                        "descriptive_title": "SSL/TLS vulnerability detected",
+                        "severity": "high",
+                        "potential_false_positives": [
+                            "TestSSL reported experimental/potentially vulnerable signal"
+                        ],
+                    }
+                ],
+            }
+        ],
+        "pipeline": {
+            "net_discovery": {"counts": {}},
+            "host_scan": {"targets": 0},
+            "agentless_verify": {"completed": 0, "signals": {}},
+            "nuclei": {"findings": 0},
+            "vulnerability_scan": {"sources": {"testssl": 1}},
+            "auth_scan": {"lynis_success": 0},
+            "deep_scan": {"identity_threshold": 0},
+        },
+    }
+    res = html_reporter.generate_html_report(results, {})
+    assert "Possible False Positives" in res
+
+
 def test_prepare_report_data_with_leaked_networks():
     results = {
         "summary": {},
