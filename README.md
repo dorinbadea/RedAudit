@@ -118,7 +118,14 @@ RedAudit does not apply a fixed scan profile to all hosts. Instead, it uses runt
                               │    Identity OK   │         │  Still ambiguous │
                               │      Stop        │         │   (full mode)    │
                               └──────────────────┘         └────────┬─────────┘
+                                                               │
+                                                               ▼
+                                          ┌─────────────────────────────────┐
+                                          │    DEEP PHASE 2b: Extended UDP  │
+                                          │    --top-ports N (up to 500)    │
+                                          └─────────────────────────────────┘
 ```
+
 
 
 In **full/completo** mode, the base profile is already aggressive, so deep identity scan triggers less often and only when identity remains weak or signals are suspicious.
