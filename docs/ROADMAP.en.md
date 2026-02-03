@@ -49,6 +49,14 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.34 Risk Breakdown Traceability (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Risk Breakdown** | Done (v4.19.34) | Risk tooltips now separate evidence-backed and heuristic signals with a max-CVSS source. |
+| **Auth Failures** | Done (v4.19.34) | Authenticated scan failures surface in HTML and summary exports. |
+| **Asset Open Ports** | Done (v4.19.34) | `assets.jsonl` now includes open ports for inventory pipelines. |
+
 ### v4.19.27 Nuclei Warning + Resume Cancel (Done)
 
 | Feature | Status | Description |
