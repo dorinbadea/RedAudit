@@ -260,6 +260,7 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
                     "evidence": evidence,
                     "evidence_meta": evidence_meta,
                     "template_id": vuln.get("template_id"),
+                    "potential_false_positives": vuln.get("potential_false_positives") or [],
                 }
             )
 

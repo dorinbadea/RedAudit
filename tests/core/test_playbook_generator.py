@@ -115,6 +115,12 @@ class TestDetectDeviceType(unittest.TestCase):
     def test_detect_device_type_default(self):
         self.assertEqual(_detect_device_type("Unknown", None), "linux_server")
 
+    def test_detect_device_type_sercomm(self):
+        self.assertEqual(_detect_device_type("Sercomm", None), "embedded_device")
+
+    def test_detect_device_type_router_without_vendor(self):
+        self.assertEqual(_detect_device_type(None, "router"), "embedded_device")
+
 
 class TestRenderPlaybookMarkdown(unittest.TestCase):
     """Test Markdown rendering."""
@@ -171,6 +177,51 @@ class TestGetPlaybooksForResults(unittest.TestCase):
         }
         playbooks = get_playbooks_for_results(results)
         self.assertEqual(playbooks, [])
+
+    def test_get_playbooks_skips_experimental_testssl(self):
+        results = {
+            "vulnerabilities": [
+                {
+                    "host": "192.168.1.1",
+                    "vulnerabilities": [
+                        {
+                            "source": "testssl",
+                            "confidence_score": 0.9,
+                            "testssl_analysis": {
+                                "summary": "CRITICAL: 1 vulnerabilities detected",
+                                "vulnerabilities": [
+                                    "LUCKY13 (CVE-2013-0169), experimental     potentially VULNERABLE"
+                                ],
+                            },
+                        }
+                    ],
+                }
+            ]
+        }
+        playbooks = get_playbooks_for_results(results)
+        self.assertEqual(playbooks, [])
+
+    def test_get_playbooks_uses_device_type_hints(self):
+        results = {
+            "hosts": [
+                {
+                    "ip": "192.168.1.1",
+                    "device_type": "unknown",
+                    "device_type_hints": ["router"],
+                    "vendor": "Unknown",
+                }
+            ],
+            "vulnerabilities": [
+                {
+                    "host": "192.168.1.1",
+                    "vulnerabilities": [{"cve_ids": ["CVE-2020-1234"], "severity": "high"}],
+                }
+            ],
+        }
+        playbooks = get_playbooks_for_results(results)
+        assert playbooks
+        steps = " ".join(playbooks[0].get("steps", []))
+        self.assertIn("firmware", steps.lower())
 
 
 class TestSavePlaybooks(unittest.TestCase):

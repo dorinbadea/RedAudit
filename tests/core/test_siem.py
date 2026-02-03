@@ -1245,6 +1245,22 @@ class TestSIEMAdditionalCoverage(unittest.TestCase):
         self.assertEqual(enriched["severity"], "low")
         self.assertIn("RFC-1918", enriched.get("severity_note", ""))
 
+    def test_enrich_vulnerability_severity_testssl_experimental(self):
+        vuln = {
+            "source": "testssl",
+            "cve_ids": ["CVE-2013-0169"],
+            "testssl_analysis": {
+                "summary": "CRITICAL: 1 vulnerabilities detected",
+                "vulnerabilities": [
+                    "LUCKY13 (CVE-2013-0169), experimental     potentially VULNERABLE"
+                ],
+            },
+        }
+        enriched = enrich_vulnerability_severity(vuln, asset_id="asset")
+        self.assertFalse(enriched["confirmed_exploitable"])
+        self.assertIn("potential_false_positives", enriched)
+        self.assertLess(enriched["confidence_score"], 0.7)
+
     def test_enrich_vulnerability_severity_verified_boost(self):
         vuln = {"verified": True}
         enriched = enrich_vulnerability_severity(vuln, asset_id="asset")

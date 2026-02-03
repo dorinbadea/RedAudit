@@ -10,6 +10,22 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.31] - 2026-02-03
+
+### Added
+
+- **Installer OUI Seed**: The installer now provisions a local Wireshark OUI database at `~/.redaudit/manuf`.
+
+### Improved
+
+- **OUI Overrides**: Custom OUI paths are supported via config and environment variables, with auto-discovery under `~/.redaudit/`.
+- **Device-Aware Playbooks**: Remediation now prioritizes device type and hints over vendor name alone.
+
+### Fixed
+
+- **Experimental TestSSL**: Findings marked as experimental are no longer treated as confirmed exploitable and are flagged as possible false positives.
+- **HTML Transparency**: Reports display possible false positives alongside technical observations.
+
 ## [4.19.30] - 2026-02-02
 
 ### Fixed

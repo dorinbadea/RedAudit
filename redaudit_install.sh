@@ -105,6 +105,9 @@ if [[ "$LANG_OPT" == "2" ]]; then
     MSG_INSTALL_ENUM4LINUX_FAIL="[WARN] Falló la instalación de enum4linux-ng."
     MSG_INSTALL_SNAPD="[INFO] Instalando snapd para habilitar paquetes snap..."
     MSG_INSTALL_SNAPD_FAIL="[WARN] No se pudo instalar snapd. Continuando sin snap."
+    MSG_OUI_INSTALL="[INFO] Instalando base OUI local (Wireshark) en ~/.redaudit/manuf..."
+    MSG_OUI_SKIP="[INFO] Base OUI ya existe, no se sobrescribe."
+    MSG_OUI_FAIL="[WARN] No se pudo instalar la base OUI local."
 else
     LANG_CODE="en"
     MSG_INSTALL="[INFO] Installing/updating RedAudit v${REDAUDIT_VERSION}..."
@@ -131,9 +134,13 @@ else
     MSG_INSTALL_ENUM4LINUX_FAIL="[WARN] Failed to install enum4linux-ng."
     MSG_INSTALL_SNAPD="[INFO] Installing snapd to enable snap packages..."
     MSG_INSTALL_SNAPD_FAIL="[WARN] Could not install snapd. Continuing without snap."
+    MSG_OUI_INSTALL="[INFO] Installing local OUI database (Wireshark) to ~/.redaudit/manuf..."
+    MSG_OUI_SKIP="[INFO] OUI database already exists, keeping current file."
+    MSG_OUI_FAIL="[WARN] Could not install local OUI database."
 fi
 
 echo "$MSG_INSTALL"
+install_oui_db
 
 # -------------------------------------------
 # 2) Dependencies
@@ -205,6 +212,36 @@ enable_ubuntu_repos() {
     else
         echo "$MSG_ENABLE_UNIVERSE_FAIL"
     fi
+}
+
+install_oui_db() {
+    local src="$SCRIPT_DIR/redaudit/data/manuf"
+    local dst_dir="$REAL_HOME/.redaudit"
+    local dst="$dst_dir/manuf"
+    local group_name
+    group_name=$(id -gn "$REAL_USER" 2>/dev/null || echo "$REAL_USER")
+
+    if [[ ! -f "$src" ]]; then
+        echo "$MSG_OUI_FAIL"
+        return 0
+    fi
+
+    mkdir -p "$dst_dir" 2>/dev/null || true
+
+    if [[ -s "$dst" ]]; then
+        echo "$MSG_OUI_SKIP"
+        return 0
+    fi
+
+    echo "$MSG_OUI_INSTALL"
+    if install -m 0644 "$src" "$dst" >/dev/null 2>&1; then
+        chown "$REAL_USER:$group_name" "$dst_dir" "$dst" >/dev/null 2>&1 || true
+        chmod 700 "$dst_dir" >/dev/null 2>&1 || true
+        return 0
+    fi
+
+    echo "$MSG_OUI_FAIL"
+    return 0
 }
 
 python_module_available() {

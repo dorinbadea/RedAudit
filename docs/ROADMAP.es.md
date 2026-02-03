@@ -62,6 +62,14 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 |---|---|---|
 | **Playbooks persistentes** | Hecho (v4.19.29) | Los playbooks se guardan en JSON y se regeneran para HTML si faltan. |
 
+### v4.19.31 Instalador con OUI + señales de confianza (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **OUI en el instalador** | Hecho (v4.19.31) | El instalador deja una base OUI de Wireshark en `~/.redaudit/manuf`. |
+| **TestSSL experimental** | Hecho (v4.19.31) | Las señales experimentales ya no se tratan como explotables confirmados. |
+| **Notas de falsos positivos en HTML** | Hecho (v4.19.31) | Los informes muestran posibles falsos positivos junto a las observaciones. |
+
 ### v4.19.30 Targets de cobertura total Nuclei (Hecho)
 
 | Funcionalidad | Estado | Descripción |
