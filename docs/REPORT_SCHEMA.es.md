@@ -118,6 +118,7 @@ Resumen compacto para dashboards y automatización (se genera solo cuando el cif
 | `pipeline` | `object` | Resumen del pipeline (mismo formato que el informe principal) |
 | `smart_scan_summary` | `object` | Resumen de SmartScan |
 | `redaudit_version` | `string` | Versión de RedAudit |
+| `auth_scan` | `object` | (Opcional) Resumen del escaneo autenticado (targets, éxitos, fallos) |
 
 ### Objeto Verificación sin agente (Opcional) (v3.8+)
 
@@ -271,6 +272,18 @@ Exportación plana, un hallazgo por línea para SIEM.
 | `descriptive_title` | string | Título enriquecido derivado de observaciones (best-effort) |
 | `severity` | string | Severidad (critical/high/medium/low/info) |
 | `source` | string | Herramienta principal (nikto/testssl/nuclei/etc.) |
+
+### assets.jsonl (Campos seleccionados)
+
+Exportación plana, un activo por línea, para inventario.
+
+| Campo | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `ip` | string | IP del activo |
+| `hostname` | string | Hostname (best-effort) |
+| `status` | string | Estado del host (up/filtered/down) |
+| `risk_score` | number | Riesgo (0-100) |
+| `open_ports` | array | (Opcional) Lista de puertos abiertos (`port`, `protocol`, `service`) |
 
 ### Objeto de Evidencia de Vulnerabilidad (v4.18.9+)
 

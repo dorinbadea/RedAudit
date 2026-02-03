@@ -10,6 +10,14 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.34] - 2026-02-03
+
+### Improved
+
+- **Risk Breakdown**: Separate evidence-backed risk from heuristic signals to keep scores traceable and precise.
+- **Auth Summary**: Authenticated scan failures are now surfaced in HTML and summary exports.
+- **Asset JSONL**: `assets.jsonl` includes `open_ports` for downstream inventory use.
+
 ## [4.19.33] - 2026-02-03
 
 ### Fixed

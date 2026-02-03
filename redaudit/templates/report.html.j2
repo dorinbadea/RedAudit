@@ -225,6 +225,7 @@
                         <li>Completed <span>{{ auth_scan.completed or 0 }}</span></li>
                         <li>SSH Success <span>{{ auth_scan.ssh_success or 0 }}</span></li>
                         <li>Lynis Success <span>{{ auth_scan.lynis_success or 0 }}</span></li>
+                        <li>Failures <span>{{ auth_scan.failures or 0 }}</span></li>
                         {% if auth_scan.errors %}
                         <li>Errors <span>{{ auth_scan.errors|join('; ') }}</span></li>
                         {% endif %}
@@ -428,12 +429,15 @@
                         <td>{{ host.ports_count }}</td>
                         <td>
                             {% set bd = host.risk_score_breakdown %}
+                            {% set evidence = bd.evidence_vulns|default(bd.total_vulns|default(0)) %}
+                            {% set heuristics = bd.heuristic_flags|join(', ') if bd.heuristic_flags else '-' %}
+                            {% set source = bd.max_cvss_source|default('none') %}
                             {% if host.risk_score >= 70 %}
-                            <span class="risk-high risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }}">{{ host.risk_score }}</span>
+                            <span class="risk-high risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
                             {% elif host.risk_score >= 40 %}
-                            <span class="risk-medium risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }}">{{ host.risk_score }}</span>
+                            <span class="risk-medium risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
                             {% else %}
-                            <span class="risk-low risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }}">{{ host.risk_score }}</span>
+                            <span class="risk-low risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
                             {% endif %}
                         </td>
                         <td>

@@ -49,6 +49,14 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.34 Trazabilidad del desglose de riesgo (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Desglose de riesgo** | Hecho (v4.19.34) | Los tooltips separan señales con evidencia y heurística, con origen del CVSS máximo. |
+| **Fallos de autenticación** | Hecho (v4.19.34) | Los fallos del escaneo autenticado aparecen en HTML y en los resúmenes. |
+| **Puertos abiertos en activos** | Hecho (v4.19.34) | `assets.jsonl` incluye puertos abiertos para inventario. |
+
 ### v4.19.27 Aviso Nuclei + Cancelación de reanudación (Hecho)
 
 | Funcionalidad | Estado | Descripción |

@@ -335,6 +335,7 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
         "completed": auth_scan.get("completed") or 0,
         "ssh_success": auth_scan.get("ssh_success") or 0,
         "lynis_success": auth_scan.get("lynis_success") or 0,
+        "failures": len(auth_errors),
         "errors": auth_errors,
     }
 

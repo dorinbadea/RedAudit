@@ -600,9 +600,9 @@ def calculate_risk_score(host_record: Dict) -> int:
         cves = port.get("cves", [])
         for cve in cves:
             cvss = cve.get("cvss_score")
-            if cvss and isinstance(cvss, (int, float)) and cvss > max_cvss:
-                max_cvss = float(cvss)
-            total_vulns += 1
+            if cvss and isinstance(cvss, (int, float)):
+                max_cvss = max(max_cvss, float(cvss))
+                total_vulns += 1
 
         # Count known exploits
         exploits = port.get("known_exploits", [])
@@ -616,11 +616,9 @@ def calculate_risk_score(host_record: Dict) -> int:
         if service in ("telnet", "rlogin", "rsh"):
             # Plaintext remote access = critical (9.0)
             max_cvss = max(max_cvss, 9.0)
-            total_vulns += 1
         elif service == "ftp":
             # FTP = high risk (7.5)
             max_cvss = max(max_cvss, 7.5)
-            total_vulns += 1
         elif "ssl" in service and port_number not in (443, 8443):
             # SSL on non-standard port = medium concern
             max_cvss = max(max_cvss, 5.0)
@@ -720,10 +718,13 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
     Returns:
         Dict with 'score' and 'breakdown' containing:
         - max_cvss: Maximum CVSS score found
+        - max_cvss_source: "evidence" or "heuristic" based on the max score source
         - base_score: Base score (max_cvss * 10)
         - density_bonus: Logarithmic density bonus
         - exposure_multiplier: 1.0 or 1.15
         - total_vulns: Count of vulnerabilities
+        - evidence_vulns: Count of evidence-backed vulnerabilities
+        - heuristic_flags: List of heuristic risk signals (telnet/ftp/etc.)
         - has_exposed_port: Boolean for external-facing ports
     """
     import math
@@ -734,17 +735,28 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
             "score": 0,
             "breakdown": {
                 "max_cvss": 0.0,
+                "max_cvss_source": "none",
                 "base_score": 0.0,
                 "density_bonus": 0.0,
                 "exposure_multiplier": 1.0,
                 "total_vulns": 0,
+                "evidence_vulns": 0,
+                "heuristic_flags": [],
                 "has_exposed_port": False,
             },
         }
 
     max_cvss = 0.0
-    total_vulns = 0
+    max_cvss_source = "none"
+    evidence_vulns = 0
     has_exposed_port = False
+    heuristic_flags = set()
+
+    def _set_max(score: float, source: str) -> None:
+        nonlocal max_cvss, max_cvss_source
+        if score > max_cvss:
+            max_cvss = score
+            max_cvss_source = source
 
     exposed_ports = {
         21,
@@ -775,24 +787,25 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
         cves = port.get("cves", [])
         for cve in cves:
             cvss = cve.get("cvss_score")
-            if cvss and isinstance(cvss, (int, float)) and cvss > max_cvss:
-                max_cvss = float(cvss)
-            total_vulns += 1
+            if cvss and isinstance(cvss, (int, float)):
+                _set_max(float(cvss), "evidence")
+                evidence_vulns += 1
 
         exploits = port.get("known_exploits", [])
         if exploits:
-            max_cvss = max(max_cvss, 8.0)
-            total_vulns += len(exploits)
+            _set_max(8.0, "evidence")
+            evidence_vulns += len(exploits)
 
         service = (port.get("service") or "").lower()
         if service in ("telnet", "rlogin", "rsh"):
-            max_cvss = max(max_cvss, 9.0)
-            total_vulns += 1
+            heuristic_flags.add(service)
+            _set_max(9.0, "heuristic")
         elif service == "ftp":
-            max_cvss = max(max_cvss, 7.5)
-            total_vulns += 1
+            heuristic_flags.add("ftp")
+            _set_max(7.5, "heuristic")
         elif "ssl" in service and port_number not in (443, 8443):
-            max_cvss = max(max_cvss, 5.0)
+            heuristic_flags.add("nonstandard_ssl")
+            _set_max(5.0, "heuristic")
 
     # v4.3.1: Include vulnerabilities from Nikto/Nuclei finding dumps (Fix M3)
     # Ensure findings logic matches calculate_risk_score()
@@ -815,15 +828,15 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
             score = float(norm)
 
         if score > 0:
-            max_cvss = max(max_cvss, score)
+            _set_max(score, "evidence")
             # Only count as 'vuln' for density if it adds risk (Med+)
             if score >= 4.0:
-                total_vulns += 1
+                evidence_vulns += 1
 
     base_score = max_cvss * 10
     density_bonus = 0.0
-    if total_vulns > 0:
-        density_bonus = min(20.0, math.log10(total_vulns + 1) * 15)
+    if evidence_vulns > 0:
+        density_bonus = min(20.0, math.log10(evidence_vulns + 1) * 15)
 
     exposure_multiplier = 1.15 if has_exposed_port else 1.0
     final_score = (base_score + density_bonus) * exposure_multiplier
@@ -833,10 +846,13 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
         "score": capped_score,
         "breakdown": {
             "max_cvss": round(max_cvss, 1),
+            "max_cvss_source": max_cvss_source,
             "base_score": round(base_score, 1),
             "density_bonus": round(density_bonus, 1),
             "exposure_multiplier": exposure_multiplier,
-            "total_vulns": total_vulns,
+            "total_vulns": evidence_vulns,
+            "evidence_vulns": evidence_vulns,
+            "heuristic_flags": sorted(heuristic_flags),
             "has_exposed_port": has_exposed_port,
         },
     }

@@ -168,6 +168,18 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
                 "scanner_version": redaudit_version,
             }
 
+            ports = host.get("ports", []) or []
+            if ports:
+                asset["open_ports"] = [
+                    {
+                        "port": p.get("port"),
+                        "protocol": p.get("protocol") or "tcp",
+                        "service": p.get("service") or "",
+                    }
+                    for p in ports
+                    if p.get("port")
+                ]
+
             # Add MAC if available
             ecs_host = host.get("ecs_host", {})
             if ecs_host.get("mac"):
@@ -262,6 +274,9 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
     }
     options = {k: v for k, v in options.items() if v is not None}
 
+    auth_scan = results.get("auth_scan", {}) or {}
+    auth_errors = auth_scan.get("errors") or []
+
     summary = {
         "schema_version": results.get("schema_version", "3.1"),
         "generated_at": results.get("generated_at", datetime.now().isoformat()),
@@ -286,6 +301,16 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "redaudit_version": results.get("version")
         or (results.get("scanner_versions", {}) or {}).get("redaudit", ""),
     }
+    if auth_scan:
+        summary["auth_scan"] = {
+            "enabled": bool(auth_scan.get("enabled")),
+            "targets": auth_scan.get("targets") or 0,
+            "completed": auth_scan.get("completed") or 0,
+            "ssh_success": auth_scan.get("ssh_success") or 0,
+            "lynis_success": auth_scan.get("lynis_success") or 0,
+            "failures": len(auth_errors),
+            "errors": auth_errors,
+        }
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)

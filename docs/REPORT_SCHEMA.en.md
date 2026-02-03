@@ -118,6 +118,7 @@ Compact, flattened summary for dashboards and automation (generated only when re
 | `pipeline` | `object` | Pipeline summary (same structure as main report) |
 | `smart_scan_summary` | `object` | SmartScan summary |
 | `redaudit_version` | `string` | RedAudit version |
+| `auth_scan` | `object` | (Optional) Authenticated scan summary (targets, successes, failures) |
 
 ### Agentless Verification Object (Optional) (v3.8.5+)
 
@@ -277,6 +278,18 @@ Flat, one-finding-per-line export for SIEM ingestion.
 | `descriptive_title` | string | Enriched title derived from observations (best-effort) |
 | `severity` | string | Severity label (critical/high/medium/low/info) |
 | `source` | string | Primary source tool (nikto/testssl/nuclei/etc.) |
+
+### assets.jsonl (Selected Fields)
+
+Flat, one-asset-per-line export for inventory pipelines.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `ip` | string | Asset IP address |
+| `hostname` | string | Best-effort hostname |
+| `status` | string | Host status (up/filtered/down) |
+| `risk_score` | number | Risk score (0-100) |
+| `open_ports` | array | (Optional) List of open ports (`port`, `protocol`, `service`) |
 
 ### Vulnerability Evidence Object (v4.18.9+)
 

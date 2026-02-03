@@ -10,6 +10,14 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.34] - 2026-02-03
+
+### Mejorado
+
+- **Desglose de riesgo**: separa la evidencia real de las señales heurísticas para mantener la trazabilidad y la precisión.
+- **Resumen autenticado**: los fallos del escaneo autenticado ahora aparecen en HTML y en los resúmenes exportados.
+- **JSONL de activos**: `assets.jsonl` incluye `open_ports` para inventario posterior.
+
 ## [4.19.33] - 2026-02-03
 
 ### Corregido
