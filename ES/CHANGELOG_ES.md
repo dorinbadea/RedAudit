@@ -10,6 +10,22 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.31] - 2026-02-03
+
+### Added
+
+- **OUI en el instalador**: El instalador deja la base OUI de Wireshark en `~/.redaudit/manuf`.
+
+### Improved
+
+- **Overrides OUI**: Soporte de rutas personalizadas via config y variables de entorno, con auto-descubrimiento en `~/.redaudit/`.
+- **Playbooks por tipo de dispositivo**: La remediacion prioriza el tipo y las pistas del dispositivo frente al vendor.
+
+### Corregido
+
+- **TestSSL experimental**: Los hallazgos marcados como experimentales ya no se tratan como explotables confirmados y se marcan como posibles falsos positivos.
+- **Transparencia en HTML**: Los informes muestran posibles falsos positivos junto a las observaciones tecnicas.
+
 ## [4.19.30] - 2026-02-02
 
 ### Corregido

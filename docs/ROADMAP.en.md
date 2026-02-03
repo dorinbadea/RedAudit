@@ -62,6 +62,14 @@ These items are ordered chronologically (most recent first).
 | --- | --- | --- |
 | **Playbook Persistence** | Done (v4.19.29) | Playbooks are stored in JSON reports and regenerated for HTML when missing. |
 
+### v4.19.31 OUI Seeded Installer + Trust Signals (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Installer OUI Seed** | Done (v4.19.31) | Installer provisions a local Wireshark OUI database under `~/.redaudit/manuf`. |
+| **Experimental TestSSL Handling** | Done (v4.19.31) | Experimental signals are no longer treated as confirmed exploitable. |
+| **HTML False Positive Notes** | Done (v4.19.31) | Reports surface possible false positives alongside observations. |
+
 ### v4.19.30 Nuclei Full Coverage Targets (Done)
 
 | Feature | Status | Description |
