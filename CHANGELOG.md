@@ -10,6 +10,21 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.35] - 2026-02-04
+
+### Added
+
+- **Resume Menu Detail**: Nuclei resume entries now show how many times a run has been resumed.
+- **Nuclei Profile Metadata**: Reports now capture both selected and effective Nuclei profiles and whether auto-switching occurred.
+
+### Improved
+
+- **Docs Clarity**: Nuclei auto-switch behavior and profile reporting are documented across README/USAGE and report schema.
+
+### Fixed
+
+- **ES Wording**: Spanish documentation updated to align with ES-ES terminology and accents.
+
 ## [4.19.34] - 2026-02-03
 
 ### Improved
