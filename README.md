@@ -304,7 +304,7 @@ bash redaudit_verify.sh   # Full integrity check
 
 RedAudit includes **automatic update detection**. When launched with `sudo redaudit`, it checks for new versions and prompts:
 
-```
+```text
 Check for updates? [y/N]:
 ```
 
