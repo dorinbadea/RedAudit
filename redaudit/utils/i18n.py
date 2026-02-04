@@ -409,7 +409,8 @@ TRANSLATIONS = {
         "nuclei_fast": "Fast - Critical CVEs (~30-60min)",
         # v4.17: Full coverage option (v4.18: shortened to prevent truncation)
         "nuclei_full_coverage_q": (
-            "Scan ALL detected HTTP ports? (beyond 80/443; increases targets)"
+            "Scan ALL detected HTTP ports? (Yes = full coverage; No = optimized to priority "
+            "ports, except ambiguous hosts)"
         ),
         "nuclei_budget_q": "Max Nuclei runtime in minutes (0 = unlimited)",
         "nuclei_resume_saved": "Nuclei resume saved: {}",
@@ -937,10 +938,11 @@ TRANSLATIONS = {
         "nuclei_profile_q": "Perfil de escaneo Nuclei:",
         "nuclei_full": "Completo - Todos los templates (~2h)",
         "nuclei_balanced": "Equilibrado - Templates esenciales (~1h, recomendado)",
-        "nuclei_fast": "Rapido - CVEs criticos (~30-60min)",
+        "nuclei_fast": "Rápido - CVEs críticos (~30-60min)",
         # v4.17: Opcion de cobertura completa (v4.18: abreviado)
         "nuclei_full_coverage_q": (
-            "Escanear TODOS los puertos HTTP detectados? (además de 80/443; más objetivos)"
+            "¿Escanear TODOS los puertos HTTP detectados? (Sí = cobertura total; No = optimiza "
+            "puertos prioritarios, salvo hosts ambiguos)"
         ),
         "nuclei_budget_q": "Tiempo maximo de Nuclei en minutos (0 = ilimitado)",
         "nuclei_resume_saved": "Reanudacion Nuclei guardada: {}",
@@ -1004,7 +1006,7 @@ TRANSLATIONS = {
         "hyperscan_auto": "Auto — Detectar mejor método (SYN si root, sino connect)",
         "hyperscan_connect": "Connect — TCP estándar (no requiere root, más sigiloso)",
         "hyperscan_syn": "SYN — Paquetes raw (requiere root + scapy, más rápido)",
-        "trust_hyperscan_q": "Omitir deep scan en hosts identificados? (mas rapido)",
+        "trust_hyperscan_q": "Omitir deep scan en hosts identificados? (más rápido)",
         # v4.0: Authenticated Scanning
         "auth_scan_q": "¿Activar escaneo autenticado?",
         "auth_ssh_user_prompt": "Usuario SSH",

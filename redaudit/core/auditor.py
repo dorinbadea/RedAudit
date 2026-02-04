@@ -970,7 +970,8 @@ class InteractiveNetworkAuditor:
 
                         # v4.15: Auto-detect multi-port hosts and switch to 'fast' profile
                         # Hosts with 3+ HTTP ports cause timeout issues with full template set
-                        nuclei_profile = self.config.get("nuclei_profile", "balanced")
+                        selected_profile = self.config.get("nuclei_profile", "balanced")
+                        nuclei_profile = selected_profile
                         selected_by_host = selection.get("selected_by_host") or {}
                         host_port_count: Dict[str, int] = {}
                         for host, urls in selected_by_host.items():
@@ -980,12 +981,14 @@ class InteractiveNetworkAuditor:
                                 host_port_count[str(host)] = 0
 
                         multi_port_hosts = [h for h, c in host_port_count.items() if c >= 3]
+                        auto_switched = False
                         if (
                             multi_port_hosts
                             and nuclei_profile != "fast"
                             and not nuclei_full_coverage
                         ):
                             nuclei_profile = "fast"
+                            auto_switched = True
                             if self.logger:
                                 self.logger.info(
                                     "Auto-switching to 'fast' Nuclei profile: %d hosts with 3+ HTTP ports",
@@ -1213,6 +1216,9 @@ class InteractiveNetworkAuditor:
                         nuclei_summary = {
                             "enabled": True,
                             "profile": nuclei_profile,
+                            "profile_selected": selected_profile,
+                            "profile_effective": nuclei_profile,
+                            "auto_switched": bool(auto_switched),
                             "full_coverage": bool(nuclei_full_coverage),
                             "targets": len(nuclei_targets),
                             "targets_total": targets_total,
@@ -1254,6 +1260,9 @@ class InteractiveNetworkAuditor:
                                 )
                             except Exception:
                                 nuclei_summary["output_file"] = raw_file
+                        if auto_switched:
+                            nuclei_summary["auto_switch_reason"] = "multi_port_hosts"
+                            nuclei_summary["auto_switch_hosts"] = len(multi_port_hosts)
                         self.results["nuclei"] = nuclei_summary
 
                         merged = self._merge_nuclei_findings(findings)
@@ -1296,6 +1305,8 @@ class InteractiveNetworkAuditor:
                                 pending_targets=pending_targets,
                                 total_targets=len(nuclei_targets),
                                 profile=nuclei_profile,
+                                profile_selected=selected_profile,
+                                profile_effective=nuclei_profile,
                                 full_coverage=bool(nuclei_full_coverage),
                                 severity=nuclei_severity,
                                 timeout_s=nuclei_timeout_s,
@@ -3342,6 +3353,8 @@ class InteractiveNetworkAuditor:
         pending_targets: List[str],
         total_targets: int,
         profile: str,
+        profile_selected: Optional[str] = None,
+        profile_effective: Optional[str] = None,
         full_coverage: bool,
         severity: str,
         timeout_s: int,
@@ -3364,6 +3377,10 @@ class InteractiveNetworkAuditor:
             "output_dir": os.path.abspath(output_dir),
             "pending_targets": pending_targets,
             "total_targets": int(total_targets),
+            "resume_count": 0,
+            "last_resume_at": None,
+            "profile_selected": profile_selected or profile,
+            "profile_effective": profile_effective or profile,
             "output_file": output_rel,
             "nuclei": {
                 "profile": profile,
@@ -3425,6 +3442,13 @@ class InteractiveNetworkAuditor:
             if not output_dir:
                 output_dir = os.path.dirname(resume_path)
                 data["output_dir"] = output_dir
+            if not isinstance(data.get("resume_count"), int):
+                try:
+                    data["resume_count"] = int(data.get("resume_count") or 0)
+                except Exception:
+                    data["resume_count"] = 0
+            if data.get("last_resume_at") is None:
+                data["last_resume_at"] = ""
             return data
         except Exception:
             if self.logger:
@@ -3448,14 +3472,23 @@ class InteractiveNetworkAuditor:
                     continue
                 pending = state.get("pending_targets") or []
                 created_at = state.get("created_at") or ""
+                resume_count = state.get("resume_count") or 0
+                try:
+                    resume_count = int(resume_count)
+                except Exception:
+                    resume_count = 0
+                label = f"{entry} ({len(pending)} targets)"
+                if resume_count > 0:
+                    label = f"{label} | resumes: {resume_count}"
                 candidates.append(
                     {
                         "path": resume_path,
-                        "label": f"{entry} ({len(pending)} targets)",
+                        "label": label,
                         "pending": len(pending),
                         "created_at": created_at,
                         "updated_at": state.get("updated_at") or "",
                         "output_dir": state.get("output_dir"),
+                        "resume_count": resume_count,
                     }
                 )
         except Exception:
@@ -3626,6 +3659,13 @@ class InteractiveNetworkAuditor:
                 self.config["target_networks"] = list(resume_targets)
         if not self.config.get("_actual_output_dir"):
             self.config["_actual_output_dir"] = output_dir
+        if isinstance(resume_state, dict):
+            try:
+                resume_state["resume_count"] = int(resume_state.get("resume_count") or 0) + 1
+            except Exception:
+                resume_state["resume_count"] = 1
+            resume_state["last_resume_at"] = datetime.now().isoformat()
+            self._write_nuclei_resume_state(output_dir, resume_state)
 
         inhibitor = None
         if self.config.get("prevent_sleep", True):
@@ -3639,6 +3679,13 @@ class InteractiveNetworkAuditor:
 
         nuclei_cfg = resume_state.get("nuclei") or {}
         profile = nuclei_cfg.get("profile") or "balanced"
+        selected_profile = (
+            resume_state.get("profile_selected") or self.config.get("nuclei_profile") or profile
+        )
+        effective_profile = resume_state.get("profile_effective") or profile
+        auto_switched = bool(resume_state.get("auto_switched")) or (
+            selected_profile != effective_profile
+        )
         severity = nuclei_cfg.get("severity") or "low,medium,high,critical"
         timeout_s = nuclei_cfg.get("timeout_s") or 300
         request_timeout_s = nuclei_cfg.get("request_timeout_s") or 10
@@ -3688,6 +3735,9 @@ class InteractiveNetworkAuditor:
             nuclei_cfg["max_runtime_minutes"] = int(max_runtime_minutes)
             nuclei_cfg["fatigue_limit"] = int(fatigue_limit)
             resume_state["nuclei"] = nuclei_cfg
+            resume_state["profile_selected"] = selected_profile
+            resume_state["profile_effective"] = effective_profile
+            resume_state["auto_switched"] = bool(auto_switched)
         max_runtime_s = max_runtime_minutes * 60 if max_runtime_minutes else None
 
         session_log_started = False
@@ -3849,6 +3899,10 @@ class InteractiveNetworkAuditor:
                 nuclei_summary["error"] = combined_error
             if resume_result.get("budget_exceeded"):
                 nuclei_summary["budget_exceeded"] = True
+            nuclei_summary["profile"] = effective_profile
+            nuclei_summary["profile_selected"] = selected_profile
+            nuclei_summary["profile_effective"] = effective_profile
+            nuclei_summary["auto_switched"] = bool(auto_switched)
             if base_output_path and isinstance(base_output_path, str):
                 try:
                     nuclei_summary["output_file"] = os.path.relpath(base_output_path, output_dir)
