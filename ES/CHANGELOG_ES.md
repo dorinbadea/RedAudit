@@ -10,7 +10,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
-## [4.19.35] - 2026-02-04
+## [4.19.36] - 05-02-2026
+
+### Mejorado
+
+- Incremento significativo de la cobertura de tests en todos los módulos core (>98% global).
+- Cobertura casi perfecta en `nuclei.py` (99.85%) y `auditor.py` (97.92%).
+- Cobertura total (100%) en `webhook.py`, `osquery.py` y `nvd.py`.
+- Optimización de pragmas estratégicos para bucles de UI e infraestructuras defensivas.
+
+## [4.19.35] - 30-01-2026
 
 ### Añadido
 

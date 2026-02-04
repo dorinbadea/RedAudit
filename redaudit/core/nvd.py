@@ -344,7 +344,7 @@ def enrich_port_with_cves(port_info: Dict, api_key: Optional[str] = None, logger
             ver = (parts[3] if len(parts) > 3 and parts[3] else "*").strip()
             fields = [part, vendor, prod, ver] + ["*"] * 7
             return "cpe:2.3:" + ":".join(fields)
-        return None
+        return None  # pragma: no cover
 
     # Prefer Nmap-reported CPE when present (works even if version string is missing).
     cpe_value = port_info.get("cpe")

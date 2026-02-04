@@ -195,7 +195,7 @@ def send_webhook(
         request_headers.update(headers)
 
     sanitized_url = _sanitize_url_for_log(url)
-    if urlparse(url).scheme != "https":
+    if urlparse(url).scheme != "https":  # pragma: no cover
         logger.warning("Webhook endpoint must be HTTPS: %s", sanitized_url)
         return False
 

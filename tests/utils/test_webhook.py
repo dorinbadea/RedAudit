@@ -260,3 +260,30 @@ def test_is_supported_webhook_url():
     assert webhook._is_supported_webhook_url("http://example.com") is False
     assert webhook._is_supported_webhook_url("ftp://example.com") is False
     assert webhook._is_supported_webhook_url("example.com") is False
+    assert webhook._is_supported_webhook_url("") is False
+    assert webhook._is_supported_webhook_url(None) is False
+    assert webhook._is_supported_webhook_url("https://") is False
+
+
+def test_sanitize_url_for_log_edge_cases():
+    assert webhook._sanitize_url_for_log("") == ""
+    assert webhook._sanitize_url_for_log(None) == ""
+    assert webhook._sanitize_url_for_log("not-a-url") == "not-a-url"
+
+
+def test_is_supported_webhook_url_exception(monkeypatch):
+    def mock_urlparse(_url):
+        raise Exception("fail")
+
+    monkeypatch.setattr(webhook, "urlparse", mock_urlparse)
+    assert webhook._is_supported_webhook_url("https://example.com") is False
+
+
+def test_sanitize_url_for_log_exception(monkeypatch):
+    def mock_urlparse(_url):
+        raise Exception("fail")
+
+    monkeypatch.setattr(webhook, "urlparse", mock_urlparse)
+    assert (
+        webhook._sanitize_url_for_log("https://example.com/path?q=1") == "https://example.com/path"
+    )

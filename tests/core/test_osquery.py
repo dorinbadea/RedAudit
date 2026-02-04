@@ -111,3 +111,32 @@ def test_run_remote_query_exceptions():
     # Generic Exception
     with patch("redaudit.core.osquery.subprocess.run", side_effect=Exception("boom")):
         assert osquery.run_remote_query("host", "query") is None
+
+
+def test_run_remote_query_with_key():
+    """Test run_remote_query with SSH key argument."""
+    result = SimpleNamespace(returncode=0, stdout="[]", stderr="")
+    with patch("redaudit.core.osquery.subprocess.run", return_value=result) as mock_run:
+        osquery.run_remote_query("10.0.0.1", "select 1", ssh_key="/path/to/key")
+        args = mock_run.call_args[0][0]
+        assert "-i" in args
+        assert "/path/to/key" in args
+
+
+def test_verify_host_default_queries():
+    """Test verify_host with default (None) queries."""
+    with patch("redaudit.core.osquery.run_remote_query", return_value=[]):
+        result = osquery.verify_host("10.0.0.1", queries=None)
+        assert len(result["queries"]) == len(osquery.VERIFICATION_QUERIES)
+
+
+def test_generate_verification_report_success_count():
+    """Test generate_verification_report increments verified_hosts correctly."""
+    with patch("redaudit.core.osquery.verify_host") as mock_verify:
+        mock_verify.side_effect = [
+            {"verified": True, "host": "10.0.0.1"},
+            {"verified": False, "host": "10.0.0.2"},
+        ]
+        report = osquery.generate_verification_report(["10.0.0.1", "10.0.0.2"])
+        assert report["verified_hosts"] == 1
+        assert report["failed_hosts"] == 1

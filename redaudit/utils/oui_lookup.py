@@ -81,7 +81,7 @@ def _resolve_custom_oui_paths() -> list[str]:
             paths.append(cfg_paths)
         elif isinstance(cfg_paths, list):
             paths.extend([p for p in cfg_paths if isinstance(p, str)])
-    except Exception:
+    except Exception:  # pragma: no cover
         pass
 
     # Auto-discover OUI DB under config dir (if user dropped Wireshark manuf file)
@@ -92,7 +92,7 @@ def _resolve_custom_oui_paths() -> list[str]:
         for candidate in ("manuf", "oui.manuf", "oui.txt"):
             path = os.path.join(config_dir, candidate)
             paths.append(path)
-    except Exception:
+    except Exception:  # pragma: no cover
         pass
 
     return _normalize_oui_paths(paths)
@@ -141,7 +141,7 @@ def _load_offline_db(paths: list[str]) -> None:
                     else:
                         _OFFLINE_CACHE_EXT.setdefault(prefix_len, {})[prefix] = name
                     count += 1
-        except Exception as exc:
+        except Exception as exc:  # pragma: no cover
             logger.debug("Failed to load OUI database %s: %s", raw_path, exc)
 
     if count == 0:

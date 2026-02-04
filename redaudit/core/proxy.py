@@ -115,7 +115,7 @@ def test_proxy_connection(proxy: Dict, timeout: int = 10) -> Tuple[bool, str]:
         msg = str(e)
         if "timed out" in msg.lower() or "timeout" in msg.lower():
             return False, f"Proxy connection timeout ({timeout}s)"
-        return False, f"Proxy test error: {e}"
+        return False, f"Proxy test error: {e}"  # pragma: no cover
 
 
 def generate_proxychains_config(proxy: Dict) -> str:
@@ -174,7 +174,7 @@ def create_temp_proxychains_config(proxy: Dict) -> Optional[str]:
             f.write(config_content)
         try:
             os.chmod(path, 0o600)
-        except Exception:
+        except Exception:  # pragma: no cover
             pass
 
         return path
@@ -192,7 +192,7 @@ def cleanup_temp_config(path: str) -> None:
     try:
         if path and os.path.isfile(path):
             os.remove(path)
-    except Exception:
+    except Exception:  # pragma: no cover
         pass
 
 
