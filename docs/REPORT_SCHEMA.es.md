@@ -112,7 +112,7 @@ Resumen compacto para dashboards y automatización (se genera solo cuando el cif
 | `high_risk_assets` | `integer` | Activos por encima del umbral de alto riesgo |
 | `targets` | `array` | Redes objetivo escaneadas |
 | `scanner_versions` | `object` | Versiones de herramientas detectadas |
-| `scan_mode` | `string` | Modo de escaneo (rapido/normal/completo) |
+| `scan_mode` | `string` | Modo de escaneo (rápido/normal/completo) |
 | `scan_mode_cli` | `string` | Modo CLI (best-effort) |
 | `options` | `object` | Snapshot compacto de config (threads/udp/topología/net-discovery/nuclei/etc.) |
 | `pipeline` | `object` | Resumen del pipeline (mismo formato que el informe principal) |
@@ -245,6 +245,9 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `findings_total` | integer | Hallazgos brutos antes de filtrado |
 | `findings_suspected` | integer | Sospechas de falsos positivos |
 | `profile` | string | Perfil de Nuclei (fast/balanced/full) |
+| `profile_selected` | string | Perfil seleccionado por el usuario (fast/balanced/full) |
+| `profile_effective` | string | Perfil efectivo tras el auto-switch (fast/balanced/full) |
+| `auto_switched` | boolean | Indica si RedAudit cambió el perfil automáticamente |
 | `full_coverage` | boolean | Cobertura completa habilitada (todos los puertos HTTP) |
 | `partial` | boolean | Ejecucion parcial (timeouts o presupuesto) |
 | `timeout_batches` | array | Indices de lotes con timeout |

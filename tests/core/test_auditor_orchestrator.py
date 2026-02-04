@@ -966,6 +966,7 @@ def test_nuclei_resume_state_roundtrip():
         loaded = auditor._load_nuclei_resume_state(resume_path)
         assert loaded and loaded.get("pending_targets") == ["http://127.0.0.1:80"]
         assert loaded and loaded.get("nuclei", {}).get("fatigue_limit") == 4
+        assert loaded and loaded.get("resume_count") == 0
         auditor._clear_nuclei_resume_state(resume_path, tmpdir)
         assert not os.path.exists(resume_path)
 
@@ -1017,10 +1018,14 @@ def test_find_nuclei_resume_candidates():
             max_runtime_minutes=0,
             output_file=os.path.join(scan_dir, "nuclei_output.json"),
         )
+        state["resume_count"] = 2
+        state["last_resume_at"] = "2026-01-01T00:00:00"
         auditor._write_nuclei_resume_state(scan_dir, state)
         candidates = auditor._find_nuclei_resume_candidates(tmpdir)
         assert len(candidates) == 1
         assert candidates[0]["pending"] == 1
+        assert "resumes: 2" in candidates[0]["label"]
+        assert candidates[0]["resume_count"] == 2
 
 
 def test_find_latest_report_json_none():
@@ -1585,6 +1590,8 @@ def test_resume_nuclei_from_state_keeps_pending(resume_session_log_stub):
         assert auditor.results["nuclei"].get("timeout_batches") == [1]
         assert auditor.results["nuclei"].get("success") is False
         assert os.path.exists(resume_path)
+        loaded = auditor._load_nuclei_resume_state(resume_path)
+        assert loaded and loaded.get("resume_count") == 1
 
 
 def test_resume_nuclei_from_state_tracks_partial_without_pending(resume_session_log_stub):

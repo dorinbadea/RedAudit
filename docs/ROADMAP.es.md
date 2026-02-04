@@ -49,6 +49,14 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.35 Reanudación y transparencia de perfiles Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Etiqueta de reanudación** | Hecho (v4.19.35) | Las reanudaciones de Nuclei muestran cuántas veces se ha reanudado una ejecución. |
+| **Perfil seleccionado vs efectivo** | Hecho (v4.19.35) | Los informes registran el perfil seleccionado, el perfil efectivo y el cambio automático. |
+| **Documentación de auto-switch** | Hecho (v4.19.35) | README/USAGE y el schema documentan el auto-switch. |
+
 ### v4.19.34 Trazabilidad del desglose de riesgo (Hecho)
 
 | Funcionalidad | Estado | Descripción |

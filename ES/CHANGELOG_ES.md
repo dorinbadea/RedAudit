@@ -10,6 +10,21 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.35] - 2026-02-04
+
+### Añadido
+
+- **Detalle en menú de reanudación**: Las reanudaciones de Nuclei muestran cuántas veces se ha reanudado una ejecución.
+- **Metadatos de perfil Nuclei**: Los informes registran el perfil seleccionado y el perfil efectivo, junto con el cambio automático.
+
+### Mejorado
+
+- **Claridad en documentación**: Se documenta el auto-switch de Nuclei y el reporte de perfiles en README/USAGE y el schema de informes.
+
+### Corregido
+
+- **Redacción ES-ES**: Ajustes de terminología y acentos en la documentación en español.
+
 ## [4.19.34] - 2026-02-03
 
 ### Mejorado

@@ -251,6 +251,9 @@ Compact roll-up for dashboards.
 | `findings_total` | integer | Raw findings before filtering |
 | `findings_suspected` | integer | Suspected false positives |
 | `profile` | string | Nuclei profile (fast/balanced/full) |
+| `profile_selected` | string | Profile selected by the user (fast/balanced/full) |
+| `profile_effective` | string | Effective profile after auto-switch (fast/balanced/full) |
+| `auto_switched` | boolean | Whether RedAudit auto-switched the profile |
 | `full_coverage` | boolean | Full coverage enabled (all HTTP ports) |
 | `partial` | boolean | Partial run (timeouts or budget) |
 | `timeout_batches` | array | Batch indexes that timed out |

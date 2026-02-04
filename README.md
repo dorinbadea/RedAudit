@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-[![Version](https://img.shields.io/badge/version-4.19.34-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.19.35-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -41,7 +41,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 2. **Adaptive Deep Scan**: Targeted enumeration based on host identity.
 3. **Entity Resolution**: Identity-Based consolidation of multi-interface devices (heuristic).
 4. **Smart Filtering**: Reducing noise via context-aware verification.
-5. **Nuclei Targeting**: Identity-aware target selection with exception-based retries to avoid redundant web scans.
+5. **Nuclei Targeting**: Identity-aware target selection with exception-based retries to avoid redundant web scans. Auto-switches to the **fast** profile on web-dense hosts when full coverage is off to prevent long timeouts.
 6. **Resilience**: Automatic **Dead Host Retries** to abandon unresponsive hosts and prevent scan stalls.
 
 ![System Overview](docs/images/system_overview_v4_en.png)

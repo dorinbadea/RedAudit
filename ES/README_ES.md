@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-[![Version](https://img.shields.io/badge/version-4.19.34-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.19.35-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -37,7 +37,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 2. **Deep Scan Adaptativo**: Enumeración dirigida basada en la identidad del host.
 3. **Resolución de Entidad**: Consolidación basada en identidad de dispositivos multi-interfaz (heurística).
 4. **Filtrado Inteligente**: Reducción de ruido vía verificación consciente del contexto.
-5. **Selección de Nuclei**: Selección de objetivos basada en identidad con reintentos por excepción para evitar redundancia.
+5. **Selección de Nuclei**: Selección de objetivos basada en identidad con reintentos por excepción para evitar redundancia. Cambia automáticamente al perfil **rápido** en hosts con alta densidad web cuando la cobertura completa está desactivada para evitar timeouts largos.
 6. **Resiliencia**: **Reintentos de Host Muerto** automáticos para abandonar hosts que no responden y evitar bloqueos.
 
 ![Vista General del Sistema](../docs/images/system_overview_v4_es.png)
@@ -64,8 +64,8 @@ RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa
                               ▼
 
 ┌─────────────────────────────────────────────────────────────┐
-│          FASE 1: Perfil Nmap segun el modo de escaneo       │
-│            rapido/normal/completo definen el scan base      │
+│          FASE 1: Perfil Nmap según el modo de escaneo       │
+│            rápido/normal/completo definen el scan base      │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -306,7 +306,7 @@ RedAudit incluye **deteccion automatica de actualizaciones**. Al ejecutar `sudo 
 Buscar actualizaciones? [s/N]:
 ```
 
-Si aceptas, RedAudit realiza una **actualizacion atomica escalonada** con rollback automatico en caso de fallo. No requiere pasos manuales.
+Si aceptas, RedAudit realiza una **actualización atómica escalonada** con rollback automático en caso de fallo. No requiere pasos manuales.
 
 > **Nota para Ubuntu 24.04+ (Noble):** **No** uses `pip install` directamente. El instalador usa paquetes del sistema (`python3-*`) para evitar errores de `externally-managed-environment`.
 >

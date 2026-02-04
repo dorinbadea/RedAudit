@@ -874,6 +874,20 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                     targets=nuclei.get("targets", 0),
                 )
             )
+            selected_profile = nuclei.get("profile_selected")
+            effective_profile = nuclei.get("profile_effective") or nuclei.get("profile")
+            if selected_profile and effective_profile:
+                if selected_profile != effective_profile:
+                    lines.append(
+                        "  Nuclei: profile selected {selected} -> effective {effective} (auto-switch)\n".format(
+                            selected=selected_profile,
+                            effective=effective_profile,
+                        )
+                    )
+                else:
+                    lines.append("  Nuclei: profile {profile}\n".format(profile=selected_profile))
+            elif effective_profile:
+                lines.append("  Nuclei: profile {profile}\n".format(profile=effective_profile))
             if nuclei.get("partial"):
                 timeout_batches = len(nuclei.get("timeout_batches") or [])
                 failed_batches = len(nuclei.get("failed_batches") or [])

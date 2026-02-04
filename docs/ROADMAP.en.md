@@ -49,6 +49,14 @@ These items represent the current backlog of planned or deferred work for the re
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.35 Nuclei Resume & Profile Transparency (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Resume Count Label** | Done (v4.19.35) | Nuclei resume entries show how many times a run has been resumed. |
+| **Profile Selected vs Effective** | Done (v4.19.35) | Reports record the selected profile, effective profile, and auto-switch status. |
+| **Auto-Switch Documentation** | Done (v4.19.35) | README/USAGE and report schema document the auto-switch behavior. |
+
 ### v4.19.34 Risk Breakdown Traceability (Done)
 
 | Feature | Status | Description |
