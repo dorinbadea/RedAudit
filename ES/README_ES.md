@@ -302,7 +302,7 @@ bash redaudit_verify.sh   # Verificacion completa de integridad
 
 RedAudit incluye **deteccion automatica de actualizaciones**. Al ejecutar `sudo redaudit`, comprueba si hay nuevas versiones y pregunta:
 
-```
+```text
 Buscar actualizaciones? [s/N]:
 ```
 
