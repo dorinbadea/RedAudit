@@ -237,6 +237,7 @@ Notas:
 
 - Los escáneres de aplicaciones web (sqlmap/ZAP) se omiten en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP.
 - Los objetivos de Nuclei se optimizan por identidad: hosts con identidad fuerte se limitan a puertos prioritarios, mientras que los hosts ambiguos mantienen la cobertura completa y reciben reintentos solo por excepcion (con limite de fatiga; por defecto en el asistente: 3).
+- Cambio automático de perfil: cuando varios hosts exponen 3+ puertos HTTP y la cobertura completa está desactivada, RedAudit cambia Nuclei a **rápido** para evitar timeouts largos (se muestra en CLI y se guarda en el resumen).
 - Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
 - **Nuclei en redes con alta densidad web:** En redes con muchos servicios HTTP/HTTPS (p. ej., labs Docker, microservicios), los escaneos Nuclei pueden tardar significativamente mas (30-90+ minutos). Usa `--nuclei-timeout 600` para aumentar el timeout por lote, o `--no-nuclei` para omitir Nuclei si la velocidad es critica. Cuando se activa la cobertura completa, RedAudit eleva el timeout por lote a 900s si se ha configurado un valor inferior.
 - Cuando se define un presupuesto de tiempo, es un **limite total de tiempo real para la fase de Nuclei** (no por lote). RedAudit ejecuta lotes de forma secuencial y evita iniciar un nuevo lote si el tiempo restante no cubre el tiempo estimado del lote. Guarda `nuclei_resume.json` + `nuclei_pending.txt` al agotarse el presupuesto. Los timeouts que dejan la ejecucion como parcial tambien guardan objetivos pendientes para reanudar. Si no respondes, **la auditoria continua tras Nuclei** y la reanudacion queda disponible. La reanudacion usa el presupuesto guardado salvo que lo sobrescribas (pasa `--nuclei-max-runtime` al reanudar o define un nuevo valor en el wizard; `0` desactiva el presupuesto).
@@ -266,12 +267,12 @@ Durante el modo interactivo, el asistente pregunta "Escanear TODOS los puertos H
 | **Si (por defecto en full)** | Escanea TODOS los puertos HTTP detectados en hosts ambiguos; los hosts con identidad fuerte se limitan a puertos prioritarios |
 
 Nota: Esta opcion solo esta disponible en el asistente interactivo, no via flags CLI.
-Cuando la cobertura completa esta activada, se omite el cambio automatico a auto-fast para respetar el perfil seleccionado.
+Cuando la cobertura completa está activada, se omite el cambio automático a auto-fast para respetar el perfil seleccionado.
 
 **3. Limite de fatiga (solo en asistente)**
 
 Controla cuantas veces los objetivos de excepcion se pueden dividir/reintentar en timeouts (profundidad 0-10; por defecto 3).
-Valores bajos mantienen los escaneos rapidos; valores altos priorizan la certeza en hosts ambiguos.
+Valores bajos mantienen los escaneos rápidos; valores altos priorizan la certeza en hosts ambiguos.
 
 **4. Lista de exclusion (CLI o asistente)**
 
@@ -295,7 +296,7 @@ Acepta host, host:puerto o URL completa.
 
 **Mejora de rendimiento opcional:**
 
-Instala [RustScan](https://github.com/RustScan/RustScan) para descubrimiento de puertos mas rapido:
+Instala [RustScan](https://github.com/RustScan/RustScan) para descubrimiento de puertos más rápido:
 
 ```bash
 # Ubuntu/Debian
