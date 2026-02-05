@@ -3569,6 +3569,20 @@ class TestNucleiFullCoverageI18n:
         assert "nuclei_full_coverage_q" in TRANSLATIONS["es"]
         assert "TODOS los puertos HTTP detectados" in TRANSLATIONS["es"]["nuclei_full_coverage_q"]
 
+    def test_nuclei_coverage_mode_key_exists_en(self):
+        """Test that nuclei_coverage_mode_q key exists in English."""
+        from redaudit.utils.i18n import TRANSLATIONS
+
+        assert "nuclei_coverage_mode_q" in TRANSLATIONS["en"]
+        assert "coverage mode" in TRANSLATIONS["en"]["nuclei_coverage_mode_q"]
+
+    def test_nuclei_coverage_mode_key_exists_es(self):
+        """Test that nuclei_coverage_mode_q key exists in Spanish."""
+        from redaudit.utils.i18n import TRANSLATIONS
+
+        assert "nuclei_coverage_mode_q" in TRANSLATIONS["es"]
+        assert "cobertura de puertos" in TRANSLATIONS["es"]["nuclei_coverage_mode_q"]
+
 
 class TestNmapParsingHelpers(unittest.TestCase):
     def test_parse_host_timeout_unknown_unit(self):
