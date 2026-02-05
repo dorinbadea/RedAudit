@@ -377,6 +377,11 @@ class TestReporter(unittest.TestCase):
             "nuclei_full_coverage": True,
             "nuclei_timeout": 600,
             "nuclei_max_runtime": 120,
+            "leak_follow_mode": "safe",
+            "leak_follow_allowlist": ["10.0.0.0/24"],
+            "iot_probes_mode": "safe",
+            "iot_probe_budget_seconds": 40,
+            "iot_probe_timeout_seconds": 5,
             "dry_run": True,
             "auditor_name": "tester",
         }
@@ -400,8 +405,31 @@ class TestReporter(unittest.TestCase):
         self.assertTrue(snapshot["nuclei_full_coverage"])
         self.assertEqual(snapshot["nuclei_timeout"], 600)
         self.assertEqual(snapshot["nuclei_max_runtime"], 120)
+        self.assertEqual(snapshot["leak_follow_mode"], "safe")
+        self.assertEqual(snapshot["leak_follow_allowlist"], ["10.0.0.0/24"])
+        self.assertEqual(snapshot["iot_probes_mode"], "safe")
+        self.assertEqual(snapshot["iot_probe_budget_seconds"], 40)
+        self.assertEqual(snapshot["iot_probe_timeout_seconds"], 5)
         self.assertTrue(snapshot["dry_run"])
         self.assertEqual(snapshot["auditor_name"], "tester")
+
+    def test_generate_summary_adds_scope_expansion_pipeline(self):
+        results = {"hosts": [], "vulnerabilities": []}
+        config = {
+            "target_networks": ["10.0.0.0/24"],
+            "scan_mode": "normal",
+            "threads": 2,
+            "leak_follow_mode": "safe",
+            "leak_follow_allowlist": ["10.0.0.0/24"],
+            "iot_probes_mode": "off",
+            "iot_probe_budget_seconds": 20,
+            "iot_probe_timeout_seconds": 3,
+        }
+        generate_summary(results, config, [], [], datetime.now())
+        scope = results.get("pipeline", {}).get("scope_expansion", {})
+        self.assertEqual(scope.get("leak_follow_mode"), "safe")
+        self.assertEqual(scope.get("leak_follow_allowlist"), ["10.0.0.0/24"])
+        self.assertEqual(scope.get("iot_probes_mode"), "off")
 
     def test_summarize_net_discovery_with_redteam(self):
         summary = _summarize_net_discovery(
