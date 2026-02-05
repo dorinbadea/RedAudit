@@ -370,6 +370,11 @@ class InteractiveNetworkAuditor:
                     scan_vulnerabilities=self.config.get("scan_vulnerabilities"),
                     nuclei_enabled=self.config.get("nuclei_enabled"),
                     nuclei_max_runtime=self.config.get("nuclei_max_runtime"),
+                    leak_follow_mode=self.config.get("leak_follow_mode"),
+                    leak_follow_allowlist=self.config.get("leak_follow_allowlist"),
+                    iot_probes_mode=self.config.get("iot_probes_mode"),
+                    iot_probe_budget_seconds=self.config.get("iot_probe_budget_seconds"),
+                    iot_probe_timeout_seconds=self.config.get("iot_probe_timeout_seconds"),
                     cve_lookup_enabled=self.config.get("cve_lookup_enabled"),
                     generate_txt=self.config.get("save_txt_report"),
                     generate_html=self.config.get("save_html_report"),
@@ -2005,6 +2010,34 @@ class InteractiveNetworkAuditor:
         if not isinstance(nuclei_max_runtime, int) or nuclei_max_runtime < 0:
             nuclei_max_runtime = 0
         self.config["nuclei_max_runtime"] = nuclei_max_runtime
+        leak_follow_mode = defaults_for_run.get("leak_follow_mode")
+        if leak_follow_mode not in ("off", "safe"):
+            leak_follow_mode = "off"
+        self.config["leak_follow_mode"] = leak_follow_mode
+        leak_allowlist = defaults_for_run.get("leak_follow_allowlist")
+        if isinstance(leak_allowlist, str):
+            leak_allowlist = [leak_allowlist]
+        if not isinstance(leak_allowlist, list):
+            leak_allowlist = []
+        self.config["leak_follow_allowlist"] = [
+            str(item).strip() for item in leak_allowlist if str(item).strip()
+        ]
+        iot_probes_mode = defaults_for_run.get("iot_probes_mode")
+        if iot_probes_mode not in ("off", "safe"):
+            iot_probes_mode = "off"
+        self.config["iot_probes_mode"] = iot_probes_mode
+        iot_probe_budget = defaults_for_run.get("iot_probe_budget_seconds")
+        if not isinstance(iot_probe_budget, int) or iot_probe_budget < 1 or iot_probe_budget > 300:
+            iot_probe_budget = 20
+        self.config["iot_probe_budget_seconds"] = iot_probe_budget
+        iot_probe_timeout = defaults_for_run.get("iot_probe_timeout_seconds")
+        if (
+            not isinstance(iot_probe_timeout, int)
+            or iot_probe_timeout < 1
+            or iot_probe_timeout > 60
+        ):
+            iot_probe_timeout = 3
+        self.config["iot_probe_timeout_seconds"] = iot_probe_timeout
         self.config["cve_lookup_enabled"] = defaults_for_run.get("cve_lookup_enabled", False)
 
         # 6. Output Dir

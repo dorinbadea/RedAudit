@@ -269,6 +269,11 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "nuclei_enabled": config_snapshot.get("nuclei_enabled"),
         "nuclei_profile": config_snapshot.get("nuclei_profile"),
         "nuclei_full_coverage": config_snapshot.get("nuclei_full_coverage"),
+        "leak_follow_mode": config_snapshot.get("leak_follow_mode"),
+        "leak_follow_allowlist": config_snapshot.get("leak_follow_allowlist"),
+        "iot_probes_mode": config_snapshot.get("iot_probes_mode"),
+        "iot_probe_budget_seconds": config_snapshot.get("iot_probe_budget_seconds"),
+        "iot_probe_timeout_seconds": config_snapshot.get("iot_probe_timeout_seconds"),
         "cve_lookup_enabled": config_snapshot.get("cve_lookup_enabled"),
         "windows_verify_enabled": config_snapshot.get("windows_verify_enabled"),
     }

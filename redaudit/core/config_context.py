@@ -86,6 +86,12 @@ class ConfigurationContext(MutableMapping):
             "windows_verify_max_targets": 20,
             "nuclei_enabled": False,
             "nuclei_timeout": 300,
+            # v4.x Phase A: explicit safe defaults for scope expansion features
+            "leak_follow_mode": "off",
+            "leak_follow_allowlist": [],
+            "iot_probes_mode": "off",
+            "iot_probe_budget_seconds": 20,
+            "iot_probe_timeout_seconds": 3,
             "sqlmap_level": 1,
             "sqlmap_risk": 1,
             "zap_enabled": False,

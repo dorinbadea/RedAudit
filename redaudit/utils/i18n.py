@@ -409,8 +409,8 @@ TRANSLATIONS = {
         "nuclei_fast": "Fast - Critical CVEs (~30-60min)",
         # v4.17: Full coverage option (v4.18: shortened to prevent truncation)
         "nuclei_full_coverage_q": (
-            "Scan ALL detected HTTP ports? (Yes = full coverage; No = optimized to priority "
-            "ports, except ambiguous hosts)"
+            "Scan ALL detected HTTP ports? (Yes = full coverage. No = priority ports on strong-"
+            "identity hosts; ambiguous hosts still keep all ports for safety.)"
         ),
         "nuclei_budget_q": "Max Nuclei runtime in minutes (0 = unlimited)",
         "nuclei_resume_saved": "Nuclei resume saved: {}",
@@ -941,8 +941,9 @@ TRANSLATIONS = {
         "nuclei_fast": "Rápido - CVEs críticos (~30-60min)",
         # v4.17: Opcion de cobertura completa (v4.18: abreviado)
         "nuclei_full_coverage_q": (
-            "¿Escanear TODOS los puertos HTTP detectados? (Sí = cobertura total; No = optimiza "
-            "puertos prioritarios, salvo hosts ambiguos)"
+            "¿Escanear TODOS los puertos HTTP detectados? (Sí = cobertura total. No = puertos "
+            "prioritarios en hosts de identidad fuerte; los ambiguos mantienen todos los puertos "
+            "por seguridad.)"
         ),
         "nuclei_budget_q": "Tiempo maximo de Nuclei en minutos (0 = ilimitado)",
         "nuclei_resume_saved": "Reanudacion Nuclei guardada: {}",
