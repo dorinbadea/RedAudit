@@ -418,7 +418,7 @@ TRANSLATIONS = {
             "on ambiguous hosts)."
         ),
         "nuclei_coverage_selected_full": (
-            "Nuclei coverage: full (all detected HTTP ports; auto-switch safeguards still apply when needed)."
+            "Nuclei coverage: full (all detected HTTP ports; auto-switch safeguards are skipped to honor the selected profile)."
         ),
         # v4.17: Full coverage option (v4.18: shortened to prevent truncation)
         "nuclei_full_coverage_q": (
@@ -963,8 +963,8 @@ TRANSLATIONS = {
             "puertos detectados completos en hosts ambiguos)."
         ),
         "nuclei_coverage_selected_full": (
-            "Cobertura Nuclei: completa (todos los puertos HTTP detectados; los guardarraíles de "
-            "auto-switch se aplican cuando haga falta)."
+            "Cobertura Nuclei: completa (todos los puertos HTTP detectados; se omiten los "
+            "guardarraíles de auto-switch para respetar el perfil seleccionado)."
         ),
         # v4.17: Opcion de cobertura completa (v4.18: abreviado)
         "nuclei_full_coverage_q": (

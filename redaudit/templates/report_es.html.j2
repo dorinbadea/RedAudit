@@ -283,8 +283,8 @@
                     {% set scope = pipeline.scope_expansion or {} %}
                     {% set leak_runtime = scope.leak_follow_runtime or {} %}
                     <ul>
-                        <li>Leak Following <span>{{ scope.leak_follow_mode or 'off' }}</span></li>
-                        <li>Allowlist Leak <span>{{ (scope.leak_follow_allowlist or [])|join(', ') or '-' }}</span></li>
+                        <li>Seguimiento de fugas <span>{{ scope.leak_follow_mode or 'off' }}</span></li>
+                        <li>Lista permitida de fugas <span>{{ (scope.leak_follow_allowlist or [])|join(', ') or '-' }}</span></li>
                         <li>Candidatos Leak detectados <span>{{ leak_runtime.detected or 0 }}</span></li>
                         <li>Candidatos Leak elegibles <span>{{ leak_runtime.eligible or 0 }}</span></li>
                         <li>Objetivos Leak seguidos <span>{{ leak_runtime.followed or 0 }}</span></li>

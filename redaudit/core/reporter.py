@@ -47,6 +47,14 @@ def _get_hostname_fallback(host: Dict) -> str:
     return ""
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    """Return an integer fallback for potentially malformed persisted values."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
     """Create a safe, minimal snapshot of the run configuration."""
     scan_mode = config.get("scan_mode")
@@ -511,10 +519,10 @@ def generate_summary(
         if isinstance(leak_runtime_raw, dict):
             leak_runtime = {
                 "mode": leak_runtime_raw.get("mode", "off"),
-                "detected": int(leak_runtime_raw.get("detected") or 0),
-                "eligible": int(leak_runtime_raw.get("eligible") or 0),
-                "followed": int(leak_runtime_raw.get("followed") or 0),
-                "skipped": int(leak_runtime_raw.get("skipped") or 0),
+                "detected": _safe_int(leak_runtime_raw.get("detected"), 0),
+                "eligible": _safe_int(leak_runtime_raw.get("eligible"), 0),
+                "followed": _safe_int(leak_runtime_raw.get("followed"), 0),
+                "skipped": _safe_int(leak_runtime_raw.get("skipped"), 0),
                 "follow_targets": list(leak_runtime_raw.get("follow_targets") or []),
             }
     nmap_args = get_nmap_arguments(str(config.get("scan_mode") or "normal"), config)

@@ -971,6 +971,7 @@ class InteractiveNetworkAuditor:
                         exclude_patterns=self.config.get("nuclei_exclude"),
                     )
                     nuclei_targets = selection.get("targets") or []
+                    selected_targets_before_leak = len(nuclei_targets)
                     leak_follow_mode = self.config.get("leak_follow_mode", "off")
                     leak_follow_runtime = evaluate_leak_follow_candidates(
                         extract_leak_follow_candidates(self.results),
@@ -1050,7 +1051,16 @@ class InteractiveNetworkAuditor:
                                     "Auto-fast Nuclei profile skipped (full coverage enabled)"
                                 )
 
-                        targets_total = int(selection.get("targets_total") or len(nuclei_targets))
+                        try:
+                            base_targets_total = int(
+                                selection.get("targets_total") or selected_targets_before_leak
+                            )
+                        except (TypeError, ValueError):
+                            base_targets_total = selected_targets_before_leak
+                        targets_total = max(
+                            base_targets_total + len(leak_follow_targets),
+                            len(nuclei_targets),
+                        )
                         targets_exception = int(selection.get("targets_exception") or 0)
                         targets_optimized = int(selection.get("targets_optimized") or 0)
                         targets_excluded = int(selection.get("targets_excluded") or 0)
