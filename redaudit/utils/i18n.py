@@ -409,10 +409,17 @@ TRANSLATIONS = {
         "nuclei_fast": "Fast - Critical CVEs (~30-60min)",
         "nuclei_coverage_mode_q": "Nuclei port coverage mode:",
         "nuclei_coverage_adaptive": (
-            "Adaptive auto-switch (recommended) — priority ports for strong identity hosts; "
-            "full ports for ambiguous hosts"
+            "Adaptive auto-switch (recommended) — strong-identity hosts use priority ports "
+            "(80/443/8080/8443); ambiguous hosts keep all detected HTTP ports"
         ),
         "nuclei_coverage_full": "Full coverage — scan all detected HTTP ports",
+        "nuclei_coverage_selected_adaptive": (
+            "Nuclei coverage: adaptive (priority ports on strong-identity hosts; full detected ports "
+            "on ambiguous hosts)."
+        ),
+        "nuclei_coverage_selected_full": (
+            "Nuclei coverage: full (all detected HTTP ports; auto-switch safeguards are skipped to honor the selected profile)."
+        ),
         # v4.17: Full coverage option (v4.18: shortened to prevent truncation)
         "nuclei_full_coverage_q": (
             "Scan ALL detected HTTP ports? (Yes = full coverage. No = priority ports on strong-"
@@ -947,10 +954,18 @@ TRANSLATIONS = {
         "nuclei_fast": "Rápido - CVEs críticos (~30-60min)",
         "nuclei_coverage_mode_q": "Modo de cobertura de puertos en Nuclei:",
         "nuclei_coverage_adaptive": (
-            "Auto-switch adaptativo (recomendado) — puertos prioritarios para hosts de identidad "
-            "fuerte; puertos completos para hosts ambiguos"
+            "Auto-switch adaptativo (recomendado) — hosts con identidad fuerte usan puertos "
+            "prioritarios (80/443/8080/8443); hosts ambiguos mantienen todos los puertos HTTP detectados"
         ),
         "nuclei_coverage_full": "Cobertura completa — escanear todos los puertos HTTP detectados",
+        "nuclei_coverage_selected_adaptive": (
+            "Cobertura Nuclei: adaptativa (puertos prioritarios en hosts de identidad fuerte; "
+            "puertos detectados completos en hosts ambiguos)."
+        ),
+        "nuclei_coverage_selected_full": (
+            "Cobertura Nuclei: completa (todos los puertos HTTP detectados; se omiten los "
+            "guardarraíles de auto-switch para respetar el perfil seleccionado)."
+        ),
         # v4.17: Opcion de cobertura completa (v4.18: abreviado)
         "nuclei_full_coverage_q": (
             "¿Escanear TODOS los puertos HTTP detectados? (Sí = cobertura total. No = puertos "

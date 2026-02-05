@@ -64,6 +64,58 @@ Acceptance criteria for Phase A:
 - No behavior change when both features remain `off`.
 - Tests cover all new decision branches (including timeout and deny paths) in touched modules.
 
+### Phase B Execution Plan (v4.x, implementation in progress)
+
+Phase B moves from contract-level controls to production behavior, while keeping the philosophy
+"Optimization by Default, Resilience by Exception."
+
+#### Scope of Phase B
+
+| Block | Goal | Main Deliverables | Guardrails |
+| --- | --- | --- | --- |
+| **B1 - Leak candidate extraction** | Detect internal scope-expansion hints at runtime. | Parse candidate hosts/IPs from trusted HTTP evidence (headers and redirect targets), normalize and deduplicate candidates. | No finding promotion from parsing alone; malformed/ambiguous values stay as hints. |
+| **B2 - Safe scope gate** | Apply strict in-scope filtering for any candidate follow-up. | RFC1918/ULA checks, target-scope matching, explicit allowlist matching, skip reason codes. | Reject public/third-party ranges by default; never auto-follow out-of-scope targets. |
+| **B3 - Controlled follow execution** | Follow accepted candidates without changing default behavior. | Runtime integration into Nuclei target planning, bounded follow-up queue, deterministic ordering. | `off` remains no-op; `safe` is bounded by per-run limits and existing timeout budgets. |
+| **B4 - Evidence and reporting** | Make every decision auditable. | Report fields for detected/followed/skipped candidates, skip reasons, and guardrail hits in JSON/HTML/summary. | Keep evidence and heuristic interpretation explicitly separated. |
+| **B5 - UX and docs alignment** | Keep operator intent clear and predictable. | Prompt/help text clarifying selected profile vs effective behavior (including auto-switch), updated EN/ES docs and schema notes. | No ambiguous wording about port coverage or follow behavior. |
+| **B6 - Test and regression hardening** | Guarantee reliability before release. | Branch-complete tests for parser/gating/runtime/report paths, fixture updates, negative-path coverage. | 100% coverage on touched paths; no silent behavior drift in `off` mode. |
+
+#### Detailed Work Plan and Acceptance Gates
+
+1. **Implement B1 + B2 first (logic before orchestration).**
+   - Add isolated helpers for candidate extraction and scope gating.
+   - Add explicit skip reason taxonomy (`out_of_scope`, `public_ip`, `invalid_candidate`, `budget_exceeded`, etc.).
+   - Exit gate: deterministic unit tests for extraction/gating, including malformed and mixed inputs.
+
+2. **Implement B3 runtime wiring.**
+   - Integrate accepted candidates into runtime Nuclei planning only when `--leak-follow safe`.
+   - Preserve the existing selected/effective profile model and auto-switch behavior.
+   - Exit gate: integration tests proving `off` mode parity and bounded `safe` behavior.
+
+3. **Implement B4 reporting contract.**
+   - Persist runtime counters and per-candidate outcomes in report data structures.
+   - Surface the same semantics in HTML, JSON, and summary outputs.
+   - Exit gate: snapshot/assertion tests for report payload fields and human-readable sections.
+
+4. **Implement B5 docs + wording pass (EN/ES).**
+   - Align CLI help, wizard prompts, `USAGE`, `REPORT_SCHEMA`, and `README` references.
+   - Ensure wording reflects operator intent: defaults, guardrails, and effective runtime behavior.
+   - Exit gate: docs consistency check against actual CLI/wizard options and report fields.
+
+5. **Finalize with B6 regression pass and release readiness checks.**
+   - Run pre-commit and full pytest suite once final changes are in place.
+   - Verify no regression in resume flow, Nuclei progress rendering, and report coherence.
+   - Exit gate: local quality gate green; roadmap items moved to completed milestones on release.
+
+#### Phase B Tracking Checklist
+
+- [x] B1 candidate extraction implemented and tested.
+- [x] B2 safe scope gate implemented and tested.
+- [x] B3 runtime follow integration implemented and tested.
+- [x] B4 reporting fields and templates updated and tested.
+- [x] B5 EN/ES documentation updated and synchronized.
+- [ ] B6 full regression pass completed and release-ready.
+
 ### Deferred / Technical Backlog
 
 | Feature | Status | Description |

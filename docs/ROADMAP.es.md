@@ -64,6 +64,58 @@ Criterios de aceptación de Fase A:
 - No hay cambio de comportamiento cuando ambas funcionalidades permanecen en `off`.
 - Los tests cubren todas las ramas de decisión nuevas (incluyendo timeout y denegación) en los módulos tocados.
 
+### Plan de Ejecución de Fase B (v4.x, implementación en curso)
+
+La Fase B pasa de controles contractuales a comportamiento de producción, manteniendo la filosofía
+"Optimización por defecto, resiliencia por excepción."
+
+#### Alcance de la Fase B
+
+| Bloque | Objetivo | Entregables principales | Guardarraíles |
+|---|---|---|---|
+| **B1 - Extracción de candidatos Leak** | Detectar hints de expansión de alcance en tiempo de ejecución. | Parsear hosts/IP candidatos desde evidencia HTTP fiable (cabeceras y destinos de redirección), normalizar y deduplicar candidatos. | El parser por sí solo no promueve hallazgos; valores malformados o ambiguos se mantienen como hints. |
+| **B2 - Filtro de alcance seguro** | Aplicar filtrado in-scope estricto para cualquier seguimiento de candidatos. | Comprobaciones RFC1918/ULA, matching contra alcance objetivo, matching contra allowlist explícita y códigos de descarte. | Rechazar por defecto rangos públicos/de terceros; no seguir automáticamente objetivos out-of-scope. |
+| **B3 - Ejecución controlada del seguimiento** | Seguir candidatos aceptados sin alterar el comportamiento por defecto. | Integración en la planificación de objetivos de Nuclei, cola de seguimiento acotada y orden determinista. | `off` se mantiene como no-op; `safe` queda limitado por topes por ejecución y presupuestos de timeout existentes. |
+| **B4 - Evidencia y reporting** | Hacer auditable cada decisión. | Campos de informe para candidatos detectados/seguidos/descartados, motivos de descarte y guardarraíles activados en JSON/HTML/resumen. | Mantener separación explícita entre evidencia y lectura heurística. |
+| **B5 - Alineación de UX y documentación** | Mantener clara y predecible la intención del operador. | Textos de prompt/ayuda que aclaren perfil seleccionado vs comportamiento efectivo (incluido auto-switch), actualización de docs y schema EN/ES. | Sin redacción ambigua sobre cobertura de puertos ni comportamiento de seguimiento. |
+| **B6 - Endurecimiento de tests y regresión** | Garantizar fiabilidad antes de release. | Tests completos de parser/filtro/runtime/report, actualización de fixtures y cobertura de rutas negativas. | 100% de cobertura en rutas tocadas; sin deriva silenciosa de comportamiento en modo `off`. |
+
+#### Plan de Trabajo Detallado y Puertas de Aceptación
+
+1. **Implementar primero B1 + B2 (lógica antes que orquestación).**
+   - Añadir helpers aislados para extracción de candidatos y filtrado de alcance.
+   - Añadir taxonomía explícita de motivos de descarte (`out_of_scope`, `public_ip`, `invalid_candidate`, `budget_exceeded`, etc.).
+   - Puerta de salida: tests unitarios deterministas para extracción/filtrado, incluyendo entradas malformadas y mixtas.
+
+2. **Implementar el cableado runtime de B3.**
+   - Integrar candidatos aceptados en la planificación runtime de Nuclei solo cuando `--leak-follow safe`.
+   - Preservar el modelo actual de perfil seleccionado/efectivo y el auto-switch.
+   - Puerta de salida: tests de integración que prueben paridad en modo `off` y comportamiento acotado en `safe`.
+
+3. **Implementar el contrato de reporting de B4.**
+   - Persistir contadores runtime y resultados por candidato en estructuras de informe.
+   - Reflejar la misma semántica en salidas HTML, JSON y resumen.
+   - Puerta de salida: tests de snapshot/aserción sobre campos del payload y secciones legibles.
+
+4. **Implementar B5 (pasada de docs y redacción EN/ES).**
+   - Alinear ayuda CLI, prompts del wizard, `USAGE`, `REPORT_SCHEMA` y referencias en `README`.
+   - Asegurar que la redacción refleja la intención del operador: defaults, guardarraíles y comportamiento efectivo.
+   - Puerta de salida: comprobación de consistencia documental contra opciones reales de CLI/wizard y campos de informe.
+
+5. **Cerrar con B6 (pasada de regresión y preparación de release).**
+   - Ejecutar pre-commit y batería completa de pytest una vez cerrados los cambios finales.
+   - Verificar ausencia de regresiones en reanudación, renderizado de progreso Nuclei y coherencia de informes.
+   - Puerta de salida: quality gate local en verde; mover elementos de roadmap a hitos completados en la release.
+
+#### Checklist de Seguimiento de Fase B
+
+- [x] B1 extracción de candidatos implementada y testeada.
+- [x] B2 filtro de alcance seguro implementado y testeado.
+- [x] B3 integración runtime del seguimiento implementada y testeada.
+- [x] B4 campos de reporting y plantillas actualizados y testeados.
+- [x] B5 documentación EN/ES actualizada y sincronizada.
+- [ ] B6 pasada completa de regresión completada y lista para release.
+
 ### Diferido / Backlog Técnico
 
 | Funcionalidad | Estado | Descripción |

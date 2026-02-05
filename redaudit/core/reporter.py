@@ -47,6 +47,14 @@ def _get_hostname_fallback(host: Dict) -> str:
     return ""
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    """Return an integer fallback for potentially malformed persisted values."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
     """Create a safe, minimal snapshot of the run configuration."""
     scan_mode = config.get("scan_mode")
@@ -504,6 +512,19 @@ def generate_summary(
     # Attach sanitized config snapshot + pipeline + smart scan summary for reporting.
     results["config_snapshot"] = _build_config_snapshot(config)
     results["smart_scan_summary"] = _summarize_smart_scan(results.get("hosts", []), config)
+    scope_runtime = results.get("scope_expansion_runtime") or {}
+    leak_runtime = {}
+    if isinstance(scope_runtime, dict):
+        leak_runtime_raw = scope_runtime.get("leak_follow") or {}
+        if isinstance(leak_runtime_raw, dict):
+            leak_runtime = {
+                "mode": leak_runtime_raw.get("mode", "off"),
+                "detected": _safe_int(leak_runtime_raw.get("detected"), 0),
+                "eligible": _safe_int(leak_runtime_raw.get("eligible"), 0),
+                "followed": _safe_int(leak_runtime_raw.get("followed"), 0),
+                "skipped": _safe_int(leak_runtime_raw.get("skipped"), 0),
+                "follow_targets": list(leak_runtime_raw.get("follow_targets") or []),
+            }
     nmap_args = get_nmap_arguments(str(config.get("scan_mode") or "normal"), config)
     results["pipeline"] = {
         "topology": results.get("topology") or {},
@@ -530,6 +551,7 @@ def generate_summary(
         "scope_expansion": {
             "leak_follow_mode": results["config_snapshot"].get("leak_follow_mode", "off"),
             "leak_follow_allowlist": results["config_snapshot"].get("leak_follow_allowlist") or [],
+            "leak_follow_runtime": leak_runtime,
             "iot_probes_mode": results["config_snapshot"].get("iot_probes_mode", "off"),
             "iot_probe_budget_seconds": results["config_snapshot"].get("iot_probe_budget_seconds"),
             "iot_probe_timeout_seconds": results["config_snapshot"].get(
@@ -949,6 +971,25 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                 iot_mode=scope_cfg.get("iot_probes_mode", "off"),
             )
         )
+        scope_runtime = (pipeline.get("scope_expansion") or {}).get("leak_follow_runtime") or {}
+        if scope_runtime:
+            detected = int(scope_runtime.get("detected") or 0)
+            eligible = int(scope_runtime.get("eligible") or 0)
+            followed = int(scope_runtime.get("followed") or 0)
+            skipped = int(scope_runtime.get("skipped") or 0)
+            lines.append(
+                "  Leak-follow runtime: detected {detected}, eligible {eligible}, followed {followed}, skipped {skipped}\n".format(
+                    detected=detected,
+                    eligible=eligible,
+                    followed=followed,
+                    skipped=skipped,
+                )
+            )
+            follow_targets = scope_runtime.get("follow_targets") or []
+            if follow_targets:
+                preview = ", ".join([str(t) for t in follow_targets[:3]])
+                suffix = " ..." if len(follow_targets) > 3 else ""
+                lines.append(f"  Leak-follow targets: {preview}{suffix}\n")
         lines.append("\n")
 
     # v3.2.1: Check for network leaks (Guest Networks / Pivoting opportunities)

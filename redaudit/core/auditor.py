@@ -49,6 +49,11 @@ from redaudit.core.nuclei import (
     run_nuclei_scan,
     select_nuclei_targets,
 )
+from redaudit.core.scope_expansion import (
+    build_leak_follow_targets,
+    evaluate_leak_follow_candidates,
+    extract_leak_follow_candidates,
+)
 from redaudit.core.network import detect_all_networks
 from redaudit.core.crypto import is_crypto_available
 from redaudit.core.reporter import (
@@ -966,6 +971,43 @@ class InteractiveNetworkAuditor:
                         exclude_patterns=self.config.get("nuclei_exclude"),
                     )
                     nuclei_targets = selection.get("targets") or []
+                    selected_targets_before_leak = len(nuclei_targets)
+                    leak_follow_mode = self.config.get("leak_follow_mode", "off")
+                    leak_follow_runtime = evaluate_leak_follow_candidates(
+                        extract_leak_follow_candidates(self.results),
+                        mode=leak_follow_mode,
+                        target_networks=self.config.get("target_networks")
+                        or self.config.get("targets")
+                        or [],
+                        allowlist=self.config.get("leak_follow_allowlist") or [],
+                    )
+                    leak_follow_targets = build_leak_follow_targets(
+                        leak_follow_runtime.get("decisions") or [],
+                        existing_targets=nuclei_targets,
+                        max_targets=8,
+                    )
+                    if leak_follow_targets:
+                        exclude_patterns = normalize_nuclei_exclude(
+                            self.config.get("nuclei_exclude")
+                        )
+                        if exclude_patterns:
+                            leak_follow_targets = [
+                                t
+                                for t in leak_follow_targets
+                                if not any(pat in t for pat in exclude_patterns)
+                            ]
+                    if leak_follow_targets:
+                        nuclei_targets = list(nuclei_targets) + leak_follow_targets
+                    leak_follow_runtime["followed"] = len(leak_follow_targets)
+                    leak_follow_runtime["follow_targets"] = list(leak_follow_targets)
+                    leak_follow_runtime["skipped"] = max(
+                        0,
+                        int(leak_follow_runtime.get("detected", 0))
+                        - int(leak_follow_runtime.get("eligible", 0)),
+                    )
+                    scope_runtime = self.results.setdefault("scope_expansion_runtime", {})
+                    if isinstance(scope_runtime, dict):
+                        scope_runtime["leak_follow"] = leak_follow_runtime
                     if nuclei_targets:
                         output_dir = (
                             self.config.get("_actual_output_dir")
@@ -1009,7 +1051,16 @@ class InteractiveNetworkAuditor:
                                     "Auto-fast Nuclei profile skipped (full coverage enabled)"
                                 )
 
-                        targets_total = int(selection.get("targets_total") or len(nuclei_targets))
+                        try:
+                            base_targets_total = int(
+                                selection.get("targets_total") or selected_targets_before_leak
+                            )
+                        except (TypeError, ValueError):
+                            base_targets_total = selected_targets_before_leak
+                        targets_total = max(
+                            base_targets_total + len(leak_follow_targets),
+                            len(nuclei_targets),
+                        )
                         targets_exception = int(selection.get("targets_exception") or 0)
                         targets_optimized = int(selection.get("targets_optimized") or 0)
                         targets_excluded = int(selection.get("targets_excluded") or 0)
@@ -1231,6 +1282,10 @@ class InteractiveNetworkAuditor:
                             "targets_optimized": targets_optimized,
                             "targets_excluded": targets_excluded,
                             "fatigue_limit": nuclei_fatigue_limit,
+                            "leak_follow_mode": leak_follow_runtime.get("mode", "off"),
+                            "leak_follow_detected": leak_follow_runtime.get("detected", 0),
+                            "leak_follow_eligible": leak_follow_runtime.get("eligible", 0),
+                            "leak_follow_followed": leak_follow_runtime.get("followed", 0),
                             "findings": len(findings),
                             "findings_total": len(nuclei_result.get("findings") or []),
                             "findings_suspected": len(suspected),
@@ -2179,6 +2234,14 @@ class InteractiveNetworkAuditor:
                 return None
             return choice == 1
 
+        def _announce_nuclei_coverage_mode(full_coverage: bool) -> None:
+            msg_key = (
+                "nuclei_coverage_selected_full"
+                if full_coverage
+                else "nuclei_coverage_selected_adaptive"
+            )
+            self.ui.print_status(self.ui.t(msg_key), "INFO")
+
         # v3.9.0: Loop for profile selection with back navigation from timing
         while True:
             profile_choice = None
@@ -2373,6 +2436,7 @@ class InteractiveNetworkAuditor:
                     if full_coverage is None:
                         continue
                     self.config["nuclei_full_coverage"] = full_coverage
+                    _announce_nuclei_coverage_mode(full_coverage)
                     self.ui.print_status(self.ui.t("nuclei_optimization_note"), "INFO")
                     runtime_default = defaults_for_run.get("nuclei_max_runtime")
                     if not isinstance(runtime_default, int) or runtime_default < 0:
@@ -2694,6 +2758,7 @@ class InteractiveNetworkAuditor:
                         if full_coverage is None:
                             continue
                         self.config["nuclei_full_coverage"] = full_coverage
+                        _announce_nuclei_coverage_mode(full_coverage)
                         self.ui.print_status(self.ui.t("nuclei_optimization_note"), "INFO")
                         runtime_default = defaults_for_run.get("nuclei_max_runtime")
                         if not isinstance(runtime_default, int) or runtime_default < 0:

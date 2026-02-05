@@ -10,6 +10,15 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.37] - 2026-02-05
+
+### Fixed
+
+- **Nuclei target accounting**: `targets_total` now stays coherent when leak-follow appends additional targets.
+- **Coverage messaging**: Full-coverage status text now matches runtime behavior (auto-switch is skipped to honor the selected profile).
+- **ES HTML labels**: Scope expansion labels are fully localized in Spanish reports.
+- **Runtime robustness**: Scope-expansion runtime counters now parse safely even when persisted values are malformed.
+
 ## [4.19.36] - 2026-02-05
 
 ### Improved

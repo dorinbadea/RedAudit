@@ -253,6 +253,10 @@ Compact roll-up for dashboards.
 | `targets_optimized` | integer | Targets selected after optimization |
 | `targets_excluded` | integer | Targets excluded by user filters |
 | `fatigue_limit` | integer | Max split depth for exception retries (fatigue cap) |
+| `leak_follow_mode` | string | Leak-follow mode used by runtime (`off`/`safe`) |
+| `leak_follow_detected` | integer | Leak-follow candidates detected from HTTP evidence |
+| `leak_follow_eligible` | integer | Leak-follow candidates that passed in-scope checks |
+| `leak_follow_followed` | integer | Leak-follow targets appended to Nuclei target list |
 | `findings` | integer | Findings after filtering |
 | `findings_total` | integer | Raw findings before filtering |
 | `findings_suspected` | integer | Suspected false positives |
@@ -270,12 +274,18 @@ Compact roll-up for dashboards.
 | `success` | boolean | Nuclei success flag |
 | `error` | string | Error message, if any |
 
-#### pipeline.scope_expansion (v4.x Phase A)
+#### pipeline.scope_expansion (v4.x)
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `leak_follow_mode` | string | Leak-follow mode (`off`/`safe`) used in the run |
 | `leak_follow_allowlist` | array | In-scope allowlist entries supplied by operator |
+| `leak_follow_runtime.mode` | string | Effective runtime mode for leak-follow (`off`/`safe`) |
+| `leak_follow_runtime.detected` | integer | Total leak-follow candidates detected at runtime |
+| `leak_follow_runtime.eligible` | integer | Candidates that passed safe in-scope gates |
+| `leak_follow_runtime.followed` | integer | Number of follow targets appended for scanning |
+| `leak_follow_runtime.skipped` | integer | Candidates discarded by mode/guardrails |
+| `leak_follow_runtime.follow_targets` | array | Follow targets actually appended to Nuclei |
 | `iot_probes_mode` | string | IoT probes mode (`off`/`safe`) |
 | `iot_probe_budget_seconds` | integer | Per-host IoT probe budget in seconds |
 | `iot_probe_timeout_seconds` | integer | Per-probe IoT timeout in seconds |
