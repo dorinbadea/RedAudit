@@ -22,6 +22,24 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 | **Evaluación de poetry.lock** | Hecho (v4.18.8) | Añadido `poetry.lock` junto a pip-tools para evaluación y paridad de workflows. |
 | **Streaming JSON Report** | Planeado | Escritura incremental para reportes >500MB en redes muy grandes para evitar OOM. |
 
+### Expansión de Inteligencia Multientorno (Línea Base de Diseño)
+
+Esta línea base cubre entornos de hogar, oficina y empresa con defaults conservadores y escalado por excepción.
+
+| Funcionalidad | Estado | Default | Guardarraíles |
+|---|---|---|---|
+| **Leak Following (alcance seguro)** | Planeado (v4.x) | `off` (solo hints en informe) | En modo `safe` solo sigue candidatos dentro del alcance; por defecto nunca expande a objetivos públicos/terceros. |
+| **Sondas IoT específicas (conjunto mínimo)** | Planeado (v4.x) | `off` | Solo se activan con ambigüedad + señal fuerte; presupuesto por host y timeout estricto por sonda. |
+| **Marcado evidencia vs heurística** | Planeado (v4.x) | Activo cuando se use la funcionalidad | Guarda sondas/cabeceras como evidencia y mantiene deducciones heurísticas etiquetadas explícitamente. |
+
+Controles propuestos para el operador:
+
+- `--leak-follow off|safe`
+- `--leak-follow-allowlist <csv>`
+- `--iot-probes off|safe`
+- `--iot-probe-budget-seconds <n>`
+- `--iot-probe-timeout-seconds <n>`
+
 ### Diferido / Backlog Técnico
 
 | Funcionalidad | Estado | Descripción |
@@ -39,8 +57,8 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 
 | Funcionalidad | Descripción |
 |---|---|
-| **Sondas IoT Específicas de Protocolo** | Consultas profundas para protocolos específicos de dispositivos (Tuya, CoAP, propietarios). |
-| **Seguimiento de Fugas (Leak Following)** | Expansión automatizada del alcance basada en cabeceras internas filtradas. |
+| **Sondas IoT Específicas de Protocolo** | Sondas por excepción (CoAP/MQTT/fabricante) para identidades IoT ambiguas con límites estrictos de tiempo. |
+| **Seguimiento de Fugas (Leak Following)** | Expansión segura de alcance basada en cabeceras internas filtradas, con default de solo reporte y modo de seguimiento in-scope. |
 | **Auditoría de Pipeline** | Visualización interactiva del flujo de descubrimiento. |
 
 ---
