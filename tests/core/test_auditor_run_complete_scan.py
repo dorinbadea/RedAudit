@@ -280,6 +280,8 @@ def test_run_complete_scan_with_nuclei_adds_follow_targets_in_safe_mode(tmp_path
     assert "https://10.10.10.5:443" in captured["targets"]
     assert app.results.get("nuclei", {}).get("leak_follow_eligible") == 1
     assert app.results.get("nuclei", {}).get("leak_follow_followed") == 2
+    assert app.results.get("nuclei", {}).get("targets") == 3
+    assert app.results.get("nuclei", {}).get("targets_total") == 3
 
 
 def test_run_complete_scan_with_nuclei_suspected_only(tmp_path, monkeypatch):

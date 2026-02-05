@@ -494,6 +494,38 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(runtime.get("skipped"), 3)
         self.assertEqual(runtime.get("follow_targets"), ["http://10.0.0.5:80"])
 
+    def test_generate_summary_scope_expansion_runtime_handles_malformed_numbers(self):
+        results = {
+            "hosts": [],
+            "vulnerabilities": [],
+            "scope_expansion_runtime": {
+                "leak_follow": {
+                    "mode": "safe",
+                    "detected": "NaN",
+                    "eligible": "2",
+                    "followed": None,
+                    "skipped": "bad",
+                    "follow_targets": [],
+                }
+            },
+        }
+        config = {
+            "target_networks": ["10.0.0.0/24"],
+            "scan_mode": "normal",
+            "threads": 2,
+            "leak_follow_mode": "safe",
+            "leak_follow_allowlist": [],
+            "iot_probes_mode": "off",
+        }
+        generate_summary(results, config, [], [], datetime.now())
+        runtime = (
+            results.get("pipeline", {}).get("scope_expansion", {}).get("leak_follow_runtime", {})
+        )
+        self.assertEqual(runtime.get("detected"), 0)
+        self.assertEqual(runtime.get("eligible"), 2)
+        self.assertEqual(runtime.get("followed"), 0)
+        self.assertEqual(runtime.get("skipped"), 0)
+
     def test_summarize_net_discovery_with_redteam(self):
         summary = _summarize_net_discovery(
             {

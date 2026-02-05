@@ -225,6 +225,8 @@ def test_generate_html_report_es_includes_leak_follow_runtime_details():
         },
     }
     html = html_reporter.generate_html_report(results, {}, lang="es")
+    assert "Seguimiento de fugas" in html
+    assert "Lista permitida de fugas" in html
     assert "Candidatos Leak detectados" in html
     assert "Objetivos Leak seguidos" in html
     assert "http://10.0.0.5:80" in html
