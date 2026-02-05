@@ -327,6 +327,35 @@ class TestReporter(unittest.TestCase):
         self.assertIn("Nuclei", text)
         self.assertIn("SmartScan", text)
 
+    def test_generate_text_report_includes_leak_follow_runtime_summary(self):
+        results = {
+            "summary": {
+                "networks": 1,
+                "hosts_found": 1,
+                "hosts_scanned": 1,
+                "vulns_found": 0,
+            },
+            "config_snapshot": {"leak_follow_mode": "safe", "iot_probes_mode": "off"},
+            "pipeline": {
+                "scope_expansion": {
+                    "leak_follow_runtime": {
+                        "detected": 4,
+                        "eligible": 2,
+                        "followed": 1,
+                        "skipped": 2,
+                        "follow_targets": ["http://10.0.0.5:80", "https://10.0.0.5:443"],
+                    }
+                }
+            },
+            "hosts": [{"ip": "192.168.1.10", "status": "up", "total_ports_found": 0, "ports": []}],
+            "vulnerabilities": [],
+        }
+
+        text = generate_text_report(results)
+
+        self.assertIn("Leak-follow runtime: detected 4, eligible 2, followed 1, skipped 2", text)
+        self.assertIn("Leak-follow targets: http://10.0.0.5:80", text)
+
     def test_generate_summary_vulnerability_sources(self):
         results = {
             "hosts": [{"ip": "192.168.1.10"}],

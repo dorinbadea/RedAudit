@@ -164,6 +164,72 @@ def test_generate_html_report_includes_false_positive_notes():
     assert "Possible False Positives" in res
 
 
+def test_generate_html_report_includes_leak_follow_runtime_details():
+    results = {
+        "summary": {},
+        "hosts": [],
+        "vulnerabilities": [],
+        "pipeline": {
+            "net_discovery": {"counts": {}},
+            "host_scan": {"targets": 0},
+            "agentless_verify": {"completed": 0, "signals": {}},
+            "nuclei": {"findings": 0},
+            "vulnerability_scan": {"sources": {}},
+            "auth_scan": {"lynis_success": 0},
+            "deep_scan": {"identity_threshold": 0},
+            "scope_expansion": {
+                "leak_follow_mode": "safe",
+                "leak_follow_allowlist": ["10.0.0.0/24"],
+                "leak_follow_runtime": {
+                    "detected": 3,
+                    "eligible": 1,
+                    "followed": 1,
+                    "skipped": 2,
+                    "follow_targets": ["http://10.0.0.5:80"],
+                },
+                "iot_probes_mode": "off",
+            },
+        },
+    }
+    html = html_reporter.generate_html_report(results, {})
+    assert "Leak candidates detected" in html
+    assert "Leak targets followed" in html
+    assert "http://10.0.0.5:80" in html
+
+
+def test_generate_html_report_es_includes_leak_follow_runtime_details():
+    results = {
+        "summary": {},
+        "hosts": [],
+        "vulnerabilities": [],
+        "pipeline": {
+            "net_discovery": {"counts": {}},
+            "host_scan": {"targets": 0},
+            "agentless_verify": {"completed": 0, "signals": {}},
+            "nuclei": {"findings": 0},
+            "vulnerability_scan": {"sources": {}},
+            "auth_scan": {"lynis_success": 0},
+            "deep_scan": {"identity_threshold": 0},
+            "scope_expansion": {
+                "leak_follow_mode": "safe",
+                "leak_follow_allowlist": ["10.0.0.0/24"],
+                "leak_follow_runtime": {
+                    "detected": 3,
+                    "eligible": 1,
+                    "followed": 1,
+                    "skipped": 2,
+                    "follow_targets": ["http://10.0.0.5:80"],
+                },
+                "iot_probes_mode": "off",
+            },
+        },
+    }
+    html = html_reporter.generate_html_report(results, {}, lang="es")
+    assert "Candidatos Leak detectados" in html
+    assert "Objetivos Leak seguidos" in html
+    assert "http://10.0.0.5:80" in html
+
+
 def test_prepare_report_data_with_leaked_networks():
     results = {
         "summary": {},
