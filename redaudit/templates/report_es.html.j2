@@ -281,13 +281,28 @@
                 <div class="meta-item">
                     <h4>Expansión de alcance</h4>
                     {% set scope = pipeline.scope_expansion or {} %}
+                    {% set leak_runtime = scope.leak_follow_runtime or {} %}
                     <ul>
                         <li>Leak Following <span>{{ scope.leak_follow_mode or 'off' }}</span></li>
                         <li>Allowlist Leak <span>{{ (scope.leak_follow_allowlist or [])|join(', ') or '-' }}</span></li>
+                        <li>Candidatos Leak detectados <span>{{ leak_runtime.detected or 0 }}</span></li>
+                        <li>Candidatos Leak elegibles <span>{{ leak_runtime.eligible or 0 }}</span></li>
+                        <li>Objetivos Leak seguidos <span>{{ leak_runtime.followed or 0 }}</span></li>
+                        <li>Candidatos Leak descartados <span>{{ leak_runtime.skipped or 0 }}</span></li>
                         <li>Sondas IoT <span>{{ scope.iot_probes_mode or 'off' }}</span></li>
                         <li>Presupuesto IoT (s) <span>{{ scope.iot_probe_budget_seconds or '-' }}</span></li>
                         <li>Timeout IoT (s) <span>{{ scope.iot_probe_timeout_seconds or '-' }}</span></li>
                     </ul>
+                    {% if leak_runtime.follow_targets %}
+                    <details style="margin-top: 0.5rem;">
+                        <summary style="cursor: pointer; color: var(--accent-blue); font-size: 0.85rem;">Ver objetivos Leak seguidos</summary>
+                        <ul style="margin-top: 0.4rem;">
+                            {% for target in leak_runtime.follow_targets %}
+                            <li style="font-size: 0.8rem; color: var(--text-secondary);">{{ target }}</li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                    {% endif %}
                 </div>
                 {% set hyperscan_vs_final = pipeline.hyperscan_vs_final or {} %}
                 {% if hyperscan_vs_final.by_subnet %}

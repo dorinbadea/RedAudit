@@ -963,6 +963,25 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                 iot_mode=scope_cfg.get("iot_probes_mode", "off"),
             )
         )
+        scope_runtime = (pipeline.get("scope_expansion") or {}).get("leak_follow_runtime") or {}
+        if scope_runtime:
+            detected = int(scope_runtime.get("detected") or 0)
+            eligible = int(scope_runtime.get("eligible") or 0)
+            followed = int(scope_runtime.get("followed") or 0)
+            skipped = int(scope_runtime.get("skipped") or 0)
+            lines.append(
+                "  Leak-follow runtime: detected {detected}, eligible {eligible}, followed {followed}, skipped {skipped}\n".format(
+                    detected=detected,
+                    eligible=eligible,
+                    followed=followed,
+                    skipped=skipped,
+                )
+            )
+            follow_targets = scope_runtime.get("follow_targets") or []
+            if follow_targets:
+                preview = ", ".join([str(t) for t in follow_targets[:3]])
+                suffix = " ..." if len(follow_targets) > 3 else ""
+                lines.append(f"  Leak-follow targets: {preview}{suffix}\n")
         lines.append("\n")
 
     # v3.2.1: Check for network leaks (Guest Networks / Pivoting opportunities)

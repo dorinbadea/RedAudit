@@ -2224,6 +2224,14 @@ class InteractiveNetworkAuditor:
                 return None
             return choice == 1
 
+        def _announce_nuclei_coverage_mode(full_coverage: bool) -> None:
+            msg_key = (
+                "nuclei_coverage_selected_full"
+                if full_coverage
+                else "nuclei_coverage_selected_adaptive"
+            )
+            self.ui.print_status(self.ui.t(msg_key), "INFO")
+
         # v3.9.0: Loop for profile selection with back navigation from timing
         while True:
             profile_choice = None
@@ -2418,6 +2426,7 @@ class InteractiveNetworkAuditor:
                     if full_coverage is None:
                         continue
                     self.config["nuclei_full_coverage"] = full_coverage
+                    _announce_nuclei_coverage_mode(full_coverage)
                     self.ui.print_status(self.ui.t("nuclei_optimization_note"), "INFO")
                     runtime_default = defaults_for_run.get("nuclei_max_runtime")
                     if not isinstance(runtime_default, int) or runtime_default < 0:
@@ -2739,6 +2748,7 @@ class InteractiveNetworkAuditor:
                         if full_coverage is None:
                             continue
                         self.config["nuclei_full_coverage"] = full_coverage
+                        _announce_nuclei_coverage_mode(full_coverage)
                         self.ui.print_status(self.ui.t("nuclei_optimization_note"), "INFO")
                         runtime_default = defaults_for_run.get("nuclei_max_runtime")
                         if not isinstance(runtime_default, int) or runtime_default < 0:
