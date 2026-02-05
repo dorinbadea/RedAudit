@@ -4,7 +4,7 @@
 
 ##  Rendimiento Desbloqueado: Límites de Hilos
 
-En respuesta a las capacidades del hardware moderno (chips M2/M3, Threadrippers), hemos aumentado significativamente los límites de concurrencia de RedAudit.
+En respuesta a las capacidades del hardware moderno (chips M2/M3, Threadrippers), se aumentaron significativamente los límites de concurrencia de RedAudit.
 
 ### ⚡ Aspectos Destacados
 

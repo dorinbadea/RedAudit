@@ -21,7 +21,7 @@ RedAudit es una herramienta para Linux, pero puedes ejecutarla en **Windows** o 
 
 ## Inicio Rápido (Recomendado)
 
-Nuestros scripts de ayuda manejan todo automáticamente: detectar tu red, descargar la última imagen y ejecutar el escaneo.
+Los scripts de ayuda manejan todo automáticamente: detectar tu red, descargar la última imagen y ejecutar el escaneo.
 
 ## macOS
 
@@ -423,7 +423,7 @@ Si ves texto como `[1m[95m` o `[0m[91m` en lugar de colores, tu terminal no sopo
 
 **Soluciones:**
 
-1. **Usa nuestro script de ayuda** - Detecta y corrige esto automáticamente:
+1. **Usa el script de ayuda** - Detecta y corrige esto automáticamente:
 
    ```powershell
    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/main/scripts/redaudit-docker.ps1" -OutFile "redaudit-docker.ps1"

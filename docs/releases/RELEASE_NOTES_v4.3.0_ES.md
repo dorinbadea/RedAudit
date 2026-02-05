@@ -21,7 +21,7 @@ El motor de cálculo de riesgo ha sido renovado para tratar los **Hallazgos de C
 
 ### Optimización Docker y Deep Scan (H2)
 
-Hemos optimizado la fase de "Deep Scan" para manejar mejor contenedores Docker y servicios efímeros comunes en stacks modernos:
+Se optimizó la fase de "Deep Scan" para manejar mejor contenedores Docker y servicios efímeros comunes en stacks modernos:
 
 - **Nikto Desencadenado**: Eliminadas las restricciones de tuning por defecto (`-Tuning x`) y aumentado el timeout a 5 minutos (`300s`). Esto asegura que Nikto complete chequeos completos en apps web complejas.
 - **Nuclei Expandido**: El escáner ahora procesa hallazgos con `severity="low"`, capturando fugas de información críticas (ej: logs expuestos, páginas de estado, config .git) que anteriormente eran filtradas.

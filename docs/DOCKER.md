@@ -21,7 +21,7 @@ RedAudit is a Linux tool, but you can run it on **Windows** or **macOS** using D
 
 ## Quick Start (Recommended)
 
-Our helper scripts handle everything automatically: detecting your network, pulling the latest image, and running the scan.
+The helper scripts handle everything automatically: detecting your network, pulling the latest image, and running the scan.
 
 ## macOS
 
@@ -423,7 +423,7 @@ If you see text like `[1m[95m` or `[0m[91m` instead of colors, your terminal doe
 
 **Solutions:**
 
-1. **Use our helper script** - It auto-detects and fixes this:
+1. **Use the helper script** - It auto-detects and fixes this:
 
    ```powershell
    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/main/scripts/redaudit-docker.ps1" -OutFile "redaudit-docker.ps1"

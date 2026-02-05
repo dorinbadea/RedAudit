@@ -15,7 +15,7 @@ If you discover a security vulnerability in RedAudit, please report it responsib
    - Potential impact
    - Suggested fix (if available)
 3. **Response time**: Acknowledgment within 48 hours
-4. **Disclosure**: We coordinate public disclosure timing with the reporter
+4. **Disclosure**: Public disclosure timing is coordinated with the reporter
 
 ## Full Security Documentation
 

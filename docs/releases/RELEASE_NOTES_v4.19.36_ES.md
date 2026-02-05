@@ -2,7 +2,7 @@
 
 # RedAudit v4.19.36 - Lanzamiento de Impulso de Cobertura
 
-Esta versión marca un hito significativo en la calidad de ingeniería de RedAudit. Hemos logrado un impulso integral en la cobertura de pruebas en todos los módulos core, asegurando una mayor confiabilidad y estabilidad de nivel empresarial.
+Esta versión marca un hito significativo en la calidad de ingeniería de RedAudit. Logra un impulso integral en la cobertura de pruebas en todos los módulos core, asegurando una mayor confiabilidad y estabilidad de nivel empresarial.
 
 ## Resumen
 

@@ -2,7 +2,7 @@
 
 **Date:** 2026-01-15
 
-This release focuses on **robustness and safety** for high-concurrency environments. Following the "threads unleashed" update (v4.6.29), we identified a risk of orphaned subprocesses during interruptions. This update safeguards your system resources.
+This release focuses on **robustness and safety** for high-concurrency environments. Following the "threads unleashed" update (v4.6.29), a risk of orphaned subprocesses during interruptions was identified. This update safeguards your system resources.
 
 ## ️ Safety & Reliability
 

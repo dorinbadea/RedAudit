@@ -174,7 +174,7 @@ sudo redaudit
 ```
 
 > **Want to test RedAudit safely?**
-> Set up our Vulnerable Lab using Docker: **[Lab Setup Guide](docs/LAB_SETUP.md)**
+> Set up the Vulnerable Lab using Docker: **[Lab Setup Guide](docs/LAB_SETUP.md)**
 
 ---
 
@@ -576,7 +576,7 @@ See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 ## Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## License
 

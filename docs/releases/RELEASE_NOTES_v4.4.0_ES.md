@@ -16,7 +16,7 @@ RedAudit ahora "siente" la red. En lugar de un tamaño de lote estático, el nue
 
 ### Targeting basado en Generadores
 
-Hemos reescrito la lógica de expansión de objetivos para usar **evaluación perezosa** (generadores) en lugar de listas en memoria.
+Se reescribió la lógica de expansión de objetivos para usar **evaluación perezosa** (generadores) en lugar de listas en memoria.
 
 - **Problema Resuelto**: Escanear una `/16` requería generar 65k+ objetos IP en memoria antes de empezar.
 - **Solución**: Los objetivos ahora se generan bajo demanda.

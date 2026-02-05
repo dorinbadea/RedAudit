@@ -29,7 +29,7 @@ RedAudit is designed to run on a **dedicated physical machine** or **Virtual Mac
 
 ## Quick Start (Automated)
 
-We provide a helper script to manage the entire lifecycle of the lab.
+A helper script is provided to manage the entire lifecycle of the lab.
 
 ```bash
 # 1. Install and provision the lab

@@ -10,7 +10,7 @@ This hotfix release addresses critical detection gaps and fixes a CLI visual reg
 
 ### HyperScan Port Integration Fix
 
-When HyperScan detected open ports during net_discovery but the initial nmap scan found none (due to identity threshold), we now force a deep scan. This fixes the Metasploitable2 detection gap where 10+ ports were detected by HyperScan but ignored.
+When HyperScan detected open ports during net_discovery but the initial nmap scan found none (due to identity threshold), RedAudit now forces a deep scan. This fixes the Metasploitable2 detection gap where 10+ ports were detected by HyperScan but ignored.
 
 ### CLI Visual Regression Fixed
 
