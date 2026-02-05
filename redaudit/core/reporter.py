@@ -504,6 +504,19 @@ def generate_summary(
     # Attach sanitized config snapshot + pipeline + smart scan summary for reporting.
     results["config_snapshot"] = _build_config_snapshot(config)
     results["smart_scan_summary"] = _summarize_smart_scan(results.get("hosts", []), config)
+    scope_runtime = results.get("scope_expansion_runtime") or {}
+    leak_runtime = {}
+    if isinstance(scope_runtime, dict):
+        leak_runtime_raw = scope_runtime.get("leak_follow") or {}
+        if isinstance(leak_runtime_raw, dict):
+            leak_runtime = {
+                "mode": leak_runtime_raw.get("mode", "off"),
+                "detected": int(leak_runtime_raw.get("detected") or 0),
+                "eligible": int(leak_runtime_raw.get("eligible") or 0),
+                "followed": int(leak_runtime_raw.get("followed") or 0),
+                "skipped": int(leak_runtime_raw.get("skipped") or 0),
+                "follow_targets": list(leak_runtime_raw.get("follow_targets") or []),
+            }
     nmap_args = get_nmap_arguments(str(config.get("scan_mode") or "normal"), config)
     results["pipeline"] = {
         "topology": results.get("topology") or {},
@@ -530,6 +543,7 @@ def generate_summary(
         "scope_expansion": {
             "leak_follow_mode": results["config_snapshot"].get("leak_follow_mode", "off"),
             "leak_follow_allowlist": results["config_snapshot"].get("leak_follow_allowlist") or [],
+            "leak_follow_runtime": leak_runtime,
             "iot_probes_mode": results["config_snapshot"].get("iot_probes_mode", "off"),
             "iot_probe_budget_seconds": results["config_snapshot"].get("iot_probe_budget_seconds"),
             "iot_probe_timeout_seconds": results["config_snapshot"].get(
