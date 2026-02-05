@@ -44,7 +44,7 @@ Run manifest metadata used to inventory output artifacts for automation pipeline
 | `scanner_versions` | object | External tool versions captured at runtime |
 | `targets` | array | Target networks or IP ranges |
 | `config_snapshot` | object | Sanitized configuration snapshot (no secrets) |
-| `pipeline` | object | Minimal pipeline summary (host_scan, deep_scan, net_discovery, nuclei, vulnerability_scan, hyperscan_vs_final, auditor_exclusions) |
+| `pipeline` | object | Minimal pipeline summary (host_scan, deep_scan, scope_expansion, net_discovery, nuclei, vulnerability_scan, hyperscan_vs_final, auditor_exclusions) |
 | `auditor_exclusions` | object | Auditor IPs excluded from the scan target list, with reasons |
 | `counts` | object | Summary counts for hosts, findings, and PCAPs |
 | `counts.findings_raw` | integer | (Optional) Raw findings count before normalization |
@@ -91,6 +91,11 @@ The `config_snapshot` object stores sanitized run configuration (no secrets).
 | `trust_hyperscan` | `boolean` | Whether DeepScan trusts HyperScan discovery ports only. |
 | `nuclei_timeout` | `integer` | Nuclei timeout per target in seconds. |
 | `nuclei_max_runtime` | `integer` | Total Nuclei runtime budget in minutes (0 = unlimited). |
+| `leak_follow_mode` | `string` | Leak-follow mode (`off`/`safe`). |
+| `leak_follow_allowlist` | `array` | Optional leak-follow in-scope allowlist entries. |
+| `iot_probes_mode` | `string` | IoT probes mode (`off`/`safe`). |
+| `iot_probe_budget_seconds` | `integer` | Per-host IoT probe budget in seconds. |
+| `iot_probe_timeout_seconds` | `integer` | Per-probe IoT timeout in seconds. |
 
 ### summary.json (Dashboard Summary)
 
@@ -200,6 +205,7 @@ Compact roll-up for dashboards.
 | `nuclei` | object | Nuclei summary |
 | `vulnerability_scan` | object | Total findings + sources (+ raw count) |
 | `deep_scan` | object | Identity threshold + UDP strategy (v4.18.9+) |
+| `scope_expansion` | object | Leak-follow and IoT-probe control state (v4.x Phase A) |
 | `hyperscan_vs_final` | object | HyperScan vs final port counts (v4.18.9+) |
 
 #### pipeline.host_scan (v4.18.9+)
@@ -263,6 +269,16 @@ Compact roll-up for dashboards.
 | `output_file` | string | Relative path to nuclei_output.json |
 | `success` | boolean | Nuclei success flag |
 | `error` | string | Error message, if any |
+
+#### pipeline.scope_expansion (v4.x Phase A)
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `leak_follow_mode` | string | Leak-follow mode (`off`/`safe`) used in the run |
+| `leak_follow_allowlist` | array | In-scope allowlist entries supplied by operator |
+| `iot_probes_mode` | string | IoT probes mode (`off`/`safe`) |
+| `iot_probe_budget_seconds` | integer | Per-host IoT probe budget in seconds |
+| `iot_probe_timeout_seconds` | integer | Per-probe IoT timeout in seconds |
 
 #### pipeline.hyperscan_vs_final (v4.18.9+)
 
