@@ -356,7 +356,7 @@ Nuclei tiene tres controles independientes en el asistente:
 - **Perfil (plantillas)**: `full`, `balanced`, `fast` controla qué plantillas y severidades se ejecutan.
 - **Cobertura completa (objetivos)**: "Escanear TODOS los puertos HTTP detectados?" controla cuántas URLs HTTP por host se escanean.
   - **No** (por defecto en balanced/fast): Máx 2 URLs por host multipuerto (prioriza 80/443).
-  - **Sí** (por defecto en full): Escanea todos los puertos HTTP detectados en hosts ambiguos; los hosts con identidad fuerte se limitan a puertos prioritarios.
+  - **Sí** (por defecto en full): Escanea todos los puertos HTTP detectados para todos los hosts seleccionados.
 - **Límite de fatiga (excepciones)**: "Límite de fatiga de Nuclei (profundidad de división, 0-10)" limita cuántas divisiones
   de reintento se permiten para objetivos de excepción (por defecto 3). Valores bajos mantienen rapidez; valores altos priorizan certeza.
 - **Lista de exclusion (objetivos)**: `--nuclei-exclude` (o el prompt del asistente) omite objetivos por host, host:puerto o

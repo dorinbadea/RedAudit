@@ -486,6 +486,7 @@ redaudit/
 │   ├── auditor_scan.py     # Scanning logic (Nmap + HyperScan + seed integration)
 │   ├── auditor_vuln.py     # Vulnerability scanning (Nikto/Nuclei/Exploits)
 │   ├── auditor_runtime.py  # Composition adapter (auditor component bridge)
+│   ├── scope_expansion.py  # Leak-follow and IoT scope expansion controls
 │   ├── wizard.py           # Interactive UI (Wizard component)
 │   ├── ui_manager.py       # Centralized UI/Output manager
 │   ├── scanner/            # Low-level Nmap wrapper + IPv6 helpers

@@ -239,7 +239,7 @@ Grouped by operational function. Verified against the current codebase.
 Notes:
 
 - Web app scanners (sqlmap/ZAP) are skipped on infrastructure UIs when identity evidence indicates router/switch/AP devices.
-- Nuclei targets are optimized by identity: strong-identity hosts are limited to priority ports, while ambiguous hosts keep full target coverage and receive exception-only retries (fatigue-limited; wizard default is 3).
+- In adaptive mode, Nuclei targets are optimized by identity: strong-identity hosts are limited to priority ports, while ambiguous hosts keep full target coverage and receive exception-only retries (fatigue-limited; wizard default is 3).
 - Auto-switch profile: when multiple hosts expose 3+ HTTP ports and full coverage is off, RedAudit switches Nuclei to **fast** to prevent long timeouts (shown in CLI and stored in the summary).
 - Leak-follow and IoT probes use explicit controls: `off` keeps default behavior, while `safe` applies strict in-scope and timeout guardrails.
 - Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.

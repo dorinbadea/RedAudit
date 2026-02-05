@@ -361,7 +361,7 @@ Nuclei has three independent controls in the wizard:
 - **Profile (templates)**: `full`, `balanced`, `fast` controls which templates and severities run.
 - **Full Coverage (targets)**: "Scan ALL detected HTTP ports?" controls how many HTTP URLs per host are scanned.
   - **No** (default for balanced/fast): Max 2 URLs per multi-port host (prioritizes 80/443).
-  - **Yes** (default for full): Scan all detected HTTP ports on ambiguous hosts; strong-identity hosts stay capped to priority ports.
+  - **Yes** (default for full): Scan all detected HTTP ports for all selected hosts.
 - **Fatigue Limit (exceptions)**: "Nuclei fatigue limit (split depth, 0-10)" caps how many retry splits are allowed for
   exception targets (default 3). Lower values keep scans fast; higher values prioritize certainty for ambiguous hosts.
 - **Exclude List (targets)**: `--nuclei-exclude` (or the wizard prompt) omits targets by host, host:port, or full URL to
