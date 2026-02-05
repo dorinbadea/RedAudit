@@ -22,6 +22,24 @@ These items represent the current backlog of planned or deferred work for the re
 | **Poetry Lockfile Evaluation** | Done (v4.18.8) | Added `poetry.lock` alongside pip-tools for evaluation and workflow parity. |
 | **Streaming JSON Report** | Planned | Incremental write for reports >500MB on very large networks to prevent OOM. |
 
+### Cross-Environment Intelligence Expansion (Design Baseline)
+
+This baseline targets home, office, and enterprise environments with conservative defaults and exception-based escalation.
+
+| Feature | Status | Default | Guardrails |
+| --- | --- | --- | --- |
+| **Leak Following (Safe Scope)** | Planned (v4.x) | `off` (report hints only) | Follow only in-scope candidates in `safe` mode; never expand to public/third-party targets by default. |
+| **Protocol-Specific IoT Probes (Minimal Set)** | Planned (v4.x) | `off` | Trigger only on ambiguity + strong signals; per-host budget and strict per-probe timeout. |
+| **Evidence vs Heuristic Marking** | Planned (v4.x) | Enabled when feature is used | Store probe/headers as evidence, keep heuristic deductions explicitly labeled. |
+
+Proposed operator controls:
+
+- `--leak-follow off|safe`
+- `--leak-follow-allowlist <csv>`
+- `--iot-probes off|safe`
+- `--iot-probe-budget-seconds <n>`
+- `--iot-probe-timeout-seconds <n>`
+
 ### Deferred / Technical Backlog
 
 | Feature | Status | Description |
@@ -39,8 +57,8 @@ These items represent the current backlog of planned or deferred work for the re
 
 | Feature | Description |
 | --- | --- |
-| **Protocol Specific IoT Probes** | Deep queries for device-specific protocols (Tuya, CoAP, proprietary). |
-| **Leak Following** | Automated scope expansion based on leaked internal headers. |
+| **Protocol Specific IoT Probes** | Exception-based CoAP/MQTT/vendor probes for ambiguous IoT identities with strict time budgets. |
+| **Leak Following** | Scope-safe expansion based on leaked internal headers, with report-only default and in-scope follow mode. |
 | **Pipeline Audit** | Interactive visualization of the discovery flow. |
 
 ---
