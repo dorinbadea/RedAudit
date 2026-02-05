@@ -2,7 +2,7 @@
 
 # RedAudit v4.19.36 - Coverage Boost Release
 
-This release marks a significant milestone in RedAudit's engineering quality. We have achieved a comprehensive test coverage boost across all core modules, ensuring higher reliability and enterprise-grade stability.
+This release marks a significant milestone in RedAudit's engineering quality. It achieves a comprehensive test coverage boost across all core modules, ensuring higher reliability and enterprise-grade stability.
 
 ## Summary
 

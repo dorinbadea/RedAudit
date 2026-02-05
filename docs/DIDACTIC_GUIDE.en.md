@@ -48,7 +48,7 @@ Running `nmap`, `nikto`, `testssl` manually produces scattered outputs. Correlat
 
 1. A central program calls multiple tools in sequence.
 2. Results are unified into a single structured document (JSON).
-3. Decisions (e.g., "should we scan UDP?") are made automatically via heuristics.
+3. Decisions (e.g., "should UDP be scanned?") are made automatically via heuristics.
 
 **Where in code:** [`run_complete_scan()`](../redaudit/core/auditor.py) orchestrates all phases.
 
@@ -138,8 +138,8 @@ A common frustration in auditing is "False Positives" (tools reporting issues th
 **What to explain:**
 Why use different scaling models?
 
-- **Host Scanning (Threading):** Nmap is a blocking process. We use `ThreadPoolExecutor` (2-100 threads, auto-detected based on CPU) so one slow host doesn't block the entire scan.
-- **Discovery (Async):** Broadcasting UDP packets (for IoT/Service discovery) is IO-bound. We use `asyncio` in `HyperScan` to blast thousands of tiny packets instantly without creating thousands of OS threads.
+- **Host Scanning (Threading):** Nmap is a blocking process. RedAudit uses `ThreadPoolExecutor` (2-100 threads, auto-detected based on CPU) so one slow host doesn't block the entire scan.
+- **Discovery (Async):** Broadcasting UDP packets (for IoT/Service discovery) is IO-bound. RedAudit uses `asyncio` in `HyperScan` to blast thousands of tiny packets instantly without creating thousands of OS threads.
 
 **Where in code:**
 

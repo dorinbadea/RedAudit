@@ -4,7 +4,7 @@
 
 ##  Performance Unlocked: Thread Limits Unleashed
 
-In response to modern hardware capabilities (M2/M3 chips, Threadrippers), we have significantly increased the concurrency limits for RedAudit.
+In response to modern hardware capabilities (M2/M3 chips, Threadrippers), this release significantly increases the concurrency limits for RedAudit.
 
 ### ⚡ Highlights
 

@@ -172,7 +172,7 @@ sudo redaudit
 ```
 
 > **¿Quieres probar RedAudit de forma segura?**
-> Configura nuestro Laboratorio Vulnerable usando Docker: **[Guía del Laboratorio](../docs/LAB_SETUP_ES.md)**
+> Configura el Laboratorio Vulnerable usando Docker: **[Guía del Laboratorio](../docs/LAB_SETUP_ES.md)**
 
 ---
 

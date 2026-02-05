@@ -16,7 +16,7 @@ RedAudit now "senses" the network. Instead of a static batch size, the new **AIM
 
 ### Generator-based Targeting
 
-We have rewritten the target expansion logic to use **lazy evaluation** (generators) instead of in-memory lists.
+The target expansion logic was rewritten to use **lazy evaluation** (generators) instead of in-memory lists.
 
 - **Problem Solved**: Scanning a `/16` previously required generating 65k+ IP objects in memory before starting.
 - **Solution**: Targets are now yielded on-demand.

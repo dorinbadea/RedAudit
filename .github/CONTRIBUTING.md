@@ -184,7 +184,7 @@ Include:
 
 Email: `dorinidtech@gmail.com`
 
-See [SECURITY.md](../docs/SECURITY.en.md) for our vulnerability disclosure policy.
+See [SECURITY.md](../docs/SECURITY.en.md) for the vulnerability disclosure policy.
 
 ---
 
