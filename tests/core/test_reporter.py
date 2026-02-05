@@ -431,6 +431,40 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(scope.get("leak_follow_allowlist"), ["10.0.0.0/24"])
         self.assertEqual(scope.get("iot_probes_mode"), "off")
 
+    def test_generate_summary_includes_scope_expansion_runtime(self):
+        results = {
+            "hosts": [],
+            "vulnerabilities": [],
+            "scope_expansion_runtime": {
+                "leak_follow": {
+                    "mode": "safe",
+                    "detected": 4,
+                    "eligible": 1,
+                    "followed": 0,
+                    "skipped": 3,
+                    "follow_targets": ["http://10.0.0.5:80"],
+                    "decisions": [{"candidate": "10.0.0.5"}],
+                }
+            },
+        }
+        config = {
+            "target_networks": ["10.0.0.0/24"],
+            "scan_mode": "normal",
+            "threads": 2,
+            "leak_follow_mode": "safe",
+            "leak_follow_allowlist": [],
+            "iot_probes_mode": "off",
+        }
+        generate_summary(results, config, [], [], datetime.now())
+        scope = results.get("pipeline", {}).get("scope_expansion", {})
+        runtime = scope.get("leak_follow_runtime", {})
+        self.assertEqual(runtime.get("mode"), "safe")
+        self.assertEqual(runtime.get("detected"), 4)
+        self.assertEqual(runtime.get("eligible"), 1)
+        self.assertEqual(runtime.get("followed"), 0)
+        self.assertEqual(runtime.get("skipped"), 3)
+        self.assertEqual(runtime.get("follow_targets"), ["http://10.0.0.5:80"])
+
     def test_summarize_net_discovery_with_redteam(self):
         summary = _summarize_net_discovery(
             {

@@ -229,6 +229,59 @@ def test_run_complete_scan_with_nuclei(tmp_path, monkeypatch):
     assert app.run_complete_scan() is True
 
 
+def test_run_complete_scan_with_nuclei_records_leak_follow_runtime(tmp_path, monkeypatch):
+    app = _setup_nuclei_app(tmp_path, monkeypatch)
+    app.config["leak_follow_mode"] = "safe"
+    app.config["leak_follow_allowlist"] = []
+    app.results["vulnerabilities"] = [
+        {
+            "host": "10.0.0.1",
+            "vulnerabilities": [
+                {"redirect_url": "http://10.10.10.5/admin"},
+            ],
+        }
+    ]
+    monkeypatch.setattr(
+        "redaudit.core.auditor.run_nuclei_scan",
+        lambda **kw: {"success": True, "findings": []},
+    )
+
+    assert app.run_complete_scan() is True
+    runtime = app.results.get("scope_expansion_runtime", {}).get("leak_follow", {})
+    assert runtime.get("mode") == "safe"
+    assert runtime.get("detected") == 1
+    assert runtime.get("eligible") == 0
+    assert app.results.get("nuclei", {}).get("leak_follow_detected") == 1
+    assert app.results.get("nuclei", {}).get("leak_follow_eligible") == 0
+
+
+def test_run_complete_scan_with_nuclei_adds_follow_targets_in_safe_mode(tmp_path, monkeypatch):
+    app = _setup_nuclei_app(tmp_path, monkeypatch)
+    app.config["leak_follow_mode"] = "safe"
+    app.config["target_networks"] = ["10.0.0.0/24", "10.10.10.0/24"]
+    app.results["vulnerabilities"] = [
+        {
+            "host": "10.0.0.1",
+            "vulnerabilities": [
+                {"redirect_url": "http://10.10.10.5/admin"},
+            ],
+        }
+    ]
+    captured = {}
+
+    def _run_nuclei(**kw):
+        captured["targets"] = list(kw.get("targets") or [])
+        return {"success": True, "findings": []}
+
+    monkeypatch.setattr("redaudit.core.auditor.run_nuclei_scan", _run_nuclei)
+
+    assert app.run_complete_scan() is True
+    assert "http://10.10.10.5:80" in captured["targets"]
+    assert "https://10.10.10.5:443" in captured["targets"]
+    assert app.results.get("nuclei", {}).get("leak_follow_eligible") == 1
+    assert app.results.get("nuclei", {}).get("leak_follow_followed") == 2
+
+
 def test_run_complete_scan_with_nuclei_suspected_only(tmp_path, monkeypatch):
     app = _setup_nuclei_app(tmp_path, monkeypatch)
     messages = []
