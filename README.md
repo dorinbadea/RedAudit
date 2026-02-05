@@ -44,7 +44,7 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 5. **Nuclei Targeting**: Identity-aware target selection with exception-based retries to avoid redundant web scans. Auto-switches to the **fast** profile on web-dense hosts when full coverage is off to prevent long timeouts.
 6. **Resilience**: Automatic **Dead Host Retries** to abandon unresponsive hosts and prevent scan stalls.
 
-![System Overview](docs/images/system_overview_v4_en.png)
+![System Overview](docs/images/system_overview_v4.x_en.png)
 
 ### Adaptive Scanning Logic
 

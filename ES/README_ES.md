@@ -40,7 +40,7 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 5. **Selección de Nuclei**: Selección de objetivos basada en identidad con reintentos por excepción para evitar redundancia. Cambia automáticamente al perfil **rápido** en hosts con alta densidad web cuando la cobertura completa está desactivada para evitar timeouts largos.
 6. **Resiliencia**: **Reintentos de Host Muerto** automáticos para abandonar hosts que no responden y evitar bloqueos.
 
-![Vista General del Sistema](../docs/images/system_overview_v4_es.png)
+![Vista General del Sistema](../docs/images/system_overview_v4.x_es.png)
 
 ### Lógica de Escaneo Adaptativo
 
