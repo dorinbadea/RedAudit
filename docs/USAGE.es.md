@@ -241,7 +241,7 @@ Agrupadas por función operativa. Verificadas contra el estado actual del códig
 Notas:
 
 - Los escáneres de aplicaciones web (sqlmap/ZAP) se omiten en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP.
-- Los objetivos de Nuclei se optimizan por identidad: hosts con identidad fuerte se limitan a puertos prioritarios, mientras que los hosts ambiguos mantienen la cobertura completa y reciben reintentos solo por excepcion (con limite de fatiga; por defecto en el asistente: 3).
+- En modo adaptativo, los objetivos de Nuclei se optimizan por identidad: hosts con identidad fuerte se limitan a puertos prioritarios, mientras que los hosts ambiguos mantienen la cobertura completa y reciben reintentos solo por excepcion (con limite de fatiga; por defecto en el asistente: 3).
 - Cambio automático de perfil: cuando varios hosts exponen 3+ puertos HTTP y la cobertura completa está desactivada, RedAudit cambia Nuclei a **rápido** para evitar timeouts largos (se muestra en CLI y se guarda en el resumen).
 - Leak-follow y sondas IoT usan controles explícitos: `off` mantiene el comportamiento por defecto y `safe` aplica guardarraíles estrictos de alcance y timeout.
 - Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
