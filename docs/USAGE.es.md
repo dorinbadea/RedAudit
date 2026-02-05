@@ -273,6 +273,8 @@ Durante el modo interactivo, el asistente pregunta por el **modo de cobertura de
 | **Auto-switch adaptativo** (recomendado; por defecto en balanced/fast) | Puertos prioritarios para hosts con identidad fuerte y puertos completos para hosts ambiguos. Mantiene el cambio automático a perfil rápido cuando hay alta densidad web. |
 | **Cobertura completa** (por defecto en perfil full) | Escanea todos los puertos HTTP detectados y omite el auto-switch para respetar el perfil seleccionado. |
 
+Aclaración importante: elegir **Adaptativo** **no** significa "solo 80/443". Los hosts con identidad fuerte usan puertos prioritarios (`80/443/8080/8443`), mientras que los hosts ambiguos mantienen todos los puertos HTTP detectados. Si leak-follow está en `safe`, también se pueden añadir objetivos de seguimiento in-scope.
+
 Nota: Este modo solo está disponible en el asistente interactivo, no via flags CLI.
 
 **3. Limite de fatiga (solo en asistente)**

@@ -109,11 +109,11 @@ Phase B moves from contract-level controls to production behavior, while keeping
 
 #### Phase B Tracking Checklist
 
-- [ ] B1 candidate extraction implemented and tested.
-- [ ] B2 safe scope gate implemented and tested.
-- [ ] B3 runtime follow integration implemented and tested.
-- [ ] B4 reporting fields and templates updated and tested.
-- [ ] B5 EN/ES documentation updated and synchronized.
+- [x] B1 candidate extraction implemented and tested.
+- [x] B2 safe scope gate implemented and tested.
+- [x] B3 runtime follow integration implemented and tested.
+- [x] B4 reporting fields and templates updated and tested.
+- [x] B5 EN/ES documentation updated and synchronized.
 - [ ] B6 full regression pass completed and release-ready.
 
 ### Deferred / Technical Backlog

@@ -247,6 +247,10 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `targets_optimized` | integer | Objetivos seleccionados tras optimizar |
 | `targets_excluded` | integer | Objetivos excluidos por filtros del usuario |
 | `fatigue_limit` | integer | Profundidad maxima de split para reintentos por excepcion (limite de fatiga) |
+| `leak_follow_mode` | string | Modo leak-follow usado en runtime (`off`/`safe`) |
+| `leak_follow_detected` | integer | Candidatos leak-follow detectados desde evidencia HTTP |
+| `leak_follow_eligible` | integer | Candidatos leak-follow que pasaron controles in-scope |
+| `leak_follow_followed` | integer | Objetivos leak-follow añadidos a la lista de Nuclei |
 | `findings` | integer | Hallazgos tras filtrado |
 | `findings_total` | integer | Hallazgos brutos antes de filtrado |
 | `findings_suspected` | integer | Sospechas de falsos positivos |
@@ -263,12 +267,18 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `output_file` | string | Ruta relativa a nuclei_output.json |
 | `success` | boolean | Exito de Nuclei |
 
-#### pipeline.scope_expansion (Fase A v4.x)
+#### pipeline.scope_expansion (v4.x)
 
 | Campo | Tipo | Descripción |
 | :--- | :--- | :--- |
 | `leak_follow_mode` | string | Modo leak-follow (`off`/`safe`) usado en la ejecución |
 | `leak_follow_allowlist` | array | Entradas in-scope aportadas por el operador |
+| `leak_follow_runtime.mode` | string | Modo efectivo de leak-follow en runtime (`off`/`safe`) |
+| `leak_follow_runtime.detected` | integer | Total de candidatos leak-follow detectados en runtime |
+| `leak_follow_runtime.eligible` | integer | Candidatos que pasaron filtros seguros in-scope |
+| `leak_follow_runtime.followed` | integer | Número de objetivos de seguimiento añadidos al escaneo |
+| `leak_follow_runtime.skipped` | integer | Candidatos descartados por modo/guardarraíles |
+| `leak_follow_runtime.follow_targets` | array | Objetivos de seguimiento realmente añadidos a Nuclei |
 | `iot_probes_mode` | string | Modo de sondas IoT (`off`/`safe`) |
 | `iot_probe_budget_seconds` | integer | Presupuesto por host para sondas IoT en segundos |
 | `iot_probe_timeout_seconds` | integer | Timeout por sonda IoT en segundos |

@@ -271,6 +271,8 @@ During interactive mode, the wizard asks for **Nuclei port coverage mode**:
 | **Adaptive auto-switch** (recommended; default for balanced/fast) | Priority ports for strong-identity hosts; full detected ports for ambiguous hosts. Keeps auto-switch to fast profile when web density is high. |
 | **Full coverage** (default for full profile) | Scan all detected HTTP ports; auto-switch is skipped so the selected profile is honored. |
 
+Important clarification: selecting **Adaptive** does **not** mean "80/443 only". Strong-identity hosts use priority ports (`80/443/8080/8443`), while ambiguous hosts still keep all detected HTTP ports. If leak-follow is enabled in `safe`, additional in-scope follow targets may be appended.
+
 Note: This mode is only available in the interactive wizard, not via CLI flags.
 
 **3. Fatigue Limit (wizard only)**

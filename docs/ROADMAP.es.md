@@ -109,11 +109,11 @@ La Fase B pasa de controles contractuales a comportamiento de producción, mante
 
 #### Checklist de Seguimiento de Fase B
 
-- [ ] B1 extracción de candidatos implementada y testeada.
-- [ ] B2 filtro de alcance seguro implementado y testeado.
-- [ ] B3 integración runtime del seguimiento implementada y testeada.
-- [ ] B4 campos de reporting y plantillas actualizados y testeados.
-- [ ] B5 documentación EN/ES actualizada y sincronizada.
+- [x] B1 extracción de candidatos implementada y testeada.
+- [x] B2 filtro de alcance seguro implementado y testeado.
+- [x] B3 integración runtime del seguimiento implementada y testeada.
+- [x] B4 campos de reporting y plantillas actualizados y testeados.
+- [x] B5 documentación EN/ES actualizada y sincronizada.
 - [ ] B6 pasada completa de regresión completada y lista para release.
 
 ### Diferido / Backlog Técnico
