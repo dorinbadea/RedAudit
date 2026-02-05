@@ -245,6 +245,7 @@ Notas:
 - Cambio automático de perfil: cuando varios hosts exponen 3+ puertos HTTP y la cobertura completa está desactivada, RedAudit cambia Nuclei a **rápido** para evitar timeouts largos (se muestra en CLI y se guarda en el resumen).
 - Leak-follow y sondas IoT usan controles explícitos: `off` mantiene el comportamiento por defecto y `safe` aplica guardarraíles estrictos de alcance y timeout.
 - Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
+- En el menú de reanudación de Nuclei, las entradas reanudadas anteriormente muestran `resumes: N` para distinguir parciales repetidos.
 - **Nuclei en redes con alta densidad web:** En redes con muchos servicios HTTP/HTTPS (p. ej., labs Docker, microservicios), los escaneos Nuclei pueden tardar significativamente mas (30-90+ minutos). Usa `--nuclei-timeout 600` para aumentar el timeout por lote, o `--no-nuclei` para omitir Nuclei si la velocidad es critica. Cuando se activa la cobertura completa, RedAudit eleva el timeout por lote a 900s si se ha configurado un valor inferior.
 - Cuando se define un presupuesto de tiempo, es un **limite total de tiempo real para la fase de Nuclei** (no por lote). RedAudit ejecuta lotes de forma secuencial y evita iniciar un nuevo lote si el tiempo restante no cubre el tiempo estimado del lote. Guarda `nuclei_resume.json` + `nuclei_pending.txt` al agotarse el presupuesto. Los timeouts que dejan la ejecucion como parcial tambien guardan objetivos pendientes para reanudar. Si no respondes, **la auditoria continua tras Nuclei** y la reanudacion queda disponible. La reanudacion usa el presupuesto guardado salvo que lo sobrescribas (pasa `--nuclei-max-runtime` al reanudar o define un nuevo valor en el wizard; `0` desactiva el presupuesto).
 - Las reanudaciones se guardan en la misma carpeta del escaneo y se actualizan en el mismo sitio. Si una reanudacion termina como parcial otra vez, `nuclei_resume.json`/`nuclei_pending.txt` se actualiza (no se duplica). Para limpiar reanudaciones antiguas, borra esos dos archivos dentro de las carpetas que ya no vas a reanudar. Puedes listarlos primero con `find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt` y luego borrar con `find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt -delete`.
@@ -263,17 +264,16 @@ Controla que plantillas se ejecutan:
 | `balanced` | Templates esenciales (cve, default-login, exposure, misconfig) | ~1 hora (recomendado) |
 | `fast` | Solo CVEs criticos | ~30-60 minutos |
 
-**2. Cobertura completa (solo en asistente)**
+**2. Modo de cobertura (solo en asistente)**
 
-Durante el modo interactivo, el asistente pregunta "Escanear TODOS los puertos HTTP detectados?" Esto controla que puertos HTTP se escanean por host:
+Durante el modo interactivo, el asistente pregunta por el **modo de cobertura de puertos en Nuclei**:
 
 | Opcion | Comportamiento |
 |:-------|:---------------|
-| **No (por defecto en balanced/fast)** | Max 2 URLs por host multipuerto (prioriza 80, 443) |
-| **Si (por defecto en full)** | Escanea TODOS los puertos HTTP detectados en hosts ambiguos; los hosts con identidad fuerte se limitan a puertos prioritarios |
+| **Auto-switch adaptativo** (recomendado; por defecto en balanced/fast) | Puertos prioritarios para hosts con identidad fuerte y puertos completos para hosts ambiguos. Mantiene el cambio automático a perfil rápido cuando hay alta densidad web. |
+| **Cobertura completa** (por defecto en perfil full) | Escanea todos los puertos HTTP detectados y omite el auto-switch para respetar el perfil seleccionado. |
 
-Nota: Esta opcion solo esta disponible en el asistente interactivo, no via flags CLI.
-Cuando la cobertura completa está activada, se omite el cambio automático a auto-fast para respetar el perfil seleccionado.
+Nota: Este modo solo está disponible en el asistente interactivo, no via flags CLI.
 
 **3. Limite de fatiga (solo en asistente)**
 
