@@ -53,7 +53,9 @@ def test_extract_leak_follow_candidates_deduplicates_and_skips_source_host():
 
 def test_extract_leak_follow_candidates_handles_invalid_payloads():
     assert extract_leak_follow_candidates({"vulnerabilities": "bad"}) == []
-    assert extract_leak_follow_candidates({"vulnerabilities": [None, {"vulnerabilities": "x"}]}) == []
+    assert (
+        extract_leak_follow_candidates({"vulnerabilities": [None, {"vulnerabilities": "x"}]}) == []
+    )
 
 
 def test_evaluate_leak_follow_candidates_mode_off():
@@ -98,7 +100,12 @@ def test_evaluate_leak_follow_candidates_safe_with_scope_and_allowlist():
                 "source_host": "10.0.0.1",
                 "source_field": "x",
             },
-            {"candidate": "not-an-ip", "kind": "ip", "source_host": "10.0.0.1", "source_field": "x"},
+            {
+                "candidate": "not-an-ip",
+                "kind": "ip",
+                "source_host": "10.0.0.1",
+                "source_field": "x",
+            },
             {"candidate": "x", "kind": "other", "source_host": "10.0.0.1", "source_field": "x"},
         ],
         mode="safe",
