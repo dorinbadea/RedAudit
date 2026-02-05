@@ -370,6 +370,11 @@ class InteractiveNetworkAuditor:
                     scan_vulnerabilities=self.config.get("scan_vulnerabilities"),
                     nuclei_enabled=self.config.get("nuclei_enabled"),
                     nuclei_max_runtime=self.config.get("nuclei_max_runtime"),
+                    leak_follow_mode=self.config.get("leak_follow_mode"),
+                    leak_follow_allowlist=self.config.get("leak_follow_allowlist"),
+                    iot_probes_mode=self.config.get("iot_probes_mode"),
+                    iot_probe_budget_seconds=self.config.get("iot_probe_budget_seconds"),
+                    iot_probe_timeout_seconds=self.config.get("iot_probe_timeout_seconds"),
                     cve_lookup_enabled=self.config.get("cve_lookup_enabled"),
                     generate_txt=self.config.get("save_txt_report"),
                     generate_html=self.config.get("save_html_report"),
@@ -2005,6 +2010,34 @@ class InteractiveNetworkAuditor:
         if not isinstance(nuclei_max_runtime, int) or nuclei_max_runtime < 0:
             nuclei_max_runtime = 0
         self.config["nuclei_max_runtime"] = nuclei_max_runtime
+        leak_follow_mode = defaults_for_run.get("leak_follow_mode")
+        if leak_follow_mode not in ("off", "safe"):
+            leak_follow_mode = "off"
+        self.config["leak_follow_mode"] = leak_follow_mode
+        leak_allowlist = defaults_for_run.get("leak_follow_allowlist")
+        if isinstance(leak_allowlist, str):
+            leak_allowlist = [leak_allowlist]
+        if not isinstance(leak_allowlist, list):
+            leak_allowlist = []
+        self.config["leak_follow_allowlist"] = [
+            str(item).strip() for item in leak_allowlist if str(item).strip()
+        ]
+        iot_probes_mode = defaults_for_run.get("iot_probes_mode")
+        if iot_probes_mode not in ("off", "safe"):
+            iot_probes_mode = "off"
+        self.config["iot_probes_mode"] = iot_probes_mode
+        iot_probe_budget = defaults_for_run.get("iot_probe_budget_seconds")
+        if not isinstance(iot_probe_budget, int) or iot_probe_budget < 1 or iot_probe_budget > 300:
+            iot_probe_budget = 20
+        self.config["iot_probe_budget_seconds"] = iot_probe_budget
+        iot_probe_timeout = defaults_for_run.get("iot_probe_timeout_seconds")
+        if (
+            not isinstance(iot_probe_timeout, int)
+            or iot_probe_timeout < 1
+            or iot_probe_timeout > 60
+        ):
+            iot_probe_timeout = 3
+        self.config["iot_probe_timeout_seconds"] = iot_probe_timeout
         self.config["cve_lookup_enabled"] = defaults_for_run.get("cve_lookup_enabled", False)
 
         # 6. Output Dir
@@ -2127,6 +2160,24 @@ class InteractiveNetworkAuditor:
             if choice == self.WIZARD_BACK:
                 return None
             return choice == 0
+
+        def _ask_nuclei_coverage_with_back(
+            *, default_full_coverage: bool, step_num: int, total_steps: int
+        ) -> Optional[bool]:
+            options = [
+                self.ui.t("nuclei_coverage_adaptive"),
+                self.ui.t("nuclei_coverage_full"),
+            ]
+            choice = self.ask_choice_with_back(
+                self.ui.t("nuclei_coverage_mode_q"),
+                options,
+                default=1 if default_full_coverage else 0,
+                step_num=step_num,
+                total_steps=total_steps,
+            )
+            if choice == self.WIZARD_BACK:
+                return None
+            return choice == 1
 
         # v3.9.0: Loop for profile selection with back navigation from timing
         while True:
@@ -2308,11 +2359,16 @@ class InteractiveNetworkAuditor:
                         continue
                     self.config["nuclei_profile"] = ["full", "balanced", "fast"][profile_idx]
                     # v4.17: Full coverage option - default YES only when Nuclei profile is full
+                    persisted_full_coverage = defaults_for_run.get("nuclei_full_coverage")
                     full_coverage_default = (
-                        "yes" if self.config["nuclei_profile"] == "full" else "no"
+                        bool(persisted_full_coverage)
+                        if isinstance(persisted_full_coverage, bool)
+                        else self.config["nuclei_profile"] == "full"
                     )
-                    full_coverage = _ask_yes_no_with_back(
-                        self.ui.t("nuclei_full_coverage_q"), default=full_coverage_default
+                    full_coverage = _ask_nuclei_coverage_with_back(
+                        default_full_coverage=full_coverage_default,
+                        step_num=2,
+                        total_steps=2,
                     )
                     if full_coverage is None:
                         continue
@@ -2624,12 +2680,20 @@ class InteractiveNetworkAuditor:
                         )
                         self.config["nuclei_profile"] = ["full", "balanced", "fast"][profile_idx]
                         # v4.17: Full coverage option - default YES only when Nuclei profile is full
+                        persisted_full_coverage = defaults_for_run.get("nuclei_full_coverage")
                         full_coverage_default = (
-                            "yes" if self.config["nuclei_profile"] == "full" else "no"
+                            bool(persisted_full_coverage)
+                            if isinstance(persisted_full_coverage, bool)
+                            else self.config["nuclei_profile"] == "full"
                         )
-                        self.config["nuclei_full_coverage"] = self.ask_yes_no(
-                            self.ui.t("nuclei_full_coverage_q"), default=full_coverage_default
+                        full_coverage = _ask_nuclei_coverage_with_back(
+                            default_full_coverage=full_coverage_default,
+                            step_num=step,
+                            total_steps=TOTAL_STEPS,
                         )
+                        if full_coverage is None:
+                            continue
+                        self.config["nuclei_full_coverage"] = full_coverage
                         self.ui.print_status(self.ui.t("nuclei_optimization_note"), "INFO")
                         runtime_default = defaults_for_run.get("nuclei_max_runtime")
                         if not isinstance(runtime_default, int) or runtime_default < 0:

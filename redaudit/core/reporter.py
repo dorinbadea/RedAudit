@@ -55,6 +55,14 @@ def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
         identity_threshold = DEFAULT_IDENTITY_THRESHOLD
     if scan_mode in ("completo", "full") and identity_threshold < 4:
         identity_threshold = 4
+    leak_follow_allowlist = config.get("leak_follow_allowlist")
+    if isinstance(leak_follow_allowlist, str):
+        leak_follow_allowlist = [leak_follow_allowlist]
+    if not isinstance(leak_follow_allowlist, list):
+        leak_follow_allowlist = []
+    leak_follow_allowlist = [
+        str(item).strip() for item in leak_follow_allowlist if str(item).strip()
+    ]
     return {
         "targets": config.get("target_networks", []),
         "scan_mode": scan_mode,
@@ -82,6 +90,11 @@ def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
         "nuclei_full_coverage": config.get("nuclei_full_coverage"),
         "nuclei_timeout": config.get("nuclei_timeout"),
         "nuclei_max_runtime": config.get("nuclei_max_runtime"),
+        "leak_follow_mode": config.get("leak_follow_mode", "off"),
+        "leak_follow_allowlist": leak_follow_allowlist,
+        "iot_probes_mode": config.get("iot_probes_mode", "off"),
+        "iot_probe_budget_seconds": config.get("iot_probe_budget_seconds"),
+        "iot_probe_timeout_seconds": config.get("iot_probe_timeout_seconds"),
         "cve_lookup_enabled": config.get("cve_lookup_enabled"),
         "dry_run": config.get("dry_run"),
         "prevent_sleep": config.get("prevent_sleep"),
@@ -514,6 +527,15 @@ def generate_summary(
             "udp_top_ports": results["config_snapshot"].get("udp_top_ports"),
             "low_impact_enrichment": results["config_snapshot"].get("low_impact_enrichment"),
         },
+        "scope_expansion": {
+            "leak_follow_mode": results["config_snapshot"].get("leak_follow_mode", "off"),
+            "leak_follow_allowlist": results["config_snapshot"].get("leak_follow_allowlist") or [],
+            "iot_probes_mode": results["config_snapshot"].get("iot_probes_mode", "off"),
+            "iot_probe_budget_seconds": results["config_snapshot"].get("iot_probe_budget_seconds"),
+            "iot_probe_timeout_seconds": results["config_snapshot"].get(
+                "iot_probe_timeout_seconds"
+            ),
+        },
     }
     auditor_exclusions = results.get("auditor_exclusions")
     if not isinstance(auditor_exclusions, dict):
@@ -920,6 +942,13 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                     avg=smart.get("identity_score_avg", 0),
                 )
             )
+        scope_cfg = results.get("config_snapshot") or {}
+        lines.append(
+            "  Scope controls: leak_follow {leak_mode}, iot_probes {iot_mode}\n".format(
+                leak_mode=scope_cfg.get("leak_follow_mode", "off"),
+                iot_mode=scope_cfg.get("iot_probes_mode", "off"),
+            )
+        )
         lines.append("\n")
 
     # v3.2.1: Check for network leaks (Guest Networks / Pivoting opportunities)
@@ -1417,6 +1446,15 @@ def show_config_summary(config: Dict, t_fn, colors: Dict) -> None:
     if config.get("windows_verify_enabled"):
         max_targets = config.get("windows_verify_max_targets")
         conf[t_fn("windows_verify")] = f"enabled (max {max_targets})" if max_targets else "enabled"
+    leak_mode = config.get("leak_follow_mode")
+    if leak_mode:
+        allowlist = config.get("leak_follow_allowlist") or []
+        conf["Leak Following"] = f"{leak_mode} ({', '.join(allowlist) if allowlist else '-'})"
+    iot_mode = config.get("iot_probes_mode")
+    if iot_mode:
+        budget = config.get("iot_probe_budget_seconds")
+        timeout = config.get("iot_probe_timeout_seconds")
+        conf["IoT Probes"] = f"{iot_mode} (budget={budget}s timeout={timeout}s)"
     for k, v in conf.items():
         label = str(k).rstrip(":")
         print(f"  {label}: {v}")

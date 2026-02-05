@@ -40,6 +40,30 @@ Controles propuestos para el operador:
 - `--iot-probe-budget-seconds <n>`
 - `--iot-probe-timeout-seconds <n>`
 
+### Contrato de Implementación Fase A (v4.x, antes de codificar funcionalidades)
+
+Este contrato define el primer bloque de implementación para mantener un comportamiento predecible en auditorías de hogar, oficina y empresa.
+
+| Área | Contrato |
+|---|---|
+| **Objetivo** | Añadir primitivas seguras y opt-in para hints de leak-follow y comprobaciones mínimas de protocolos IoT, sin cambiar el alcance por defecto. |
+| **No objetivo** | No expandir automáticamente el alcance a rangos públicos/Internet; no ejecutar sondas profundas de protocolo en modo siempre activo. |
+| **Controles CLI** | `--leak-follow off|safe` y `--iot-probes off|safe`, ambos con default `off`. |
+| **UX del Wizard** | Los prompts deben indicar que `off` es el default y que `safe` solo opera in-scope; redacción explícita y clara para operador. |
+| **Regla de activación (Leak Following)** | En modo `safe`, seguir solo candidatos RFC1918/ULA ya dentro del alcance o incluidos explícitamente en allowlist. |
+| **Regla de activación (IoT Probes)** | Ejecutar solo en activos ambiguos con señales fuertes corroboradas (por ejemplo OUI del fabricante + servicios compatibles). |
+| **Presupuestos/Timeouts** | Presupuesto por host y timeout por sonda obligatorios; si se agota, degradar a hints de informe sin promover hallazgos. |
+| **Marcado de evidencia** | Toda señal promovida debe guardar evidencia cruda (cabecera/sonda/metadatos de respuesta) y etiquetado heurístico por separado. |
+| **Contrato de reporting** | Añadir secciones/campos explícitos para: modo usado, candidatos detectados, acciones realizadas, motivos de descarte y guardarraíles activados. |
+| **Modo de fallo** | Ante incertidumbre de parser/sonda, clasificar como hint y no como hallazgo confirmado. |
+
+Criterios de aceptación de Fase A:
+
+- Los nuevos controles aparecen en ayuda CLI y prompts del wizard con defaults seguros.
+- La salida JSON/HTML muestra si leak following e IoT probes estuvieron en `off`, `safe` aplicado o descartados por guardarraíles.
+- No hay cambio de comportamiento cuando ambas funcionalidades permanecen en `off`.
+- Los tests cubren todas las ramas de decisión nuevas (incluyendo timeout y denegación) en los módulos tocados.
+
 ### Diferido / Backlog Técnico
 
 | Funcionalidad | Estado | Descripción |

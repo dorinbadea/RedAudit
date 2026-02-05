@@ -145,6 +145,11 @@ def _base_args(**overrides):
         "nuclei": False,
         "nuclei_profile": "balanced",
         "nuclei_max_runtime": 0,
+        "leak_follow": "off",
+        "leak_follow_allowlist": None,
+        "iot_probes": "off",
+        "iot_probe_budget_seconds": 20,
+        "iot_probe_timeout_seconds": 3,
         "nuclei_exclude": None,
         "nuclei_resume": None,
         "nuclei_resume_latest": False,
@@ -213,6 +218,46 @@ def test_parse_arguments_handles_persisted_error(monkeypatch):
         args = cli.parse_arguments()
     # When persisted defaults error, fallback is suggest_threads() (auto-detected)
     assert args.threads == suggest_threads()
+
+
+def test_parse_arguments_scope_expansion_persisted_defaults(monkeypatch):
+    def _defaults():
+        return {
+            "leak_follow_mode": "safe",
+            "leak_follow_allowlist": ["10.0.0.0/24,10.0.1.10"],
+            "iot_probes_mode": "safe",
+            "iot_probe_budget_seconds": 55,
+            "iot_probe_timeout_seconds": 9,
+        }
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", _defaults)
+    with patch.object(sys, "argv", ["redaudit"]):
+        args = cli.parse_arguments()
+    assert args.leak_follow == "safe"
+    assert args.leak_follow_allowlist == ["10.0.0.0/24", "10.0.1.10"]
+    assert args.iot_probes == "safe"
+    assert args.iot_probe_budget_seconds == 55
+    assert args.iot_probe_timeout_seconds == 9
+
+
+def test_parse_arguments_scope_expansion_invalid_defaults(monkeypatch):
+    def _defaults():
+        return {
+            "leak_follow_mode": "bad",
+            "leak_follow_allowlist": None,
+            "iot_probes_mode": "bad",
+            "iot_probe_budget_seconds": -1,
+            "iot_probe_timeout_seconds": 100,
+        }
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", _defaults)
+    with patch.object(sys, "argv", ["redaudit"]):
+        args = cli.parse_arguments()
+    assert args.leak_follow == "off"
+    assert args.leak_follow_allowlist == []
+    assert args.iot_probes == "off"
+    assert args.iot_probe_budget_seconds == 20
+    assert args.iot_probe_timeout_seconds == 3
 
 
 def test_parse_arguments_help_lang_es(monkeypatch):
@@ -601,6 +646,38 @@ def test_configure_from_args_sets_nuclei_profile():
     assert app.config["nuclei_profile"] == "fast"
 
 
+def test_configure_from_args_sets_scope_expansion_controls():
+    app = _DummyApp()
+    args = _base_args(
+        leak_follow="safe",
+        leak_follow_allowlist=["10.0.0.0/24,10.0.1.10", "10.0.1.10"],
+        iot_probes="safe",
+        iot_probe_budget_seconds=45,
+        iot_probe_timeout_seconds=7,
+    )
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["leak_follow_mode"] == "safe"
+    assert app.config["leak_follow_allowlist"] == ["10.0.0.0/24", "10.0.1.10"]
+    assert app.config["iot_probes_mode"] == "safe"
+    assert app.config["iot_probe_budget_seconds"] == 45
+    assert app.config["iot_probe_timeout_seconds"] == 7
+
+
+def test_configure_from_args_scope_expansion_invalid_values_fallback():
+    app = _DummyApp()
+    args = _base_args(
+        leak_follow="bad",
+        iot_probes="bad",
+        iot_probe_budget_seconds=-1,
+        iot_probe_timeout_seconds=1000,
+    )
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["leak_follow_mode"] == "off"
+    assert app.config["iot_probes_mode"] == "off"
+    assert app.config["iot_probe_budget_seconds"] == 20
+    assert app.config["iot_probe_timeout_seconds"] == 3
+
+
 def test_configure_from_args_filters_net_discovery_protocols():
     app = _DummyApp()
     args = _base_args(net_discovery="dhcp,foo,mdns")
@@ -620,6 +697,8 @@ def test_configure_from_args_save_defaults_success(monkeypatch):
     assert cli.configure_from_args(app, args) is True
     assert "defaults_saved" in app._statuses[-1]
     assert called["threads"] == app.config.get("threads")
+    assert called["leak_follow_mode"] == app.config.get("leak_follow_mode")
+    assert called["iot_probes_mode"] == app.config.get("iot_probes_mode")
 
 
 def test_configure_from_args_save_defaults_error(monkeypatch):

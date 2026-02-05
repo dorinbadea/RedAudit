@@ -527,6 +527,8 @@ def test_wizard_custom_profile_nuclei_fatigue(monkeypatch):
     def _ask_choice_with_back(q, _opts, default=0, **kwargs):
         if q == "scan_mode":
             return 2
+        if q == "nuclei_coverage_mode_q":
+            return 0
         if q == "auth_mode_q":
             return -1
         if q == "auth_scan_q":
@@ -536,8 +538,6 @@ def test_wizard_custom_profile_nuclei_fatigue(monkeypatch):
     def _ask_yes_no(q, default="yes", **kwargs):
         if q == "nuclei_q":
             return True
-        if q == "nuclei_full_coverage_q":
-            return False
         return default == "yes"
 
     def _ask_number(q, default="all", **kwargs):
@@ -559,6 +559,7 @@ def test_wizard_custom_profile_nuclei_fatigue(monkeypatch):
 
     assert auditor.config["scan_mode"] == "completo"
     assert auditor.config["nuclei_enabled"] is True
+    assert auditor.config["nuclei_full_coverage"] is False
     assert auditor.config["nuclei_max_runtime"] == 12
     assert auditor.config["nuclei_fatigue_limit"] == 4
 
@@ -595,5 +596,6 @@ def test_wizard_exhaustive_profile_nuclei_fatigue():
                     ):
                         auditor._configure_scan_interactive({})
     assert auditor.config["nuclei_enabled"] is True
+    assert auditor.config["nuclei_full_coverage"] is True
     assert auditor.config["nuclei_max_runtime"] == 15
     assert auditor.config["nuclei_fatigue_limit"] == 4

@@ -407,10 +407,16 @@ TRANSLATIONS = {
         "nuclei_full": "Full - All templates (~2h)",
         "nuclei_balanced": "Balanced - Core templates (~1h, recommended)",
         "nuclei_fast": "Fast - Critical CVEs (~30-60min)",
+        "nuclei_coverage_mode_q": "Nuclei port coverage mode:",
+        "nuclei_coverage_adaptive": (
+            "Adaptive auto-switch (recommended) — priority ports for strong identity hosts; "
+            "full ports for ambiguous hosts"
+        ),
+        "nuclei_coverage_full": "Full coverage — scan all detected HTTP ports",
         # v4.17: Full coverage option (v4.18: shortened to prevent truncation)
         "nuclei_full_coverage_q": (
-            "Scan ALL detected HTTP ports? (Yes = full coverage; No = optimized to priority "
-            "ports, except ambiguous hosts)"
+            "Scan ALL detected HTTP ports? (Yes = full coverage. No = priority ports on strong-"
+            "identity hosts; ambiguous hosts still keep all ports for safety.)"
         ),
         "nuclei_budget_q": "Max Nuclei runtime in minutes (0 = unlimited)",
         "nuclei_resume_saved": "Nuclei resume saved: {}",
@@ -939,10 +945,17 @@ TRANSLATIONS = {
         "nuclei_full": "Completo - Todos los templates (~2h)",
         "nuclei_balanced": "Equilibrado - Templates esenciales (~1h, recomendado)",
         "nuclei_fast": "Rápido - CVEs críticos (~30-60min)",
+        "nuclei_coverage_mode_q": "Modo de cobertura de puertos en Nuclei:",
+        "nuclei_coverage_adaptive": (
+            "Auto-switch adaptativo (recomendado) — puertos prioritarios para hosts de identidad "
+            "fuerte; puertos completos para hosts ambiguos"
+        ),
+        "nuclei_coverage_full": "Cobertura completa — escanear todos los puertos HTTP detectados",
         # v4.17: Opcion de cobertura completa (v4.18: abreviado)
         "nuclei_full_coverage_q": (
-            "¿Escanear TODOS los puertos HTTP detectados? (Sí = cobertura total; No = optimiza "
-            "puertos prioritarios, salvo hosts ambiguos)"
+            "¿Escanear TODOS los puertos HTTP detectados? (Sí = cobertura total. No = puertos "
+            "prioritarios en hosts de identidad fuerte; los ambiguos mantienen todos los puertos "
+            "por seguridad.)"
         ),
         "nuclei_budget_q": "Tiempo maximo de Nuclei en minutos (0 = ilimitado)",
         "nuclei_resume_saved": "Reanudacion Nuclei guardada: {}",

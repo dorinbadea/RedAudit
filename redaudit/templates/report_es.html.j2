@@ -278,6 +278,17 @@
                         {% endif %}
                     </ul>
                 </div>
+                <div class="meta-item">
+                    <h4>Expansión de alcance</h4>
+                    {% set scope = pipeline.scope_expansion or {} %}
+                    <ul>
+                        <li>Leak Following <span>{{ scope.leak_follow_mode or 'off' }}</span></li>
+                        <li>Allowlist Leak <span>{{ (scope.leak_follow_allowlist or [])|join(', ') or '-' }}</span></li>
+                        <li>Sondas IoT <span>{{ scope.iot_probes_mode or 'off' }}</span></li>
+                        <li>Presupuesto IoT (s) <span>{{ scope.iot_probe_budget_seconds or '-' }}</span></li>
+                        <li>Timeout IoT (s) <span>{{ scope.iot_probe_timeout_seconds or '-' }}</span></li>
+                    </ul>
+                </div>
                 {% set hyperscan_vs_final = pipeline.hyperscan_vs_final or {} %}
                 {% if hyperscan_vs_final.by_subnet %}
                 <div class="meta-item">

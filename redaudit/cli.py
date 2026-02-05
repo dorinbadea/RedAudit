@@ -29,6 +29,31 @@ from redaudit.utils.targets import parse_target_tokens
 from redaudit.core.nuclei import normalize_nuclei_exclude
 
 
+def _normalize_csv_items(values):
+    """Normalize repeated/comma-separated CLI values into a deduplicated list."""
+    if values is None:
+        return []
+    if isinstance(values, str):
+        values = [values]
+    if not isinstance(values, list):
+        return []
+
+    normalized = []
+    seen = set()
+    for chunk in values:
+        if chunk is None:
+            continue
+        for item in str(chunk).split(","):
+            value = item.strip()
+            if not value:
+                continue
+            if value in seen:
+                continue
+            seen.add(value)
+            normalized.append(value)
+    return normalized
+
+
 def parse_arguments():
     """
     Parse command-line arguments.
@@ -58,6 +83,15 @@ def parse_arguments():
             "Umbral mínimo de identity_score para omitir Deep Scan (0-100, defecto: 3)."
         )
         help_dead_host_retries = "Abandonar host tras N timeouts consecutivos (0 = sin límite)."
+        help_leak_follow = (
+            "Leak Following: off (default) o safe (solo candidatos internos in-scope)."
+        )
+        help_leak_allowlist = (
+            "Allowlist para Leak Following en modo safe (host/CIDR, repetible o CSV)."
+        )
+        help_iot_probes = "Sondas IoT: off (default) o safe (solo con ambigüedad + señal fuerte)."
+        help_iot_budget = "Presupuesto por host para sondas IoT en segundos (default: 20)."
+        help_iot_timeout = "Timeout por sonda IoT en segundos (default: 3)."
     else:
         help_low_impact = (
             "Enable low-impact enrichment (DNS/mDNS/SNMP) before TCP scanning. "
@@ -66,6 +100,17 @@ def parse_arguments():
         help_deep_budget = "Max hosts that can run aggressive Deep Scan per run (0 = unlimited)."
         help_identity_threshold = "Minimum identity_score to skip Deep Scan (0-100, default: 3)."
         help_dead_host_retries = "Abandon host after N consecutive timeouts (0 = unlimited)."
+        help_leak_follow = (
+            "Leak Following mode: off (default) or safe (in-scope internal candidates only)."
+        )
+        help_leak_allowlist = (
+            "Leak Following allowlist for safe mode (host/CIDR, repeatable or CSV)."
+        )
+        help_iot_probes = (
+            "IoT probes mode: off (default) or safe (ambiguity + strong corroborated signals)."
+        )
+        help_iot_budget = "Per-host IoT probe budget in seconds (default: 20)."
+        help_iot_timeout = "Per-probe IoT timeout in seconds (default: 3)."
 
     parser = argparse.ArgumentParser(
         description=f"RedAudit v{VERSION} - Network Auditing Tool",
@@ -133,6 +178,34 @@ Examples:
     default_nuclei_max_runtime = persisted_defaults.get("nuclei_max_runtime")
     if not isinstance(default_nuclei_max_runtime, int) or default_nuclei_max_runtime < 0:
         default_nuclei_max_runtime = 0
+
+    default_leak_follow_mode = persisted_defaults.get("leak_follow_mode")
+    if default_leak_follow_mode not in ("off", "safe"):
+        default_leak_follow_mode = "off"
+
+    default_leak_follow_allowlist = _normalize_csv_items(
+        persisted_defaults.get("leak_follow_allowlist")
+    )
+
+    default_iot_probes_mode = persisted_defaults.get("iot_probes_mode")
+    if default_iot_probes_mode not in ("off", "safe"):
+        default_iot_probes_mode = "off"
+
+    default_iot_probe_budget_seconds = persisted_defaults.get("iot_probe_budget_seconds")
+    if (
+        not isinstance(default_iot_probe_budget_seconds, int)
+        or default_iot_probe_budget_seconds < 1
+        or default_iot_probe_budget_seconds > 300
+    ):
+        default_iot_probe_budget_seconds = 20
+
+    default_iot_probe_timeout_seconds = persisted_defaults.get("iot_probe_timeout_seconds")
+    if (
+        not isinstance(default_iot_probe_timeout_seconds, int)
+        or default_iot_probe_timeout_seconds < 1
+        or default_iot_probe_timeout_seconds > 60
+    ):
+        default_iot_probe_timeout_seconds = 3
 
     default_nuclei_exclude = persisted_defaults.get("nuclei_exclude")
     if isinstance(default_nuclei_exclude, str):
@@ -315,6 +388,39 @@ Examples:
         default=default_nuclei_max_runtime,
         metavar="MIN",
         help="Max Nuclei runtime in minutes (0 = unlimited)",
+    )
+    parser.add_argument(
+        "--leak-follow",
+        choices=["off", "safe"],
+        default=default_leak_follow_mode,
+        help=help_leak_follow,
+    )
+    parser.add_argument(
+        "--leak-follow-allowlist",
+        action="append",
+        default=list(default_leak_follow_allowlist),
+        metavar="TARGET",
+        help=help_leak_allowlist,
+    )
+    parser.add_argument(
+        "--iot-probes",
+        choices=["off", "safe"],
+        default=default_iot_probes_mode,
+        help=help_iot_probes,
+    )
+    parser.add_argument(
+        "--iot-probe-budget-seconds",
+        type=int,
+        default=default_iot_probe_budget_seconds,
+        metavar="SEC",
+        help=help_iot_budget,
+    )
+    parser.add_argument(
+        "--iot-probe-timeout-seconds",
+        type=int,
+        default=default_iot_probe_timeout_seconds,
+        metavar="SEC",
+        help=help_iot_timeout,
     )
     parser.add_argument(
         "--nuclei-exclude",
@@ -867,6 +973,33 @@ def configure_from_args(app, args) -> bool:
     if not isinstance(nuclei_max_runtime, int) or nuclei_max_runtime < 0:
         nuclei_max_runtime = 0
     app.config["nuclei_max_runtime"] = nuclei_max_runtime
+    leak_follow_mode = getattr(args, "leak_follow", "off")
+    if leak_follow_mode not in ("off", "safe"):
+        leak_follow_mode = "off"
+    app.config["leak_follow_mode"] = leak_follow_mode
+    app.config["leak_follow_allowlist"] = _normalize_csv_items(
+        getattr(args, "leak_follow_allowlist", None)
+    )
+    iot_probes_mode = getattr(args, "iot_probes", "off")
+    if iot_probes_mode not in ("off", "safe"):
+        iot_probes_mode = "off"
+    app.config["iot_probes_mode"] = iot_probes_mode
+    iot_probe_budget_seconds = getattr(args, "iot_probe_budget_seconds", 20)
+    if (
+        not isinstance(iot_probe_budget_seconds, int)
+        or iot_probe_budget_seconds < 1
+        or iot_probe_budget_seconds > 300
+    ):
+        iot_probe_budget_seconds = 20
+    app.config["iot_probe_budget_seconds"] = iot_probe_budget_seconds
+    iot_probe_timeout_seconds = getattr(args, "iot_probe_timeout_seconds", 3)
+    if (
+        not isinstance(iot_probe_timeout_seconds, int)
+        or iot_probe_timeout_seconds < 1
+        or iot_probe_timeout_seconds > 60
+    ):
+        iot_probe_timeout_seconds = 3
+    app.config["iot_probe_timeout_seconds"] = iot_probe_timeout_seconds
     nuclei_exclude = getattr(args, "nuclei_exclude", None)
     app.config["nuclei_exclude"] = normalize_nuclei_exclude(nuclei_exclude)
 
@@ -939,6 +1072,11 @@ def configure_from_args(app, args) -> bool:
                 udp_top_ports=app.config.get("udp_top_ports"),
                 topology_enabled=app.config.get("topology_enabled"),
                 nuclei_enabled=app.config.get("nuclei_enabled"),
+                leak_follow_mode=app.config.get("leak_follow_mode"),
+                leak_follow_allowlist=app.config.get("leak_follow_allowlist"),
+                iot_probes_mode=app.config.get("iot_probes_mode"),
+                iot_probe_budget_seconds=app.config.get("iot_probe_budget_seconds"),
+                iot_probe_timeout_seconds=app.config.get("iot_probe_timeout_seconds"),
                 windows_verify_enabled=app.config.get("windows_verify_enabled"),
                 windows_verify_max_targets=app.config.get("windows_verify_max_targets"),
                 lang=app.lang,

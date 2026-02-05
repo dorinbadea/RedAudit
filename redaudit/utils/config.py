@@ -58,6 +58,12 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         # v3.6.0+: Optional template scanner toggle (if nuclei is installed)
         "nuclei_enabled": None,  # True/False
         "nuclei_max_runtime": None,  # int minutes | None
+        # v4.x Phase A: Safe scope expansion controls
+        "leak_follow_mode": None,  # "off" | "safe" | None
+        "leak_follow_allowlist": None,  # list[str] | None
+        "iot_probes_mode": None,  # "off" | "safe" | None
+        "iot_probe_budget_seconds": None,  # int | None
+        "iot_probe_timeout_seconds": None,  # int | None
         # v3.6.0+: Net Discovery / Red Team defaults (wizard)
         "net_discovery_enabled": None,  # True/False
         "net_discovery_redteam": None,  # True/False

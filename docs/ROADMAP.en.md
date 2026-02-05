@@ -40,6 +40,30 @@ Proposed operator controls:
 - `--iot-probe-budget-seconds <n>`
 - `--iot-probe-timeout-seconds <n>`
 
+### Phase A Implementation Contract (v4.x, before feature coding)
+
+This contract defines the first implementation slice so behavior stays predictable across home, office, and enterprise audits.
+
+| Area | Contract |
+| --- | --- |
+| **Goal** | Add safe, opt-in primitives for leak-follow hints and minimal IoT protocol checks without changing default scan scope. |
+| **Non-goal** | No automatic scope expansion to Internet/public ranges; no unaudited "always-on" deep protocol probing. |
+| **CLI Controls** | `--leak-follow off|safe` and `--iot-probes off|safe`, both defaulting to `off`. |
+| **Wizard UX** | Prompts must state that `off` is default and `safe` is in-scope only; wording must be explicit and operator-friendly. |
+| **Activation Rule (Leak Following)** | In `safe` mode, follow only RFC1918/ULA candidates already in scan scope or explicitly allowlisted by operator. |
+| **Activation Rule (IoT Probes)** | Run only for ambiguous assets with strong corroborating signals (for example vendor OUI + matching service hints). |
+| **Budgets/Timeouts** | Per-host probe budget and per-probe timeout are mandatory guardrails; timeout exhaustion must degrade to report-only hints. |
+| **Evidence Marking** | Every promoted signal must store raw evidence (header/probe/response metadata) and heuristic labels separately. |
+| **Reporting Contract** | Add explicit sections/fields for: mode used, candidates detected, actions taken, skipped reasons, and guardrail hits. |
+| **Failure Mode** | On parser/probe uncertainty, fall back to "hint" classification rather than confirmed finding. |
+
+Acceptance criteria for Phase A:
+
+- New controls are visible in CLI help and wizard prompts with safe defaults.
+- JSON/HTML output shows whether leak following and IoT probes were off, safe-applied, or skipped by guardrails.
+- No behavior change when both features remain `off`.
+- Tests cover all new decision branches (including timeout and deny paths) in touched modules.
+
 ### Deferred / Technical Backlog
 
 | Feature | Status | Description |

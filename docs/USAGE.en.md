@@ -223,6 +223,11 @@ Grouped by operational function. Verified against the current codebase.
 | `--nuclei` | Enable Nuclei template scanning (requires `nuclei`; runs in full mode only; OFF by default) |
 | `--nuclei-timeout S` | Nuclei batch timeout in seconds (default: 300) |
 | `--nuclei-max-runtime MIN` | Max Nuclei runtime in minutes (0 = unlimited). Creates a resume file when exceeded. |
+| `--leak-follow {off,safe}` | Leak-follow control (`off` by default; `safe` = in-scope internal candidates only) |
+| `--leak-follow-allowlist TARGET` | Extra in-scope candidates for leak-follow safe mode (repeatable or comma-separated) |
+| `--iot-probes {off,safe}` | IoT probe control (`off` by default; `safe` = ambiguity + corroborated signals) |
+| `--iot-probe-budget-seconds SEC` | Per-host IoT probe budget (default: 20) |
+| `--iot-probe-timeout-seconds SEC` | Per-probe IoT timeout (default: 3) |
 | `--nuclei-exclude TARGET` | Exclude Nuclei targets (host, host:port, URL; repeatable or comma-separated) |
 | `--nuclei-resume PATH` | Resume pending Nuclei targets from a resume file or scan folder |
 | `--nuclei-resume-latest` | Resume the latest pending Nuclei run from the default reports folder |
@@ -236,7 +241,9 @@ Notes:
 - Web app scanners (sqlmap/ZAP) are skipped on infrastructure UIs when identity evidence indicates router/switch/AP devices.
 - Nuclei targets are optimized by identity: strong-identity hosts are limited to priority ports, while ambiguous hosts keep full target coverage and receive exception-only retries (fatigue-limited; wizard default is 3).
 - Auto-switch profile: when multiple hosts expose 3+ HTTP ports and full coverage is off, RedAudit switches Nuclei to **fast** to prevent long timeouts (shown in CLI and stored in the summary).
+- Leak-follow and IoT probes use explicit controls: `off` keeps default behavior, while `safe` applies strict in-scope and timeout guardrails.
 - Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.
+- In the Nuclei resume menu, entries that were resumed before show `resumes: N` so repeated partial runs are easy to identify.
 - **Nuclei on web-dense networks:** On networks with many HTTP/HTTPS services (e.g., Docker labs, microservices), Nuclei scans may take significantly longer (30-90+ minutes). Use `--nuclei-timeout 600` to increase the batch timeout, or `--no-nuclei` to skip Nuclei entirely if speed is critical. When full coverage is enabled, RedAudit raises the batch timeout to 900s if a lower value is configured.
 - When a runtime budget is set, it is a **total wall-clock limit for the Nuclei phase** (not per batch). RedAudit runs batches sequentially and stops before starting a new batch if the remaining budget cannot cover the estimated batch runtime. It saves `nuclei_resume.json` + `nuclei_pending.txt` when the budget is reached. Timeouts that end the run as partial also save pending targets for resume. If you do nothing, the **audit continues after Nuclei** and the resume stays available. Resume uses the saved budget unless overridden (pass `--nuclei-max-runtime` during resume or set a new value in the wizard; `0` disables the budget).
 - Resumes are stored in the same scan folder and are updated in place. If a resume run ends as partial again, the existing `nuclei_resume.json`/`nuclei_pending.txt` is refreshed (not duplicated). To clean old resumes, delete those two files inside scan folders you no longer need to resume. List them first with `find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt`, then remove with `find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt -delete`.
@@ -255,17 +262,16 @@ Controls which templates are executed:
 | `balanced` | Core security templates (cve, default-login, exposure, misconfig) | ~1 hour (recommended) |
 | `fast` | Critical CVEs only | ~30-60 minutes |
 
-**2. Full Coverage (wizard only)**
+**2. Coverage Mode (wizard only)**
 
-During interactive mode, the wizard asks "Scan ALL detected HTTP ports?" This controls which HTTP ports are scanned per host:
+During interactive mode, the wizard asks for **Nuclei port coverage mode**:
 
 | Option | Behavior |
 |:-------|:---------|
-| **No (default for balanced/fast)** | Max 2 URLs per multi-port host (prioritizes 80, 443) |
-| **Yes (default for full)** | Scan ALL detected HTTP ports on ambiguous hosts; strong-identity hosts remain capped to priority ports |
+| **Adaptive auto-switch** (recommended; default for balanced/fast) | Priority ports for strong-identity hosts; full detected ports for ambiguous hosts. Keeps auto-switch to fast profile when web density is high. |
+| **Full coverage** (default for full profile) | Scan all detected HTTP ports; auto-switch is skipped so the selected profile is honored. |
 
-Note: This option is only available in the interactive wizard, not via CLI flags.
-When full coverage is enabled, the auto-fast profile switch is skipped so the selected profile is honored.
+Note: This mode is only available in the interactive wizard, not via CLI flags.
 
 **3. Fatigue Limit (wizard only)**
 

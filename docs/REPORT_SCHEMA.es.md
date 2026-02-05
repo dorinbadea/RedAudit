@@ -44,7 +44,7 @@ Metadatos del manifiesto usados para inventariar artefactos de salida en pipelin
 | `scanner_versions` | object | Versiones de herramientas externas capturadas en tiempo de ejecución |
 | `targets` | array | Redes objetivo o rangos IP |
 | `config_snapshot` | object | Snapshot de configuración sanitizada (sin secretos) |
-| `pipeline` | object | Resumen mínimo del pipeline (host_scan, deep_scan, net_discovery, nuclei, vulnerability_scan, hyperscan_vs_final, auditor_exclusions) |
+| `pipeline` | object | Resumen mínimo del pipeline (host_scan, deep_scan, scope_expansion, net_discovery, nuclei, vulnerability_scan, hyperscan_vs_final, auditor_exclusions) |
 | `auditor_exclusions` | object | IPs del auditor excluidas del listado de objetivos, con razones |
 | `counts` | object | Conteos de hosts, hallazgos y PCAPs |
 | `counts.findings_raw` | integer | (Opcional) Conteo bruto de hallazgos antes de normalizar |
@@ -91,6 +91,11 @@ El objeto `config_snapshot` guarda la configuracion de ejecucion (sin secretos).
 | `trust_hyperscan` | `boolean` | Indica si DeepScan confia solo en los puertos de HyperScan. |
 | `nuclei_timeout` | `integer` | Timeout de Nuclei por objetivo en segundos. |
 | `nuclei_max_runtime` | `integer` | Presupuesto total de tiempo de Nuclei en minutos (0 = ilimitado). |
+| `leak_follow_mode` | `string` | Modo de leak-follow (`off`/`safe`). |
+| `leak_follow_allowlist` | `array` | Lista allowlist opcional para leak-follow in-scope. |
+| `iot_probes_mode` | `string` | Modo de sondas IoT (`off`/`safe`). |
+| `iot_probe_budget_seconds` | `integer` | Presupuesto por host para sondas IoT en segundos. |
+| `iot_probe_timeout_seconds` | `integer` | Timeout por sonda IoT en segundos. |
 
 ### summary.json (Resumen para dashboards)
 
@@ -194,6 +199,7 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `nuclei` | object | Resumen Nuclei |
 | `vulnerability_scan` | object | Total de hallazgos + fuentes (+ conteo raw) |
 | `deep_scan` | object | Umbral de identidad + estrategia UDP (v4.18.9+) |
+| `scope_expansion` | object | Estado de controles leak-follow y sondas IoT (Fase A v4.x) |
 | `hyperscan_vs_final` | object | Conteos HyperScan vs final (v4.18.9+) |
 
 #### pipeline.host_scan (v4.18.9+)
@@ -256,6 +262,16 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `resume_pending` | integer | Objetivos pendientes guardados para reanudar |
 | `output_file` | string | Ruta relativa a nuclei_output.json |
 | `success` | boolean | Exito de Nuclei |
+
+#### pipeline.scope_expansion (Fase A v4.x)
+
+| Campo | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `leak_follow_mode` | string | Modo leak-follow (`off`/`safe`) usado en la ejecución |
+| `leak_follow_allowlist` | array | Entradas in-scope aportadas por el operador |
+| `iot_probes_mode` | string | Modo de sondas IoT (`off`/`safe`) |
+| `iot_probe_budget_seconds` | integer | Presupuesto por host para sondas IoT en segundos |
+| `iot_probe_timeout_seconds` | integer | Timeout por sonda IoT en segundos |
 | `error` | string | Mensaje de error si existe |
 
 #### pipeline.hyperscan_vs_final (v4.18.9+)

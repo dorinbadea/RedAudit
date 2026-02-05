@@ -113,6 +113,11 @@ class TestDefaultConfig(unittest.TestCase):
             "lang",
             "nuclei_enabled",
             "nuclei_max_runtime",
+            "leak_follow_mode",
+            "leak_follow_allowlist",
+            "iot_probes_mode",
+            "iot_probe_budget_seconds",
+            "iot_probe_timeout_seconds",
             "net_discovery_enabled",
             "net_discovery_redteam",
             "net_discovery_active_l2",
@@ -238,6 +243,11 @@ class TestPersistentDefaults(unittest.TestCase):
                         net_discovery_kerberos_userlist="~/users.txt",
                         windows_verify_enabled=True,
                         windows_verify_max_targets=25,
+                        leak_follow_mode="safe",
+                        leak_follow_allowlist=["10.0.0.0/24"],
+                        iot_probes_mode="safe",
+                        iot_probe_budget_seconds=30,
+                        iot_probe_timeout_seconds=5,
                         bogus_key="ignored",
                     )
                     self.assertTrue(ok)
@@ -260,6 +270,11 @@ class TestPersistentDefaults(unittest.TestCase):
         self.assertEqual(defaults["net_discovery_kerberos_userlist"], "~/users.txt")
         self.assertEqual(defaults["windows_verify_enabled"], True)
         self.assertEqual(defaults["windows_verify_max_targets"], 25)
+        self.assertEqual(defaults["leak_follow_mode"], "safe")
+        self.assertEqual(defaults["leak_follow_allowlist"], ["10.0.0.0/24"])
+        self.assertEqual(defaults["iot_probes_mode"], "safe")
+        self.assertEqual(defaults["iot_probe_budget_seconds"], 30)
+        self.assertEqual(defaults["iot_probe_timeout_seconds"], 5)
         self.assertNotIn("bogus_key", defaults)
 
 
