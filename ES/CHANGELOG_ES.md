@@ -10,6 +10,15 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.37] - 05-02-2026
+
+### Corregido
+
+- **Contabilidad de objetivos Nuclei**: `targets_total` ahora se mantiene coherente cuando leak-follow añade objetivos adicionales.
+- **Mensajería de cobertura**: El texto de cobertura completa ahora refleja el comportamiento real (se omite auto-switch para respetar el perfil seleccionado).
+- **Etiquetas HTML ES**: Las etiquetas de expansión de alcance quedan completamente localizadas en los informes en español.
+- **Robustez en runtime**: Los contadores runtime de expansión de alcance ahora se parsean de forma segura ante valores persistidos malformados.
+
 ## [4.19.36] - 05-02-2026
 
 ### Mejorado
