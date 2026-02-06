@@ -79,6 +79,7 @@ Report encryption is handled via the `cryptography` library to ensure confidenti
 - **HyperScan Discovery**: Async TCP/UDP/ARP discovery can reduce nmap invocations when enabled (net discovery).
 - **Heartbeat**: Background monitoring ensures process integrity without requiring interactive shell access.
 - **Credentials File Security**: The universal credentials file (e.g., `~/.redaudit/credentials.json`) is strictly validated. It MUST have `0600` permissions (read/write only by owner); otherwise, RedAudit refuses to load it (v4.5.2+).
+- **Credential Provider Backends**: Credential retrieval uses OS keyring backends when available. In headless/root environments where no secure backend exists, fallback to `keyrings.alt` may use plaintext storage and should be treated as lower assurance for enterprise deployments.
 - **Module Location**: `redaudit/core/reporter.py` (file permissions), `redaudit/core/auditor.py` (heartbeat, jitter), `redaudit/core/hyperscan.py` (async discovery), `redaudit/core/credentials_manager.py` (secrets validation)
 
 ## 4. Audit Trail
@@ -86,6 +87,8 @@ Report encryption is handled via the `cryptography` library to ensure confidenti
 All operations are logged to `~/.redaudit/logs/` with rotation policies (max 10MB, 5 backups). Logs contain execution timestamps, thread identifiers, and raw command invocations for accountability.
 
 **Session Capture Security (v3.7+)**: The `session_logs/` directory contains raw terminal output (`session_*.log`) which may include sensitive data displayed during the scan. Permissions follow the output directory and user umask; treat these logs as sensitive artifacts.
+
+**Credential Access Audit Events (v4.19.38+)**: Credential provider access/store operations emit `credential_audit` log events with key/value fields (`action`, `provider`, `protocol`, `target`, `outcome`) and never include secrets.
 
 ## 5. CI/CD Security
 

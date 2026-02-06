@@ -730,7 +730,8 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
     import math
 
     ports = host_record.get("ports", [])
-    if not ports:
+    findings = host_record.get("findings", [])
+    if not ports and not findings:
         return {
             "score": 0,
             "breakdown": {
@@ -809,7 +810,6 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
 
     # v4.3.1: Include vulnerabilities from Nikto/Nuclei finding dumps (Fix M3)
     # Ensure findings logic matches calculate_risk_score()
-    findings = host_record.get("findings", [])
     severity_map = {
         "critical": 9.5,
         "high": 8.0,
@@ -1383,15 +1383,11 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
     ecs_event = build_ecs_event(scan_mode, duration)
     enriched.update(ecs_event)
 
-    # Enrich each host
+    # Enrich each host with stable metadata first.
+    # Risk scores are computed later, after findings are normalized.
     for host in enriched.get("hosts", []):
         # Add ECS host format
         host["ecs_host"] = build_ecs_host(host)
-
-        # Add risk score with breakdown for HTML tooltips (v4.3)
-        risk_result = calculate_risk_score_with_breakdown(host)
-        host["risk_score"] = risk_result["score"]
-        host["risk_score_breakdown"] = risk_result["breakdown"]
 
         # Add observable hash
         host["observable_hash"] = generate_observable_hash(host)
@@ -1444,6 +1440,24 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
                     merged = evidence_meta
                 vuln["evidence"] = merged
 
+    # v3.6.1: Consolidate duplicate findings by (host, title)
+    enriched["vulnerabilities"] = consolidate_findings(enriched.get("vulnerabilities", []))
+
+    # Map normalized findings back to hosts, then calculate final risk.
+    findings_map: Dict[str, List[Dict[str, Any]]] = {}
+    for vuln_entry in enriched.get("vulnerabilities", []):
+        host_ip = vuln_entry.get("host")
+        if not host_ip:
+            continue
+        findings_map[host_ip] = list(vuln_entry.get("vulnerabilities", []) or [])
+
+    for host in enriched.get("hosts", []):
+        ip = host.get("ip")
+        host["findings"] = findings_map.get(ip, [])
+        risk_result = calculate_risk_score_with_breakdown(host)
+        host["risk_score"] = risk_result["score"]
+        host["risk_score_breakdown"] = risk_result["breakdown"]
+
     # Add summary statistics for SIEM dashboards
     summary = enriched.get("summary", {})
     hosts = enriched.get("hosts", [])
@@ -1455,9 +1469,6 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
             round(sum(risk_scores) / len(risk_scores), 1) if risk_scores else 0
         )
         summary["high_risk_hosts"] = sum(1 for r in risk_scores if r >= 70)
-
-    # v3.6.1: Consolidate duplicate findings by (host, title)
-    enriched["vulnerabilities"] = consolidate_findings(enriched.get("vulnerabilities", []))
 
     return enriched
 

@@ -334,6 +334,30 @@ class TestSIEM(unittest.TestCase):
         self.assertIn("max_risk_score", summary)
         self.assertIn("avg_risk_score", summary)
 
+    def test_enrich_report_for_siem_recomputes_risk_after_finding_enrichment(self):
+        """Risk should be based on enriched findings even when host has no open ports."""
+        results = {
+            "hosts": [{"ip": "192.168.1.77", "hostname": "nas", "status": "up", "ports": []}],
+            "vulnerabilities": [
+                {
+                    "host": "192.168.1.77",
+                    "vulnerabilities": [
+                        {"nikto_findings": ["+ SQL injection possible in /admin.php"]}
+                    ],
+                }
+            ],
+            "summary": {"duration": "00:00:10"},
+        }
+
+        enriched = enrich_report_for_siem(results, {"scan_mode": "normal"})
+
+        host = enriched["hosts"][0]
+        self.assertGreater(host.get("risk_score", 0), 0)
+        self.assertEqual(enriched["summary"]["max_risk_score"], host["risk_score"])
+        self.assertEqual(enriched["summary"]["high_risk_hosts"], 1)
+        self.assertTrue(host.get("findings"))
+        self.assertGreater(host["findings"][0].get("normalized_severity", 0), 0)
+
     def test_consolidate_findings_preserves_testssl(self):
         """Ensure consolidation keeps testssl analysis from merged entries."""
         vulnerabilities = [

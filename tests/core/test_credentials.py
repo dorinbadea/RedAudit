@@ -133,6 +133,47 @@ class TestEnvironmentCredentialProvider(unittest.TestCase):
         result = self.provider.store_credential("192.168.1.1", "ssh", cred)
         self.assertFalse(result)
 
+    def test_get_credential_audit_miss(self):
+        with patch("redaudit.core.credentials.logger") as mock_logger:
+            with patch.dict(os.environ, {}, clear=True):
+                cred = self.provider.get_credential("192.168.1.1", "ssh")
+        self.assertIsNone(cred)
+        mock_logger.info.assert_any_call(
+            "credential_audit action=%s provider=%s protocol=%s target=%s outcome=%s",
+            "get",
+            "environment",
+            "ssh",
+            "192.168.1.1",
+            "miss",
+        )
+
+    def test_get_credential_audit_hit(self):
+        with patch("redaudit.core.credentials.logger") as mock_logger:
+            with patch.dict(os.environ, {"REDAUDIT_SSH_USER": "tester"}, clear=True):
+                cred = self.provider.get_credential("192.168.1.5", "ssh")
+        self.assertIsNotNone(cred)
+        mock_logger.info.assert_any_call(
+            "credential_audit action=%s provider=%s protocol=%s target=%s outcome=%s",
+            "get",
+            "environment",
+            "ssh",
+            "192.168.1.5",
+            "hit",
+        )
+
+    def test_store_credential_audit_unsupported(self):
+        with patch("redaudit.core.credentials.logger") as mock_logger:
+            result = self.provider.store_credential("192.168.1.1", "ssh", Credential(username="u"))
+        self.assertFalse(result)
+        mock_logger.info.assert_any_call(
+            "credential_audit action=%s provider=%s protocol=%s target=%s outcome=%s",
+            "store",
+            "environment",
+            "ssh",
+            "192.168.1.1",
+            "unsupported",
+        )
+
 
 class TestKeyringCredentialProvider(unittest.TestCase):
     """Tests for the KeyringCredentialProvider."""
@@ -274,6 +315,24 @@ class TestKeyringCredentialProvider(unittest.TestCase):
         self.assertTrue(result)
         # Verify set_password was called
         self.assertTrue(provider._keyring.set_password.called)
+
+    @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
+    def test_keyring_store_credential_audit_success(self, mock_init):
+        mock_init.return_value = None
+        provider = KeyringCredentialProvider.__new__(KeyringCredentialProvider)
+        provider._keyring_available = True
+        provider._keyring = MagicMock()
+        with patch("redaudit.core.credentials.logger") as mock_logger:
+            ok = provider.store_credential("192.168.1.9", "smb", Credential(username="newuser"))
+        self.assertTrue(ok)
+        mock_logger.info.assert_any_call(
+            "credential_audit action=%s provider=%s protocol=%s target=%s outcome=%s",
+            "store",
+            "keyring",
+            "smb",
+            "192.168.1.9",
+            "success",
+        )
 
     @patch("redaudit.core.credentials.KeyringCredentialProvider.__init__")
     def test_keyring_store_credential_sets_key_and_passphrase(self, mock_init):

@@ -1171,7 +1171,12 @@ def save_results(
     if results.get("hosts"):
         results["hosts"] = [h.to_dict() if isinstance(h, Host) else h for h in results["hosts"]]
 
-    prefix = "PARTIAL_" if partial else ""
+    summary = results.get("summary") or {}
+    nuclei_state = results.get("nuclei") or {}
+    effective_partial = bool(
+        partial or summary.get("nuclei_partial") or nuclei_state.get("partial")
+    )
+    prefix = "PARTIAL_" if effective_partial else ""
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # v2.8.1: Use pre-created folder if available (ensures PCAP files and reports are together)
@@ -1222,7 +1227,7 @@ def save_results(
 
         # Save TXT report if enabled
         if config.get("save_txt_report"):
-            txt_data = generate_text_report(results, partial=partial)
+            txt_data = generate_text_report(results, partial=effective_partial)
             if encryption_enabled and encryption_key:
                 txt_enc = encrypt_data(txt_data, encryption_key)
                 txt_path = f"{base}.txt.enc"
@@ -1334,7 +1339,7 @@ def save_results(
                     results=results,
                     config=config,
                     encryption_enabled=encryption_enabled,
-                    partial=partial,
+                    partial=effective_partial,
                     logger=logger,
                 )
                 if manifest_path and logger:

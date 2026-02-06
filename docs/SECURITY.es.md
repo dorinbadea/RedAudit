@@ -67,6 +67,7 @@ El cifrado de informes se gestiona mediante la librería `cryptography` para ase
 - **Descubrimiento HyperScan**: Descubrimiento TCP/UDP/ARP asíncrono puede reducir invocaciones de nmap cuando está habilitado (net discovery).
 - **Heartbeat**: Monitoreo en segundo plano asegura la integridad del proceso sin requerir acceso interactivo a la shell.
 - **Seguridad del Archivo de Credenciales**: El archivo de credenciales universales (ej. `~/.redaudit/credentials.json`) se valida estrictamente. DEBE tener permisos `0600` (lectura/escritura solo propietario); de lo contrario, RedAudit rechaza cargarlo (v4.5.2+).
+- **Backends de proveedores de credenciales**: La recuperacion de credenciales usa backends de keyring del sistema cuando estan disponibles. En entornos headless/root sin backend seguro, el fallback `keyrings.alt` puede usar almacenamiento en texto plano y debe considerarse de menor garantia para despliegues enterprise.
 - **Ubicación del Módulo**: `redaudit/core/reporter.py` (permisos), `redaudit/core/auditor.py` (heartbeat, jitter), `redaudit/core/hyperscan.py` (descubrimiento asíncrono), `redaudit/core/credentials_manager.py` (validación de secretos)
 
 ## 4. Pista de Auditoría
@@ -74,6 +75,8 @@ El cifrado de informes se gestiona mediante la librería `cryptography` para ase
 Todas las operaciones se registran en `~/.redaudit/logs/` con políticas de rotación (máx 10MB, 5 backups). Los logs contienen marcas de tiempo de ejecución, identificadores de hilos e invocaciones de comandos raw para rendición de cuentas.
 
 **Seguridad de Captura de Sesión (v3.7+)**: El directorio `session_logs/` contiene la salida raw de terminal (`session_*.log`) que puede incluir datos sensibles mostrados durante el escaneo. Los permisos dependen del directorio de salida y del umask del usuario; trata estos logs como artefactos sensibles.
+
+**Eventos de auditoria de credenciales (v4.19.38+)**: Las operaciones de acceso/almacenamiento de proveedores de credenciales emiten eventos `credential_audit` en logs con campos clave/valor (`action`, `provider`, `protocol`, `target`, `outcome`) sin incluir secretos.
 
 ## 5. Seguridad CI/CD
 

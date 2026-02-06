@@ -835,7 +835,32 @@ if [[ -n "$NVD_KEY" ]]; then
         CONFIG_FILE="$CONFIG_DIR/config.json"
         mkdir -p "$CONFIG_DIR"
         chmod 700 "$CONFIG_DIR"
-        echo "{\"version\": \"${REDAUDIT_VERSION}\", \"nvd_api_key\": \"$NVD_KEY\", \"nvd_api_key_storage\": \"config\"}" > "$CONFIG_FILE"
+        if command -v jq >/dev/null 2>&1; then
+            jq -n \
+                --arg version "$REDAUDIT_VERSION" \
+                --arg nvd_api_key "$NVD_KEY" \
+                --arg nvd_api_key_storage "config" \
+                '{version: $version, nvd_api_key: $nvd_api_key, nvd_api_key_storage: $nvd_api_key_storage}' \
+                > "$CONFIG_FILE"
+        else
+            python3 - "$CONFIG_FILE" "$REDAUDIT_VERSION" "$NVD_KEY" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+version = sys.argv[2]
+nvd_api_key = sys.argv[3]
+
+payload = {
+    "version": version,
+    "nvd_api_key": nvd_api_key,
+    "nvd_api_key_storage": "config",
+}
+
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(payload, handle)
+PY
+        fi
         chmod 600 "$CONFIG_FILE"
         chown "$REAL_USER:$REAL_USER" "$CONFIG_DIR" "$CONFIG_FILE"
         echo "$MSG_NVD_SAVED $CONFIG_FILE"
