@@ -56,3 +56,10 @@ def test_installer_installs_oui_db() -> None:
     content = _read_installer()
     assert "install_oui_db" in content
     assert ".redaudit/manuf" in content
+
+
+def test_installer_writes_nvd_config_with_jq_or_python() -> None:
+    content = _read_installer()
+    assert "jq -n" in content
+    assert 'python3 - "$CONFIG_FILE" "$REDAUDIT_VERSION" "$NVD_KEY"' in content
+    assert "json.dump(payload, handle)" in content

@@ -724,6 +724,42 @@ class TestReporter(unittest.TestCase):
             txt_files.extend([os.path.join(root, f) for f in files if f.endswith(".txt")])
         self.assertEqual(len(txt_files), 1)
 
+    def test_save_results_marks_partial_when_nuclei_is_partial(self):
+        """Nuclei partial state should force PARTIAL filenames and text status."""
+        self.sample_results["summary"] = {"networks": 1, "nuclei_partial": True}
+        self.sample_results["nuclei"] = {"partial": True}
+        self.sample_config["save_txt_report"] = True
+
+        result = save_results(
+            self.sample_results,
+            self.sample_config,
+            encryption_enabled=False,
+            partial=False,
+        )
+
+        self.assertTrue(result)
+
+        json_files = []
+        txt_files = []
+        for root, _dirs, files in os.walk(self.sample_config["output_dir"]):
+            for name in files:
+                full = os.path.join(root, name)
+                if name.endswith(".json") and (
+                    name.startswith("redaudit_") or name.startswith("PARTIAL_redaudit_")
+                ):
+                    json_files.append(full)
+                if name.endswith(".txt"):
+                    txt_files.append(full)
+
+        self.assertEqual(len(json_files), 1)
+        self.assertEqual(len(txt_files), 1)
+        self.assertTrue(os.path.basename(json_files[0]).startswith("PARTIAL_redaudit_"))
+        self.assertTrue(os.path.basename(txt_files[0]).startswith("PARTIAL_redaudit_"))
+
+        with open(txt_files[0], "r", encoding="utf-8") as handle:
+            text = handle.read()
+        self.assertIn("Status: PARTIAL/INTERRUPTED", text)
+
     def test_save_results_creates_directory(self):
         """Test that save_results creates output directory."""
         import shutil
