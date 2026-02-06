@@ -180,6 +180,20 @@ class TestSIEM(unittest.TestCase):
         self.assertIn("telnet", breakdown["heuristic_flags"])
         self.assertEqual(breakdown["max_cvss_source"], "heuristic")
 
+    def test_calculate_risk_score_breakdown_tracks_total_vs_risky_findings(self):
+        host = {
+            "ip": "192.168.1.2",
+            "ports": [],
+            "findings": [
+                {"severity": "info", "title": "banner"},
+                {"severity": "high", "title": "exposed admin"},
+            ],
+        }
+        result = calculate_risk_score_with_breakdown(host)
+        breakdown = result["breakdown"]
+        self.assertEqual(breakdown["finding_total"], 2)
+        self.assertEqual(breakdown["finding_risk_total"], 1)
+
     def test_generate_observable_hash(self):
         """Test observable hash generation."""
         host = {

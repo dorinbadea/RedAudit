@@ -472,6 +472,9 @@
                             {% set service_backdoors = bd.service_backdoor_total|default(0) %}
                             {% set risk_findings = bd.finding_risk_total|default(0) %}
                             {% set total_findings = bd.finding_total|default(0) %}
+                            {% if total_findings < risk_findings %}
+                            {% set total_findings = risk_findings %}
+                            {% endif %}
                             {% set heuristics = bd.heuristic_flags|join(', ') if bd.heuristic_flags else '-' %}
                             {% set source = bd.max_cvss_source|default('none') %}
                             {% if host.risk_score >= 70 %}
