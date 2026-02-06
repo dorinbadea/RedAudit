@@ -8,13 +8,6 @@
 
 ---
 
-## Auditoría de Seguridad (Resumen)
-
-- **Fecha Auditoría**: 2025-02-14
-- **Cobertura**: ~93.03% (Alta confianza)
-- **Estado**: Revisión interna best-effort. Sin vulnerabilidades críticas conocidas.
-- **Ver**: [SECURITY_AUDIT_ES.md](../ES/SECURITY_AUDIT_ES.md) para detalles completos.
-
 ## Visión General
 
 RedAudit implementa una filosofía de "seguro por diseño", asumiendo la ejecución en entornos hostiles o no confiables. Este documento describe los controles de seguridad relacionados con el manejo de entrada, criptografía y seguridad operacional.
@@ -37,14 +30,13 @@ Si descubres una vulnerabilidad de seguridad en RedAudit, notifícala de forma r
 ## Versiones soportadas
 
 | Versión | Soportada | Estado |
-| 4.3.x | Sí | Estable actual |
-| 4.2.x | Sí | Soportada |
-| 3.9.x | Sí | Soportada |
-| 3.8.x | Sí | Soportada |
-| 3.7.x | Sí | Soportada |
-| 3.6.x | Solo correcciones de seguridad | Mantenimiento |
-| 3.5.x | Solo correcciones de seguridad | EOL: Junio 2026 |
-| < 3.5 | No | EOL |
+| 4.13.x | Sí | Estable actual |
+| 4.12.x | Sí | Soportada |
+| 4.11.x | Sí | Soportada |
+| 4.6.x | Sí | Mantenimiento |
+| 4.5.x | Sí | Mantenimiento |
+| 4.4.x | Sí | EOL: Junio 2026 |
+| < 4.4 | No | EOL |
 
 ## 1. Sanitización de Entrada
 
@@ -74,13 +66,17 @@ El cifrado de informes se gestiona mediante la librería `cryptography` para ase
 - **Rate-Limiting con Jitter**: Limitación de velocidad configurable con varianza aleatoria ±30% para reducir predictibilidad en entornos sensibles a IDS.
 - **Descubrimiento HyperScan**: Descubrimiento TCP/UDP/ARP asíncrono puede reducir invocaciones de nmap cuando está habilitado (net discovery).
 - **Heartbeat**: Monitoreo en segundo plano asegura la integridad del proceso sin requerir acceso interactivo a la shell.
-- **Ubicación del Módulo**: `redaudit/core/reporter.py` (permisos), `redaudit/core/auditor.py` (heartbeat, jitter), `redaudit/core/hyperscan.py` (descubrimiento asíncrono)
+- **Seguridad del Archivo de Credenciales**: El archivo de credenciales universales (ej. `~/.redaudit/credentials.json`) se valida estrictamente. DEBE tener permisos `0600` (lectura/escritura solo propietario); de lo contrario, RedAudit rechaza cargarlo (v4.5.2+).
+- **Backends de proveedores de credenciales**: La recuperacion de credenciales usa backends de keyring del sistema cuando estan disponibles. En entornos headless/root sin backend seguro, el fallback `keyrings.alt` puede usar almacenamiento en texto plano y debe considerarse de menor garantia para despliegues enterprise.
+- **Ubicación del Módulo**: `redaudit/core/reporter.py` (permisos), `redaudit/core/auditor.py` (heartbeat, jitter), `redaudit/core/hyperscan.py` (descubrimiento asíncrono), `redaudit/core/credentials_manager.py` (validación de secretos)
 
 ## 4. Pista de Auditoría
 
 Todas las operaciones se registran en `~/.redaudit/logs/` con políticas de rotación (máx 10MB, 5 backups). Los logs contienen marcas de tiempo de ejecución, identificadores de hilos e invocaciones de comandos raw para rendición de cuentas.
 
 **Seguridad de Captura de Sesión (v3.7+)**: El directorio `session_logs/` contiene la salida raw de terminal (`session_*.log`) que puede incluir datos sensibles mostrados durante el escaneo. Los permisos dependen del directorio de salida y del umask del usuario; trata estos logs como artefactos sensibles.
+
+**Eventos de auditoria de credenciales (v4.19.38+)**: Las operaciones de acceso/almacenamiento de proveedores de credenciales emiten eventos `credential_audit` en logs con campos clave/valor (`action`, `provider`, `protocol`, `target`, `outcome`) sin incluir secretos.
 
 ## 5. Seguridad CI/CD
 
@@ -134,6 +130,7 @@ Los usuarios deben tratar el archivo de configuración como sensible. La clave A
 - **Alcance del proxy**: `--proxy` depende de `proxychains4` y solo envuelve tráfico TCP (connect); UDP/ARP/ICMP y escaneos raw no se proxifican
 - **Huella de red**: Los escaneos generan tráfico significativo
 - **Recon opcional**: `--net-discovery` / `--redteam` pueden invocar tooling broadcast/L2 adicional (best-effort; solo con autorización explícita)
+- **Escaneo de apps selectivo**: sqlmap/ZAP se omiten en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP
 
 ## 10. Seguridad en Red Team y Reconocimiento Activo
 
@@ -148,13 +145,13 @@ RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `
 
 | Herramienta | Capacidad | Nivel de Riesgo | Autorización Requerida |
 | :--- | :--- | :--- | :--- |
-| `snmpwalk` | Consulta agentes SNMP para información de dispositivos red (VLANs, tablas ARP, configs interfaces) | **Medio** - Logs en dispositivos con SNMP | ✅ Aprobación admin interno |
-| `enum4linux` | Enumera recursos SMB Windows, usuarios, políticas contraseñas, info dominio | **Alto** - Activa logs seguridad, puede alertar SOC | ✅ Aprobación admin dominio |
-| `masscan` | Escáner puertos ultra-rápido (capacidad 1M paquetes/seg) | **Alto** - Alto ruido red, probable trigger IDS | ✅ Aprobación equipo red + seguridad |
-| `rpcclient` | Enumeración Windows RPC (usuarios, grupos, recursos) | **Alto** - Logs Active Directory, intentos auth | ✅ Aprobación admin dominio |
-| `ldapsearch` | Consultas LDAP/AD para estructura organizacional | **Medio** - Servidor LDAP registra consultas | ✅ Aprobación admin directorio |
-| `bettercap` | Framework multi-propósito ataques L2 (ARP spoofing, MITM, inyección) | **Crítico** - Ataques activos red, ilegal sin autorización | ✅ Aprobación ejecutiva + legal |
-| `scapy` (pasivo) | Sniffing pasivo de paquetes para etiquetas VLAN 802.1Q | **Bajo** - Solo pasivo (sin inyección) | ⚠️ Requiere modo promiscuo (root) |
+| `snmpwalk` | Consulta agentes SNMP para información de dispositivos red (VLANs, tablas ARP, configs interfaces) | **Medio** - Logs en dispositivos con SNMP | Aprobación admin interno |
+| `enum4linux` | Enumera recursos SMB Windows, usuarios, políticas contraseñas, info dominio | **Alto** - Activa logs seguridad, puede alertar SOC | Aprobación admin dominio |
+| `masscan` | Escáner puertos ultra-rápido (capacidad 1M paquetes/seg) | **Alto** - Alto ruido red, probable trigger IDS | Aprobación equipo red + seguridad |
+| `rpcclient` | Enumeración Windows RPC (usuarios, grupos, recursos) | **Alto** - Logs Active Directory, intentos auth | Aprobación admin dominio |
+| `ldapsearch` | Consultas LDAP/AD para estructura organizacional | **Medio** - Servidor LDAP registra consultas | Aprobación admin directorio |
+| `bettercap` | Framework multi-propósito ataques L2 (ARP spoofing, MITM, inyección) | **Crítico** - Ataques activos red, ilegal sin autorización | Aprobación ejecutiva + legal |
+| `scapy` (pasivo) | Sniffing pasivo de paquetes para etiquetas VLAN 802.1Q | **Bajo** - Solo pasivo (sin inyección) | Requiere modo promiscuo (root) |
 
 ### Mejores Prácticas para Características Red Team
 
@@ -166,7 +163,7 @@ RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `
 
 ## 11. Seguridad en Dashboard HTML y Webhooks (v3.3+)
 
-### Reportes HTML (`--html-report`)
+### Informes HTML (`--html-report`)
 
 - **Offline/Air-gap**: El informe embebe el CSS, pero las gráficas cargan Chart.js desde un CDN. En entornos aislados el HTML abre; las gráficas pueden no renderizar sin esa dependencia.
 - **Sin Rastreo Remoto**: No se incluyen analíticas ni píxeles de seguimiento.
@@ -174,7 +171,7 @@ RedAudit v3.2 introduce capacidades de **Reconocimiento Activo** (`--redteam`, `
 ### Alertas Webhook (`--webhook`)
 
 - **Transmisión de Datos Sensibles**: Esta función envía detalles del hallazgo (IP Objetivo, Título Vulnerabilidad, Severidad) a la URL configurada.
-- **HTTPS Requerido**: Usa siempre URLs de webhook `https://` para proteger estos datos en tránsito.
+- **HTTPS Requerido**: Solo se aceptan URLs `https://` para proteger estos datos en tránsito.
 - **Verificación**: Asegúrate de que la URL del webhook es correcta y confiable (ej: tu instancia interna de Slack/Teams) para evitar filtrar datos de vulnerabilidades a terceros.
 
 ## 12. Licencia

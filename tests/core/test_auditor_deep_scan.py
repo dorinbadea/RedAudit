@@ -132,6 +132,34 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
         else:
             self.assertTrue(result.get("smart_scan", {}).get("deep_scan_suggested"))
 
+    def test_no_deep_scan_disables_hyperscan_override(self):
+        app = InteractiveNetworkAuditor()
+        app.print_status = lambda *_args, **_kwargs: None
+        app.config["scan_mode"] = "completo"
+        app.config["deep_id_scan"] = False
+
+        ip = "192.168.1.250"
+        fake_host = _FakeHost(
+            {
+                "tcp": {},  # No open ports from nmap
+                "addresses": {"mac": "00:11:22:33:44:55"},
+                "vendor": {"00:11:22:33:44:55": "Generic Corp"},
+            }
+        )
+        nm = _FakePortScanner(ip=ip, host=fake_host)
+        app.results = {"net_discovery": {"hyperscan_tcp_hosts": {ip: [80, 443]}}}
+
+        with patch.object(app, "_compute_identity_score", return_value=(0, [])):
+            with patch.object(app.scanner, "run_nmap_scan", return_value=(nm, "")):
+                result = app.scan_host_ports(ip)
+
+        smart_scan = (
+            result.smart_scan if hasattr(result, "smart_scan") else result.get("smart_scan")
+        )
+        self.assertFalse(smart_scan.get("trigger_deep"))
+        self.assertNotIn("hyperscan_ports_detected", smart_scan.get("reasons", []))
+        self.assertFalse(smart_scan.get("deep_scan_suggested", False))
+
     def test_udp_full_uses_configurable_top_ports(self):
         app = InteractiveNetworkAuditor()
         app.print_status = lambda *_args, **_kwargs: None
@@ -167,6 +195,108 @@ class TestAuditorDeepScanHeuristics(unittest.TestCase):
         full_udp_cmd = cmds[1]
         self.assertIn("--top-ports", full_udp_cmd)
         self.assertIn("222", full_udp_cmd)
+
+    def test_deep_scan_strategy_label_strips_parenthetical(self):
+        app = InteractiveNetworkAuditor()
+        app.ui = Mock()
+
+        def _t(key, *args):
+            labels = {
+                "deep_strategy_adaptive": "Adaptativo (3 fases v2.8)",
+                "deep_identity_start": "Escaneo de identidad profundo para {} (estrategia: {})",
+            }
+            val = labels.get(key, key)
+            return val.format(*args) if args else val
+
+        app.ui.t.side_effect = _t
+        app.ui.print_status = Mock()
+        app.config["output_dir"] = "/tmp"
+        app.results = {"network_info": []}
+
+        with patch(
+            "redaudit.core.auditor_scan.start_background_capture",
+            side_effect=RuntimeError("boom"),
+        ):
+            with self.assertRaises(RuntimeError):
+                app.deep_scan_host("192.168.1.10")
+
+        message = app.ui.print_status.call_args[0][0]
+        self.assertIn("Adaptativo", message)
+        self.assertNotIn("3 fases", message)
+        self.assertNotIn("v2.8", message)
+
+    def test_trust_hyperscan_quiet_host_uses_sanity_check(self):
+        """v4.6.2: Quiet hosts with trust_hyperscan should use sanity check (top-1000) not -p-."""
+        app = InteractiveNetworkAuditor()
+        app.print_status = lambda *_args, **_kwargs: None
+        app.config["trust_hyperscan"] = True
+
+        # Mock empty discovery ports (mute host)
+        trusted_ports = []
+        ip = "192.168.1.99"
+
+        with patch("redaudit.core.auditor_scan.start_background_capture", return_value=None):
+            with patch("redaudit.core.auditor_scan.stop_background_capture", return_value=None):
+                with patch("redaudit.core.auditor_scan.output_has_identity", return_value=False):
+                    with patch(
+                        "redaudit.core.auditor_scan.extract_vendor_mac", return_value=(None, None)
+                    ):
+                        with patch("redaudit.core.auditor_scan.run_udp_probe", return_value=[]):
+                            with patch(
+                                "redaudit.core.auditor_scan.get_neighbor_mac", return_value=None
+                            ):
+                                with patch(
+                                    "redaudit.core.auditor_scan.run_nmap_command"
+                                ) as mock_run:
+                                    mock_run.return_value = {
+                                        "stdout": "",
+                                        "stderr": "",
+                                        "returncode": 0,
+                                    }
+
+                                    app.deep_scan_host(ip, trusted_ports=trusted_ports)
+
+                                    # Verify called with --top-ports 1000
+                                    args = mock_run.call_args[0][0]  # First arg is cmd list
+                                    self.assertIn("--top-ports", args)
+                                    self.assertIn("1000", args)
+                                    self.assertNotIn("-p-", args)
+
+    def test_trust_hyperscan_uses_discovered_ports(self):
+        app = InteractiveNetworkAuditor()
+        app.print_status = lambda *_args, **_kwargs: None
+        app.config["trust_hyperscan"] = True
+
+        ip = "192.168.1.55"
+        rec1 = {"stdout": "22/tcp open ssh OpenSSH 8.0\n", "stderr": "", "returncode": 0}
+
+        with (
+            patch("redaudit.core.auditor_scan.start_background_capture", return_value=None),
+            patch("redaudit.core.auditor_scan.stop_background_capture", return_value=None),
+            patch("redaudit.core.auditor_scan.output_has_identity", return_value=False),
+            patch("redaudit.core.auditor_scan.extract_vendor_mac", return_value=(None, None)),
+            patch("redaudit.core.auditor_scan.extract_os_detection", return_value=None),
+            patch(
+                "redaudit.core.auditor_scan.extract_detailed_identity",
+                return_value={
+                    "vendor": "VendorX",
+                    "model": "ModelY",
+                    "device_type": "router",
+                    "os_detected": "OSZ",
+                },
+            ),
+            patch("redaudit.core.auditor_scan.run_udp_probe", return_value=[]),
+            patch("redaudit.core.auditor_scan.get_neighbor_mac", return_value=None),
+            patch("redaudit.core.auditor_scan.run_nmap_command", return_value=rec1) as mock_run,
+        ):
+            deep = app.deep_scan_host(ip, trusted_ports=[22, 80])
+
+        args = mock_run.call_args[0][0]
+        self.assertIn("-p22,80", args)
+        self.assertEqual(deep.get("vendor"), "VendorX")
+        self.assertEqual(deep.get("model"), "ModelY")
+        self.assertEqual(deep.get("device_type"), "router")
+        self.assertEqual(deep.get("os_detected"), "OSZ")
 
 
 if __name__ == "__main__":

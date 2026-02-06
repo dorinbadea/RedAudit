@@ -251,7 +251,7 @@ For general troubleshooting, see [TROUBLESHOOTING.en.md](../TROUBLESHOOTING.en.m
 
 ## What's Next?
 
-See [IMPROVEMENTS.md](../ROADMAP.en.md) for our roadmap and planned features for v3.1.x and beyond.
+See [IMPROVEMENTS.md](../ROADMAP.en.md) for the roadmap and planned features for v3.1.x and beyond.
 
 **Stay Updated**:
 

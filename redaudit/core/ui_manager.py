@@ -54,6 +54,8 @@ class UIManager:
         self._ui_detail = ""
         self.last_activity = datetime.now()
         self.current_phase = "init"
+        # v4.18: Store active progress console for correct color output during Live display
+        self._active_progress_console = None
 
     def _is_progress_active(self) -> bool:
         """Check if progress UI is active (local or parent state)."""
@@ -89,28 +91,8 @@ class UIManager:
 
         ts = datetime.now().strftime("%H:%M:%S")
 
-        # Map internal status tokens to professional display labels
-        status_map = {
-            "OKGREEN": "OK",
-            "OKBLUE": "INFO",
-            "HEADER": "INFO",
-            "WARNING": "WARN",
-            "FAIL": "FAIL",
-            "INFO": "INFO",
-            "OK": "OK",
-        }
+        status_display, color_key, rich_style = self._resolve_status_style(status)
         is_tty = sys.stdout.isatty()
-        status_display = status_map.get(status, status)
-
-        color_key = status
-        if status_display == "OK":
-            color_key = "OKGREEN"
-        elif status_display in ("WARN", "WARNING"):
-            color_key = "WARNING"
-        elif status_display in ("FAIL", "ERROR"):
-            color_key = "FAIL"
-        elif status_display == "INFO":
-            color_key = "OKBLUE"
         color = self.colors.get(color_key, self.colors.get("OKBLUE", "")) if is_tty else ""
         endc = self.colors.get("ENDC", "") if is_tty else ""
 
@@ -141,46 +123,75 @@ class UIManager:
             lines.extend(wrapped if wrapped else [""])
 
         with self._print_lock:
-            if progress_active:
-                self._print_with_rich(ts, status_display, color_key, lines)
+            use_rich = progress_active or self._active_progress_console is not None
+            if use_rich:
+                self._print_with_rich(ts, status_display, rich_style, lines)
             else:
                 self._print_ansi(ts, status_display, color, endc, lines)
             sys.stdout.flush()
 
-    def _print_with_rich(self, ts: str, status_display: str, color_key: str, lines: list) -> None:
-        """Print using Rich console for progress compatibility."""
+    def _resolve_status_style(self, status: str) -> tuple[str, str, str]:
+        status_map = {
+            "OKGREEN": "OK",
+            "OKBLUE": "INFO",
+            "HEADER": "INFO",
+            "WARNING": "WARN",
+            "FAIL": "FAIL",
+            "INFO": "INFO",
+            "OK": "OK",
+        }
         rich_color_map = {
             "OKBLUE": "bright_blue",
             "OKGREEN": "bright_green",
             "WARNING": "bright_yellow",
             "FAIL": "bright_red",
             "HEADER": "bright_magenta",
+            "CYAN": "bright_cyan",
         }
+        status_display = status_map.get(status, status)
+        color_key = status
+        if status_display == "OK":
+            color_key = "OKGREEN"
+        elif status_display in ("WARN", "WARNING"):
+            color_key = "WARNING"
+        elif status_display in ("FAIL", "ERROR"):
+            color_key = "FAIL"
+        elif status_display == "INFO":
+            color_key = "OKBLUE"
         rich_style = rich_color_map.get(color_key, "bright_blue")
+        return status_display, color_key, rich_style
+
+    def _print_with_rich(self, ts: str, status_display: str, rich_style: str, lines: list) -> None:
+        """Print using Rich console for progress compatibility."""
         try:
             from rich.console import Console
             from rich.text import Text
 
-            console = Console(
-                file=getattr(sys, "__stdout__", sys.stdout),
-                width=self._terminal_width(),
-            )
+            # v4.18: Use active progress console if available for correct color during Live display
+            console = self._active_progress_console or self.get_progress_console()
+            if console is None:
+                console = Console(
+                    file=getattr(sys, "__stdout__", sys.stdout),
+                    width=self._terminal_width(),
+                )
             # v4.0.4: Use Text objects for reliable color output
             # This avoids markup escaping issues with brackets in [WARN], [INFO] etc
             prefix = Text()
             prefix.append(f"[{ts}] [{status_display}] ", style=rich_style)
-            prefix.append(lines[0] if lines else "")
+            prefix.append(lines[0] if lines else "", style=rich_style)
             console.print(prefix)
             for line in lines[1:]:
-                console.print(f"  {line}")
+                line_text = Text()
+                line_text.append(f"  {line}", style=rich_style)
+                console.print(line_text)
         except ImportError:
             self._print_ansi(ts, status_display, "", "", lines)
 
     def _print_ansi(self, ts: str, status_display: str, color: str, endc: str, lines: list) -> None:
         """Print using standard ANSI codes."""
-        print(f"{color}[{ts}] [{status_display}]{endc} {lines[0]}")
+        print(f"{color}[{ts}] [{status_display}]{endc} {color}{lines[0]}{endc}")
         for line in lines[1:]:
-            print(f"  {line}")
+            print(f"  {color}{line}{endc}")
 
     def _should_emit_during_progress(self, msg: str, status_display: str) -> bool:
         """
@@ -193,12 +204,19 @@ class UIManager:
 
         signal_patterns = (
             "deep identity scan",
+            "escaneo de identidad",
             "finished",
+            "finalizado",
             "complete",
+            "completado",
             "detected",
+            "detectado",
             "found",
+            "encontrado",
             "backdoor",
+            "puerta trasera",
             "suspicious",
+            "sospechoso",
         )
         if status_display in ("WARN", "WARNING"):
             msg_lower = msg.lower()
@@ -275,13 +293,19 @@ class UIManager:
             yield
         finally:
             self._ui_progress_active = False
+            # v4.18: Clear console reference when progress ends
+            self._active_progress_console = None
 
     def get_progress_console(self):
         """Get a Rich console for progress displays."""
         try:
             from rich.console import Console
 
-            return Console(width=self._terminal_width())
+            return Console(
+                file=getattr(sys, "__stdout__", sys.stdout),
+                width=self._terminal_width(),
+                force_terminal=sys.stdout.isatty(),
+            )
         except ImportError:
             return None
 
@@ -301,7 +325,9 @@ class UIManager:
                 TimeRemainingColumn,
             )
 
-            return Progress(
+            # v4.18: Create and store console for use in print_status during progress
+            progress_console = self.get_progress_console()
+            progress = Progress(
                 SpinnerColumn("dots", style="bright_blue"),
                 TextColumn("[bold blue]{task.description}"),
                 BarColumn(bar_width=None, style="blue", complete_style="bright_blue"),
@@ -309,9 +335,12 @@ class UIManager:
                 TimeElapsedColumn(),
                 TimeRemainingColumn(),
                 transient=transient,
-                console=self.get_progress_console(),
+                console=progress_console,
                 expand=True,
             )
+            # Store console reference for print_status to use
+            self._active_progress_console = progress_console
+            return progress
         except ImportError:
             return None
 

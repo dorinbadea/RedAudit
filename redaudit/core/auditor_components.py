@@ -169,6 +169,25 @@ class AuditorUI:
                 colors=getattr(self, "COLORS", None),
                 logger=getattr(self, "logger", None),
             )
+        else:
+            manager = self._ui_manager
+            if hasattr(manager, "lang"):
+                try:
+                    manager.lang = getattr(self, "lang", "en")
+                except Exception:
+                    pass
+            colors = getattr(self, "COLORS", None)
+            if colors is not None and hasattr(manager, "colors"):
+                try:
+                    manager.colors = colors
+                except Exception:
+                    pass
+            logger = getattr(self, "logger", None)
+            if logger is not None and hasattr(manager, "logger"):
+                try:
+                    manager.logger = logger
+                except Exception:
+                    pass
         return self._ui_manager
 
     def t(self, key, *args):
@@ -358,15 +377,14 @@ class AuditorUI:
         return max(60, int(width))
 
     def _progress_console(self):
-        try:
-            from rich.console import Console
-        except ImportError:
+        console = self.ui.get_progress_console()
+        if console is None:
             return None
-        return Console(
-            file=getattr(sys, "__stdout__", sys.stdout),
-            width=self._terminal_width(),
-            force_terminal=True,
-        )
+        try:
+            self.ui._active_progress_console = console
+        except Exception:
+            pass
+        return console
 
     def _safe_text_column(self, *args, **kwargs):
         try:
@@ -422,6 +440,11 @@ class AuditorUI:
             yield
         finally:
             self._ui_progress_active = prev
+            if hasattr(self, "_ui_manager"):
+                try:
+                    self.ui._active_progress_console = None
+                except Exception:
+                    pass
 
 
 class AuditorLogging:
@@ -573,7 +596,7 @@ class AuditorCrypto:
             if password is None:
                 password = generate_random_password()
                 self.ui.print_status(
-                    f"⚠️  Generated random encryption password (save this!): {password}", "WARNING"
+                    f"⚠  Generated random encryption password (save this!): {password}", "WARNING"
                 )
 
             try:

@@ -56,6 +56,12 @@ def test_read_pyproject_version_no_match():
             assert result is None
 
 
+def test_read_pyproject_version_exception():
+    """Test _read_pyproject_version exception fallback."""
+    with patch("pathlib.Path.is_file", side_effect=Exception("boom")):
+        assert _read_pyproject_version() is None
+
+
 def test_resolve_version_pyproject_fallback():
     """Test _resolve_version using pyproject fallback (line 73).
 
@@ -70,3 +76,14 @@ def test_resolve_version_pyproject_fallback():
     assert "." in result
     # Verify the import returns a value as well
     assert _resolve_version() is not None
+
+
+def test_resolve_version_prefers_pyproject(monkeypatch):
+    monkeypatch.setattr("redaudit.utils.constants._read_packaged_version_file", lambda: None)
+
+    def _raise(*_args, **_kwargs):
+        raise Exception("no metadata")
+
+    monkeypatch.setattr("importlib.metadata.version", _raise)
+    monkeypatch.setattr("redaudit.utils.constants._read_pyproject_version", lambda: "9.9.9")
+    assert _resolve_version() == "9.9.9"

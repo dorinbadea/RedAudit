@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Reliable Update Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 Reliable update checking and installation from GitHub repository.
@@ -19,6 +19,7 @@ import hashlib
 import subprocess
 import tempfile
 import textwrap
+from pathlib import Path
 from typing import Optional, Tuple, Dict, List, Any
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
@@ -718,6 +719,47 @@ def _inject_default_lang(constants_file: str, lang: str) -> bool:
         return False
 
 
+def _ensure_version_file(
+    package_dir: str,
+    target_version: str,
+    *,
+    print_fn=None,
+    logger=None,
+) -> bool:
+    """
+    Ensure the package VERSION file matches the target version.
+
+    Returns True on success, False if an error occurs.
+    """
+    version_path = os.path.join(package_dir, "VERSION")
+    try:
+        existing = None
+        if os.path.isfile(version_path):
+            existing = Path(version_path).read_text(encoding="utf-8").strip()
+
+        if existing != target_version:
+            Path(version_path).write_text(f"{target_version}\n", encoding="utf-8")
+            if print_fn:
+                if existing:
+                    print_fn(
+                        f"  → VERSION mismatch ({existing}); forcing {target_version}",
+                        "WARNING",
+                    )
+                else:
+                    print_fn(f"  → VERSION missing; writing {target_version}", "WARNING")
+            if logger:
+                logger.warning(
+                    "VERSION mismatch (%s); forcing %s", existing or "missing", target_version
+                )
+        return True
+    except Exception as exc:
+        if print_fn:
+            print_fn(f"  → Could not update VERSION file: {exc}", "WARNING")
+        if logger:
+            logger.warning("Could not update VERSION file: %s", exc)
+        return False
+
+
 def perform_git_update(
     repo_path: str,
     lang: str = "en",
@@ -776,6 +818,7 @@ def perform_git_update(
     install_path = "/usr/local/lib/redaudit"
     system_install_updated = False
     update_home_copy = True
+    cwd_path = os.getcwd()
 
     try:
         runner = CommandRunner(
@@ -790,6 +833,23 @@ def perform_git_update(
             print_fn(f"  → [dry-run] would update to {target_ref} from GitHub", "INFO")
             print_fn("  → [dry-run] skipping git clone/install steps", "INFO")
             return (True, "Dry-run: update skipped")
+
+        # Require sudo when running from the system install wrapper.
+        if os.geteuid() != 0:
+            active_bin = ""
+            if sys.argv:
+                argv0 = sys.argv[0]
+                if os.path.isabs(argv0):
+                    active_bin = os.path.realpath(argv0)
+                elif os.path.basename(argv0) == "redaudit":
+                    resolved = shutil.which(argv0)
+                    if resolved:
+                        active_bin = os.path.realpath(resolved)
+            if active_bin == "/usr/local/bin/redaudit":
+                return (
+                    False,
+                    t_fn("update_requires_root_install"),
+                )
 
         # Step 1: Determine target commit for the current version tag
         try:
@@ -902,6 +962,12 @@ def perform_git_update(
             )
 
         print_fn("  → Clone complete and verified!", "OKGREEN")
+        _ensure_version_file(
+            os.path.join(clone_path, "redaudit"),
+            target_version,
+            print_fn=print_fn,
+            logger=logger,
+        )
 
         # Step 2: Run install script with user's language
         install_script = os.path.join(clone_path, "redaudit_install.sh")
@@ -977,6 +1043,12 @@ def perform_git_update(
 
             print_fn(f"  → Staging new files: {staged_install_path}", "INFO")
             shutil.copytree(source_module, staged_install_path)
+            _ensure_version_file(
+                staged_install_path,
+                target_version,
+                print_fn=print_fn,
+                logger=logger,
+            )
 
             # Inject language preference into staged copy
             staged_constants = os.path.join(staged_install_path, "utils", "constants.py")
@@ -1050,10 +1122,9 @@ def perform_git_update(
                 if status:
                     if system_install_updated:
                         print_fn(
-                            f"  → {t_fn('update_home_changes_detected_skip', home_redaudit_path)}",
+                            f"  → {t_fn('update_home_changes_detected_backup', home_redaudit_path)}",
                             "WARNING",
                         )
-                        update_home_copy = False
                     else:
                         shutil.rmtree(temp_dir, ignore_errors=True)
                         return (
@@ -1063,10 +1134,9 @@ def perform_git_update(
             except Exception:
                 if system_install_updated:
                     print_fn(
-                        f"  → {t_fn('update_home_changes_verify_failed_skip', home_redaudit_path)}",
+                        f"  → {t_fn('update_home_changes_verify_failed_backup', home_redaudit_path)}",
                         "WARNING",
                     )
-                    update_home_copy = False
                 else:
                     shutil.rmtree(temp_dir, ignore_errors=True)
                     return (
@@ -1075,7 +1145,7 @@ def perform_git_update(
                     )
 
         # Step 5: Copy to user's home folder with documentation (STAGED/ATOMIC)
-        # (Optional when system install was updated; skip if home repo has local changes.)
+        # (Optional when system install was updated; local changes are preserved via backup.)
         staged_home_path = f"{home_redaudit_path}.new"
         backup_path = None
 
@@ -1097,6 +1167,12 @@ def perform_git_update(
                 staged_home_path, "redaudit", "utils", "constants.py"
             )
             _inject_default_lang(staged_home_constants, lang)
+            _ensure_version_file(
+                os.path.join(staged_home_path, "redaudit"),
+                target_version,
+                print_fn=print_fn,
+                logger=logger,
+            )
 
             # Validate staged home copy
             staged_key_file = os.path.join(staged_home_path, "redaudit", "__init__.py")
@@ -1213,6 +1289,38 @@ def perform_git_update(
         if os.geteuid() == 0 and os.path.exists(old_install_path):
             shutil.rmtree(old_install_path, ignore_errors=True)
 
+        # v4.5.4: Auto-seed keyring with lab credentials (if seeder exists)
+        seeder_script = os.path.join(home_redaudit_path, "scripts", "seed_keyring.py")
+        if os.path.isfile(seeder_script):
+            try:
+                print_fn("  → Seeding keyring with lab credentials...", "INFO")
+                # Run seeder as the current user (root) so 'sudo redaudit' can see credentials
+                result = runner.run(
+                    [sys.executable, seeder_script],
+                    capture_output=True,
+                    text=True,
+                    timeout=30.0,
+                    check=False,
+                )
+                if result.returncode == 0:
+                    print_fn("  → Keyring seeded with lab credentials!", "OKGREEN")
+                else:
+                    print_fn("  → Keyring seeding skipped (optional)", "INFO")
+            except Exception as e:
+                if logger:
+                    logger.debug("Keyring seeding failed (optional): %s", e)
+
+        # Best-effort: refresh current working copy if it's a clean RedAudit git repo.
+        _maybe_sync_local_repo(
+            cwd_path=cwd_path,
+            home_redaudit_path=home_redaudit_path,
+            target_ref=target_ref,
+            runner=runner,
+            print_fn=print_fn,
+            t_fn=t_fn,
+            logger=logger,
+        )
+
         # Success!
         return (True, "UPDATE_SUCCESS_RESTART")
 
@@ -1224,6 +1332,104 @@ def perform_git_update(
         if logger:
             logger.error("Update failed: %s", e)
         return (False, f"Update failed: {e}")
+
+
+def _maybe_sync_local_repo(
+    *,
+    cwd_path: str,
+    home_redaudit_path: str,
+    target_ref: str,
+    runner: CommandRunner,
+    print_fn,
+    t_fn,
+    logger=None,
+) -> None:
+    """Best-effort sync of a clean local RedAudit repo to avoid stale git tags."""
+    if not cwd_path:
+        return
+
+    cwd_real = os.path.realpath(cwd_path)
+    home_real = os.path.realpath(home_redaudit_path)
+    if cwd_real == home_real:
+        return
+
+    git_dir = os.path.join(cwd_real, ".git")
+    if not os.path.isdir(git_dir):
+        return
+
+    git_env = os.environ.copy()
+    git_env["GIT_TERMINAL_PROMPT"] = "0"
+    git_env["GIT_ASKPASS"] = "echo"
+
+    try:
+        origin_url = runner.check_output(
+            ["git", "remote", "get-url", "origin"],
+            cwd=cwd_real,
+            text=True,
+            timeout=10,
+            env=git_env,
+        ).strip()
+    except Exception:
+        return
+
+    if f"{GITHUB_OWNER}/{GITHUB_REPO}" not in origin_url:
+        return
+
+    try:
+        status = runner.check_output(
+            ["git", "status", "--porcelain"],
+            cwd=cwd_real,
+            text=True,
+            timeout=10,
+            env=git_env,
+        ).strip()
+        if status:
+            print_fn(t_fn("update_repo_sync_skip_dirty", cwd_real), "WARNING")
+            return
+    except Exception:
+        if logger:
+            logger.debug("Repo sync skipped (status check failed): %s", cwd_real)
+        return
+
+    try:
+        runner.check_output(
+            ["git", "fetch", "--tags", "origin"],
+            cwd=cwd_real,
+            text=True,
+            timeout=20,
+            env=git_env,
+        )
+    except Exception:
+        print_fn(t_fn("update_repo_sync_fetch_failed", cwd_real), "WARNING")
+        return
+
+    branch = ""
+    try:
+        branch = runner.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=cwd_real,
+            text=True,
+            timeout=10,
+            env=git_env,
+        ).strip()
+    except Exception:
+        branch = ""
+
+    if branch == "main":
+        try:
+            runner.check_output(
+                ["git", "pull", "--ff-only", "origin", "main"],
+                cwd=cwd_real,
+                text=True,
+                timeout=20,
+                env=git_env,
+            )
+            print_fn(t_fn("update_repo_sync_ok", cwd_real, target_ref), "OKGREEN")
+        except Exception:
+            print_fn(t_fn("update_repo_sync_pull_failed", cwd_real), "WARNING")
+    else:
+        if branch:
+            print_fn(t_fn("update_repo_sync_branch_skip", cwd_real, branch), "INFO")
 
 
 def get_repo_path() -> str:

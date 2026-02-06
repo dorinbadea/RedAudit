@@ -27,6 +27,30 @@ In the same output directory, RedAudit can also generate flat export files optim
 
 These exports are generated only when report encryption is **disabled**, to avoid creating plaintext artifacts alongside encrypted reports.
 
+### Run Manifest (run_manifest.json) (v3.1+)
+
+Run manifest metadata used to inventory output artifacts for automation pipelines.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `schema_version` | string | Schema version for the manifest payload |
+| `generated_at` | string | Manifest generation timestamp (ISO 8601) |
+| `timestamp` | string | Scan start timestamp (best-effort) |
+| `timestamp_end` | string | Scan end timestamp (best-effort) |
+| `session_id` | string | Scan session UUID |
+| `partial` | boolean | True when the run was interrupted or any tool reported partial output (e.g., Nuclei timeouts) |
+| `encryption_enabled` | boolean | Whether report encryption was enabled |
+| `redaudit_version` | string | RedAudit version |
+| `scanner_versions` | object | External tool versions captured at runtime |
+| `targets` | array | Target networks or IP ranges |
+| `config_snapshot` | object | Sanitized configuration snapshot (no secrets) |
+| `pipeline` | object | Minimal pipeline summary (host_scan, deep_scan, scope_expansion, net_discovery, nuclei, vulnerability_scan, hyperscan_vs_final, auditor_exclusions) |
+| `auditor_exclusions` | object | Auditor IPs excluded from the scan target list, with reasons |
+| `counts` | object | Summary counts for hosts, findings, and PCAPs |
+| `counts.findings_raw` | integer | (Optional) Raw findings count before normalization |
+| `counts.auditor_excluded` | integer | Number of auditor IPs removed from targets |
+| `artifacts` | array | List of files with relative `path` and `size_bytes` |
+
 ## Schema Definition
 
 ### Root Object
@@ -57,6 +81,22 @@ The top-level container for the scan session.
 | `vulnerabilities` | `array` | List of vulnerability findings |
 | `summary` | `object` | Aggregated statistics |
 
+### Config Snapshot (Selected Fields) (v4.18.19+)
+
+The `config_snapshot` object stores sanitized run configuration (no secrets).
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `deep_id_scan` | `boolean` | Whether deep identity scan is enabled for the run. |
+| `trust_hyperscan` | `boolean` | Whether DeepScan trusts HyperScan discovery ports only. |
+| `nuclei_timeout` | `integer` | Nuclei timeout per target in seconds. |
+| `nuclei_max_runtime` | `integer` | Total Nuclei runtime budget in minutes (0 = unlimited). |
+| `leak_follow_mode` | `string` | Leak-follow mode (`off`/`safe`). |
+| `leak_follow_allowlist` | `array` | Optional leak-follow in-scope allowlist entries. |
+| `iot_probes_mode` | `string` | IoT probes mode (`off`/`safe`). |
+| `iot_probe_budget_seconds` | `integer` | Per-host IoT probe budget in seconds. |
+| `iot_probe_timeout_seconds` | `integer` | Per-probe IoT timeout in seconds. |
+
 ### summary.json (Dashboard Summary)
 
 Compact, flattened summary for dashboards and automation (generated only when report encryption is disabled).
@@ -70,8 +110,12 @@ Compact, flattened summary for dashboards and automation (generated only when re
 | `total_assets` | `integer` | Total assets discovered |
 | `total_findings` | `integer` | Total findings count |
 | `total_findings_raw` | `integer` | Raw findings count before consolidation |
+| `total_risk_evidence_findings` | `integer` | Findings inferred from host/port evidence (CVEs, exploits, backdoor signatures) |
+| `total_findings_with_risk_evidence` | `integer` | `total_findings` + `total_risk_evidence_findings` |
 | `severity_breakdown` | `object` | Findings by severity (critical/high/medium/low/info) |
 | `severity_counts` | `object` | Alias of `severity_breakdown` |
+| `risk_evidence_severity_breakdown` | `object` | Severity breakdown for host/port risk evidence not emitted as scanner findings |
+| `combined_severity_breakdown` | `object` | Combined severity totals from findings and risk evidence |
 | `category_breakdown` | `object` | Findings by category (surface/vuln/...) |
 | `max_risk_score` | `integer` | Maximum asset risk score |
 | `high_risk_assets` | `integer` | Assets over the high-risk threshold |
@@ -83,6 +127,7 @@ Compact, flattened summary for dashboards and automation (generated only when re
 | `pipeline` | `object` | Pipeline summary (same structure as main report) |
 | `smart_scan_summary` | `object` | SmartScan summary |
 | `redaudit_version` | `string` | RedAudit version |
+| `auth_scan` | `object` | (Optional) Authenticated scan summary (targets, successes, failures) |
 
 ### Agentless Verification Object (Optional) (v3.8.5+)
 
@@ -104,13 +149,23 @@ Appears only when Nuclei scanning is enabled and available.
 | :--- | :--- | :--- |
 | `enabled` | boolean | True when Nuclei was executed (best-effort) |
 | `targets` | integer | HTTP/HTTPS targets sent to Nuclei |
+| `targets_total` | integer | Total HTTP/HTTPS targets before optimization |
+| `targets_exception` | integer | Targets treated as exceptions (full coverage + retries) |
+| `targets_optimized` | integer | Targets selected after optimization |
+| `targets_excluded` | integer | Targets excluded by user filters |
+| `fatigue_limit` | integer | Max split depth for exception retries (fatigue cap) |
 | `findings` | integer | Nuclei findings parsed |
 | `findings_total` | integer | Total Nuclei findings before false-positive filtering |
 | `findings_suspected` | integer | Nuclei findings flagged as suspected false positives |
 | `suspected` | array | (Optional) Minimal list of suspected findings (template_id/matched_at/fp_reason) |
-| `success` | boolean | If Nuclei generated output file |
+| `success` | boolean | Output file generated and no failed batches |
+| `partial` | boolean | (Optional) One or more batches timed out; results may be incomplete |
+| `timeout_batches` | array | (Optional) Batch indexes that timed out |
+| `failed_batches` | array | (Optional) Batch indexes that failed after retry |
+| `resume_pending` | integer | (Optional) Pending targets saved for resume when a runtime budget is hit |
+| `resume` | object | (Optional) Resume metadata (added_findings, added_suspected, pending_targets) |
 | `output_file` | string | Relative path to output file (best-effort) |
-| `error` | string | Error if Nuclei failed (best-effort) |
+| `error` | string | Error if Nuclei failed (best-effort, e.g., timeout) |
 
 ### Config Snapshot (v3.7+)
 
@@ -135,6 +190,8 @@ Sanitized run configuration, stored for reproducibility.
 | `windows_verify_max_targets` | integer | Max targets for agentless verification |
 | `scan_vulnerabilities` | boolean | Web vuln enabled |
 | `nuclei_enabled` | boolean | Nuclei enabled |
+| `nuclei_profile` | string | Nuclei profile (fast/balanced/full) |
+| `nuclei_full_coverage` | boolean | Nuclei full coverage (scan all detected HTTP ports) |
 | `cve_lookup_enabled` | boolean | NVD enrichment |
 | `dry_run` | boolean | Dry-run mode |
 | `prevent_sleep` | boolean | Sleep inhibition enabled |
@@ -146,11 +203,103 @@ Compact roll-up for dashboards.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `host_scan` | object | Targets + threads |
-| `net_discovery` | object | DHCP/ARP/NetBIOS/UPNP counts + redteam |
+| `host_scan` | object | Targets + threads + resolved Nmap args |
+| `net_discovery` | object | DHCP/ARP/NetBIOS/mDNS/UPNP counts + HyperScan TCP/UDP + redteam |
 | `agentless_verify` | object | Targets + completed + counts per protocol |
 | `nuclei` | object | Nuclei summary |
 | `vulnerability_scan` | object | Total findings + sources (+ raw count) |
+| `deep_scan` | object | Identity threshold + UDP strategy (v4.18.9+) |
+| `scope_expansion` | object | Leak-follow and IoT-probe control state (v4.x Phase A) |
+| `hyperscan_vs_final` | object | HyperScan vs final port counts (v4.18.9+) |
+
+#### pipeline.host_scan (v4.18.9+)
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `targets` | integer | Targets discovered |
+| `scanned` | integer | Hosts scanned |
+| `threads` | integer | Concurrency used |
+| `nmap_args` | string | Resolved Nmap args for the selected scan mode |
+| `nmap_timing` | string | Nmap timing template (e.g., T4) |
+
+#### pipeline.net_discovery.counts
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `dhcp_servers` | integer | DHCP servers detected |
+| `alive_hosts` | integer | Alive hosts detected |
+| `netbios_hosts` | integer | NetBIOS hosts detected |
+| `arp_hosts` | integer | ARP hosts detected |
+| `mdns_services` | integer | mDNS services detected |
+| `upnp_devices` | integer | UPNP/SSDP devices detected |
+| `candidate_vlans` | integer | Candidate VLANs detected |
+| `hyperscan_tcp_hosts` | integer | Hosts with TCP ports from HyperScan |
+| `hyperscan_udp_ports` | integer | Total UDP ports from HyperScan discovery |
+| `potential_backdoors` | integer | Potential backdoor signals detected |
+
+#### pipeline.deep_scan (v4.18.9+)
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `identity_threshold` | integer | Identity score threshold for deep scan |
+| `deep_scan_budget` | integer | Max deep scans (0 = unlimited) |
+| `udp_mode` | string | UDP mode used (quick/full) |
+| `udp_top_ports` | integer | Top UDP ports when full mode is used |
+| `low_impact_enrichment` | boolean | Low impact enrichment enabled (DNS/mDNS/SNMP plus short HTTP/HTTPS probe for vendor-only hosts with zero open ports) |
+
+#### pipeline.nuclei (summary)
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `targets` | integer | Total HTTP targets sent to Nuclei |
+| `targets_total` | integer | Total HTTP targets before optimization |
+| `targets_exception` | integer | Targets treated as exceptions (full coverage + retries) |
+| `targets_optimized` | integer | Targets selected after optimization |
+| `targets_excluded` | integer | Targets excluded by user filters |
+| `fatigue_limit` | integer | Max split depth for exception retries (fatigue cap) |
+| `leak_follow_mode` | string | Leak-follow mode used by runtime (`off`/`safe`) |
+| `leak_follow_detected` | integer | Leak-follow candidates detected from HTTP evidence |
+| `leak_follow_eligible` | integer | Leak-follow candidates that passed in-scope checks |
+| `leak_follow_followed` | integer | Leak-follow targets appended to Nuclei target list |
+| `findings` | integer | Findings after filtering |
+| `findings_total` | integer | Raw findings before filtering |
+| `findings_suspected` | integer | Suspected false positives |
+| `profile` | string | Nuclei profile (fast/balanced/full) |
+| `profile_selected` | string | Profile selected by the user (fast/balanced/full) |
+| `profile_effective` | string | Effective profile after auto-switch (fast/balanced/full) |
+| `auto_switched` | boolean | Whether RedAudit auto-switched the profile |
+| `full_coverage` | boolean | Full coverage enabled (all HTTP ports) |
+| `partial` | boolean | Partial run (timeouts or budget) |
+| `timeout_batches` | array | Batch indexes that timed out |
+| `failed_batches` | array | Batch indexes that failed |
+| `budget_exceeded` | boolean | Runtime budget ended the run |
+| `resume_pending` | integer | Pending targets saved for resume |
+| `output_file` | string | Relative path to nuclei_output.json |
+| `success` | boolean | Nuclei success flag |
+| `error` | string | Error message, if any |
+
+#### pipeline.scope_expansion (v4.x)
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `leak_follow_mode` | string | Leak-follow mode (`off`/`safe`) used in the run |
+| `leak_follow_allowlist` | array | In-scope allowlist entries supplied by operator |
+| `leak_follow_runtime.mode` | string | Effective runtime mode for leak-follow (`off`/`safe`) |
+| `leak_follow_runtime.detected` | integer | Total leak-follow candidates detected at runtime |
+| `leak_follow_runtime.eligible` | integer | Candidates that passed safe in-scope gates |
+| `leak_follow_runtime.followed` | integer | Number of follow targets appended for scanning |
+| `leak_follow_runtime.skipped` | integer | Candidates discarded by mode/guardrails |
+| `leak_follow_runtime.follow_targets` | array | Follow targets actually appended to Nuclei |
+| `iot_probes_mode` | string | IoT probes mode (`off`/`safe`) |
+| `iot_probe_budget_seconds` | integer | Per-host IoT probe budget in seconds |
+| `iot_probe_timeout_seconds` | integer | Per-probe IoT timeout in seconds |
+
+#### pipeline.hyperscan_vs_final (v4.18.9+)
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `totals` | object | Aggregate totals (hosts/hyperscan_ports/final_ports/missed_tcp/missed_udp) |
+| `by_subnet` | object | Per-subnet summary using /24 (IPv4) or /64 (IPv6) |
 
 ### findings.jsonl (Selected Fields)
 
@@ -162,6 +311,31 @@ Flat, one-finding-per-line export for SIEM ingestion.
 | `descriptive_title` | string | Enriched title derived from observations (best-effort) |
 | `severity` | string | Severity label (critical/high/medium/low/info) |
 | `source` | string | Primary source tool (nikto/testssl/nuclei/etc.) |
+
+### assets.jsonl (Selected Fields)
+
+Flat, one-asset-per-line export for inventory pipelines.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `ip` | string | Asset IP address |
+| `hostname` | string | Best-effort hostname |
+| `status` | string | Host status (up/filtered/down) |
+| `risk_score` | number | Risk score (0-100) |
+| `open_ports` | array | (Optional) List of open ports (`port`, `protocol`, `service`) |
+
+### Vulnerability Evidence Object (v4.18.9+)
+
+For each vulnerability entry, an `evidence` object may be present for traceability.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `source_tool` | string | Primary tool/source (nikto/testssl/nuclei/redaudit) |
+| `signals` | array | Evidence signals contributing to the finding |
+| `matched_at` | string | Matched URL or endpoint, if available |
+| `template_id` | string | Nuclei template ID (if applicable) |
+| `raw_output_sha256` | string | SHA256 hash of raw tool output (if available) |
+| `raw_output_ref` | string | Relative file reference to raw output (if externalized) |
 
 ### Smart Scan Summary (v3.7+)
 
@@ -240,7 +414,8 @@ Network discovery is **best-effort**: missing tools will reduce visibility but s
 | `ldap` | object | LDAP RootDSE summary (best-effort) |
 | `kerberos` | object | Kerberos realm discovery + optional userenum (best-effort) |
 | `dns_zone_transfer` | object | DNS AXFR attempt summary (best-effort; requires zone hint) |
-| `masscan` | object | Optional masscan summary (requires root; skipped on large ranges) |
+| `rustscan` | object | Optional RustScan summary (v4.8.0) |
+| `masscan` | object | (Deprecated) Alias for `rustscan` |
 | `vlan_enum` | object | VLAN ID/DTP hints (passive; requires tcpdump + root) |
 | `stp_topology` | object | STP BPDU hints (passive; requires tcpdump + root) |
 | `hsrp_vrrp` | object | HSRP/VRRP presence hints (passive; requires tcpdump + root) |
@@ -305,8 +480,10 @@ Normalized hints derived from SMB/RDP/LDAP probes. All fields are optional.
 | `smb_signing_enabled` | boolean | SMB signing enabled (best-effort) |
 | `smb_signing_required` | boolean | SMB signing required (best-effort) |
 | `smbv1_detected` | boolean | SMBv1 presence detected |
+| `upnp_device_name` | string | Device name from UPnP discovery (best-effort) |
 | `http_title` | string | HTTP title hint from agentless or quick HTTP probe |
 | `http_server` | string | HTTP server header hint from agentless or quick HTTP probe |
+| `http_source` | string | Origin of HTTP hints: `upnp`, `probe`, or `enrichment` |
 | `ssh_hostkeys` | array | SSH host key fingerprints (best-effort) |
 | `defaultNamingContext` | string | LDAP RootDSE default naming context |
 | `rootDomainNamingContext` | string | LDAP RootDSE root domain naming context |
@@ -405,6 +582,14 @@ Enrichment is performed only for services with detected version information (or 
 | `cve_summary.total` | integer | Total CVEs across all ports |
 | `cve_summary.critical` | integer | Count of ports with max severity CRITICAL |
 | `cve_summary.high` | integer | Count of ports with max severity HIGH |
+| `asset_name` | string | (Optional) Consolidated asset name from entity resolution |
+| `asset_type` | string | (Optional) Asset classification (router, server, workstation, iot, etc.) |
+| `interfaces` | array | (Optional) Consolidated interface list for the asset |
+| `interfaces[].ip` | string | Interface IP address |
+| `interfaces[].mac` | string | (Optional) Interface MAC address |
+| `interfaces[].hostname` | string | (Optional) Hostname hint for the interface |
+| `interfaces[].type` | string | Interface type label |
+| `interface_count` | integer | (Optional) Number of interfaces detected for the asset |
 
 ### DNS Object (Optional)
 
@@ -497,7 +682,7 @@ List of detected network interfaces.
 ]
 ```
 
-## New Features (v3.0.0)
+## Schema Enhancements Reference
 
 ### SIEM Enhancement (ECS Alignment)
 

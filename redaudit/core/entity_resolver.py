@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Entity Resolution Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v2.9: Asset reconciliation module for identifying and merging duplicate host entries
@@ -9,8 +9,10 @@ that represent the same physical device with multiple network interfaces.
 """
 
 import re
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from collections import defaultdict
+
+from redaudit.core.signature_store import load_device_hostname_hints
 
 
 def normalize_hostname(hostname: str) -> str:
@@ -274,6 +276,41 @@ def guess_asset_type(host: Dict) -> str:
         "",
         hostname,
     )
+    hostname_hints = load_device_hostname_hints()
+    hints_by_type: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for hint in hostname_hints:
+        device_type = hint.get("device_type")
+        if device_type:
+            hints_by_type[device_type].append(hint)
+
+    def _hostname_matches(device_type: str, *, include_media_override: bool = True) -> bool:
+        if not hostname_base:
+            return False
+        for hint in hints_by_type.get(device_type, []):
+            keywords = hint.get("hostname_keywords") or []
+            regexes = hint.get("hostname_regex") or []
+            if include_media_override:
+                keywords = list(keywords) + (hint.get("hostname_keywords_media_override") or [])
+            if any(x in hostname_base for x in keywords):
+                return True
+            for pattern in regexes:
+                try:
+                    if re.search(pattern, hostname_base):
+                        return True
+                except re.error:
+                    continue
+        return False
+
+    def _hostname_matches_media_override(device_type: str) -> bool:
+        if not hostname_base:
+            return False
+        for hint in hints_by_type.get(device_type, []):
+            if any(
+                x in hostname_base for x in (hint.get("hostname_keywords_media_override") or [])
+            ):
+                return True
+        return False
+
     ports = host.get("ports", [])
     deep = host.get("deep_scan", {})
     vendor = (deep.get("vendor") or "").lower()
@@ -291,6 +328,16 @@ def guess_asset_type(host: Dict) -> str:
 
     port_nums = {p.get("port") for p in ports if p.get("port")}
     http_hint = f"{http_title} {http_server}".strip()
+    media_signal = any(
+        token in svc
+        for svc in port_services
+        for token in ("chromecast", "castv2", "google cast", "dlna", "airplay")
+    )
+    if not media_signal and port_nums & {8008, 8009}:
+        media_signal = True
+    if not media_signal and http_hint:
+        if any(token in http_hint for token in ("chromecast", "cast", "smart tv")):
+            media_signal = True
 
     # Generic gateway hint: mark default gateway as router when known.
     if host.get("is_default_gateway") is True:
@@ -319,7 +366,7 @@ def guess_asset_type(host: Dict) -> str:
             return "vpn"
 
     # Heuristic 3: VPN hostname patterns
-    if any(x in hostname_base for x in ["vpn", "ipsec", "wireguard", "openvpn", "tunnel"]):
+    if _hostname_matches("vpn"):
         return "vpn"
 
     # Heuristic 4: VPN/Firewall Vendor OUI
@@ -345,42 +392,21 @@ def guess_asset_type(host: Dict) -> str:
         if port_nums & {80, 443, 8443}:
             return "firewall"
 
-    if any(
-        x in hostname_base
-        for x in (
-            "printer",
-            "laserjet",
-            "officejet",
-            "deskjet",
-            "pixma",
-            "imageclass",
-            "canon",
-            "epson",
-        )
-    ):
+    if _hostname_matches("printer"):
         return "printer"
 
     # Check hostname patterns (generic first, avoid brand-specific assumptions).
-    if any(x in hostname_base for x in ["iphone", "ipad", "phone"]):
-        return "mobile"
-    if "android" in hostname_base:
-        if port_nums & {8008, 8009} or any(
-            token in http_hint for token in ("chromecast", "cast", "ssdp", "iot", "smart tv")
+    if _hostname_matches("mobile", include_media_override=False):
+        if _hostname_matches_media_override("mobile") and (
+            media_signal or any(token in http_hint for token in ("ssdp", "iot"))
         ):
             return "media"
         return "mobile"
-    if any(x in hostname_base for x in ["macbook", "imac", "laptop", "desktop", "workstation"]):
+    if _hostname_matches("workstation"):
         return "workstation"
-    if re.search(r"\bpc\b", hostname_base):
-        return "workstation"
-    if any(
-        x in hostname_base
-        for x in ("msi", "lenovo", "thinkpad", "dell", "hp", "hewlett", "asus", "acer")
-    ):
-        return "workstation"
-    if any(x in hostname_base for x in ["tv", "chromecast", "roku", "firetv", "shield"]):
+    if _hostname_matches("smart_tv"):
         return "media"
-    if any(x in hostname_base for x in ["router", "gateway", "modem", "ont", "cpe", "firewall"]):
+    if _hostname_matches("router"):
         return "router"
 
     # Samsung devices can be phones or TVs; avoid defaulting to mobile without signals.
@@ -410,6 +436,8 @@ def guess_asset_type(host: Dict) -> str:
     if isinstance(device_hints, list):
         normalized_hints = {str(hint).lower() for hint in device_hints if hint}
         if "router" in normalized_hints:
+            if media_signal:
+                return "media"
             return "router"
         if "printer" in normalized_hints:
             return "printer"
@@ -426,6 +454,8 @@ def guess_asset_type(host: Dict) -> str:
 
     # Check agentless HTTP hints when hostname is missing.
     if http_hint:
+        if "juice shop" in http_hint or "owasp juice shop" in http_hint:
+            return "server"
         if any(
             token in http_hint
             for token in (
@@ -453,11 +483,7 @@ def guess_asset_type(host: Dict) -> str:
                 return "switch"
 
     # Check service/product fingerprints for media devices.
-    if any(
-        token in svc
-        for svc in port_services
-        for token in ("chromecast", "castv2", "google cast", "dlna", "airplay")
-    ):
+    if media_signal:
         return "media"
 
     # OS-based hints (best-effort).
@@ -468,6 +494,8 @@ def guess_asset_type(host: Dict) -> str:
 
     # Check vendor
     if any(x in vendor for x in ["sercomm", "sagemcom"]):
+        if media_signal:
+            return "media"
         return "router"
     if any(
         x in vendor
@@ -487,6 +515,11 @@ def guess_asset_type(host: Dict) -> str:
         ]
     ):
         return "workstation"
+    if any(x in vendor for x in ["synology", "qnap", "asustor", "terramaster"]):
+        # NAS appliances: treat as server-class assets unless media signals are explicit.
+        if media_signal:
+            return "media"
+        return "server"
     if any(x in vendor for x in ["wiz", "philips", "tp-link", "tuya"]):
         return "iot"
     if any(x in vendor for x in ["amazon", "google"]):

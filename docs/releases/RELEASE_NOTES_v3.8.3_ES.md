@@ -3,15 +3,15 @@
 [![View in English](https://img.shields.io/badge/View%20in%20English-blue?style=flat-square)](RELEASE_NOTES_v3.8.3.md)
 
 **Fecha de lanzamiento:** 2025-12-21
-**Enfoque:** UX de wizard y reportes
+**Enfoque:** UX de wizard y informes
 
 ---
 
 ## Novedades
 
-### Identidad del auditor en reportes
+### Identidad del auditor en informes
 
-El wizard ahora solicita el nombre del auditor y lo incluye en reportes TXT/HTML.
+El wizard ahora solicita el nombre del auditor y lo incluye en informes TXT/HTML.
 
 ### HTML bilingüe
 

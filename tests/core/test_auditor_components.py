@@ -49,6 +49,19 @@ def test_setup_logging_adds_rotating_handler(tmp_path):
         logger.handlers = original_handlers
 
 
+def test_setup_logging_ui_active_exception():
+    app = InteractiveNetworkAuditor()
+    handler = next(h for h in app.logger.handlers if hasattr(h, "_ui_active"))
+    handler.stream = io.StringIO()
+
+    def _boom():
+        raise RuntimeError("boom")
+
+    handler._ui_active = _boom
+    record = logging.LogRecord("x", logging.ERROR, __file__, 1, "msg", args=(), exc_info=None)
+    handler.emit(record)
+
+
 def test_format_eta_and_phase_detail():
     app = InteractiveNetworkAuditor()
     assert app._format_eta(65) == "1:05"
@@ -122,6 +135,38 @@ def test_progress_console():
     assert console is not None
 
 
+def test_progress_console_setattr_error():
+    class _UI:
+        def get_progress_console(self):
+            return object()
+
+        def __setattr__(self, name, value):
+            if name == "_active_progress_console":
+                raise RuntimeError("boom")
+            return super().__setattr__(name, value)
+
+    app = InteractiveNetworkAuditor()
+    app._ui_manager = _UI()
+    console = app._progress_console()
+    assert console is not None
+
+
+def test_progress_ui_cleanup_error():
+    class _UI:
+        def get_progress_console(self):
+            return object()
+
+        def __setattr__(self, name, value):
+            if name == "_active_progress_console":
+                raise RuntimeError("boom")
+            return super().__setattr__(name, value)
+
+    app = InteractiveNetworkAuditor()
+    app._ui_manager = _UI()
+    with app._progress_ui():
+        assert app._ui_progress_active is True
+
+
 def test_safe_text_column():
     """Test _safe_text_column creates appropriate column."""
     app = InteractiveNetworkAuditor()
@@ -135,6 +180,62 @@ def test_progress_columns():
     cols = app._progress_columns(show_detail=True, show_eta=True, show_elapsed=True)
     assert isinstance(cols, (list, tuple))
     assert len(cols) > 0
+
+
+def test_activity_indicator_handles_touch_exception():
+    stream = io.StringIO()
+    indicator = _ActivityIndicator(label="test", stream=stream, refresh_s=0.01)
+
+    def _boom():
+        raise RuntimeError("boom")
+
+    indicator._touch_activity = _boom
+    indicator._stop.clear()
+
+    def _sleep(_):
+        indicator._stop.set()
+
+    with patch("time.monotonic", side_effect=[0.0, 10.0, 10.0]):
+        with patch("time.sleep", side_effect=_sleep):
+            indicator._run()
+
+
+def test_activity_indicator_non_tty_write_error():
+    class _Stream:
+        def isatty(self):
+            return False
+
+        def write(self, _msg):
+            raise RuntimeError("boom")
+
+        def flush(self):
+            return None
+
+    stream = _Stream()
+    indicator = _ActivityIndicator(label="test", stream=stream, refresh_s=0.01)
+    indicator._stop.clear()
+
+    def _sleep(_):
+        indicator._stop.set()
+
+    with patch("time.monotonic", side_effect=[0.0, 10.0, 10.0]):
+        with patch("time.sleep", side_effect=_sleep):
+            indicator._run()
+
+
+def test_activity_indicator_tty_small_width():
+    stream = MagicMock()
+    stream.isatty.return_value = True
+    indicator = _ActivityIndicator(label="test", stream=stream, refresh_s=0.01)
+    indicator._stop.clear()
+
+    def _sleep(_):
+        indicator._stop.set()
+
+    with patch.object(indicator, "_terminal_width", return_value=60):
+        with patch("time.monotonic", side_effect=[0.0, 1.0, 1.0]):
+            with patch("time.sleep", side_effect=_sleep):
+                indicator._run()
 
 
 def test_condense_for_ui_variants():
@@ -152,6 +253,20 @@ def test_condense_for_ui_variants():
     # Text without nmap pattern
     result = app._condense_for_ui("Some other message")
     assert result == "Some other message"
+
+
+def test_condense_for_ui_no_mode_hint():
+    app = InteractiveNetworkAuditor()
+    text = "[nmap] 10.0.0.1 → nmap -sV -p 80"
+    assert app._condense_for_ui(text) == "nmap 10.0.0.1"
+
+
+def test_set_ui_detail_empty_and_status():
+    app = InteractiveNetworkAuditor()
+    app._set_ui_detail("")
+    assert app._ui_detail == ""
+    app._set_ui_detail("hello", status_display="OK")
+    assert "hello" in app._ui_detail
 
 
 def test_format_eta_edge_cases():
@@ -179,6 +294,15 @@ def test_phase_detail_variants():
     app.current_phase = "discovery:10.0.0.0/24"
     result = app._phase_detail()
     assert isinstance(result, str)
+
+    app.current_phase = ""
+    assert app._phase_detail() == ""
+
+    app.current_phase = "deep:10.0.0.1"
+    assert app._phase_detail() == "deep scan 10.0.0.1"
+
+    app.current_phase = "vulns"
+    assert app._phase_detail() == "web vuln scan"
 
 
 def test_subprocess_tracking():
@@ -217,6 +341,49 @@ def test_translation_method():
     result = app.t("start_audit")
     assert isinstance(result, str)
     assert len(result) > 0
+
+
+def test_setup_encryption_raises_on_unexpected_error():
+    app = InteractiveNetworkAuditor()
+    app.cryptography_available = True
+    with (
+        patch(
+            "redaudit.core.auditor_components.ask_password_twice", side_effect=RuntimeError("boom")
+        ),
+        patch.object(app, "ask_yes_no", return_value=True),
+    ):
+        with pytest.raises(RuntimeError):
+            app.setup_encryption(non_interactive=False)
+
+
+def test_setup_encryption_non_interactive_raises():
+    app = InteractiveNetworkAuditor()
+    app.cryptography_available = True
+    with patch(
+        "redaudit.core.auditor_components.derive_key_from_password",
+        side_effect=RuntimeError("boom"),
+    ):
+        with pytest.raises(RuntimeError):
+            app.setup_encryption(non_interactive=True, password="pw")
+
+
+def test_setup_nvd_api_key_skips_when_disabled():
+    app = InteractiveNetworkAuditor()
+    app.config["cve_lookup_enabled"] = False
+    app.setup_nvd_api_key(non_interactive=False)
+
+
+def test_setup_nvd_api_key_keyboard_interrupt():
+    app = InteractiveNetworkAuditor()
+    app.config["cve_lookup_enabled"] = True
+    with (
+        patch("redaudit.utils.config.get_nvd_api_key", return_value=None),
+        patch("redaudit.utils.config.set_nvd_api_key", return_value=True),
+        patch("redaudit.utils.config.validate_nvd_api_key", return_value=True),
+        patch.object(app, "ask_choice", return_value=0),
+        patch("builtins.input", side_effect=KeyboardInterrupt),
+    ):
+        app.setup_nvd_api_key(non_interactive=False)
 
 
 class _DummyTextColumn:
@@ -274,6 +441,18 @@ class _MockUI(AuditorUI):
         self._ui_progress_active = False
         self.current_phase = ""
         self.last_activity = None
+
+
+def test_ui_manager_lang_sync():
+    ui_owner = _MockUI()
+    manager = ui_owner.ui
+    assert manager.lang == "en"
+
+    ui_owner.lang = "es"
+    manager_again = ui_owner.ui
+    assert manager_again is manager
+    assert manager_again.lang == "es"
+    assert manager_again.t("verifying_env").startswith("Verificando")
 
 
 class _MockLogger(AuditorLogging):

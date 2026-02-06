@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Vulnerability Verification Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v2.9: Smart-Check module for filtering false positives from Nikto and other scanners.
@@ -13,6 +13,8 @@ from typing import Dict, List, Optional, Tuple
 
 from redaudit.core.command_runner import CommandRunner
 from redaudit.core.proxy import get_proxy_command_wrapper
+from redaudit.core.identity_utils import match_infra_keyword
+from redaudit.core.signature_store import load_nuclei_template_vendors
 from redaudit.utils.dry_run import is_dry_run
 
 # File extensions that suggest sensitive/binary content
@@ -404,61 +406,7 @@ def filter_nikto_false_positives(
 # v3.9.0: Nuclei False Positive Detection
 # =============================================================================
 
-# Mapping of CVE/template IDs to their expected vendor/product identifiers
-# If the actual Server header doesn't match, it's likely a false positive
-NUCLEI_TEMPLATE_VENDORS = {
-    # Mitel MiCollab - often false positive on routers with JSON endpoints
-    "CVE-2022-26143": {
-        "expected_vendors": ["mitel", "micollab", "mivoice"],
-        "false_positive_vendors": [
-            "fritz",
-            "avm",
-            "netgear",
-            "tp-link",
-            "asus",
-            "linksys",
-            "ubiquiti",
-        ],
-        "description": "Mitel MiCollab Information Disclosure",
-    },
-    # Add more templates as FPs are discovered
-    "CVE-2021-44228": {
-        "expected_vendors": ["java", "log4j", "apache"],
-        "false_positive_vendors": [],  # Log4j can affect many products
-        "description": "Log4Shell",
-    },
-}
-
-# Common router/device vendors that often trigger CVE false positives
-COMMON_INFRASTRUCTURE_VENDORS = frozenset(
-    [
-        "fritz",
-        "avm",
-        "netgear",
-        "tp-link",
-        "asus",
-        "linksys",
-        "d-link",
-        "ubiquiti",
-        "mikrotik",
-        "cisco",
-        "aruba",
-        "fortinet",
-        "pfsense",
-        "openwrt",
-        "synology",
-        "qnap",
-        "hikvision",
-        "dahua",
-        "axis",
-        "zyxel",
-        "huawei",
-        "samsung",
-        "philips",
-        "sonos",
-        "roku",
-    ]
-)
+NUCLEI_TEMPLATE_VENDORS = load_nuclei_template_vendors()
 
 
 def parse_cpe_components(cpe_string: str) -> Dict[str, str]:
@@ -540,9 +488,9 @@ def validate_cpe_against_template(
                 return True, f"cpe_matches_fp_vendor:{fpv}"
 
         # Check against infrastructure devices
-        for infra in COMMON_INFRASTRUCTURE_VENDORS:
-            if infra in vendor or infra in product:
-                return True, f"cpe_is_infrastructure:{infra}"
+        infra_hit = match_infra_keyword(f"{vendor} {product}")
+        if infra_hit:
+            return True, f"cpe_is_infrastructure:{infra_hit}"
 
     return False, "cpe_no_match"
 
@@ -639,7 +587,6 @@ def check_nuclei_false_positive(
         if isinstance(raw, dict):
             response = raw.get("response", "") or ""
     server_header = ""
-    server_header = ""
     # v4.3.1: Handle both CRLF and LF to ensure Server header is found
     lines = response.splitlines()
     for line in lines:
@@ -660,13 +607,18 @@ def check_nuclei_false_positive(
         agentless_server = (agentless_data.get("http_server") or "").lower()
 
     # Combine all identifiers
-    identifiers = f"{server_header} {agentless_vendor} {agentless_title} {agentless_server}".lower()
+    # v4.13.2: Include full response body for better FP detection (e.g., "FRITZ!OS" in body)
+    response_body_snippet = response[:2000].lower() if len(response) > 2000 else response.lower()
+    identifiers = (
+        f"{server_header} {agentless_vendor} {agentless_title} "
+        f"{agentless_server} {response_body_snippet}"
+    ).lower()
 
     if logger and "micollab" in template_config.get("description", "").lower():
         logger.debug(
-            "Smart-Check Debug: template=%s identifiers=[%s] expected=%s fp=%s",
+            "Smart-Check Debug: template=%s identifiers_len=%d expected=%s fp=%s",
             template_id,
-            identifiers,
+            len(identifiers),
             template_config.get("expected_vendors", []),
             template_config.get("false_positive_vendors", []),
         )
@@ -674,6 +626,21 @@ def check_nuclei_false_positive(
     # Check if any expected vendor is present
     expected = template_config.get("expected_vendors", [])
     if any(v in identifiers for v in expected):
+        # v4.14: For model-specific CVEs, also check if the model matches
+        expected_models = template_config.get("expected_models", [])
+        fp_models = template_config.get("false_positive_models", [])
+
+        if expected_models or fp_models:
+            # Check for false positive models first
+            for fp_model in fp_models:
+                if fp_model in identifiers:
+                    return True, f"fp_model_detected:{fp_model}"
+
+            # Check if expected model is present (if specified)
+            if expected_models:
+                if not any(model in identifiers for model in expected_models):
+                    return True, "fp_model_mismatch"
+
         return False, "expected_vendor_found"
 
     # Check if a known FP vendor is present
@@ -683,11 +650,11 @@ def check_nuclei_false_positive(
             return True, f"fp_vendor_detected:{fp_vendor}"
 
     # Check against common infrastructure devices
-    for infra_vendor in COMMON_INFRASTRUCTURE_VENDORS:
-        if infra_vendor in identifiers:
-            # Only flag if none of the expected vendors are present
-            if not any(v in identifiers for v in expected):
-                return True, f"infrastructure_device:{infra_vendor}"
+    infra_hit = match_infra_keyword(identifiers)
+    if infra_hit:
+        # Only flag if none of the expected vendors are present
+        if not any(v in identifiers for v in expected):
+            return True, f"infrastructure_device:{infra_hit}"
 
     return False, "no_fp_indicators"
 
@@ -696,6 +663,7 @@ def filter_nuclei_false_positives(
     findings: List[Dict],
     host_agentless: Optional[Dict[str, Dict]] = None,
     logger=None,
+    host_records: Optional[List[Dict]] = None,
 ) -> Tuple[List[Dict], List[Dict]]:
     """
     Filter Nuclei findings to separate genuine findings from likely false positives.
@@ -703,10 +671,13 @@ def filter_nuclei_false_positives(
     Unlike Nikto filtering which removes FPs, this returns both lists so the
     auditor can review flagged findings if needed.
 
+    v4.4.2: Added host_records parameter for CPE-based validation.
+
     Args:
         findings: List of Nuclei finding dicts
         host_agentless: Dict mapping IP -> agentless fingerprint data
         logger: Optional logger
+        host_records: Optional list of host records with ports/CPE data
 
     Returns:
         Tuple of (genuine_findings, suspected_fp_findings)
@@ -715,27 +686,36 @@ def filter_nuclei_false_positives(
         return [], []
 
     genuine = []
+    # v4.4.2: Build IP -> host_data map for CPE lookups
+    host_data_map: Dict[str, Dict] = {}
+    if host_records:
+        for hr in host_records:
+            ip = hr.get("ip") if isinstance(hr, dict) else getattr(hr, "ip", None)
+            if ip:
+                host_data_map[ip] = hr if isinstance(hr, dict) else hr.__dict__
     suspected_fps = []
     host_agentless = host_agentless or {}
 
     for finding in findings:
         host_ip = finding.get("ip", "") or finding.get("host", "")
         agentless_data = host_agentless.get(host_ip, {})
+        trimmed = host_ip
         if not agentless_data and isinstance(host_ip, str) and host_ip:
-            trimmed = host_ip
-            if "://" in trimmed:
+            if "://" in host_ip:
                 try:
                     from urllib.parse import urlparse
 
-                    parsed = urlparse(trimmed)
-                    trimmed = parsed.hostname or trimmed
+                    parsed = urlparse(host_ip)
+                    trimmed = parsed.hostname or host_ip
                 except Exception:
                     pass
-            if trimmed.count(":") == 1:
+            if isinstance(trimmed, str) and trimmed.count(":") == 1:
                 trimmed = trimmed.split(":", 1)[0]
             agentless_data = host_agentless.get(trimmed, {})
 
-        is_fp, reason = check_nuclei_false_positive(finding, agentless_data, logger)
+        # v4.4.2: Pass host_data for CPE-based validation
+        host_data = host_data_map.get(trimmed) if trimmed else None
+        is_fp, reason = check_nuclei_false_positive(finding, agentless_data, logger, host_data)
 
         if is_fp:
             # Mark as suspected FP but don't remove

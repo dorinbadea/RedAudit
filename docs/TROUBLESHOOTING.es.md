@@ -81,6 +81,7 @@ sudo apt install python3-nmap python3-cryptography python3-netifaces
 - **Verificar**: Buscar el marcador `[deep]` en la salida CLI.
 - **Timeouts**: Los escaneos de host están limitados por `--host-timeout` de nmap y se abortan si se exceden. Si aún ves
   pausas largas, revisa `session_logs/session_*.log` dentro del directorio de salida para ver la herramienta activa.
+- **Visibilidad de Nikto**: Cuando Nikto excede su timeout, el detalle de progreso muestra `nikto timeout` y el escaneo continúa.
 
 ### 6b. Reposo del sistema / apagado de pantalla durante escaneos largos (v3.5+)
 
@@ -123,12 +124,15 @@ sudo bash redaudit_install.sh -y
 ### 8b. La versión/banner no se refresca tras actualizar
 
 **Síntoma**: Actualizaste RedAudit pero el banner sigue mostrando la versión anterior.
-**Causa**: La shell puede estar cacheando la ruta del ejecutable (o sigues en la misma sesión de terminal).
+**Causa**: La shell puede estar cacheando la ruta del ejecutable (o sigues en la misma sesión de terminal). Si tienes un checkout git, el prompt/tag también puede quedar desfasado si el repo está en un commit antiguo o sin tags actualizados.
 **Solución**:
 
 - Reinicia el terminal (recomendado).
 - Si necesitas mantener la misma sesión, ejecuta `hash -r` (zsh/bash) para limpiar la caché.
 - Verifica qué binario se está ejecutando: `command -v redaudit`.
+- Si estás en un repo git de RedAudit, el updater ahora refresca tags y hace fast‑forward de `main` cuando el repo está limpio. Si tienes cambios locales o estás en otra rama/tag, actualiza manualmente:
+  - `git fetch --tags origin`
+  - `git checkout main && git pull --ff-only origin main`
 
 ### 9. Escaneo IPv6 no funciona (v3.0)
 
@@ -139,6 +143,35 @@ sudo bash redaudit_install.sh -y
 - Verificar que IPv6 está habilitado: `ip -6 addr show`
 - Comprobar que Nmap soporta IPv6: `nmap -6 ::1`
 - Usar el flag `--ipv6` para modo solo IPv6
+
+### 9b. Timeout en descubrimiento DHCP (sin respuesta)
+
+**Síntoma**: Ves `dhcp: no response to DHCP broadcast on <iface> (timeout)` en Net Discovery.
+**Explicación**: Las sondas DHCP son best-effort. En redes de laboratorio, contenedores o redes estáticas puede no existir un servidor DHCP o el broadcast puede estar bloqueado.
+**Resolución**:
+
+- Confirma que la interfaz está activa y con carrier.
+- Si la interfaz es virtual/bridge (Docker, VM), DHCP puede no existir a propósito.
+- En WiFi, el aislamiento del AP puede bloquear el broadcast.
+- Si tu red es estática, puedes ignorar este aviso.
+
+### 9c. Timeout en la red Docker por defecto (comportamiento esperado)
+
+**Síntoma**: El descubrimiento de hosts hace timeout en `172.17.0.0/16` (o `docker0`) y no encuentra hosts.
+**Explicación**: La red bridge por defecto de Docker suele estar vacía o aislada. Si no estás escaneando contenedores, los timeouts son esperables.
+**Resolución**:
+
+- Ignora el timeout cuando Docker no se usa.
+- Elimina `172.17.0.0/16` de los objetivos si no es relevante.
+
+### 9d. Interfaz VPN listada sin puertos abiertos (VPN inactiva)
+
+**Síntoma**: Un activo VPN aparece con la misma MAC que el gateway pero sin puertos abiertos.
+**Explicación**: Los routers pueden exponer una interfaz/IP VPN virtual. Cuando la VPN está inactiva, puede aparecer como un activo separado sin puertos abiertos. Es un comportamiento esperado.
+**Resolución**:
+
+- Trátalo como esperado si la VPN está inactiva.
+- Si la VPN debería estar activa, reescanea la subred VPN y valida puertos.
 
 ### 10. Errores de límite de velocidad API NVD (v3.0)
 
@@ -187,7 +220,16 @@ sudo apt update && sudo apt install nbtscan netdiscover fping avahi-utils snmp l
 sudo apt update && sudo apt install nuclei
 ```
 
-### 12c. testssl.sh no encontrado / checks TLS profundos omitidos (v3.6.1+)
+### 12c. Nuclei parcial / lotes con timeout
+
+**Síntoma**: Los informes muestran `nuclei.partial: true` con lotes en timeout o fallidos.
+**Causa**: Los lotes de Nuclei superaron el timeout por lote.
+**Solución**:
+
+- Reducir el número de objetivos HTTP o reintentar con menos subredes.
+- Bajar el rate limit de Nuclei o aumentar el timeout en la configuración.
+
+### 12d. testssl.sh no encontrado / checks TLS profundos omitidos (v3.6.1+)
 
 **Síntoma**: Los checks TLS profundos se omiten o no aparece salida de TestSSL en los hallazgos.
 **Causa**: `testssl.sh` no está instalado o no está en la ruta esperada.
@@ -208,7 +250,7 @@ sudo bash redaudit_install.sh
 - Verificar que no haya filtrado MAC en el switch/interfaz.
 - Seleccionar interfaz explícitamente: `--net-discovery-interface eth0`.
 
-### 14. Fallo al Generar Reporte HTML (v3.3)
+### 14. Fallo al Generar Informe HTML (v3.3)
 
 **Síntoma**: "Error generating HTML report" o el archivo de informe tiene 0 bytes.
 **Causa**:

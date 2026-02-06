@@ -194,6 +194,72 @@ def test_identity_score_with_discovery_hints(scanner):
     assert "hypervisor" in hints
 
 
+def test_identity_score_skips_upnp_http_source(scanner):
+    host = {
+        "agentless_fingerprint": {
+            "http_title": "UPnP Device",
+            "http_source": "upnp",
+        }
+    }
+    score, reasons = scanner.compute_identity_score(host)
+    assert "http_probe" not in reasons
+    assert score == 0
+
+
+def test_identity_score_hostname_hint_regex_error(scanner, monkeypatch):
+    hints = [
+        {"device_type": "", "hostname_keywords": ["skip"]},
+        {"device_type": "router", "hostname_regex": ["["]},
+    ]
+    monkeypatch.setattr("redaudit.core.network_scanner.load_device_hostname_hints", lambda: hints)
+
+    host = {"hostname": "router1"}
+    score, reasons = scanner.compute_identity_score(host)
+    assert "hostname" in reasons
+    assert isinstance(score, int)
+
+
+def test_identity_score_hostname_regex_match(scanner, monkeypatch):
+    hints = [{"device_type": "router", "hostname_regex": [r"router\d+"]}]
+    monkeypatch.setattr("redaudit.core.network_scanner.load_device_hostname_hints", lambda: hints)
+
+    host = {"hostname": "router1"}
+    score, _ = scanner.compute_identity_score(host)
+    assert "router" in host.get("device_type_hints", [])
+    assert score >= 0
+
+
+def test_identity_score_upnp_media_renderer(scanner):
+    host = {"ip": "10.0.0.5"}
+    net_discovery_results = {"upnp_devices": [{"ip": "10.0.0.5", "device_type": "MediaRenderer"}]}
+    score, _ = scanner.compute_identity_score(host, net_discovery_results)
+    assert score >= 0
+    assert "smart_tv" in host.get("device_type_hints", [])
+
+
+def test_identity_score_upnp_printer(scanner):
+    host = {"ip": "10.0.0.6"}
+    net_discovery_results = {"upnp_devices": [{"ip": "10.0.0.6", "device_type": "Printer"}]}
+    score, _ = scanner.compute_identity_score(host, net_discovery_results)
+    assert score >= 0
+    assert "printer" in host.get("device_type_hints", [])
+
+
+def test_identity_score_router_service(scanner):
+    host = {"ports": [{"service": "routeros"}]}
+    score, _ = scanner.compute_identity_score(host)
+    assert "router" in host.get("device_type_hints", [])
+    assert score >= 0
+
+
+def test_identity_score_agentless_type(scanner):
+    host = {"agentless_fingerprint": {"device_type": "printer"}}
+    score, reasons = scanner.compute_identity_score(host)
+    assert "device_type" in reasons
+    assert "printer" in host.get("device_type_hints", [])
+    assert score >= 1
+
+
 class TestDeepScanDecision:
     """Test deep scan trigger logic."""
 
@@ -209,6 +275,18 @@ class TestDeepScanDecision:
         )
         assert should is True
         assert "low_identity" in reason
+
+    def test_high_identity_zero_ports(self, scanner):
+        should, reason = scanner.should_trigger_deep_scan(
+            total_ports=0,
+            any_version=True,
+            suspicious=False,
+            device_type_hints=[],
+            identity_score=90,
+            identity_threshold=50,
+        )
+        assert should is True
+        assert reason == "high_identity_zero_ports"
 
     def test_suspicious_triggers(self, scanner):
         """Test suspicious service triggers deep scan."""
@@ -257,6 +335,20 @@ class TestDeepScanDecision:
         )
         assert should is False
         assert reason == ""
+
+
+def test_reverse_dns_success(monkeypatch):
+    monkeypatch.setattr(socket, "gethostbyaddr", lambda _ip: ("host.local", [], []))
+    assert NetworkScanner.reverse_dns("127.0.0.1") == "host.local"
+
+
+def test_reverse_dns_executor_failure(monkeypatch):
+    class _FailingExecutor:
+        def __init__(self, **_kwargs):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr("redaudit.core.network_scanner.ThreadPoolExecutor", _FailingExecutor)
+    assert NetworkScanner.reverse_dns("127.0.0.1") == ""
 
 
 class TestNetworkUtilities:
@@ -331,7 +423,8 @@ def test_reverse_dns_handles_error(monkeypatch):
     monkeypatch.setattr(socket, "gethostbyaddr", fake_gethostbyaddr)
 
     assert NetworkScanner.reverse_dns("1.2.3.4", timeout=1.5) == ""
-    assert calls == [1.5, None]
+    # v4.6.28: Global timeout should NOT be touched
+    assert calls == []
 
 
 class TestHostHelpers:
@@ -411,17 +504,47 @@ class TestNmapHelpers:
         assert NetworkScanner._extract_nmap_xml(raw) == "<nmaprun></nmaprun>"
         assert NetworkScanner._extract_nmap_xml("") == ""
 
-    def test_coerce_text(self):
-        assert NetworkScanner._coerce_text(b"bytes") == "bytes"
-        assert NetworkScanner._coerce_text(None) == ""
+    def test_extract_nmap_xml_xml_header_only(self):
+        raw = "junk <?xml version='1.0'?> <scan></scan>"
+        xml = NetworkScanner._extract_nmap_xml(raw)
+        assert xml.startswith("<?xml")
 
-    def test_default_host_timeout(self, scanner):
-        scanner.config["scan_mode"] = "rapido"
-        assert scanner._get_default_host_timeout() == 10.0
-        scanner.config["scan_mode"] = "completo"
-        assert scanner._get_default_host_timeout() == 300.0
-        scanner.config["scan_mode"] = "normal"
-        assert scanner._get_default_host_timeout() == 60.0
+
+def test_network_scanner_import_without_nmap(monkeypatch):
+    import builtins
+    import importlib
+
+    import redaudit.core.network_scanner as ns
+
+    original_import = builtins.__import__
+
+    def _fake_import(name, *args, **kwargs):
+        if name == "nmap":
+            raise ImportError("no nmap")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _fake_import)
+    importlib.reload(ns)
+    assert ns.nmap is None
+
+    monkeypatch.setattr(builtins, "__import__", original_import)
+    importlib.reload(ns)
+    globals()["NetworkScanner"] = ns.NetworkScanner
+    globals()["create_network_scanner"] = ns.create_network_scanner
+
+
+def test_coerce_text():
+    assert NetworkScanner._coerce_text(b"bytes") == "bytes"
+    assert NetworkScanner._coerce_text(None) == ""
+
+
+def test_default_host_timeout(scanner):
+    scanner.config["scan_mode"] = "rapido"
+    assert scanner._get_default_host_timeout() == 10.0
+    scanner.config["scan_mode"] = "completo"
+    assert scanner._get_default_host_timeout() == 300.0
+    scanner.config["scan_mode"] = "normal"
+    assert scanner._get_default_host_timeout() == 60.0
 
 
 class TestNmapExecution:
@@ -429,7 +552,7 @@ class TestNmapExecution:
         scanner.config["dry_run"] = True
         nm, err = scanner.run_nmap_scan("127.0.0.1", "-sn")
         assert nm is None
-        assert err == "dry_run"
+        assert err == ""  # dry_run returns empty error string
 
     def test_run_nmap_scan_missing_binary(self, scanner, monkeypatch):
         monkeypatch.setattr("redaudit.core.network_scanner.shutil.which", lambda *_a: None)
@@ -494,10 +617,70 @@ class TestNmapExecution:
         assert nm is None
         assert err == "empty_nmap_output"
 
+    def test_run_nmap_scan_error_short_circuit(self, scanner, monkeypatch):
+        class DummyNmap:
+            PortScanner = MagicMock
+
+        monkeypatch.setattr(
+            "redaudit.core.network_scanner.shutil.which", lambda *_a: "/usr/bin/nmap"
+        )
+        monkeypatch.setattr(
+            "redaudit.core.network_scanner.run_nmap_command",
+            lambda *_a, **_k: {"error": "boom"},
+        )
+        monkeypatch.setattr("redaudit.core.network_scanner.nmap", DummyNmap)
+
+        nm, err = scanner.run_nmap_scan("127.0.0.1", "-sV")
+        assert nm is None
+        assert err == "boom"
+
+    def test_run_nmap_scan_empty_output_long_stderr(self, scanner, monkeypatch):
+        class DummyNmap:
+            PortScanner = MagicMock
+
+        monkeypatch.setattr(
+            "redaudit.core.network_scanner.shutil.which", lambda *_a: "/usr/bin/nmap"
+        )
+        monkeypatch.setattr(
+            "redaudit.core.network_scanner.run_nmap_command",
+            lambda *_a, **_k: {"stdout_full": "", "stderr": "x" * 250},
+        )
+        monkeypatch.setattr(
+            "redaudit.core.network_scanner.NetworkScanner._extract_nmap_xml",
+            lambda *_a, **_k: "",
+        )
+        monkeypatch.setattr("redaudit.core.network_scanner.nmap", DummyNmap)
+
+        nm, err = scanner.run_nmap_scan("127.0.0.1", "-sV")
+        assert nm is None
+        assert err.endswith("...")
+
     def test_run_nmap_scan_xml_parse_error(self, scanner, monkeypatch):
         class DummyPortScanner:
             def analyse_nmap_xml_scan(self, *_a, **_k):
                 raise ValueError("bad xml")
+
+        class DummyNmap:
+            PortScanner = DummyPortScanner
+
+        xml = "<nmaprun></nmaprun>"
+        monkeypatch.setattr(
+            "redaudit.core.network_scanner.shutil.which", lambda *_a: "/usr/bin/nmap"
+        )
+        monkeypatch.setattr(
+            "redaudit.core.network_scanner.run_nmap_command",
+            lambda *_a, **_k: {"stdout_full": xml, "stderr": ""},
+        )
+        monkeypatch.setattr("redaudit.core.network_scanner.nmap", DummyNmap)
+
+        nm, err = scanner.run_nmap_scan("127.0.0.1", "-sV")
+        assert nm is None
+        assert err.startswith("nmap_xml_parse_error:")
+
+    def test_run_nmap_scan_xml_parse_long_error(self, scanner, monkeypatch):
+        class DummyPortScanner:
+            def analyse_nmap_xml_scan(self, *_a, **_k):
+                raise ValueError("x" * 400)
 
         class DummyNmap:
             PortScanner = DummyPortScanner
@@ -541,3 +724,25 @@ class TestNmapExecution:
         nm, err = scanner.run_nmap_scan("127.0.0.1", "-sV")
         assert err == ""
         assert nm.called == {"target": "127.0.0.1", "arguments": "-sV"}
+
+    def test_run_nmap_scan_fallback_scan_error(self, scanner, monkeypatch):
+        class DummyPortScanner:
+            def scan(self, *_a, **_k):
+                raise RuntimeError("scan fail")
+
+        class DummyNmap:
+            PortScanner = DummyPortScanner
+
+        xml = "<nmaprun></nmaprun>"
+        monkeypatch.setattr(
+            "redaudit.core.network_scanner.shutil.which", lambda *_a: "/usr/bin/nmap"
+        )
+        monkeypatch.setattr(
+            "redaudit.core.network_scanner.run_nmap_command",
+            lambda *_a, **_k: {"stdout_full": xml, "stderr": ""},
+        )
+        monkeypatch.setattr("redaudit.core.network_scanner.nmap", DummyNmap)
+
+        nm, err = scanner.run_nmap_scan("127.0.0.1", "-sV")
+        assert nm is None
+        assert err.startswith("nmap_scan_fallback_error:")

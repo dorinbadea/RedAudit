@@ -95,7 +95,7 @@ class MockAuditorBase:
         return default
 
     def ask_manual_network(self):
-        return "192.168.1.0/24"
+        return ["192.168.1.0/24"]
 
     def _set_ui_detail(self, detail):
         pass

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - NVD CVE Correlation Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.0: Query NIST NVD API 2.0 for vulnerability correlation.
@@ -15,11 +15,13 @@ import json
 import time
 import hashlib
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
 from redaudit.utils.constants import VERSION
+
+from urllib.parse import quote as urlquote
 
 # Import config module for API key management
 try:
@@ -209,7 +211,7 @@ def query_nvd(
     # Build query URL
     params = []
     if keyword:
-        params.append(f"keywordSearch={keyword}")
+        params.append(f"keywordSearch={urlquote(keyword, safe='')}")
     if cpe_name:
         params.append(f"cpeName={cpe_name}")
 
@@ -221,6 +223,7 @@ def query_nvd(
     if api_key:
         req.add_header("apiKey", api_key)
 
+    cves: List[Dict[str, Any]] = []  # Initialize before loop to prevent UnboundLocalError
     for attempt in range(1, NVD_MAX_RETRIES + 1):
         try:
             with urlopen(req, timeout=NVD_API_TIMEOUT) as response:
@@ -271,6 +274,11 @@ def query_nvd(
                     return cves
 
         except HTTPError as e:
+            # v4.7.2: 404 = CPE not found, don't retry (wastes time)
+            if e.code == 404:
+                if logger:
+                    logger.debug("NVD API 404: CPE not found, skipping retries")
+                break
             retryable = e.code in (429, 500, 502, 503, 504)
             if logger:
                 logger.warning(
@@ -336,7 +344,7 @@ def enrich_port_with_cves(port_info: Dict, api_key: Optional[str] = None, logger
             ver = (parts[3] if len(parts) > 3 and parts[3] else "*").strip()
             fields = [part, vendor, prod, ver] + ["*"] * 7
             return "cpe:2.3:" + ":".join(fields)
-        return None
+        return None  # pragma: no cover
 
     # Prefer Nmap-reported CPE when present (works even if version string is missing).
     cpe_value = port_info.get("cpe")

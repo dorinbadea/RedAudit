@@ -157,6 +157,38 @@ def test_arrow_menu_skips_empty_key(monkeypatch):
     assert choice == 0
 
 
+def test_format_menu_option_does_not_mark_normal_as_no():
+    wiz = _UIWizard()
+    wiz.ui.colors = {
+        "FAIL": "<R>",
+        "OKBLUE": "<B>",
+        "ENDC": "</>",
+        "DIM": "<D>",
+        "BOLD": "<BD>",
+        "WARNING": "<Y>",
+        "OKGREEN": "<G>",
+        "CYAN": "<C>",
+        "HEADER": "<H>",
+    }
+    labels = {
+        "yes_default": "Si (por defecto)",
+        "yes_option": "Si",
+        "no_default": "No (por defecto)",
+        "no_option": "No",
+        "wizard_go_back": "Cancelar",
+        "go_back": "Cancelar",
+    }
+    wiz.ui.t.side_effect = lambda key, *args: labels.get(key, key)
+
+    option = "Normal - Equilibrio velocidad/cobertura (sin retardo)"
+    out = wiz._format_menu_option(option, is_selected=False)
+    assert "<R>" not in out
+    assert out.startswith("<B>")
+
+    out_no = wiz._format_menu_option("No (por defecto)", is_selected=False)
+    assert "<R>" in out_no
+
+
 # --- Flow and prompt helpers ---
 
 
@@ -373,14 +405,14 @@ def test_ask_number_keyboard_interrupt(monkeypatch):
 def test_ask_manual_network_validation(monkeypatch):
     wiz = _TextWizard()
     _set_inputs(monkeypatch, ["bad", "10.0.0.0/24"])
-    assert wiz.ask_manual_network() == "10.0.0.0/24"
+    assert wiz.ask_manual_network() == ["10.0.0.0/24"]
 
 
 def test_ask_manual_network_too_long(monkeypatch):
     wiz = _TextWizard()
     long_input = "a" * (MAX_CIDR_LENGTH + 1)
     _set_inputs(monkeypatch, [long_input, "10.0.0.0/24"])
-    assert wiz.ask_manual_network() == "10.0.0.0/24"
+    assert wiz.ask_manual_network() == ["10.0.0.0/24"]
 
 
 def test_apply_run_defaults():
@@ -576,14 +608,35 @@ def test_use_arrow_menu_non_tty(monkeypatch):
 def test_clear_screen_respects_dry_run():
     wiz = _UIWizard()
     wiz.config["dry_run"] = True
-    with patch("os.system") as mocked:
+    with patch("subprocess.run") as mocked:
         wiz.clear_screen()
     mocked.assert_not_called()
 
     wiz.config["dry_run"] = False
-    with patch("os.system") as mocked:
+    with patch("redaudit.core.wizard.shutil.which", return_value="/usr/bin/clear"):
+        with patch("subprocess.run") as mocked:
+            wiz.clear_screen()
+    mocked.assert_called_once_with(["/usr/bin/clear"], check=False)
+
+
+def test_clear_screen_falls_back_to_ansi(monkeypatch, capsys):
+    wiz = _UIWizard()
+    wiz.config["dry_run"] = False
+    monkeypatch.setattr("redaudit.core.wizard.shutil.which", lambda *_a, **_k: None)
+    with patch("subprocess.run") as mocked:
         wiz.clear_screen()
-    mocked.assert_called_once()
+    mocked.assert_not_called()
+    captured = capsys.readouterr().out
+    assert "\033[2J" in captured
+
+
+def test_clear_screen_windows_branch(monkeypatch):
+    wiz = _UIWizard()
+    wiz.config["dry_run"] = False
+    monkeypatch.setattr("redaudit.core.wizard.os.name", "nt")
+    with patch("subprocess.run") as mocked:
+        wiz.clear_screen()
+    mocked.assert_called_once_with(["cmd", "/c", "cls"], check=False)
 
 
 def test_print_banner_outputs_subtitle(capsys):
@@ -797,11 +850,43 @@ def test_truncate_menu_text_zero_width():
 def test_format_menu_option_colors():
     wiz = _UIWizard()
     wiz.ui.colors["OKGREEN"] = "<G>"
+    wiz.ui.colors["FAIL"] = "<F>"
+    wiz.ui.colors["OKBLUE"] = "<B>"
+    wiz.ui.colors["DIM"] = "<D>"
+    wiz.ui.colors["BOLD"] = "<BO>"
+    wiz.ui.colors["CYAN"] = "<C>"
     wiz.ui.colors["ENDC"] = "<E>"
-    assert wiz._format_menu_option(wiz.t("yes_default")) == "<G>yes_default<E>"
+    assert wiz._format_menu_option(wiz.t("yes_default")) == "<BO><G>yes_default<E>"
+    assert wiz._format_menu_option(wiz.t("yes_option")) == "<D><G>yes_option<E>"
+    assert wiz._format_menu_option(wiz.t("no_default")) == "<BO><F>no_default<E>"
+    assert wiz._format_menu_option(wiz.t("no_option")) == "<D><F>no_option<E>"
+    assert wiz._format_menu_option("Option") == "<B>Option<E>"
+    assert wiz._format_menu_option("Selected", is_selected=True) == "<BO><C>Selected<E>"
 
     colored = "\x1b[31mAlready colored\x1b[0m"
     assert wiz._format_menu_option(colored) == colored
+
+
+def test_format_menu_option_avoids_no_prefix_match():
+    wiz = _UIWizard()
+    wiz.ui.colors["OKGREEN"] = "<G>"
+    wiz.ui.colors["FAIL"] = "<F>"
+    wiz.ui.colors["OKBLUE"] = "<B>"
+    wiz.ui.colors["DIM"] = "<D>"
+    wiz.ui.colors["BOLD"] = "<BO>"
+    wiz.ui.colors["CYAN"] = "<C>"
+    wiz.ui.colors["ENDC"] = "<E>"
+    labels = {
+        "yes_default": "Si (por defecto)",
+        "yes_option": "Si",
+        "no_default": "No (por defecto)",
+        "no_option": "No",
+        "wizard_go_back": "Cancelar",
+        "go_back": "Volver",
+    }
+    wiz.ui.t.side_effect = lambda k, *a: labels.get(k, str(k))
+    assert wiz._format_menu_option("Normal - Equilibrio") == "<B>Normal - Equilibrio<E>"
+    assert wiz._format_menu_option("No") == "<D><F>No<E>"
 
 
 def test_format_menu_option_empty():
@@ -815,6 +900,25 @@ def test_ask_yes_no_defaults(monkeypatch):
     monkeypatch.setattr("builtins.input", lambda *_args, **_kwargs: "")
     assert wiz.ask_yes_no("q", default="yes") is True
     assert wiz.ask_yes_no("q", default="no") is False
+
+
+def test_ask_yes_no_with_timeout_non_tty(monkeypatch):
+    wiz = _UIWizard()
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: False)
+    assert wiz.ask_yes_no_with_timeout("q", default="yes", timeout_s=5) is True
+    assert wiz.ask_yes_no_with_timeout("q", default="no", timeout_s=0) is False
+
+
+def test_ask_yes_no_with_timeout_posix_input(monkeypatch):
+    import select
+
+    wiz = _UIWizard()
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdin, "readline", lambda: "y\n")
+    monkeypatch.setattr(select, "select", lambda *_a, **_k: ([sys.stdin], [], []))
+    assert wiz.ask_yes_no_with_timeout("q", default="no", timeout_s=1) is True
 
 
 def test_ask_number_and_choice(monkeypatch):
@@ -874,7 +978,25 @@ def test_ask_manual_network(monkeypatch):
     wiz = _UIWizard()
     inputs = iter(["bad", "10.0.0.0/24"])
     monkeypatch.setattr("builtins.input", lambda *_args, **_kwargs: next(inputs))
-    assert wiz.ask_manual_network() == "10.0.0.0/24"
+    assert wiz.ask_manual_network() == ["10.0.0.0/24"]
+
+
+def test_ask_manual_network_multiple(monkeypatch):
+    wiz = _TextWizard()
+    _set_inputs(monkeypatch, ["10.0.0.0/24, 192.168.0.0/24,10.0.0.0/24"])
+    assert wiz.ask_manual_network() == ["10.0.0.0/24", "192.168.0.0/24"]
+
+
+def test_ask_manual_network_ips(monkeypatch):
+    wiz = _TextWizard()
+    _set_inputs(monkeypatch, ["192.168.0.10, 192.168.0.11"])
+    assert wiz.ask_manual_network() == ["192.168.0.10/32", "192.168.0.11/32"]
+
+
+def test_ask_manual_network_range(monkeypatch):
+    wiz = _TextWizard()
+    _set_inputs(monkeypatch, ["192.168.1.8-192.168.1.15"])
+    assert wiz.ask_manual_network() == ["192.168.1.8/29"]
 
 
 def test_ask_manual_network_keyboard_interrupt(monkeypatch):
@@ -909,7 +1031,10 @@ class TestWizardPrompts(unittest.TestCase):
             opts = app.ask_net_discovery_options()
 
         self.assertEqual(opts.get("snmp_community"), "public")
-        self.assertTrue(any("[public]" in p for p in prompts), "SNMP prompt should show [public]")
+        self.assertTrue(
+            any("public" in p and "[" in p for p in prompts),
+            "SNMP prompt should show the default value",
+        )
         self.assertTrue(
             any("ENTER" in p.upper() for p in prompts),
             "Prompt should clarify ENTER behavior",
@@ -922,26 +1047,26 @@ class TestWizardRedTeam(unittest.TestCase):
         app.print_status = lambda *_args, **_kwargs: None
         app.setup_encryption = lambda *args, **kwargs: None
 
-        app.ask_choice_with_back = Mock(side_effect=[1, 0, 0, 0, 1, 1, 0, 0, 0, 1])
-        app.ask_choice = Mock(side_effect=[3, 1])
-        app.ask_number = Mock(side_effect=["all", 6])
+        # Sequence: ScanMode(1=Normal), Hyperscan(0), Vuln(1=No), CVE(1=No), UDP(0), Topo(0), NetDisc(0=Yes), Auth(1=No), WinVerify(1=No)
+        app.ask_choice_with_back = Mock(side_effect=[1, 0, 1, 1, 0, 0, 0, 1, 1] + [1] * 20)
+        app.ask_choice = Mock(side_effect=[3, 1] + [0] * 20)
+        app.ask_number = Mock(side_effect=["all", 6] + [5] * 20)
         app.ask_yes_no = Mock(
             side_effect=[
                 False,  # Rate limit
                 False,  # Low impact
+                True,  # Trust HyperScan (NEW)
                 True,  # Masscan
                 True,  # Active L2
                 True,  # Kerberos
                 False,  # Advanced Net Discovery
                 False,  # Webhook
-                True,  # Save defaults
-                True,  # Start audit
             ]
             + [False] * 10  # Safe padding
         )
 
         with (
-            patch("builtins.input", side_effect=["", "", "", "/tmp/users.txt"]),
+            patch("builtins.input", side_effect=["", "/tmp/users.txt", "", ""]),
             patch("redaudit.core.auditor.os.geteuid", return_value=0),
             patch("shutil.which", return_value="/usr/bin/mocktool"),
             patch("redaudit.core.auditor.is_nuclei_available", return_value=True),
@@ -959,13 +1084,15 @@ class TestWizardRedTeam(unittest.TestCase):
         app.print_status = lambda *_args, **_kwargs: None
         app.setup_encryption = lambda *args, **kwargs: None
 
-        app.ask_choice_with_back = Mock(side_effect=[1, 0, 1, 1, 0, 0, 0, 1])
-        app.ask_choice = Mock(side_effect=[3, 1])
-        app.ask_number = Mock(side_effect=["all", 6])
+        # Sequence: ScanMode(1), Hyperscan(0), Vuln(1), CVE(1), UDP(0), Topo(0), NetDisc(0=Yes), Auth(1=No), WinVerify(1=No)
+        app.ask_choice_with_back = Mock(side_effect=[1, 0, 1, 1, 0, 0, 0, 1, 1] + [1] * 20)
+        app.ask_choice = Mock(side_effect=[3, 1] + [0] * 20)
+        app.ask_number = Mock(side_effect=["all", 6] + [5] * 20)
         app.ask_yes_no = Mock(
             side_effect=[
                 False,  # Rate limit
                 False,  # Low impact
+                True,  # Trust HyperScan (NEW)
                 False,  # Webhook
                 True,  # Save defaults
                 True,  # Start audit

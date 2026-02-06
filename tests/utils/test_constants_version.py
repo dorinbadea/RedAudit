@@ -71,3 +71,17 @@ def test_resolve_version_falls_back_to_dev(tmp_path, monkeypatch):
     monkeypatch.setattr(constants, "__file__", str(constants_path))
 
     assert constants._resolve_version() == "0.0.0-dev"
+
+
+def test_resolve_version_prefers_packaged_file_over_metadata(tmp_path, monkeypatch):
+    constants_path = _make_fake_repo(tmp_path)
+    version_path = constants_path.parents[1] / "VERSION"
+    version_path.write_text("9.9.9", encoding="utf-8")
+
+    import importlib.metadata
+    import redaudit.utils.constants as constants
+
+    monkeypatch.setattr(constants, "__file__", str(constants_path))
+    monkeypatch.setattr(importlib.metadata, "version", lambda _: "1.2.3")
+
+    assert constants._resolve_version() == "9.9.9"

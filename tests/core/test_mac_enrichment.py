@@ -29,7 +29,8 @@ class TestVendorHints:
         # Note: msi-Vector.fritz.box matches MSI first (first match wins)
         assert infer_vendor_from_hostname("msi-Vector.fritz.box") == "MSI (guess)"
         assert infer_vendor_from_hostname("fritzbox-gateway") == "AVM (guess)"
-        assert infer_vendor_from_hostname("router.fritz.box") == "AVM (guess)"
+        # Generic *.fritz.box host labels are ambiguous and should not force AVM.
+        assert infer_vendor_from_hostname("router.fritz.box") is None
 
     def test_infer_vendor_from_hostname_wiz(self):
         """WiZ bulb hostnames should return WiZ (guess)."""

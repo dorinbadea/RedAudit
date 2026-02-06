@@ -55,7 +55,21 @@ class AuditorRuntime(
         return object.__getattribute__(self, name)
 
     def __getattr__(self, name: str):
-        return getattr(self._auditor, name)
+        # Avoid recursion loop: do not blindly call getattr(self._auditor, name)
+        # because Auditor.__getattr__ might call back here.
+        # Check if attribute exists on the auditor instance or class explicitly.
+        auditor = self._auditor
+
+        # 1. Check instance dictionary (state)
+        if name in auditor.__dict__:
+            return getattr(auditor, name)
+
+        # 2. Check class attributes (methods/descriptors)
+        # We lookup on the type to avoid triggering instance __getattr__
+        if hasattr(type(auditor), name):
+            return getattr(auditor, name)
+
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
     def __setattr__(self, name: str, value) -> None:
         if name == "_auditor":

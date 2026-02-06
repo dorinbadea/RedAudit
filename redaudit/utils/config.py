@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Configuration Management Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.0.1: Persistent configuration for NVD API key and other settings.
@@ -12,6 +12,7 @@ import json
 import stat
 import copy
 import logging
+from datetime import datetime
 
 try:
     import pwd  # Unix-only
@@ -32,6 +33,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "version": CONFIG_VERSION,
     "nvd_api_key": None,
     "nvd_api_key_storage": None,  # "config", "env", or None
+    # Optional OUI database override (Wireshark manuf format)
+    "oui_db_path": None,  # str | None
+    "oui_db_paths": None,  # list[str] | None
     # v3.1+: Persistent defaults for common CLI/interactive settings.
     # v3.2.3: Expanded to cover all scan parameters
     "defaults": {
@@ -54,6 +58,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "generate_html": None,  # True/False
         # v3.6.0+: Optional template scanner toggle (if nuclei is installed)
         "nuclei_enabled": None,  # True/False
+        "nuclei_max_runtime": None,  # int minutes | None
+        # v4.x Phase A: Safe scope expansion controls
+        "leak_follow_mode": None,  # "off" | "safe" | None
+        "leak_follow_allowlist": None,  # list[str] | None
+        "iot_probes_mode": None,  # "off" | "safe" | None
+        "iot_probe_budget_seconds": None,  # int | None
+        "iot_probe_timeout_seconds": None,  # int | None
         # v3.6.0+: Net Discovery / Red Team defaults (wizard)
         "net_discovery_enabled": None,  # True/False
         "net_discovery_redteam": None,  # True/False
@@ -152,6 +163,55 @@ def ensure_config_dir() -> str:
     return config_dir
 
 
+def _backup_invalid_config(config_file: str) -> Optional[str]:
+    """
+    Move an invalid config file aside before recreating a healthy one.
+
+    Returns:
+        Backup file path if successful, otherwise None.
+    """
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_file = f"{config_file}.invalid.{stamp}"
+    try:
+        os.replace(config_file, backup_file)
+        try:
+            os.chmod(backup_file, stat.S_IRUSR | stat.S_IWUSR)
+        except Exception:
+            logger.debug("Failed to chmod invalid config backup: %s", backup_file, exc_info=True)
+            pass
+        _maybe_chown(backup_file)
+        return backup_file
+    except Exception:
+        logger.debug("Failed to backup invalid config file: %s", config_file, exc_info=True)
+        return None
+
+
+def _recover_default_config(config_file: str, reason: str) -> Dict[str, Any]:
+    """
+    Recover configuration by replacing an invalid file with defaults.
+
+    The previous file is preserved with a timestamp suffix when possible.
+    """
+    backup_file = _backup_invalid_config(config_file)
+    defaults = copy.deepcopy(DEFAULT_CONFIG)
+
+    if save_config(defaults):
+        if backup_file:
+            logger.warning(
+                "Recovered invalid config (%s); backup saved at %s",
+                reason,
+                backup_file,
+            )
+        else:
+            logger.warning("Recovered invalid config (%s); backup skipped", reason)
+    else:
+        logger.warning(
+            "Invalid config detected (%s), but default config persistence failed; using in-memory defaults",
+            reason,
+        )
+    return defaults
+
+
 def load_config() -> Dict[str, Any]:
     """
     Load configuration from file.
@@ -169,12 +229,23 @@ def load_config() -> Dict[str, Any]:
         with open(config_file, "r", encoding="utf-8") as f:
             config = json.load(f)
 
+        if not isinstance(config, dict):
+            return _recover_default_config(config_file, "invalid-root-type")
+
         # Merge with defaults for any missing keys
         merged = copy.deepcopy(DEFAULT_CONFIG)
         merged.update(config)
+        defaults_block = config.get("defaults")
+        merged_defaults = copy.deepcopy(DEFAULT_CONFIG.get("defaults", {}))
+        if isinstance(defaults_block, dict):
+            merged_defaults.update(defaults_block)
+        merged["defaults"] = merged_defaults
         return merged
 
-    except (json.JSONDecodeError, IOError):
+    except json.JSONDecodeError:
+        logger.debug("Config JSON decode failed; attempting self-heal", exc_info=True)
+        return _recover_default_config(config_file, "json-decode-error")
+    except (IOError, OSError):
         logger.debug("Failed to load config file; using defaults", exc_info=True)
         return copy.deepcopy(DEFAULT_CONFIG)
 

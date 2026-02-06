@@ -5,7 +5,7 @@
 **Date**: 2025-12-18
 **Type**: Minor Release
 
-## 📌 Highlights
+##  Highlights
 
 ### Nuclei is now properly reachable (opt-in)
 

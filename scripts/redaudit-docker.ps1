@@ -102,7 +102,7 @@ $ReportsDir = "C:\RedAudit-Reports"
 if (-not (Test-Path $ReportsDir)) {
     New-Item -ItemType Directory -Path $ReportsDir | Out-Null
 }
-Write-Host "[OK] Los reportes se guardaran en: $ReportsDir" -ForegroundColor Green
+Write-Host "[OK] Los informes se guardaran en: $ReportsDir" -ForegroundColor Green
 Write-Host ""
 
 # Pull latest image
@@ -144,7 +144,7 @@ Write-Host ""
 
 Write-Host ""
 Write-Host "=======================================================" -ForegroundColor Green
-Write-Host "Escaneo completado! Reportes guardados en:" -ForegroundColor Green
+Write-Host "Escaneo completado! Informes guardados en:" -ForegroundColor Green
 Write-Host "$ReportsDir" -ForegroundColor Cyan
 Write-Host "=======================================================" -ForegroundColor Green
 
@@ -152,7 +152,7 @@ Write-Host "=======================================================" -Foreground
 $reportPath = Join-Path $ReportsDir "report.html"
 if (Test-Path $reportPath) {
     Write-Host ""
-    $openReport = Read-Host "Abrir el reporte HTML en el navegador? [S/n]"
+    $openReport = Read-Host "Abrir el informe HTML en el navegador? [S/n]"
     if ($openReport -notmatch '^[Nn]') {
         Start-Process $reportPath
     }

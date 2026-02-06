@@ -4,12 +4,13 @@ Tests for session_log module.
 """
 
 import io
+import logging
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
-from redaudit.utils.session_log import SessionLogger, TeeStream
+from redaudit.utils.session_log import SessionLogHandler, SessionLogger, TeeStream
 
 
 class TestTeeStream(unittest.TestCase):
@@ -39,6 +40,23 @@ class TestTeeStream(unittest.TestCase):
         stream.write("\n")
         self.assertEqual(log.getvalue(), "frame3\n")
 
+    def test_lines_mode_strips_ansi_line_clear_codes(self):
+        """v4.19.10: ANSI line-clear codes should be stripped from countdown prompts."""
+        terminal = io.StringIO()
+        log = io.StringIO()
+        lock = MagicMock()
+        stream = TeeStream(terminal, log, lock, mode="lines")
+
+        # Simulate countdown updates with \r and ANSI clear-line codes
+        stream.write(
+            "Prompt: Countdown 15s\r\x1b[2KPrompt: Countdown 14s\r\x1b[2KPrompt: Countdown 13s"
+        )
+        self.assertEqual(log.getvalue(), "")
+
+        stream.write("\n")
+        # Only the last frame should be logged, without ANSI codes
+        self.assertEqual(log.getvalue(), "Prompt: Countdown 13s\n")
+
     def test_lines_mode_prefixes_stderr_lines(self):
         terminal = io.StringIO()
         log = io.StringIO()
@@ -60,6 +78,32 @@ class TestTeeStream(unittest.TestCase):
         stream.write("\n")
         self.assertEqual(log.getvalue(), "ab\n")
 
+    def test_isatty_delegates_to_terminal(self):
+        terminal = MagicMock()
+        terminal.isatty.return_value = True
+        log = io.StringIO()
+        lock = MagicMock()
+        stream = TeeStream(terminal, log, lock, mode="lines")
+        self.assertTrue(stream.isatty())
+
+    def test_isatty_handles_exception(self):
+        terminal = MagicMock()
+        terminal.isatty.side_effect = RuntimeError("boom")
+        log = io.StringIO()
+        lock = MagicMock()
+        stream = TeeStream(terminal, log, lock, mode="lines")
+        self.assertFalse(stream.isatty())
+
+
+def test_session_log_handler_emit_handles_error():
+    logger = MagicMock()
+    logger.write_direct.side_effect = RuntimeError("boom")
+    handler = SessionLogHandler(logger)
+    record = logging.LogRecord("x", logging.INFO, __file__, 1, "msg", args=(), exc_info=None)
+    with patch.object(handler, "handleError") as mock_handle:
+        handler.emit(record)
+    assert mock_handle.called
+
 
 def test_session_logger_start_already_active():
     """Test start() when already active (line 71)."""
@@ -77,6 +121,19 @@ def test_session_logger_start_exception():
         with patch("builtins.open", side_effect=PermissionError("Access denied")):
             result = logger.start()
             assert result is False
+
+
+def test_session_logger_start_warns_on_failure():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        logger = SessionLogger(tmpdir)
+        out = io.StringIO()
+        with (
+            patch("redaudit.utils.session_log.TeeStream", side_effect=RuntimeError("boom")),
+            patch("sys.stdout", out),
+        ):
+            result = logger.start()
+        assert result is False
+        assert "[session_log] Warning" in out.getvalue()
 
 
 def test_session_logger_stop_not_active():
@@ -130,6 +187,22 @@ def test_session_logger_create_clean_version_exception():
         with patch("builtins.open", side_effect=IOError("Read failed")):
             result = logger._create_clean_version()
             assert result is None
+
+
+def test_session_logger_write_direct_no_file():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        logger = SessionLogger(tmpdir)
+        logger.log_file = None
+        logger.write_direct("msg")
+
+
+def test_session_logger_write_direct_exception():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        logger = SessionLogger(tmpdir)
+        bad_file = MagicMock()
+        bad_file.write.side_effect = RuntimeError("boom")
+        logger.log_file = bad_file
+        logger.write_direct("msg")
 
 
 def test_tee_stream_write_raw_mode():
@@ -192,6 +265,16 @@ def test_tee_stream_write_lines_no_lines():
     tee._log_buf = "\n"
     tee._write_lines("")
     # Should handle gracefully
+
+
+def test_tee_stream_write_lines_skips_noise():
+    terminal = MagicMock()
+    log_file = io.StringIO()
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
+    tee._should_skip_line = lambda _line: True
+    tee._write_lines("skip me\n")
+    assert log_file.getvalue() == ""
 
 
 def test_tee_stream_write_lines_partial_line():
@@ -263,6 +346,19 @@ def test_tee_stream_should_skip_line_heartbeat_duplicate():
     assert result2 is True  # Skip duplicate
 
 
+def test_tee_stream_heartbeat_flush_on_new_key():
+    terminal = MagicMock()
+    log_file = io.StringIO()
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
+
+    tee._should_skip_line("[22:30:37] [INFO] Net Discovery en progreso... (8:26 transcurrido)\n")
+    tee._should_skip_line("[22:30:38] [INFO] Net Discovery en progreso... (8:27 transcurrido)\n")
+    tee._should_skip_line("[22:30:39] [INFO] Phase 2 en progreso... (0:01 transcurrido)\n")
+
+    assert "updates" in log_file.getvalue()
+
+
 def test_tee_stream_should_skip_line_progress_minor_change():
     """Test _should_skip_line with minor progress change (lines 365-383)."""
     terminal = MagicMock()
@@ -278,6 +374,27 @@ def test_tee_stream_should_skip_line_progress_minor_change():
     # Minor change (< 5%)
     result2 = tee._should_skip_line("⠙ Discovery ━━━━━━━━━━ 12%\n")
     assert result2 is True  # Skip minor change
+
+
+def test_tee_stream_should_skip_line_progress_bar_duplicate():
+    """Test _should_skip_line with repeated rich progress bars."""
+    terminal = MagicMock()
+    log_file = MagicMock()
+
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
+
+    line = "✔ 192.168.178.24 ━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:00:03 0:00:00\n"
+    result1 = tee._should_skip_line(line)
+    assert result1 is False  # Keep first occurrence
+
+    result2 = tee._should_skip_line(line)
+    assert result2 is True  # Skip duplicate
+
+    result3 = tee._should_skip_line(
+        "192.168.178.24 ━━━━━━━━━━━━━━━━━━━━━━━━━ 95% 0:00:10 0:00:00\n"
+    )
+    assert result3 is False  # Keep pct change
 
 
 def test_tee_stream_flush_with_heartbeat_count():
@@ -304,3 +421,12 @@ def test_tee_stream_isatty():
     result = tee.isatty()
 
     assert result is True
+
+
+def test_tee_stream_encoding_fallback():
+    terminal = MagicMock()
+    terminal.encoding = None
+    log_file = MagicMock()
+    lock = MagicMock()
+    tee = TeeStream(terminal, log_file, lock)
+    assert tee.encoding == "utf-8"

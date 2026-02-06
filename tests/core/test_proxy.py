@@ -108,3 +108,129 @@ def test_proxy_connection_with_nc_failure():
             ok, msg = proxy.test_proxy_connection({"host": "h", "port": 1})
     assert ok is False
     assert "not responding" in msg
+
+
+def test_create_temp_config_exception():
+    """Test exception handling in temp config creation."""
+    with patch("tempfile.mkstemp", side_effect=OSError("Disk full")):
+        assert (
+            proxy.create_temp_proxychains_config({"type": "socks5", "host": "h", "port": 1}) is None
+        )
+
+
+def test_cleanup_temp_config_exception():
+    """Test exception handling in temp config cleanup."""
+    with patch("os.remove", side_effect=OSError("Permission denied")):
+        # Should not raise exception
+        proxy.cleanup_temp_config("/tmp/fake_path")
+
+
+def test_parse_proxy_url_exception():
+    """Test parsing exception (e.g. malformed URL causing urlparse failure)."""
+    with patch("redaudit.core.proxy.urlparse", side_effect=ValueError("bad url")):
+        assert proxy.parse_proxy_url("socks5://bad") is None
+
+    # Test missing port case logic
+    parsed_no_port = proxy.parse_proxy_url("socks5://host")
+    assert parsed_no_port is None
+
+
+def test_proxy_connection_invalid_config():
+    ok, msg = proxy.test_proxy_connection(None)
+    assert ok is False
+    assert "Invalid proxy configuration" in msg
+
+
+def test_proxy_connection_socket_error():
+    class _Socket:
+        def settimeout(self, _timeout):
+            return None
+
+        def connect(self, _addr):
+            raise OSError("boom")
+
+        def close(self):
+            return None
+
+    with patch("redaudit.core.proxy.shutil.which", return_value=None):
+        with patch("socket.socket", return_value=_Socket()):
+            ok, msg = proxy.test_proxy_connection({"host": "h", "port": 1})
+    assert ok is False
+    assert "connection failed" in msg.lower()
+
+
+def test_proxy_connection_with_nc_success():
+    result = SimpleNamespace(returncode=0)
+    with patch("redaudit.core.proxy.shutil.which", return_value="/usr/bin/nc"):
+        with patch("redaudit.core.proxy.CommandRunner.run", return_value=result):
+            ok, msg = proxy.test_proxy_connection({"host": "h", "port": 1})
+    assert ok is True
+    assert "reachable" in msg
+
+
+def test_proxy_connection_with_nc_timeout_error():
+    with patch("redaudit.core.proxy.shutil.which", return_value="/usr/bin/nc"):
+        with patch("redaudit.core.proxy.CommandRunner.run", side_effect=RuntimeError("timed out")):
+            ok, msg = proxy.test_proxy_connection({"host": "h", "port": 1}, timeout=3)
+    assert ok is False
+    assert "timeout" in msg.lower()
+
+
+def test_wrap_command_with_proxychains_no_config():
+    with patch("redaudit.core.proxy.shutil.which", return_value="/usr/bin/proxychains"):
+        with patch("redaudit.core.proxy.create_temp_proxychains_config", return_value=None):
+            wrapped, path = proxy.wrap_command_with_proxychains(
+                ["nmap", "x"], {"host": "h", "port": 1}
+            )
+    assert wrapped == ["nmap", "x"]
+    assert path is None
+
+
+def test_get_nmap_proxy_args_empty_proxy():
+    assert proxy.get_nmap_proxy_args(None) == ""
+
+
+def test_is_proxychains_available():
+    with patch("redaudit.core.proxy.shutil.which", return_value=None):
+        assert proxy.is_proxychains_available() is False
+    with patch(
+        "redaudit.core.proxy.shutil.which",
+        side_effect=[None, None, "/usr/bin/proxychains-ng"],
+    ):
+        assert proxy.is_proxychains_available() is True
+
+
+def test_get_proxy_command_wrapper_variants():
+    class _NoWrapper:
+        wrap_command = "not-callable"
+
+    class _WithWrapper:
+        def wrap_command(self, cmd):
+            return cmd
+
+    assert proxy.get_proxy_command_wrapper(None) is None
+    assert proxy.get_proxy_command_wrapper(_NoWrapper()) is None
+    wrapper = proxy.get_proxy_command_wrapper(_WithWrapper())
+    assert callable(wrapper)
+
+
+def test_proxy_manager_test_connection_no_proxy():
+    manager = proxy.ProxyManager(None)
+    ok, msg = manager.test_connection()
+    assert ok is False
+    assert "No proxy configured" in msg
+
+
+def test_proxy_manager_wrap_command_invalid():
+    manager = proxy.ProxyManager(None)
+    assert manager.wrap_command(["nmap", "x"]) == ["nmap", "x"]
+
+
+def test_proxy_manager_context_manager(tmp_path):
+    with patch(
+        "redaudit.core.proxy.wrap_command_with_proxychains",
+        return_value=(["proxychains", "cmd"], str(tmp_path / "x.conf")),
+    ):
+        with proxy.ProxyManager("socks5://10.0.0.1:1080") as manager:
+            assert manager.wrap_command(["cmd"]) == ["proxychains", "cmd"]
+        assert manager.temp_configs == []

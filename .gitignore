@@ -19,6 +19,8 @@ build/
 *.pcap
 *.json
 *.txt
+!redaudit/data/device_vendor_hints.json
+!redaudit/data/nuclei_template_vendors.json
 
 # Local scan artifacts (never commit)
 scan_results_private/
@@ -37,3 +39,6 @@ diff_report_*.html
 diff_report_*.md
 *.log
 test_debug.log
+
+# JetBrains IDE
+.idea/
