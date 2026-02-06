@@ -17,6 +17,66 @@ from redaudit.utils.constants import SECURE_FILE_MODE
 from redaudit.core.siem import extract_finding_title
 
 
+def _cvss_to_severity(cvss: float) -> str:
+    """Map CVSS score to severity buckets used in summaries."""
+    if cvss >= 9.0:
+        return "critical"
+    if cvss >= 7.0:
+        return "high"
+    if cvss >= 4.0:
+        return "medium"
+    if cvss > 0.0:
+        return "low"
+    return "info"
+
+
+def _count_port_evidence_severity(results: Dict) -> Dict[str, int]:
+    """
+    Count severity from host/port evidence used by risk scoring (CVEs/exploits/backdoors).
+
+    This complements scanner finding severities and explains risk contributions that
+    come from service evidence directly attached to ports.
+    """
+    severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+
+    for host in results.get("hosts", []):
+        for port in host.get("ports", []) or []:
+            seen_ids = set()
+
+            for cve in port.get("cves", []) or []:
+                cve_id = str(cve.get("cve_id") or "").strip().upper()
+                cvss_score = cve.get("cvss_score")
+                cvss_sev = str(cve.get("cvss_severity") or "").strip().lower()
+                evidence_id = cve_id or f"CVSS:{cvss_score}"
+                if evidence_id in seen_ids:
+                    continue
+                seen_ids.add(evidence_id)
+
+                if cvss_sev in severity_counts:
+                    severity_counts[cvss_sev] += 1
+                elif isinstance(cvss_score, (int, float)):
+                    severity_counts[_cvss_to_severity(float(cvss_score))] += 1
+                else:
+                    severity_counts["medium"] += 1
+
+            for exploit in port.get("known_exploits", []) or []:
+                exploit_id = str(exploit or "").strip().upper() or "EXPLOIT"
+                if exploit_id in seen_ids:
+                    continue
+                seen_ids.add(exploit_id)
+                severity_counts["high"] += 1
+
+            for backdoor in port.get("detected_backdoors", []) or []:
+                cve_id = str((backdoor or {}).get("cve_id") or "").strip().upper()
+                backdoor_id = cve_id or str((backdoor or {}).get("description") or "BACKDOOR")
+                if backdoor_id in seen_ids:
+                    continue
+                seen_ids.add(backdoor_id)
+                severity_counts["critical"] += 1
+
+    return severity_counts
+
+
 def export_findings_jsonl(results: Dict, output_path: str) -> int:
     """
     Export findings as JSONL (one finding per line).
@@ -235,6 +295,7 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
     """
     # Count severities
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+    evidence_severity_counts = _count_port_evidence_severity(results)
     category_counts: Dict[str, int] = {}
 
     for vuln_entry in results.get("vulnerabilities", []):
@@ -247,6 +308,10 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
             category_counts[cat] = category_counts.get(cat, 0) + 1
 
     total_findings = sum(severity_counts.values())
+    total_evidence_findings = sum(evidence_severity_counts.values())
+    combined_severity_counts = {
+        level: severity_counts[level] + evidence_severity_counts[level] for level in severity_counts
+    }
     raw_total_findings = (results.get("summary", {}) or {}).get("vulns_found_raw")
     if raw_total_findings is None:
         raw_total_findings = total_findings
@@ -290,8 +355,12 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "total_assets": len(results.get("hosts", [])),
         "total_findings": total_findings,
         "total_findings_raw": raw_total_findings,
+        "total_risk_evidence_findings": total_evidence_findings,
+        "total_findings_with_risk_evidence": total_findings + total_evidence_findings,
         "severity_breakdown": severity_counts,
         "severity_counts": severity_counts,
+        "risk_evidence_severity_breakdown": evidence_severity_counts,
+        "combined_severity_breakdown": combined_severity_counts,
         "category_breakdown": category_counts,
         "max_risk_score": results.get("summary", {}).get("max_risk_score", 0),
         "high_risk_assets": results.get("summary", {}).get("high_risk_hosts", 0),
