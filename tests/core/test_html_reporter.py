@@ -373,6 +373,30 @@ def test_prepare_report_data_populates_tables():
     assert data["finding_table"][0]["title"] == "Finding title"
 
 
+def test_prepare_report_data_prefers_canonical_vendor():
+    results = {
+        "timestamp": "2025-01-01",
+        "hosts": [
+            {
+                "ip": "10.0.0.44",
+                "hostname": "android.fritz.box",
+                "status": "up",
+                "ports": [],
+                "vendor": "Sagemcom Broadband SAS",
+                "vendor_source": "host",
+                "deep_scan": {"mac_address": "aa", "vendor": "Unknown"},
+            }
+        ],
+        "vulnerabilities": [],
+        "summary": {},
+    }
+    data = html_reporter.prepare_report_data(
+        results, {"target_networks": [], "scan_mode": "normal"}
+    )
+    assert data["host_table"][0]["vendor"] == "Sagemcom Broadband SAS"
+    assert data["host_table"][0]["vendor_source"] == "host"
+
+
 def test_prepare_report_data_translates_titles_es():
     results = {
         "timestamp": "2025-01-01",

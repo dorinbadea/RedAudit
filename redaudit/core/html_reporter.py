@@ -151,8 +151,14 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
             mac_address = "-"
         mac_vendor = deep_scan.get("vendor")
         hostname = host.get("hostname") or _get_reverse_dns(host) or "-"
-        # Use vendor_hints for hostname-based fallback when MAC vendor missing
-        display_vendor = get_best_vendor(mac_vendor, hostname, allow_guess=True) or "-"
+        canonical_vendor = str(host.get("vendor") or "").strip()
+        if canonical_vendor:
+            display_vendor = canonical_vendor
+            vendor_source = str(host.get("vendor_source") or "canonical")
+        else:
+            # Backward compatibility for reports generated before canonical vendor resolution.
+            display_vendor = get_best_vendor(mac_vendor, hostname, allow_guess=True) or "-"
+            vendor_source = "legacy_fallback" if display_vendor != "-" else "none"
         # v4.3: Extract identity_score and signals from smart_scan
         smart_scan = host.get("smart_scan", {}) or {}
         identity_score = smart_scan.get("identity_score", 0)
@@ -169,6 +175,7 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
                 "identity_signals": identity_signals,
                 "mac": mac_address,
                 "vendor": display_vendor,
+                "vendor_source": vendor_source,
                 "os": host.get("os_detected")
                 or deep_scan.get("os_detected")
                 or agentless.get("os", "-"),

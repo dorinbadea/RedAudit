@@ -246,8 +246,13 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
                 asset["mac"] = (
                     ecs_host["mac"][0] if isinstance(ecs_host["mac"], list) else ecs_host["mac"]
                 )
-            if ecs_host.get("vendor"):
+            canonical_vendor = str(host.get("vendor") or "").strip()
+            if canonical_vendor:
+                asset["vendor"] = canonical_vendor
+            elif ecs_host.get("vendor"):
                 asset["vendor"] = ecs_host["vendor"]
+            if host.get("vendor_source"):
+                asset["vendor_source"] = host.get("vendor_source")
             if agentless:
                 filtered = {}
                 for key in (

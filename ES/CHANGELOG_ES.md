@@ -10,6 +10,24 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.41] - 06-02-2026
+
+### Anadido
+
+- **Metadatos canonicos de vendor**: El enriquecimiento SIEM ahora resuelve un vendor canonico por host y expone `vendor_source` y `vendor_confidence` para salidas posteriores.
+- **Campos explicitos de evidencia de riesgo**: El desglose de riesgo ahora incluye contadores de CVEs de servicio (critical/high), exploits, firmas de backdoor y totales de hallazgos.
+
+### Mejorado
+
+- **Consistencia entre salidas**: Los reportes HTML, TXT y JSONL priorizan el mismo vendor canonico para evitar deriva entre formatos.
+- **Transparencia de riesgo**: La evidencia de riesgo por host ahora se muestra de forma explicita en tooltips HTML y secciones TXT.
+
+### Corregido
+
+- **Sobreinferencia de vendor**: Las etiquetas genericas `*.fritz.box` ya no fuerzan inferencia AVM.
+- **Tipado de activos NAS**: Las pistas de vendor Synology/QNAP/Asustor/TerraMaster ahora se mapean por defecto a `server` para mejorar precision de inventario.
+- **Alineacion ECS**: El vendor ECS ahora sigue la resolucion canonica antes del fallback por deep-scan.
+
 ## [4.19.40] - 06-02-2026
 
 ### Corregido

@@ -228,6 +228,28 @@ def test_export_assets_filters_agentless_and_chmod_error(tmp_path):
     assert "http_server" not in asset["agentless"]
 
 
+def test_export_assets_prefers_canonical_vendor_over_ecs(tmp_path):
+    results = {
+        "hosts": [
+            {
+                "ip": "10.0.0.44",
+                "hostname": "android.fritz.box",
+                "vendor": "Sagemcom Broadband SAS",
+                "vendor_source": "host",
+                "ecs_host": {"mac": ["aa:bb:cc:dd:ee:ff"], "vendor": "Unknown"},
+            }
+        ],
+        "vulnerabilities": [],
+        "summary": {},
+    }
+    output_path = tmp_path / "assets.jsonl"
+    count = export_assets_jsonl(results, str(output_path))
+    assert count == 1
+    asset = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert asset["vendor"] == "Sagemcom Broadband SAS"
+    assert asset["vendor_source"] == "host"
+
+
 def test_export_summary_includes_port_evidence_breakdown(tmp_path):
     output_path = tmp_path / "summary.json"
     results = {

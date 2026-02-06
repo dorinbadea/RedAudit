@@ -19,7 +19,8 @@ HOSTNAME_VENDOR_PATTERNS: List[Tuple[re.Pattern, str]] = [
     (re.compile(r"(?i)\bmacbook\b"), "Apple"),
     (re.compile(r"(?i)\bimac\b"), "Apple"),
     (re.compile(r"(?i)^apple[_-]"), "Apple"),
-    (re.compile(r"(?i)fritz\.?box|\.fritz\.box$"), "AVM"),
+    # Avoid generic domain-suffix matches (e.g. android.fritz.box); match explicit AVM host labels only.
+    (re.compile(r"(?i)^(?:fritz|fritzbox)(?:[._-]|$)"), "AVM"),
     (re.compile(r"(?i)^vodafone[_-]"), "Vodafone"),
     (re.compile(r"(?i)\bwiz[_-]|\.wiz$"), "WiZ"),
     (re.compile(r"(?i)\bsynology\b|diskstation"), "Synology"),

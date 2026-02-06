@@ -1016,6 +1016,36 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
         lines.append(f"  Total Ports: {total_ports}\n")
         if risk_score is not None:
             lines.append(f"  Risk Score: {risk_score}/100\n")
+            risk_bd = h.get("risk_score_breakdown") or {}
+            if isinstance(risk_bd, dict):
+                service_cves = int(risk_bd.get("service_cve_total", 0) or 0)
+                service_critical = int(risk_bd.get("service_cve_critical", 0) or 0)
+                service_high = int(risk_bd.get("service_cve_high", 0) or 0)
+                service_exploits = int(risk_bd.get("service_exploit_total", 0) or 0)
+                service_backdoors = int(risk_bd.get("service_backdoor_total", 0) or 0)
+                finding_risk = int(risk_bd.get("finding_risk_total", 0) or 0)
+                finding_total = int(risk_bd.get("finding_total", 0) or 0)
+                heuristics = risk_bd.get("heuristic_flags") or []
+                heuristics_txt = ", ".join(str(x) for x in heuristics) if heuristics else "-"
+                lines.append(
+                    "  Risk evidence: service CVEs {svc} (critical {crit}, high {high}), "
+                    "service exploits {exp}, service backdoors {bd}, risk findings {rf}/{tf}, "
+                    "heuristics: {hz}\n".format(
+                        svc=service_cves,
+                        crit=service_critical,
+                        high=service_high,
+                        exp=service_exploits,
+                        bd=service_backdoors,
+                        rf=finding_risk,
+                        tf=finding_total,
+                        hz=heuristics_txt,
+                    )
+                )
+
+        canonical_vendor = str(h.get("vendor") or "").strip()
+        if canonical_vendor:
+            vendor_source = str(h.get("vendor_source") or "canonical")
+            lines.append(f"  Vendor (canonical): {canonical_vendor} [{vendor_source}]\n")
 
         for p in h.get("ports", []):
             service = p.get("service", "")
