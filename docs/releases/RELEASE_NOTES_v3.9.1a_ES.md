@@ -6,7 +6,7 @@
 
 ## Highlights
 
-Este hotfix se centra en la **fidelidad de reportes** y en **metadatos para dashboards**.
+Este hotfix se centra en la **fidelidad de informes** y en **metadatos para dashboards**.
 
 ---
 

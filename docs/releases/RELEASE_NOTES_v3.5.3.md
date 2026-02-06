@@ -5,7 +5,7 @@
 **Date**: 2025-12-18
 **Type**: Patch Release (Documentation & Code Quality)
 
-## 📌 Highlights
+##  Highlights
 
 ### Documentation Integrity & Normalization
 
@@ -16,7 +16,7 @@ This release focuses on ensuring the documentation accurately reflects the codeb
 - **Didactic Guide Rewrite**: Completely restructured `DIDACTIC_GUIDE` (EN/ES) to be a true pedagogical resource for instructors, removing duplication with the manual.
 - **Link Fixes**: Repaired broken internal links in `pyproject.toml`, `README`, and release templates.
 
-## 🛠 Fixes
+##  Fixes
 
 - **Docs**: Fixed `pyproject.toml` pointing to non-existent documentation paths.
 - **Docs**: Fixed redundant headers and missing language specifiers in Markdown files (Linting compliance).

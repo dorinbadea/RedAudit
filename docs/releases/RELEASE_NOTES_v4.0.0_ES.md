@@ -14,7 +14,7 @@ RedAudit v4.0.0 marca la evolución arquitectónica más significativa en la his
 ### Modelos de Datos Robustos
 
 - **Dataclass Host**: Se han reemplazado los diccionarios ad-hoc por un objeto formal `Host`. Esta única fuente de verdad gobierna ahora IP, MAC, Proveedor, SO, Puertos y Vulnerabilidades a lo largo de todo el pipeline.
-- **Seguridad de Tipos**: Las nuevas dataclasses `Service` y `Vulnerability` aseguran un manejo de datos consistente desde el escaneo hasta el reporte.
+- **Seguridad de Tipos**: Las nuevas dataclasses `Service` y `Vulnerability` aseguran un manejo de datos consistente desde el escaneo hasta el informe.
 
 ### Composición Arquitectónica
 
@@ -40,7 +40,7 @@ RedAudit v4.0.0 marca la evolución arquitectónica más significativa en la his
 Esta es una versión mayor con cambios arquitectónicos internos.
 
 - **Configuración**: El archivo `config.json` existente es compatible.
-- **Reportes**: El esquema de reporte JSON permanece compatible hacia atrás, aunque la representación interna es mucho más estricta.
+- **Informes**: El esquema de informe JSON permanece compatible hacia atrás, aunque la representación interna es mucho más estricta.
 
 ---
 

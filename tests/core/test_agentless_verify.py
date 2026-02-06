@@ -121,6 +121,19 @@ def test_select_probe_targets_edge():
     assert 80 in targets[4].http_ports
 
 
+def test_select_agentless_probe_targets_invalid_entries():
+    from redaudit.core.models import Host, Service
+
+    host_bad_service = Host(ip="10.0.0.9", services=[Service(port="bad", name="ssh")])
+    hosts = [
+        host_bad_service,
+        {"ip": "10.0.0.10", "ports": [{"port": "x", "service": "ssh"}, {"port": None}]},
+        {"ip": None, "ports": [{"port": 22, "service": "ssh"}]},
+    ]
+    targets = agentless_verify.select_agentless_probe_targets(hosts)
+    assert targets == []
+
+
 def test_parse_smb_nmap_edge():
     text = (
         "OS: Windows 10\n"
@@ -148,6 +161,18 @@ def test_parse_smb_nmap_edge():
     )
 
 
+def test_parse_smb_nmap_blank_domain_ignores_fqdn():
+    text = (
+        "| smb-os-discovery: \n"
+        "|   Computer name: 41c64e8260a5\n"
+        "|   Domain name: \n"
+        "|   FQDN: 41c64e8260a5\n"
+    )
+    res = agentless_verify.parse_smb_nmap(text)
+    assert res["computer_name"] == "41c64e8260a5"
+    assert "domain" not in res
+
+
 def test_parse_ldap_rootdse_edge():
     text = "dnsHostName: dc1.lab.local\ndefaultNamingContext: DC=lab,DC=local\nsupportedLDAPVersion: 2, 3"
     res = agentless_verify.parse_ldap_rootdse(text)
@@ -156,6 +181,12 @@ def test_parse_ldap_rootdse_edge():
     assert "3" in res["supportedLDAPVersion"]
 
     assert agentless_verify.parse_ldap_rootdse("") == {}
+
+
+def test_parse_ldap_rootdse_skips_invalid_lines():
+    text = "invalid line\nkey:\n:missing\nsupportedLDAPVersion: 3"
+    res = agentless_verify.parse_ldap_rootdse(text)
+    assert res["supportedLDAPVersion"] == ["3"]
 
 
 def test_parse_rdp_ntlm_info_edge():
@@ -173,6 +204,22 @@ def test_parse_ssh_hostkeys_edge():
     assert any("SHA256:abc" in k for k in res["hostkeys"])
 
     assert agentless_verify.parse_ssh_hostkeys("") == {}
+
+
+def test_parse_ssh_hostkeys_limits_and_skips():
+    text = "\n".join(
+        [
+            "no fingerprints here",
+            "| ssh-rsa SHA256:one key",
+            "| ssh-rsa SHA256:two key",
+            "| ssh-rsa SHA256:three key",
+            "| ssh-rsa SHA256:four key",
+            "| ssh-rsa SHA256:five key",
+            "| ssh-rsa SHA256:six key",
+        ]
+    )
+    res = agentless_verify.parse_ssh_hostkeys(text)
+    assert len(res["hostkeys"]) == 5
 
 
 def test_parse_http_probe_edge():
@@ -210,9 +257,72 @@ def test_summarize_fingerprint_edge():
     assert "ssh-ed25519" in summary["ssh_hostkeys"][0]
 
 
+def test_summarize_fingerprint_includes_version_and_server():
+    probe = {
+        "ip": "1.2.3.4",
+        "rdp": {"product_version": "10.0.1"},
+        "http": {"server": "nginx/1.21"},
+    }
+    summary = agentless_verify.summarize_agentless_fingerprint(probe)
+    assert summary["product_version"] == "10.0.1"
+    assert summary["http_server"] == "nginx/1.21"
+
+
 def test_probe_services_dry_run():
     target = agentless_verify.AgentlessProbeTarget(ip="1.1.1.1", smb=True, rdp=True)
     with patch("redaudit.core.agentless_verify._run_nmap_script", return_value=(0, "output", "")):
         with patch("shutil.which", return_value="/usr/bin/nmap"):
             res = agentless_verify.probe_agentless_services(target, dry_run=True)
             assert res["smb"]["returncode"] == 0
+
+
+def test_make_runner_instantiates():
+    runner = agentless_verify._make_runner(dry_run=True, timeout=1.0)
+    assert runner is not None
+
+
+def test_run_nmap_script_missing_binary(monkeypatch):
+    monkeypatch.setattr(agentless_verify.shutil, "which", lambda _name: None)
+    rc, out, err = agentless_verify._run_nmap_script(
+        "10.0.0.1", ports="445", scripts="smb-os-discovery"
+    )
+    assert rc == 127
+    assert "nmap not found" in err
+
+
+def test_run_nmap_script_success(monkeypatch):
+    class _Runner:
+        def run(self, *_args, **_kwargs):
+            return type("Res", (), {"returncode": 0, "stdout": b"ok", "stderr": b""})()
+
+    monkeypatch.setattr(agentless_verify.shutil, "which", lambda _name: "/usr/bin/nmap")
+    monkeypatch.setattr(agentless_verify, "_make_runner", lambda **_k: _Runner())
+    rc, out, err = agentless_verify._run_nmap_script("10.0.0.1", ports="22", scripts="ssh-hostkey")
+    assert rc == 0
+    assert "ok" in out
+    assert err == ""
+
+
+def test_probe_services_invalid_ip_and_missing_tool(monkeypatch):
+    target = agentless_verify.AgentlessProbeTarget(ip="bad ip", smb=True)
+    res = agentless_verify.probe_agentless_services(target)
+    assert res["error"] == "invalid_ip"
+
+    target = agentless_verify.AgentlessProbeTarget(ip="10.0.0.1", smb=True)
+    monkeypatch.setattr(agentless_verify.shutil, "which", lambda _name: None)
+    res = agentless_verify.probe_agentless_services(target)
+    assert res["error"] == "tool_missing"
+
+
+def test_probe_services_uses_redteam_smb(monkeypatch):
+    target = agentless_verify.AgentlessProbeTarget(
+        ip="10.0.0.1", smb=True, red_team_findings={"smb": {"os": "Windows"}}
+    )
+    monkeypatch.setattr(agentless_verify.shutil, "which", lambda _name: "/usr/bin/nmap")
+    monkeypatch.setattr(
+        agentless_verify,
+        "_run_nmap_script",
+        lambda *_a, **_k: (_ for _ in ()).throw(AssertionError()),
+    )
+    res = agentless_verify.probe_agentless_services(target)
+    assert res["smb"]["os"] == "Windows"

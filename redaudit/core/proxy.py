@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Proxy Support Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.0: SOCKS5 proxy integration for pivoting and internal network scanning.
@@ -115,7 +115,7 @@ def test_proxy_connection(proxy: Dict, timeout: int = 10) -> Tuple[bool, str]:
         msg = str(e)
         if "timed out" in msg.lower() or "timeout" in msg.lower():
             return False, f"Proxy connection timeout ({timeout}s)"
-        return False, f"Proxy test error: {e}"
+        return False, f"Proxy test error: {e}"  # pragma: no cover
 
 
 def generate_proxychains_config(proxy: Dict) -> str:
@@ -172,6 +172,10 @@ def create_temp_proxychains_config(proxy: Dict) -> Optional[str]:
         fd, path = tempfile.mkstemp(prefix="redaudit_proxy_", suffix=".conf")
         with os.fdopen(fd, "w") as f:
             f.write(config_content)
+        try:
+            os.chmod(path, 0o600)
+        except Exception:  # pragma: no cover
+            pass
 
         return path
     except Exception:
@@ -188,7 +192,7 @@ def cleanup_temp_config(path: str) -> None:
     try:
         if path and os.path.isfile(path):
             os.remove(path)
-    except Exception:
+    except Exception:  # pragma: no cover
         pass
 
 

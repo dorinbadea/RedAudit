@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Differential Analysis Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.0: Compare two JSON reports and generate delta analysis.
@@ -108,7 +108,7 @@ def extract_web_vulns_index(report: Dict) -> Dict[str, Dict]:
             counts["nikto_count"] += len(nikto) if isinstance(nikto, list) else 0
 
             # Count WhatWeb results
-            whatweb = finding.get("whatweb_results", {})
+            whatweb = finding.get("whatweb", {})
             if whatweb and isinstance(whatweb, dict):
                 counts["whatweb_count"] += 1
 

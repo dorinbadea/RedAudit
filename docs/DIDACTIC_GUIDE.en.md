@@ -33,6 +33,8 @@
 - [ ] Projector/screen for live demo
 - [ ] Printed rubric (Section 5)
 
+Instructor tip: When launching scans, point to the normalized target summary (estimated host counts) to reinforce scope validation.
+
 ---
 
 ## 2. Core Teaching Concepts
@@ -46,7 +48,7 @@ Running `nmap`, `nikto`, `testssl` manually produces scattered outputs. Correlat
 
 1. A central program calls multiple tools in sequence.
 2. Results are unified into a single structured document (JSON).
-3. Decisions (e.g., "should we scan UDP?") are made automatically via heuristics.
+3. Decisions (e.g., "should UDP be scanned?") are made automatically via heuristics.
 
 **Where in code:** [`run_complete_scan()`](../redaudit/core/auditor.py) orchestrates all phases.
 
@@ -66,6 +68,8 @@ Professional audits require **verifiable evidence**. A report stating "port 22 i
 - JSON with `timestamp`, `version`, `scan_duration`
 - Optional PCAP captures
 - File permissions (0600) to prevent tampering
+- Per-finding evidence metadata (source tool, matched_at, raw output hash/ref when available)
+- Run manifest with config and pipeline snapshot (when encryption is disabled)
 
 **Practical question:** "If a client disputes your findings, how do you prove you ran the scan correctly?"
 
@@ -80,12 +84,14 @@ Scanning every host with full UDP (-p- -sU) would take hours. RedAudit uses **he
 
 | Condition | Reasoning |
 |:---|:---|
-| Identity score below threshold (e.g., missing MAC/vendor/hostname, no CPE/banner, weak HTTP/agentless signals) | Identity remains weak |
+| Identity score below threshold (e.g., missing MAC/vendor/hostname, no CPE/banner, weak HTTP title/server or agentless signals) | Identity remains weak |
 | ≤3 open ports **and** identity is weak | Low visibility, needs extra probing |
-| Service fingerprint weak (`unknown`, `tcpwrapped`, or no version info) | Identity ambiguous or filtered |
+| Service fingerprint weak (`unknown`, `tcpwrapped`, or no version info without HTTP identity evidence) | Identity ambiguous or filtered |
 | >8 open ports **or** network-device hints | Complex host or infrastructure, worth deeper enumeration |
 
 **Where in code:** Conditions in [`scan_host_ports()`](../redaudit/core/auditor_scan.py)
+
+**Operational note:** The pipeline summary in JSON/HTML includes resolved Nmap args/timing, deep scan settings, and HyperScan vs final counts (when available).
 
 ---
 
@@ -132,13 +138,13 @@ A common frustration in auditing is "False Positives" (tools reporting issues th
 **What to explain:**
 Why use different scaling models?
 
-- **Host Scanning (Threading):** Nmap is a blocking process. We use `ThreadPoolExecutor` (2-16 threads, auto-detected based on CPU) so one slow host doesn't block the entire scan.
-- **Discovery (Async):** Broadcasting UDP packets (for IoT/Service discovery) is IO-bound. We use `asyncio` in `HyperScan` to blast thousands of tiny packets instantly without creating thousands of OS threads.
+- **Host Scanning (Threading):** Nmap is a blocking process. RedAudit uses `ThreadPoolExecutor` (2-100 threads, auto-detected based on CPU) so one slow host doesn't block the entire scan.
+- **Discovery (Async):** Broadcasting UDP packets (for IoT/Service discovery) is IO-bound. RedAudit uses `asyncio` in `HyperScan` to blast thousands of tiny packets instantly without creating thousands of OS threads.
 
 **Where in code:**
 
 - Threading: `scan_hosts_concurrent()` in `auditor_scan.py`
-- Async: `hyperscan.py` modules
+- Async: `hyperscan.py` modules and `net_discovery.py` (concurrent ThreadPool)
 
 ---
 
@@ -277,7 +283,7 @@ These are the most pedagogically useful code locations. Use them for advanced st
 |:---|:---|:---|
 | Main orchestration | `core/auditor.py` | `run_complete_scan()` |
 | Deep Scan triggers | `core/auditor_scan.py` | `scan_host_ports()` (look for `trigger_deep`) |
-| Parallel execution | `core/auditor_scan.py` | `scan_hosts_concurrent()` with `ThreadPoolExecutor` |
+| Parallel execution | `core/auditor_scan.py` & `core/net_discovery.py` | `scan_hosts_concurrent()` & `discover_networks()` (ThreadPool) |
 | Progress UI + ETA | `core/auditor_components.py` | `_progress_columns()` |
 | Timeout-safe host scans | `core/auditor_scan.py` | `_run_nmap_xml_scan()` |
 | Async discovery | `core/hyperscan.py` | Async TCP/UDP/ARP discovery using `asyncio` |

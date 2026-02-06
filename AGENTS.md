@@ -1,6 +1,6 @@
 # RedAudit: Engineering Workflow (Agent Prompt)
 
-This file is reusable "initial context" for contributors working on RedAudit. The goal is a clean timeline, consistent docs, reliable releases, and no surprises in CI.
+This file is the canonical operating guide for collaborators (human or non-human agents) working on RedAudit. Treat it as the single source of truth for workflow, release hygiene, and documentation integrity. The goal is a clean timeline, consistent docs, reliable releases, and no surprises in CI.
 
 ## Non-Negotiables
 
@@ -9,15 +9,33 @@ This file is reusable "initial context" for contributors working on RedAudit. Th
 - Fix root causes, keep changes minimal, avoid unrelated refactors.
 - Hand off with clean `git status`.
 - Keep code/docs/tests consistent (no version drift, no "docs say X but CLI does Y").
+- **Coverage Rule:** Any code you modify must be covered at 100% in tests. This means the specific functions or files you touched must reach full coverage for the newly changed code paths in the same change set.
+- **Coverage Enforcement:** If you touch code, you must add or update tests so the exact changed code paths are fully exercised (100%) in the same change set. No exceptions.
 - Do not retag/rewrite published tags/releases. If something was released, publish a new version.
 - Do not commit private data. `scan_results_private/` must never be pushed.
-- Wait for CI to be green before merging to `main` (do not force-merge with failing checks).
-  Exception: documentation-only changes may merge with owner approval if checks are
-  pending/skipped and there are no red failures.
+- Before merging to `main`, run the local quality gate (`scripts/ci_local.sh` or at least `pre-commit run --all-files` + `pytest tests/ -v`). CI can arrive after the merge; if any checks fail, treat it as a regression and fix it promptly. Do not force-merge with failing checks.
+  - Run the local quality gate once after changes are final. Re-run only if you changed files after a previous pass.
+  - **Docs-only exception**: when changes are strictly documentation (`.md`) and do not alter executable behavior/contracts, you may skip full `pytest` and run a reduced gate (`pre-commit run --files <changed-docs>`). Merge still requires owner approval and no red CI checks.
 - **No Emojis**: Do not use emojis in documentation (`.md` files). Maintain a professional, neutral tone.
+
+**Codex exception:** When working inside Codex, the environment enforces a `codex/` branch prefix. In that case, `codex/*` is acceptable and compliant with this workflow. If preferred, the branch can be renamed to `feature/*`, `hotfix/*`, or `docs/*` before merge.
+
+## Workflow Overview (Default Path)
+
+1. Create a branch; never commit directly to `main`.
+2. Keep scope minimal and fix root causes; avoid unrelated refactors.
+3. Update code, tests, and docs together; keep EN/ES in sync when behavior changes.
+4. Keep versions aligned: update version sources, README/ES README version strings and badges, changelog, roadmap, and release notes when required.
+5. Run `pre-commit run --all-files` and `pytest tests/ -v` (or `scripts/ci_local.sh` for CI parity).
+   For strict docs-only changes, run `pre-commit run --files <changed-docs>` and skip `pytest`.
+6. Merge only with approval; tag and publish the release with a full payload body.
+7. Clean up branches and ensure `git status` is clean.
+
+See the **Versioning & Release Checklist** section for detailed steps and commands.
 
 ## Contributor Workflow Guidelines
 
+- Treat the repository as the source of truth; do not rely on conversation summaries.
 - Use `rg` for searching and `rg --files` for file discovery (fallback only if unavailable).
 - Default to ASCII in edits/creates; only add non-ASCII when the file already uses it and there is clear justification.
 - Prefer patch-style edits for single-file changes; avoid it for auto-generated changes or large scripted replacements.
@@ -44,7 +62,7 @@ This file is reusable "initial context" for contributors working on RedAudit. Th
 
 - Review CLI output, session logs, and HTML/JSON reports for inconsistencies or weak identification.
 - When a host only has vendor data and zero open ports, consider a light HTTP/HTTPS probe on common ports
-  (short timeouts, opt-in config) to capture a title or server header for model identification.
+  (short timeouts, opt-in config) to capture a title or server header for device identification.
 - Log improvement ideas in the roadmap or issues and document behavior changes in EN/ES docs.
 
 ### Frontend/UI Work
@@ -67,7 +85,7 @@ This file is reusable "initial context" for contributors working on RedAudit. Th
   - `chore(pre-commit): apply formatting fixes`
 - Group commits by intent:
   1) code fix/feature, 2) tests, 3) docs, 4) release bump/notes, 5) formatting-only (if needed).
-- **Cleanup**: After merging to `main` and pushing, explicitly delete the local and remote feature branch (e.g., `git branch -d feature/xyz` and `git push origin --delete feature/xyz`).
+- **Cleanup (CI Hygiene)**: After merging to `main` and pushing, you **MUST** explicitly delete both the local and remote feature branch (e.g., `git push origin --delete feature/xyz`). Stale branches clutter the CI dashboard and are unacceptable.
 
 ## Local Quality Gate (Must Pass Before Merge)
 
@@ -86,6 +104,18 @@ Before running tests, ensure dev dependencies are installed to avoid missing pac
 ```bash
 pip install -r requirements-dev.lock && pip install -e .
 ```
+
+### Dependency Management
+
+This repo uses `pip-tools` to ensure reproducible environments.
+
+- **Source of Truth**: `pyproject.toml` definitions.
+- **Lock Files**: `requirements.lock` and `requirements-dev.lock` are autogenerated.
+- **Workflow**:
+  1. Edit `pyproject.toml`.
+  2. Run `pip-compile --output-file=requirements.lock pyproject.toml` (for prod).
+  3. Run `pip-compile --extra=dev --output-file=requirements-dev.lock pyproject.toml` (for dev).
+  4. Commit changes.
 
 This repo's `.pre-commit-config.yaml` includes:
 
@@ -116,11 +146,41 @@ CI runs `pytest` with coverage. Locally, run:
 pytest tests/ -v
 ```
 
+**Single-run rule:** Run pre-commit and pytest once after your changes are final. Do not run a separate, earlier "coverage pass" unless you changed code again after that pass.
+
 Optional (also supported in this repo):
 
 ```bash
 python3 -m unittest discover -s tests
 ```
+
+**Docs-only shortcut:**
+
+- If the change is strictly documentation (`.md`) and does not modify behavior/contracts/examples relied on by tests, you may skip `pytest tests/ -v`.
+- In that case run:
+
+```bash
+pre-commit run --files <changed-docs>
+```
+
+### Local CI Parity (Multi-Python)
+
+To avoid CI-only failures, run the local CI parity script. It runs pre-commit once and
+executes pytest on each available Python version in the CI matrix.
+
+```bash
+bash scripts/ci_local.sh
+```
+
+Requirements:
+
+- Python 3.9-3.12 available in PATH (`python3.9`, `python3.10`, `python3.11`, `python3.12`).
+- Uses `requirements-dev.lock` and creates venvs under `.venv/ci` (ignored).
+
+Optional environment variables:
+
+- `PYTHON_VERSIONS="3.9 3.10"` to limit which versions run.
+- `RUN_PRECOMMIT=0` or `RUN_TESTS=0` to skip steps.
 
 ### Test Organization (Quality over Quantity)
 
@@ -238,9 +298,8 @@ When changing behavior/UX, update the relevant docs in both EN/ES (flat docs str
 - release notes: `docs/releases/RELEASE_NOTES_vX.Y.Z*.md`
 
 Make sure menu text, flags, defaults, and examples match the code.
+Keep version strings and version badges in sync wherever they appear.
 For ES docs, use Spanish (Spain) phrasing (`es-ES`) and avoid LATAM variants.
-
-**Documentation style:**
 
 **Documentation style:**
 
@@ -265,15 +324,30 @@ Keep version consistent across the repo. Version may be stored/used in one or mo
 
 Also update any tests that assert version output (e.g., integration tests).
 
-### 3) Update release documentation
+### 3) Create Release Artifacts ("Payload")
+
+1. **Release Notes Files**:
+    - Create `docs/releases/RELEASE_NOTES_vX.Y.Z.md` (EN) and `..._ES.md` (ES).
+    - **Language Badges**: MUST use the standard design:
+      - EN: `[![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](...)`
+      - ES: `[![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](...)`
+    - Use **Absolute URLs** for badge links.
+2. **Commit & Push**:
+    - Commit notes and version bumps.
+    - Tag `vX.Y.Z`.
+    - Push branch and tag.
+3. **Publish on GitHub**:
+    - Immediately verify the GitHub Release page.
+    - If empty, populate it using `gh release edit vX.Y.Z --notes-file docs/releases/RELEASE_NOTES_vX.Y.Z.md`.
+    - **NEVER leave a Release page empty.**
 
 - Add a new section to `CHANGELOG.md` and `ES/CHANGELOG_ES.md`
 - Add release notes:
   - `docs/releases/RELEASE_NOTES_vX.Y.Z.md`
-  - `docs/releases/RELEASE_NOTES_vX.Y.Z.md`
   - `docs/releases/RELEASE_NOTES_vX.Y.Z_ES.md`
-- Create Audit Report:
-  - `docs/AUDIT_REPORT_vX.Y.Z.md` (Validating the critical fixes/features)
+- Create Audit Report (PRIVATE - do NOT commit):
+  - `scan_results_private/AUDIT_REPORT_vX.Y.Z.md`
+  - This file contains network-specific data and must never be pushed to the repository.
 
 ### 4) Final verification
 
@@ -303,9 +377,10 @@ git tag -a vX.Y.Z -m "RedAudit vX.Y.Z"
 git push origin main --tags
 ```
 
-### 6) GitHub Release
+> [!WARNING]
+> **Pushing tags is NOT enough.** `git push --tags` creates the pointer but leaves the GitHub Release page empty. You **MUST** complete step 6.
 
-Prefer `gh` (GitHub CLI):
+### 6) GitHub Release
 
 Prefer `gh` (GitHub CLI):
 
@@ -320,15 +395,14 @@ Prefer `gh` (GitHub CLI):
 
 **CRITICAL**: The GitHub Release **MUST** contain the full text body (payload), not just the title.
 
-- Copy the content from the English release notes (`docs/releases/RELEASE_NOTES_vX.Y.Z.md`).
-- **Always** include the language badge at the top pointing to the Spanish version.
-- **Verify** that the release page is not empty after publishing.
+### Release Payload Standard
 
-When the release notes include an EN->ES badge/link, point it at the tagged file, e.g.:
-
-```text
-https://github.com/dorinbadea/RedAudit/blob/vX.Y.Z/docs/releases/RELEASE_NOTES_vX.Y.Z_ES.md
-```
+- **Bilingual Badge**: Always include the "Ver en Español" / "View in English" badge at the very top.
+- **Absolute URLs**: Use absolute URLs for all badge links (relative links break on the GitHub release page).
+  - Example: `https://github.com/dorinbadea/RedAudit/blob/vX.Y.Z/docs/releases/RELEASE_NOTES_vX.Y.Z_ES.md`
+- **Emoji-Free**: No emojis in the payload. Maintain a professional tone.
+- **Structure**: Organize content into `## Summary`, `## Added`, `## Improved`, `## Fixed`, `## Testing`, and `## Upgrade`.
+- **Verify**: Ensure the release body is correctly rendered and links work before finalization.
 
 ## Sudo / Paths / Ownership (Critical for UX)
 

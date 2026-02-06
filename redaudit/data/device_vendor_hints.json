@@ -1,0 +1,87 @@
+[
+  {
+    "device_type": "mobile",
+    "vendors": ["apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus"],
+    "hostname_keywords": ["iphone", "ipad", "phone", "android"],
+    "hostname_keywords_identity": [
+      "iphone",
+      "ipad",
+      "ipod",
+      "phone",
+      "android",
+      "galaxy",
+      "pixel",
+      "oneplus"
+    ],
+    "hostname_keywords_media_override": ["android"]
+  },
+  {
+    "device_type": "workstation",
+    "hostname_keywords": [
+      "macbook",
+      "imac",
+      "laptop",
+      "desktop",
+      "workstation",
+      "msi",
+      "lenovo",
+      "thinkpad",
+      "dell",
+      "hp",
+      "hewlett",
+      "asus",
+      "acer"
+    ],
+    "hostname_regex": ["\\bpc\\b"]
+  },
+  {
+    "device_type": "printer",
+    "vendors": ["hp", "canon", "epson", "brother", "lexmark", "xerox"],
+    "hostname_keywords": [
+      "printer",
+      "laserjet",
+      "officejet",
+      "deskjet",
+      "pixma",
+      "imageclass",
+      "canon",
+      "epson"
+    ]
+  },
+  {
+    "device_type": "iot_lighting",
+    "vendors": ["philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo"]
+  },
+  {
+    "device_type": "iot",
+    "vendors": ["tuya"]
+  },
+  {
+    "device_type": "router",
+    "vendors": [
+      "avm",
+      "fritz",
+      "cisco",
+      "juniper",
+      "mikrotik",
+      "ubiquiti",
+      "netgear",
+      "dlink",
+      "asus",
+      "linksys",
+      "tp-link",
+      "sercomm",
+      "sagemcom"
+    ],
+    "hostname_keywords": ["router", "gateway", "modem", "ont", "cpe", "firewall"]
+  },
+  {
+    "device_type": "smart_tv",
+    "vendors": ["google", "amazon", "roku", "lg", "sony", "vizio"],
+    "hostname_keywords": ["tv", "chromecast", "roku", "firetv", "shield"]
+  },
+  {
+    "device_type": "vpn",
+    "hostname_keywords": ["vpn", "ipsec", "wireguard", "openvpn", "tunnel"]
+  }
+]

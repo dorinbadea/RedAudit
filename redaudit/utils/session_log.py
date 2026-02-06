@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Session Log Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.7: Captures terminal output during scan execution for auditability.
@@ -14,13 +14,17 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, TextIO
+from typing import Dict, Optional, TextIO, Tuple
 import logging
 import threading
 
 
 # ANSI escape code pattern for stripping colors
 ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+# v4.19.10: ANSI line-clearing codes pattern (clear line, clear to end of line)
+# These codes are used by progress/countdown displays that update in-place
+ANSI_LINE_CLEAR = re.compile(r"\x1B\[2?K")
 
 
 class SessionLogHandler(logging.Handler):
@@ -266,6 +270,10 @@ class TeeStream(io.TextIOBase):
         r"\[\d{2}:\d{2}:\d{2}\] \[INFO\] .*(en progreso|in progress).*\(\d+:\d+"
     )
     PROGRESS_PATTERN = re.compile(r"[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏].*━+.*\d+%")
+    PROGRESS_BAR_PATTERN = re.compile(
+        r"(?:✔|✖)?\s*(?P<host>\d{1,3}(?:\.\d{1,3}){3})?.*?[━─]+.*?(?P<pct>\d+)%"
+    )
+    TIMESTAMP_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2} ")
 
     def __init__(
         self,
@@ -297,6 +305,7 @@ class TeeStream(io.TextIOBase):
         self._last_progress_pct = -1
         self._last_progress_phase = ""
         self._heartbeat_count = 0
+        self._progress_host_pct: Dict[Tuple[str, str], int] = {}
 
     def write(self, data: str) -> int:
         """Write to both streams."""
@@ -319,6 +328,13 @@ class TeeStream(io.TextIOBase):
 
         return len(data)
 
+    def isatty(self) -> bool:
+        """Report TTY status of the underlying terminal stream."""
+        try:
+            return bool(self.terminal.isatty())
+        except Exception:
+            return False
+
     def _write_lines(self, data: str) -> None:
         """
         Log only stable newline-terminated output with smart filtering.
@@ -334,8 +350,11 @@ class TeeStream(io.TextIOBase):
         self._log_buf += data
 
         # Drop overwritten frames (common in progress redraws)
+        # v4.19.10: Also strip ANSI line-clear codes (\x1b[2K, \x1b[K) to prevent
+        # countdown prompts from appearing concatenated in session logs
         if "\n" not in self._log_buf and "\r" in self._log_buf:
-            self._log_buf = self._log_buf.split("\r")[-1]
+            last_frame = self._log_buf.split("\r")[-1]
+            self._log_buf = ANSI_LINE_CLEAR.sub("", last_frame)
 
         # Keep memory bounded if a tool writes without newlines
         if len(self._log_buf) > self._max_buf and "\n" not in self._log_buf:
@@ -376,9 +395,25 @@ class TeeStream(io.TextIOBase):
         stripped = line.strip()
         if not stripped:
             return False  # Keep blank lines
+        cleaned = ANSI_ESCAPE.sub("", stripped)
+
+        # Filter duplicate rich progress-bar redraws per host/pct.
+        if not self.TIMESTAMP_PATTERN.match(cleaned):
+            progress_bar = self.PROGRESS_BAR_PATTERN.search(cleaned)
+            if progress_bar:
+                host = progress_bar.group("host") or ""
+                pct_str = progress_bar.group("pct")
+                pct_val = int(pct_str) if pct_str else -1
+                status = "complete" if "✔" in cleaned else "fail" if "✖" in cleaned else "progress"
+                if host:
+                    key = (host, status)
+                    last_pct = self._progress_host_pct.get(key)
+                    if last_pct == pct_val:
+                        return True
+                    self._progress_host_pct[key] = pct_val
 
         # ALWAYS keep: status messages with [OK], [WARN], [FAIL], [INFO] that have results
-        if any(tag in stripped for tag in ["[OK]", "[WARN]", "[FAIL]", "✓", "✅", "⚠️", "❌"]):
+        if any(tag in stripped for tag in ["[OK]", "[WARN]", "[FAIL]", "✓", "✔", "⚠", "✖"]):
             return False  # Never skip status messages
 
         # ALWAYS keep: lines with actual scan results (hosts, ports, vulns, durations)
@@ -458,10 +493,6 @@ class TeeStream(io.TextIOBase):
                 self.log_file.flush()
         except Exception:
             pass
-
-    def isatty(self) -> bool:
-        """Return terminal's isatty status."""
-        return self.terminal.isatty()
 
     @property
     def encoding(self) -> str:  # type: ignore[override]

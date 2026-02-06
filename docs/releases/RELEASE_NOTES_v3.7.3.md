@@ -2,7 +2,7 @@
 
 **Release Date:** 2025-12-20
 
-[![Ver en Español](https://img.shields.io/badge/🇪🇸_Español-red?style=flat-square)](RELEASE_NOTES_v3.7.3_ES.md)
+[![Ver en Español](https://img.shields.io/badge/_Español-red?style=flat-square)](RELEASE_NOTES_v3.7.3_ES.md)
 
 ## Overview
 

@@ -20,6 +20,7 @@ from redaudit.core.scanner import (
     get_nmap_arguments_for_target,
     extract_vendor_mac,
     extract_os_detection,
+    extract_detailed_identity,
     output_has_identity,
     run_nmap_command,
     capture_traffic_snippet,
@@ -116,6 +117,26 @@ class TestScannerCoverage(unittest.TestCase):
         self.assertEqual(extract_os_detection(text2), "Linux 5.4")
         self.assertEqual(extract_os_detection(text3), "Windows 10")
         self.assertIsNone(extract_os_detection("No OS info"))
+
+    def test_extract_detailed_identity_empty(self):
+        self.assertIsNone(extract_detailed_identity(""))
+        self.assertIsNone(extract_detailed_identity(None))
+
+    def test_extract_detailed_identity_fritz_repeater(self):
+        text = "|_http-title: FRITZ!Repeater 1200 AX\n"
+        details = extract_detailed_identity(text)
+        self.assertEqual(details["vendor"], "AVM")
+        self.assertEqual(details["model"], "FRITZ!Repeater")
+        self.assertEqual(details["device_type"], "iot_network_device")
+        self.assertIn("FRITZ!OS", details["os_detected"])
+
+    def test_extract_detailed_identity_fritz_box(self):
+        text = "|_http-title: FRITZ!Box 7590 AX\n"
+        details = extract_detailed_identity(text)
+        self.assertEqual(details["vendor"], "AVM")
+        self.assertEqual(details["model"], "FRITZ!Box")
+        self.assertEqual(details["device_type"], "router")
+        self.assertIn("FRITZ!OS", details["os_detected"])
 
     def test_output_has_identity(self):
         rec1 = {"stdout": "MAC Address: 00:11:22:33:44:55 (Vendor)"}

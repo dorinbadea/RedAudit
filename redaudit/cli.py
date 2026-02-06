@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - CLI Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 Command-line interface and argument parsing.
@@ -10,7 +10,6 @@ Command-line interface and argument parsing.
 import os
 import sys
 import argparse
-import ipaddress
 
 from redaudit.utils.constants import (
     VERSION,
@@ -19,12 +18,40 @@ from redaudit.utils.constants import (
     MAX_CIDR_LENGTH,
     DEFAULT_UDP_MODE,
     UDP_TOP_PORTS,
+    DEFAULT_DEAD_HOST_RETRIES,
     DEFAULT_DEEP_SCAN_BUDGET,
     DEFAULT_IDENTITY_THRESHOLD,
     suggest_threads,
 )
 from redaudit.utils.i18n import TRANSLATIONS, detect_preferred_language
 from redaudit.utils.paths import expand_user_path, get_default_reports_base_dir
+from redaudit.utils.targets import parse_target_tokens
+from redaudit.core.nuclei import normalize_nuclei_exclude
+
+
+def _normalize_csv_items(values):
+    """Normalize repeated/comma-separated CLI values into a deduplicated list."""
+    if values is None:
+        return []
+    if isinstance(values, str):
+        values = [values]
+    if not isinstance(values, list):
+        return []
+
+    normalized = []
+    seen = set()
+    for chunk in values:
+        if chunk is None:
+            continue
+        for item in str(chunk).split(","):
+            value = item.strip()
+            if not value:
+                continue
+            if value in seen:
+                continue
+            seen.add(value)
+            normalized.append(value)
+    return normalized
 
 
 def parse_arguments():
@@ -53,15 +80,37 @@ def parse_arguments():
             "Máximo hosts que pueden ejecutar Deep Scan agresivo por ejecución (0 = sin límite)."
         )
         help_identity_threshold = (
-            "Umbral mínimo de identity_score para omitir Deep Scan (defecto: 3)."
+            "Umbral mínimo de identity_score para omitir Deep Scan (0-100, defecto: 3)."
         )
+        help_dead_host_retries = "Abandonar host tras N timeouts consecutivos (0 = sin límite)."
+        help_leak_follow = (
+            "Leak Following: off (default) o safe (solo candidatos internos in-scope)."
+        )
+        help_leak_allowlist = (
+            "Allowlist para Leak Following en modo safe (host/CIDR, repetible o CSV)."
+        )
+        help_iot_probes = "Sondas IoT: off (default) o safe (solo con ambigüedad + señal fuerte)."
+        help_iot_budget = "Presupuesto por host para sondas IoT en segundos (default: 20)."
+        help_iot_timeout = "Timeout por sonda IoT en segundos (default: 3)."
     else:
         help_low_impact = (
             "Enable low-impact enrichment (DNS/mDNS/SNMP) before TCP scanning. "
             "Short timeouts, minimal noise."
         )
         help_deep_budget = "Max hosts that can run aggressive Deep Scan per run (0 = unlimited)."
-        help_identity_threshold = "Minimum identity_score to skip Deep Scan (default: 3)."
+        help_identity_threshold = "Minimum identity_score to skip Deep Scan (0-100, default: 3)."
+        help_dead_host_retries = "Abandon host after N consecutive timeouts (0 = unlimited)."
+        help_leak_follow = (
+            "Leak Following mode: off (default) or safe (in-scope internal candidates only)."
+        )
+        help_leak_allowlist = (
+            "Leak Following allowlist for safe mode (host/CIDR, repeatable or CSV)."
+        )
+        help_iot_probes = (
+            "IoT probes mode: off (default) or safe (ambiguity + strong corroborated signals)."
+        )
+        help_iot_budget = "Per-host IoT probe budget in seconds (default: 20)."
+        help_iot_timeout = "Per-probe IoT timeout in seconds (default: 3)."
 
     parser = argparse.ArgumentParser(
         description=f"RedAudit v{VERSION} - Network Auditing Tool",
@@ -122,6 +171,48 @@ Examples:
     if not isinstance(default_nuclei_enabled, bool):
         default_nuclei_enabled = False
 
+    default_nuclei_profile = persisted_defaults.get("nuclei_profile")
+    if default_nuclei_profile not in ("fast", "balanced", "full"):
+        default_nuclei_profile = "balanced"
+
+    default_nuclei_max_runtime = persisted_defaults.get("nuclei_max_runtime")
+    if not isinstance(default_nuclei_max_runtime, int) or default_nuclei_max_runtime < 0:
+        default_nuclei_max_runtime = 0
+
+    default_leak_follow_mode = persisted_defaults.get("leak_follow_mode")
+    if default_leak_follow_mode not in ("off", "safe"):
+        default_leak_follow_mode = "off"
+
+    default_leak_follow_allowlist = _normalize_csv_items(
+        persisted_defaults.get("leak_follow_allowlist")
+    )
+
+    default_iot_probes_mode = persisted_defaults.get("iot_probes_mode")
+    if default_iot_probes_mode not in ("off", "safe"):
+        default_iot_probes_mode = "off"
+
+    default_iot_probe_budget_seconds = persisted_defaults.get("iot_probe_budget_seconds")
+    if (
+        not isinstance(default_iot_probe_budget_seconds, int)
+        or default_iot_probe_budget_seconds < 1
+        or default_iot_probe_budget_seconds > 300
+    ):
+        default_iot_probe_budget_seconds = 20
+
+    default_iot_probe_timeout_seconds = persisted_defaults.get("iot_probe_timeout_seconds")
+    if (
+        not isinstance(default_iot_probe_timeout_seconds, int)
+        or default_iot_probe_timeout_seconds < 1
+        or default_iot_probe_timeout_seconds > 60
+    ):
+        default_iot_probe_timeout_seconds = 3
+
+    default_nuclei_exclude = persisted_defaults.get("nuclei_exclude")
+    if isinstance(default_nuclei_exclude, str):
+        default_nuclei_exclude = [default_nuclei_exclude]
+    elif not isinstance(default_nuclei_exclude, list):
+        default_nuclei_exclude = []
+
     default_windows_verify_enabled = persisted_defaults.get("windows_verify_enabled")
     if not isinstance(default_windows_verify_enabled, bool):
         default_windows_verify_enabled = False
@@ -136,8 +227,8 @@ Examples:
         "--target",
         "-t",
         type=str,
-        metavar="CIDR",
-        help="Target network(s) in CIDR notation (comma-separated for multiple)",
+        metavar="TARGETS",
+        help="Targets in CIDR/IP/range notation (comma-separated for multiple)",
     )
     parser.add_argument(
         "--mode",
@@ -208,6 +299,13 @@ Examples:
         help=help_identity_threshold,
     )
     parser.add_argument(
+        "--dead-host-retries",
+        type=int,
+        default=DEFAULT_DEAD_HOST_RETRIES,
+        metavar="N",
+        help=help_dead_host_retries,
+    )
+    parser.add_argument(
         "--yes",
         "-y",
         action="store_true",
@@ -229,6 +327,13 @@ Examples:
         "--dry-run",
         action="store_true",
         help="Print commands that would be executed without running them",
+    )
+    # v4.5.17: Verbose output
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Enable verbose logging output",
     )
     parser.add_argument(
         "--no-prevent-sleep",
@@ -262,6 +367,81 @@ Examples:
         dest="nuclei",
         action="store_false",
         help="Disable Nuclei template scanner (override persisted defaults)",
+    )
+    # v4.6.20: Nuclei timeout (useful for Docker/slow networks)
+    parser.add_argument(
+        "--nuclei-timeout",
+        type=int,
+        default=300,
+        help="Nuclei batch timeout in seconds (default: 300). Increase for slow networks.",
+    )
+    parser.add_argument(
+        "--profile",
+        dest="nuclei_profile",
+        choices=["fast", "balanced", "full"],
+        default=default_nuclei_profile,
+        help="Set Nuclei scan intensity/speed (fast, balanced, full)",
+    )
+    parser.add_argument(
+        "--nuclei-max-runtime",
+        type=int,
+        default=default_nuclei_max_runtime,
+        metavar="MIN",
+        help="Max Nuclei runtime in minutes (0 = unlimited)",
+    )
+    parser.add_argument(
+        "--leak-follow",
+        choices=["off", "safe"],
+        default=default_leak_follow_mode,
+        help=help_leak_follow,
+    )
+    parser.add_argument(
+        "--leak-follow-allowlist",
+        action="append",
+        default=list(default_leak_follow_allowlist),
+        metavar="TARGET",
+        help=help_leak_allowlist,
+    )
+    parser.add_argument(
+        "--iot-probes",
+        choices=["off", "safe"],
+        default=default_iot_probes_mode,
+        help=help_iot_probes,
+    )
+    parser.add_argument(
+        "--iot-probe-budget-seconds",
+        type=int,
+        default=default_iot_probe_budget_seconds,
+        metavar="SEC",
+        help=help_iot_budget,
+    )
+    parser.add_argument(
+        "--iot-probe-timeout-seconds",
+        type=int,
+        default=default_iot_probe_timeout_seconds,
+        metavar="SEC",
+        help=help_iot_timeout,
+    )
+    parser.add_argument(
+        "--nuclei-exclude",
+        action="append",
+        default=list(default_nuclei_exclude),
+        metavar="TARGET",
+        help=(
+            "Exclude Nuclei targets (host, host:port, URL). " "Can be repeated or comma-separated."
+        ),
+    )
+    resume_group = parser.add_mutually_exclusive_group()
+    resume_group.add_argument(
+        "--nuclei-resume",
+        type=str,
+        metavar="PATH",
+        help="Resume pending Nuclei scan from a resume file or scan folder",
+    )
+    resume_group.add_argument(
+        "--nuclei-resume-latest",
+        action="store_true",
+        help="Resume latest pending Nuclei scan from default reports folder",
     )
     windows_verify_group = parser.add_mutually_exclusive_group()
     windows_verify_group.add_argument(
@@ -398,6 +578,15 @@ Examples:
         help="Ignore persisted defaults (factory values for this run)",
     )
 
+    # v4.6.0: Trust HyperScan Optimization
+    parser.add_argument(
+        "--trust-hyperscan",
+        "--trust-discovery",
+        dest="trust_hyperscan",
+        action="store_true",
+        help="Trust HyperScan/Discovery results for Deep Scan (scan found ports only, skip -p-)",
+    )
+
     # v3.2+: Enhanced network discovery
     parser.add_argument(
         "--net-discovery",
@@ -406,6 +595,16 @@ Examples:
         default=None,
         metavar="PROTOCOLS",
         help="Enable network discovery (all, or comma-separated: dhcp,netbios,mdns,upnp,arp,fping)",
+    )
+    parser.add_argument(
+        "--scan-routed",
+        action="store_true",
+        help="Automatically include discovered routed networks (via local gateways) in scan scope",
+    )
+    parser.add_argument(
+        "--follow-routes",
+        action="store_true",
+        help="Automatically include discovered remote networks (via SNMP/Routing Protocols) in scan scope",
     )
     parser.add_argument(
         "--redteam",
@@ -460,6 +659,110 @@ Examples:
         help="Enable additional L2-focused checks that may be noisier (bettercap/scapy sniff; requires root)",
     )
 
+    # v4.0: Authenticated Scanning (Phase 4)
+    auth_group = parser.add_argument_group("Authenticated Scanning")
+    auth_group.add_argument(
+        "--auth-provider",
+        choices=["env", "keyring"],
+        default="keyring",
+        help="Credential provider backend: env (environment vars) or keyring (OS keychain)",
+    )
+    auth_group.add_argument(
+        "--ssh-user",
+        type=str,
+        metavar="USER",
+        help="Default SSH username for authenticated scanning",
+    )
+    auth_group.add_argument(
+        "--ssh-key",
+        type=str,
+        metavar="PATH",
+        help="Path to default SSH private key",
+    )
+    auth_group.add_argument(
+        "--ssh-key-pass",
+        type=str,
+        metavar="PASSPHRASE",
+        help="Passphrase for SSH private key (if encrypted)",
+    )
+    auth_group.add_argument(
+        "--ssh-trust-keys",
+        action="store_true",
+        help="Auto-accept unknown SSH host keys (WARNING: susceptible to MITM)",
+    )
+    # Note: passwords should be passed via env vars or keyring for security
+    auth_group.add_argument(
+        "--smb-user",
+        type=str,
+        metavar="USER",
+        help="Default SMB/Windows username (format: User or DOMAIN\\\\User)",
+    )
+    auth_group.add_argument(
+        "--smb-pass",
+        type=str,
+        metavar="PASSWORD",
+        help="Default SMB/Windows password",
+    )
+    auth_group.add_argument(
+        "--smb-domain",
+        type=str,
+        metavar="DOMAIN",
+        help="Default SMB/Windows domain (overrides DOMAIN\\\\User format)",
+    )
+    auth_group.add_argument(
+        "--snmp-user",
+        type=str,
+        metavar="USER",
+        help="Default SNMP v3 Username",
+    )
+    auth_group.add_argument(
+        "--snmp-auth-proto",
+        choices=["SHA", "MD5", "SHA224", "SHA256", "SHA384", "SHA512"],
+        help="SNMP v3 Auth Protocol",
+    )
+    auth_group.add_argument(
+        "--snmp-auth-pass",
+        type=str,
+        metavar="PASSWORD",
+        help="SNMP v3 Auth Password",
+    )
+    auth_group.add_argument(
+        "--snmp-priv-proto",
+        choices=["AES", "DES", "AES192", "AES256", "3DES"],
+        help="SNMP v3 Privacy Protocol",
+    )
+    auth_group.add_argument(
+        "--snmp-priv-pass",
+        type=str,
+        metavar="PASSWORD",
+        help="SNMP v3 Privacy Password",
+    )
+    auth_group.add_argument(
+        "--snmp-topology",
+        action="store_true",
+        help="Enable deep SNMP topology queries (Routes, ARP) on authenticated devices",
+    )
+
+    # v4.3: Lynis Integration
+    parser.add_argument(
+        "--lynis",
+        action="store_true",
+        help="Enable Lynis hardening audit on authenticaticated Linux hosts (requires SSH)",
+    )
+
+    # v4.5.1: Multi-credential support
+    parser.add_argument(
+        "--credentials-file",
+        type=str,
+        metavar="PATH",
+        help="JSON file with credentials list for universal auth (auto-detects protocol)",
+    )
+    parser.add_argument(
+        "--generate-credentials-template",
+        action="store_true",
+        help="Generate empty credentials template (~/.redaudit/credentials.json) and exit",
+    )
+
     # v4.3: HyperScan mode selection
     parser.add_argument(
         "--hyperscan-mode",
@@ -499,22 +802,47 @@ def configure_from_args(app, args) -> bool:
         app.print_status(app.t("legal_warning_skipped"), "WARNING")
 
     # Parse targets
+    final_targets = []
+
     if args.target:
-        targets = [t.strip() for t in args.target.split(",")]
-        valid_targets = []
-        for t in targets:
-            if len(t) > MAX_CIDR_LENGTH:
-                app.print_status(app.t("invalid_target_too_long", t), "FAIL")
-                continue
-            try:
-                ipaddress.ip_network(t, strict=False)
-                valid_targets.append(t)
-            except ValueError:
-                app.print_status(app.t("invalid_cidr_target", t), "FAIL")
-        if not valid_targets:
-            app.print_status(app.t("no_valid_targets"), "FAIL")
-            return False
-        app.config["target_networks"] = valid_targets
+        targets = [t.strip() for t in args.target.split(",") if t.strip()]
+        valid_targets, invalid = parse_target_tokens(targets, MAX_CIDR_LENGTH)
+        if invalid:
+            for bad in invalid:
+                if len(bad) > MAX_CIDR_LENGTH:
+                    app.print_status(app.t("invalid_target_too_long", bad), "FAIL")
+                else:
+                    app.print_status(app.t("invalid_cidr_target", bad), "FAIL")
+        if valid_targets:
+            final_targets.extend(valid_targets)
+
+    # v4.9: Auto-add routed networks if requested
+    if getattr(args, "scan_routed", False):
+        try:
+            from redaudit.core.net_discovery import detect_routed_networks
+
+            routed_res = detect_routed_networks(logger=app.logger)
+            routed_nets = routed_res.get("networks", [])
+
+            # Avoid duplications
+            current_set = set(final_targets)
+            added_count = 0
+            for net in routed_nets:
+                if net not in current_set:
+                    final_targets.append(net)
+                    current_set.add(net)
+                    added_count += 1
+
+            if added_count > 0:
+                app.print_status(
+                    f"Found and added {added_count} hidden routed networks to scope via --scan-routed",
+                    "OKGREEN",
+                )
+        except ImportError:
+            pass
+
+    if final_targets:
+        app.config["target_networks"] = final_targets
     else:
         app.print_status(app.t("target_required_non_interactive"), "FAIL")
         return False
@@ -568,9 +896,18 @@ def configure_from_args(app, args) -> bool:
         deep_scan_budget = DEFAULT_DEEP_SCAN_BUDGET
     app.config["deep_scan_budget"] = deep_scan_budget
     identity_threshold = getattr(args, "identity_threshold", DEFAULT_IDENTITY_THRESHOLD)
-    if not isinstance(identity_threshold, int) or identity_threshold < 0:
+    if (
+        not isinstance(identity_threshold, int)
+        or identity_threshold < 0
+        or identity_threshold > 100
+    ):
         identity_threshold = DEFAULT_IDENTITY_THRESHOLD
     app.config["identity_threshold"] = identity_threshold
+    # v4.13: Dead host budget - abandon after N consecutive timeouts
+    dead_host_retries = getattr(args, "dead_host_retries", DEFAULT_DEAD_HOST_RETRIES)
+    if not isinstance(dead_host_retries, int) or dead_host_retries < 0:
+        dead_host_retries = DEFAULT_DEAD_HOST_RETRIES
+    app.config["dead_host_retries"] = dead_host_retries
 
     # Set UDP mode (v2.8.0)
     app.config["udp_mode"] = args.udp_mode
@@ -623,6 +960,91 @@ def configure_from_args(app, args) -> bool:
     app.config["net_discovery_kerberos_userlist"] = args.kerberos_userlist
     app.config["net_discovery_active_l2"] = bool(args.redteam_active_l2)
     app.config["nuclei_enabled"] = bool(getattr(args, "nuclei", False))
+    # v4.6.20: Nuclei timeout for slow/Docker networks
+    nuclei_timeout = getattr(args, "nuclei_timeout", 300)
+    if not isinstance(nuclei_timeout, int) or nuclei_timeout < 60:
+        nuclei_timeout = 300  # Minimum 60s, default 300s
+    app.config["nuclei_timeout"] = nuclei_timeout
+    nuclei_profile = getattr(args, "nuclei_profile", "balanced")
+    if nuclei_profile not in ("fast", "balanced", "full"):
+        nuclei_profile = "balanced"
+    app.config["nuclei_profile"] = nuclei_profile
+    nuclei_max_runtime = getattr(args, "nuclei_max_runtime", 0)
+    if not isinstance(nuclei_max_runtime, int) or nuclei_max_runtime < 0:
+        nuclei_max_runtime = 0
+    app.config["nuclei_max_runtime"] = nuclei_max_runtime
+    leak_follow_mode = getattr(args, "leak_follow", "off")
+    if leak_follow_mode not in ("off", "safe"):
+        leak_follow_mode = "off"
+    app.config["leak_follow_mode"] = leak_follow_mode
+    app.config["leak_follow_allowlist"] = _normalize_csv_items(
+        getattr(args, "leak_follow_allowlist", None)
+    )
+    iot_probes_mode = getattr(args, "iot_probes", "off")
+    if iot_probes_mode not in ("off", "safe"):
+        iot_probes_mode = "off"
+    app.config["iot_probes_mode"] = iot_probes_mode
+    iot_probe_budget_seconds = getattr(args, "iot_probe_budget_seconds", 20)
+    if (
+        not isinstance(iot_probe_budget_seconds, int)
+        or iot_probe_budget_seconds < 1
+        or iot_probe_budget_seconds > 300
+    ):
+        iot_probe_budget_seconds = 20
+    app.config["iot_probe_budget_seconds"] = iot_probe_budget_seconds
+    iot_probe_timeout_seconds = getattr(args, "iot_probe_timeout_seconds", 3)
+    if (
+        not isinstance(iot_probe_timeout_seconds, int)
+        or iot_probe_timeout_seconds < 1
+        or iot_probe_timeout_seconds > 60
+    ):
+        iot_probe_timeout_seconds = 3
+    app.config["iot_probe_timeout_seconds"] = iot_probe_timeout_seconds
+    nuclei_exclude = getattr(args, "nuclei_exclude", None)
+    app.config["nuclei_exclude"] = normalize_nuclei_exclude(nuclei_exclude)
+
+    # v4.0: Authenticated Scanning
+    app.config["auth_provider"] = getattr(args, "auth_provider", "keyring")
+    app.config["auth_ssh_user"] = getattr(args, "ssh_user", None)
+    app.config["auth_ssh_key"] = getattr(args, "ssh_key", None)
+    app.config["auth_ssh_key_pass"] = getattr(args, "ssh_key_pass", None)
+    app.config["auth_ssh_trust_keys"] = getattr(args, "ssh_trust_keys", False)
+
+    # v4.2: SMB
+    app.config["auth_smb_user"] = getattr(args, "smb_user", None)
+    app.config["auth_smb_pass"] = getattr(args, "smb_pass", None)
+    app.config["auth_smb_domain"] = getattr(args, "smb_domain", None)
+
+    # v4.3: SNMP v3
+    app.config["auth_snmp_user"] = getattr(args, "snmp_user", None)
+    app.config["auth_snmp_auth_proto"] = getattr(args, "snmp_auth_proto", None)
+    app.config["auth_snmp_auth_pass"] = getattr(args, "snmp_auth_pass", None)
+    app.config["auth_snmp_priv_proto"] = getattr(args, "snmp_priv_proto", None)
+    app.config["auth_snmp_priv_pass"] = getattr(args, "snmp_priv_pass", None)
+
+    # v4.3: Lynis
+    app.config["lynis_enabled"] = bool(getattr(args, "lynis", False))
+
+    # v4.5.1: Multi-credential support
+    credentials_file = getattr(args, "credentials_file", None)
+    if credentials_file:
+        try:
+            from redaudit.core.credentials_manager import CredentialsManager
+
+            creds_mgr = CredentialsManager()
+            creds_mgr.load_from_file(expand_user_path(credentials_file))
+            app.config["auth_credentials"] = [
+                {"user": c.user, "pass": c.password} for c in creds_mgr.credentials
+            ]
+            app.config["auth_enabled"] = True
+            app.print_status(f"Loaded {len(creds_mgr.credentials)} credentials", "OKGREEN")
+        except FileNotFoundError:
+            app.print_status(f"Credentials file not found: {credentials_file}", "FAIL")
+            return False
+        except Exception as e:
+            app.print_status(f"Error loading credentials: {e}", "FAIL")
+            return False
+
     # v4.3: HyperScan mode
     app.config["hyperscan_mode"] = getattr(args, "hyperscan_mode", "auto")
     if not isinstance(args.agentless_verify_max_targets, int) or not (
@@ -650,6 +1072,11 @@ def configure_from_args(app, args) -> bool:
                 udp_top_ports=app.config.get("udp_top_ports"),
                 topology_enabled=app.config.get("topology_enabled"),
                 nuclei_enabled=app.config.get("nuclei_enabled"),
+                leak_follow_mode=app.config.get("leak_follow_mode"),
+                leak_follow_allowlist=app.config.get("leak_follow_allowlist"),
+                iot_probes_mode=app.config.get("iot_probes_mode"),
+                iot_probe_budget_seconds=app.config.get("iot_probe_budget_seconds"),
+                iot_probe_timeout_seconds=app.config.get("iot_probe_timeout_seconds"),
                 windows_verify_enabled=app.config.get("windows_verify_enabled"),
                 windows_verify_max_targets=app.config.get("windows_verify_max_targets"),
                 lang=app.lang,
@@ -673,6 +1100,16 @@ def main():
 
         for key in list(COLORS.keys()):
             COLORS[key] = ""
+
+    # v4.5.1: Generate credentials template and exit
+    if getattr(args, "generate_credentials_template", False):
+        from redaudit.core.credentials_manager import CredentialsManager
+
+        template_path = os.path.expanduser("~/.redaudit/credentials.json")
+        CredentialsManager.generate_template(template_path)
+        print(f"Credentials template generated: {template_path}")
+        print("Edit this file with your credentials, then use --credentials-file to load.")
+        sys.exit(0)
 
     # v3.0: Handle --diff mode (no scan, just comparison) - does not require root
     if args.diff:
@@ -727,7 +1164,7 @@ def main():
         )
         sys.exit(1)
     elif os.geteuid() != 0:
-        print("⚠️  Running without root: some scans (OS detection, UDP, tcpdump) may fail.")
+        print("⚠  Running without root: some scans (OS detection, UDP, tcpdump) may fail.")
 
     # Import here to avoid circular imports
     from redaudit.core.auditor import InteractiveNetworkAuditor
@@ -736,6 +1173,23 @@ def main():
     app = InteractiveNetworkAuditor()
     app.lang = detect_preferred_language(getattr(args, "lang", None))
     app.defaults_mode = getattr(args, "defaults", "ask")
+
+    if getattr(args, "nuclei_resume", None) or getattr(args, "nuclei_resume_latest", False):
+        resume_path = getattr(args, "nuclei_resume", None)
+        if getattr(args, "nuclei_resume_latest", False):
+            candidates = app._find_nuclei_resume_candidates(get_default_reports_base_dir())
+            resume_path = candidates[0]["path"] if candidates else None
+        if not resume_path:
+            app.print_status(app.t("nuclei_resume_none"), "INFO")
+            sys.exit(1)
+        override_budget = None
+        if any(arg.startswith("--nuclei-max-runtime") for arg in sys.argv[1:]):
+            override_budget = getattr(args, "nuclei_max_runtime", None)
+        ok = app.resume_nuclei_from_path(
+            resume_path,
+            override_max_runtime_minutes=override_budget,
+        )
+        sys.exit(0 if ok else 1)
 
     # Non-interactive mode: allow forcing "factory" values even if persisted defaults exist.
     if args.target and getattr(args, "defaults", None) == "ignore":
@@ -810,11 +1264,16 @@ def main():
                 sys.exit(0)
 
             elif choice == 1:  # Start scan (wizard)
-                if app.interactive_setup():
-                    ok = app.run_complete_scan()
-                    sys.exit(0 if ok else 1)
-                else:
-                    print(app.t("config_cancel"))
+                try:
+                    if app.interactive_setup():
+                        ok = app.run_complete_scan()
+                        sys.exit(0 if ok else 1)
+                    else:
+                        print(app.t("config_cancel"))
+                        sys.exit(0)
+                except KeyboardInterrupt:
+                    print("\n")
+                    app.print_status(app.t("config_cancel"), "WARNING")
                     sys.exit(0)
 
             elif choice == 2:  # Check for updates
@@ -856,6 +1315,9 @@ def main():
                             app.print_status("Could not compare reports. Check file paths.", "FAIL")
                 except KeyboardInterrupt:
                     print("")
+
+            elif choice == 4:  # Resume Nuclei
+                app.resume_nuclei_interactive()
 
 
 if __name__ == "__main__":

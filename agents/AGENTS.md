@@ -5,11 +5,6 @@ Keep it aligned with the repo root `AGENTS.md` and CI/pre-commit requirements.
 
 # Agent Instructions (RedAudit)
 
-Follow the repository workflow in `AGENTS.md` (repo root). If there is any conflict, `AGENTS.md` is canonical.
+This file is a pointer. The canonical workflow lives in `AGENTS.md` (repo root).
 
-Minimum expectations before opening a PR:
-
-- Work on a branch; avoid committing directly to `main`.
-- Run `pre-commit run --all-files` (or `python -m pre_commit run --all-files` in the venv).
-- Run tests: `pytest tests/ -v`.
-- Keep EN/ES documentation consistent when user-facing behavior changes.
+Read `AGENTS.md` at the start of every task. If anything conflicts, `AGENTS.md` is canonical.

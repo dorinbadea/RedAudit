@@ -14,7 +14,7 @@
 
 ## 1. What RedAudit Is (and Is Not)
 
-RedAudit is an **automated network auditing framework** for Linux (Debian-family). It orchestrates external tools (`nmap`, `whatweb`, `nikto`, `testssl.sh`, `nuclei`, `searchsploit`) into a unified pipeline and produces structured reports.
+RedAudit is an **automated network auditing framework** for Linux (Debian-family). It orchestrates a comprehensive toolchain (`nmap`, `nikto`, `nuclei`, `whatweb`, `testssl.sh`, `sqlmap`, `rustscan`, and more) into a unified pipeline and produces structured reports.
 
 **It is:**
 
@@ -59,6 +59,16 @@ The installer:
 3. Creates the `redaudit` shell alias
 4. Prompts for language preference (EN/ES)
 
+Toolchain version policy (optional):
+
+```bash
+# Use latest versions for GitHub-downloaded tools (testssl, kerbrute)
+REDAUDIT_TOOLCHAIN_MODE=latest sudo bash redaudit_install.sh
+
+# Or pin specific tool versions explicitly
+TESTSSL_VERSION=v3.2 KERBRUTE_VERSION=v1.0.3 RUSTSCAN_VERSION=2.3.0 sudo bash redaudit_install.sh
+```
+
 ### Manual Install (without installer)
 
 ```bash
@@ -81,6 +91,8 @@ pip install -r requirements.lock
 pip install .
 ```
 
+Poetry users can rely on `poetry.lock` for evaluation; pip-tools remains the source of truth for lockfiles.
+
 TLS deep checks require `testssl.sh`. The installer installs it from GitHub as part of the core toolchain.
 
 ### Docker (optional)
@@ -100,57 +112,112 @@ docker run --rm --network host \
 ### Update
 
 RedAudit checks for updates on startup (interactive mode). To skip: `--skip-update-check`.
+If you keep a local `~/RedAudit` git checkout, system updates refresh that home copy so documentation stays current. When local changes are detected, the updater backs up the folder with a timestamped suffix before updating; clean `main` repos may be fast-forwarded, while dirty or non-`main` branches are left untouched.
 
 ---
 
-## 4. Wizard Profile Selector (v3.9.0+)
+## 4. Comprehensive Wizard Guide
 
-When running `sudo redaudit` in interactive mode, the wizard asks which **audit profile** to use:
+The interactive wizard is the recommended way to use RedAudit. It guides you step-by-step to configure the perfect scan for your needs.
 
-### Express
+### Workflow
 
-**Use case:** Quick network discovery for asset inventory.
+1. **Startup & Updates:** Upon running `sudo redaudit`, the tool automatically checks for new versions (unless `--skip-update-check` is used).
+2. **Profile Selection:** Choose a preset or configure manually.
+3. **Target Selection:** Choose detected networks or enter manual targets; the wizard shows normalized targets with estimated host counts.
+4. **Authentication Setup:** (New in v4.0) Configure SSH/SMB/SNMP credentials for deep audits.
+5. **Confirmation:** Review the summary before starting.
 
-- **Mode**: `fast` (host discovery only, no port scanning)
-- **Features disabled**: Vulnerability scans, Nuclei, CVE correlation, agentless verification
-- **Discovery enabled**: Topology + Network Discovery
-- **Timing**: Fast
-- **Questions**: Minimal (Phase 0 prompt, auditor name, output dir)
-- **Best for**: Initial reconnaissance, counting live hosts
-- **Detection heuristics**:
-  - **Asset type guessing**: Hints from hostname/vendor/agentless signals (e.g., router, switch, printer, media, IoT, VPN).
-  - **VPN Heuristics**: Detection based on gateway MAC-IP mismatch, VPN ports (500, 4500, 1194, 51820), and hostname patterns (`tunnel`, `ipsec`, etc.).
+### Scan Profiles
 
-### Standard
+Pre-configured profiles adjust dozens of parameters automatically:
 
-**Use case:** Balanced vulnerability assessment.
+#### 1. Express (Fast / Inventory)
 
-- **Mode**: `normal` (nmap `-F` / top 100 ports + version detection)
-- **Features**: web vuln scanning enabled (whatweb; nikto/testssl only in full), searchsploit if available, topology + network discovery enabled
-- **Timing**: Chosen via preset (Stealth/Normal/Aggressive)
-- **Questions**: Profile selection + timing + Phase 0 prompt + auditor/output prompts
-- **Best for**: Most security audits
+**Goal:** Get a list of live hosts and their vendors in seconds.
 
-### Exhaustive
+- **Technique:** Ping Sweep (ICMP/ARP), no port scanning.
+- **Ideal for:** Initial asset inventory, connectivity checks.
+- **Estimated time:** < 30s for /24.
 
-**Use case**: Maximum discovery and correlation for comprehensive assessments.
+#### 2. Standard (Balanced / General Audit)
 
-- **Mode**: `completo` (all 65535 ports + scripts/OS detection)
-- **Threads**: MAX (16) or reduced in Stealth preset (2)
-- **UDP**: top 500 ports for deep scan (only when triggered)
-- **Features enabled**: Vulnerabilities, Topology, Net Discovery, Red Team, Agentless Verification; Nuclei if installed
-- **CVE Correlation**: Enabled if NVD API key is configured
-- **Timing**: Chosen via preset (Stealth/Normal/Aggressive)
-- **Questions**: Phase 0 prompt + auditor name and output dir (all else auto-configured)
-- **Best for**: Penetration testing, compliance audits, pre-production validation
+**Goal:** Identify common services and obvious vulnerabilities.
 
-### Custom
+- **Technique:** Top 100 TCP ports (`-F`), version and OS detection.
+- **Web:** Checks headers and basic technologies (WhatWeb).
+- **Authentication:** Optional setup for SSH/SMB/SNMP credentials.
+- **Ideal for:** Regular audits, policy validation.
 
-**Use case:** Full control over all configuration options.
+#### 3. Exhaustive (Deep / Compliance)
 
-- **Behavior**: Full 8-step wizard with back navigation
-- **Questions**: Scan mode, threads/rate + Phase 0 prompt, vulnerability scan (incl. SQLMap/ZAP), CVE lookup, output/auditor, UDP/topology, net discovery/red team, agentless verification + webhook
-- **Best for**: Tailored scans with specific requirements
+**Goal:** Find EVERYTHING.
+
+- **Technique:** 65535 TCP ports, UDP scanning, vulnerability scripts (NSE).
+- **Web:** Full scan (Nikto, Nuclei, SSL).
+- **Authentication:** Optional setup for SSH/SMB/SNMP credentials.
+- **Ideal for:** Penetration testing, compliance (PCI-DSS, ISO 27001), pre-production validation.
+**Runtime note:** With Nuclei enabled, scans can run significantly longer (e.g., >2-4 hours) depending on the number of targets (hosts) and detected services.
+
+#### 4. Custom (Tailored)
+
+**Goal:** Full control.
+
+- **Allows configuring:**
+  - **Nmap Mode:** Fast/Normal/Full.
+  - **Timing:** Stealth/Normal/Aggressive.
+  - **Performance:** Threads (1-100) and Rate Limit (seconds between requests).
+  - **Topology & Discovery:** Enable/disable L2 mapping and discovery protocols (mDNS, UPnP, etc.).
+  - **UDP:** Enable UDP scanning (slow but thorough).
+  - **Authentication:** Configure credentials for authenticated scanning.
+  - **Agentless Verification:** Enable/disable lightweight checks.
+  - **Web & Vulnerabilities:** Enable/disable Nikto, Nuclei, CVE lookup.
+
+### Authentication Menu (Phase 4)
+
+If you select **Standard**, **Exhaustive**, or **Custom** profiles, the wizard will ask:
+`Enable authenticated scanning (SSH/SMB)? [y/n]`
+
+If you answer **Yes**, you will enter the credentials sub-menu:
+
+1. **SSH (Linux/Unix):**
+    - User and Password OR Private Key.
+    - Enables packet audit, hardening (Lynis), and internal configurations.
+2. **SMB (Windows):**
+    - User, Password, and Domain (optional).
+    - Enables enumeration of users, shares, and password policies.
+3. **SNMP v3 (Network):**
+    - User, Auth Protocols (MD5/SHA), and Privacy (DES/AES).
+    - Enables extraction of routing tables and network device configurations.
+
+**Note:** Credentials can be securely saved to the system Keyring for future use.
+
+### Scenario Examples (Tutorial)
+
+#### Scenario A: Quick Inventory Audit
+
+1. Run `sudo redaudit`.
+2. Select **Express**.
+3. Enter the client IP range (e.g., `192.168.10.0/24`).
+4. Result: In minutes, you'll have an `assets.jsonl` with all live devices and vendors.
+
+#### Scenario B: Linux Server Hardening Audit
+
+1. Run `sudo redaudit`.
+2. Select **Custom**.
+3. Mode: **Normal**.
+4. Authentication enabled: **Yes**.
+    - Configure `root` user (or sudoer) and SSH key.
+5. Enable Lynis: **Yes** (if asked or via `--lynis` flag).
+6. Result: The report will include the Lynis "Hardening Index" and internal server details.
+
+#### Scenario C: Red Team / Stealth
+
+1. Run `sudo redaudit`.
+2. Select **Custom**.
+3. Mode: **Stealth** (reduces speed, avoids simple IDS detection).
+4. Topology: **Passive** (listen only, no aggressive ARP).
+5. Result: Network mapping with minimal noise footprint.
 
 ---
 
@@ -171,9 +238,23 @@ When running `sudo redaudit` in interactive mode, the wizard asks which **audit 
 | `normal` | Top 100 ports (`-F`), version detection | whatweb, searchsploit (if available) |
 | `full` | All 65535 ports, scripts, OS detection | whatweb, nikto, testssl.sh, nuclei (installed and explicitly enabled), searchsploit |
 
+**Guidance (benefits/risks):**
+
+- **fast**: Lowest noise and fastest. Best for inventory-only sweeps or fragile environments; no service detail.
+- **normal**: Balanced time vs. coverage. Recommended default for most LAN audits.
+- **full**: Maximum coverage and deeper identity work. Longest runtime and highest noise; may stress fragile devices.
+
 **Timeout behavior:** Host scans are bounded by the nmap `--host-timeout` for the selected mode (full: 300s). RedAudit
 enforces a hard timeout and marks the host as no-response if it is exceeded, keeping scans responsive on IoT/embedded
 devices.
+
+### Timing Presets (Wizard)
+
+Timing controls how aggressively RedAudit schedules work (nmap timing + thread behavior).
+
+- **Stealth**: Slowest, lowest noise. Best for detection-sensitive networks.
+- **Normal**: Balanced speed and reliability. Good default for most networks.
+- **Aggressive**: Fastest and noisiest. Can miss slow/filtered services and may increase false negatives on noisy links.
 
 ### Adaptive Deep Scan
 
@@ -184,15 +265,16 @@ When enabled (default), RedAudit performs additional scanning on hosts where ini
 - Fewer than 3 open ports found (when identity is weak)
 - Services identified as `unknown` or `tcpwrapped`
 - MAC/vendor information not obtained
+- No version info and no strong identity evidence (HTTP title/server or device-type hints)
 - **VPN Gateway Detection**: Host shares the MAC address with the gateway but has a different IP (virtual interface)
 
 **Behavior:**
 
-0. (Optional) Phase 0 low-impact enrichment (DNS reverse, mDNS unicast, SNMP sysDescr) when enabled via the wizard prompt or `--low-impact-enrichment`
+0. (Optional) Phase 0 low-impact enrichment (DNS reverse, mDNS unicast, SNMP sysDescr, and a short HTTP/HTTPS probe for vendor-only hosts with zero open ports) when enabled via the wizard prompt or `--low-impact-enrichment`
 1. Phase 1: Aggressive TCP (`-A -p- -sV -Pn`)
 2. Phase 2a: Priority UDP probe (17 common ports including 500/4500)
 3. Phase 2b: UDP top-ports (`--udp-ports`) when mode is `full` and identity is still weak
-4. Quiet hosts with vendor hints and zero open ports may get a short HTTP/HTTPS probe on common paths
+4. When Phase 0 is enabled, quiet hosts with vendor hints and zero open ports may get a short HTTP/HTTPS probe on common paths to resolve identity early
 
 Disable with `--no-deep-scan`.
 
@@ -200,8 +282,13 @@ SmartScan uses an identity score (default threshold: 3; full mode uses 4) to dec
 
 ### Smart-Throttle (Adaptive Congestion Control)
 
-RedAudit v4.4+ introduces **Smart-Throttle**, an adaptive rate limiting system for HyperScan operations.
+RedAudit v4.4+ introduces:
 
+- **Smart-Check Technology**: Correlates open ports (Nmap) with vulnerabilities (Nuclei) to eliminate false positives.
+- **Parallel Discovery (v4.6.32)**: Executed DHCP, ARP, mDNS, UPnP, and Fping simultaneously for ultra-fast network mapping.
+- **DHCP Discovery Interface**: Defaults to the system's default-route interface; in `full` mode it probes all active IPv4 interfaces with a short timeout.
+- **HyperScan**: Uses asynchronous TCP/SYN packets to scan 65,535 ports in seconds (RustScan integration).
+- **Smart-Throttle**: An adaptive rate limiting system for HyperScan operations.
 - **Algorithm**: Uses an Additive Increase, Multiplicative Decrease (AIMD) algorithm similar to TCP congestion control.
 - **Behavior**:
   - Starts with a conservative batch size (500 packets).
@@ -209,11 +296,12 @@ RedAudit v4.4+ introduces **Smart-Throttle**, an adaptive rate limiting system f
   - **Throttles** (Multiplicatively) when congestion is detected (timeouts > 5%).
 - **Benefit**: Prevents packet loss on SOHO/VPN networks while maximizing speed on Data Center links (scaling up to 20,000 pps).
 - **Feedback**: Real-time scan speed and throttling events (▼/▲) are displayed in the progress bar.
+- **Progress Output**: When HyperScan runs with a Rich progress bar, per-host status lines are suppressed to avoid mixed UI. The bar itself shows per-IP detail.
 
 VPN classification is handled by asset typing heuristics (gateway MAC/IP, VPN ports, hostname patterns) after scanning.
 
 **Parallel Execution:**
-Starting with v4.2, deep scans run in a dedicated thread pool (up to 50 threads), decoupled from the main discovery loop. This ensures that slow deep scans do not block the overall progress.
+Starting with v4.6, deep scans run in a dedicated thread pool (up to 100 threads), decoupled from the main discovery loop. This ensures that slow deep scans do not block the overall progress.
 
 ### Web Application Security (v4.2+)
 
@@ -221,6 +309,65 @@ RedAudit now integrates specialized tools for deep web application assessment:
 
 - **sqlmap**: Automatically tests for SQL injection flaws on suspect parameters. Configurable via Custom Profile (Levels 1-5, Risks 1-3).
 - **OWASP ZAP**: Optional DAST scanning for spidering and active scanning. Enabled via Custom Profile or config.
+  - Both tools are skipped on infrastructure devices when identity evidence indicates router/switch/AP class hosts.
+
+### Nuclei Partial Runs
+
+When Nuclei batch scans time out, the run is marked as partial and the report includes timeout and failed batch indexes.
+During long batches, the CLI shows time-based progress inside the batch (with elapsed time) so operators can confirm activity.
+When a timeout occurs, RedAudit splits the batch and keeps the configured `--nuclei-timeout` as a floor for retries to avoid
+dropping coverage on slow targets.
+Nuclei targets are selected with identity awareness: strong-identity hosts are capped to priority ports, while ambiguous
+hosts retain full target coverage. Retry/split behavior is reserved for exception targets and is fatigue-limited to avoid
+repeated stalls.
+
+### Nuclei Runtime Budget and Resume
+
+If you set a Nuclei runtime budget (wizard or `--nuclei-max-runtime`), the budget is a **total wall-clock limit for the
+entire Nuclei phase** (not per batch). Without a budget, Nuclei batches may run in parallel (up to 4; clamped for long
+timeouts). When a budget is set, RedAudit runs Nuclei batches sequentially to respect the cap.
+Before starting a new batch, RedAudit checks the remaining budget against the estimated batch runtime; if it is too low,
+the batch is deferred and pending targets are written to `nuclei_resume.json` and `nuclei_pending.txt`. Timeouts that
+end Nuclei as a partial run also save the pending targets for resume. If the budget is
+reached mid-batch (rare edge case), the current batch is also deferred.
+
+You will be prompted to resume immediately with a 15-second countdown; if you do nothing, **the audit continues after
+Nuclei** and the resume remains available.
+
+**Choosing a budget:** check `nuclei_targets.txt` to see how many URLs will be scanned. If you regularly hit the budget,
+increase minutes, switch to a smaller profile (`fast`), or disable full coverage to reduce target count.
+
+You can resume later from the main menu (**Resume Nuclei (pending)**) or from the CLI:
+
+```bash
+redaudit --nuclei-resume /path/to/scan/folder
+redaudit --nuclei-resume /path/to/nuclei_resume.json
+redaudit --nuclei-resume-latest
+```
+
+Resumed runs update the same scan folder and refresh reports in place. The resume uses the saved budget unless you
+override it (wizard prompt or `--nuclei-max-runtime`; `0` disables the budget).
+If you interrupt a resume with Ctrl+C, the resume is canceled cleanly and you return to the menu.
+Resumes are stored in the same scan folder and are updated in place. If a resume run ends as partial again, the
+existing `nuclei_resume.json`/`nuclei_pending.txt` is refreshed (not duplicated). To clean old resumes, delete those
+two files inside scan folders you no longer need to resume. List them first with
+`find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt`, then remove with
+`find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt -delete`.
+
+### Nuclei Profiles and Coverage (v4.17+)
+
+Nuclei has three independent controls in the wizard:
+
+- **Profile (templates)**: `full`, `balanced`, `fast` controls which templates and severities run.
+- **Full Coverage (targets)**: "Scan ALL detected HTTP ports?" controls how many HTTP URLs per host are scanned.
+  - **No** (default for balanced/fast): Max 2 URLs per multi-port host (prioritizes 80/443).
+  - **Yes** (default for full): Scan all detected HTTP ports for all selected hosts.
+- **Fatigue Limit (exceptions)**: "Nuclei fatigue limit (split depth, 0-10)" caps how many retry splits are allowed for
+  exception targets (default 3). Lower values keep scans fast; higher values prioritize certainty for ambiguous hosts.
+- **Exclude List (targets)**: `--nuclei-exclude` (or the wizard prompt) omits targets by host, host:port, or full URL to
+  skip known slow or irrelevant endpoints.
+
+These options are separate: profile defines template scope, full coverage defines target scope.
 
 ### Auto-Exclusion
 
@@ -238,15 +385,60 @@ predictable.
 
 ---
 
-## 5. CLI Reference (Complete)
+## 6. Authenticated Scanning (Phase 4)
 
-Flags verified against `redaudit --help` (v4.3.0):
+RedAudit v4.0+ supports authenticated scanning to retrieve high-fidelity data from target hosts, including OS versions, installed packages, and configurations.
+
+### Supported Protocols
+
+| Protocol | Target OS | Requirements | Discovery Features |
+| :--- | :--- | :--- | :--- |
+| **SSH** | Linux/Unix | Standard credentials (password or private key) | Precise OS (kernel), Installed Packages, Hostname, Uptime |
+| **SMB/WMI** | Windows | `impacket` library, Administrator credentials | OS Version, Domain/Workgroup, Shares, Users |
+
+### Prerequisites
+
+- **SSH**: Requires `paramiko` (installed by the installer).
+- **SMB/WMI**: Requires `impacket` (installed by the installer).
+- **SNMP v3**: Requires `pysnmp` (installed by the installer).
+
+  ```bash
+  # If manual install needed:
+  pip install paramiko impacket pysnmp
+  ```
+
+### Configuration
+
+#### Interactive (Wizard)
+
+When prompted "Enable authenticated scanning (SSH/SMB)?", select Yes. If saved credentials are detected, the wizard offers to load them first and then asks if you want to add more. The settings can be saved to a secure keyring or configuration file.
+
+#### CLI Arguments
+
+```bash
+# SSH
+sudo redaudit -t 192.168.1.10 --ssh-user root --ssh-key ~/.ssh/id_rsa
+sudo redaudit -t 192.168.1.10 --ssh-user admin --ssh-pass "S3cr3t"
+
+# SMB (Windows)
+sudo redaudit -t 192.168.1.50 --smb-user Administrator --smb-pass "WinPass123" --smb-domain WORKGROUP
+```
+
+### Security Note
+
+Credentials are used ONLY for scanning and are not stored in reports. If using `keyring` integration, they are stored in the system keyring.
+
+---
+
+## 7. CLI Reference (Complete)
+
+Flags verified against `redaudit --help` (v4.19.2):
 
 ### Core
 
 | Flag | Description |
 | :--- | :--- |
-| `-t, --target CIDR` | Target network(s), comma-separated |
+| `-t, --target CIDR` | Targets (CIDR/IP/range), comma-separated |
 | `-m, --mode {fast,normal,full}` | Scan intensity (default: normal) |
 | `-o, --output DIR` | Output directory (default: `~/Documents/RedAuditReports`) |
 | `-y, --yes` | Skip confirmation prompts |
@@ -256,7 +448,7 @@ Flags verified against `redaudit --help` (v4.3.0):
 
 | Flag | Description |
 | :--- | :--- |
-| `-j, --threads 1-16` | Concurrent host workers (auto-detected) |
+| `-j, --threads 1-100` | Concurrent host workers (auto-detected, capped at 12 by heuristic) |
 | `--rate-limit SECONDS` | Delay between hosts (±30% jitter applied) |
 | `--max-hosts N` | Limit hosts to scan |
 | `--no-deep-scan` | Disable adaptive deep scan |
@@ -297,6 +489,100 @@ Flags verified against `redaudit --help` (v4.3.0):
 | `--encrypt-password PASSWORD` | Password for encryption (or random generated) |
 | `--allow-non-root` | Run without sudo (limited functionality) |
 
+### Authentication (Credentials)
+
+| Flag | Description |
+| :--- | :--- |
+| `--auth-provider {env,keyring}` | Credential storage provider (env vars or system keyring) |
+| `--ssh-user USER` | SSH username for authenticated scanning |
+| `--ssh-key PATH` | Path to SSH private key |
+| `--ssh-key-pass PASSPHRASE` | Passphrase for encrypted SSH private key |
+| `--ssh-trust-keys` | Trust unknown SSH host keys (use with caution) |
+| `--smb-user USER` | SMB/Windows username |
+| `--smb-pass PASSWORD` | SMB/Windows password |
+| `--smb-domain DOMAIN` | SMB/Windows domain |
+| `--snmp-user USER` | SNMP v3 username |
+| `--snmp-auth-proto {SHA,MD5,...}` | SNMP v3 authentication protocol |
+| `--snmp-auth-pass PASSWORD` | SNMP v3 authentication password |
+| `--snmp-priv-proto {AES,DES,...}` | SNMP v3 privacy protocol |
+| `--snmp-priv-pass PASSWORD` | SNMP v3 privacy password |
+| `--lynis` | Run Lynis hardening audit on Linux hosts (requires SSH) |
+| `--credentials-file PATH` | JSON file with credentials list (auto-detects protocol) |
+| `--generate-credentials-template` | Generate empty credentials template and exit |
+
+#### Multi-Credential Support (Universal)
+
+RedAudit supports **universal credential spraying**: you provide username/password pairs without specifying the protocol, and RedAudit automatically detects which protocol to use based on open ports discovered during scanning.
+
+**How it works:**
+
+1. You configure credentials via the wizard (Universal mode) or `--credentials-file`
+2. RedAudit scans the network and discovers open ports
+3. For each host, it maps open ports to protocols:
+   - Port 22 → SSH
+   - Port 445/139 → SMB
+   - Port 161 → SNMP
+   - Port 3389 → RDP
+   - Port 5985/5986 → WinRM
+4. It tries each credential until one succeeds (max 3 attempts per host to avoid lockouts)
+
+**Legacy Mode (Single SSH/SMB):**
+
+If you need to use a specific SSH key or a single credential pair for a specific protocol (e.g., legacy behavior), select **Advanced** mode in the wizard or use the specific flags (`--ssh-user`, `--ssh-key`, etc.). These will take precedence for that protocol or serve as a fallback if universal credentials fail.
+
+**Using the wizard (recommended):**
+
+```text
+? Enable authenticated scanning? [y/n]: y
+Credential configuration mode:
+  [0] Universal (simple): auto-detect protocol
+  [1] Advanced: configure SSH/SMB/SNMP separately
+> 0
+
+--- Credential 1 ---
+? Username: admin
+? Password (hidden): ****
+? Add another credential? [y/n]: y
+
+--- Credential 2 ---
+? Username: root
+? Password (hidden): ****
+? Add another credential? [y/n]: n
+
+Configured 2 credentials for automatic protocol detection.
+```
+
+**Using a credentials file:**
+
+```bash
+# Generate template
+redaudit --generate-credentials-template
+
+# Edit ~/.redaudit/credentials.json
+{
+  "credentials": [
+    {"user": "admin", "pass": "admin123"},
+    {"user": "root", "pass": "toor"},
+    {"user": "administrator", "pass": "P@ssw0rd", "domain": "WORKGROUP"}
+  ]
+}
+
+# Run scan with credentials
+sudo redaudit -t 192.168.1.0/24 --credentials-file ~/.redaudit/credentials.json --yes
+```
+
+**Security considerations:**
+
+- Credentials files are saved with `0600` permissions (owner-only read/write)
+- Passwords are never logged in reports
+- Use keyring for production environments (`--auth-provider keyring`)
+
+### HyperScan
+
+| Flag | Description |
+| :--- | :--- |
+| `--hyperscan-mode {auto,connect,syn}` | HyperScan mode: auto (default), connect, or syn |
+
 ### Reporting
 
 | Flag | Description |
@@ -307,6 +593,11 @@ Flags verified against `redaudit --help` (v4.3.0):
 | `--no-vuln-scan` | Skip nikto/web vulnerability scanning |
 | `--nuclei` | Enable Nuclei template scanning (requires `nuclei`) |
 | `--no-nuclei` | Disable Nuclei (overrides defaults) |
+| `--nuclei-timeout N` | Nuclei batch timeout in seconds (default: 300; auto-raised to 900 in full coverage if lower) |
+| `--nuclei-max-runtime MIN` | Max Nuclei runtime in minutes (0 = unlimited); creates a resume file when exceeded |
+| `--profile {fast,balanced,full}` | Nuclei scan intensity (v4.11+) |
+| `--nuclei-resume PATH` | Resume pending Nuclei targets from a resume file or scan folder |
+| `--nuclei-resume-latest` | Resume latest pending Nuclei run from the default reports folder |
 
 ### Verification (Agentless)
 
@@ -349,7 +640,7 @@ Flags verified against `redaudit --help` (v4.3.0):
 
 ---
 
-## 6. Output Artifacts
+## 8. Output Artifacts
 
 Default output path: `~/Documents/RedAuditReports/RedAudit_YYYY-MM-DD_HH-MM-SS/`
 
@@ -363,7 +654,7 @@ Default output path: `~/Documents/RedAuditReports/RedAudit_YYYY-MM-DD_HH-MM-SS/`
 | `findings.jsonl` | If encryption disabled | SIEM-ready JSONL events (ECS-aligned via configs) |
 | `assets.jsonl` | If encryption disabled | Asset inventory |
 | `summary.json` | If encryption disabled | Dashboard metrics |
-| `run_manifest.json` | If encryption disabled | Session metadata |
+| `run_manifest.json` | If encryption disabled | Session metadata + config/pipeline snapshot |
 | `playbooks/*.md` | If encryption disabled | Remediation guides |
 | `traffic_*.pcap` | If deep scan triggers and tcpdump available | Packet captures |
 | `session_logs/session_*.log` | Always | Session logs (raw with ANSI) |
@@ -377,6 +668,11 @@ When `--encrypt` is used:
 - A `.salt` file is created alongside each encrypted file
 - **Plaintext artifacts are NOT generated:** HTML, JSONL, playbooks, and manifest files are skipped for security
 
+**Evidence and pipeline transparency:**
+
+- The main JSON includes per-finding evidence metadata (source tool, matched_at, raw output hash/ref when available).
+- The HTML pipeline section exposes resolved Nmap args/timing, deep scan settings, HyperScan vs final summary, and authenticated scan outcomes when available.
+
 **Decryption:**
 
 ```bash
@@ -385,7 +681,7 @@ python3 redaudit_decrypt.py /path/to/report.json.enc
 
 ---
 
-## 7. Security Model
+## 9. Security Model
 
 ### Encryption
 
@@ -407,7 +703,7 @@ python3 redaudit_decrypt.py /path/to/report.json.enc
 
 ---
 
-## 8. Integration
+## 10. Integration
 
 ### SIEM Ingestion
 
@@ -430,11 +726,11 @@ done
 
 ### Webhook Alerts
 
-`--webhook URL` sends HTTP POST for each high/critical finding. Compatible with endpoints that accept JSON payloads (e.g., Slack, Teams, PagerDuty).
+`--webhook URL` sends HTTPS POST for each high/critical finding. Only `https://` endpoints are accepted. Compatible with endpoints that accept JSON payloads (e.g., Slack, Teams, PagerDuty).
 
 ---
 
-## 9. Troubleshooting
+## 11. Troubleshooting
 
 | Symptom | Cause | Solution |
 | :--- | :--- | :--- |
@@ -448,7 +744,7 @@ See [TROUBLESHOOTING.en.md](TROUBLESHOOTING.en.md) for complete error reference.
 
 ---
 
-## 10. External Tools
+## 12. External Tools
 
 RedAudit orchestrates (does not modify or install):
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Topology Discovery Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.1+: Best-effort topology discovery to detect "hidden" networks and L2 context.
@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from redaudit.core.command_runner import CommandRunner
 from redaudit.utils.dry_run import is_dry_run
+from redaudit.utils.oui_lookup import lookup_vendor_online
 
 
 def _run_cmd(
@@ -99,7 +100,12 @@ def _extract_default_gateway(routes: List[Dict[str, Any]]) -> Optional[Dict[str,
 
 
 def _parse_arp_scan(stdout: str) -> List[Dict[str, Any]]:
+    """Parse arp-scan output and enrich unknown vendors via OUI lookup.
+
+    v4.12.1: Added OUI enrichment to resolve "(Unknown)" vendors.
+    """
     hosts: List[Dict[str, Any]] = []
+    seen = set()
     for line in (stdout or "").splitlines():
         line = line.strip()
         if not line or line.startswith(("Interface:", "Starting arp-scan", "Ending arp-scan")):
@@ -112,6 +118,20 @@ def _parse_arp_scan(stdout: str) -> List[Dict[str, Any]]:
         if not m:
             continue
         ip, mac, vendor = m.group(1), m.group(2), m.group(3).strip()
+
+        # v4.12.1: Enrich unknown vendors via OUI lookup
+        if "unknown" in vendor.lower():
+            try:
+                enriched = lookup_vendor_online(mac)
+                if enriched:
+                    vendor = enriched
+            except Exception:
+                pass
+
+        key = (ip, mac.lower())
+        if key in seen:
+            continue
+        seen.add(key)
         hosts.append({"ip": ip, "mac": mac.lower(), "vendor": vendor})
 
     return hosts
@@ -163,6 +183,19 @@ def _parse_vlan_ids_from_ip_link(stdout: str) -> List[int]:
     return vlan_ids
 
 
+def _parse_vlan_ids_from_ifconfig(stdout: str) -> List[int]:
+    vlan_ids: List[int] = []
+    # macOS: vlan: 100 parent interface: en0
+    for m in re.finditer(r"vlan:\s*(\d+)", stdout or "", re.IGNORECASE):
+        try:
+            vid = int(m.group(1))
+            if 1 <= vid <= 4094 and vid not in vlan_ids:
+                vlan_ids.append(vid)
+        except Exception:
+            continue
+    return vlan_ids
+
+
 def _parse_vlan_ids_from_tcpdump(stdout: str) -> List[int]:
     vlan_ids: List[int] = []
     for m in re.finditer(r"\bvlan\s+(\d{1,4})\b", stdout or "", re.IGNORECASE):
@@ -173,6 +206,38 @@ def _parse_vlan_ids_from_tcpdump(stdout: str) -> List[int]:
         if 1 <= vid <= 4094 and vid not in vlan_ids:
             vlan_ids.append(vid)
     return vlan_ids
+
+
+def _parse_lldp_from_tcpdump(stdout: str) -> List[Dict[str, Any]]:
+    neighbors = []
+
+    # Simple state machine to parse verbose tcpdump output
+    text = stdout or ""
+    # LLDP packets usually start with "LLDP,"
+
+    # We try to extract basic TLVs.
+    # System Name TLV (5), length 18: Switch-01
+
+    sys_name = re.search(r"System Name TLV.*?: (.+)", text)
+    port_id = re.search(r"Port ID TLV.*?: (.+)", text)
+    sys_desc = re.search(r"System Description TLV.*?: (.+)", text)
+    mgmt_ip = re.search(r"Management Address TLV.*?: ([\d\.]+)", text)
+
+    if sys_name or port_id:
+        neighbor = {
+            "chassis": {
+                "name": sys_name.group(1).strip() if sys_name else None,
+                "descr": sys_desc.group(1).strip() if sys_desc else None,
+                "mgmt_ip": mgmt_ip.group(1).strip() if mgmt_ip else None,
+            },
+            "port": {
+                "id": port_id.group(1).strip() if port_id else None,
+            },
+            "source": "tcpdump",
+        }
+        neighbors.append(neighbor)
+
+    return neighbors
 
 
 def _extract_lldp_neighbors(lldpctl_json: Dict[str, Any], iface: str) -> List[Dict[str, Any]]:
@@ -491,6 +556,33 @@ async def _discover_topology_async(
                 logger=logger,
             )
 
+        lldp_tcp_result = None
+        if has_tcpdump and not has_lldpctl:
+            lldp_tcp_result = await _run_cmd_async(
+                [
+                    "tcpdump",
+                    "-nn",
+                    "-v",
+                    "-s",
+                    "1500",
+                    "-i",
+                    iface,
+                    "-c",
+                    "1",
+                    "ether",
+                    "proto",
+                    "0x88cc",
+                ],
+                timeout_s=3,
+                logger=logger,
+            )
+
+        ifconfig_task = None
+        if shutil.which("ifconfig"):
+            ifconfig_task = asyncio.create_task(
+                _run_cmd_async(["ifconfig", iface], timeout_s=2, logger=logger)
+            )
+
         # Await other tasks
         if arp_task is not None:
             try:
@@ -550,6 +642,26 @@ async def _discover_topology_async(
                     if len(obs) >= 10:
                         break
                 iface_entry["cdp"]["observations"] = obs
+
+        if lldp_tcp_result is not None:
+            _rc, out, _err = lldp_tcp_result
+            if (out or "").strip():
+                neighbors = _parse_lldp_from_tcpdump(out)
+                if neighbors:
+                    iface_entry["lldp"]["neighbors"].extend(neighbors)
+
+        if ifconfig_task is not None:
+            try:
+                rc, out, err = await ifconfig_task
+                if rc == 0 and (out or "").strip():
+                    vids = _parse_vlan_ids_from_ifconfig(out)
+                    if vids:
+                        iface_entry["vlan"]["ids"].extend(
+                            [v for v in vids if v not in iface_entry["vlan"]["ids"]]
+                        )
+                        iface_entry["vlan"]["sources"].append("ifconfig")
+            except Exception:
+                pass
 
         if lldp_json:
             iface_entry["lldp"]["neighbors"] = _extract_lldp_neighbors(lldp_json, iface)
@@ -739,6 +851,17 @@ def _discover_topology_sync(
             elif err.strip():
                 iface_entry["neighbor_cache"]["error"] = err.strip()
 
+        # macOS ifconfig support (Sync)
+        if shutil.which("ifconfig"):
+            rc, out, err = _run_cmd(["ifconfig", iface], timeout_s=2, logger=logger)
+            if rc == 0 and out.strip():
+                vids = _parse_vlan_ids_from_ifconfig(out)
+                if vids:
+                    iface_entry["vlan"]["ids"].extend(
+                        [v for v in vids if v not in iface_entry["vlan"]["ids"]]
+                    )
+                    iface_entry["vlan"]["sources"].append("ifconfig")
+
         # VLAN IDs from ip link details
         if has_ip:
             rc, out, err = _run_cmd(
@@ -773,6 +896,31 @@ def _discover_topology_sync(
         # LLDP neighbors
         if lldp_json:
             iface_entry["lldp"]["neighbors"] = _extract_lldp_neighbors(lldp_json, iface)
+
+        # LLDP via tcpdump (fallback if lldpctl missing)
+        if has_tcpdump and not has_lldpctl:
+            rc, out, err = _run_cmd(
+                [
+                    "tcpdump",
+                    "-nn",
+                    "-v",
+                    "-s",
+                    "1500",
+                    "-i",
+                    iface,
+                    "-c",
+                    "1",
+                    "ether",
+                    "proto",
+                    "0x88cc",
+                ],
+                timeout_s=3,
+                logger=logger,
+            )
+            if out.strip():
+                neighbors = _parse_lldp_from_tcpdump(out)
+                if neighbors:
+                    iface_entry["lldp"]["neighbors"].extend(neighbors)
 
         # CDP observations (best-effort, short timeout)
         if has_tcpdump:

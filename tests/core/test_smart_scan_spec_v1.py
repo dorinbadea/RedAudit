@@ -114,6 +114,7 @@ def test_low_visibility_no_trigger_alone():
         device_type_hints=[],
         identity_score=3,
         identity_threshold=3,
+        identity_evidence=False,
     )
     assert trigger is False
     assert "low_visibility" not in reasons
@@ -146,6 +147,7 @@ def test_low_visibility_triggers_with_weak_identity():
         device_type_hints=[],
         identity_score=1,
         identity_threshold=3,
+        identity_evidence=False,
     )
     assert trigger is True
     assert "identity_weak" in reasons

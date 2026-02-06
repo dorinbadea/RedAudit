@@ -149,6 +149,29 @@ def test_scan_vulnerabilities_web_basic_https():
     assert finding["tls"] == "ok"
 
 
+def test_scan_vulnerabilities_web_propagates_http_server():
+    app = _make_app()
+    app.config["scan_mode"] = "normal"
+    app.extra_tools = {}
+
+    host_info = {
+        "ip": "10.0.0.9",
+        "ports": [{"port": 80, "service": "http", "is_web_service": True}],
+    }
+
+    headers = "HTTP/1.1 200 OK\nServer: TestSrv\n"
+    with patch(
+        "redaudit.core.auditor_vuln.http_enrichment",
+        return_value={"curl_headers": headers},
+    ):
+        result = app.scan_vulnerabilities_web(host_info)
+
+    assert result["host"] == "10.0.0.9"
+    agentless = host_info.get("agentless_fingerprint") or {}
+    assert agentless.get("http_server") == "TestSrv"
+    assert agentless.get("http_source") == "enrichment"
+
+
 def test_scan_vulnerabilities_web_no_web_ports():
     auditor = _DummyAuditor()
     auditor.config["scan_mode"] = "normal"
@@ -409,6 +432,27 @@ def test_scan_vulnerabilities_concurrent_no_web_hosts():
     auditor.scan_vulnerabilities_concurrent([{"ip": "10.0.0.4", "web_ports_count": 0}])
 
 
+def test_scan_vulnerabilities_concurrent_skips_upnp_http_only(monkeypatch):
+    auditor = _DummyAuditor()
+    called = []
+
+    def _fake_scan(host, **_kwargs):
+        called.append(host["ip"])
+        return {"host": host["ip"], "vulnerabilities": []}
+
+    monkeypatch.setattr(auditor, "scan_vulnerabilities_web", _fake_scan)
+
+    host_results = [
+        {
+            "ip": "10.0.0.8",
+            "web_ports_count": 0,
+            "agentless_fingerprint": {"http_title": "UPnP Device", "http_source": "upnp"},
+        }
+    ]
+    auditor.scan_vulnerabilities_concurrent(host_results)
+    assert not called
+
+
 def test_scan_vulnerabilities_concurrent_fallback_interrupt(monkeypatch):
     auditor = _DummyAuditor()
     auditor.interrupted = True
@@ -615,3 +659,502 @@ def test_sqlmap_not_called_when_unavailable(monkeypatch):
     # sqlmap should NOT have been called
     sqlmap_calls = [t for t in tools_called if "sqlmap" in t]
     assert len(sqlmap_calls) == 0, "sqlmap should not be called when unavailable"
+
+
+def test_run_vuln_tools_parallel_future_exception(monkeypatch):
+    """Test exception handling within the parallel execution loop."""
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    # Ensure tools are present so futures are submitted
+    auditor.extra_tools = {"whatweb": "whatweb", "nikto": "nikto"}
+    auditor.logger = MagicMock()
+
+    # We need to mock ThreadPoolExecutor context manager
+    mock_executor = MagicMock()
+
+    # We need a future that raises when result() is called
+    mock_future = MagicMock()
+    mock_future.result.side_effect = RuntimeError("Worker crashed")
+
+    context_manager = MagicMock()
+    context_manager.__enter__.return_value = mock_executor
+    context_manager.__exit__.return_value = None
+
+    # Mock submit to return our crashing future
+    mock_executor.submit.return_value = mock_future
+
+    # Mock as_completed to yield our crashing future
+    def fake_as_completed(futures):
+        yield mock_future
+
+    monkeypatch.setattr(
+        "redaudit.core.auditor_vuln.ThreadPoolExecutor", lambda **k: context_manager
+    )
+    monkeypatch.setattr("redaudit.core.auditor_vuln.as_completed", fake_as_completed)
+
+    # Bypass helpers
+    monkeypatch.setattr(auditor, "_should_run_nikto", lambda *a: (True, ""))
+
+    finding = {}
+    auditor._run_vuln_tools_parallel(
+        ip="10.0.0.1", port=443, url="https://10.0.0.1", scheme="https", finding=finding
+    )
+
+    # Logger should have caught the exception
+    assert auditor.logger.debug.called
+    found = False
+    for call in auditor.logger.debug.call_args_list:
+        if "Parallel vuln tool error" in str(call):
+            found = True
+            break
+    assert found, "Expected 'Parallel vuln tool error' not found in logger calls"
+
+
+def test_run_vuln_tools_parallel_whatweb_timeout(monkeypatch):
+    """Test specific timeout handling in whatweb parallel runner."""
+    auditor = _DummyAuditor()
+    auditor.extra_tools = {"whatweb": "whatweb"}
+
+    # Mock command runner to timeout
+    runner_mock = MagicMock()
+    result_mock = MagicMock()
+    result_mock.timed_out = True
+    runner_mock.run.return_value = result_mock
+
+    monkeypatch.setattr("redaudit.core.auditor_vuln.CommandRunner", lambda **k: runner_mock)
+
+    # We need to execute the inner run_whatweb function.
+    # Since it's inside _run_vuln_tools_parallel, we run the whole thing.
+    # We can use the real ThreadPoolExecutor or mock it to run synchronously for simplicity.
+    # Let's use real execution but with single worker or mock.
+    # Mocking is safer to avoid creating threads in unit tests if possible,
+    # but the previous test mocked everything.
+    # Let's trust the logic and just inspect result.
+
+    # Actually, if whatweb times out, it returns {}.
+    res = auditor._run_vuln_tools_parallel("10.0.0.1", 443, "https://10.0.0.1", "https", {})
+    assert "whatweb" not in res
+
+
+def test_extract_server_header_and_app_scan_policy(monkeypatch):
+    auditor = _DummyAuditor()
+    headers = "HTTP/1.1 200 OK\nServer: TestSrv\n"
+    assert auditor_vuln.AuditorVuln._extract_server_header(headers) == "TestSrv"
+
+    auditor.config["scan_mode"] = "normal"
+    allowed, reason = auditor._should_run_app_scans({}, {})
+    assert allowed is False
+    assert reason == "mode_not_full"
+
+    auditor.config["scan_mode"] = "completo"
+    monkeypatch.setattr(auditor_vuln, "is_infra_identity", lambda **_k: (True, "infra"))
+    allowed, reason = auditor._should_run_app_scans({}, {})
+    assert allowed is False
+    assert reason == "infra"
+
+    monkeypatch.setattr(auditor_vuln, "is_infra_identity", lambda **_k: (False, ""))
+    allowed, reason = auditor._should_run_app_scans({}, {})
+    assert allowed is True
+    assert reason == ""
+
+
+def test_should_run_nikto_profiles(monkeypatch):
+    auditor = _DummyAuditor()
+    host_info = {"agentless_fingerprint": {}, "device_type_hints": []}
+
+    auditor.config["nuclei_profile"] = "fast"
+    allowed, reason = auditor._should_run_nikto(host_info, {})
+    assert allowed is False
+    assert reason == "profile_fast"
+
+    auditor.config["nuclei_profile"] = "balanced"
+    monkeypatch.setattr(auditor_vuln, "is_infra_identity", lambda **_k: (True, "router"))
+    allowed, reason = auditor._should_run_nikto(host_info, {})
+    assert allowed is False
+    assert reason == "infra_router"
+
+    auditor.config["nuclei_profile"] = "full"
+    monkeypatch.setattr(auditor_vuln, "is_infra_identity", lambda **_k: (False, ""))
+    allowed, reason = auditor._should_run_nikto(host_info, {})
+    assert allowed is True
+
+
+def test_scan_vulnerabilities_web_status_callback_and_agentless(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "normal"
+    auditor._run_vuln_tools_sequential = MagicMock()
+
+    host_info = {
+        "ip": "10.0.0.20",
+        "ports": [{"port": 80, "service": "http", "is_web_service": True}],
+        "agentless_fingerprint": {"http_source": "upnp", "http_title": "UPNP Device"},
+    }
+    host_obj = Host(ip="10.0.0.20")
+
+    statuses = []
+
+    def _status(msg):
+        statuses.append(msg)
+
+    monkeypatch.setattr(
+        auditor_vuln,
+        "http_enrichment",
+        lambda *_a, **_k: {"curl_headers": "Server: TestSrv"},
+    )
+    monkeypatch.setattr(auditor_vuln, "tls_enrichment", lambda *_a, **_k: {})
+
+    result = auditor.scan_vulnerabilities_web(host_info, status_callback=_status, host_obj=host_obj)
+    assert result is not None
+    assert statuses
+    assert host_info["agentless_fingerprint"]["http_server"] == "TestSrv"
+    assert host_info["agentless_fingerprint"]["http_source"] == "enrichment"
+    assert host_info["agentless_fingerprint"]["upnp_device_name"] == "UPNP Device"
+    assert host_obj.agentless_fingerprint["http_server"] == "TestSrv"
+
+
+def test_run_vuln_tools_parallel_collects_results(monkeypatch, tmp_path):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.config["zap_enabled"] = True
+    auditor.extra_tools = {
+        "testssl.sh": "testssl",
+        "whatweb": "whatweb",
+        "nikto": "nikto",
+        "sqlmap": "sqlmap",
+        "zap.sh": "zap.sh",
+    }
+    auditor.logger = MagicMock()
+
+    def _runner_factory(**_kwargs):
+        class _Runner:
+            def run(self, cmd, **_kw):
+                tool = cmd[0]
+                if "whatweb" in tool:
+                    return _DummyResult(stdout="whatweb output")
+                if "nikto" in tool:
+                    return _DummyResult(stdout="+ finding 1\n+ finding 2")
+                if "sqlmap" in tool:
+                    return _DummyResult(stdout="is vulnerable")
+                if "zap.sh" in tool:
+                    return _DummyResult(stdout="ok")
+                return _DummyResult()
+
+        return _Runner()
+
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _runner_factory)
+    monkeypatch.setattr(
+        auditor_vuln, "ssl_deep_analysis", lambda *_a, **_k: {"vulnerabilities": [1]}
+    )
+    monkeypatch.setattr(
+        "redaudit.core.verify_vuln.filter_nikto_false_positives",
+        lambda findings, *_a, **_k: findings[:1],
+    )
+    monkeypatch.setattr("os.path.exists", lambda _p: True)
+    monkeypatch.setattr(
+        "tempfile.gettempdir",
+        lambda: str(tmp_path),
+    )
+
+    finding = {"headers": "", "server": "apache"}
+    res = auditor._run_vuln_tools_parallel(
+        "10.0.0.1",
+        443,
+        "https://10.0.0.1",
+        "https",
+        finding,
+        host_info={"device_type_hints": []},
+    )
+    assert "testssl_analysis" in res
+    assert "whatweb" in res
+    assert "nikto_findings" in res
+    assert "nikto_filtered_count" in res
+    assert "sqlmap_findings" in res
+    assert "zap_report" in res
+
+
+def test_run_vuln_tools_parallel_skips_nikto(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.extra_tools = {"nikto": "nikto"}
+    auditor.logger = MagicMock()
+
+    monkeypatch.setattr(auditor, "_should_run_nikto", lambda *_a, **_k: (False, "infra"))
+    res = auditor._run_vuln_tools_parallel(
+        "10.0.0.1",
+        80,
+        "http://10.0.0.1",
+        "http",
+        {"headers": "", "server": "apache"},
+        host_info={"device_type_hints": []},
+    )
+    assert res["nikto_skipped"] == "infra"
+
+
+def test_run_vuln_tools_parallel_cdn_skip(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.extra_tools = {"nikto": "nikto"}
+    auditor.logger = MagicMock()
+
+    res = auditor._run_vuln_tools_parallel(
+        "10.0.0.1",
+        80,
+        "http://10.0.0.1",
+        "http",
+        {"headers": "cf-ray: x", "server": "cloudflare"},
+        host_info={},
+    )
+    assert res["nikto_skipped"] == "cdn_proxy_detected"
+    assert "nikto_server" in res
+
+
+def test_run_vuln_tools_parallel_app_scan_policy(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.config["zap_enabled"] = True
+    auditor.extra_tools = {"sqlmap": "sqlmap"}
+    monkeypatch.setattr(
+        "shutil.which",
+        lambda tool: "/usr/bin/zap.sh" if tool == "zap.sh" else None,
+    )
+
+    res = auditor._run_vuln_tools_parallel(
+        "10.0.0.1",
+        80,
+        "http://10.0.0.1",
+        "http",
+        {},
+        app_scan_allowed=False,
+        app_scan_reason="policy",
+    )
+    assert res["sqlmap_skipped"] == "policy"
+    assert res["zap_skipped"] == "policy"
+
+
+def test_run_vuln_tools_parallel_zap_missing(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.config["zap_enabled"] = True
+    monkeypatch.setattr("shutil.which", lambda tool: None)
+    res = auditor._run_vuln_tools_parallel("10.0.0.1", 80, "http://10.0.0.1", "http", {})
+    assert "zap_report" not in res
+
+
+def test_run_vuln_tools_parallel_testssl_empty(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.extra_tools = {"testssl.sh": "testssl"}
+    monkeypatch.setattr(auditor_vuln, "ssl_deep_analysis", lambda *_a, **_k: {})
+    res = auditor._run_vuln_tools_parallel("10.0.0.1", 443, "https://10.0.0.1", "https", {})
+    assert "testssl_analysis" not in res
+
+
+def test_run_vuln_tools_parallel_whatweb_exception(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.extra_tools = {"whatweb": "whatweb"}
+    auditor.logger = MagicMock()
+
+    class _Runner:
+        def __init__(self, **_k):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _Runner)
+    res = auditor._run_vuln_tools_parallel("10.0.0.1", 80, "http://10.0.0.1", "http", {})
+    assert res == {}
+    assert auditor.logger.debug.called
+
+
+def test_run_vuln_tools_parallel_nikto_timeout(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.extra_tools = {"nikto": "nikto"}
+
+    class _Runner:
+        def __init__(self, **_k):
+            pass
+
+        def run(self, *_a, **_k):
+            return _DummyResult(stdout="", stderr="", timed_out=True)
+
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _Runner)
+    res = auditor._run_vuln_tools_parallel(
+        "10.0.0.1",
+        80,
+        "http://10.0.0.1",
+        "http",
+        {"headers": "", "server": "apache"},
+    )
+    assert res["nikto_timeout"] is True
+
+
+def test_run_vuln_tools_parallel_sqlmap_exception(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.extra_tools = {"sqlmap": "sqlmap"}
+    auditor.logger = MagicMock()
+
+    class _Runner:
+        def __init__(self, **_k):
+            pass
+
+        def run(self, *_a, **_k):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _Runner)
+    res = auditor._run_vuln_tools_parallel("10.0.0.1", 80, "http://10.0.0.1", "http", {})
+    assert res == {}
+    assert auditor.logger.debug.called
+
+
+def test_run_vuln_tools_parallel_zap_exception(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.config["zap_enabled"] = True
+    auditor.logger = MagicMock()
+    monkeypatch.setattr(
+        "shutil.which", lambda tool: "/usr/bin/zap.sh" if tool == "zap.sh" else None
+    )
+
+    class _Runner:
+        def __init__(self, **_k):
+            pass
+
+        def run(self, *_a, **_k):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _Runner)
+    res = auditor._run_vuln_tools_parallel("10.0.0.1", 80, "http://10.0.0.1", "http", {})
+    assert res == {}
+    assert auditor.logger.debug.called
+
+
+def test_run_vuln_tools_sequential_nikto_timeout(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.extra_tools = {"nikto": "nikto"}
+
+    class _Runner:
+        def __init__(self, **_k):
+            pass
+
+        def run(self, *_a, **_k):
+            return _DummyResult(stdout="", stderr="", timed_out=True)
+
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _Runner)
+    finding = {}
+    auditor._run_vuln_tools_sequential(
+        ip="10.0.0.1",
+        port=80,
+        url="http://10.0.0.1",
+        scheme="http",
+        finding=finding,
+    )
+    assert finding["nikto_timeout"] is True
+
+
+def test_run_vuln_tools_sequential_nikto_exception(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.extra_tools = {"nikto": "nikto"}
+    auditor.logger = MagicMock()
+
+    class _Runner:
+        def __init__(self, **_k):
+            pass
+
+        def run(self, *_a, **_k):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _Runner)
+    finding = {}
+    auditor._run_vuln_tools_sequential(
+        ip="10.0.0.1",
+        port=80,
+        url="http://10.0.0.1",
+        scheme="http",
+        finding=finding,
+    )
+    assert auditor.logger.debug.called
+
+
+def test_run_vuln_tools_sequential_full(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["scan_mode"] = "completo"
+    auditor.extra_tools = {"testssl.sh": "testssl", "whatweb": "whatweb", "nikto": "nikto"}
+
+    def _runner_factory(**_kwargs):
+        class _Runner:
+            def run(self, cmd, **_kw):
+                tool = cmd[0]
+                if "whatweb" in tool:
+                    return _DummyResult(stdout="whatweb output")
+                if "nikto" in tool:
+                    return _DummyResult(stdout="+ finding 1\n+ finding 2")
+                return _DummyResult()
+
+        return _Runner()
+
+    monkeypatch.setattr(auditor_vuln, "CommandRunner", _runner_factory)
+    monkeypatch.setattr(
+        auditor_vuln, "ssl_deep_analysis", lambda *_a, **_k: {"vulnerabilities": [1]}
+    )
+    monkeypatch.setattr(
+        "redaudit.core.verify_vuln.filter_nikto_false_positives",
+        lambda findings, *_a, **_k: findings[:1],
+    )
+
+    finding = {}
+    auditor._run_vuln_tools_sequential(
+        ip="10.0.0.1",
+        port=443,
+        url="https://10.0.0.1",
+        scheme="https",
+        finding=finding,
+    )
+    assert "testssl_analysis" in finding
+    assert "whatweb" in finding
+    assert "nikto_findings" in finding
+    assert "nikto_filtered_count" in finding
+
+
+def test_scan_vulnerabilities_concurrent_rich_progress(monkeypatch):
+    auditor = _DummyAuditor()
+    auditor.config["threads"] = 2
+    auditor.results["vulnerabilities"] = []
+
+    host = Host(ip="10.0.0.50", web_ports_count=1)
+    host_dict = {"ip": "10.0.0.51", "web_ports_count": 1}
+
+    class _Progress:
+        def __init__(self):
+            self.console = MagicMock()
+            self.tasks = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+        def add_task(self, *_a, **_k):
+            task_id = len(self.tasks) + 1
+            self.tasks[task_id] = {}
+            return task_id
+
+        def update(self, *_a, **_k):
+            return None
+
+    progress = _Progress()
+
+    def _scan(host_info, status_callback=None, host_obj=None):
+        if status_callback:
+            status_callback("running")
+        return {"host": host_info["ip"], "vulnerabilities": [{"name": "test"}]}
+
+    auditor.get_progress_console = MagicMock(return_value=object())
+    auditor.get_standard_progress = MagicMock(return_value=progress)
+    auditor.scan_vulnerabilities_web = _scan
+
+    auditor.scan_vulnerabilities_concurrent([host, host_dict])
+    assert auditor.results["vulnerabilities"]

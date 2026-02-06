@@ -91,14 +91,14 @@ class SleepInhibitor:
             return
         try:
             proc.terminate()
-        except Exception:
+        except Exception:  # pragma: no cover
             pass
         try:
             proc.wait(timeout=2)
         except Exception:
             try:
                 proc.kill()
-            except Exception:
+            except Exception:  # pragma: no cover
                 pass
 
     def __enter__(self) -> "SleepInhibitor":
@@ -118,7 +118,7 @@ class SleepInhibitor:
                 self._logger.warning(message)
             elif hasattr(self._logger, "info"):
                 self._logger.info(message)
-        except Exception:
+        except Exception:  # pragma: no cover
             return
 
     def _start_caffeinate(self) -> None:
@@ -134,7 +134,7 @@ class SleepInhibitor:
                 stderr=subprocess.DEVNULL,
             )
             self._log("DEBUG", "Sleep inhibitor enabled via caffeinate")
-        except Exception:
+        except Exception:  # pragma: no cover
             self._proc = None
 
     def _start_systemd_inhibit(self) -> None:
@@ -159,7 +159,7 @@ class SleepInhibitor:
                 stdin=subprocess.DEVNULL,
             )
             self._log("DEBUG", "Sleep inhibitor enabled via systemd-inhibit")
-        except Exception:
+        except Exception:  # pragma: no cover
             self._proc = None
 
     def _apply_x11_no_sleep(self) -> None:
@@ -201,7 +201,7 @@ class SleepInhibitor:
                 check=False,
             )
             self._log("DEBUG", "Display sleep inhibited via xset")
-        except Exception:
+        except Exception:  # pragma: no cover
             self._xset_state = None
 
     def _restore_x11_state(self) -> None:

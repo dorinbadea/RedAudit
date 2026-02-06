@@ -81,6 +81,7 @@ sudo apt install python3-nmap python3-cryptography python3-netifaces
 - **Check**: Look for the `[deep]` marker in the CLI output.
 - **Timeouts**: Host scans are bounded by nmap `--host-timeout` and are aborted if exceeded. If you still see long stalls,
   check `session_logs/session_*.log` under the output directory to identify the active tool.
+- **Nikto visibility**: When Nikto exceeds its timeout, the progress detail shows `nikto timeout` and the scan continues.
 
 ### 6b. System sleep / screen blanking during long scans (v3.5+)
 
@@ -123,12 +124,15 @@ sudo bash redaudit_install.sh -y
 ### 8b. Version/banner not refreshed after update
 
 **Symptom**: You updated RedAudit but the banner still shows the old version.
-**Cause**: Your shell may be caching the executable path (or you're still in the same terminal session).
+**Cause**: Your shell may be caching the executable path (or you're still in the same terminal session). If you keep a git checkout, your prompt/tag may also be stale if the repo is on an older commit or tags are outdated.
 **Resolution**:
 
 - Restart the terminal (recommended).
 - If you must stay in the same shell session, run `hash -r` (zsh/bash) to clear the command cache.
 - Verify which binary is being executed: `command -v redaudit`.
+- If you're in a RedAudit git repo, the updater now refreshes tags and fast‑forwards `main` when the repo is clean. If you have local changes or are on a different branch/tag, update manually:
+  - `git fetch --tags origin`
+  - `git checkout main && git pull --ff-only origin main`
 
 ### 9. IPv6 scanning not working (v3.0)
 
@@ -139,6 +143,35 @@ sudo bash redaudit_install.sh -y
 - Verify IPv6 is enabled: `ip -6 addr show`
 - Check Nmap supports IPv6: `nmap -6 ::1`
 - Use `--ipv6` flag for IPv6-only mode
+
+### 9b. DHCP discovery timeout (no response)
+
+**Symptom**: You see `dhcp: no response to DHCP broadcast on <iface> (timeout)` in Net Discovery.
+**Explanation**: DHCP broadcast probes are best-effort. In lab, container, or static networks there may be no DHCP server, or broadcasts may be blocked.
+**Resolution**:
+
+- Confirm the interface is up and has carrier.
+- If the interface is virtual/bridge (Docker, VM), DHCP may be intentionally absent.
+- On wireless, AP isolation can block broadcast traffic.
+- If your network is static, you can ignore this warning.
+
+### 9c. Docker default network discovery timeout (expected)
+
+**Symptom**: Host discovery times out on `172.17.0.0/16` (or `docker0`) and no hosts are found.
+**Explanation**: The default Docker bridge network is often empty or isolated. If you are not scanning containers, timeouts are expected.
+**Resolution**:
+
+- Ignore the timeout when Docker is unused.
+- Remove `172.17.0.0/16` from targets if it is not relevant.
+
+### 9d. VPN interface listed with no open ports (inactive VPN)
+
+**Symptom**: A VPN asset appears with the same MAC as the gateway but no open ports.
+**Explanation**: Routers can expose a virtual VPN interface/IP. When the VPN is inactive, it can appear as a separate asset with no open ports. This is expected behavior.
+**Resolution**:
+
+- Treat it as expected if the VPN is inactive.
+- If the VPN should be active, re-scan the VPN subnet and validate ports.
 
 ### 10. NVD API rate limit errors (v3.0)
 
@@ -187,7 +220,16 @@ sudo apt update && sudo apt install nbtscan netdiscover fping avahi-utils snmp l
 sudo apt update && sudo apt install nuclei
 ```
 
-### 12c. testssl.sh not found / TLS deep checks skipped (v3.6.1+)
+### 12c. Nuclei partial run / timeout batches
+
+**Symptom**: Reports show `nuclei.partial: true` with timeout or failed batches.
+**Cause**: Nuclei batch runs exceeded the per-batch timeout.
+**Resolution**:
+
+- Reduce the number of HTTP targets or rerun with fewer subnets.
+- Lower the Nuclei rate limit or increase the timeout in config if needed.
+
+### 12d. testssl.sh not found / TLS deep checks skipped (v3.6.1+)
 
 **Symptom**: TLS deep checks are skipped or you never see TestSSL output in findings.
 **Cause**: `testssl.sh` is not installed or not in the expected path.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Reporter Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 Report generation and saving functionality.
@@ -14,7 +14,7 @@ import uuid
 import re
 import ipaddress
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from redaudit.utils.constants import (
     DEFAULT_IDENTITY_THRESHOLD,
@@ -25,8 +25,9 @@ from redaudit.utils.constants import (
 from redaudit.utils.paths import get_default_reports_base_dir, maybe_chown_tree_to_invoking_user
 from redaudit.core.crypto import encrypt_data
 from redaudit.core.entity_resolver import reconcile_assets
-from redaudit.core.siem import enrich_report_for_siem
+from redaudit.core.siem import enrich_report_for_siem, enrich_vulnerability_severity
 from redaudit.core.scanner_versions import get_scanner_versions
+from redaudit.core.scanner.nmap import get_nmap_arguments
 
 
 def _get_hostname_fallback(host: Dict) -> str:
@@ -46,6 +47,14 @@ def _get_hostname_fallback(host: Dict) -> str:
     return ""
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    """Return an integer fallback for potentially malformed persisted values."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
     """Create a safe, minimal snapshot of the run configuration."""
     scan_mode = config.get("scan_mode")
@@ -54,6 +63,14 @@ def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
         identity_threshold = DEFAULT_IDENTITY_THRESHOLD
     if scan_mode in ("completo", "full") and identity_threshold < 4:
         identity_threshold = 4
+    leak_follow_allowlist = config.get("leak_follow_allowlist")
+    if isinstance(leak_follow_allowlist, str):
+        leak_follow_allowlist = [leak_follow_allowlist]
+    if not isinstance(leak_follow_allowlist, list):
+        leak_follow_allowlist = []
+    leak_follow_allowlist = [
+        str(item).strip() for item in leak_follow_allowlist if str(item).strip()
+    ]
     return {
         "targets": config.get("target_networks", []),
         "scan_mode": scan_mode,
@@ -62,6 +79,8 @@ def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
         "rate_limit_delay": config.get("rate_limit_delay", config.get("rate_limit")),
         "low_impact_enrichment": config.get("low_impact_enrichment"),
         "deep_scan_budget": config.get("deep_scan_budget"),
+        "deep_id_scan": config.get("deep_id_scan"),
+        "trust_hyperscan": config.get("trust_hyperscan"),
         "identity_threshold": identity_threshold,
         "udp_mode": config.get("udp_mode"),
         "udp_top_ports": config.get("udp_top_ports"),
@@ -75,6 +94,15 @@ def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
         "windows_verify_max_targets": config.get("windows_verify_max_targets"),
         "scan_vulnerabilities": config.get("scan_vulnerabilities"),
         "nuclei_enabled": config.get("nuclei_enabled"),
+        "nuclei_profile": config.get("nuclei_profile"),
+        "nuclei_full_coverage": config.get("nuclei_full_coverage"),
+        "nuclei_timeout": config.get("nuclei_timeout"),
+        "nuclei_max_runtime": config.get("nuclei_max_runtime"),
+        "leak_follow_mode": config.get("leak_follow_mode", "off"),
+        "leak_follow_allowlist": leak_follow_allowlist,
+        "iot_probes_mode": config.get("iot_probes_mode", "off"),
+        "iot_probe_budget_seconds": config.get("iot_probe_budget_seconds"),
+        "iot_probe_timeout_seconds": config.get("iot_probe_timeout_seconds"),
         "cve_lookup_enabled": config.get("cve_lookup_enabled"),
         "dry_run": config.get("dry_run"),
         "prevent_sleep": config.get("prevent_sleep"),
@@ -96,6 +124,8 @@ def _summarize_net_discovery(net_discovery: Dict[str, Any]) -> Dict[str, Any]:
     l2_note = net_discovery.get("l2_warning_note")
     if l2_note:
         summary["network_topology_notes"] = [l2_note]
+    udp_ports_map = net_discovery.get("hyperscan_udp_ports") or {}
+    udp_ports_total = sum(len(ports or []) for ports in udp_ports_map.values())
     summary["counts"] = {
         "dhcp_servers": len(net_discovery.get("dhcp_servers", []) or []),
         "alive_hosts": len(net_discovery.get("alive_hosts", []) or []),
@@ -105,6 +135,7 @@ def _summarize_net_discovery(net_discovery: Dict[str, Any]) -> Dict[str, Any]:
         "upnp_devices": len(net_discovery.get("upnp_devices", []) or []),
         "candidate_vlans": len(net_discovery.get("candidate_vlans", []) or []),
         "hyperscan_tcp_hosts": len(net_discovery.get("hyperscan_tcp_hosts", {}) or {}),
+        "hyperscan_udp_ports": udp_ports_total,
         "potential_backdoors": len(net_discovery.get("potential_backdoors", []) or []),
     }
 
@@ -112,7 +143,10 @@ def _summarize_net_discovery(net_discovery: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(redteam, dict) and redteam:
         summary["redteam"] = {
             "targets_considered": redteam.get("targets_considered", 0),
-            "masscan_open_ports": len((redteam.get("masscan") or {}).get("open_ports", []) or []),
+            "masscan_open_ports": len(
+                (redteam.get("rustscan") or redteam.get("masscan") or {}).get("open_ports", [])
+                or []
+            ),
             "snmp_hosts": len((redteam.get("snmp") or {}).get("hosts", []) or []),
             "smb_hosts": len((redteam.get("smb") or {}).get("hosts", []) or []),
             "rpc_hosts": len((redteam.get("rpc") or {}).get("hosts", []) or []),
@@ -125,6 +159,86 @@ def _summarize_net_discovery(net_discovery: Dict[str, Any]) -> Dict[str, Any]:
             "ipv6_neighbors": len((redteam.get("ipv6_discovery") or {}).get("neighbors", []) or []),
         }
     return summary
+
+
+def _infer_subnet_label(ip: str) -> str:
+    try:
+        addr = ipaddress.ip_address(ip)
+        if addr.version == 4:
+            network = ipaddress.ip_network(f"{ip}/24", strict=False)
+        else:
+            network = ipaddress.ip_network(f"{ip}/64", strict=False)
+        return str(network)
+    except Exception:
+        return "unknown"
+
+
+def _summarize_hyperscan_vs_final(
+    hosts: List[Dict[str, Any]], net_discovery: Dict[str, Any]
+) -> Dict:
+    if not isinstance(net_discovery, dict) or not net_discovery:
+        return {}
+
+    hyperscan_first = net_discovery.get("hyperscan_first_tcp_hosts") or {}
+    hyperscan_tcp = hyperscan_first or net_discovery.get("hyperscan_tcp_hosts") or {}
+    hyperscan_udp = net_discovery.get("hyperscan_udp_ports") or {}
+    if hyperscan_first:
+        # HyperScan-First only covers TCP; avoid mixing UDP IoT signals from net discovery.
+        hyperscan_udp = {}
+
+    if not hyperscan_tcp and not hyperscan_udp:
+        return {}
+
+    by_subnet: Dict[str, Dict[str, int]] = {}
+    totals = {
+        "hosts": 0,
+        "hyperscan_ports": 0,
+        "final_ports": 0,
+        "missed_tcp": 0,
+        "missed_udp": 0,
+    }
+
+    for host in hosts or []:
+        if not isinstance(host, dict):
+            continue
+        ip = host.get("ip")
+        if not ip:
+            continue
+
+        ports = host.get("ports") or []
+        final_tcp = {p.get("port") for p in ports if p.get("protocol") == "tcp" and p.get("port")}
+        final_udp = {p.get("port") for p in ports if p.get("protocol") == "udp" and p.get("port")}
+
+        htcp_set = set(hyperscan_tcp.get(ip, []) or [])
+        hudp_set = set(hyperscan_udp.get(ip, []) or [])
+
+        subnet = _infer_subnet_label(str(ip))
+        entry = by_subnet.setdefault(
+            subnet,
+            {
+                "hosts": 0,
+                "hyperscan_ports": 0,
+                "final_ports": 0,
+                "missed_tcp": 0,
+                "missed_udp": 0,
+            },
+        )
+
+        entry["hosts"] += 1
+        hyperscan_ports = len(htcp_set) + len(hudp_set)
+        final_ports = len(final_tcp) + len(final_udp)
+        entry["hyperscan_ports"] += hyperscan_ports
+        entry["final_ports"] += final_ports
+        entry["missed_tcp"] += len(final_tcp - htcp_set)
+        entry["missed_udp"] += len(final_udp - hudp_set)
+
+        totals["hosts"] += 1
+        totals["hyperscan_ports"] += hyperscan_ports
+        totals["final_ports"] += final_ports
+        totals["missed_tcp"] += len(final_tcp - htcp_set)
+        totals["missed_udp"] += len(final_udp - hudp_set)
+
+    return {"totals": totals, "by_subnet": by_subnet}
 
 
 def _summarize_agentless(
@@ -185,9 +299,12 @@ def _summarize_smart_scan(hosts: list, config: Optional[Dict[str, Any]] = None) 
     signals: Dict[str, int] = {}
     reasons: Dict[str, int] = {}
     phase0_signals_collected = 0
-    phase0_enabled = (
-        bool(config.get("low_impact_enrichment", False)) if isinstance(config, dict) else False
-    )
+    phase0_enabled = False
+    if config is not None:
+        try:
+            phase0_enabled = bool(config.get("low_impact_enrichment", False))
+        except Exception:
+            phase0_enabled = False
 
     for host in hosts or []:
         smart = host.get("smart_scan")
@@ -219,7 +336,7 @@ def _summarize_smart_scan(hosts: list, config: Optional[Dict[str, Any]] = None) 
                 phase0_signals_collected += 1
 
     budget = 0
-    if isinstance(config, dict):
+    if config is not None:
         try:
             budget = int(config.get("deep_scan_budget", 0))
             if budget < 0:
@@ -245,7 +362,7 @@ def _summarize_smart_scan(hosts: list, config: Optional[Dict[str, Any]] = None) 
 
 def _infer_vuln_source(vuln: Dict[str, Any]) -> str:
     source = vuln.get("source") or (vuln.get("original_severity") or {}).get("tool") or ""
-    if source:
+    if source and source != "redaudit":
         return source
     if vuln.get("template_id") or vuln.get("matched_at"):
         return "nuclei"
@@ -255,7 +372,7 @@ def _infer_vuln_source(vuln: Dict[str, Any]) -> str:
         return "testssl"
     if vuln.get("whatweb"):
         return "whatweb"
-    return "unknown"
+    return source or "unknown"
 
 
 def _summarize_vulnerabilities(vuln_entries: list) -> Dict[str, Any]:
@@ -269,6 +386,65 @@ def _summarize_vulnerabilities(vuln_entries: list) -> Dict[str, Any]:
             source = _infer_vuln_source(vuln)
             sources[source] = sources.get(source, 0) + 1
     return {"total": total, "sources": sources}
+
+
+def _summarize_vulnerabilities_for_pipeline(vuln_entries: list) -> Dict[str, Any]:
+    total = 0
+    sources: Dict[str, int] = {}
+    for entry in vuln_entries or []:
+        if not entry:
+            continue
+        for vuln in entry.get("vulnerabilities", []) or []:
+            total += 1
+            source = _infer_vuln_source(vuln)
+            if source == "unknown":
+                enriched = enrich_vulnerability_severity(vuln)
+                source = _infer_vuln_source(enriched)
+            sources[source] = sources.get(source, 0) + 1
+    return {"total": total, "sources": sources}
+
+
+def _collect_host_ips(host_entries: list) -> Set[str]:
+    ips: Set[str] = set()
+    for entry in host_entries or []:
+        ip = None
+        if isinstance(entry, str):
+            ip = entry
+        elif isinstance(entry, dict):
+            ip = entry.get("ip")
+        else:
+            ip = getattr(entry, "ip", None)
+        if not ip:
+            continue
+        ip_str = str(ip).strip()
+        if ip_str:
+            ips.add(ip_str)
+    return ips
+
+
+def _ensure_hosts_for_vulnerabilities(results: Dict) -> None:
+    hosts = results.get("hosts")
+    if not isinstance(hosts, list):
+        return
+    known = _collect_host_ips(hosts)
+    for entry in results.get("vulnerabilities", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        host_ip = entry.get("host")
+        if not host_ip:
+            continue
+        host_ip = str(host_ip).strip()
+        if not host_ip or host_ip in known:
+            continue
+        hosts.append(
+            {
+                "ip": host_ip,
+                "hostname": "",
+                "status": "unknown",
+                "ports": [],
+            }
+        )
+        known.add(host_ip)
 
 
 def generate_summary(
@@ -311,9 +487,19 @@ def generate_summary(
     if results.get("hosts"):
         results["hosts"] = [h.to_dict() if isinstance(h, Host) else h for h in results["hosts"]]
 
-    unique_hosts = {h for h in (all_hosts or []) if isinstance(h, str) and h.strip()}
+    target_networks = (
+        config.get("target_networks") or config.get("targets") or results.get("targets")
+    )
+    if not isinstance(target_networks, list):
+        target_networks = []
+
+    _ensure_hosts_for_vulnerabilities(results)
+
+    unique_hosts = _collect_host_ips(all_hosts)
+    unique_hosts.update(_collect_host_ips(scanned_results))
+    unique_hosts.update(_collect_host_ips(results.get("hosts", [])))
     summary = {
-        "networks": len(config.get("target_networks", [])),
+        "networks": len(target_networks),
         "hosts_found": len(unique_hosts),
         "hosts_scanned": len(scanned_results),
         "vulns_found": raw_vulns,
@@ -326,7 +512,20 @@ def generate_summary(
     # Attach sanitized config snapshot + pipeline + smart scan summary for reporting.
     results["config_snapshot"] = _build_config_snapshot(config)
     results["smart_scan_summary"] = _summarize_smart_scan(results.get("hosts", []), config)
-    raw_vuln_summary = _summarize_vulnerabilities(results.get("vulnerabilities", []))
+    scope_runtime = results.get("scope_expansion_runtime") or {}
+    leak_runtime = {}
+    if isinstance(scope_runtime, dict):
+        leak_runtime_raw = scope_runtime.get("leak_follow") or {}
+        if isinstance(leak_runtime_raw, dict):
+            leak_runtime = {
+                "mode": leak_runtime_raw.get("mode", "off"),
+                "detected": _safe_int(leak_runtime_raw.get("detected"), 0),
+                "eligible": _safe_int(leak_runtime_raw.get("eligible"), 0),
+                "followed": _safe_int(leak_runtime_raw.get("followed"), 0),
+                "skipped": _safe_int(leak_runtime_raw.get("skipped"), 0),
+                "follow_targets": list(leak_runtime_raw.get("follow_targets") or []),
+            }
+    nmap_args = get_nmap_arguments(str(config.get("scan_mode") or "normal"), config)
     results["pipeline"] = {
         "topology": results.get("topology") or {},
         "net_discovery": _summarize_net_discovery(results.get("net_discovery") or {}),
@@ -334,13 +533,42 @@ def generate_summary(
             "targets": len(unique_hosts),
             "scanned": len(scanned_results),
             "threads": config.get("threads"),
+            "nmap_args": nmap_args,
+            "nmap_timing": config.get("nmap_timing", "T4"),
         },
         "agentless_verify": _summarize_agentless(
             results.get("hosts", []), results.get("agentless_verify") or {}, config
         ),
         "nuclei": results.get("nuclei") or {},
-        "vulnerability_scan": raw_vuln_summary,
+        "vulnerability_scan": {},
+        "deep_scan": {
+            "identity_threshold": results["config_snapshot"].get("identity_threshold"),
+            "deep_scan_budget": results["config_snapshot"].get("deep_scan_budget"),
+            "udp_mode": results["config_snapshot"].get("udp_mode"),
+            "udp_top_ports": results["config_snapshot"].get("udp_top_ports"),
+            "low_impact_enrichment": results["config_snapshot"].get("low_impact_enrichment"),
+        },
+        "scope_expansion": {
+            "leak_follow_mode": results["config_snapshot"].get("leak_follow_mode", "off"),
+            "leak_follow_allowlist": results["config_snapshot"].get("leak_follow_allowlist") or [],
+            "leak_follow_runtime": leak_runtime,
+            "iot_probes_mode": results["config_snapshot"].get("iot_probes_mode", "off"),
+            "iot_probe_budget_seconds": results["config_snapshot"].get("iot_probe_budget_seconds"),
+            "iot_probe_timeout_seconds": results["config_snapshot"].get(
+                "iot_probe_timeout_seconds"
+            ),
+        },
     }
+    auditor_exclusions = results.get("auditor_exclusions")
+    if not isinstance(auditor_exclusions, dict):
+        auditor_exclusions = {"count": 0, "items": []}
+    results["pipeline"]["auditor_exclusions"] = auditor_exclusions
+
+    hyperscan_vs_final = _summarize_hyperscan_vs_final(
+        results.get("hosts", []), results.get("net_discovery") or {}
+    )
+    if hyperscan_vs_final:
+        results["pipeline"]["hyperscan_vs_final"] = hyperscan_vs_final
 
     # v3.1+: Updated SIEM-compatible fields
     results["schema_version"] = SCHEMA_VERSION
@@ -358,7 +586,7 @@ def generate_summary(
         "mode": config.get("scan_mode", "normal"),
         "mode_cli": config.get("scan_mode_cli", config.get("scan_mode", "normal")),
     }
-    results["targets"] = config.get("target_networks", [])
+    results["targets"] = target_networks
 
     # v2.9: Entity Resolution - consolidate multi-interface hosts
     hosts = results.get("hosts", [])
@@ -399,6 +627,25 @@ def generate_summary(
             multi_interface = sum(1 for a in unified if a.get("interface_count", 1) > 1)
             summary["unified_asset_count"] = len(unified)
             summary["multi_interface_devices"] = multi_interface
+            # Propagate unified identity back into host entries for consistent reporting.
+            asset_by_ip = {}
+            for asset in unified:
+                for iface in asset.get("interfaces", []) or []:
+                    ip = (iface or {}).get("ip")
+                    if ip:
+                        asset_by_ip[ip] = asset
+            for host in hosts:
+                asset = asset_by_ip.get(host.get("ip"))
+                if not asset:
+                    continue
+                if not host.get("asset_name"):
+                    host["asset_name"] = asset.get("asset_name")
+                if not host.get("interfaces"):
+                    host["interfaces"] = asset.get("interfaces")
+                if not host.get("interface_count"):
+                    host["interface_count"] = asset.get("interface_count")
+                if not host.get("asset_type"):
+                    host["asset_type"] = asset.get("asset_type")
 
     # v3.2.2b: Populate hidden_networks for SIEM/AI pipelines
     # This detects IPs leaked in headers/redirects outside target networks
@@ -416,7 +663,6 @@ def generate_summary(
     # v2.9: SIEM Enhancement - ECS compliance, severity scoring, tags, risk scores
     enriched = enrich_report_for_siem(results, config)
     results.update(enriched)
-    consolidated_vulns = 0
     try:
         consolidated_vulns = _summarize_vulnerabilities(results.get("vulnerabilities", [])).get(
             "total", 0
@@ -426,10 +672,35 @@ def generate_summary(
     summary["vulns_found"] = consolidated_vulns
     summary["vulns_found_raw"] = raw_vulns
     if results.get("pipeline", {}).get("vulnerability_scan") is not None:
-        results["pipeline"]["vulnerability_scan"]["total_raw"] = raw_vulns
-        results["pipeline"]["vulnerability_scan"]["total"] = consolidated_vulns
+        pipeline_summary = _summarize_vulnerabilities_for_pipeline(
+            results.get("vulnerabilities", [])
+        )
+        pipeline_summary["total_raw"] = raw_vulns
+        pipeline_summary["total"] = consolidated_vulns
+        results["pipeline"]["vulnerability_scan"] = pipeline_summary
 
     return summary
+
+
+def _collect_target_networks(config: Dict, results: Optional[Dict] = None) -> List[Any]:
+    raw_targets: List[str] = []
+    if isinstance(config, dict):
+        raw_targets = config.get("target_networks") or config.get("targets") or []
+    if not raw_targets and isinstance(results, dict):
+        raw_targets = results.get("targets") or []
+    targets = []
+    for t in raw_targets or []:
+        if not t:
+            continue
+        target_str = str(t).strip()
+        match = re.search(r"(\d{1,3}(?:\.\d{1,3}){3}/\d{1,2})", target_str)
+        if match:
+            target_str = match.group(1)
+        try:
+            targets.append(ipaddress.ip_network(target_str, strict=False))
+        except ValueError:
+            continue
+    return targets
 
 
 def _detect_network_leaks(results: Dict, config: Dict) -> list:
@@ -444,12 +715,7 @@ def _detect_network_leaks(results: Dict, config: Dict) -> list:
         List of strings describing detected leaks
     """
     leaks = set()
-    targets = []
-    for t in config.get("target_networks", []):
-        try:
-            targets.append(ipaddress.ip_network(t, strict=False))
-        except ValueError:
-            pass
+    targets = _collect_target_networks(config, results)
 
     # Regex for private IPv4 (fixed for full octet matching)
     ip_regex = re.compile(
@@ -525,12 +791,7 @@ def extract_leaked_networks(results: Dict, config: Dict) -> list:
         List of unique network CIDRs (e.g., ["192.168.10.0/24", "10.0.1.0/24"])
     """
     networks = set()
-    targets = []
-    for t in config.get("target_networks", []):
-        try:
-            targets.append(ipaddress.ip_network(t, strict=False))
-        except ValueError:
-            pass
+    targets = _collect_target_networks(config, results)
 
     # Regex for private IPv4 (fixed for full octet matching)
     ip_regex = re.compile(
@@ -636,6 +897,11 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                     upnp=counts.get("upnp_devices", 0),
                 )
             )
+            errors = net_summary.get("errors") or []
+            if errors:
+                lines.append("  Net Discovery errors:\n")
+                for err in errors:
+                    lines.append(f"    - {err}\n")
         agentless = pipeline.get("agentless_verify") or {}
         if agentless:
             lines.append(
@@ -652,6 +918,45 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                     targets=nuclei.get("targets", 0),
                 )
             )
+            selected_profile = nuclei.get("profile_selected")
+            effective_profile = nuclei.get("profile_effective") or nuclei.get("profile")
+            if selected_profile and effective_profile:
+                if selected_profile != effective_profile:
+                    lines.append(
+                        "  Nuclei: profile selected {selected} -> effective {effective} (auto-switch)\n".format(
+                            selected=selected_profile,
+                            effective=effective_profile,
+                        )
+                    )
+                else:
+                    lines.append("  Nuclei: profile {profile}\n".format(profile=selected_profile))
+            elif effective_profile:
+                lines.append("  Nuclei: profile {profile}\n".format(profile=effective_profile))
+            if nuclei.get("partial"):
+                timeout_batches = len(nuclei.get("timeout_batches") or [])
+                failed_batches = len(nuclei.get("failed_batches") or [])
+                lines.append(
+                    "  Nuclei: partial (timeouts {timeouts}, failed {failed})\n".format(
+                        timeouts=timeout_batches,
+                        failed=failed_batches,
+                    )
+                )
+            elif nuclei.get("error"):
+                lines.append("  Nuclei: error ({error})\n".format(error=nuclei.get("error")))
+            suspected = nuclei.get("findings_suspected")
+            if suspected:
+                lines.append("  Nuclei: suspected {count}\n".format(count=suspected))
+            suspected_items = nuclei.get("suspected") or []
+            if suspected_items:
+                lines.append("  Nuclei suspected details:\n")
+                for item in suspected_items[:10]:
+                    template_id = item.get("template_id") or "-"
+                    matched_at = item.get("matched_at") or "-"
+                    reason = item.get("fp_reason") or ""
+                    detail = f"{template_id} {matched_at}".strip()
+                    if reason:
+                        detail = f"{detail} ({reason})"
+                    lines.append(f"    - {detail}\n")
         if smart:
             lines.append(
                 "  SmartScan: deep executed {executed}, avg identity {avg}\n".format(
@@ -659,13 +964,40 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                     avg=smart.get("identity_score_avg", 0),
                 )
             )
+        scope_cfg = results.get("config_snapshot") or {}
+        lines.append(
+            "  Scope controls: leak_follow {leak_mode}, iot_probes {iot_mode}\n".format(
+                leak_mode=scope_cfg.get("leak_follow_mode", "off"),
+                iot_mode=scope_cfg.get("iot_probes_mode", "off"),
+            )
+        )
+        scope_runtime = (pipeline.get("scope_expansion") or {}).get("leak_follow_runtime") or {}
+        if scope_runtime:
+            detected = int(scope_runtime.get("detected") or 0)
+            eligible = int(scope_runtime.get("eligible") or 0)
+            followed = int(scope_runtime.get("followed") or 0)
+            skipped = int(scope_runtime.get("skipped") or 0)
+            lines.append(
+                "  Leak-follow runtime: detected {detected}, eligible {eligible}, followed {followed}, skipped {skipped}\n".format(
+                    detected=detected,
+                    eligible=eligible,
+                    followed=followed,
+                    skipped=skipped,
+                )
+            )
+            follow_targets = scope_runtime.get("follow_targets") or []
+            if follow_targets:
+                preview = ", ".join([str(t) for t in follow_targets[:3]])
+                suffix = " ..." if len(follow_targets) > 3 else ""
+                lines.append(f"  Leak-follow targets: {preview}{suffix}\n")
         lines.append("\n")
 
     # v3.2.1: Check for network leaks (Guest Networks / Pivoting opportunities)
     # The user specifically requested techniques to discover "all networks here"
-    network_leaks = _detect_network_leaks(results, results.get("config", {}))
+    leak_config = results.get("config_snapshot") or results.get("config") or {}
+    network_leaks = _detect_network_leaks(results, leak_config)
     if network_leaks:
-        lines.append("⚠️  POTENTIAL HIDDEN NETWORKS (LEAKS DETECTED):\n")
+        lines.append("⚠  POTENTIAL HIDDEN NETWORKS (LEAKS DETECTED):\n")
         lines.append(
             "   (Professional Pivot / Discovery Tip: These networks are referenced in headers/redirects but were not scanned)\n"
         )
@@ -684,6 +1016,36 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
         lines.append(f"  Total Ports: {total_ports}\n")
         if risk_score is not None:
             lines.append(f"  Risk Score: {risk_score}/100\n")
+            risk_bd = h.get("risk_score_breakdown") or {}
+            if isinstance(risk_bd, dict):
+                service_cves = int(risk_bd.get("service_cve_total", 0) or 0)
+                service_critical = int(risk_bd.get("service_cve_critical", 0) or 0)
+                service_high = int(risk_bd.get("service_cve_high", 0) or 0)
+                service_exploits = int(risk_bd.get("service_exploit_total", 0) or 0)
+                service_backdoors = int(risk_bd.get("service_backdoor_total", 0) or 0)
+                finding_risk = int(risk_bd.get("finding_risk_total", 0) or 0)
+                finding_total = int(risk_bd.get("finding_total", 0) or 0)
+                heuristics = risk_bd.get("heuristic_flags") or []
+                heuristics_txt = ", ".join(str(x) for x in heuristics) if heuristics else "-"
+                lines.append(
+                    "  Risk evidence: service CVEs {svc} (critical {crit}, high {high}), "
+                    "service exploits {exp}, service backdoors {bd}, risk findings {rf}/{tf}, "
+                    "heuristics: {hz}\n".format(
+                        svc=service_cves,
+                        crit=service_critical,
+                        high=service_high,
+                        exp=service_exploits,
+                        bd=service_backdoors,
+                        rf=finding_risk,
+                        tf=finding_total,
+                        hz=heuristics_txt,
+                    )
+                )
+
+        canonical_vendor = str(h.get("vendor") or "").strip()
+        if canonical_vendor:
+            vendor_source = str(h.get("vendor_source") or "canonical")
+            lines.append(f"  Vendor (canonical): {canonical_vendor} [{vendor_source}]\n")
 
         for p in h.get("ports", []):
             service = p.get("service", "")
@@ -694,7 +1056,7 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                 lines.append(f"      CVEs: {p['cve_count']} (max severity: {max_sev})\n")
             # Show known exploits if found
             if p.get("known_exploits"):
-                lines.append(f"      ⚠️  Known Exploits ({len(p['known_exploits'])}):\n")
+                lines.append(f"      ⚠  Known Exploits ({len(p['known_exploits'])}):\n")
                 for exploit in p["known_exploits"][:3]:  # Max 3 for readability
                     lines.append(f"         - {exploit}\n")
 
@@ -797,7 +1159,7 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                 # v3.2.1: Show potential false positives for transparency
                 if item.get("potential_false_positives"):
                     fps = item["potential_false_positives"]
-                    lines.append(f"    ⚠️  Possible False Positives ({len(fps)}):\n")
+                    lines.append(f"    ⚠  Possible False Positives ({len(fps)}):\n")
                     for fp in fps[:3]:
                         lines.append(f"      - {fp}\n")
 
@@ -839,7 +1201,12 @@ def save_results(
     if results.get("hosts"):
         results["hosts"] = [h.to_dict() if isinstance(h, Host) else h for h in results["hosts"]]
 
-    prefix = "PARTIAL_" if partial else ""
+    summary = results.get("summary") or {}
+    nuclei_state = results.get("nuclei") or {}
+    effective_partial = bool(
+        partial or summary.get("nuclei_partial") or nuclei_state.get("partial")
+    )
+    prefix = "PARTIAL_" if effective_partial else ""
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # v2.8.1: Use pre-created folder if available (ensures PCAP files and reports are together)
@@ -854,6 +1221,22 @@ def save_results(
 
     try:
         os.makedirs(output_dir, exist_ok=True)
+
+        # v3.9.0: Generate remediation playbooks BEFORE JSON report
+        # This ensures playbook data is persisted for HTML regeneration.
+        if not encryption_enabled:
+            try:
+                from redaudit.core.playbook_generator import save_playbooks
+
+                playbook_count, playbook_data = save_playbooks(results, output_dir, logger=logger)
+                # Add playbooks to results for JSON/HTML report
+                results["playbooks"] = playbook_data
+                if playbook_count > 0 and print_fn and t_fn:
+                    print_fn(t_fn("playbooks_generated", playbook_count), "OKGREEN")
+            except Exception as pb_err:
+                if logger:
+                    logger.debug("Playbook generation failed: %s", pb_err)
+                results["playbooks"] = []
 
         # Save JSON report
         json_data = json.dumps(results, indent=2, default=str)
@@ -874,7 +1257,7 @@ def save_results(
 
         # Save TXT report if enabled
         if config.get("save_txt_report"):
-            txt_data = generate_text_report(results, partial=partial)
+            txt_data = generate_text_report(results, partial=effective_partial)
             if encryption_enabled and encryption_key:
                 txt_enc = encrypt_data(txt_data, encryption_key)
                 txt_path = f"{base}.txt.enc"
@@ -925,22 +1308,6 @@ def save_results(
                     logger.warning("JSONL export failed: %s", jsonl_err)
         elif logger:
             logger.info("JSONL exports skipped (report encryption enabled)")
-
-        # v3.9.0: Generate remediation playbooks BEFORE HTML report
-        # This ensures playbook data is available for the HTML report
-        if not encryption_enabled:
-            try:
-                from redaudit.core.playbook_generator import save_playbooks
-
-                playbook_count, playbook_data = save_playbooks(results, output_dir, logger=logger)
-                # Add playbooks to results for HTML report
-                results["playbooks"] = playbook_data
-                if playbook_count > 0 and print_fn and t_fn:
-                    print_fn(t_fn("playbooks_generated", playbook_count), "OKGREEN")
-            except Exception as pb_err:
-                if logger:
-                    logger.debug("Playbook generation failed: %s", pb_err)
-                results["playbooks"] = []
 
         # v3.3: Generate HTML report if enabled
         # v3.3.1: Check both CLI key (html_report) and wizard key (save_html_report)
@@ -1002,7 +1369,7 @@ def save_results(
                     results=results,
                     config=config,
                     encryption_enabled=encryption_enabled,
-                    partial=partial,
+                    partial=effective_partial,
                     logger=logger,
                 )
                 if manifest_path and logger:
@@ -1053,14 +1420,19 @@ def _write_output_manifest(
     scanner_versions = results.get("scanner_versions", {}) or {}
     redaudit_version = results.get("version") or scanner_versions.get("redaudit", "")
 
-    raw_findings = (results.get("summary", {}) or {}).get("vulns_found_raw")
+    summary = results.get("summary", {}) or {}
+    raw_findings = summary.get("vulns_found_raw")
+    nuclei_partial = bool(
+        summary.get("nuclei_partial") or (results.get("nuclei") or {}).get("partial")
+    )
+    effective_partial = bool(partial or nuclei_partial)
     manifest: Dict[str, Any] = {
         "schema_version": results.get("schema_version", ""),
         "generated_at": results.get("generated_at", datetime.now().isoformat()),
         "timestamp": results.get("timestamp", ""),
         "timestamp_end": results.get("timestamp_end", ""),
         "session_id": results.get("session_id", ""),
-        "partial": bool(partial),
+        "partial": effective_partial,
         "encryption_enabled": bool(encryption_enabled),
         "redaudit_version": redaudit_version,
         "scanner_versions": scanner_versions,
@@ -1071,6 +1443,22 @@ def _write_output_manifest(
             "pcaps": pcap_count,
         },
         "artifacts": [],
+    }
+    auditor_exclusions = results.get("auditor_exclusions")
+    if not isinstance(auditor_exclusions, dict):
+        auditor_exclusions = {"count": 0, "items": []}
+    manifest["auditor_exclusions"] = auditor_exclusions
+    manifest["counts"]["auditor_excluded"] = auditor_exclusions.get("count", 0)
+    manifest["config_snapshot"] = results.get("config_snapshot", {}) or {}
+    pipeline = results.get("pipeline") or {}
+    manifest["pipeline"] = {
+        "host_scan": pipeline.get("host_scan") or {},
+        "deep_scan": pipeline.get("deep_scan") or {},
+        "net_discovery": pipeline.get("net_discovery") or {},
+        "nuclei": pipeline.get("nuclei") or {},
+        "vulnerability_scan": pipeline.get("vulnerability_scan") or {},
+        "hyperscan_vs_final": pipeline.get("hyperscan_vs_final") or {},
+        "auditor_exclusions": pipeline.get("auditor_exclusions") or {},
     }
     if raw_findings is not None:
         manifest["counts"]["findings_raw"] = raw_findings
@@ -1099,7 +1487,9 @@ def _write_output_manifest(
             logger.debug("Failed to walk output directory for manifest", exc_info=True)
 
     artifacts.sort(key=lambda item: str(item.get("path", "")))
+    pcap_count = sum(1 for item in artifacts if str(item.get("path", "")).lower().endswith(".pcap"))
     manifest["artifacts"] = artifacts
+    manifest["counts"]["pcaps"] = pcap_count
 
     out_path = os.path.join(output_dir, "run_manifest.json")
     with open(out_path, "w", encoding="utf-8") as f:
@@ -1132,6 +1522,15 @@ def show_config_summary(config: Dict, t_fn, colors: Dict) -> None:
     if config.get("windows_verify_enabled"):
         max_targets = config.get("windows_verify_max_targets")
         conf[t_fn("windows_verify")] = f"enabled (max {max_targets})" if max_targets else "enabled"
+    leak_mode = config.get("leak_follow_mode")
+    if leak_mode:
+        allowlist = config.get("leak_follow_allowlist") or []
+        conf["Leak Following"] = f"{leak_mode} ({', '.join(allowlist) if allowlist else '-'})"
+    iot_mode = config.get("iot_probes_mode")
+    if iot_mode:
+        budget = config.get("iot_probe_budget_seconds")
+        timeout = config.get("iot_probe_timeout_seconds")
+        conf["IoT Probes"] = f"{iot_mode} (budget={budget}s timeout={timeout}s)"
     for k, v in conf.items():
         label = str(k).rstrip(":")
         print(f"  {label}: {v}")
@@ -1160,6 +1559,14 @@ def show_results_summary(results: Dict, t_fn, colors: Dict, output_dir: str) -> 
         print(t_fn("vulns_web", total_vulns))
     print(t_fn("duration", s.get("duration")))
     pcap_count = 0
+    pcap_summary = results.get("pcap_summary") or {}
+    if pcap_summary:
+        pcap_count = int(pcap_summary.get("individual_count", 0) or 0)
+        if pcap_summary.get("merged_file"):
+            pcap_count += 1
+        print(t_fn("pcaps", pcap_count))
+        print(f"{colors['OKGREEN']}{t_fn('reports_gen', output_dir)}{colors['ENDC']}")
+        return
     for h in results.get("hosts", []) or []:
         deep = h.get("deep_scan") or {}
         pcap = deep.get("pcap_capture") or {}

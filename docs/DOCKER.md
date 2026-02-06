@@ -2,26 +2,26 @@
 
 RedAudit is a Linux tool, but you can run it on **Windows** or **macOS** using Docker.
 
-> ⚠️ **Important Limitation**: Docker on Windows/macOS **cannot perform reliable L2 discovery** on your network. It runs inside a virtual machine that cannot see your real network at Layer 2. See [Limitations](#limitations-on-windowsmacos) below.
+> **Important Limitation**: Docker on Windows/macOS **cannot perform reliable L2 discovery** on your network. It runs inside a virtual machine that cannot see your real network at Layer 2. See [Limitations](#limitations-on-windowsmacos) below.
 
 ## When to Use Docker
 
 | Use Case | Docker on Win/Mac | Linux Native |
 | :--- | :--- | :--- |
-| **Scan specific known servers** | ✅ Works | ✅ Works |
-| **Demo/testing with known IPs** | ✅ Works | ✅ Works |
-| **Discover all devices on network** | ❌ Incomplete | ✅ Works |
-| **Professional network audit** | ❌ Limited | ✅ Full capability |
-| **ARP/Layer 2 scanning** | ❌ Not possible | ✅ Works |
-| **VPN Detection (MAC/GW)** | ❌ Limited/Inaccurate | ✅ Works |
+| **Scan specific known servers** | Works | Works |
+| **Demo/testing with known IPs** | Works | Works |
+| **Discover all devices on network** | Incomplete | Works |
+| **Professional network audit** | Limited | Full capability |
+| **ARP/Layer 2 scanning** | Not possible | Works |
+| **VPN Detection (MAC/GW)** | Limited/Inaccurate | Works |
 
 **Recommendation for professional audits**: Use Linux natively, or a Linux VM with bridged networking.
 
 ---
 
-## 🚀 Quick Start (Recommended)
+## Quick Start (Recommended)
 
-Our helper scripts handle everything automatically: detecting your network, pulling the latest image, and running the scan.
+The helper scripts handle everything automatically: detecting your network, pulling the latest image, and running the scan.
 
 ## macOS
 
@@ -38,7 +38,7 @@ chmod +x redaudit-docker.sh
 ./redaudit-docker.sh
 ```
 
-> 💡 The script **automatically pulls the latest RedAudit image** before each scan. You don't need to update manually.
+> Note: The script **automatically pulls the latest RedAudit image** before each scan. You don't need to update manually.
 
 ## Windows (PowerShell)
 
@@ -54,15 +54,15 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/ma
 .\redaudit-docker.ps1
 ```
 
-> 💡 The script **automatically downloads the latest RedAudit image** before each scan. You don't need to update manually.
+> Note: The script **automatically downloads the latest RedAudit image** before each scan. You don't need to update manually.
 
 ## What the scripts do
 
-- ✅ Check that Docker is running
-- ✅ Detect your network automatically
-- ✅ Pull the latest RedAudit image (best-effort)
-- ✅ Run the scan
-- ✅ Offer to open the report when finished
+- Check that Docker is running
+- Detect your network automatically
+- Pull the latest RedAudit image (best-effort)
+- Run the scan
+- Offer to open the report when finished
 
 ---
 
@@ -89,7 +89,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/ma
 
 8. Skip the tutorial/sign-in (not required)
 
-9. **Wait** until the whale icon in the menu bar turns **green** ✅
+9. **Wait** until the whale icon in the menu bar turns **green**
 
 ## macOS - 2. Open Terminal
 
@@ -179,9 +179,9 @@ open ~/RedAudit-Reports/report.html
 
 7. Skip the tutorial/sign-in (not required)
 
-8. **Wait** until the whale icon in the system tray turns **green** ✅
+8. **Wait** until the whale icon in the system tray turns **green**
 
-> ⚠️ **Windows 10/11 Home**: Docker may ask you to install WSL2. Follow the prompts - this is required.
+> **Windows 10/11 Home**: Docker may ask you to install WSL2. Follow the prompts - this is required.
 
 ## Windows - 2. Open PowerShell
 
@@ -297,10 +297,10 @@ sudo docker run --rm --network host \
 
 **Advantages of `--network host` on Linux:**
 
-- ✅ Full network visibility
-- ✅ ARP scanning works
-- ✅ All discovery protocols work
-- ✅ Same performance as native
+- Full network visibility
+- ARP scanning works
+- All discovery protocols work
+- Same performance as native
 
 ---
 
@@ -391,6 +391,22 @@ docker pull ghcr.io/dorinbadea/redaudit:latest
 
 You're probably scanning Docker's internal network (172.17.x.x) instead of your real network. Use `--target` with your actual network CIDR.
 
+## Masscan and Docker Bridge Networks (v4.7.1+)
+
+> **Note**: Masscan uses its own network stack (libpcap raw sockets) which has known issues with Docker bridge networks (172.x.x.x). When scanning Docker containers from a host, masscan may return 0 ports even when services are running.
+
+**RedAudit handles this automatically**:
+
+- If masscan finds 0 ports, RedAudit falls back to Scapy for accurate detection
+- Physical networks (192.168.x.x, 10.x.x.x) work normally with masscan
+- Docker networks are scanned via Scapy fallback (slightly slower but reliable)
+
+**If you're testing RedAudit against Docker containers**:
+
+- Expect the scan to use Scapy instead of masscan for Docker subnets
+- Scan times will be ~1 min/host instead of seconds for Docker networks
+- Results are accurate; only the speed differs
+
 ## Permission denied
 
 On Linux, run with `sudo` or add your user to the docker group:
@@ -407,7 +423,7 @@ If you see text like `[1m[95m` or `[0m[91m` instead of colors, your terminal doe
 
 **Solutions:**
 
-1. **Use our helper script** - It auto-detects and fixes this:
+1. **Use the helper script** - It auto-detects and fixes this:
 
    ```powershell
    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/main/scripts/redaudit-docker.ps1" -OutFile "redaudit-docker.ps1"
@@ -424,8 +440,8 @@ If you see text like `[1m[95m` or `[0m[91m` instead of colors, your terminal doe
 
 | Terminal | ANSI Colors |
 | :--- | :--- |
-| Windows Terminal | ✅ Yes |
-| PowerShell 7+ | ✅ Yes |
-| PowerShell 5 (black) | ⚠️ Partial |
-| PowerShell ISE (blue) | ❌ No |
-| CMD | ⚠️ Partial |
+| Windows Terminal | Yes |
+| PowerShell 7+ | Yes |
+| PowerShell 5 (black) | Partial |
+| PowerShell ISE (blue) | No |
+| CMD | Partial |

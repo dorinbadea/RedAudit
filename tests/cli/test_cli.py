@@ -28,6 +28,7 @@ class _DummyApp:
         self.rate_limit_delay = 0.0
         self.extra_tools = {}
         self._statuses = []
+        self.logger = MagicMock()
 
     def check_dependencies(self):
         return True
@@ -142,6 +143,16 @@ def _base_args(**overrides):
         "kerberos_userlist": None,
         "redteam_active_l2": False,
         "nuclei": False,
+        "nuclei_profile": "balanced",
+        "nuclei_max_runtime": 0,
+        "leak_follow": "off",
+        "leak_follow_allowlist": None,
+        "iot_probes": "off",
+        "iot_probe_budget_seconds": 20,
+        "iot_probe_timeout_seconds": 3,
+        "nuclei_exclude": None,
+        "nuclei_resume": None,
+        "nuclei_resume_latest": False,
         "agentless_verify_max_targets": 20,
         "windows_verify": False,
         "encrypt": False,
@@ -209,6 +220,58 @@ def test_parse_arguments_handles_persisted_error(monkeypatch):
     assert args.threads == suggest_threads()
 
 
+def test_parse_arguments_scope_expansion_persisted_defaults(monkeypatch):
+    def _defaults():
+        return {
+            "leak_follow_mode": "safe",
+            "leak_follow_allowlist": ["10.0.0.0/24,10.0.1.10"],
+            "iot_probes_mode": "safe",
+            "iot_probe_budget_seconds": 55,
+            "iot_probe_timeout_seconds": 9,
+        }
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", _defaults)
+    with patch.object(sys, "argv", ["redaudit"]):
+        args = cli.parse_arguments()
+    assert args.leak_follow == "safe"
+    assert args.leak_follow_allowlist == ["10.0.0.0/24", "10.0.1.10"]
+    assert args.iot_probes == "safe"
+    assert args.iot_probe_budget_seconds == 55
+    assert args.iot_probe_timeout_seconds == 9
+
+
+def test_parse_arguments_scope_expansion_invalid_defaults(monkeypatch):
+    def _defaults():
+        return {
+            "leak_follow_mode": "bad",
+            "leak_follow_allowlist": None,
+            "iot_probes_mode": "bad",
+            "iot_probe_budget_seconds": -1,
+            "iot_probe_timeout_seconds": 100,
+        }
+
+    monkeypatch.setattr("redaudit.utils.config.get_persistent_defaults", _defaults)
+    with patch.object(sys, "argv", ["redaudit"]):
+        args = cli.parse_arguments()
+    assert args.leak_follow == "off"
+    assert args.leak_follow_allowlist == []
+    assert args.iot_probes == "off"
+    assert args.iot_probe_budget_seconds == 20
+    assert args.iot_probe_timeout_seconds == 3
+
+
+def test_parse_arguments_help_lang_es(monkeypatch):
+    with patch.object(sys, "argv", ["redaudit", "--lang", "es"]):
+        args = cli.parse_arguments()
+    assert args.lang == "es"
+
+
+def test_parse_arguments_help_lang_equals(monkeypatch):
+    with patch.object(sys, "argv", ["redaudit", "--lang=es"]):
+        args = cli.parse_arguments()
+    assert args.lang == "es"
+
+
 def test_configure_from_args_sets_lang():
     app = _DummyApp()
     args = _base_args(lang="es")
@@ -235,7 +298,8 @@ def test_configure_from_args_target_too_long():
     args = _base_args(target="a" * (MAX_CIDR_LENGTH + 1))
     assert cli.configure_from_args(app, args) is False
     assert any("invalid_target_too_long" in status for status in app._statuses)
-    assert app._statuses[-1] == "no_valid_targets"
+    # With v4.9 flow, we fall through to "target_required_non_interactive" if list is empty
+    assert app._statuses[-1] == "target_required_non_interactive"
 
 
 def test_configure_from_args_expands_output(monkeypatch):
@@ -255,11 +319,363 @@ def test_configure_from_args_sets_dry_run_env(monkeypatch):
     os.environ.pop("REDAUDIT_DRY_RUN", None)
 
 
+def test_configure_from_args_scan_routed_import_error(monkeypatch):
+    app = _DummyApp()
+    args = _base_args(scan_routed=True)
+    real_import = builtins.__import__
+
+    def _blocked_import(name, *args, **kwargs):
+        if name == "redaudit.core.net_discovery":
+            raise ImportError("blocked")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _blocked_import)
+    assert cli.configure_from_args(app, args) is True
+
+
+def test_configure_from_args_invalid_deep_scan_budget_and_threshold():
+    app = _DummyApp()
+    args = _base_args(deep_scan_budget=-1, identity_threshold=200)
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["deep_scan_budget"] >= 0
+    assert app.config["identity_threshold"] <= 100
+
+
+def test_configure_from_args_invalid_nuclei_settings():
+    app = _DummyApp()
+    args = _base_args(nuclei_timeout=10, nuclei_profile="bad")
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["nuclei_timeout"] == 300
+    assert app.config["nuclei_profile"] == "balanced"
+
+
+def test_configure_from_args_sets_nuclei_max_runtime():
+    app = _DummyApp()
+    args = _base_args(nuclei_max_runtime=45)
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["nuclei_max_runtime"] == 45
+
+
+def test_configure_from_args_sets_nuclei_exclude():
+    app = _DummyApp()
+    args = _base_args(nuclei_exclude=["10.0.0.1:80,10.0.0.2"])
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["nuclei_exclude"] == ["10.0.0.1:80", "10.0.0.2"]
+
+
+def test_configure_from_args_invalid_nuclei_max_runtime():
+    app = _DummyApp()
+    args = _base_args(nuclei_max_runtime=-5)
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["nuclei_max_runtime"] == 0
+
+
+def test_configure_from_args_invalid_dead_host_retries():
+    app = _DummyApp()
+    args = _base_args(dead_host_retries=-1)
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["dead_host_retries"] >= 0
+
+
+def test_configure_from_args_credentials_file_loaded(monkeypatch):
+    app = _DummyApp()
+    args = _base_args(credentials_file="~/creds.json")
+
+    class _Cred:
+        def __init__(self, user, password):
+            self.user = user
+            self.password = password
+
+    class _Mgr:
+        def __init__(self):
+            self.credentials = [_Cred("u1", "p1"), _Cred("u2", "p2")]
+
+        def load_from_file(self, _path):
+            return None
+
+    monkeypatch.setattr(cli, "expand_user_path", lambda p: p)
+    monkeypatch.setattr("redaudit.core.credentials_manager.CredentialsManager", _Mgr)
+
+    assert cli.configure_from_args(app, args) is True
+    assert len(app.config["auth_credentials"]) == 2
+
+
+def test_configure_from_args_credentials_file_missing(monkeypatch):
+    app = _DummyApp()
+    args = _base_args(credentials_file="~/missing.json")
+
+    class _Mgr:
+        def __init__(self):
+            self.credentials = []
+
+        def load_from_file(self, _path):
+            raise FileNotFoundError("missing")
+
+    monkeypatch.setattr(cli, "expand_user_path", lambda p: p)
+    monkeypatch.setattr("redaudit.core.credentials_manager.CredentialsManager", _Mgr)
+
+    assert cli.configure_from_args(app, args) is False
+
+
+def test_configure_from_args_credentials_file_error(monkeypatch):
+    app = _DummyApp()
+    args = _base_args(credentials_file="~/broken.json")
+
+    class _Mgr:
+        def __init__(self):
+            self.credentials = []
+
+        def load_from_file(self, _path):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(cli, "expand_user_path", lambda p: p)
+    monkeypatch.setattr("redaudit.core.credentials_manager.CredentialsManager", _Mgr)
+
+    assert cli.configure_from_args(app, args) is False
+
+
+def test_main_generate_credentials_template(monkeypatch):
+    monkeypatch.setattr(
+        cli, "parse_arguments", lambda: _base_args(generate_credentials_template=True)
+    )
+    monkeypatch.setattr(
+        "redaudit.core.credentials_manager.CredentialsManager.generate_template", lambda _p: None
+    )
+    with pytest.raises(SystemExit):
+        cli.main()
+
+
+def test_main_resume_uses_budget_override(monkeypatch):
+    captured = {}
+
+    class _ResumeAuditor(_DummyAuditor):
+        def __init__(self):
+            super().__init__()
+            self.lang = "en"
+
+        def resume_nuclei_from_path(self, resume_path, **kwargs):
+            captured["path"] = resume_path
+            captured["override"] = kwargs.get("override_max_runtime_minutes")
+            return True
+
+    args = _base_args(target=None, nuclei_resume="/tmp/scan", nuclei_max_runtime=15)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _ResumeAuditor)
+    monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["redaudit", "--nuclei-resume", "/tmp/scan", "--nuclei-max-runtime", "15"],
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+
+    assert excinfo.value.code == 0
+    assert captured["override"] == 15
+
+
+def test_main_resume_latest_uses_first_candidate(monkeypatch):
+    captured = {}
+
+    class _ResumeAuditor(_DummyAuditor):
+        def __init__(self):
+            super().__init__()
+            self.lang = "en"
+
+        def _find_nuclei_resume_candidates(self, _base_dir):
+            return [{"path": "/tmp/a"}, {"path": "/tmp/b"}]
+
+        def resume_nuclei_from_path(self, resume_path, **_kwargs):
+            captured["path"] = resume_path
+            return True
+
+    args = _base_args(target=None, nuclei_resume_latest=True)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _ResumeAuditor)
+    monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(sys, "argv", ["redaudit", "--nuclei-resume-latest"])
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+
+    assert excinfo.value.code == 0
+    assert captured["path"] == "/tmp/a"
+
+
+def test_main_resume_latest_no_candidates_exits(monkeypatch):
+    captured = {}
+
+    class _ResumeAuditor(_DummyAuditor):
+        def __init__(self):
+            super().__init__()
+            self.lang = "en"
+            self._statuses = []
+            captured["app"] = self
+
+        def _find_nuclei_resume_candidates(self, _base_dir):
+            return []
+
+        def print_status(self, message, _level="INFO"):
+            self._statuses.append(message)
+
+        def resume_nuclei_from_path(self, *_args, **_kwargs):
+            raise AssertionError("resume should not be called without candidates")
+
+    args = _base_args(target=None, nuclei_resume_latest=True)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _ResumeAuditor)
+    monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(sys, "argv", ["redaudit", "--nuclei-resume-latest"])
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+
+    assert excinfo.value.code == 1
+    assert "nuclei_resume_none" in captured["app"]._statuses
+
+
+def test_main_proxy_success(monkeypatch):
+    class _Proxy:
+        def __init__(self, _url):
+            pass
+
+        def is_valid(self):
+            return True
+
+        def test_connection(self):
+            return True, "ok"
+
+    args = _base_args(proxy="socks5://localhost:9050", target=None)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    _patch_auditor(monkeypatch, choices=[0])
+    monkeypatch.setattr("redaudit.core.proxy.ProxyManager", _Proxy)
+    monkeypatch.setattr("redaudit.core.proxy.is_proxychains_available", lambda: True)
+    with pytest.raises(SystemExit):
+        cli.main()
+
+
+def test_main_menu_resume_nuclei_interactive(monkeypatch):
+    captured = {}
+
+    class _ResumeMenuAuditor(_DummyAuditor):
+        def __init__(self):
+            super().__init__()
+            self.lang = "en"
+            self.choices = [4, 0]
+
+        def resume_nuclei_interactive(self):
+            captured["called"] = True
+
+    args = _base_args(target=None)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _ResumeMenuAuditor)
+    monkeypatch.setattr("redaudit.core.updater.interactive_update_check", lambda **_k: False)
+    monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+
+    assert excinfo.value.code == 0
+    assert captured.get("called") is True
+
+
+def test_main_interactive_start_scan_success(monkeypatch):
+    class _ScanAuditor(_DummyAuditor):
+        def show_main_menu(self):
+            return 1
+
+        def interactive_setup(self):
+            return True
+
+        def run_complete_scan(self):
+            return False
+
+    args = _base_args(target=None)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _ScanAuditor)
+    monkeypatch.setattr("redaudit.core.updater.interactive_update_check", lambda **_k: False)
+    with pytest.raises(SystemExit):
+        cli.main()
+
+
+def test_main_interactive_start_scan_keyboard_interrupt(monkeypatch):
+    class _ScanAuditor(_DummyAuditor):
+        def show_main_menu(self):
+            return 1
+
+        def interactive_setup(self):
+            raise KeyboardInterrupt()
+
+    args = _base_args(target=None)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _ScanAuditor)
+    monkeypatch.setattr("redaudit.core.updater.interactive_update_check", lambda **_k: False)
+    with pytest.raises(SystemExit):
+        cli.main()
+
+
+def test_main_interactive_diff_keyboard_interrupt(monkeypatch):
+    class _DiffAuditor(_DummyAuditor):
+        def show_main_menu(self):
+            return self.choices.pop(0)
+
+    _DiffAuditor.choices = [3, 0]
+    args = _base_args(target=None)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _DiffAuditor)
+    monkeypatch.setattr("redaudit.core.updater.interactive_update_check", lambda **_k: False)
+    monkeypatch.setattr(
+        builtins, "input", lambda *_a, **_k: (_ for _ in ()).throw(KeyboardInterrupt())
+    )
+    with pytest.raises(SystemExit):
+        cli.main()
+
+
 def test_configure_from_args_sets_max_hosts_all():
     app = _DummyApp()
     args = _base_args(max_hosts=None)
     assert cli.configure_from_args(app, args) is True
     assert app.config["max_hosts_value"] == "all"
+
+
+def test_configure_from_args_sets_nuclei_profile():
+    app = _DummyApp()
+    args = _base_args(nuclei_profile="fast")
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["nuclei_profile"] == "fast"
+
+
+def test_configure_from_args_sets_scope_expansion_controls():
+    app = _DummyApp()
+    args = _base_args(
+        leak_follow="safe",
+        leak_follow_allowlist=["10.0.0.0/24,10.0.1.10", "10.0.1.10"],
+        iot_probes="safe",
+        iot_probe_budget_seconds=45,
+        iot_probe_timeout_seconds=7,
+    )
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["leak_follow_mode"] == "safe"
+    assert app.config["leak_follow_allowlist"] == ["10.0.0.0/24", "10.0.1.10"]
+    assert app.config["iot_probes_mode"] == "safe"
+    assert app.config["iot_probe_budget_seconds"] == 45
+    assert app.config["iot_probe_timeout_seconds"] == 7
+
+
+def test_configure_from_args_scope_expansion_invalid_values_fallback():
+    app = _DummyApp()
+    args = _base_args(
+        leak_follow="bad",
+        iot_probes="bad",
+        iot_probe_budget_seconds=-1,
+        iot_probe_timeout_seconds=1000,
+    )
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["leak_follow_mode"] == "off"
+    assert app.config["iot_probes_mode"] == "off"
+    assert app.config["iot_probe_budget_seconds"] == 20
+    assert app.config["iot_probe_timeout_seconds"] == 3
 
 
 def test_configure_from_args_filters_net_discovery_protocols():
@@ -281,6 +697,8 @@ def test_configure_from_args_save_defaults_success(monkeypatch):
     assert cli.configure_from_args(app, args) is True
     assert "defaults_saved" in app._statuses[-1]
     assert called["threads"] == app.config.get("threads")
+    assert called["leak_follow_mode"] == app.config.get("leak_follow_mode")
+    assert called["iot_probes_mode"] == app.config.get("iot_probes_mode")
 
 
 def test_configure_from_args_save_defaults_error(monkeypatch):
@@ -604,3 +1022,21 @@ def test_module_entrypoint_invokes_cli_main():
     with patch("redaudit.cli.main") as mocked:
         runpy.run_module("redaudit.__main__", run_name="__main__")
         mocked.assert_called_once()
+
+
+def test_configure_from_args_scan_routed(monkeypatch):
+    app = _DummyApp()
+    # Provide no targets initially, but use --scan-routed
+    args = _base_args(target=None, scan_routed=True)
+
+    expected_routed = {"networks": ["192.168.50.0/24"]}
+
+    # We must patch the function where it is imported.
+    # Since cli.py does "from redaudit.core.net_discovery import detect_routed_networks" inside the function,
+    # we need to patch the source module.
+    mock_detect = MagicMock(return_value=expected_routed)
+    monkeypatch.setattr("redaudit.core.net_discovery.detect_routed_networks", mock_detect)
+
+    assert cli.configure_from_args(app, args) is True
+    assert app.config["target_networks"] == ["192.168.50.0/24"]
+    assert "Found and added 1 hidden routed networks" in app._statuses[-1]

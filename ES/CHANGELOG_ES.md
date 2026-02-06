@@ -8,6 +8,1357 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 y este proyecto sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Las notas de versión viven en `docs/releases/` para más contexto.
 
+## [Sin lanzar]
+
+## [4.19.41] - 06-02-2026
+
+### Anadido
+
+- **Metadatos canonicos de vendor**: El enriquecimiento SIEM ahora resuelve un vendor canonico por host y expone `vendor_source` y `vendor_confidence` para salidas posteriores.
+- **Campos explicitos de evidencia de riesgo**: El desglose de riesgo ahora incluye contadores de CVEs de servicio (critical/high), exploits, firmas de backdoor y totales de hallazgos.
+
+### Mejorado
+
+- **Consistencia entre salidas**: Los reportes HTML, TXT y JSONL priorizan el mismo vendor canonico para evitar deriva entre formatos.
+- **Transparencia de riesgo**: La evidencia de riesgo por host ahora se muestra de forma explicita en tooltips HTML y secciones TXT.
+
+### Corregido
+
+- **Sobreinferencia de vendor**: Las etiquetas genericas `*.fritz.box` ya no fuerzan inferencia AVM.
+- **Tipado de activos NAS**: Las pistas de vendor Synology/QNAP/Asustor/TerraMaster ahora se mapean por defecto a `server` para mejorar precision de inventario.
+- **Alineacion ECS**: El vendor ECS ahora sigue la resolucion canonica antes del fallback por deep-scan.
+
+## [4.19.40] - 06-02-2026
+
+### Corregido
+
+- **Consistencia en reanudaciones**: `enrich_vulnerability_severity()` ahora es idempotente para hallazgos ya normalizados y evita deriva de riesgo en reanudaciones cuando los hallazgos informativos ya traian `severity_score`/`normalized_severity`.
+- **Ambiguedad TLS experimental**: Las señales experimentales de TestSSL ahora se degradan cuando coinciden con "no web server found", reduciendo presion de falsos positivos sin perder trazabilidad.
+- **Coherencia resumen-riesgo**: `summary.json` ahora expone contadores de severidad por evidencia de riesgo en host/puerto (CVEs/exploits/firmas de backdoor), ademas de totales combinados con hallazgos del escaner.
+
+## [4.19.39] - 06-02-2026
+
+### Corregido
+
+- **Resiliencia de configuracion**: `load_config()` ahora autocorrige `~/.redaudit/config.json` cuando esta malformado, guardando copia en `config.json.invalid.<timestamp>` y reconstruyendo una configuracion valida por defecto; los bloques `defaults` con tipos invalidos vuelven de forma segura al esquema base.
+
+## [4.19.38] - 06-02-2026
+
+### Corregido
+
+- **Coherencia en informes parciales**: `save_results()` ahora trata las ejecuciones parciales de Nuclei como salida parcial real, alineando nombre de archivo y estado TXT con el manifiesto.
+- **Estabilidad del score de riesgo**: El enriquecimiento SIEM ahora calcula el riesgo del host despues de normalizar/consolidar vulnerabilidades y volver a asociar findings enriquecidos al host, evitando deriva entre ejecucion inicial y reanudaciones.
+- **Trazabilidad de credenciales**: Los proveedores de credenciales ahora emiten eventos `credential_audit` para resultados de acceso/almacenamiento sin exponer secretos.
+- **Seguridad JSON en instalador**: La generacion de `config.json` para NVD en `redaudit_install.sh` ahora usa `jq` si existe y fallback con `python3`, evitando construccion JSON cruda con `echo`.
+
+## [4.19.37] - 05-02-2026
+
+### Corregido
+
+- **Contabilidad de objetivos Nuclei**: `targets_total` ahora se mantiene coherente cuando leak-follow añade objetivos adicionales.
+- **Mensajería de cobertura**: El texto de cobertura completa ahora refleja el comportamiento real (se omite auto-switch para respetar el perfil seleccionado).
+- **Etiquetas HTML ES**: Las etiquetas de expansión de alcance quedan completamente localizadas en los informes en español.
+- **Robustez en runtime**: Los contadores runtime de expansión de alcance ahora se parsean de forma segura ante valores persistidos malformados.
+
+## [4.19.36] - 05-02-2026
+
+### Mejorado
+
+- Incremento significativo de la cobertura de tests en todos los módulos core (>98% global).
+- Cobertura casi perfecta en `nuclei.py` (99.85%) y `auditor.py` (97.92%).
+- Cobertura total (100%) en `webhook.py`, `osquery.py` y `nvd.py`.
+- Optimización de pragmas estratégicos para bucles de UI e infraestructuras defensivas.
+
+## [4.19.35] - 30-01-2026
+
+### Añadido
+
+- **Detalle en menú de reanudación**: Las reanudaciones de Nuclei muestran cuántas veces se ha reanudado una ejecución.
+- **Metadatos de perfil Nuclei**: Los informes registran el perfil seleccionado y el perfil efectivo, junto con el cambio automático.
+
+### Mejorado
+
+- **Claridad en documentación**: Se documenta el auto-switch de Nuclei y el reporte de perfiles en README/USAGE y el schema de informes.
+
+### Corregido
+
+- **Redacción ES-ES**: Ajustes de terminología y acentos en la documentación en español.
+
+## [4.19.34] - 2026-02-03
+
+### Mejorado
+
+- **Desglose de riesgo**: separa la evidencia real de las señales heurísticas para mantener la trazabilidad y la precisión.
+- **Resumen autenticado**: los fallos del escaneo autenticado ahora aparecen en HTML y en los resúmenes exportados.
+- **JSONL de activos**: `assets.jsonl` incluye `open_ports` para inventario posterior.
+
+## [4.19.33] - 2026-02-03
+
+### Corregido
+
+- **Workflow de releases**: El job de release ahora actualiza releases existentes y usa notas versionadas, evitando fallos cuando la release ya existe.
+
+## [4.19.32] - 2026-02-03
+
+### Corregido
+
+- **ShellCheck del instalador**: El helper de OUI se define antes de usarse para cumplir ShellCheck y mantener el auto-instalado fiable.
+
+## [4.19.31] - 2026-02-03
+
+### Added
+
+- **OUI en el instalador**: El instalador deja la base OUI de Wireshark en `~/.redaudit/manuf`.
+
+### Improved
+
+- **Overrides OUI**: Soporte de rutas personalizadas via config y variables de entorno, con auto-descubrimiento en `~/.redaudit/`.
+- **Playbooks por tipo de dispositivo**: La remediacion prioriza el tipo y las pistas del dispositivo frente al vendor.
+
+### Corregido
+
+- **TestSSL experimental**: Los hallazgos marcados como experimentales ya no se tratan como explotables confirmados y se marcan como posibles falsos positivos.
+- **Transparencia en HTML**: Los informes muestran posibles falsos positivos junto a las observaciones tecnicas.
+
+## [4.19.30] - 2026-02-02
+
+### Corregido
+
+- **Cobertura total Nuclei**: "Escanear todos los puertos HTTP" ahora incluye todos los puertos HTTP detectados en hosts con identidad fuerte.
+
+## [4.19.29] - 2026-02-02
+
+### Corregido
+
+- **Playbooks de remediacion**: Los playbooks se guardan en el JSON y se regeneran para HTML si faltan.
+
+## [4.19.28] - 2026-02-02
+
+- **Reportes HTML**: Chart.js se entrega local para que los graficos rendericen con CSP activo.
+- **Documentacion**: Se actualiza README con arquitectura/toolchain y aviso de Nuclei alineado.
+- **Higiene Docs**: Se eliminan emojis de notas historicas para cumplir el estilo.
+
+## [4.19.27] - 2026-02-02
+
+### Corregido
+
+- **Aviso de duracion Nuclei**: El mensaje se centra en Nuclei y aparece antes de iniciar el escaneo.
+- **Cancelacion en reanudacion**: Ctrl+C durante reanudacion cancela limpiamente sin stack trace.
+
+### Docs
+
+- **Tiempos del lab**: Actualizada la guia de tiempos del laboratorio Docker segun ejecuciones observadas.
+
+## [4.19.26] - 2026-02-01
+
+### Corregido
+
+- **Script de seed del keyring**: `scripts/seed_keyring.py` ahora se ejecuta correctamente al invocarlo con `bash`, redirigiendo a Python.
+
+## [4.19.25] - 2026-02-01
+
+### Corregido
+
+- **Limpieza de BetterCAP**: Terminación best-effort de BetterCAP tras recon L2 para evitar procesos activos.
+
+## [4.19.24] - 2026-02-01
+
+### Mejorado
+
+- **CSP en reportes**: Se añade un meta Content-Security-Policy en los HTML para defense-in-depth.
+- **Observabilidad de chown**: Los chown best-effort ahora registran debug cuando fallan.
+- **Constante de timeout Nuclei**: El override por defecto de Nuclei se centraliza en una constante compartida.
+
+### Docs
+
+- **Limpieza de reanudaciones**: Se documenta que la reanudacion se actualiza en el mismo sitio y cómo limpiar archivos pendientes.
+
+## [4.19.23] - 2026-02-01
+
+### Corregido
+
+- **HTTPS en Webhooks**: El envio de webhooks rechaza endpoints no HTTPS y evita redirects.
+- **Endurecimiento de sondeo TLS**: El enriquecimiento HTTP verifica TLS primero y solo cae a modo inseguro si falla.
+- **Limpieza segura de terminal**: Se evita ejecutar shell; se usa ejecucion directa o fallback ANSI.
+- **Permisos de temporales proxy**: El config temporal de proxychains se crea con permisos restrictivos.
+
+## [4.19.22] - 2026-02-01
+
+### Corregido
+
+- **Navegación atrás en el wizard**: Se añade volver/cancelar en los prompts de perfiles Standard/Exhaustive.
+- **Aviso de duración**: Se avisa cuando el modo completo o con Nuclei puede superar 4 horas.
+
+## [4.19.21] - 2026-01-31
+
+### Corregido
+
+- **Inhibición de suspensión en reanudación**: Las reanudaciones aplican prevención de suspensión cuando `prevent_sleep` está activo.
+
+## [4.19.20] - 2026-01-31
+
+### Corregido
+
+- **Detección de HTML en reanudación**: Las reanudaciones regeneran los informes HTML cuando existen `report.html`.
+
+## [4.19.19] - 2026-01-31
+
+### Corregido
+
+- **Colores del progreso de Nuclei**: Los mensajes de estado respetan los colores de warning/error durante el progreso Rich.
+- **Precisión del progreso de Nuclei**: Los lotes en curso ya no muestran 100% mientras siguen ejecutándose (detalle ES).
+- **Reanudacion por timeouts**: Las ejecuciones parciales por timeout guardan objetivos pendientes para reanudar.
+
+## [4.19.18] - 2026-01-31
+
+### Añadido
+
+- **Lista de exclusion Nuclei**: Añadido `--nuclei-exclude` (CLI) y prompt del asistente para omitir objetivos por host, host:puerto o URL.
+
+### Mejorado
+
+- **Detalle de progreso Nuclei**: El progreso ahora muestra reintentos y profundidad de split en lotes largos.
+- **Diagnostico de timeouts**: Los avisos de timeout incluyen resumen de hosts/puertos mas frecuentes en el lote.
+- **Metadatos de resumen Nuclei**: Los informes ahora incluyen `targets_excluded` para rastrear filtros de usuario.
+
+## [4.19.17] - 2026-01-30
+
+### Corregido
+
+- **Bootstrap de snap en instalador**: El instalador ahora prepara snapd en sistemas basados en Ubuntu cuando hace falta, mejorando la disponibilidad de searchsploit y ZAP si apt no los ofrece.
+
+## [4.19.16] - 2026-01-30
+
+### Corregido
+
+- **Coherencia del resumen de Nuclei**: Los parciales/timeouts ahora desactivan el estado de éxito y evitan el mensaje de "completado (sin hallazgos)" cuando el resultado es incompleto.
+- **Estado de reanudación Nuclei**: Los resúmenes de reanudación conservan lotes con timeout/fallidos y recomputan el estado de éxito de forma consistente.
+- **Detalle de progreso Nuclei**: La redacción de actividad de lotes ahora refleja lotes activos para reducir la confusión sobre el paralelismo.
+- **Colores del menú**: Se ajustó la detección de etiquetas Sí/No para evitar colorear "Normal" como "No".
+
+## [4.19.15] - 2026-01-29
+
+### Corregido
+
+- **ShellCheck en instalador**: Se eliminaron variables de distro sin uso para evitar fallos de ShellCheck sin cambiar el comportamiento.
+
+## [4.19.14] - 2026-01-29
+
+### Corregido
+
+- **Searchsploit en instalador**: searchsploit ahora usa fallback via snap cuando fallan los metodos de GitHub.
+
+## [4.19.13] - 2026-01-29
+
+### Corregido
+
+- **Estabilidad Python en instalador**: El instalador evita conflictos de pip instalando solo modulos faltantes y agrega fallback de archivo para exploitdb/searchsploit si falla git.
+- **Apt opcional**: Se intenta instalar python3-paramiko y python3-keyrings-alt via apt para reducir instalaciones via pip.
+
+## [4.19.12] - 2026-01-29
+
+### Corregido
+
+- **Dependencias Python en instalador**: El instalador asegura `python3-pip` y prueba `python3-impacket` via apt para reducir faltas de Impacket/PySNMP en Ubuntu limpio.
+
+## [4.19.11] - 2026-01-29
+
+### Corregido
+
+- **Instalacion en Ubuntu**: El instalador habilita Universe/Multiverse cuando es necesario y evita fallos de apt por paquetes ausentes.
+- **Instalaciones de respaldo**: Nuclei, exploitdb/searchsploit y enum4linux se instalan desde GitHub cuando no estan disponibles via apt.
+
+## [4.19.10] - 2026-01-29
+
+### Corregido
+
+- **Countdown en logs de sesion**: Los codigos ANSI de limpieza de linea ahora se eliminan al procesar frames con retorno de carro, evitando que los prompts de countdown aparezcan concatenados en los logs de sesion.
+
+## [4.19.9] - 2026-01-29
+
+### Corregido
+
+- **Detalle secuencial de Nuclei**: El progreso ya no informa lotes paralelos cuando el presupuesto fuerza ejecucion secuencial.
+- **Totales en reanudacion**: La reanudacion de Nuclei ahora muestra solo objetivos pendientes, evitando recuentos confusos.
+- **CLI en español**: Correlacion CVE, prompt de directorio de salida, heartbeat de hosts y elapsed en Net Discovery quedan localizados.
+
+### Mejorado
+
+- **Mensajes de estado de Nuclei**: Texto de lotes y detalles de progreso con terminologia localizada y consistente.
+
+## [4.19.8] - 2026-01-29
+
+### Corregido
+
+- **Resumenes en reanudacion**: Las reanudaciones ahora cuentan hosts desde resultados existentes y preservan redes objetivo en los resumenes.
+- **Registro de objetivos Nuclei**: Las reanudaciones ya no sobrescriben `nuclei_targets.txt`; los pendientes quedan en `nuclei_pending.txt`.
+- **Integridad de activos JSONL**: Se agregan activos minimos para hosts con hallazgos, evitando `asset_id` vacio.
+- **Colores en logs de sesion**: Los flujos tee reportan TTY correctamente y mantienen INFO coloreado durante el escaneo.
+- **Avisos de identidad profunda**: Las etiquetas de estrategia ya no muestran sufijos de version heredados.
+
+### Mejorado
+
+- **Contexto de progreso en reanudacion**: El progreso de reanudacion de Nuclei refleja el total de objetivos con contexto de reanudacion.
+
+## [4.19.7] - 2026-01-28
+
+### Corregido
+
+- **Autoobjetivo en Red Team**: El descubrimiento Red Team ahora omite las IPs del auditor al seleccionar objetivos para evitar auto-enumeracion.
+
+## [4.19.6] - 2026-01-28
+
+### Corregido
+
+- **Detalle de progreso de Nuclei**: El progreso paralelo informa el recuento de lotes completados sin indices engañosos.
+- **Color INFO**: La salida INFO usa el azul estandar para visibilidad consistente.
+
+## [4.19.5] - 2026-01-28
+
+### Corregido
+
+- **Metadatos en reanudacion de Nuclei**: Las reanudaciones preservan redes objetivo y duracion total en resumen/manifiesto.
+
+## [4.19.4] - 2026-01-27
+
+### Mejorado
+
+- **Override de presupuesto en reanudacion**: La reanudacion permite cambiar el presupuesto (o desactivarlo) y la CLI acepta `--nuclei-max-runtime`.
+- **Lotes con presupuesto**: Cuando hay presupuesto, RedAudit evita iniciar un lote nuevo si el tiempo restante no cubre el tiempo estimado del lote.
+
+## [4.19.3] - 2026-01-27
+
+### Mejorado
+
+- **Calidad en CI**: Umbral de cobertura subido al 80% y ShellCheck aplicado.
+- **Mapeo de protocolos SNMP v3**: Nombres de protocolos auth/priv se mapean a objetos PySNMP y respetan claves auth/priv.
+- **Cobertura OUI offline**: El manuf local soporta prefijos /28 y /36.
+- **Cobertura de auditoria**: Tests para exclusion de interfaces Docker y fallback de HyperScan con Masscan.
+
+### Corregido
+
+- **Topologia SNMP y CVE**: El procesamiento de topologia SNMP ya no asume una API key NVD inicializada.
+- **Recuento WhatWeb en diff**: Los informes diferenciales cuentan WhatWeb con la clave correcta.
+- **Timeout por defecto de Nuclei**: El default del ConfigurationContext se alinea a 300s como el CLI.
+- **Alineacion documental**: Presets de velocidad ES y fallback de threads alineados al comportamiento.
+- **Limpieza de emojis**: Docker y seguridad eliminan emojis segun la politica de documentacion.
+- **ShellCheck**: Scripts de instalacion y Docker ahora pasan ShellCheck sin avisos.
+
+## [4.19.2] - 2026-01-26
+
+### Mejorado
+
+- **Progreso en reanudacion de Nuclei**: Las reanudaciones muestran progreso Rich incluso con presupuesto de tiempo.
+- **Orden de reanudaciones**: Las reanudaciones pendientes se ordenan por la fecha de ultima actualizacion.
+
+### Corregido
+
+- **Claridad en reanudacion**: Las reanudaciones con presupuesto/parcial ahora muestran avisos y el resumen guarda metadatos de presupuesto/timeouts.
+
+## [4.19.1] - 2026-01-26
+
+### Mejorado
+
+- **Metadatos de Nuclei**: El resumen ahora incluye `budget_exceeded` cuando el presupuesto termina la ejecucion.
+
+### Corregido
+
+- **Presupuesto de Nuclei**: Los lotes se limitan al tiempo restante y se guardan objetivos pendientes si se agota en mitad de un lote.
+- **Claridad en progreso**: Las lineas de detalle usan el color de estado y las paradas por presupuesto no muestran avisos de timeout.
+
+## [4.19.0] - 2026-01-26
+
+### Añadido
+
+- **Presupuesto de tiempo y reanudacion de Nuclei**: Presupuesto opcional que crea `nuclei_resume.json` y `nuclei_pending.txt`, con pregunta de reanudacion y cuenta atras de 15 segundos.
+- **Puntos de reanudacion**: Menu principal "Reanudar Nuclei (pendiente)" y flags `--nuclei-resume` / `--nuclei-resume-latest`.
+
+### Mejorado
+
+- **Snapshot y esquema**: El snapshot incluye `nuclei_max_runtime` y el resumen de Nuclei incluye metadatos de reanudacion.
+
+## [4.18.22] - 2026-01-25
+
+### Corregido
+
+- **Suelo de timeout de Nuclei**: Los reintentos tras split mantienen el timeout configurado como suelo para evitar perder cobertura en objetivos lentos.
+
+## [4.18.21] - 2026-01-25
+
+### Mejorado
+
+- **Actualizacion de home**: Las actualizaciones del sistema ahora crean backup si `~/RedAudit` tiene cambios y refrescan la copia local para mantener la documentacion al dia.
+
+## [4.18.20] - 2026-01-25
+
+### Mejorado
+
+- **Contraste ANSI**: Las lineas de estado ahora aplican el color al texto completo para un contraste consistente fuera de Rich.
+
+### Corregido
+
+- **Sincronizacion de idioma UI**: El UI manager se resincroniza cuando cambia el idioma del CLI para evitar mezclas EN/ES.
+- **Limite de paralelismo en Nuclei**: Los timeouts largos reducen los lotes paralelos para evitar timeouts del escaneo completo.
+
+## [4.18.19] - 2026-01-25
+
+### Mejorado
+
+- **Estilo en progreso**: La salida Rich aplica el color de estado a todas las lineas para mantener el contraste.
+- **Snapshot de configuracion**: El snapshot incluye `deep_id_scan`, `trust_hyperscan` y `nuclei_timeout`.
+
+### Corregido
+
+- **Sincronizacion de idioma**: Los cambios de idioma actualizan el UI manager para evitar mezclas EN/ES.
+- **Filtrado de senales en progreso**: WARN detecta palabras clave en espanol durante el render.
+- **Mensajes i18n**: Dependencias, fallos de autenticacion y errores de escaneo usan cadenas localizadas.
+
+## [4.18.18] - 2026-01-24
+
+### Añadido
+
+- **Sonda HTTP de bajo impacto**: El enriquecimiento Phase 0 ahora permite una sonda HTTP/HTTPS corta para hosts con solo vendor y cero puertos abiertos cuando esta activado.
+
+### Mejorado
+
+- **Contraste del wizard**: Las opciones no seleccionadas se muestran en azul y los valores por defecto se resaltan en los prompts.
+- **Timeouts tras split de Nuclei**: Los reintentos tras dividir lotes ahora limitan el timeout para evitar esperas largas en objetivos lentos.
+
+### Corregido
+
+- **Resumen Phase0**: El resumen smart scan ahora respeta `low_impact_enrichment` cuando la configuracion es `ConfigurationContext`.
+
+## [4.18.17] - 2026-01-24
+
+### Añadido
+
+- **Conteo UDP de Net Discovery**: El resumen del pipeline ahora incluye el total de puertos UDP detectados por HyperScan para mayor claridad.
+
+### Corregido
+
+- **Alineación de HyperScan-First**: Las comparativas de HyperScan-First ahora reflejan solo TCP para coincidir con la salida del CLI.
+
+## [4.18.16] - 2026-01-24
+
+### Añadido
+
+- **Regla de cobertura**: El workflow exige cobertura del 100% para el codigo modificado y rutas nuevas.
+
+### Mejorado
+
+- **Cobertura de tests**: Se amplio la bateria de tests hasta 98% y se cubrieron flujos del updater.
+
+## [4.18.15] - 2026-01-24
+
+### Mejorado
+
+- **Almacen de pistas de hostname**: Las pistas basadas en hostname ahora se cargan desde el archivo de firmas para mantener configurable la clasificacion de identidad y activos.
+
+## [4.18.14] - 2026-01-24
+
+### Aniadido
+
+- **Almacen de firmas**: Las pistas de vendors y los templates FP de Nuclei ahora cargan desde archivos de datos.
+
+### Corregido
+
+- **Fallback de exclusion del auditor**: Se anade un fallback best-effort de IPs locales cuando faltan network_info y topologia.
+
+## [4.18.13] - 2026-01-24
+
+### Añadido
+
+- **Exclusiones del auditor**: Los manifiestos ahora incluyen las IPs del auditor excluidas y sus razones para transparencia en revisiones automáticas.
+
+### Corregido
+
+- **Parseo SMB de dominio**: El parser sin agente ya no arrastra líneas de FQDN cuando el campo de dominio está vacío.
+
+## [4.18.12] - 2026-01-23
+
+### Corregido
+
+- **Métricas HyperScan-First**: El barrido HyperScan-First ahora gobierna las comparativas `hyperscan_vs_final` para evitar subcuentas de puertos en el discovery rápido.
+- **Merge de masscan en HyperScan-First**: La detección con RustScan ahora fusiona puertos de masscan como fallback, en lugar de reemplazar el resultado completo.
+- **Precisión de pistas DHCP**: Los timeouts DHCP ya no reportan falta de IPv4 cuando la ruta por defecto ya aporta dirección de origen.
+- **Errores de auth en HTML (ES)**: Los informes HTML en español traducen los errores del escaneo autenticado.
+- **Exclusión de IPs del auditor**: El filtrado excluye IPs locales de interfaces y rutas para evitar listar el propio nodo auditor.
+
+## [4.18.11] - 2026-01-23
+
+### Corregido
+
+- **Precisión en pistas DHCP**: Evita indicar ausencia de IPv4 cuando no se pudo verificar la interfaz.
+- **Errores del pipeline en HTML (ES)**: Los mensajes de error del pipeline se traducen en los informes en español.
+- **Resumen autenticado en HTML**: El resultado del escaneo autenticado ya es visible en los informes HTML.
+- **Sync del repo tras actualizar**: El updater refresca tags y hace fast‑forward de `main` cuando el repo está limpio para evitar prompts desfasados.
+- **Crecimiento de logs del lab**: El script de instalación aplica rotación de logs de Docker para evitar crecimiento excesivo.
+- **Despliegue SMB del lab**: El contenedor `.30` se recrea para evitar configuraciones obsoletas.
+
+### Documentación
+
+- **Limpieza del lab y rotación manual de logs**: Documentada la eliminación del lab y los flags de rotación para ejecuciones manuales (EN/ES).
+
+## [4.18.10] - 2026-01-23
+
+### Corregido
+
+- **Pistas de timeout DHCP**: Añadidas pistas best-effort para timeouts de broadcast DHCP.
+- **Detección de puerto SSH**: El escaneo autenticado reconoce SSH en puertos no estándar (ej. 2222).
+
+## [4.18.9] - 2026-01-23
+
+### Mejorado
+
+- **Trazabilidad de Nuclei**: Los resúmenes del informe incluyen el perfil y la cobertura completa de Nuclei en los HTML.
+- **Reducción de ruido de topología**: El descubrimiento ARP deduplica entradas IP/MAC idénticas para reducir el ruido.
+
+### Corregido
+
+- **Filtrado de redes ocultas**: Se filtran los objetivos en alcance de forma consistente para evitar falsos positivos de fuga de red.
+
+## [4.18.8] - 2026-01-22
+
+### Mejorado
+
+- **Anclaje de toolchain en instalador**: Añadido `REDAUDIT_TOOLCHAIN_MODE=latest` para testssl/kerbrute y overrides de version (`TESTSSL_VERSION`, `KERBRUTE_VERSION`, `RUSTSCAN_VERSION`).
+- **Poetry Lockfile**: Añadido `poetry.lock` para evaluacion junto a pip-tools.
+- **Refactor Red Team**: Separado el descubrimiento Red Team en un modulo dedicado para reducir `net_discovery.py`.
+
+### Corregido
+
+- **Mensaje de kerbrute en instalador**: Evita reportar "ya instalado" tras una instalación nueva.
+
+### Documentación
+
+- **Política del toolchain**: Documentado el modo de toolchain y los overrides de versión en README y manuales.
+
+## [4.18.7] - 2026-01-22
+
+### Corregido
+
+- **Recuento PCAP en CLI**: El resumen final usa metadatos del run para evitar contar capturas de otros runs.
+
+## [4.18.6] - 2026-01-22
+
+### Corregido
+
+- **Salida de Lynis en autenticado**: Los objetos Host ahora guardan resultados de Lynis sin provocar `TypeError`.
+- **Inicialización de filtro sin agente**: Eliminada la asignación duplicada de `host_agentless` en el filtro de falsos positivos de Nuclei.
+- **Recuento de PCAPs**: El resumen CLI ahora cuenta todos los artefactos PCAP, incluido el full capture.
+- **Validación de identity threshold**: `--identity-threshold` ahora se limita a 0-100 con fallback seguro.
+- **Consistencia de docs**: Aclarado el fallback de hilos, el jitter, el rango de identity threshold y la numeración de USAGE.
+
+## [4.18.5] - 2026-01-22
+
+### Corregido
+
+- **Truncamiento en Deep Scan**: Deep Scan ahora captura stdout completo para evitar perder puertos en ejecuciones Nmap verbosas.
+- **Seguridad de FD en HyperScan**: El tamaño de lote TCP ahora se limita al 80% del soft limit de FD para evitar `Too many open files`.
+
+## [4.18.4] - 2026-01-21
+
+### Corregido
+
+- **Trazabilidad de informes**: Los sospechosos de Nuclei ahora se listan en HTML/TXT para revisión manual.
+- **Visibilidad de errores de discovery**: Los errores de Net Discovery ahora se muestran en secciones HTML/TXT.
+- **Snapshot de configuración**: Se guardan perfil y cobertura completa de Nuclei en snapshots/resumen.
+- **Claridad de DHCP discovery**: DHCP ahora usa la interfaz de la ruta por defecto, prueba todas las interfaces IPv4 en modo completo y reporta timeouts como sin respuesta.
+
+## [4.18.3] - 2026-01-21
+
+### Corregido
+
+- **Salida de progreso HyperScan**: Se suprimen lineas por host durante el progreso Rich para evitar UI mixta.
+- **Claridad del asistente Nuclei**: Las etiquetas de perfil describen alcance de plantillas; la pregunta de cobertura completa aclara el alcance de puertos.
+
+## [4.18.2] - 2026-01-21
+
+### Corregido
+
+- **Consistencia de colores UI**: Los estados ahora se pintan correctamente durante el progreso de HyperScan.
+- **Cobertura completa de Nuclei**: El valor por defecto es SI solo cuando el perfil de Nuclei es Full.
+- **Fuentes en resumen**: Los conteos de fuentes ahora coinciden con los hallazgos consolidados.
+- **Conteo de PCAP en manifiesto**: El conteo de PCAP ahora refleja todos los artefactos listados.
+
+## [4.18.1] - 2026-01-20
+
+### Corregido
+
+- **Consistencia de informes Nuclei**: HTML/TXT ahora muestran estado parcial, lotes con timeout/fallidos y resultados solo sospechosos.
+- **Resumen de fuentes de vulnerabilidades**: Los conteos de fuentes en el pipeline reflejan los hallazgos enriquecidos en lugar de `unknown`.
+- **Cobertura completa vs Auto-Fast**: Se omite el cambio automatico a auto-fast cuando la cobertura completa esta activada para respetar el perfil seleccionado.
+
+## [4.18.0] - 2026-01-20
+
+### Corregido
+
+- **Bugs de Color con Rich Progress**: Corregidos mensajes [WARN], [OK] e [INFO] que aparecían blancos durante barras de progreso.
+  - Causa raíz: New Console() evitaba el Rich progress activo, perdiendo color.
+  - Corrección: Añadido seguimiento `_active_progress_console` en UIManager.
+  - Corregidos heartbeats de Deep Scan y Net Discovery para usar objetos `Text()`.
+
+### Mejorado
+
+- **Prompts Acortados del Wizard**: Reducida truncación en terminal acortando prompts:
+  - `nuclei_full_coverage_q`: Acortado para evitar wrap de terminal.
+  - `trust_hyperscan_q`: Simplificado para más claridad.
+
+### Documentación
+
+- **Sección Configuración Nuclei**: Añadida sección Nuclei completa a USAGE.en.md y USAGE.es.md explicando:
+  - Perfiles de escaneo (fast/balanced/full) con estimaciones de tiempo.
+  - Opción cobertura completa (solo wizard, no flag CLI).
+  - RustScan como mejora de rendimiento opcional.
+- **Actualizaciones Referencia CLI**: Añadidos flags faltantes `--profile` y `--nuclei-timeout` a referencia CLI del MANUAL.
+- **Corregido**: `--nuclei-full` NO existe como flag CLI (opción solo en wizard).
+
+## [4.17.0] - 2026-01-20
+
+### Añadido
+
+- **Opción Cobertura Completa Nuclei**: Nueva pregunta en wizard para escanear TODOS los puertos HTTP con Nuclei.
+  - Modo Exhaustivo: por defecto SI (cobertura completa para escaneos tipo pentesting).
+  - Modo Personalizado: por defecto NO (eficiencia audit-focus).
+  - Clave config: `nuclei_full_coverage` omite limitación de targets cuando es true.
+
+### Tests
+
+- Añadidos `TestNucleiFullCoverage` (4 tests) y `TestNucleiFullCoverageI18n` (2 tests).
+
+## [4.16.0] - 2026-01-19
+
+### Añadido
+
+- **Modo Audit-Focus Nuclei**: Hosts multi-puerto (3+ puertos HTTP) ahora limitados a 2 URLs para escaneo Nuclei.
+  - Prioriza puertos estándar (80, 443, 8080, 8443) para eficiencia de auditoría.
+  - Reduce significativamente el tiempo de escaneo (estimado 25min vs 1.5h para hosts complejos).
+  - Mensaje visible al usuario muestra reducción: `Nuclei: 25 -> 8 targets (audit focus)`.
+
+### Corregido
+
+- **Corrección Bug de Color (de v4.15.1)**: Mensajes [INFO] ya no aparecen blancos durante barras de progreso.
+  - Causa raíz: El markup Rich `[INFO]` se interpretaba como un tag desconocido.
+  - Corrección: Usar objetos `Text()` de Rich para salida de color confiable.
+
+## [4.15.0] - 2026-01-19
+
+### Añadido
+
+- **Barra de Progreso HyperScan**: Barra de progreso visual (magenta) mostrando completado de hosts durante la fase de descubrimiento HyperScan-First.
+- **Perfil Auto-Fast Nuclei**: Detección automática de hosts con 3+ puertos HTTP, cambiando a perfil "fast" (solo plantillas CVE) para prevenir timeouts.
+
+### Corregido
+
+- **Paralelismo Real HyperScan**: Eliminado bloqueo de escaneo SYN que estaba serializando. RustScan/asyncio ahora ejecutan en modo paralelo real.
+- **Emojis Minimalistas en Terminal**: Reemplazados emojis coloridos por alternativas Unicode monocromáticas:
+  - `✅` -> `✔`
+  - `❌` -> `✖`
+  - `⚠️` -> `⚠`
+- **Correcciones de Tests**: Actualizado `test_session_log.py` para usar nuevos emojis minimalistas.
+
+### Pruebas
+
+- Añadidos `test_hyperscan_start_sequential_key_en` y `test_hyperscan_start_sequential_key_es` para verificar claves i18n.
+
+## [4.14.0] - 2026-01-19
+
+### Añadido
+
+- **Remediación Consciente del Dispositivo**: Nuevas plantillas en `playbook_generator.py` para dispositivos AVM (FRITZ!), Linux, Cisco/Red y Windows.
+  - Dispositivos embebidos (ej. FRITZ!Box) ahora sugieren actualizaciones de firmware vía interfaz web en lugar de `apt/yum`.
+  - Dispositivos de red sugieren actualizaciones de IOS/firmware.
+  - Servidores Linux mantienen guía `apt/yum`.
+- **Coincidencia de Modelos CVE**: Mejorado `verify_vuln.py` para soportar `expected_models` y `false_positive_models`.
+  - Implementado para **CVE-2024-54767** (Acceso No Autorizado AVM): coincide solo con `7530`, excluye `7590` y Repetidores.
+- **Fallback de Detalles Técnicos**: `evidence_parser.py` ahora genera observaciones robustas desde versiones de servicio, banners y cabeceras cuando falta salida específica de herramientas.
+
+### Corregido
+
+- **Títulos de Playbook**: Corregido problema donde títulos de hallazgos que contenían URLs (ej. `http://...`) se usaban como títulos de playbook. Ahora usa títulos descriptivos o nombres genéricos.
+- **UX del Asistente**: Añadida lógica para sugerir configuración manual si el usuario rechaza cargar credenciales del llavero.
+- **Estilo del Asistente**: Mejorado menú del asistente con colores profesionales (Tenue para navegación, Cian Negrita para selección).
+- **Robustez del Código**: Completada auditoría exhaustiva de `playbook_generator.py`:
+  - Corregida lógica de placeholder `{host}` en pasos.
+  - Añadidas comprobaciones estrictas de tipos para procesamiento de vendor y tipo de dispositivo.
+
+## [4.13.2] - 2026-01-18
+
+### Corregido
+
+- **Referencias en Informe HTML**: Corregido mismatch de claves (`reference` vs `references`) que causaba ausencia de detalles técnicos en la sección de Hallazgos.
+- **Falso Positivo CVE-2022-26143**: Mejorada la detección de FRITZ!OS para incluir el cuerpo de la respuesta, no solo la cabecera Server.
+- **Datos Enriquecidos de Nuclei**: Ahora se extraen `impact`, `remediation`, `cvss_score`, `cvss_metrics` y `extracted_results` de los hallazgos de Nuclei.
+- **Observaciones Vacías**: Añadido fallback para usar la descripción de la vulnerabilidad cuando `parsed_observations` está vacío.
+- **Atribución de Fuente**: Cambiado fuente por defecto de `unknown` a `redaudit` para hallazgos auto-generados. Añadida detección de WhatWeb.
+
+## [4.13.0] - 2026-01-17
+
+### Añadido
+
+- **Reintentos de Host Muerto**: Nuevo flag CLI `--dead-host-retries` para abandonar hosts tras N timeouts consecutivos (predeterminado: 3). Evita atascos en hosts que no responden.
+- **Integración ConfigurationContext**: Añadida propiedad `dead_host_retries` al wrapper de configuración tipada.
+
+### Corregido
+
+- **i18n Estimaciones Nuclei**: Corregidas estimaciones de tiempo de perfiles Nuclei en el asistente:
+  - `fast`: ~15min -> ~30-60min
+  - `balanced`: ~30min -> ~1h
+- **Truncamiento de Texto en Asistente**: Acortadas las descripciones de perfiles del asistente en español para evitar truncamiento en terminales estrechos.
+
+## [4.12.1] - 2026-01-17
+
+### Añadido
+
+- **Enriquecimiento de Topología**: Los resultados ARP en la fase de topología ahora resuelven vendors "(Unknown)" usando la base de datos OUI.
+- **Optimización Nuclei**: Añadida configuración de `rate_limit` y `batch_size` a los perfiles de Nuclei.
+  - El perfil `fast` ahora corre a 300 rps (antes 150) con batch size 15 (antes 10) para mayor velocidad.
+- **Claridad del Asistente**: Actualizadas las descripciones de perfiles Express/Standard para indicar claramente la profundidad (solo discovery vs vulns).
+
+### Corregido
+
+- Corregida la interacción entre defaults de perfil Nuclei y parámetros explícitos (los parámetros explícitos ahora tienen prioridad).
+- Corregidos problemas de tipado (mypy) en el módulo Nuclei usando `TypedDict`.
+
+## [4.12.0] - 2026-01-17
+
+### Añadido
+
+- **Gating de Herramientas por Perfil**: El perfil Nuclei (`--profile`) ahora controla la ejecución de Nikto:
+  - `fast`: Omite Nikto completamente para máxima velocidad.
+  - `balanced`: Omite Nikto en dispositivos de infraestructura (routers, switches, APs).
+  - `full`: Ejecuta Nikto en todos los hosts web (comportamiento original).
+- **Detección de Infraestructura Mejorada**: Mejorado `is_infra_identity()` para detectar más patrones de dispositivos de red (Fritz!Box, MikroTik, Ubiquiti, Synology, QNAP, etc.).
+
+### Cambiado
+
+- **Optimización de Rendimiento**: La fase de escaneo de vulnerabilidades ahora respeta el perfil Nuclei para reducir el tiempo de escaneo en redes con muchos dispositivos de infraestructura.
+- **Lógica de Gating de Nikto**: Movida de `_should_run_app_scans()` a un método dedicado `_should_run_nikto()` para una mejor separación de responsabilidades.
+
+## [4.11.0] - 2026-01-17
+
+### Añadido
+
+- **Selector de Perfiles Nuclei**: Introducidos perfiles de escaneo optimizados (`--profile`) para equilibrar velocidad y cobertura:
+  - `full`: Todas las plantillas (comportamiento por defecto).
+  - `balanced`: Solo etiquetas de alto impacto (cve, rce, exposure, misconfig) - ~4x más rápido.
+  - `fast`: Solo comprobaciones críticas (cve, critical) - ~10x más rápido.
+- **Visibilidad IoT Mejorada**:
+  - **Soporte Protocolo WiZ**: Detecta y reporta automáticamente bombillas inteligentes WiZ mediante inyección UDP en puerto 38899, resolviendo el problema de "cero puertos encontrados".
+  - **IoT de Puerto Cerrado**: Documentación actualizada para clarificar el manejo de dispositivos que responden a multicast/UPnP pero no tienen puertos TCP abiertos.
+- **Motor de Identidad Mejorado**:
+  - **Base de Datos OUI**: Actualización masiva de 46 a **38.911 fabricantes** usando la base de datos de Wireshark, reduciendo significativamente las etiquetas de fabricante "Unknown".
+
+### Cambiado
+
+- **Optimización Nuclei**:
+  - Reducido tamaño del lote de 25 a 10 objetivos para evitar timeouts.
+  - Aumentado timeout de 300s a 600s por lote para mayor fiabilidad en redes densas.
+  - Implementada lógica de "éxito parcial": los hallazgos se reportan incluso si algunos lotes fallan por timeout.
+- **Timeouts**: Confirmados timeouts satisfactorios para Nikto (330s) y TestSSL (90s).
+
+## [4.10.1] - 2026-01-16
+
+### Fixed
+
+- **Enriquecimiento de Hosts Inconsistente**: Solucionado un problema donde los hosts descubiertos vía Seguimiento de Rutas (Topología SNMP) no se enriquecían con datos CVE.
+- **Error de Importación**: Resuelto un potencial `NameError` relacionado con importaciones locales en el módulo auditor.
+- **Limpieza de Código**: Movidas las importaciones locales al nivel superior para mejor mantenibilidad.
+
+## [4.10.0] - 2026-01-16
+
+### Añadido
+
+- **Descubrimiento L2/L3 Avanzado**:
+  - **Topología SNMP**: Consultas autenticadas para tablas de rutas, tablas ARP e interfaces (`--snmp-topology`).
+  - **Seguimiento de Rutas**: Expansión automática del alcance basada en tablas de enrutamiento descubiertas (`--follow-routes`).
+  - **Descubrimiento L2 Pasivo**:
+    - **LLDP**: Información de sistema/puerto vía `tcpdump` (macOS/Linux) y `lldpctl`.
+    - **CDP**: Descubrimiento de Cisco vía `tcpdump`.
+    - **Detección de VLAN**: Etiquetas 802.1Q desde `ifconfig`/`ip link` y rastreo pasivo.
+  - **Integración con Asistente**: Mensajes interactivos para configurar topología y seguimiento de rutas.
+
+### Corregido
+
+- **Crítico**: Resuelto `AttributeError: 'set' object has no attribute 'append'` en el manejo de `Host.tags` durante la mejora de HyperScan.
+
+## [4.9.1] - 2026-01-16
+
+### Añadido
+
+- **Implementación Quick Wins**:
+  - **Visibilidad UDP IoT**: Puertos UDP especializados (ej. WiZ 38899) descubiertos por HyperScan ahora se exportan correctamente.
+  - **Detección de Honeypot**: Nueva etiqueta `honeypot` para hosts con puertos abiertos excesivos (>100).
+  - **Etiquetado Sin Respuesta**: Los hosts que fallan el escaneo Nmap se etiquetan como `no_response:nmap_failed`.
+
+### Corregido
+
+- **Prompt Nuclei en Asistente**: Corregida clave i18n `nuclei_enable_q` para usar la existente `nuclei_q`.
+
+### Cambiado
+
+- **Limpieza de Código**: Eliminado código muerto `masscan_scanner.py` (reemplazado por RustScan en v4.8.0).
+
+### Documentación
+
+- **Limitaciones VLAN**: Añadidas limitaciones de detección VLAN 802.1Q a la documentación de USO.
+
+## [4.9.0] - 2026-01-16
+
+### Añadido
+
+- **Detección de Redes Ocultas**: Nueva función `detect_routed_networks()` en `net_discovery.py`.
+  - Parsea `ip route` e `ip neigh` para descubrir redes enrutadas no locales.
+  - Prompt interactivo en asistente: pregunta si incluir redes ocultas descubiertas.
+  - Nuevo flag CLI `--scan-routed` para modo no interactivo.
+
+### Cambiado
+
+- **Selección de Red en Asistente**: `ask_network_range()` ahora detecta y ofrece redes enrutadas ocultas.
+
+### Documentación
+
+- Documentadas limitaciones de aislamiento VLAN (VLANs 802.1Q no descubribles sin acceso a switch/SNMP).
+- Actualizado `task.md` con topología de red de usuario (Vodafone VLAN 100/105 via switch Zyxel).
+
+## [4.8.1] - 2026-01-16
+
+### Fixed
+
+- Restaurar pregunta interactiva para activar Nuclei en perfil Exhaustivo (asistente).
+
+## [4.8.3] - 2026-01-16
+
+### Corregido
+
+- **Arquitectura del Instalador**: Añadida detección de arquitectura ARM64/aarch64 para soporte de Raspberry Pi y VMs Apple Silicon.
+  - Anteriormente intentaba descargar el .deb de amd64 en todas las plataformas.
+  - Ahora hace fallback elegante a nmap/apt si el asset de RustScan no está disponible para la arquitectura.
+
+## [4.8.2] - 2026-01-16
+
+### Corregido
+
+- **Rango de Puertos RustScan**: Forzado escaneo de rango completo (1-65535) en fase HyperScan.
+  - Anteriormente usaba el default de RustScan (top 1000), perdiendo servicios en puertos no estándar.
+  - Añadido parámetro de rango en `rustscan.py` e `hyperscan.py`.
+
+## [4.8.0] - 2026-01-16
+
+### Añadido
+
+- **Integración RustScan**: Nuevo módulo `rustscan.py` para descubrimiento de puertos ultra-rápido.
+  - RustScan encuentra los 65535 puertos en ~3 segundos (vs 142s masscan, 6s nmap).
+  - Fallback automático a nmap si RustScan no está instalado.
+  - Añadido al instalador (`redaudit_install.sh`) como dependencia opcional recomendada.
+
+### Cambiado
+
+- **Arquitectura HyperScan-First**: Reemplazado masscan por RustScan como escáner de puertos principal.
+  - Basado en benchmark: RustScan+nmap (38s) vs masscan (142s) vs solo-nmap (43s).
+  - El descubrimiento de rango completo de puertos es ahora significativamente más rápido en redes físicas.
+
+- **Nuclei DESACTIVADO por defecto**: El escáner de plantillas Nuclei ahora está deshabilitado por defecto.
+  - Use el flag `--nuclei` para habilitarlo explícitamente.
+  - Razón: Lento en redes densas en web con valor marginal para auditorías de red.
+  - Todavía disponible vía flag `--nuclei` cuando se necesite para pruebas de seguridad web específicas.
+
+### Documentación
+
+- Añadido `scan_results_private/HYPERSCAN_INVESTIGATION_2026-01-16.md` con datos completos del benchmark.
+
+## [4.6.32] - 2026-01-15
+
+### Rendimiento
+
+- **Net Discovery Paralelo**: Todos los protocolos de descubrimiento (DHCP, ARP, mDNS, etc.) ahora corren concurrentemente.
+
+## [4.6.31] - 2026-01-15
+
+### Rendimiento
+
+- **HyperScan Paralelo**: Convertido pre-escaneo secuencial a paralelo (hasta 8 workers) con batching adaptativo de FDs.
+
+## [4.6.30] - 2026-01-15
+
+### Seguridad
+
+- **Zombie Reaper**: Implementada limpieza nativa con `pkill` para evitar procesos huérfanos de Nmap/Nuclei.
+- **Auditoría**: Verificada seguridad de descriptores de archivo y manejo de excepciones en hilos.
+
+## [4.6.29] - 2026-01-15
+
+### Rendimiento
+
+- **Desbloqueo de Hilos**: Incrementado `MAX_THREADS` de 16 a 100 para aprovechar hardware moderno.
+- **Deep Scan**: Eliminado el límite de 50 hilos para respetar el límite global `MAX_THREADS`.
+
+### Corregido
+
+- **Config**: Añadido `nuclei_timeout` faltante en `ConfigurationContext`.
+
+## [4.6.28] - 2026-01-15
+
+### Corregido
+
+- **Estabilidad Crítica**: Eliminado el uso global de `socket.setdefaulttimeout()` en `network_scanner.py`. Anteriormente, las búsquedas DNS inversas podían establecer inadvertidamente un timeout para TODOS los hilos y sockets activos de la aplicación, causando timeouts aleatorios en conexiones Nuclei, SSH y HTTP.
+
+## [4.6.27] - 2026-01-15
+
+### Corregido
+
+- **Rendimiento HyperScan**: Corregido fallo logico donde puertos cerrados (RST) eran tratados como "timeouts" por el control de congestion adaptativo. Esto causaba que la velocidad bajara al minimo (lote 100) en lugar de acelerar (lote 20k), explicando la demora de "1 minuto por host". Los escaneos son ahora sustancialmente mas rapidos.
+
+## [4.6.26] - 2026-01-15
+
+### Corregido
+
+- **Jitter en Barra de Progreso**: Corregido un bug UI donde lotes paralelos de Nuclei sobrescribian el progreso de otros, causando saltos erraticos. Implementada agregacion centralizada de progreso.
+
+## [4.6.25] - 2026-01-15
+
+### Corregido
+
+- **Fix Concurrencia Paralela**: Anadido bloqueo de hilos para E/S de archivos y estadisticas en escaneos Nuclei para prevenir condiciones de carrera.
+- **Paralelismo CLI**: Habilitada ejecucion paralela de lotes para usuarios CLI estandar (barra de progreso Rich).
+
+## [4.6.24] - 2026-01-15
+
+### Cambiado
+
+- **Optimizacion Rendimiento Nuclei**: Batch reducido 25->10, corregido bug de reintento infinito, anadida ejecucion paralela hasta 4 batches via ThreadPoolExecutor. Escaneos Nuclei ~4x mas rapidos en redes grandes.
+
+## [4.6.23] - 2026-01-14
+
+### Anadido
+
+- **Reintento Nuclei en Timeout**: En primer timeout, reintenta batch con timeout 1.5x antes de dividir. Reduce fallos en redes lentas.
+- **Cobertura de Tests**: Anadidos 8 tests nuevos para funcionalidades v4.6.21-23 (X-Frame-Options, IoT lwIP, inyeccion CVE FTP).
+
+## [4.6.22] - 2026-01-14
+
+### Anadido
+
+- **Etiquetado CVE FTP**: Backdoors detectados (vsftpd 2.3.4, etc.) ahora inyectan registros CVE en `port.cves` para propagacion automatica a JSONL.
+- **Spray de Credenciales SMB**: Prueba todas las credenciales SMB del keyring hasta que una funcione, igual que SSH. Usa nuevo metodo `_resolve_all_smb_credentials()`.
+
+## [4.6.21] - 2026-01-14
+
+### Corregido
+
+- **Severidad X-Frame-Options**: Anadidos patrones `anti-clickjacking.*x-frame-options` y `x-frame-options.*not present` a SEVERITY_OVERRIDES. Hallazgos de Nikto ahora correctamente clasificados como Low en lugar de High.
+- **Falso Positivo IoT lwIP**: Anadida heuristica en `calculate_risk_score` para detectar dispositivos IoT con >20 puertos abiertos (stack lwIP responde SYN-ACK a todos los probes). Riesgo limitado a 30 para revision manual.
+
+## [4.6.20] - 2026-01-14
+
+### Anadido
+
+- **Flag de Timeout para Nuclei**: Nuevo flag CLI `--nuclei-timeout` para configurar el timeout de batch (defecto 300s). Util para redes Docker/lentas donde el timeout por defecto causa escaneos parciales.
+
+### Corregido
+
+- **Deteccion de Backdoor vsftpd 2.3.4**: Corregida la deteccion de CVE-2011-2523 combinando campos service+product+version+banner en `calculate_risk_score`.
+- **Consistencia de Titulos**: La exportacion JSONL ahora usa `descriptive_title` para ambos campos `title` y `descriptive_title`, coincidiendo con el comportamiento del reporte HTML.
+- **Generacion Unificada de Titulos**: Consolidadas las funciones `_extract_title` de `jsonl_exporter` y `html_reporter` en un unico `extract_finding_title` en `siem.py`, eliminando 170 lineas de codigo duplicado.
+
+### Mejorado
+
+- **Calidad de Codigo**: Anadido `extract_finding_title` con cadena de fallback adecuada: descriptive_title, template_id de Nuclei, CVE IDs, parsed_observations, nikto_findings, fallback basado en puerto.
+
+## [4.6.19] - 2026-01-14
+
+### Anadido
+
+- **Priorizacion de Hallazgos**: Nuevos campos `priority_score` (0-100) y `confirmed_exploitable` para clasificar mejor las vulnerabilidades.
+- **Deteccion Clasica de Vulnerabilidades**: Deteccion automatica de servicios con backdoors conocidos (vsftpd 2.3.4, UnrealIRCd 3.2.8.1, etc.) basada en analisis de banners.
+- **Calidad de Reporte**: Nuevo `confidence_score` (0.0-1.0) para hallazgos basado en senales de verificacion.
+- **Titulos Mejorados**: Mejor generacion de titulos para hallazgos, detectando vulnerabilidades especificas (BEAST, POODLE) y titulos fallback mas claros (ej. "HTTP Service Finding").
+- **Exportacion JSONL**: Anadidos campos de calidad (`confidence_score`, `priority_score`, `confirmed_exploitable`) a la salida JSONL para ingestion por SIEM.
+
+### Mejorado
+
+- **Interfaz Wizard**: El resumen de credenciales ahora muestra el conteo de entradas en listas de spray (ej. `(+5 spray)`).
+- **Mapeo de Severidad**: Mapeo refinado para hallazgos genericos de escaneres para reducir ruido (ej. bajando severidad para revelacion de versiones).
+
+## [4.6.18] - 2026-01-13
+
+### Anadido
+
+- **Spray de Credenciales SSH**: Probar todas las credenciales de la lista spray en keyring hasta autenticar exitosamente. Permite una sola lista para redes con distintos requisitos de autenticacion SSH.
+
+### Corregido
+
+- **Salida Parcial de Nuclei**: Persistir hallazgos parciales cuando los lotes hacen timeout a maxima profundidad de division recursiva, en lugar de dejar la salida vacia.
+- **Codificacion URL NVD**: Codificar parametros de busqueda con espacios para evitar errores de URL.
+
+## [4.6.17] - 2026-01-13
+
+### Corregido
+
+- **Keyring con sudo**: Preservar el contexto de DBus al cargar el keyring del usuario invocador para mostrar credenciales guardadas.
+
+## [4.6.16] - 2026-01-13
+
+### Mejorado
+
+- **Fiabilidad de Nuclei**: Timeouts adaptativos por lote, divisiones recursivas y timeout/reintentos por peticion para reducir ejecuciones parciales.
+
+## [4.6.15] - 2026-01-13
+
+### Mejorado
+
+- **Estabilidad del progreso de Nuclei**: Mantener el avance de objetivos sin retrocesos durante reintentos y timeouts.
+
+### Corregido
+
+- **Consistencia de hosts en informes**: Rellenar `hosts[].asset_name` y `hosts[].interfaces` desde assets unificados.
+
+## [4.6.14] - 2026-01-13
+
+### Añadido
+
+- **Cancelar en el asistente de autenticación**: Permite cancelar los prompts de credenciales para salir de la configuración de auth.
+
+### Mejorado
+
+- **Etiqueta de navegación**: Cambia "Volver" por "Cancelar" y usa color de advertencia en la navegación.
+
+### Corregido
+
+- **Keyring con sudo**: Detecta credenciales guardadas del usuario que invoca al ejecutar con sudo.
+- **Fecha en informes**: Actualiza el footer de licencia HTML a 2026.
+
+## [4.6.13] - 2026-01-12
+
+### Añadido
+
+- **Objetivos en el Wizard**: Mostrar objetivos normalizados con hosts estimados antes de ejecutar.
+
+### Mejorado
+
+- **Progreso de Nuclei**: Mostrar avance por objetivos dentro de cada batch para evitar barras congeladas.
+- **Progreso de Vulns**: Mostrar estado explícito de timeout de Nikto cuando supera su presupuesto.
+
+### Corregido
+
+- **Clasificación de Activos**: Servicios tipo Chromecast sobrescriben pistas genéricas de router en dispositivos multimedia.
+- **Identidad Web**: Reconocer títulos de OWASP Juice Shop como activos de tipo servidor.
+- **Manifiesto de Ejecución**: Marcar `run_manifest.json` como parcial cuando hay timeouts en Nuclei.
+
+## [4.6.12] - 2026-01-12
+
+### Mejorado
+
+- **Progreso de Nuclei**: Mostrar avance basado en tiempo dentro de cada batch, con tiempo transcurrido, para evitar barras congeladas.
+
+## [4.6.11] - 2026-01-12
+
+### Añadido
+
+- **Origen HTTP sin agente**: Se registra el origen de identidad HTTP (`http_source`, `upnp_device_name`) para distinguir pistas UPnP de señales HTTP reales.
+
+### Cambiado
+
+- **Progreso de Nuclei**: Emite actualizaciones de latido durante lotes largos para mostrar actividad y tiempo transcurrido.
+
+### Corregido
+
+- **Gating de Identidad HTTP**: Ignora títulos solo UPnP para el gating de escaneo web y el score de identidad; permite que el probe HTTP sobrescriba pistas UPnP.
+- **Enriquecimiento Web**: Propaga cabeceras HTTP server desde el enriquecimiento de vulnerabilidades a los fingerprints sin agente.
+
+## [4.6.10] - 2026-01-12
+
+### Añadido
+
+- **Objetivos Wizard**: La entrada manual acepta valores CIDR/IP/rango separados por comas y normaliza rangos a bloques CIDR.
+- **Objetivos CLI**: Acepta rangos IP y normaliza IPs individuales a /32 para un escaneo consistente.
+
+### Cambiado
+
+- **Docs**: README/uso/manual actualizados y roadmap reordenado con eliminación de emojis.
+
+## [4.6.9] - 2026-01-12
+
+### Cambiado
+
+- **Deep Scan**: Usa evidencia HTTP (título/servidor) y tipo de dispositivo para evitar deep scans innecesarios cuando la identidad ya es fuerte.
+- **Escaneo Apps Web**: Omitir sqlmap/ZAP en UIs de infraestructura cuando la identidad indica router/switch/AP.
+
+### Corregido
+
+- **Informe Nuclei**: Marcar ejecuciones parciales cuando hay timeouts de lotes y exponer índices de lotes con timeout/fallidos en el informe.
+
+## [4.6.8] - 2026-01-12
+
+### Corregido
+
+- **Progreso Vulns**: No actualizar barras de progreso de hosts ya finalizados para evitar movimientos engañosos.
+- **Tags Web**: Añadir la etiqueta `web` cuando existe `web_ports_count`, aunque falten flags de puerto.
+
+## [4.6.7] - 2026-01-11
+
+### Corregido
+
+- **Escaneos Auth**: Evitar consultas de credenciales en keyring durante el escaneo de puertos si la autenticación está desactivada.
+- **Logs de sesión**: Deduplicadas las barras de progreso para reducir ruido.
+
+## [4.6.6] - 2026-01-11
+
+### Cambiado
+
+- **UX**: Añadido el prompt "Trust HyperScan" en el perfil Exhaustivo (defecto: No).
+
+## [4.6.5] - 2026-01-11
+
+### Corregido
+
+- **Updater**: Forzar `VERSION` al tag objetivo durante la actualización para evitar banners obsoletos.
+- **Resolución de versión**: Priorizar `VERSION` empaquetado sobre metadata instalada para evitar sombras de pip.
+- **Flujo de actualización**: Bloquear actualizaciones del sistema sin sudo para `/usr/local/bin/redaudit` y evitar instalaciones parciales.
+
+### v4.6.3 (2026-01-11)
+
+- **UX**: Añadido prompt "Trust HyperScan" faltante en el Asistente (Paso 2).
+- **UX**: Activado Trust HyperScan por defecto en perfiles "Express" y "Standard".
+
+## [4.6.4] - 2026-01-11
+
+- **UX**: Prompt "Trust HyperScan" visible en perfil Estándar (antes oculto/auto-true).
+
+## [4.6.2] - 2026-01-11
+
+### Añadido
+
+- **Optimización Trust HyperScan (Hosts Silenciosos)**: Ahora maneja hosts "mudos" (0 puertos) inteligentemente. En lugar de recurrir a un escaneo completo de 65k puertos, realiza una verificación de cordura (top 1000) si "Trust HyperScan" está activado.
+
+## [4.6.0] - 2026-01-11
+
+### Added
+
+- **Optimización Trust HyperScan**: Nueva capacidad para reutilizar resultados de descubrimiento para Deep Scan, evitando el lento escaneo `-p-`.
+  - Añadido flag CLI `--trust-hyperscan`.
+  - Añadido prompt interactivo en el Asistente.
+  - Reduce drásticamente el tiempo de escaneo para hosts identificados.
+
+## [4.5.18] - 2026-01-11
+
+### Corregido
+
+- **Configuración Lab (Hotfix)**: `setup_lab.sh` ahora fuerza la recreación del contenedor `target-windows` (.30) usando la configuración correcta de `elswork/samba`, arreglando el uso de imágenes rotas u obsoletas.
+
+## [4.5.17] - 2026-01-11
+
+### Corregido
+
+- **Lógica de Escaneo (BUG-01)**: Los puertos de HyperScan ahora se preservan estrictamente incluso si la fase de deep scan falla o devuelve cero puertos debido a timeouts.
+- **Escaneo de Routers (UX-03)**: Lógica de deep scan optimizada para dispositivos de infraestructura:
+  - Routers bien identificados (identidad fuerte, fabricante conocido, <= 20 puertos) ahora omiten el Deep Scan redundante.
+  - Hosts sospechosos o ambiguos SIEMPRE reciben el barrido completo de 65k puertos.
+  - Resuelve el problema de escaneos de router de 25+ minutos respetando estrictamente el diagrama de seguridad.
+- **Manejo de Entrada**: Corregido crash por `Ctrl+C` en el asistente (salida elegante).
+- **CLI**: Añadido argumento faltante `--verbose` / `-v`.
+
+### Documentación
+
+- **Instalación**: Actualizado README para aclarar que RedAudit tiene un mecanismo de actualización automática nativo vía asistente (`sudo redaudit`).
+- **Compatibilidad**: Añadida guía específica para Ubuntu 24.04+ (Noble) sobre restricciones de pip.
+
+## [4.5.16] - 2026-01-10
+
+### Corregido
+
+- **Smart Scan**: Preservar puertos descubiertos por HyperScan cuando nmap subreporta por problemas de timing/red.
+- **SIEM Tags**: Etiqueta `deep-scanned` solo se agrega cuando deep scan fue realmente ejecutado.
+
+## [4.5.15] - 2026-01-10
+
+### Corregido
+
+- **Smart Scan**: Corregida deteccion de Identidad Fantasma en `auditor_scan.py` (fix de v4.5.14 estaba en ruta de codigo incorrecta).
+- **Auth SSH**: Cambiado `auth_ssh_trust_keys` por defecto a `True` para escaneo automatizado.
+
+## [4.5.14] - 2026-01-10
+
+### Fixed
+
+- **Auth SSH**: Implementada `PermissivePolicy` robusta para evitar errores `Server not found in known_hosts` causados por checks estrictos o permisos de escritura.
+- **Smart Scan**: Corregido problema de "Identidad Fantasma" donde hosts con pistas de Fase 0 (ej. SNMP) pero cero puertos abiertos no activaban Deep Scan.
+
+## [4.5.13] - 2026-01-10
+
+### Corregido
+
+- **Crítico**: Resuelto `AttributeError: 'Host' object has no attribute 'get'` en la fase de Escaneo Autenticado. El escáner ahora maneja correctamente los objetos Host al acceder a la IP y almacenar resultados SSH.
+- **Documentación**: Guías `LAB_SETUP` actualizadas con insignias de idioma y diferenciación clara entre Laboratorio (soporta Docker) y Máquina Auditora (recomienda Linux Nativo).
+
+## [4.5.12] - 2026-01-10
+
+### Corregido
+
+- **Instalación Inteligente de Pip (Soporte PEP 668)**:
+  - El instalador ahora detecta automáticamente fallos debidos a "entornos gestionados externamente" (común en Ubuntu 24.04 y Kali reciente) y reintenta la instalación con el flag `--break-system-packages` si es compatible. Esto asegura que dependencias como `pysnmp` e `impacket` se instalen correctamente incluso cuando faltan en los repositorios APT.
+
+## [4.5.11] - 2026-01-10
+
+### Corregido
+
+- **Compatibilidad Universal del Instalador**:
+  - La instalación de `python3-pysnmp` ahora es opcional/advertencia en el paso APT. Esto evita que el instalador aborte en distribuciones que eliminaron este paquete (ej: Ubuntu Noble 24.04).
+  - Corregida una línea de instalación apt duplicada en `redaudit_install.sh`.
+
+## [4.5.10] - 2026-01-10
+
+### Mejorado
+
+- **Robustez del Instalador**:
+  - Añadido `python3-pysnmp` a dependencias APT (preferido sobre pip en sistemas Debian).
+  - Eliminado `--quiet` de la instalación de pip para exponer errores si falla la instalación de paquetes.
+
+## [4.5.9] - 2026-01-10
+
+### Corregido
+
+- **CI/Linting**: Suprimidas alertas de seguridad falsas positivas (Bandit) en `scripts/seed_keyring.py` por credenciales hardcodeadas de laboratorio.
+
+## [4.5.8] - 2026-01-10
+
+### Corregido
+
+- **Soporte Keyring Root (Headless)**: Añadido soporte para `keyrings.alt` para gestionar credenciales como root sin sesión gráfica (común en servidores/Labs).
+  - **Instalador**: Añadida dependencia `keyrings.alt`.
+  - **Core**: `redaudit` y `seed_keyring.py` ahora usan `PlaintextKeyring` (basado en archivo) si el keyring del sistema no está disponible.
+
+## [4.5.7] - 2026-01-10
+
+### Corregido
+
+- **Carga de Credenciales (Contexto Sudo)**: Corregido un problema donde las credenciales sembradas por un usuario normal no eran visibles para `sudo redaudit`.
+  - **Updater**: El auto-seed ahora corre como root durante la actualizacion.
+  - **Script Seeder**: Anadida advertencia si se ejecuta como no-root.
+- **Estabilidad CI/Test**: Anadidos tests de integracion robustos para el flujo de carga de credenciales.
+
+## [4.5.6] - 2026-01-10
+
+### Anadido
+
+- **Automatizacion del Laboratorio**: Anadido `scripts/setup_lab.sh` para automatizar el provisionamiento del lab Docker.
+  - Comandos: `install`, `start`, `stop`, `remove`, `status`.
+  - Provisiona 11 objetivos vulnerables.
+- **Documentacion del Laboratorio**: Anadido `docs/LAB_SETUP.md` y `docs/LAB_SETUP_ES.md`.
+  - Guia completa sobre como configurar el entorno de pruebas.
+  - Enlazado desde el README principal.
+
+## [4.5.5] - 2026-01-10
+
+### Anadido
+
+- **Script de Credenciales de Lab (Modo Spray)**: Anadido `scripts/seed_keyring.py` conteniendo TODAS las credenciales del laboratorio.
+  - Pre-puebla el keyring con credenciales SSH (3), SMB (3) y SNMP (1).
+  - Incluye referencia a credenciales web.
+
+- **Updater Auto-Seed**: La actualizacion desde el asistente (Opcion 2) ahora ejecuta `seed_keyring.py` automaticamente si existe.
+  - Asegura una configuracion de credenciales fluida tras la actualizacion.
+
+## [4.5.4] - 2026-01-10
+
+### Anadido
+
+- **B5: Carga de Credenciales desde Keyring**: El asistente ahora detecta credenciales guardadas y ofrece cargarlas al inicio del escaneo.
+  - Anadido `has_saved_credentials()` y `get_saved_credential_summary()` a `KeyringCredentialProvider`.
+  - Anadido `_check_and_load_saved_credentials()` al flujo de autenticacion del asistente.
+  - Elimina la necesidad de reintroducir credenciales en escaneos posteriores.
+
+## [4.5.3] - 2026-01-10
+
+### Añadido
+
+- **Almacenamiento Seguro de Credenciales (Keyring)**: Paquete `keyring` ahora incluido como dependencia principal para almacenamiento seguro de credenciales vía keychain del SO (Linux Secret Service, macOS Keychain, Windows Credential Vault).
+  - Añadido a dependencias principales e instalador (`python3-keyring` apt + pip).
+
+### Corregido
+
+- **Bugs de Auditoría de Escaneo (B2/B3/B4)**:
+  - **B2**: Las barras de progreso de vulnerabilidades ahora siempre llegan al 100% (añadido bucle final en `auditor_vuln.py`).
+  - **B3**: Tag INFO del heartbeat cambiado de `[grey50]` a `[cyan]` para visibilidad adecuada.
+  - **B4**: La detección SSH en escaneos autenticados ahora maneja objetos `Host` (no solo dicts), corrigiendo falsos negativos "No se encontraron hosts con SSH".
+
+## [4.5.2] - 2026-01-10
+
+### Añadido
+
+- **Soporte Multi-Credencial (Fase 4.1.1)**:
+  - Añadido modo `Universal` en el asistente y soporte para flag `--credentials-file`.
+  - Detección automática de protocolo (SSH/SMB/SNMP/RDP/WinRM).
+  - Añadido `CredentialsManager` y generación de plantillas.
+  - Fixes de "Auditoría Zero-Context": navegación segura y lógica unificada.
+
+### Cambiado
+
+- **Asistente**:
+  - Refactorizado flujo de autenticación para modos `Universal` vs `Avanzado`.
+  - Añadido soporte para "Volver" (`<`).
+  - Añadidas pistas de UI para la estrategia de detección.
+
+### Arreglado
+
+- **Autenticación**: Corregida lógica legada en `auditor.py` que ignoraba la configuración del asistente.
+
+## [4.5.0] - 2026-01-09
+
+### Añadido
+
+- **Escaneo Autenticado (SSH)**: Interrogación profunda de hosts Linux (Kernel, Paquetes, Uptime).
+- **Escaneo Autenticado (SMB/WMI)**: Enumeración de Windows (SO, Dominio, Recursos compartidos, Usuarios) vía `impacket`.
+- **Escaneo Autenticado (SNMP v3)**: Auditoría segura de dispositivos de red con protocolos Auth/Priv.
+- **Integración con Lynis**: Ejecución remota de auditorías de hardening vía SSH.
+- **Asistente Interactivo**: Nuevo Paso 8 para la configuración de Autenticación.
+- **Integración con Keyring**: Almacenamiento seguro para credenciales de escaneo.
+
+### Cambiado
+
+- **Asistente (Wizard)**: Flujo de 9 pasos actualizado para acomodar opciones de autenticación.
+- **Documentación**: Actualizaciones completas en las guías MANUAL y USAGE.
+
+### Corregido
+
+- **RecursionError**: en `AuditorRuntime.__getattr__`.
+- **Tests**: Varias correcciones para iteradores Mock en pruebas del asistente.
+- **Mypy**: Mejoras de seguridad de tipos en módulos de autenticación.
+
+## [4.4.5] - 2026-01-09
+
+### Mejorado
+
+- **Push de Cobertura de Código**: Alcanzada cobertura del 100% en `topology.py` y >94% en `updater.py`, elevando la cobertura total del proyecto a ~89%.
+  - Añadidos escenarios de test robustos para bucles de topología, crashes de red y excepciones de casos borde.
+  - Refactorizados tests del updater con mocking dinámico para mayor estabilidad.
+- **Estabilidad**: Resueltas intervenciones de hooks pre-commit e inconsistencias de formateo en archivos de test.
+
+## [4.4.4] - 2026-01-09
+
+### Mejorado
+
+- **Push de Cobertura de Código**: Incrementada significativamente la cobertura de tests en módulos core (alcanzada ~90% de cobertura total).
+  - Añadidos tests específicos para `siem.py` (desglose de riesgo, mapeo de severidad por herramienta, generación CEF).
+  - Añadidos tests para `syn_scanner.py` (rutas de integración con scapy, fallos de sockets raw).
+  - Añadidos tests para `reporter.py` (fallos en creación de archivos, verificación de resultados cifrados).
+  - Añadidos tests para `auditor.py` e `hyperscan.py` (rutas de inicialización, lógica de conexión).
+
+## [4.4.3] - 2026-01-08
+
+### Añadido
+
+- Script de paridad local `scripts/ci_local.sh` para ejecutar pre-commit y pytest en Python 3.9-3.12.
+
+### Corregido
+
+- El lock de desarrollo en Python 3.9 ahora selecciona versiones compatibles de iniconfig, pytest-asyncio, markdown-it-py, pycodestyle y pyflakes para evitar conflictos de resolución.
+- El lock de runtime ahora selecciona una versión de markdown-it-py compatible con Python 3.9 al ejecutarse en 3.9.
+
+### Cambiado
+
+- Los tests de flujos completos de escaneo desactivan HyperScan-first para mantener el tiempo de ejecución acotado sin afectar el comportamiento en producción.
+
 ## [4.4.0] - 2026-01-08
 
 ### Añadido
@@ -27,7 +1378,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Corregido
 
-- **Integridad de Datos**: Los hallazgos de vulnerabilidades (Nikto, etc.) ahora se adjuntan correctamente a los objetos `Host` en memoria. Esto corrige el problema donde las vulnerabilidades faltaban en los reportes JSON y los Risk Scores eran 0 a pesar de encontrar debilidades.
+- **Integridad de Datos**: Los hallazgos de vulnerabilidades (Nikto, etc.) ahora se adjuntan correctamente a los objetos `Host` en memoria. Esto corrige el problema donde las vulnerabilidades faltaban en los informes JSON y los Risk Scores eran 0 a pesar de encontrar debilidades.
 - **UI UX**: Corregido un glitch visual donde el mensaje de estado "heartbeat" ("Net Discovery en progreso...") duplicaba líneas de IP en el wizard. Ahora imprime de forma segura en la consola de progreso.
 
 ## [4.3.2] - 2026-01-08
@@ -57,11 +1408,11 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Timing Stealth usa modo connect (más sigiloso que SYN)
   - Integración Wizard: Todos los perfiles (Express/Estándar/Exhaustivo/Personalizado) soportan selección de modo
 
-- **Tooltip de Desglose de Risk Score**: Los reportes HTML ahora muestran componentes detallados del risk score al pasar el ratón.
+- **Tooltip de Desglose de Risk Score**: Los informes HTML ahora muestran componentes detallados del risk score al pasar el ratón.
   - Componentes: CVSS Máximo, Puntuación Base, Bonus Densidad, Multiplicador Exposición
   - Nueva función: `calculate_risk_score_with_breakdown()` en `siem.py`
 
-- **Visualización de Identity Score**: Los reportes HTML muestran identity_score con código de colores.
+- **Visualización de Identity Score**: Los informes HTML muestran identity_score con código de colores.
   - Verde (≥3): Host bien identificado
   - Amarillo (=2): Parcialmente identificado
   - Rojo (<2): Identificación débil (disparó deep scan)
@@ -230,7 +1581,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Cambiado
 
 - **Refactorización**: Lógica de escaneo heredada basada en herencia reemplazada por escáner compuesto.
-- **Reportes**: `reporter.py` actualizado para serializar objetos `Host` para reportes JSON/HTML.
+- **Informes**: `reporter.py` actualizado para serializar objetos `Host` para informes JSON/HTML.
 - **Testing**: Limpieza mayor de la suite de pruebas, asegurando verificación lógica (48/48 pruebas core pasando).
 
 ### Eliminado
@@ -268,7 +1619,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Corregido
 
 - **Enriquecimiento Neighbor Cache**: Las direcciones MAC descubiertas vía neighbor cache pasivo (ARP/NDP) ahora disparan un lookup OUI online.
-- **Consistencia de Hostname**: Consolidación de búsquedas DNS reversas de Fase 0 (bajo impacto) en el registro de host canónico, asegurando visualización consistente en todos los reportes (HTML/TXT) y lógica de resolución de entidades.
+- **Consistencia de Hostname**: Consolidación de búsquedas DNS reversas de Fase 0 (bajo impacto) en el registro de host canónico, asegurando visualización consistente en todos los informes (HTML/TXT) y lógica de resolución de entidades.
 - **Flujo de Datos**: Corregidas brechas donde datos de enriquecimiento de bajo impacto no se propagaban completamente a los consumidores posteriores.
 
 ## [3.10.0] - 2026-01-01 (Gobernanza SmartScan y Fase 0)
@@ -316,7 +1667,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Corregido
 
 - **Falsos positivos de Nuclei**: Los sospechosos se filtran antes de consolidar hallazgos, con conteo expuesto en el resumen de Nuclei.
-- **Conteo de vulns web**: Summary/manifest ahora exponen conteo raw vs consolidado para evitar desajustes entre CLI y reportes.
+- **Conteo de vulns web**: Summary/manifest ahora exponen conteo raw vs consolidado para evitar desajustes entre CLI y informes.
 - **Títulos JSONL**: Añadido `descriptive_title` en findings.jsonl para mejor visualización downstream.
 
 ### Mejorado
@@ -352,7 +1703,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - **Yeelight** (puertos 1982, 55443): Payload comando discovery
   - **Tuya/SmartLife** (puertos 6666, 6667): Sondas específicas de protocolo
   - **CoAP/Matter** (puerto 5683): Payload GET .well-known/core
-- **Fallback de Hostname por DNS Reverso**: Los reportes HTML ahora muestran hostnames de dispositivos IoT desde DNS reverso cuando el hostname estándar está vacío
+- **Fallback de Hostname por DNS Reverso**: Los informes HTML ahora muestran hostnames de dispositivos IoT desde DNS reverso cuando el hostname estándar está vacío
 
 ### Fixed
 
@@ -365,7 +1716,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 - **Pistas de dominio DHCP**: El parseo de Domain Name/Domain Search ahora tolera prefijos de Nmap (`|`, `|_`, indentacion) y captura dominios internos de forma fiable.
 - **Nombres NetBIOS**: El parseo de nbstat en Nmap ahora recorta puntuacion final para evitar ruido en inventario (ej: `SERVER01,`).
 
-## [3.9.3] - 2025-12-27 (Hotfix de consolidacion de reportes)
+## [3.9.3] - 2025-12-27 (Hotfix de consolidacion de informes)
 
 ### Fixed
 
@@ -378,14 +1729,14 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - **Deteccion de version en instalacion script**: Acepta sufijos con letra como `3.9.1a` en `redaudit/VERSION` para evitar `0.0.0-dev` tras auto-update.
 
-## [3.9.1a] - 2025-12-27 (Hotfix de Reportes)
+## [3.9.1a] - 2025-12-27 (Hotfix de Informes)
 
 ### Fixed
 
-- **Títulos en reportes HTML ES**: El regex ahora localiza correctamente títulos de hallazgos comunes en `report_es.html`.
+- **Títulos en informes HTML ES**: El regex ahora localiza correctamente títulos de hallazgos comunes en `report_es.html`.
 - **Metadatos en summary.json**: Se añadieron `scan_mode_cli`, `options` compacto y alias `severity_counts` para dashboards.
 
-## [3.9.0] - 2025-12-27 (Selector de Perfiles y Reportes Mejorados)
+## [3.9.0] - 2025-12-27 (Selector de Perfiles y Informes Mejorados)
 
 ### Añadido
 
@@ -407,7 +1758,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - **Recordatorio de API Key NVD**: El wizard muestra un recordatorio con enlace para obtener la API key cuando se omite correlación CVE.
 
-- **Reporte HTML Mejorado** (para auditores profesionales):
+- **Informe HTML Mejorado** (para auditores profesionales):
   - **Hallazgos Expandibles**: Click en cualquier hallazgo para ver observaciones técnicas (`parsed_observations`)
   - **Sección Smart Scan Analysis**: Muestra exactamente por qué se dispararon los deep scans (ej: `suspicious_service`, `many_ports`)
   - **Sección Playbooks de Remediación**: Grid visual de playbooks generados con IPs objetivo
@@ -420,7 +1771,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Corregido
 
 - **Timing de nmap no aplicado**: La configuración `nmap_timing` no se pasaba a `get_nmap_arguments()`, por lo que Sigiloso/Normal/Agresivo no tenía efecto en la ejecución real de nmap.
-- **Playbooks no aparecían en reporte HTML**: Los playbooks se generaban DESPUÉS del reporte HTML, resultando en una sección vacía. Ahora se generan antes.
+- **Playbooks no aparecían en informe HTML**: Los playbooks se generaban DESPUÉS del informe HTML, resultando en una sección vacía. Ahora se generan antes.
 
 ### Cambiado
 
@@ -454,7 +1805,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Corrige archivos de log excesivamente grandes cuando el terminal se captura externamente (ej. comando `script`).
   - Aplicado a las 9 barras de progreso en módulos auditor, hyperscan, nuclei.
 
-## [3.8.7] - 2025-12-23 (Correcciones de reportes y clasificación)
+## [3.8.7] - 2025-12-23 (Correcciones de informes y clasificación)
 
 ### Corregido
 
@@ -492,7 +1843,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Documentación
 
-- Manuales y esquema de reportes actualizados para incluir las pistas del probe HTTP.
+- Manuales y esquema de informes actualizados para incluir las pistas del probe HTTP.
 
 ## [3.8.4] - 2025-12-21 (Verificación sin Agente y Corrección de Colores)
 
@@ -505,11 +1856,11 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - **Colores de estado durante progreso**: Corregido el problema donde los mensajes `[INFO]` aparecían sin color cuando la barra de progreso Rich estaba activa. Ahora usa Rich console.print con markup adecuado (`bright_blue` para INFO, `green` para OK, `yellow` para WARN, `red` para FAIL) asegurando colores consistentes en todo momento.
 
-## [3.8.3] - 2025-12-21 (Wizard y UX de reportes)
+## [3.8.3] - 2025-12-21 (Wizard y UX de informes)
 
 ### Añadido
 
-- **Identidad del auditor**: Prompt en el wizard para el nombre del auditor, reflejado en reportes TXT/HTML.
+- **Identidad del auditor**: Prompt en el wizard para el nombre del auditor, reflejado en informes TXT/HTML.
 - **HTML bilingüe**: Cuando el idioma es ES, se genera `report_es.html` junto al HTML principal.
 
 ### Corregido
@@ -526,7 +1877,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Añadido
 
-- **Watermark HTML**: Footer profesional en reportes HTML con licencia GPLv3, autor (Dorin Badea) y enlace a GitHub.
+- **Watermark HTML**: Footer profesional en informes HTML con licencia GPLv3, autor (Dorin Badea) y enlace a GitHub.
 
 ### Corregido
 
@@ -565,7 +1916,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 - **SmartScan Modo Completo**: El modo escaneo completo ya no desactiva heurísticas de deep scan; usa threshold de identidad más alto (4 vs 3) para descubrimiento más exhaustivo.
 - **SmartScan Infraestructura de Red**: Routers y dispositivos de red ahora siempre activan deep scan para mapeo completo de infraestructura.
 
-## [3.7.3] - 2025-12-20 (Confiabilidad del escaneo y precisión de reportes)
+## [3.7.3] - 2025-12-20 (Confiabilidad del escaneo y precisión de informes)
 
 ### Corregido
 
@@ -574,8 +1925,8 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 - **Timeout por modo**: Si no se define `--host-timeout`, el fallback respeta el modo de escaneo (completo = 300s) para
   evitar cortes prematuros.
 - **Fallback de identidad por topología**: Si Nmap falla, se usa MAC/vendor de topología/vecinos para mantener la
-  identidad del host en los reportes.
-- **Conteo de reportes**: "Hosts Descubiertos" ahora deduplica objetivos para reflejar el conjunto único real.
+  identidad del host en los informes.
+- **Conteo de informes**: "Hosts Descubiertos" ahora deduplica objetivos para reflejar el conjunto único real.
 
 ## [3.7.2] - 2025-12-19 (Hotfix UX y Progreso)
 
@@ -735,7 +2086,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Corregido
 
-- **Directorio de salida por defecto (sudo)**: Los reportes ahora se guardan por defecto en la carpeta Documentos del usuario que invoca `sudo` (en lugar de `/root`).
+- **Directorio de salida por defecto (sudo)**: Los informes ahora se guardan por defecto en la carpeta Documentos del usuario que invoca `sudo` (en lugar de `/root`).
 - **Expansión de `~` (sudo)**: `--output ~/...` y los defaults persistidos que usan `~` ahora se expanden contra el usuario invocador bajo `sudo`.
 - **Propietario de archivos**: `chown` best-effort del directorio de salida al usuario invocador para evitar artefactos propiedad de root en el home del usuario.
 
@@ -759,7 +2110,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Añadido
 
-- **Dashboard HTML Interactivo** (`--html-report`): Genera reportes HTML standalone con Bootstrap + Chart.js.
+- **Dashboard HTML Interactivo** (`--html-report`): Genera informes HTML standalone con Bootstrap + Chart.js.
   - Tema oscuro con estética premium
   - Gráfico donut de distribución de severidad y gráfico de barras Top 10 puertos
   - Tablas ordenables de hosts y hallazgos
@@ -767,7 +2118,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Columnas de MAC y vendor en tabla de hosts
   - Autocontenido: funciona offline, sin dependencias externas en runtime
 
-- **Reporte Visual de Diff HTML** (`--diff`): Compara dos escaneos con salida visual lado a lado.
+- **Informe Visual de Diff HTML** (`--diff`): Compara dos escaneos con salida visual lado a lado.
   - Nueva plantilla: `redaudit/templates/diff.html.j2`
   - Nueva función: `format_diff_html()` en `diff.py`
   - Resaltados: hosts nuevos (verde), hosts eliminados (rojo), puertos cambiados (amarillo)
@@ -782,7 +2133,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Cambiado
 
-- **reporter.py**: Ahora genera reporte HTML automáticamente cuando se usa el flag `--html-report`.
+- **reporter.py**: Ahora genera informe HTML automáticamente cuando se usa el flag `--html-report`.
 - **reporter.py**: Envía alertas webhook tras completar el escaneo cuando se provee `--webhook URL`.
 - **cli.py**: Añadidos flags `--html-report` y `--webhook URL`.
 - **pyproject.toml**: Directorio de templates incluido en package data.
@@ -844,7 +2195,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Corregido
 
 - **Descubrimiento de Dispositivos IoT**: Escaneos anteriores solo encontraban 3 de 10+ dispositivos debido al modo ARP pasivo y timeouts cortos.
-- **Sincronización JSON hidden_networks**: Las IPs de redes filtradas ahora correctamente populan `hidden_networks` y `leaked_networks_cidr` en JSON para pipelines SIEM/AI (antes solo aparecía en el reporte de texto).
+- **Sincronización JSON hidden_networks**: Las IPs de redes filtradas ahora correctamente populan `hidden_networks` y `leaked_networks_cidr` en JSON para pipelines SIEM/AI (antes solo aparecía en el informe de texto).
 
 ## [3.2.2] - 2025-12-16 (Producción Hardening)
 
@@ -895,7 +2246,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Añadido
 
-- **Descubrimiento de Red Mejorado (v3.2)**: Nuevo bloque `net_discovery` en reportes con descubrimiento DHCP/NetBIOS/mDNS/UPNP/ARP/fping y análisis de VLANs candidatas (`--net-discovery`).
+- **Descubrimiento de Red Mejorado (v3.2)**: Nuevo bloque `net_discovery` en informes con descubrimiento DHCP/NetBIOS/mDNS/UPNP/ARP/fping y análisis de VLANs candidatas (`--net-discovery`).
 - **Recon Red Team (con guardas)**: Recon opt-in bajo `--redteam` con best-effort SNMP/SMB/RPC/LDAP/Kerberos/DNS + señales L2 pasivas en `net_discovery.redteam`.
 - **Nuevos flags de tuning**: `--net-discovery-interface`, `--redteam-max-targets`, `--snmp-community`, `--dns-zone`, `--kerberos-realm`, `--kerberos-userlist`, `--redteam-active-l2`.
 
@@ -911,12 +2262,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 - **Extracción de fingerprint de SO**: Nueva función `extract_os_detection()` captura info de SO estructurada desde salida Nmap
 - **Cross-validación Nikto**: `detect_nikto_false_positives()` compara hallazgos de Nikto con cabeceras curl/wget para detectar contradicciones
 - **Ajuste de severidad RFC-1918**: `is_rfc1918_address()` reduce severidad para divulgación de IP interna en redes privadas
-- **Constante de versión de schema**: Nueva constante `SCHEMA_VERSION` separada de `VERSION` para versionado de schema de reportes
+- **Constante de versión de schema**: Nueva constante `SCHEMA_VERSION` separada de `VERSION` para versionado de schema de informes
 
 ### Cambiado
 
 - **Timeout de TestSSL**: Por defecto aumentado de 60s a 90s, ahora configurable vía parámetro `timeout`
-- **Rutas PCAP**: Los reportes usan rutas relativas (`pcap_file`) para portabilidad, con `pcap_file_abs` para uso interno
+- **Rutas PCAP**: Los informes usan rutas relativas (`pcap_file`) para portabilidad, con `pcap_file_abs` para uso interno
 - **siem.py**: `enrich_vulnerability_severity()` añade campos `severity_note` y `potential_false_positives` cuando aplica
 
 ## [3.1.3] - 2025-12-15 (UDP y topología asíncronos)
@@ -956,13 +2307,13 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 ### Cambiado
 
 - **Deep Scan UDP Fase 2b**: Usa `--top-ports N` configurable y registra `udp_top_ports` en el output de deep scan
-- **Esquema de Reporte**: Añadido bloque opcional `topology` en el reporte raíz (cuando está activado)
+- **Esquema de Informe**: Añadido bloque opcional `topology` en el informe raíz (cuando está activado)
 
 ## [3.1.0] - 2025-12-14 (SIEM y pipelines de IA)
 
 ### Añadido
 
-- **Vistas de exportación JSONL**: Archivos planos auto-generados para ingesta SIEM/IA (cuando el cifrado de reportes está desactivado)
+- **Vistas de exportación JSONL**: Archivos planos auto-generados para ingesta SIEM/IA (cuando el cifrado de informes está desactivado)
   - `findings.jsonl` - Un hallazgo por línea
   - `assets.jsonl` - Un activo por línea
   - `summary.json` - Resumen compacto para dashboards
@@ -989,12 +2340,12 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 - **Versiones de escáneres**: Tracking de proveniencia de herramientas
   - Nuevo módulo: `redaudit/core/scanner_versions.py`
   - Detecta: nmap, nikto, testssl, whatweb, searchsploit
-  - Añadido al reporte como objeto `scanner_versions`
+  - Añadido al informe como objeto `scanner_versions`
 
 ### Cambiado
 
 - **Versión de esquema**: Actualizada de 2.0 a 3.1
-- **Metadatos de reporte**: Añadido timestamp `generated_at`
+- **Metadatos de informe**: Añadido timestamp `generated_at`
 - **Versión**: Actualizada a 3.1.0
 
 ---
@@ -1029,9 +2380,9 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ### Añadido
 
-- **Visibilidad de PCAP**: El resumen final incluye un contador de PCAP; los reportes TXT incluyen la ruta del PCAP cuando se captura.
+- **Visibilidad de PCAP**: El resumen final incluye un contador de PCAP; los informes TXT incluyen la ruta del PCAP cuando se captura.
 - **Claridad del TXT**: Secciones de deep scan incluyen conteos de comandos (identity-only vs deep scan ejecutado).
-- **Reporting CVE (TXT)**: Cuando hay enriquecimiento CVE, los reportes TXT incluyen resúmenes de CVE y conteos por puerto.
+- **Reporting CVE (TXT)**: Cuando hay enriquecimiento CVE, los informes TXT incluyen resúmenes de CVE y conteos por puerto.
 
 ### Cambiado
 
@@ -1095,7 +2446,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Caché de 7 días para uso offline y cumplimiento de rate limit
   - Flags CLI: `--nvd-key`, `--cve-lookup`
 
-- **Análisis diferencial**: Comparar reportes de escaneo
+- **Análisis diferencial**: Comparar informes de escaneo
   - Nuevo módulo: `redaudit/core/diff.py`
   - Identifica hosts nuevos, hosts eliminados y cambios de puertos
   - Genera salida JSON y Markdown
@@ -1177,7 +2528,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - **Organización de PCAP**: PCAPs ahora se guardan dentro de la carpeta de resultados con timestamp
   - Carpeta creada ANTES de iniciar el escaneo (`_actual_output_dir`)
-  - Todos los outputs (reportes + PCAPs) consolidados en un solo directorio
+  - Todos los outputs (informes + PCAPs) consolidados en un solo directorio
   - Corrige el problema donde PCAPs se guardaban en el directorio padre
 
 - **Optimización de tamaño PCAP**: Reduce captura de ilimitada a 200 paquetes
@@ -1186,7 +2537,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - tcpdump se detiene automáticamente tras 200 paquetes
 
 - **Directorio de salida por defecto**: Cambia de `~/RedAuditReports` a `~/Documents/RedAuditReports`
-  - Reportes guardados por defecto en Documents del usuario
+  - Informes guardados por defecto en Documents del usuario
   - Ubicación más intuitiva
 
 - **Versión**: Actualizada a 2.8.1
@@ -1241,10 +2592,10 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Flag CLI: `--skip-update-check` para desactivar
   - Traducciones para mensajes de update en inglés y español
 
-- **Carpetas de reportes con timestamp (Fase 6)**: Estructura organizada
-  - Reportes guardados en subcarpetas: `RedAudit_YYYY-MM-DD_HH-MM-SS/`
+- **Carpetas de informes con timestamp (Fase 6)**: Estructura organizada
+  - Informes guardados en subcarpetas: `RedAudit_YYYY-MM-DD_HH-MM-SS/`
   - Cada sesión tiene su propio directorio
-  - PCAPs y reportes organizados juntos
+  - PCAPs y informes organizados juntos
 
 ### Cambiado
 
@@ -1279,7 +2630,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Finaliza estado tras todos los enriquecimientos
 
 - Actualización de `reporter.py`:
-  - Crea subcarpetas con timestamp para reportes
+  - Crea subcarpetas con timestamp para informes
 
 ---
 
@@ -1293,7 +2644,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Hasta 500 checks concurrentes con batching configurable
   - Parsing de rangos: `1-1024`, `22,80,443`, o combinado `1-100,443,8080-8090`
 
-- **Salida compatible con SIEM (A5)**: Reportes JSON mejorados para Elastic y otros SIEM
+- **Salida compatible con SIEM (A5)**: Informes JSON mejorados para Elastic y otros SIEM
   - Nuevos campos: `schema_version`, `event_type`, `session_id`, `timestamp_end`
   - Metadatos del escáner: nombre, versión, modo
   - Array `targets` para escaneos multi-red
@@ -1334,7 +2685,7 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 - **Integración SearchSploit**: Lookup automático en ExploitDB para servicios con versión detectada
   - Consulta `searchsploit` para exploits conocidos cuando se identifica producto+versión
-  - Resultados visibles en reportes JSON y TXT
+  - Resultados visibles en informes JSON y TXT
   - Timeout: 10s por consulta
   - Corre en todos los modos (fast/normal/full)
   - Nueva función: `exploit_lookup()` en `redaudit/core/scanner.py`
@@ -1347,9 +2698,9 @@ Las notas de versión viven en `docs/releases/` para más contexto.
   - Nueva función: `ssl_deep_analysis()` en `redaudit/core/scanner.py`
 
 - **Mejoras de reporting**:
-  - Reportes TXT muestran exploits conocidos por servicio
-  - Reportes TXT muestran hallazgos de vulnerabilidad de TestSSL
-  - Reportes JSON incluyen automáticamente todos los campos nuevos
+  - Informes TXT muestran exploits conocidos por servicio
+  - Informes TXT muestran hallazgos de vulnerabilidad de TestSSL
+  - Informes JSON incluyen automáticamente todos los campos nuevos
 
 - **Internacionalización**: Traducciones EN/ES para features nuevas:
   - `exploits_found` - Notificaciones de descubrimiento de exploits
@@ -1379,7 +2730,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
   - `redaudit/core/auditor.py` - Orquestador principal
   - `redaudit/core/crypto.py` - Utilidades de cifrado/descifrado
   - `redaudit/core/network.py` - Detección de redes
-  - `redaudit/core/reporter.py` - Generación de reportes
+  - `redaudit/core/reporter.py` - Generación de informes
   - `redaudit/core/scanner.py` - Lógica de escaneo
   - `redaudit/utils/constants.py` - Constantes con nombre
   - `redaudit/utils/i18n.py` - Internacionalización
@@ -1390,7 +2741,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 
 - **Nuevas suites de tests**:
   - `tests/test_network.py` - Tests de detección de red con mocking
-  - `tests/test_reporter.py` - Tests de generación de reportes y permisos de fichero
+  - `tests/test_reporter.py` - Tests de generación de informes y permisos de fichero
 - **Entry point del paquete**: Soporte `python -m redaudit`
 
 ### Cambiado
@@ -1420,7 +2771,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 
 ### Añadido
 
-- **Seguridad de permisos de ficheros**: Reportes usan permisos seguros (0o600 - lectura/escritura solo para owner)
+- **Seguridad de permisos de ficheros**: Informes usan permisos seguros (0o600 - lectura/escritura solo para owner)
 - **Tests de integración**: Suite completa (`test_integration.py`)
 - **Tests de cifrado**: Cobertura completa de cifrado (`test_encryption.py`)
 
@@ -1442,7 +2793,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 ### Seguridad
 
 - **Validación de entrada**: Toda entrada del usuario validada por tipo y longitud
-- **Permisos de ficheros**: Todos los reportes generados usan permisos seguros (0o600)
+- **Permisos de ficheros**: Todos los informes generados usan permisos seguros (0o600)
 - **Manejo de errores**: Mejor manejo de excepciones reduce filtración de información
 
 ## [2.4.0] - 2025-12-07 (Adaptive Deep Scan)
@@ -1456,7 +2807,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 ### Cambiado
 
 - **Heartbeat**: Mensajería más profesional ("Nmap is still running") para reducir ansiedad durante escaneos largos.
-- **Reporting**: Añade campos `vendor` y `mac_address` en reportes JSON/TXT.
+- **Reporting**: Añade campos `vendor` y `mac_address` en informes JSON/TXT.
 - **Versión**: Actualizada a 2.4.0
 
 ## [2.3.1] - 2024-05-20 (Hardening de seguridad)
@@ -1464,7 +2815,7 @@ Ambas herramientas mantienen el enfoque adaptativo de RedAudit:
 ### Añadido
 
 - **Hardening de seguridad**: Sanitización estricta de inputs (IPs, hostnames, interfaces) para prevenir command injection.
-- **Cifrado de reportes**: Cifrado AES-128 opcional (Fernet) para reportes generados; incluye helper `redaudit_decrypt.py`.
+- **Cifrado de informes**: Cifrado AES-128 opcional (Fernet) para informes generados; incluye helper `redaudit_decrypt.py`.
 - **Rate limiting**: Retardo configurable entre escaneos concurrentes para operaciones más sigilosas.
 - **Logging profesional**: Logger rotativo en `~/.redaudit/logs/` para audit trail y debugging.
 - **Truncado de puertos**: Truncado automático si >50 puertos en un host, reduciendo ruido.

@@ -100,6 +100,18 @@ class TestUIManagerPrintStatus:
         assert "Error" in captured.out
         assert "FAIL" in captured.out
 
+    def test_print_status_uses_rich_when_active_console(self):
+        """Ensure print_status prefers Rich when a progress console is active."""
+        ui = UIManager()
+        ui._active_progress_console = object()
+        with (
+            patch.object(ui, "_print_with_rich") as print_rich,
+            patch.object(ui, "_print_ansi") as print_ansi,
+        ):
+            ui.print_status("Test message", "WARNING")
+        assert print_rich.called is True
+        assert print_ansi.called is False
+
     def test_print_status_updates_activity(self):
         """Test that print_status updates last_activity."""
         ui = UIManager()
@@ -110,6 +122,13 @@ class TestUIManagerPrintStatus:
 
 class TestUIManagerHelpers:
     """Test helper methods."""
+
+    def test_resolve_status_style_info_uses_okblue(self):
+        ui = UIManager()
+        status_display, color_key, rich_style = ui._resolve_status_style("INFO")
+        assert status_display == "INFO"
+        assert color_key == "OKBLUE"
+        assert rich_style == "bright_blue"
 
     def test_format_eta_seconds(self):
         """Test format_eta with seconds."""
@@ -197,6 +216,12 @@ class TestUIManagerProgress:
         assert ui._should_emit_during_progress("Backdoor detected", "WARN") is True
         assert ui._should_emit_during_progress("Scan complete", "WARN") is True
 
+    def test_should_emit_during_progress_warn_signal_spanish(self):
+        """Test _should_emit_during_progress emits WARN for Spanish signals."""
+        ui = UIManager(lang="es")
+        msg = "Escaneo de identidad profundo finalizado"
+        assert ui._should_emit_during_progress(msg, "WARN") is True
+
     def test_should_emit_during_progress_warn_routine(self):
         """Test _should_emit_during_progress suppresses routine WARN."""
         ui = UIManager()
@@ -232,3 +257,75 @@ class TestUIManagerUIDetail:
         before = ui.last_activity
         ui.touch_activity()
         assert ui.last_activity >= before
+
+
+class TestUIManagerEdgeCases:
+    def test_progress_active_callback_exception(self):
+        def _bad_callback():
+            raise RuntimeError("boom")
+
+        ui = UIManager(progress_active_callback=_bad_callback)
+        assert ui._is_progress_active() is False
+
+    def test_print_status_suppressed_detail_error(self):
+        ui = UIManager()
+        ui._ui_progress_active = True
+        with (
+            patch.object(ui, "_should_emit_during_progress", return_value=False),
+            patch.object(ui, "_set_ui_detail", side_effect=RuntimeError("boom")),
+        ):
+            ui.print_status("detail", "INFO")
+
+    def test_print_with_rich_console_and_lines(self):
+        ui = UIManager()
+        ui._active_progress_console = None
+
+        class _DummyConsole:
+            def __init__(self, **_kwargs):
+                self.lines = []
+
+            def print(self, value):
+                self.lines.append(value)
+
+        class _DummyText:
+            def __init__(self):
+                self.parts = []
+
+            def append(self, value, **_kwargs):
+                self.parts.append(value)
+
+        dummy_console_module = type("DummyConsoleModule", (), {"Console": _DummyConsole})
+        dummy_text_module = type("DummyTextModule", (), {"Text": _DummyText})
+
+        with (
+            patch.dict(
+                sys.modules, {"rich.console": dummy_console_module, "rich.text": dummy_text_module}
+            ),
+            patch.object(ui, "get_progress_console", return_value=None),
+        ):
+            ui._print_with_rich("00:00:00", "INFO", "bright_blue", ["line1", "line2"])
+
+    def test_print_with_rich_import_error(self):
+        ui = UIManager()
+        with (
+            patch("builtins.__import__", side_effect=ImportError("no rich")),
+            patch.object(ui, "_print_ansi") as fallback,
+        ):
+            ui._print_with_rich("00:00:00", "INFO", "bright_blue", ["line"])
+        fallback.assert_called_once()
+
+    def test_terminal_width_exception(self):
+        ui = UIManager()
+        with patch("shutil.get_terminal_size", side_effect=OSError("boom")):
+            assert ui._terminal_width(fallback=80) == 80
+
+    def test_get_standard_progress_import_error(self):
+        ui = UIManager()
+        with patch("builtins.__import__", side_effect=ImportError("no rich")):
+            assert ui.get_standard_progress() is None
+
+    def test_get_standard_progress_success(self):
+        ui = UIManager()
+        progress = ui.get_standard_progress()
+        if progress is not None:
+            assert progress.console is not None

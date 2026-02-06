@@ -10,151 +10,609 @@
 
 Este documento describe el roadmap técnico, verifica las capacidades ya implementadas y registra los enfoques descartados para RedAudit.
 
-## 1. Roadmap Activo (Próximas Funcionalidades)
+## 1. Roadmap Activo (Futuro y En Progreso)
 
-Estas características están aprobadas pero **aún no implementadas** en el código base.
+Estos elementos representan el backlog actual de trabajo planificado o aplazado para la serie v4.x restante.
 
-### Seguridad e Integraciones (Prioridad: Alta)
+### v4.14 Gestión de Dependencias (Prioridad: Baja)
 
-*(No hay elementos de prioridad alta pendientes actualmente)*
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Modo de Anclaje de Dependencias** | Hecho (v4.18.8) | Anclaje opcional del toolchain descargado desde GitHub vía `REDAUDIT_TOOLCHAIN_MODE` y overrides. |
+| **Evaluación de poetry.lock** | Hecho (v4.18.8) | Añadido `poetry.lock` junto a pip-tools para evaluación y paridad de workflows. |
+| **Streaming JSON Report** | Planeado | Escritura incremental para reportes >500MB en redes muy grandes para evitar OOM. |
 
-### v4.3 Mejoras al Risk Score (Prioridad: Alta) ✅
+### Expansión de Inteligencia Multientorno (Línea Base de Diseño)
+
+Esta línea base cubre entornos de hogar, oficina y empresa con defaults conservadores y escalado por excepción.
+
+| Funcionalidad | Estado | Default | Guardarraíles |
+|---|---|---|---|
+| **Leak Following (alcance seguro)** | Planeado (v4.x) | `off` (solo hints en informe) | En modo `safe` solo sigue candidatos dentro del alcance; por defecto nunca expande a objetivos públicos/terceros. |
+| **Sondas IoT específicas (conjunto mínimo)** | Planeado (v4.x) | `off` | Solo se activan con ambigüedad + señal fuerte; presupuesto por host y timeout estricto por sonda. |
+| **Marcado evidencia vs heurística** | Planeado (v4.x) | Activo cuando se use la funcionalidad | Guarda sondas/cabeceras como evidencia y mantiene deducciones heurísticas etiquetadas explícitamente. |
+
+Controles propuestos para el operador:
+
+- `--leak-follow off|safe`
+- `--leak-follow-allowlist <csv>`
+- `--iot-probes off|safe`
+- `--iot-probe-budget-seconds <n>`
+- `--iot-probe-timeout-seconds <n>`
+
+### Contrato de Implementación Fase A (v4.x, antes de codificar funcionalidades)
+
+Este contrato define el primer bloque de implementación para mantener un comportamiento predecible en auditorías de hogar, oficina y empresa.
+
+| Área | Contrato |
+|---|---|
+| **Objetivo** | Añadir primitivas seguras y opt-in para hints de leak-follow y comprobaciones mínimas de protocolos IoT, sin cambiar el alcance por defecto. |
+| **No objetivo** | No expandir automáticamente el alcance a rangos públicos/Internet; no ejecutar sondas profundas de protocolo en modo siempre activo. |
+| **Controles CLI** | `--leak-follow off|safe` y `--iot-probes off|safe`, ambos con default `off`. |
+| **UX del Wizard** | Los prompts deben indicar que `off` es el default y que `safe` solo opera in-scope; redacción explícita y clara para operador. |
+| **Regla de activación (Leak Following)** | En modo `safe`, seguir solo candidatos RFC1918/ULA ya dentro del alcance o incluidos explícitamente en allowlist. |
+| **Regla de activación (IoT Probes)** | Ejecutar solo en activos ambiguos con señales fuertes corroboradas (por ejemplo OUI del fabricante + servicios compatibles). |
+| **Presupuestos/Timeouts** | Presupuesto por host y timeout por sonda obligatorios; si se agota, degradar a hints de informe sin promover hallazgos. |
+| **Marcado de evidencia** | Toda señal promovida debe guardar evidencia cruda (cabecera/sonda/metadatos de respuesta) y etiquetado heurístico por separado. |
+| **Contrato de reporting** | Añadir secciones/campos explícitos para: modo usado, candidatos detectados, acciones realizadas, motivos de descarte y guardarraíles activados. |
+| **Modo de fallo** | Ante incertidumbre de parser/sonda, clasificar como hint y no como hallazgo confirmado. |
+
+Criterios de aceptación de Fase A:
+
+- Los nuevos controles aparecen en ayuda CLI y prompts del wizard con defaults seguros.
+- La salida JSON/HTML muestra si leak following e IoT probes estuvieron en `off`, `safe` aplicado o descartados por guardarraíles.
+- No hay cambio de comportamiento cuando ambas funcionalidades permanecen en `off`.
+- Los tests cubren todas las ramas de decisión nuevas (incluyendo timeout y denegación) en los módulos tocados.
+
+### Plan de Ejecución de Fase B (v4.x, implementación en curso)
+
+La Fase B pasa de controles contractuales a comportamiento de producción, manteniendo la filosofía
+"Optimización por defecto, resiliencia por excepción."
+
+#### Alcance de la Fase B
+
+| Bloque | Objetivo | Entregables principales | Guardarraíles |
+|---|---|---|---|
+| **B1 - Extracción de candidatos Leak** | Detectar hints de expansión de alcance en tiempo de ejecución. | Parsear hosts/IP candidatos desde evidencia HTTP fiable (cabeceras y destinos de redirección), normalizar y deduplicar candidatos. | El parser por sí solo no promueve hallazgos; valores malformados o ambiguos se mantienen como hints. |
+| **B2 - Filtro de alcance seguro** | Aplicar filtrado in-scope estricto para cualquier seguimiento de candidatos. | Comprobaciones RFC1918/ULA, matching contra alcance objetivo, matching contra allowlist explícita y códigos de descarte. | Rechazar por defecto rangos públicos/de terceros; no seguir automáticamente objetivos out-of-scope. |
+| **B3 - Ejecución controlada del seguimiento** | Seguir candidatos aceptados sin alterar el comportamiento por defecto. | Integración en la planificación de objetivos de Nuclei, cola de seguimiento acotada y orden determinista. | `off` se mantiene como no-op; `safe` queda limitado por topes por ejecución y presupuestos de timeout existentes. |
+| **B4 - Evidencia y reporting** | Hacer auditable cada decisión. | Campos de informe para candidatos detectados/seguidos/descartados, motivos de descarte y guardarraíles activados en JSON/HTML/resumen. | Mantener separación explícita entre evidencia y lectura heurística. |
+| **B5 - Alineación de UX y documentación** | Mantener clara y predecible la intención del operador. | Textos de prompt/ayuda que aclaren perfil seleccionado vs comportamiento efectivo (incluido auto-switch), actualización de docs y schema EN/ES. | Sin redacción ambigua sobre cobertura de puertos ni comportamiento de seguimiento. |
+| **B6 - Endurecimiento de tests y regresión** | Garantizar fiabilidad antes de release. | Tests completos de parser/filtro/runtime/report, actualización de fixtures y cobertura de rutas negativas. | 100% de cobertura en rutas tocadas; sin deriva silenciosa de comportamiento en modo `off`. |
+
+#### Plan de Trabajo Detallado y Puertas de Aceptación
+
+1. **Implementar primero B1 + B2 (lógica antes que orquestación).**
+   - Añadir helpers aislados para extracción de candidatos y filtrado de alcance.
+   - Añadir taxonomía explícita de motivos de descarte (`out_of_scope`, `public_ip`, `invalid_candidate`, `budget_exceeded`, etc.).
+   - Puerta de salida: tests unitarios deterministas para extracción/filtrado, incluyendo entradas malformadas y mixtas.
+
+2. **Implementar el cableado runtime de B3.**
+   - Integrar candidatos aceptados en la planificación runtime de Nuclei solo cuando `--leak-follow safe`.
+   - Preservar el modelo actual de perfil seleccionado/efectivo y el auto-switch.
+   - Puerta de salida: tests de integración que prueben paridad en modo `off` y comportamiento acotado en `safe`.
+
+3. **Implementar el contrato de reporting de B4.**
+   - Persistir contadores runtime y resultados por candidato en estructuras de informe.
+   - Reflejar la misma semántica en salidas HTML, JSON y resumen.
+   - Puerta de salida: tests de snapshot/aserción sobre campos del payload y secciones legibles.
+
+4. **Implementar B5 (pasada de docs y redacción EN/ES).**
+   - Alinear ayuda CLI, prompts del wizard, `USAGE`, `REPORT_SCHEMA` y referencias en `README`.
+   - Asegurar que la redacción refleja la intención del operador: defaults, guardarraíles y comportamiento efectivo.
+   - Puerta de salida: comprobación de consistencia documental contra opciones reales de CLI/wizard y campos de informe.
+
+5. **Cerrar con B6 (pasada de regresión y preparación de release).**
+   - Ejecutar pre-commit y batería completa de pytest una vez cerrados los cambios finales.
+   - Verificar ausencia de regresiones en reanudación, renderizado de progreso Nuclei y coherencia de informes.
+   - Puerta de salida: quality gate local en verde; mover elementos de roadmap a hitos completados en la release.
+
+#### Checklist de Seguimiento de Fase B
+
+- [x] B1 extracción de candidatos implementada y testeada.
+- [x] B2 filtro de alcance seguro implementado y testeado.
+- [x] B3 integración runtime del seguimiento implementada y testeada.
+- [x] B4 campos de reporting y plantillas actualizados y testeados.
+- [x] B5 documentación EN/ES actualizada y sincronizada.
+- [ ] B6 pasada completa de regresión completada y lista para release.
+
+### Diferido / Backlog Técnico
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Refactorización de auditor.py** | Diferido | Dividir orquestación y lógica de decisión solo si desbloquea tests o corrige defectos. |
+| **Distribución PyPI** | Diferido | Publicar `pip install redaudit`. Bloqueado por necesidad de testeo extensivo multiplataforma. |
+| **Motor de Plugins** | Diferido | Arquitectura "Plugin-first" para desacoplar el escáner core de las herramientas. |
+| **Migración AsyncIO** | Diferido | Migración completa a AsyncIO diferida a v5.0. |
+| **Registro central de timeouts** | Diferido | Consolidar timeouts de escáneres en un único punto para ajuste y tests. |
+| **Separación de módulo Red Team** | Hecho (v4.18.8) | Separar la lógica Red Team en un módulo dedicado para reducir `net_discovery.py`. |
+
+---
+
+### Funcionalidades Futuras (v5.0.0)
+
+| Funcionalidad | Descripción |
+|---|---|
+| **Sondas IoT Específicas de Protocolo** | Sondas por excepción (CoAP/MQTT/fabricante) para identidades IoT ambiguas con límites estrictos de tiempo. |
+| **Seguimiento de Fugas (Leak Following)** | Expansión segura de alcance basada en cabeceras internas filtradas, con default de solo reporte y modo de seguimiento in-scope. |
+| **Auditoría de Pipeline** | Visualización interactiva del flujo de descubrimiento. |
+
+---
+
+## 2. Hitos Completados (Histórico)
+
+Estos elementos están ordenados cronológicamente (el más reciente primero).
+
+### v4.19.35 Reanudación y transparencia de perfiles Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Etiqueta de reanudación** | Hecho (v4.19.35) | Las reanudaciones de Nuclei muestran cuántas veces se ha reanudado una ejecución. |
+| **Perfil seleccionado vs efectivo** | Hecho (v4.19.35) | Los informes registran el perfil seleccionado, el perfil efectivo y el cambio automático. |
+| **Documentación de auto-switch** | Hecho (v4.19.35) | README/USAGE y el schema documentan el auto-switch. |
+
+### v4.19.34 Trazabilidad del desglose de riesgo (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Desglose de riesgo** | Hecho (v4.19.34) | Los tooltips separan señales con evidencia y heurística, con origen del CVSS máximo. |
+| **Fallos de autenticación** | Hecho (v4.19.34) | Los fallos del escaneo autenticado aparecen en HTML y en los resúmenes. |
+| **Puertos abiertos en activos** | Hecho (v4.19.34) | `assets.jsonl` incluye puertos abiertos para inventario. |
+
+### v4.19.27 Aviso Nuclei + Cancelación de reanudación (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Aviso de duración Nuclei** | Hecho (v4.19.27) | El aviso se centra en Nuclei y aparece antes de iniciar el escaneo. |
+| **Cancelación de reanudación** | Hecho (v4.19.27) | Ctrl+C durante la reanudación cancela limpiamente sin stack trace. |
+
+### v4.19.29 Persistencia de playbooks (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Playbooks persistentes** | Hecho (v4.19.29) | Los playbooks se guardan en JSON y se regeneran para HTML si faltan. |
+
+### v4.19.33 Fiabilidad del workflow de releases (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Workflow de releases** | Hecho (v4.19.33) | El job de release ahora actualiza releases existentes y usa notas versionadas. |
+
+### v4.19.32 Corrección ShellCheck del instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **ShellCheck del instalador** | Hecho (v4.19.32) | El helper de OUI se define antes de usarse para cumplir ShellCheck. |
+
+### v4.19.31 Instalador con OUI + señales de confianza (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **OUI en el instalador** | Hecho (v4.19.31) | El instalador deja una base OUI de Wireshark en `~/.redaudit/manuf`. |
+| **TestSSL experimental** | Hecho (v4.19.31) | Las señales experimentales ya no se tratan como explotables confirmados. |
+| **Notas de falsos positivos en HTML** | Hecho (v4.19.31) | Los informes muestran posibles falsos positivos junto a las observaciones. |
+
+### v4.19.30 Targets de cobertura total Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Cobertura total de targets** | Hecho (v4.19.30) | La cobertura total ahora incluye todos los puertos HTTP detectados en hosts con identidad fuerte. |
+
+### v4.19.28 Gráficos HTML + Higiene Docs (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Gráficos HTML** | Hecho (v4.19.28) | Chart.js se integra localmente para que CSP no bloquee los gráficos. |
+| **Limpieza de Docs** | Hecho (v4.19.28) | README y notas de versión alineadas con estilo y toolchain. |
+
+### v4.19.26 Compatibilidad del script seed del keyring con bash (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Script seed del keyring** | Hecho (v4.19.26) | `scripts/seed_keyring.py` redirige a Python cuando se invoca con `bash`. |
+
+### v4.19.25 Limpieza de BetterCAP (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Limpieza de BetterCAP** | Hecho (v4.19.25) | La recon L2 ahora termina BetterCAP de forma best-effort tras usarlo. |
+
+### v4.19.24 Endurecimiento de reportes + docs de reanudación (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **CSP en reportes** | Hecho (v4.19.24) | Los reportes HTML incluyen meta Content-Security-Policy. |
+| **Logs de chown** | Hecho (v4.19.24) | El chown best-effort registra debug cuando falla. |
+| **Constante de timeout Nuclei** | Hecho (v4.19.24) | El override por defecto de Nuclei se centraliza. |
+| **Docs de limpieza de reanudación** | Hecho (v4.19.24) | Se documenta la actualización en sitio y la limpieza de archivos pendientes. |
+
+### v4.19.23 Endurecimiento de seguridad (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **HTTPS en Webhooks** | Hecho (v4.19.23) | Los webhooks rechazan URLs no HTTPS y evitan redirects. |
+| **Sondeo HTTP verify-first** | Hecho (v4.19.23) | Se verifica TLS primero y solo se usa modo inseguro si falla. |
+| **Limpieza segura de terminal** | Hecho (v4.19.23) | Se evita ejecutar shell; usa ejecucion directa y fallback ANSI. |
+| **Permisos de temporales proxy** | Hecho (v4.19.23) | El config temporal de proxychains se crea con permisos restrictivos. |
+
+### v4.19.22 Volver en wizard + aviso de duración (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Navegación atrás en wizard** | Hecho (v4.19.22) | Se añade volver/cancelar en perfiles Standard y Exhaustive. |
+| **Aviso de duración** | Hecho (v4.19.22) | Se avisa cuando el modo completo o con Nuclei puede superar 4 horas. |
+
+### v4.19.21 Inhibición de suspensión en reanudación (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Prevención de suspensión en reanudación** | Hecho (v4.19.21) | Las reanudaciones activan la prevención de suspensión cuando está configurada. |
+
+### v4.19.20 Actualización de HTML en reanudaciones (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Detección de HTML en reanudación** | Hecho (v4.19.20) | Las reanudaciones regeneran HTML cuando existen artefactos `report.html`. |
+
+### v4.19.19 Correcciones de renderizado del progreso Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Colores de estado** | Hecho (v4.19.19) | Los mensajes warning/error se renderizan con colores correctos durante el progreso Rich. |
+| **Clamp de lotes en curso** | Hecho (v4.19.19) | El progreso ya no llega al 100% mientras los lotes de Nuclei siguen en curso (detalle ES). |
+| **Objetivos pendientes por timeout** | Hecho (v4.19.19) | Las ejecuciones parciales por timeout guardan objetivos pendientes para reanudar. |
+
+### v4.19.18 Control y claridad de timeouts Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Lista de exclusion Nuclei** | Hecho (v4.19.18) | Soporte CLI/asistente para excluir objetivos por host, host:puerto o URL. |
+| **Detalle de reintento/split** | Hecho (v4.19.18) | El progreso muestra reintentos y profundidad de split. |
+| **Resumen de objetivos en timeout** | Hecho (v4.19.18) | Avisos de timeout resumen hosts/puertos mas frecuentes en lotes bloqueados. |
+
+### v4.19.17 Bootstrap de snap en instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Bootstrap de snapd** | Hecho (v4.19.17) | El instalador prepara snapd en sistemas basados en Ubuntu cuando se requieren snaps. |
+| **Disponibilidad vía snap** | Hecho (v4.19.17) | Searchsploit y ZAP vía snap funcionan cuando apt no ofrece paquetes. |
+
+### v4.19.16 Coherencia de salida Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Coherencia del resumen Nuclei** | Hecho (v4.19.16) | Los parciales/timeouts ahora desactivan el éxito y evitan mensajes de no-hallazgos engañosos. |
+| **Estado de reanudación** | Hecho (v4.19.16) | La reanudación conserva lotes con timeout/fallidos y recomputa el éxito. |
+| **Detalle de actividad** | Hecho (v4.19.16) | El detalle de progreso refleja lotes activos para reducir la confusión sobre el paralelismo. |
+| **Guardia de color del menú** | Hecho (v4.19.16) | La detección Sí/No ya no colorea "Normal" como "No". |
+
+### v4.19.15 Limpieza de ShellCheck en instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Variables de distro sin uso** | Hecho (v4.19.15) | Se eliminaron variables de distro sin uso para evitar fallos de ShellCheck sin cambios de comportamiento. |
+
+### v4.19.14 Fallback de searchsploit (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Fallback Snap** | Hecho (v4.19.14) | El instalador usa `snap install searchsploit` cuando fallan los metodos de GitHub. |
+
+### v4.19.13 Estabilidad Python del instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Pip solo si falta** | Hecho (v4.19.13) | El instalador solo instala por pip los modulos que faltan para evitar conflictos en entornos gestionados. |
+| **Fallback de archivo exploitdb** | Hecho (v4.19.13) | El instalador descarga exploitdb via archivo si falla el git clone. |
+| **Helpers apt Python** | Hecho (v4.19.13) | Se intentan instalar python3-paramiko y python3-keyrings-alt via apt. |
+
+### v4.19.12 Dependencias Python del instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Bootstrap de pip** | Hecho (v4.19.12) | El instalador incluye `python3-pip` para garantizar instalacion de dependencias Python en sistemas limpios. |
+| **Fallback Impacket apt** | Hecho (v4.19.12) | El instalador intenta `python3-impacket` via apt cuando esta disponible. |
+
+### v4.19.11 Robustez del instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Repositorios Ubuntu** | Hecho (v4.19.11) | El instalador habilita Universe/Multiverse cuando hace falta. |
+| **Instalaciones desde GitHub** | Hecho (v4.19.11) | Herramientas ausentes (Nuclei, exploitdb/searchsploit, enum4linux) se instalan desde GitHub si apt no las ofrece. |
+
+### v4.19.9 Consistencia de UI en reanudacion de Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Totales solo pendientes** | Hecho (v4.19.9) | El progreso de reanudacion ahora refleja solo objetivos pendientes. |
+| **Detalle secuencial preciso** | Hecho (v4.19.9) | El detalle ya no informa lotes paralelos cuando el presupuesto fuerza secuencial. |
+| **Mensajes localizados** | Hecho (v4.19.9) | Nuclei y heartbeats muestran texto alineado con el idioma activo. |
+
+### v4.19.8 Integridad de artefactos de reanudacion (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Resumenes de reanudacion** | Hecho (v4.19.8) | Las reanudaciones mantienen recuentos de host/objetivos alineados con resultados existentes. |
+| **Objetivos Nuclei preservados** | Hecho (v4.19.8) | Las reanudaciones ya no sobrescriben `nuclei_targets.txt`; los pendientes quedan separados. |
+| **Backfill de activos JSONL** | Hecho (v4.19.8) | Los hallazgos aseguran activos asociados para hosts con vulnerabilidades. |
+| **Colores TTY en logs de sesion** | Hecho (v4.19.8) | Los logs mantienen el color INFO al respetar el estado TTY del terminal. |
+| **Limpieza de etiqueta de identidad** | Hecho (v4.19.8) | Los avisos de identidad profunda omiten sufijos de version heredados. |
+
+### v4.19.7 Exclusión de autoobjetivo Red Team (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Exclusion de IP del auditor en Red Team** | Hecho (v4.19.7) | La seleccion de objetivos Red Team excluye IPs del auditor para evitar auto-enumeracion. |
+
+### v4.19.6 Progreso de Nuclei y contraste INFO (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Detalle de lotes en paralelo** | Hecho (v4.19.6) | El detalle de progreso informa correctamente los lotes completados. |
+| **Contraste de INFO** | Hecho (v4.19.6) | La salida INFO usa el azul estandar para mejor legibilidad. |
+
+### v4.19.5 Metadatos de reanudacion de Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Restauracion de redes objetivo** | Hecho (v4.19.5) | Las reanudaciones preservan redes objetivo en resumen/manifiesto. |
+| **Preservacion de duracion** | Hecho (v4.19.5) | El resumen conserva la duracion total en lugar de reiniciar a cero. |
+
+### v4.19.4 Control de presupuesto en reanudacion de Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Override de presupuesto en reanudacion** | Hecho (v4.19.4) | El prompt de reanudacion permite cambiar o desactivar el presupuesto guardado. |
+| **Override en CLI** | Hecho (v4.19.4) | `--nuclei-max-runtime` aplica al reanudar desde CLI. |
+| **Lotes con presupuesto** | Hecho (v4.19.4) | Con presupuesto, se evita iniciar un lote si el tiempo restante no cubre el tiempo estimado. |
+
+### v4.19.3 Ajustes de auditoría (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Mapeo de protocolos SNMP v3** | Hecho (v4.19.3) | Nombres de protocolos auth/priv se mapean a objetos PySNMP y respetan claves auth/priv. |
+| **Topología SNMP y CVE** | Hecho (v4.19.3) | El procesamiento de topología SNMP ya no asume una API key NVD inicializada. |
+| **Alineación WhatWeb en diff** | Hecho (v4.19.3) | Los informes diff cuentan WhatWeb con la clave correcta. |
+| **OUI offline /28 y /36** | Hecho (v4.19.3) | El manuf offline resuelve prefijos de 28 y 36 bits. |
+| **Timeout por defecto de Nuclei** | Hecho (v4.19.3) | El default de configuración coincide con el timeout CLI de 300s. |
+| **Alineación documental** | Hecho (v4.19.3) | Presets de velocidad ES, fallback de threads y docs Docker/seguridad alineados con la política. |
+
+### v4.19.2 Progreso en reanudacion de Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **UI de progreso en reanudacion** | Hecho (v4.19.2) | Las reanudaciones usan el UI de progreso estandar incluso con presupuesto. |
+| **Orden de reanudaciones** | Hecho (v4.19.2) | Las reanudaciones se ordenan por la fecha de ultima actualizacion. |
+| **Avisos en reanudacion** | Hecho (v4.19.2) | Se muestran avisos de presupuesto/timeout cuando quedan objetivos pendientes. |
+
+### v4.19.1 Presupuesto de Nuclei con límite real (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Límite de presupuesto Nuclei** | Hecho (v4.19.1) | El presupuesto limita los lotes al tiempo restante y guarda objetivos pendientes a mitad de lote. |
+| **UX de presupuesto Nuclei** | Hecho (v4.19.1) | El detalle del progreso usa el color de estado y las paradas por presupuesto no muestran avisos de timeout. |
+
+### v4.19.0 Reanudacion de Nuclei por presupuesto (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Presupuesto de tiempo Nuclei** | Hecho (v4.19.0) | Presupuesto opcional que crea artefactos de reanudacion y mantiene el flujo del escaneo. |
+| **Flujo de reanudacion Nuclei** | Hecho (v4.19.0) | Reanudacion desde el menu o CLI, actualizando informes en la misma carpeta. |
+
+### v4.18.22 Suelo de timeout en Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Suelo de timeout en Nuclei** | Hecho (v4.18.22) | Los reintentos tras split mantienen el timeout configurado como suelo para conservar cobertura. |
+
+### v4.18.21 Seguridad de refresco en home (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Backup de copia en home** | Hecho (v4.18.21) | Las actualizaciones del sistema hacen backup si `~/RedAudit` tiene cambios y refrescan la documentación. |
+
+### v4.18.20 Resiliencia de Nuclei y ajuste de UI (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Limite de paralelismo en Nuclei** | Hecho (v4.18.20) | Los timeouts largos de Nuclei ahora limitan los lotes paralelos para evitar timeouts del escaneo completo. |
+| **Resincronizacion de idioma UI** | Hecho (v4.18.20) | El UI manager se actualiza cuando cambia el idioma del CLI tras la inicializacion. |
+| **Contraste de estado ANSI** | Hecho (v4.18.20) | Las lineas de estado en ANSI ahora aplican el color al texto completo. |
+
+### v4.18.19 Consistencia de UI y Snapshot de Configuracion (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Sincronizacion de idioma UI** | Hecho (v4.18.19) | El idioma del UI manager sigue el idioma del CLI para evitar mezcla EN/ES. |
+| **Estilo de lineas en progreso** | Hecho (v4.18.19) | La salida Rich aplica el color de estado a todas las lineas del mensaje. |
+| **Campos de snapshot** | Hecho (v4.18.19) | El snapshot de reporte incluye `deep_id_scan`, `trust_hyperscan` y `nuclei_timeout`. |
+
+### v4.18.18 Contraste del Wizard y Enriquecimiento de Bajo Impacto (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Sonda HTTP para Vendor-Only** | Hecho (v4.18.18) | El enriquecimiento Phase 0 sondea HTTP/HTTPS cuando el host solo tiene vendor/MAC y cero puertos abiertos. |
+| **Contraste de valores por defecto** | Hecho (v4.18.18) | Las opciones no seleccionadas se muestran en azul y los valores por defecto se resaltan en los prompts. |
+| **Timeouts tras split de Nuclei** | Hecho (v4.18.18) | Los lotes divididos reducen el timeout para evitar esperas largas en objetivos lentos. |
+
+### v4.18.17 Claridad de Reportes HyperScan (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Alineacion de resumen HyperScan** | Hecho (v4.18.17) | Las comparativas de HyperScan-First ahora usan solo TCP para coherencia con el CLI. |
+| **Conteo UDP en pipeline** | Hecho (v4.18.17) | El resumen del pipeline incluye el total de puertos UDP de HyperScan para visibilidad en informes. |
+
+### v4.13 Resiliencia y Observabilidad (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Reintentos de Host Muerto** | Hecho (v4.13.0) | Nuevo flag CLI `--dead-host-retries` para abandonar hosts tras N timeouts consecutivos. |
+| **Detección de Honeypot** | Hecho (v4.9.1) | Etiquetado heurístico (`honeypot`) para hosts con excesivos puertos abiertos (>100). |
+| **Etiquetado Sin Respuesta** | Hecho (v4.9.1) | Etiqueta distintiva `no_response` para hosts que fallan el escaneo Nmap. |
+| **i18n Estimaciones Nuclei** | Hecho (v4.13.0) | Corregidas estimaciones de tiempo en wizard para perfiles fast/balanced. |
+
+### v4.12 Rendimiento y Calidad de Dato (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Optimización Perfil Nuclei 'Fast'** | Hecho (v4.12.1) | Aumento de velocidad (300 req/s) y tamaño de lote (15) para perfil rápido. |
+| **Enriquecimiento Vendor OUI** | Hecho (v4.12.1) | Fallback a API online para vendors desconocidos en topología de red. |
+| **Wizard "Express" Clarificado** | Hecho (v4.12.1) | I18n actualizado para indicar explícitamente "Solo Descubrimiento". |
+| **Configuración Nuclei Flexible** | Hecho (v4.12.1) | Parámetros `rate_limit` y `batch_size` configurables por perfil y overrideables. |
+| **Contadores Razón Escalado** | Hecho (v4.12.1) | Métricas agregadas de por qué se dispararon escaneos profundos (score, ambigüedad). |
+
+### v4.11 Rendimiento y Visibilidad IoT (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Perfiles de Escaneo Nuclei** | Hecho (v4.11.0) | Flag `--profile` (full/balanced/fast) para controlar intensidad y velocidad. |
+| **Detección IoT WiZ** | Hecho (v4.11.0) | Sonda UDP especializada (38899) para bombillas inteligentes WiZ. |
+| **Expansión Base de Datos OUI** | Hecho (v4.11.0) | Macs actualizadas a ~39k fabricantes (ingesta Wireshark). |
+| **Optimización Lotes Nuclei** | Hecho (v4.11.0) | Tamaño de lote reducido (10) y timeouts aumentados (600s) para redes densas. |
+
+### v4.10 Descubrimiento Avanzado (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Consulta SNMP Router** | Hecho (v4.10.0) | Consultar interfaces de router y tablas ARP remotas via `snmpwalk`. |
+| **Descubrimiento LLDP** | Hecho (v4.10.0) | Descubrir topología de switch en redes gestionadas via `lldpctl`. |
+| **Descubrimiento CDP** | Hecho (v4.10.0) | Parsing de Cisco Discovery Protocol para topologías basadas en Cisco. |
+| **Detección Etiquetado VLAN** | Hecho (v4.10.0) | Detectar VLANs etiquetadas 802.1Q en interfaces del host auditor via `ifconfig`/`ip link`. |
+
+### v4.9 Deteccion de Redes Ocultas (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Descubrimiento de Redes Enrutadas** | Hecho (v4.9.0) | Detectar redes ocultas via parsing de `ip route` e `ip neigh`. |
+| **Prompt de Descubrimiento Interactivo** | Hecho (v4.9.0) | El asistente pregunta para incluir redes enrutadas descubiertas en el alcance. |
+| **CLI --scan-routed** | Hecho (v4.9.0) | Inclusión automatizada de redes enrutadas para pipelines CI/CD. |
+| **Visibilidad Puertos UDP IoT** | Hecho (v4.9.1) | Asegurar que puertos UDP especializados (ej. WiZ 38899) encontrados por HyperScan se incluyan en reportes finales. |
+| **Detección de Honeypot** | Hecho (v4.9.1) | Etiquetado heurístico (`honeypot`) para hosts con excesivos puertos abiertos (>100). |
+| **Etiquetado Sin Respuesta** | Hecho (v4.9.1) | Etiqueta distintiva `no_response` para hosts que fallan el escaneo Nmap. |
+
+### v4.8 RustScan y Correcciones Instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **RustScan Rango Completo** | Hecho (v4.8.2) | Forzar `-r 1-65535` para escanear todos los puertos en lugar del default top 1000 de RustScan. |
+| **Soporte Instalador ARM64** | Hecho (v4.8.3) | Añadida detección ARM64/aarch64 para Raspberry Pi y VMs Apple Silicon. |
+| **Toggle Asistente Nuclei** | Hecho (v4.8.1) | Restaurar prompt interactivo de activación de Nuclei en perfil Exhaustivo. |
+
+### v4.7 Integracion HyperScan Masscan (Hecho)
+
+| Caracteristica | Estado | Descripcion |
+|---|---|---|
+| **Backend Masscan** | Reemplazado (v4.8.0) | `masscan_scanner.py` reemplazado por `RustScan` para mayor velocidad y precision. |
+| **Integracion RustScan** | Hecho (v4.8.0) | Nuevo modulo primario para HyperScan. Escaneo de todos los puertos en ~3s. |
+| **Fallback Redes Docker** | Hecho (v4.7.1) | Fallback automatico a Scapy cuando Masscan retorna 0 puertos (redes bridge Docker). |
+| **Fix Timeout Nuclei** | Hecho (v4.7.2) | Timeout de command_runner aumentado a 600s para Nuclei (era 60s, causando timeouts de batch). |
+| **Skip 404 API NVD** | Hecho (v4.7.2) | Omitir reintentos en respuestas 404 (CPE no encontrado). Reduce spam de logs. |
+
+### v4.6 Fidelidad de Escaneo y Control de Tiempo (Hecho)
 
 | Característica | Estado | Descripción |
-| :--- | :--- | :--- |
-| **Algoritmo Weighted Maximum Gravity** | ✅ Hecho | Refactorizado `calculate_risk_score()` para usar scores CVSS de datos NVD como factor principal. Fórmula: Base (max CVSS * 10) + Bonus densidad (log10) + Multiplicador exposición (1.15x para puertos externos). |
+|---|---|---|
+| **Gating de Apps Web por Infraestructura** | Hecho | Omitir sqlmap/ZAP en UIs de infraestructura cuando la evidencia de identidad indica router/switch/AP. |
+| **Evidencia de Identidad en Deep Scan** | Hecho | Título/servidor HTTP y tipo de dispositivo evitan deep scan cuando la identidad ya es fuerte. |
+| **Sonda HTTP Rápida de Identidad** | Hecho | Sonda HTTP/HTTPS breve en hosts silenciosos para resolver identidad antes. |
+| **Informe Parcial de Nuclei** | Hecho | Marcar ejecuciones parciales y registrar lotes con timeout/fallidos en el informe. |
+| **Latido por Batch de Nuclei** | Hecho (v4.6.11) | Mantener actualizaciones de progreso durante lotes largos para mostrar actividad y tiempo transcurrido. |
+| **Progreso por Objetivos de Nuclei** | Hecho (v4.6.13) | Mostrar avance basado en objetivos dentro de cada batch para evitar barras congeladas. |
+| **Estabilidad del progreso de Nuclei** | Hecho (v4.6.15) | Mantener el avance de objetivos sin retrocesos durante reintentos/timeouts. |
+| **Endurecimiento de timeouts Nuclei** | Hecho (v4.6.16) | Timeouts adaptativos por lote y divisiones recursivas para reducir ejecuciones parciales. |
+| **Contexto de keyring con sudo** | Hecho (v4.6.17) | Preservar el contexto de DBus al cargar credenciales guardadas bajo sudo. |
+| **Alineación de informes de hosts** | Hecho (v4.6.15) | Rellenar hosts con nombres/interfaces unificados para consistencia. |
+| **Guardia de Origen de Identidad HTTP** | Hecho (v4.6.11) | Tratar títulos solo UPnP como pistas y evitar forzar escaneo web o score de identidad. |
+| **Resumen de normalización de objetivos en el wizard** | Hecho (v4.6.13) | Mostrar objetivos normalizados con hosts estimados antes de ejecutar. |
+| **Spray de Credenciales SSH** | Hecho (v4.6.18) | Probar todas las credenciales de la lista spray hasta autenticar. |
+| **Priorización de Hallazgos** | Hecho (v4.6.19) | Nuevos campos `priority_score` (0-100) y `confirmed_exploitable` para ranking superior de vulnerabilidades. |
+| **Detección Clásica de Backdoors** | Hecho (v4.6.19) | Detección automática en banner de `vsftpd 2.3.4`, `UnrealIRCd 3.2.8.1` y otros backdoors. |
+| **Puntuación de Confianza de Reporte** | Hecho (v4.6.19) | Score de confianza (`confidence_score` 0.0-1.0) basado en validación cruzada (Nuclei+CVE). |
+| **Mejora de Títulos de Hallazgos** | Hecho (v4.6.19) | Títulos más descriptivos ("SSL Hostname Mismatch") en lugar de genéricos. |
+| **Contador de Spray en Wizard** | Hecho (v4.6.19) | Visualización `(+N spray)` en el resumen de credenciales guardadas para mayor claridad. |
 
-### v4.1 Optimizaciones de Rendimiento ✅ (En desarrollo)
+### v4.4 Cobertura de Código y Estabilidad (Hecho)
 
 | Característica | Estado | Descripción |
-| :--- | :--- | :--- |
-| **HyperScan-First Secuencial** | ✅ Hecho | Pre-escaneo de 65.535 puertos por host secuencialmente antes de nmap. Evita agotamiento de file descriptors. batch_size=2000. |
-| **Escaneo Vulns Paralelo** | ✅ Hecho | nikto/testssl/whatweb concurrentemente por host. |
-| **Pre-filtrado Nikto CDN** | ✅ Hecho | Omitir Nikto en Cloudflare/Akamai/AWS CloudFront. |
-| **Reutilización puertos masscan** | ✅ Hecho | Pre-scan usa puertos de masscan si ya estaban descubiertos. |
-| **CVE Lookup reordenado** | ✅ Hecho | CVE correlation movido después de Vuln Scan + Nuclei. |
+|---|---|---|
+| **Cobertura Topology 100%** | Hecho (v4.4.5) | Alcanzada cobertura completa de tests para `topology.py`. |
+| **Cobertura Updater >94%** | Hecho (v4.4.5) | Endurecido `updater.py` con tests robustos. |
+| **Cobertura Proyecto ~89%** | Hecho (v4.4.5) | Cobertura total del proyecto ahora en 88.75% (1619 tests pasando). |
+| **Corrección Memory Leak** | Hecho (v4.4.5) | Corregido bucle infinito en mocks de tests. |
+| **Targeting basado en Generadores** | Hecho (v4.4.0) | Refactorizado HyperScan para usar generadores lazy. |
+| **Informe JSON en Streaming** | Hecho | Optimizado `auditor_scan.py` para evitar materializar listas. |
+| **Smart-Throttle (AIMD)** | Hecho (v4.4.0) | Control de congestión adaptativo AIMD en HyperScan. |
 
-### v4.2 Optimizaciones Pipeline (Prioridad: Media)
+### v4.3 Mejoras al Risk Score (Hecho)
 
 | Característica | Estado | Descripción |
-| :--- | :--- | :--- |
-| **Enhanced Parallel Progress UI** | 🚧 Planificado | Barras de progreso multi-hilo elegantes con Rich para TODAS las fases paralelas: Vuln Scan (testssl/nikto/sqlmap/whatweb), nmap fingerprinting, Nuclei, **Red Team Scan** (masscan/SMB/LDAP/Kerberos). Sin ruido innecesario, UX limpia. |
-| **MAC Privado Indicator** | 🚧 Planificado | Detectar MACs localmente administrados (bit 2 del primer byte) y mostrar "(MAC privado)" en lugar de "(guess)" para mayor claridad. |
-| **Web App Vuln Scan** | 🚧 Planificado | Integración completa de sqlmap (`--level=3 --risk=3`) para detección SQLi avanzada y ZAP para XSS en aplicaciones web (JuiceShop, DVWA, etc.). |
-| **Separación Deep Scan** | 🚧 Planificado | Extraer Deep Scan de `scan_host_ports()` como fase independiente. |
-| **Red Team → Agentless** | 🚧 Planificado | Pasar resultados SMB/LDAP de Red Team a Agentless Verify. |
-| **Wizard UX: Phase 0 auto** | 🚧 Planificado | En perfil Exhaustivo, activar Phase 0 automáticamente. |
-| **Wizard UX: Personalizado** | 🚧 Planificado | Mejorar lógica del wizard Personalizado. Añadir opción de estrategia de escaneo de puertos (masscan rápido vs HyperScan exhaustivo) sin redundancia. |
-| **HyperScan naming cleanup** | 🚧 Planificado | Renombrar funciones para clarificar propósito. |
-| **Session log mejorado** | 🚧 Planificado | Session log muy escueto vs cli.txt manual. Añadir más detalle. |
+|---|---|---|
+| **Algoritmo Weighted Maximum Gravity** | Hecho | Refactorizado `calculate_risk_score()` usando CVSS de NVD. |
+| **Risk Score Breakdown Tooltip** | Hecho | HTML reports show detailed risk score components on hover. |
+| **Identity Score Visualization** | Hecho | HTML reports display color-coded identity_score with tooltip showing identity signals. |
+| **Smart-Check CPE Validation** | Hecho | Enhanced Nuclei false positive detection using host CPE data. |
+| **HyperScan SYN Mode** | Hecho | Optional scapy-based SYN scanning (`--hyperscan-mode syn`). |
+| **PCAP Management Utilities** | Hecho | `merge_pcap_files()`, `organize_pcap_files()`, cleanup. |
 
-### v4.0 Refactorización Arquitectónica ✅ (Liberado en v3.10.2)
+### v4.2 Optimizaciones Pipeline (Liberado en m v4.2.0)
 
-Refactorización interna utilizando el patrón Strangler Fig:
+Ver [Release Notes](../releases/RELEASE_NOTES_v4.2.0.md) para detalles.
 
-1. ✅ **Fase 1**: UIManager - Clase de operaciones UI independiente
-2. ✅ **Fase 2**: ConfigurationContext - Wrapper tipado de configuración
-3. ✅ **Fase 3**: NetworkScanner - Utilidades de puntuación de identidad
-4. ✅ **Fase 4**: Propiedades adaptador para migración gradual
+### v4.1 Optimizaciones de Rendimiento (Hecho)
 
-**Estado**: Completado en v4.0.0. Orquestación por composición vía `AuditorRuntime`, con
-herencia legacy eliminada y compatibilidad gestionada por componentes con adaptador.
+| Característica | Estado | Descripción |
+|---|---|---|
+| **HyperScan-First Secuencial** | Hecho | Pre-escaneo de 65.535 puertos por host secuencialmente. |
+| **Escaneo Vulns Paralelo** | Hecho | nikto/testssl/whatweb concurrentemente por host. |
+| **Pre-filtrado Nikto CDN** | Hecho | Omitir Nikto en Cloudflare/Akamai/AWS CloudFront. |
+| **Reutilización puertos masscan** | Hecho | Pre-scan usa puertos de masscan si ya estaban descubiertos. |
+| **CVE Lookup reordenado** | Hecho | CVE correlation movido después de Vuln Scan + Nuclei. |
 
-### Extensiones Red Team (Prioridad: Media)
+### v4.0 Refactorización Arquitectónica (Hecho)
 
-*(No hay elementos de prioridad media pendientes actualmente)*
+Refactorización interna utilizando el patrón Strangler Fig. Completado en v4.0.0.
 
 ### Infraestructura (Prioridad: Alta)
 
 | Característica | Estado | Descripción |
-| :--- | :--- | :--- |
-| **Consolidación Suite Tests** | ✅ Hecho | Refactorizado 199 archivos → 123. Creado `conftest.py`. Eliminados 76 artefactos de coverage-gaming. 1130 tests al 85%. |
-
-### Infraestructura (Prioridad: Baja)
-
-| Característica | Estado | Descripción |
-| :--- | :--- | :--- |
-| **Distribución PyPI** | 🚧 Aplazado | Publicar `pip install redaudit`. Bloqueado por necesidad de testing multiplataforma extensivo. |
-| **Motor de Plugins** | 🚧 Aplazado | Arquitectura "Plugin-first" para desacoplar el escáner core de las herramientas. |
-
-### Fase 6: Escalabilidad Empresarial (>50 Hosts) (Prioridad: Media)
-
-Foco: Eliminar cuellos de botella en grandes redes corporativas.
-
-| Característica | Estado | Descripción |
-| :--- | :--- | :--- |
-| **Targeting basado en Generadores** | 🚧 Planificado | Cambiar de listas de IPs a streaming por generadores. Evita picos de memoria al cargar grandes subredes (/16). |
-| **Reporte JSON en Streaming** | 🚧 Planificado | Escribir el reporte a disco incrementalmente en lugar de construir un DOM masivo en memoria. Esencial para reportes >500MB. |
-| **Smart-Throttle (Control Adaptativo)** | 🚧 Planificado | Ajuste dinámico de batch size basado en AIMD (Smart-Throttle). Detecta estrés/pérdida de paquetes y auto-regula el escaneo para evitar DoS. [Ver Especificación](design/smart_throttle_spec.md) |
+|---|---|---|
+| **Consolidación Suite Tests** | Hecho | Refactorizado 199 archivos → 123. 1130 tests al 85%. |
 
 ---
 
-## 2. Capacidades Implementadas (Verificado)
+## 3. Referencia de Capacidades Verificadas
 
-Funcionalidades presentes en versiones con `redaudit --version` >= v3.6.0, con rutas de verificación en el código.
+Referencia de verificación de capacidades clave contra la base de código.
 
-### UX e Integraciones (v3.7.0+)
-
-| Característica | Versión | Verificación |
-| :--- | :--- | :--- |
-| **Detección Interfaces VPN** | v3.9.6 | `redaudit/core/entity_resolver.py`. Clasifica gateways VPN vía OUI del fabricante, puertos VPN (500/4500/1194/51820) y patrones de nombre de host. |
-| **Pack de Firmas IoT** | v3.9.5 | `redaudit/core/udp_probe.py`, `redaudit/core/hyperscan.py`. Payloads UDP específicos para WiZ, Yeelight, Tuya/SmartLife, CoAP/Matter. |
-| **Selector de Perfil del Wizard** | v3.9.0 | `redaudit/core/auditor.py`. Express/Estándar/Exhaustivo presets + modo Custom. |
-| **Modos de Temporización Reales** | v3.9.0 | `redaudit/core/scanner/nmap.py`, `redaudit/core/auditor_scan.py`. Aplica nmap `-T1`/`-T4`/`-T5` con ajustes de delay/threads. |
-| **Reportes HTML Mejorados** | v3.9.0 | `redaudit/templates/report*.html.j2`. Hallazgos expandibles, análisis smart scan, playbooks, evidencia. |
-| **Detección FPs Nuclei** | v3.9.0 | `redaudit/core/verify_vuln.py`. Mapeo server header vs CPE para marcar FPs. |
-| **Consistencia de Colores** | v3.8.4 | `redaudit/core/auditor.py`. Usa Rich console.print() cuando el progreso está activo para asegurar colores correctos. |
-| **Identidad del Auditor** | v3.8.3 | `redaudit/core/wizard.py`. Prompt del asistente para nombre del auditor, visible en informes TXT/HTML. |
-| **Informes HTML Bilingües** | v3.8.3 | `redaudit/core/reporter.py`. Cuando el idioma es ES, se genera `report_es.html` junto al HTML principal. |
-| **Navegación del Asistente** | v3.8.1 | `redaudit/core/wizard.py`. Opción "< Volver" en menús del asistente para navegación paso a paso. |
-| **Watermark HTML** | v3.8.2 | `redaudit/templates/report.html.j2`. Footer profesional con GPLv3, autor y enlace a GitHub. |
-| **Webhooks Interactivos** | v3.7.0 | `redaudit/core/wizard.py`. Configura Slack/Teams directamente en el asistente. |
-| **Asistente: Net Discovery Avanzado** | v3.7.0 | `redaudit/core/wizard.py`. Configura SNMP/DNS/Targets interactivamente. |
-| **Pipeline SIEM Nativo** | v3.7.0 | `siem/`. Configs para Filebeat/Logstash + reglas Sigma. |
-| **Logging de Sesión** | v3.7.0 | `redaudit/utils/session_log.py`. Captura salida de terminal a `.log` y `.txt`. |
-| **Progreso estable (HyperScan/Nuclei)** | v3.7.2 | `redaudit/core/hyperscan.py`, `redaudit/core/auditor.py`, `redaudit/core/nuclei.py`. Reduce flickering y muestra ETA. |
-
-### Escaneo Avanzado y Automatización
-
-| Característica | Versión | Verificación |
-| :--- | :--- | :--- |
-| **Integración Nuclei** | v3.6.0 | Módulo `redaudit/core/nuclei.py`. Ejecuta plantillas cuando Nuclei está instalado y se habilita explícitamente (asistente o `--nuclei`). |
-| **Verificación sin agente** | v3.7.3 | `redaudit/core/agentless_verify.py`. Fingerprinting SMB/RDP/LDAP/SSH/HTTP opcional (asistente o `--agentless-verify`). |
-| **Sonda HTTP en hosts silenciosos** | v3.8.5 | `redaudit/core/auditor_scan.py`, `redaudit/core/scanner/enrichment.py`. Sonda HTTP/HTTPS breve en puertos comunes para hosts con fabricante y cero puertos abiertos. |
-| **Generación Playbooks** | v3.4.0 | Módulo `redaudit/core/playbook_generator.py`. Crea guías de remediación MD en `playbooks/`. |
-| **Red Team: Kerberos** | v3.2.0 | Módulo `redaudit/core/net_discovery.py`. Usa `kerbrute` para enumeración si está autorizado. |
-| **Red Team: SNMP/SMB** | v3.2.0 | Módulo `redaudit/core/net_discovery.py`. Usa `snmpwalk` y `enum4linux`. |
-| **Preparación SIEM** | v3.1.0 | Módulo `redaudit/core/siem.py`. Genera JSON/JSONL compatibles con SIEM y campos alineados con ECS. |
-| **Análisis Diferencial** | v3.3.0 | Módulo `redaudit/core/diff.py`. Diff visual HTML entre dos escaneos. |
-
-### Core y Estabilidad
-
-| Característica | Versión | Verificación |
-| :--- | :--- | :--- |
-| **Versión Única** | v3.5.4 | La versión ahora se resuelve de forma fiable en todos los modos: `importlib.metadata` cuando existe, más un fallback `redaudit/VERSION` para instalaciones vía script en `/usr/local/lib/redaudit`. |
-| **Imagen de Contenedor** | v3.8.4 | `Dockerfile` + `.github/workflows/docker.yml` publican imagen en GHCR. |
-| **CommandRunner Central** | v3.5.0 | `redaudit/core/command_runner.py` maneja todos los subprocesos de forma segura. |
-| **Escaneos con Timeout** | v3.7.3 | `redaudit/core/auditor.py` aplica timeouts duros en nmap por host, manteniendo el progreso fluido. |
-| **Config Persistente** | v3.1.1 | `~/.redaudit/config.json` almacena defaults del usuario. |
-| **Descubrimiento Async** | v3.1.3 | `redaudit/core/hyperscan.py` usa `asyncio` para sondeo rápido de puertos. |
-| **UI de Progreso Silenciosa (con detalle)** | v3.6.0 | `redaudit/core/auditor.py` reduce el ruido del terminal mientras hay barras de progreso y muestra “qué está haciendo” dentro de la propia línea de progreso. |
+| Capacidad | Versión | Ruta Código / Verificación |
+|---|---|---|
+| **Descubrimiento Pasivo LLDP** | v4.10.0 | `core/topology.py` (via `tcpdump` & `lldpctl`) |
+| **Descubrimiento Pasivo CDP** | v4.10.0 | `core/topology.py` (via `tcpdump`/CISCO-CDP) |
+| **Etiquetado VLAN (802.1Q)** | v4.10.0 | `core/topology.py` (via `ip link`/`ifconfig`) |
+| **Sonda IoT WiZ (UDP)** | v4.11.0 | `core/udp_probe.py`, `core/auditor.py` |
+| **Perfiles Nuclei** | v4.11.0 | `core/nuclei.py`, `core/auditor.py` |
+| **Base Datos OUI** | v4.11.0 | `data/manuf` (38k+ vendors) |
+| **Descubrimiento Red Enrutada** | v4.9.0 | `core/net_discovery.py` (`ip route`/`ip neigh`) |
+| **Integración RustScan** | v4.8.0 | `core/rustscan.py` |
+| **Smart-Check** | v4.3.0 | `core/scanner/enrichment.py` (CPE/Lógica Falsos Positivos) |
 
 ---
 
-## 3. Conceptos Descartados
+## 4. Conceptos Descartados
 
 Ideas consideradas pero rechazadas para mantener el foco del proyecto.
 
 | Propuesta | Razón del Descarte |
 | :--- | :--- |
-| **GUI Web (Controlador)** | Incrementa superficie de ataque y peso. RedAudit está diseñado como herramienta CLI "headless" para automatización. |
-| **Framework de Explotación** | Fuera de alcance. RedAudit es para *auditoría* y *descubrimiento*, no explotación armada (como Metasploit). |
-| **Soporte Nativo Windows** | Demasiado complejo debido a requisitos de sockets raw. Usar WSL2 o Docker. |
-| **Generación Reporte PDF** | Añade dependencias pesadas (LaTeX/ReportLab). Se prefiere salida JSON/HTML para flujos modernos. |
+| **GUI Web (Controlador)** | Incrementa superficie de ataque y peso. RedAudit es una herramienta CLI "headless". |
+| **Framework de Explotación** | Fuera de alcance. RedAudit es para *auditoría*, no explotación (como Metasploit). |
+| **Soporte Nativo Windows** | Demasiado complejo. Usar WSL2 o Docker. |
+| **Generación Informe PDF** | Añade dependencias pesadas. Se prefiere salida JSON/HTML. |
+| **Escaneo Distribuido** | Demasiado complejo (FastAPI/Redis). Arquitectura rechazada. |
 
 ---
 
-## 4. Contribuir
+## 5. Contribuir
 
 1. Revisa [Issues](https://github.com/dorinbadea/RedAudit/issues).
 2. Lee [CONTRIBUTING.md](../CONTRIBUTING.md).

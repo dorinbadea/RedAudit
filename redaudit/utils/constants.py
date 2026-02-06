@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Constants and Configuration
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 """
 
@@ -54,18 +54,18 @@ def _read_pyproject_version() -> Optional[str]:
 
 
 def _resolve_version() -> str:
-    # 1) Preferred: installed package metadata (pip/venv/CI).
+    # 1) Script-based install or source tree: packaged VERSION file.
+    file_version = _read_packaged_version_file()
+    if file_version:
+        return file_version
+
+    # 2) Installed package metadata (pip/venv/CI).
     try:
         from importlib.metadata import version as _get_version
 
         return _get_version("redaudit")
     except Exception:
         pass
-
-    # 2) Script-based install fallback: packaged VERSION file.
-    file_version = _read_packaged_version_file()
-    if file_version:
-        return file_version
 
     # 3) Dev/source fallback: parse pyproject if available.
     pyproject_version = _read_pyproject_version()
@@ -102,6 +102,7 @@ TRAFFIC_CAPTURE_DEFAULT_DURATION = 15
 TRAFFIC_CAPTURE_MAX_DURATION = 120
 TRAFFIC_CAPTURE_PACKETS = 50
 PHASE0_TIMEOUT = 2  # Low-impact enrichment (DNS/mDNS/SNMP) max timeout
+NUCLEI_DEFAULT_TIMEOUT_S = 600.0  # Nuclei default timeout when not explicitly set
 
 # UDP scanning configuration (v2.9)
 UDP_PRIORITY_PORTS = "53,67,68,69,123,137,138,139,161,162,445,500,514,520,1900,4500,5353"
@@ -116,8 +117,8 @@ UDP_MAX_RETRIES_LAN = 1  # Single retry for LAN environments
 
 # Heartbeat thresholds (seconds)
 HEARTBEAT_INTERVAL = 30
-HEARTBEAT_WARN_THRESHOLD = 60
-HEARTBEAT_FAIL_THRESHOLD = 300
+HEARTBEAT_WARN_THRESHOLD = 120
+HEARTBEAT_FAIL_THRESHOLD = 600
 
 # Encryption parameters
 PBKDF2_ITERATIONS = 480000
@@ -129,6 +130,7 @@ DEFAULT_OUTPUT_DIR = "~/Documents/RedAuditReports"
 DEFAULT_THREADS = 6
 DEFAULT_IDENTITY_THRESHOLD = 3
 DEFAULT_DEEP_SCAN_BUDGET = 0
+DEFAULT_DEAD_HOST_RETRIES = 3  # v4.13: Abandon host after N consecutive timeouts
 
 # Thread limits and autodetection.
 # Maximum concurrent host scans. Higher values cause:
@@ -137,7 +139,8 @@ DEFAULT_DEEP_SCAN_BUDGET = 0
 # - IDS/IPS triggers from burst traffic patterns
 # - Memory pressure (~50MB per nmap instance)
 # Tested optimal range: 6-12 for most LANs. 16 is a safe ceiling.
-MAX_THREADS = 16
+# v4.6.29: Increased to 100 for modern hardware (Threadripper/M2/M3)
+MAX_THREADS = 100
 MIN_THREADS = 1
 
 
@@ -233,6 +236,7 @@ STANDARD_PORT_SERVICES = {
 
 
 # Console colors
+# v4.14: Added DIM for professional wizard menus
 COLORS = {
     "HEADER": "\033[95m",
     "OKBLUE": "\033[94m",
@@ -242,4 +246,5 @@ COLORS = {
     "ENDC": "\033[0m",
     "BOLD": "\033[1m",
     "CYAN": "\033[96m",
+    "DIM": "\033[2m",
 }

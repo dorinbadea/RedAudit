@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - HyperScan Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.2.3: Fast parallel discovery using asyncio batch scanning.
@@ -20,6 +20,7 @@ from datetime import datetime
 from redaudit.core.command_runner import CommandRunner
 from redaudit.utils.dry_run import is_dry_run
 from redaudit.core.udp_probe import UDP_PROBE_PAYLOADS
+from redaudit.utils.i18n import get_text, detect_preferred_language
 
 
 _REDAUDIT_REDACT_ENV_KEYS = {"NVD_API_KEY", "GITHUB_TOKEN"}
@@ -37,6 +38,27 @@ def _make_runner(*, logger=None, dry_run: Optional[bool] = None, timeout: Option
         backoff_base_s=0.0,
         redact_env_keys=_REDAUDIT_REDACT_ENV_KEYS,
     )
+
+
+def _get_fd_soft_limit() -> Optional[int]:
+    try:
+        import resource
+
+        soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+        if soft_limit in (resource.RLIM_INFINITY, None):
+            return None
+        soft_int = int(soft_limit)
+        return soft_int if soft_int > 0 else None
+    except Exception:
+        return None
+
+
+def _compute_safe_max_batch(default_max: int, min_batch: int) -> int:
+    soft_limit = _get_fd_soft_limit()
+    if not soft_limit:
+        return default_max
+    safe_limit = max(min_batch, int(soft_limit * 0.8))
+    return min(default_max, safe_limit)
 
 
 # ============================================================================
@@ -154,11 +176,11 @@ async def _tcp_connect(
     port: int,
     timeout: float,
     semaphore: Optional[asyncio.Semaphore] = None,
-) -> Optional[Tuple[str, int]]:
+) -> Optional[Any]:
     """
     Attempt single TCP connection (semaphore optional).
 
-    Returns (ip, port) if open, None otherwise.
+    Returns (ip, port) if open, "CLOSED" if refused, None otherwise.
     """
     if semaphore:
         async with semaphore:
@@ -167,7 +189,7 @@ async def _tcp_connect(
         return await _do_connect(ip, port, timeout)
 
 
-async def _do_connect(ip: str, port: int, timeout: float) -> Optional[Tuple[str, int]]:
+async def _do_connect(ip: str, port: int, timeout: float) -> Optional[Any]:
     try:
         _, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout=timeout)
         try:
@@ -176,7 +198,10 @@ async def _do_connect(ip: str, port: int, timeout: float) -> Optional[Tuple[str,
         except Exception:
             pass
         return (ip, port)
-    except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+    except ConnectionRefusedError:
+        # v4.6.27: Explicitly return "CLOSED" so it's not counted as a timeout
+        return "CLOSED"
+    except (asyncio.TimeoutError, OSError):
         return None
 
 
@@ -267,8 +292,18 @@ async def hyperscan_tcp_sweep(
     # Smart-Throttle initialization
     # Start with conservative batch size (500) regardless of default arg,
     # unless batch_size arg is unusually small (<500).
-    initial_batch = min(500, batch_size)
-    throttler = SmartThrottle(initial_batch=initial_batch, max_batch=20000)
+    safe_max_batch = _compute_safe_max_batch(20000, min_batch=100)
+    safe_min_batch = min(100, safe_max_batch)
+    initial_batch = min(500, batch_size, safe_max_batch)
+    if initial_batch < safe_min_batch:
+        initial_batch = safe_min_batch
+    throttler = SmartThrottle(
+        initial_batch=initial_batch,
+        min_batch=safe_min_batch,
+        max_batch=safe_max_batch,
+    )
+    if logger and safe_max_batch < 20000:
+        logger.debug("HyperScan TCP: max_batch capped to %d due to FD limit", safe_max_batch)
 
     completed = 0
 
@@ -295,6 +330,9 @@ async def hyperscan_tcp_sweep(
         for res in batch_results:
             if res is None:
                 timeouts += 1
+            elif res == "CLOSED":
+                # Host is responsive but port closed - do not count as timeout
+                pass
             elif isinstance(res, tuple):
                 ip, port = res
                 results[ip].append(port)
@@ -355,20 +393,20 @@ def hyperscan_tcp_sweep_sync(
 def hyperscan_full_port_sweep(
     target_ip: str,
     batch_size: int = 64,  # Very conservative to work with default ulimit (1024 FDs)
-    timeout: float = 0.5,
+    timeout: float = 1.5,
     logger=None,
     progress_callback: Optional[HyperScanProgressCallback] = None,
 ) -> List[int]:
     """
-    v4.1: Scan ALL 65,535 TCP ports on a single host using async batches.
+    v4.8: Scan ALL 65,535 TCP ports on a single host.
 
-    This is the core of the HyperScan-First optimization. By probing all ports
-    with fast async connections (~2-3min), we can then run nmap only on the
-    discovered open ports, eliminating the slow -p- full scan.
+    Priority order:
+    1. RustScan (fastest, ~3 seconds) - requires rustscan installed
+    2. asyncio TCP connect (fallback, no external deps)
 
     Args:
         target_ip: Single IP address to scan
-        batch_size: Concurrent connections (default 64, conservative for shared ulimit)
+        batch_size: Concurrent connections for fallback mode
         timeout: Per-connection timeout in seconds
         logger: Optional logger
         progress_callback: Optional callback(completed, total, desc) for progress
@@ -379,6 +417,56 @@ def hyperscan_full_port_sweep(
     if not target_ip:
         return []
 
+    start_time = time.time()
+
+    # v4.8.0: Try RustScan first (fastest, integrates with nmap)
+    try:
+        from redaudit.core.rustscan import is_rustscan_available, run_rustscan_discovery_only
+
+        if is_rustscan_available():
+            if logger:
+                logger.info(
+                    "HyperScan FULL (RustScan): Fast port discovery on %s",
+                    target_ip,
+                )
+            open_ports, error = run_rustscan_discovery_only(
+                target_ip,
+                port_range="1-65535",  # v4.8.2: Force full range (masscan parity)
+                ulimit=5000,
+                timeout=120.0,
+                logger=logger,
+            )
+            if not error and open_ports:
+                duration = time.time() - start_time
+                if logger:
+                    logger.info(
+                        "HyperScan FULL (RustScan): Found %d ports on %s in %.1fs",
+                        len(open_ports),
+                        target_ip,
+                        duration,
+                    )
+                return open_ports
+            elif error:
+                if logger:
+                    logger.debug(
+                        "RustScan failed on %s: %s, falling back to asyncio",
+                        target_ip,
+                        error,
+                    )
+            else:
+                if logger:
+                    logger.debug(
+                        "RustScan found 0 ports on %s, falling back to asyncio",
+                        target_ip,
+                    )
+    except ImportError:
+        if logger:
+            logger.debug("rustscan module not available, using fallback")
+    except Exception as e:
+        if logger:
+            logger.warning("RustScan failed for %s: %s, falling back to asyncio", target_ip, e)
+
+    # Fallback: Original asyncio TCP connect sweep
     # Generate all 65535 ports
     all_ports = list(range(1, 65536))
 
@@ -391,8 +479,7 @@ def hyperscan_full_port_sweep(
             timeout,
         )
 
-    start_time = time.time()
-    open_ports: List[int] = []
+    open_ports = []
 
     # v4.1 fix: Use new event loop with proper cleanup to avoid FD exhaustion
     loop = None
@@ -464,7 +551,7 @@ async def _udp_probe(
             sock.setblocking(False)
             sock.settimeout(timeout)
 
-            await loop.sock_sendto(sock, payload, (ip, port))
+            await loop.sock_sendto(sock, payload, (ip, port))  # type: ignore[attr-defined]
 
             try:
                 data = await asyncio.wait_for(loop.sock_recv(sock, 1024), timeout=timeout)
@@ -1033,7 +1120,8 @@ def hyperscan_full_discovery(
         if include_udp:
             udp_off = net_span * stage_weights["arp"]
             udp_span = net_span * stage_weights["udp"]
-            _net_progress(udp_off, udp_span, 0.0, f"UDP probes ({network})")
+            lang = detect_preferred_language()
+            _net_progress(udp_off, udp_span, 0.0, get_text("udp_probes_progress", lang, network))
             udp_results = hyperscan_udp_broadcast(network, logger=logger)
             results["udp_devices"].extend(udp_results)
             _net_progress(udp_off, udp_span, 1.0, f"UDP done ({network})")

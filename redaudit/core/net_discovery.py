@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Enhanced Network Discovery Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.2: Active discovery of guest networks, hidden VLANs, and additional network segments.
@@ -16,15 +16,16 @@ Goals:
 from __future__ import annotations
 
 import ipaddress
-import os
 import re
 import shutil
 import threading
 import time
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.core.redteam import run_redteam_discovery
 from redaudit.utils.dry_run import is_dry_run
 from redaudit.utils.oui_lookup import lookup_vendor_online
 
@@ -101,6 +102,31 @@ def _run_cmd_suppress_stderr(
         return -1, "", str(e)
 
 
+_IFACE_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9\\-_]{0,31}$")
+_VIRTUAL_IFACE_PREFIXES = (
+    "br-",
+    "docker",
+    "veth",
+    "virbr",
+    "vmnet",
+    "vboxnet",
+    "tap",
+    "tun",
+    "wg",
+    "zt",
+)
+_WIRELESS_IFACE_PREFIXES = ("wl", "wlan", "wifi", "wlp")
+
+
+def _sanitize_iface(iface: Optional[str]) -> Optional[str]:
+    if not isinstance(iface, str):
+        return None
+    iface = iface.strip()
+    if not iface or not _IFACE_RE.match(iface):
+        return None
+    return iface
+
+
 def _check_tools() -> Dict[str, bool]:
     """Check availability of discovery tools."""
     return {
@@ -133,6 +159,163 @@ def _check_tools() -> Dict[str, bool]:
 # =============================================================================
 
 
+def detect_default_route_interface(logger=None) -> Optional[str]:
+    """Return the interface tied to the system default route, if available."""
+    if not shutil.which("ip"):
+        return None
+
+    rc, out, _ = _run_cmd(["ip", "route", "show", "default"], 4, logger)
+    if rc != 0 and not out.strip():
+        return None
+
+    for line in out.splitlines():
+        line = line.strip()
+        if not line.startswith("default"):
+            continue
+        parts = line.split()
+        if "dev" in parts:
+            try:
+                return parts[parts.index("dev") + 1]
+            except Exception:
+                continue
+    return None
+
+
+def _classify_iface_name(interface: Optional[str]) -> Optional[str]:
+    if not interface:
+        return None
+    name = interface.lower()
+    if name == "lo" or name.startswith("lo"):
+        return "loopback"
+    for prefix in _VIRTUAL_IFACE_PREFIXES:
+        if name.startswith(prefix):
+            return "virtual"
+    for prefix in _WIRELESS_IFACE_PREFIXES:
+        if name.startswith(prefix):
+            return "wireless"
+    return None
+
+
+def _get_interface_facts(interface: Optional[str], logger=None) -> Dict[str, Any]:
+    facts: Dict[str, Any] = {
+        "iface": None,
+        "link_up": None,
+        "carrier": None,
+        "ipv4": [],
+        "ipv6": [],
+        "kind": None,
+        "ipv4_checked": False,
+        "ipv6_checked": False,
+    }
+    safe_iface = _sanitize_iface(interface)
+    if not safe_iface:
+        return facts
+    facts["iface"] = safe_iface
+    facts["kind"] = _classify_iface_name(safe_iface)
+
+    if shutil.which("ip"):
+        rc, out, _ = _run_cmd(["ip", "-o", "link", "show", "dev", safe_iface], 2, logger)
+        if rc == 0 and out:
+            line = out.strip()
+            match = re.search(r"<([^>]+)>", line)
+            flags = set()
+            if match:
+                flags = {f.strip().upper() for f in match.group(1).split(",")}
+            if "UP" in flags:
+                facts["link_up"] = True
+            if "LOWER_UP" in flags:
+                facts["carrier"] = True
+            if "UP" not in flags and re.search(r"\\bstate\\s+(DOWN|LOWERLAYERDOWN)\\b", line):
+                facts["link_up"] = False
+            if "LOWER_UP" not in flags and re.search(r"\\bstate\\s+(DOWN|LOWERLAYERDOWN)\\b", line):
+                facts["carrier"] = False
+
+        rc, out, _ = _run_cmd(["ip", "-o", "-4", "addr", "show", "dev", safe_iface], 2, logger)
+        if rc == 0:
+            facts["ipv4_checked"] = True
+        if rc == 0 and out:
+            for line in out.splitlines():
+                match = re.search(r"inet\\s+(\\d+\\.\\d+\\.\\d+\\.\\d+)/", line)
+                if match:
+                    facts["ipv4"].append(match.group(1))
+
+        rc, out, _ = _run_cmd(["ip", "-o", "-6", "addr", "show", "dev", safe_iface], 2, logger)
+        if rc == 0:
+            facts["ipv6_checked"] = True
+        if rc == 0 and out:
+            for line in out.splitlines():
+                match = re.search(r"inet6\\s+([0-9a-fA-F:]+)/", line)
+                if match:
+                    facts["ipv6"].append(match.group(1))
+
+        return facts
+
+    if shutil.which("ifconfig"):
+        rc, out, _ = _run_cmd(["ifconfig", safe_iface], 2, logger)
+        if rc == 0 and out:
+            if "status: active" in out:
+                facts["link_up"] = True
+                facts["carrier"] = True
+            for line in out.splitlines():
+                line = line.strip()
+                if line.startswith("inet "):
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        facts["ipv4"].append(parts[1])
+                if line.startswith("inet6 "):
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        facts["ipv6"].append(parts[1])
+
+    return facts
+
+
+def _format_dhcp_timeout_hint(interface: Optional[str], logger=None) -> Optional[str]:
+    iface_for_hint = interface or detect_default_route_interface(logger)
+    facts = _get_interface_facts(iface_for_hint, logger)
+    hints = []
+    default_src_ip = None
+
+    def _default_route_src_ip() -> Optional[str]:
+        if not iface_for_hint or not shutil.which("ip"):
+            return None
+        rc, out, _ = _run_cmd(["ip", "route", "show", "default"], 4, logger)
+        if rc != 0 and not out.strip():
+            return None
+        for line in out.splitlines():
+            parts = line.split()
+            if "dev" in parts and parts[parts.index("dev") + 1] == iface_for_hint:
+                if "src" in parts:
+                    try:
+                        return parts[parts.index("src") + 1]
+                    except Exception:
+                        return None
+        return None
+
+    default_src_ip = _default_route_src_ip()
+
+    def _add_hint(text: str) -> None:
+        if text not in hints:
+            hints.append(text)
+
+    if facts.get("kind") == "loopback":
+        _add_hint("interface is loopback; DHCP is not applicable")
+    if facts.get("link_up") is False or facts.get("carrier") is False:
+        _add_hint("interface appears down or has no carrier")
+    if facts.get("ipv4_checked") and not facts.get("ipv4") and not default_src_ip:
+        _add_hint("no IPv4 address detected on interface")
+    if facts.get("kind") == "virtual":
+        _add_hint("interface looks virtual/bridge; DHCP may be unavailable")
+    if facts.get("kind") == "wireless":
+        _add_hint("wireless interface; AP isolation can block DHCP broadcasts")
+
+    _add_hint("no DHCP server responding on this network")
+
+    if not hints:
+        return None
+    return "Possible causes: " + "; ".join(hints)
+
+
 def dhcp_discover(
     interface: Optional[str] = None,
     timeout_s: int = 10,
@@ -160,7 +343,20 @@ def dhcp_discover(
     rc, out, err = _run_cmd(cmd, timeout_s, logger)
 
     if rc != 0 and not out.strip():
-        result["error"] = err.strip() or "nmap dhcp-discover failed"
+        iface_label = interface or "default route"
+        err_text = (err or "").strip()
+        if rc == 124 or "timeout" in err_text.lower():
+            hint = _format_dhcp_timeout_hint(interface, logger)
+            if hint:
+                result["error"] = (
+                    f"no response to DHCP broadcast on {iface_label} (timeout). {hint}"
+                )
+            else:
+                result["error"] = f"no response to DHCP broadcast on {iface_label} (timeout)"
+        elif err_text:
+            result["error"] = f"dhcp-discover failed on {iface_label}: {err_text}"
+        else:
+            result["error"] = f"dhcp-discover failed on {iface_label}"
         return result
 
     # Parse DHCP responses
@@ -227,7 +423,7 @@ def dhcp_discover(
 
 def fping_sweep(
     target: str,
-    timeout_s: int = 30,
+    timeout_s: int = 15,
     logger=None,
 ) -> Dict[str, Any]:
     """
@@ -274,7 +470,7 @@ def fping_sweep(
 
 def netbios_discover(
     target: str,
-    timeout_s: int = 30,
+    timeout_s: int = 15,
     logger=None,
 ) -> Dict[str, Any]:
     """
@@ -419,7 +615,7 @@ def netdiscover_scan(
 def arp_scan_active(
     target: Optional[str] = None,
     interface: Optional[str] = None,
-    timeout_s: int = 30,
+    timeout_s: int = 15,
     logger=None,
 ) -> Dict[str, Any]:
     """
@@ -678,6 +874,291 @@ def upnp_discover(
 
 
 # =============================================================================
+# Routing Discovery (Hidden Networks)
+# =============================================================================
+
+
+def detect_routed_networks(
+    logger=None,
+) -> Dict[str, Any]:
+    """
+    Detect routed networks and gateways via system routing table.
+
+    Parses `ip route` and `ip neigh` to find subnets that are not
+    directly configured on interfaces but are reachable via gateways.
+
+    Returns:
+        {
+            "networks": ["10.0.100.0/24", ...],
+            "gateways": [{"ip": "...", "mac": "...", "interface": "..."}],
+            "error": None
+        }
+    """
+    result: Dict[str, Any] = {"networks": [], "gateways": [], "error": None}
+
+    if not shutil.which("ip"):
+        result["error"] = "ip command not available"
+        return result
+
+    # 1. Parse ip route
+    # default via 192.168.1.1 dev eth0 ...
+    # 10.0.100.0/24 via 192.168.1.1 dev eth0
+    # 192.168.1.0/24 dev eth0 proto kernel scope link src ...
+    rc, out_route, err_route = _run_cmd(["ip", "route", "show"], 5, logger)
+    if rc != 0:
+        result["error"] = f"ip route failed: {err_route}"
+        return result
+
+    networks = set()
+    gateways = set()
+
+    for line in out_route.splitlines():
+        parts = line.split()
+        if not parts:
+            continue
+
+        # Skip default route for network discovery (it's 0.0.0.0/0)
+        if parts[0] == "default":
+            continue
+
+        # Candidate network is usually the first token
+        candidate = parts[0]
+
+        # Valid CIDR check
+        try:
+            if "/" in candidate:
+                ipaddress.ip_network(candidate, strict=False)
+                networks.add(candidate)
+        except ValueError:
+            pass
+
+        # Check for gateway
+        if "via" in parts:
+            try:
+                via_idx = parts.index("via") + 1
+                if via_idx < len(parts):
+                    gw_ip = parts[via_idx]
+                    ipaddress.ip_address(gw_ip)  # Validate IP
+                    gateways.add(gw_ip)
+            except (ValueError, IndexError):
+                pass
+
+    # 2. Parse ip neigh to enrich gateways
+    # 192.168.1.1 dev eth0 lladdr 00:11:22:33:44:55 REACHABLE
+    rc, out_neigh, err_neigh = _run_cmd(["ip", "neigh", "show"], 5, logger)
+
+    gateway_objs = []
+    # If gateways list is empty, treat all router-like neighbors as potential gateways?
+    # For now, we only trust gateways found in routing table or explicitly marked as routers.
+
+    for line in out_neigh.splitlines():
+        parts = line.split()
+        if len(parts) < 5:
+            continue
+
+        ip = parts[0]
+        dev = parts[2] if len(parts) > 2 else ""
+        mac = parts[4] if len(parts) > 4 else ""
+
+        # If this IP was identified as a gateway in routing table
+        if ip in gateways:
+            gateway_objs.append({"ip": ip, "mac": mac, "interface": dev})
+
+    result["networks"] = sorted(list(networks))
+    result["gateways"] = gateway_objs
+
+    return result
+
+
+# =============================================================================
+# L2 Passive Discovery (LLDP/CDP/VLAN)
+# =============================================================================
+
+
+def detect_local_vlan_tags(
+    interface: Optional[str] = None,
+    logger=None,
+) -> List[int]:
+    """
+    Detect local VLAN tags on the interface (ifconfig/ip output).
+
+    Returns:
+        List of VLAN IDs found (e.g., [100, 105]).
+    """
+    tags = set()
+    if not interface:
+        # Try finding default interface?
+        # For now, if no interface provided, we can't easily guess which one to check for VLANs
+        # effectively without iterating all.
+        return []
+
+    safe_iface = _sanitize_iface(interface)
+    if not safe_iface:
+        return []
+
+    # Method 1: ip -d link show (Linux)
+    if shutil.which("ip"):
+        rc, out, _ = _run_cmd(["ip", "-d", "link", "show", safe_iface], 2, logger)
+        if rc == 0:
+            # Output example: "vlan protocol 802.1Q id 100 <REORDER_HDR>"
+            for line in out.splitlines():
+                m = re.search(r"vlan protocol 802\.1Q id (\d+)", line)
+                if m:
+                    tags.add(int(m.group(1)))
+
+    # Method 2: ifconfig (macOS/BSD)
+    # Output example: "vlan: 100 parent interface: en0"
+    if not tags and shutil.which("ifconfig"):
+        rc, out, _ = _run_cmd(["ifconfig", safe_iface], 2, logger)
+        if rc == 0:
+            for line in out.splitlines():
+                # macOS: vlan: 100 parent interface: en0
+                m = re.search(r"vlan:\s*(\d+)", line)
+                if m:
+                    tags.add(int(m.group(1)))
+
+    return sorted(list(tags))
+
+
+def listen_lldp(
+    interface: str,
+    timeout_s: int = 45,
+    logger=None,
+) -> Dict[str, Any]:
+    """
+    Listen for LLDP packets using tcpdump.
+
+    Requires root.
+
+    Returns:
+        Dict with keys: system_name, port_id, vlan_id, etc.
+    """
+    result = {}
+    if not shutil.which("tcpdump"):
+        return {"error": "tcpdump not found"}
+
+    safe_iface = _sanitize_iface(interface)
+    if not safe_iface:
+        return {"error": f"Invalid interface: {interface}"}
+
+    # Capture 1 packet, verbose, snaplen 1500
+    # Filter: ether proto 0x88cc (LLDP)
+    cmd = [
+        "tcpdump",
+        "-i",
+        safe_iface,
+        "-v",
+        "-s",
+        "1500",
+        "-c",
+        "1",
+        "ether",
+        "proto",
+        "0x88cc",
+    ]
+
+    # This will exit with 0 if packet found, or timeout (124) if not.
+    # _run_cmd kills process on timeout, which is what we want.
+    rc, out, err = _run_cmd(cmd, timeout_s, logger)
+
+    output = out + "\n" + err
+    if "LLDP" not in output:
+        if rc != 0:
+            return {"error": "Timeout or permission denied (requires root)"}
+        return {"error": "No LLDP packets captured"}
+
+    # Parse tcpdump -v output for LLDP
+    # System Name TLV (5), length 18: Switch-01
+    # Port ID TLV (4), length 7: GigabitEthernet1/0/1
+    # VLAN parameters not always decoded by stock tcpdump easily, but we try.
+
+    m_sys = re.search(r"System Name TLV.*?: (.+)", output)
+    if m_sys:
+        result["system_name"] = m_sys.group(1).strip()
+
+    m_port = re.search(r"Port ID TLV.*?: (.+)", output)
+    if m_port:
+        result["port_id"] = m_port.group(1).strip()
+
+    m_desc = re.search(r"System Description TLV.*?: (.+)", output)
+    if m_desc:
+        result["system_desc"] = m_desc.group(1).strip()
+
+    m_mgmt = re.search(r"Management Address TLV.*?: ([\d\.]+)", output)
+    if m_mgmt:
+        result["management_ip"] = m_mgmt.group(1).strip()
+
+    # VLAN ID? tcpdump sometimes shows "802.1Q VLAN ID: 100"
+    m_vlan = re.search(r"VLAN ID: (\d+)", output)
+    if m_vlan:
+        result["vlan_id"] = int(m_vlan.group(1))
+
+    return result
+
+
+def listen_cdp(
+    interface: str,
+    timeout_s: int = 45,
+    logger=None,
+) -> Dict[str, Any]:
+    """
+    Listen for CDP packets using tcpdump.
+
+    Requires root.
+    """
+    result = {}
+    if not shutil.which("tcpdump"):
+        return {"error": "tcpdump not found"}
+
+    safe_iface = _sanitize_iface(interface)
+    if not safe_iface:
+        return {"error": f"Invalid interface: {interface}"}
+
+    # Filter: SNAP header for CDP (0x2000) or multicast dst
+    # tcpdump -v -s 1500 -c 1 ether[20:2] == 0x2000
+    cmd = [
+        "tcpdump",
+        "-i",
+        safe_iface,
+        "-v",
+        "-s",
+        "1500",
+        "-c",
+        "1",
+        "ether[20:2] == 0x2000",
+    ]
+
+    rc, out, err = _run_cmd(cmd, timeout_s, logger)
+    output = out + "\n" + err
+
+    if "CDP" not in output and "Cisco Discovery Protocol" not in output:
+        return {}
+
+    # Parse CDP
+    # Device-ID (0x01), length: 12 bytes: 'Switch-01'
+    # Port-ID (0x03), length: 16 bytes: 'FastEthernet0/1'
+    # Native VLAN ID (0x0a), length: 2 bytes: 100
+
+    m_dev = re.search(r"Device-ID.*?: '([^']+)'", output)
+    if m_dev:
+        result["device_id"] = m_dev.group(1)
+
+    m_port = re.search(r"Port-ID.*?: '([^']+)'", output)
+    if m_port:
+        result["port_id"] = m_port.group(1)
+
+    m_vlan = re.search(r"Native VLAN ID.*?: (\d+)", output)
+    if m_vlan:
+        result["native_vlan"] = int(m_vlan.group(1))
+
+    m_plat = re.search(r"Platform.*?: '([^']+)'", output)
+    if m_plat:
+        result["platform"] = m_plat.group(1)
+
+    return result
+
+
+# =============================================================================
 # Main Discovery Function
 # =============================================================================
 
@@ -685,9 +1166,12 @@ def upnp_discover(
 def discover_networks(
     target_networks: List[str],
     interface: Optional[str] = None,
+    dhcp_interfaces: Optional[List[str]] = None,
+    dhcp_timeout_s: Optional[int] = None,
     protocols: Optional[List[str]] = None,
     redteam: bool = False,
     redteam_options: Optional[Dict[str, Any]] = None,
+    exclude_ips: Optional[Set[str]] = None,
     extra_tools: Optional[Dict[str, str]] = None,
     progress_callback: Optional[ProgressCallback] = None,
     logger=None,
@@ -698,9 +1182,12 @@ def discover_networks(
     Args:
         target_networks: List of network ranges to scan
         interface: Network interface to use (optional)
+        dhcp_interfaces: Optional list of interfaces to probe for DHCP discovery
+        dhcp_timeout_s: Optional override for DHCP discovery timeout
         protocols: List of protocols to use (dhcp, netbios, mdns, upnp, arp, fping)
                    If None, uses all available
         redteam: Enable Red Team techniques (slower, noisier)
+        exclude_ips: Optional set of IPs to skip for Red Team enumeration
         extra_tools: Override tool paths
         logger: Logger instance
 
@@ -708,7 +1195,7 @@ def discover_networks(
         Complete net_discovery result object for JSON report
     """
     if protocols is None:
-        protocols = ["dhcp", "fping", "netbios", "mdns", "upnp", "arp", "hyperscan"]
+        protocols = ["dhcp", "fping", "netbios", "mdns", "upnp", "arp", "hyperscan", "routing"]
 
     protocols_norm = [p.strip().lower() for p in protocols if isinstance(p, str) and p.strip()]
     step_total = len(protocols_norm)
@@ -737,124 +1224,200 @@ def discover_networks(
         "arp_hosts": [],
         "mdns_services": [],
         "upnp_devices": [],
+        "routing_networks": [],
+        "routing_gateways": [],
         "candidate_vlans": [],
         "errors": errors,
     }
 
-    for step_index, protocol in enumerate(protocols_norm, start=1):
-        if protocol == "dhcp":
-            _progress("DHCP discovery", step_index)
-            dhcp_result = dhcp_discover(interface=interface, logger=logger)
-            if dhcp_result.get("servers"):
-                result["dhcp_servers"] = dhcp_result["servers"]
-            if dhcp_result.get("error"):
-                errors.append(f"dhcp: {dhcp_result['error']}")
+    # v4.6.32: Parallel execution of discovery protocols
 
-        elif protocol == "fping":
-            _progress("ICMP sweep (fping)", step_index)
-            all_alive = []
-            for idx, target in enumerate(target_networks, start=1):
-                if len(target_networks) > 1:
-                    _progress(f"ICMP sweep (fping) {idx}/{len(target_networks)}", step_index)
-                fping_result = fping_sweep(target, logger=logger)
-                all_alive.extend(fping_result.get("alive_hosts", []))
-                if fping_result.get("error"):
-                    errors.append(f"fping ({target}): {fping_result['error']}")
-            result["alive_hosts"] = list(set(all_alive))
+    # Shared counter for monotonic progress updates
+    _progress_lock = threading.Lock()
+    _started_tasks = 0
 
-        elif protocol == "netbios":
-            _progress("NetBIOS discovery", step_index)
-            all_netbios = []
-            for idx, target in enumerate(target_networks, start=1):
-                if len(target_networks) > 1:
-                    _progress(f"NetBIOS discovery {idx}/{len(target_networks)}", step_index)
-                netbios_result = netbios_discover(target, logger=logger)
-                all_netbios.extend(netbios_result.get("hosts", []))
-                if netbios_result.get("error"):
-                    errors.append(f"netbios ({target}): {netbios_result['error']}")
-            result["netbios_hosts"] = all_netbios
+    # Define a worker function to run one protocol and return its result key/value
+    def _run_protocol(proto: str) -> Tuple[str, Dict[str, Any], List[str]]:
+        nonlocal _started_tasks
+        local_errors: List[str] = []
+        local_res: Dict[str, Any] = {}
 
-        elif protocol == "arp":
-            _progress("ARP discovery", step_index)
-            all_arp = []
-            seen_ips = set()
+        # Monotonic progress update
+        with _progress_lock:
+            _started_tasks += 1
+            current_idx = _started_tasks
 
-            if tools.get("arp-scan") or shutil.which("arp-scan"):
-                total_l2_warnings = 0
+        try:
+            # v4.6.33: Added debug logging to identify slow protocols
+            if logger:
+                logger.debug(f"NetDiscovery: Starting {proto} on task #{current_idx}")
+
+            if proto == "dhcp":
+                _progress("DHCP discovery", current_idx)
+                timeout_val = dhcp_timeout_s if dhcp_timeout_s is not None else 10
+                targets = []
+                if dhcp_interfaces:
+                    targets = list(dhcp_interfaces)
+                elif interface:
+                    targets = [interface]
+                else:
+                    targets = [None]
+
+                dhcp_servers: List[Dict[str, Any]] = []
+                for dhcp_iface in targets:
+                    dhcp_res = dhcp_discover(
+                        interface=dhcp_iface, timeout_s=timeout_val, logger=logger
+                    )
+                    dhcp_servers.extend(dhcp_res.get("servers", []) or [])
+                    if dhcp_res.get("error"):
+                        local_errors.append(f"dhcp: {dhcp_res['error']}")
+
+                local_res["dhcp_servers"] = dhcp_servers
+
+            elif proto == "routing":
+                _progress("Routing analysis", current_idx)
+                # Routing analysis doesn't need target networks, it inspects system state
+                route_res = detect_routed_networks(logger=logger)
+                local_res["routing_networks"] = route_res.get("networks", [])
+                local_res["routing_gateways"] = route_res.get("gateways", [])
+                if route_res.get("error"):
+                    local_errors.append(f"routing: {route_res['error']}")
+
+            elif proto == "fping":
+                _progress("ICMP sweep (fping)", current_idx)
+                all_alive = []
                 for idx, target in enumerate(target_networks, start=1):
-                    if len(target_networks) > 1:
-                        _progress(
-                            f"ARP discovery (arp-scan) {idx}/{len(target_networks)}", step_index
-                        )
-                    arp_result = arp_scan_active(target=target, interface=interface, logger=logger)
-                    for host in arp_result.get("hosts", []):
-                        ip = host.get("ip")
-                        if ip and ip not in seen_ips:
-                            seen_ips.add(ip)
-                            all_arp.append(host)
-                    if arp_result.get("error"):
-                        errors.append(f"arp-scan ({target}): {arp_result['error']}")
-                    # v4.3: Accumulate L2 warnings
-                    total_l2_warnings += arp_result.get("l2_warnings", 0)
+                    fp_res = fping_sweep(target, logger=logger)
+                    all_alive.extend(fp_res.get("alive_hosts", []))
+                    if fp_res.get("error"):
+                        local_errors.append(f"fping ({target}): {fp_res['error']}")
+                local_res["alive_hosts"] = list(set(all_alive))
 
-                # v4.3: Show consolidated L2 warning (didactic)
-                if total_l2_warnings > 0:
-                    warning_msg = (
-                        f"⚠️  ARP Discovery: {total_l2_warnings} hosts detectados fuera de tu red local "
-                        "(subred/VLAN diferente).\n"
-                        "   → Esto es normal si escaneas rangos que incluyen otras redes o el gateway.\n"
-                        "   → El escaneo TCP/UDP funcionará normalmente para estos hosts."
+            elif proto == "netbios":
+                _progress("NetBIOS discovery", current_idx)
+                all_nb = []
+                for idx, target in enumerate(target_networks, start=1):
+                    nb_res = netbios_discover(target, logger=logger)
+                    all_nb.extend(nb_res.get("hosts", []))
+                    if nb_res.get("error"):
+                        local_errors.append(f"netbios ({target}): {nb_res['error']}")
+                local_res["netbios_hosts"] = all_nb
+
+            elif proto == "arp":
+                _progress("ARP discovery", current_idx)
+                all_arp_h = []
+                # Use a local seen set, will be merged later
+                seen_ips_local = set()
+
+                if tools.get("arp-scan") or shutil.which("arp-scan"):
+                    tot_l2_warn = 0
+                    for idx, target in enumerate(target_networks, start=1):
+                        arp_res = arp_scan_active(target=target, interface=interface, logger=logger)
+                        for h in arp_res.get("hosts", []):
+                            ip = h.get("ip")
+                            if ip and ip not in seen_ips_local:
+                                seen_ips_local.add(ip)
+                                all_arp_h.append(h)
+                        if arp_res.get("error"):
+                            local_errors.append(f"arp-scan ({target}): {arp_res['error']}")
+                        tot_l2_warn += arp_res.get("l2_warnings", 0)
+
+                    # Store L2 warning separately to avoid UI races (will print in main thread)
+                    if tot_l2_warn > 0:
+                        local_res["_l2_warning_count"] = tot_l2_warn
+
+                for idx, target in enumerate(target_networks, start=1):
+                    nd_res = netdiscover_scan(
+                        target, active=True, interface=interface, logger=logger
                     )
-                    # Print to terminal (logger.warning only goes to log file)
-                    from datetime import datetime as dt
+                    for h in nd_res.get("hosts", []):
+                        ip = h.get("ip")
+                        if ip and ip not in seen_ips_local:
+                            seen_ips_local.add(ip)
+                            all_arp_h.append(h)
+                    if nd_res.get("error"):
+                        local_errors.append(f"netdiscover ({target}): {nd_res['error']}")
 
-                    ts = dt.now().strftime("%H:%M:%S")
-                    print(f"\033[93m[{ts}] [WARN]\033[0m {warning_msg}", flush=True)
-                    if logger:
-                        logger.warning(
-                            "ARP Discovery: %d hosts outside local L2 segment. TCP/UDP will work normally.",
-                            total_l2_warnings,
-                        )
-                    result["l2_warning_note"] = (
-                        f"{total_l2_warnings} hosts detected outside your local network. "
-                        "TCP/UDP scanning will work normally for these hosts."
-                    )
+                local_res["arp_hosts"] = all_arp_h
 
-            for idx, target in enumerate(target_networks, start=1):
-                if len(target_networks) > 1:
-                    _progress(
-                        f"ARP discovery (netdiscover) {idx}/{len(target_networks)}", step_index
-                    )
-                arp_result = netdiscover_scan(
-                    target, active=True, interface=interface, logger=logger
-                )
-                for host in arp_result.get("hosts", []):
-                    ip = host.get("ip")
-                    if ip and ip not in seen_ips:
-                        seen_ips.add(ip)
-                        all_arp.append(host)
-                if arp_result.get("error"):
-                    errors.append(f"netdiscover ({target}): {arp_result['error']}")
+            elif proto == "mdns":
+                _progress("mDNS discovery", current_idx)
+                md_res = mdns_discover(logger=logger)
+                local_res["mdns_services"] = md_res.get("services", [])
+                if md_res.get("error"):
+                    local_errors.append(f"mdns: {md_res['error']}")
 
-            result["arp_hosts"] = all_arp
+            elif proto == "upnp":
+                _progress("UPnP discovery", current_idx)
+                up_res = upnp_discover(logger=logger)
+                local_res["upnp_devices"] = up_res.get("devices", [])
+                if up_res.get("error"):
+                    local_errors.append(f"upnp: {up_res['error']}")
 
-        elif protocol == "mdns":
-            _progress("mDNS discovery", step_index)
-            mdns_result = mdns_discover(logger=logger)
-            if mdns_result.get("services"):
-                result["mdns_services"] = mdns_result["services"]
-            if mdns_result.get("error"):
-                errors.append(f"mdns: {mdns_result['error']}")
+            # Additional protocols (hyperscan/redteam) could be added here
 
-        elif protocol == "upnp":
-            _progress("UPnP discovery", step_index)
-            upnp_result = upnp_discover(logger=logger)
-            if upnp_result.get("devices"):
-                result["upnp_devices"] = upnp_result["devices"]
-            if upnp_result.get("error"):
-                errors.append(f"upnp: {upnp_result['error']}")
+            if logger:
+                logger.debug(f"NetDiscovery: Finished {proto} on task #{current_idx}")
 
-        elif protocol == "hyperscan":
+        except Exception as e:
+            if logger:
+                logger.error(f"Protocol {proto} failed: {e}", exc_info=True)
+            local_errors.append(f"{proto}: {e}")
+
+        return proto, local_res, local_errors
+
+    # Execute all enabled protocols in parallel
+    # Max workers = number of protocols (usually ~6-8)
+    max_workers = len(protocols_norm)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_run_protocol, p): p
+            for p in protocols_norm
+            if p not in ["hyperscan"]  # Hyperscan is handled separately
+        }
+
+        for future in as_completed(futures):
+            p_name = futures[future]
+            try:
+                _, p_res, p_errs = future.result()
+
+                # Merge results into main result dict
+                for k, v in p_res.items():
+                    if k == "_l2_warning_count":
+                        # Pass warning to caller via result dict; do NOT print here to avoid UI overlap
+                        warn_count = v
+                        if warn_count > 0:
+                            if logger:
+                                logger.warning(
+                                    "ARP Discovery: %d hosts outside local L2 segment.", warn_count
+                                )
+                            result["l2_warning_note"] = (
+                                f"{warn_count} hosts detected outside your local network."
+                            )
+                        continue
+
+                    if k in result:
+                        # Append or replace? Lists are empty initially, so direct assignment or extend is fine.
+                        # For safety, we extend lists, replace others.
+                        if isinstance(result[k], list) and isinstance(v, list):
+                            # Special case: don't double-add if multiple protocols returned same key (unlikely here)
+                            result[k].extend(v)
+                        else:
+                            result[k] = v
+                    else:
+                        result[k] = v
+
+                if p_errs:
+                    errors.extend(p_errs)
+
+            except Exception as e:
+                errors.append(f"{p_name} worker failed: {e}")
+                if logger:
+                    logger.error(f"Worker for {p_name} crashed: {e}", exc_info=True)
+
+    # Handle hyperscan separately as it's a more complex, potentially longer-running step
+    for step_index, protocol in enumerate(protocols_norm, start=1):
+        if protocol == "hyperscan":
             _progress("HyperScan (parallel discovery)", step_index)
             try:
                 from redaudit.core.hyperscan import hyperscan_full_discovery
@@ -907,14 +1470,40 @@ def discover_networks(
                         result["arp_hosts"].append(host)
                         existing_ips.add(host.get("ip"))
 
+                # Process UDP devices (IoT)
+                udp_ports_map: Dict[str, List[int]] = {}
                 for device in hyperscan_result.get("udp_devices", []):
+                    ip = device.get("ip")
+                    port = device.get("port")
+                    # Add to upnp_devices for Context
                     result["upnp_devices"].append(
                         {
-                            "ip": device.get("ip"),
+                            "ip": ip,
                             "device": f"IoT ({device.get('protocol', 'unknown')})",
                             "source": "hyperscan_udp",
                         }
                     )
+                    # Track UDP ports
+                    if ip and port:
+
+                        if ip not in udp_ports_map:
+                            udp_ports_map[ip] = []
+                        if port not in udp_ports_map[ip]:
+                            udp_ports_map[ip].append(port)
+
+                    # Ensure host exists in main list
+                    if ip and ip not in existing_ips:
+                        result["arp_hosts"].append(
+                            {
+                                "ip": ip,
+                                "mac": "",  # Unknown yet
+                                "vendor": f"IoT ({device.get('protocol', 'unknown')})",
+                            }
+                        )
+                        existing_ips.add(ip)
+
+                if udp_ports_map:
+                    result["hyperscan_udp_ports"] = udp_ports_map
 
                 if hyperscan_result.get("tcp_hosts"):
                     result["hyperscan_tcp_hosts"] = hyperscan_result["tcp_hosts"]
@@ -950,11 +1539,13 @@ def discover_networks(
     # Red Team techniques (optional)
     if redteam:
         _progress("Red Team discovery", step_total)
-        _run_redteam_discovery(
+        run_redteam_discovery(
             result,
             target_networks,
             interface=interface,
             redteam_options=redteam_options,
+            exclude_ips=exclude_ips,
+            tools=result.get("tools"),
             logger=logger,
             progress_callback=progress_callback,
             progress_step=step_total,
@@ -995,1350 +1586,3 @@ def _analyze_vlans(discovery_result: Dict[str, Any]) -> List[Dict[str, Any]]:
                     )
 
     return candidates
-
-
-def _run_redteam_discovery(
-    result: Dict[str, Any],
-    target_networks: List[str],
-    interface: Optional[str] = None,
-    redteam_options: Optional[Dict[str, Any]] = None,
-    logger=None,
-    progress_callback: Optional[ProgressCallback] = None,
-    progress_step: Optional[int] = None,
-    progress_total: Optional[int] = None,
-) -> None:
-    """
-    Run optional Red Team discovery techniques.
-    Modifies result in place.
-    """
-    tools = result.get("tools") or _check_tools()
-
-    options = redteam_options if isinstance(redteam_options, dict) else {}
-
-    max_targets = options.get("max_targets", 50)
-    if not isinstance(max_targets, int) or max_targets < 1 or max_targets > 500:
-        max_targets = 50
-
-    def _progress_redteam(label: str) -> None:
-        if not progress_callback:
-            return
-        step_idx = int(progress_step or 1)
-        step_total = int(progress_total or step_idx or 1)
-        try:
-            progress_callback(f"Red Team: {label}", step_idx, step_total)
-        except Exception:
-            return
-
-    def _run_step(label: str, func):
-        start = time.monotonic()
-        stop_event = threading.Event()
-        ticker = None
-
-        if progress_callback:
-
-            def _tick():
-                while not stop_event.wait(3.0):
-                    elapsed = int(time.monotonic() - start)
-                    _progress_redteam(f"{label} ({elapsed}s)")
-
-            ticker = threading.Thread(target=_tick, daemon=True)
-            ticker.start()
-
-        try:
-            _progress_redteam(label)
-            return func()
-        finally:
-            stop_event.set()
-            if ticker:
-                try:
-                    ticker.join(timeout=0.5)
-                except Exception:
-                    pass
-            _progress_redteam(f"{label} done")
-
-    iface = _sanitize_iface(interface)
-
-    snmp_community = options.get("snmp_community", "public")
-    if not isinstance(snmp_community, str) or not snmp_community.strip():
-        snmp_community = "public"
-    snmp_community = snmp_community.strip()[:64]
-
-    dns_zone = _sanitize_dns_zone(options.get("dns_zone"))
-    kerberos_realm = _sanitize_dns_zone(options.get("kerberos_realm"))
-    kerberos_userlist = options.get("kerberos_userlist")
-    if not isinstance(kerberos_userlist, str) or not kerberos_userlist.strip():
-        kerberos_userlist = None
-
-    active_l2 = bool(options.get("active_l2", False))
-
-    target_ips = _gather_redteam_targets(result, max_targets=max_targets)
-
-    masscan = {}
-    if options.get("use_masscan", True):
-        masscan = _run_step(
-            "masscan sweep",
-            lambda: _redteam_masscan_sweep(target_networks, tools=tools, logger=logger),
-        )
-    open_tcp = _index_open_tcp_ports(masscan)
-
-    smb_targets = _filter_targets_by_port(target_ips, open_tcp, port=445, fallback_max=15)
-    rpc_targets = _filter_targets_by_any_port(
-        target_ips, open_tcp, ports=[445, 135], fallback_max=15
-    )
-    ldap_targets = _filter_targets_by_any_port(
-        target_ips, open_tcp, ports=[389, 636], fallback_max=10
-    )
-    kerberos_targets = _filter_targets_by_port(target_ips, open_tcp, port=88, fallback_max=10)
-
-    snmp = _run_step(
-        "SNMP walk",
-        lambda: _redteam_snmp_walk(
-            target_ips,
-            tools=tools,
-            community=snmp_community,
-            logger=logger,
-        ),
-    )
-    smb = _run_step("SMB enum", lambda: _redteam_smb_enum(smb_targets, tools=tools, logger=logger))
-    rpc = _run_step("RPC enum", lambda: _redteam_rpc_enum(rpc_targets, tools=tools, logger=logger))
-    ldap = _run_step(
-        "LDAP enum", lambda: _redteam_ldap_enum(ldap_targets, tools=tools, logger=logger)
-    )
-    kerberos = _run_step(
-        "Kerberos enum",
-        lambda: _redteam_kerberos_enum(
-            kerberos_targets,
-            tools=tools,
-            realm=kerberos_realm,
-            userlist_path=kerberos_userlist,
-            logger=logger,
-        ),
-    )
-    dns_zone_transfer = _run_step(
-        "DNS zone transfer",
-        lambda: _redteam_dns_zone_transfer(
-            result,
-            tools=tools,
-            zone=dns_zone,
-            logger=logger,
-        ),
-    )
-    vlan_enum = _run_step(
-        "VLAN enum", lambda: _redteam_vlan_enum(iface, tools=tools, logger=logger)
-    )
-    stp_topology = _run_step(
-        "STP topology", lambda: _redteam_stp_topology(iface, tools=tools, logger=logger)
-    )
-    hsrp_vrrp = _run_step(
-        "HSRP/VRRP", lambda: _redteam_hsrp_vrrp_discovery(iface, tools=tools, logger=logger)
-    )
-    llmnr_nbtns = _run_step(
-        "LLMNR/NBT-NS", lambda: _redteam_llmnr_nbtns_capture(iface, tools=tools, logger=logger)
-    )
-    router_discovery = _run_step(
-        "Router discovery",
-        lambda: _redteam_router_discovery(iface, tools=tools, logger=logger),
-    )
-    ipv6_discovery = _run_step(
-        "IPv6 discovery",
-        lambda: _redteam_ipv6_discovery(iface, tools=tools, logger=logger),
-    )
-    bettercap_recon = _run_step(
-        "Bettercap recon",
-        lambda: _redteam_bettercap_recon(iface, tools=tools, active_l2=active_l2, logger=logger),
-    )
-    scapy_custom = _run_step(
-        "Scapy probes",
-        lambda: _redteam_scapy_custom(
-            iface,
-            tools=tools,
-            active_l2=active_l2,
-            logger=logger,
-        ),
-    )
-
-    redteam: Dict[str, Any] = {
-        "enabled": True,
-        "interface": iface,
-        "targets_considered": len(target_ips),
-        "targets_sample": target_ips[:10],
-        "masscan": masscan,
-        "snmp": snmp,
-        "smb": smb,
-        "rpc": rpc,
-        "ldap": ldap,
-        "kerberos": kerberos,
-        "dns_zone_transfer": dns_zone_transfer,
-        "vlan_enum": vlan_enum,
-        "stp_topology": stp_topology,
-        "hsrp_vrrp": hsrp_vrrp,
-        "llmnr_nbtns": llmnr_nbtns,
-        "router_discovery": router_discovery,
-        "ipv6_discovery": ipv6_discovery,
-        "bettercap_recon": bettercap_recon,
-        "scapy_custom": scapy_custom,
-    }
-    result["redteam"] = redteam
-
-
-def _is_ipv4(ip_str: str) -> bool:
-    try:
-        return isinstance(ipaddress.ip_address(ip_str), ipaddress.IPv4Address)
-    except ValueError:
-        return False
-
-
-def _dedupe_preserve_order(items: List[str]) -> List[str]:
-    seen = set()
-    out: List[str] = []
-    for item in items:
-        if item in seen:
-            continue
-        seen.add(item)
-        out.append(item)
-    return out
-
-
-def _gather_redteam_targets(discovery_result: Dict[str, Any], max_targets: int = 50) -> List[str]:
-    candidates: List[str] = []
-
-    for ip_str in discovery_result.get("alive_hosts", []) or []:
-        if isinstance(ip_str, str) and _is_ipv4(ip_str):
-            candidates.append(ip_str)
-
-    for host in discovery_result.get("arp_hosts", []) or []:
-        if isinstance(host, dict):
-            ip_str = host.get("ip")
-            if isinstance(ip_str, str) and _is_ipv4(ip_str):
-                candidates.append(ip_str)
-
-    for host in discovery_result.get("netbios_hosts", []) or []:
-        if isinstance(host, dict):
-            ip_str = host.get("ip")
-            if isinstance(ip_str, str) and _is_ipv4(ip_str):
-                candidates.append(ip_str)
-
-    for srv in discovery_result.get("dhcp_servers", []) or []:
-        if isinstance(srv, dict):
-            ip_str = srv.get("ip")
-            if isinstance(ip_str, str) and _is_ipv4(ip_str):
-                candidates.append(ip_str)
-
-    return _dedupe_preserve_order(candidates)[:max_targets]
-
-
-_IFACE_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9\-_]{0,31}$")
-
-
-def _sanitize_iface(iface: Optional[str]) -> Optional[str]:
-    if not isinstance(iface, str):
-        return None
-    iface = iface.strip()
-    if not iface or not _IFACE_RE.match(iface):
-        return None
-    return iface
-
-
-def _sanitize_dns_zone(zone: Any) -> Optional[str]:
-    if not isinstance(zone, str):
-        return None
-    zone = zone.strip().strip(".")
-    if not zone or len(zone) > 253:
-        return None
-    if ".." in zone:
-        return None
-    if not re.match(r"^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$", zone):
-        return None
-    return zone
-
-
-def _index_open_tcp_ports(masscan_result: Dict[str, Any]) -> Dict[str, set[int]]:
-    idx: Dict[str, set[int]] = {}
-    for entry in (masscan_result or {}).get("open_ports", []) or []:
-        if not isinstance(entry, dict):
-            continue
-        ip_str = entry.get("ip")
-        port = entry.get("port")
-        proto = (entry.get("protocol") or "").lower()
-        if not isinstance(ip_str, str) or not _is_ipv4(ip_str):
-            continue
-        if not isinstance(port, int) or not (1 <= port <= 65535):
-            continue
-        if proto and proto != "tcp":
-            continue
-        idx.setdefault(ip_str, set()).add(port)
-    return idx
-
-
-def _filter_targets_by_port(
-    target_ips: List[str],
-    open_tcp: Dict[str, set[int]],
-    port: int,
-    fallback_max: int,
-) -> List[str]:
-    if not isinstance(port, int) or not (1 <= port <= 65535):
-        return target_ips[:fallback_max]
-    filtered = [ip for ip in target_ips if port in open_tcp.get(ip, set())]
-    return filtered[:fallback_max] if filtered else target_ips[:fallback_max]
-
-
-def _filter_targets_by_any_port(
-    target_ips: List[str],
-    open_tcp: Dict[str, set[int]],
-    ports: List[int],
-    fallback_max: int,
-) -> List[str]:
-    safe_ports = [p for p in ports if isinstance(p, int) and (1 <= p <= 65535)]
-    if not safe_ports:
-        return target_ips[:fallback_max]
-    filtered = [ip for ip in target_ips if any(p in open_tcp.get(ip, set()) for p in safe_ports)]
-    return filtered[:fallback_max] if filtered else target_ips[:fallback_max]
-
-
-_SNMP_OID_MAP = {
-    "1.3.6.1.2.1.1.1.0": "sysDescr",
-    "1.3.6.1.2.1.1.2.0": "sysObjectID",
-    "1.3.6.1.2.1.1.3.0": "sysUpTime",
-    "1.3.6.1.2.1.1.4.0": "sysContact",
-    "1.3.6.1.2.1.1.5.0": "sysName",
-    "1.3.6.1.2.1.1.6.0": "sysLocation",
-    "1.3.6.1.2.1.1.7.0": "sysServices",
-}
-
-
-def _parse_snmpwalk(output: str) -> Dict[str, str]:
-    parsed: Dict[str, str] = {}
-    for line in (output or "").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        m = re.match(r"^([.0-9]+)\s*(?:=\s*)?(.*)$", line)
-        if not m:
-            continue
-        oid = m.group(1).lstrip(".")
-        value = (m.group(2) or "").strip()
-        value = re.sub(r"^[A-Z][A-Z0-9\-]*:\s*", "", value).strip()
-        value = value.strip('"')
-        key = _SNMP_OID_MAP.get(oid)
-        if key and value:
-            parsed[key] = value[:250]
-    return parsed
-
-
-def _redteam_snmp_walk(
-    target_ips: List[str],
-    tools: Dict[str, bool],
-    community: str = "public",
-    logger=None,
-) -> Dict[str, Any]:
-    if not target_ips:
-        return {"status": "no_targets", "hosts": []}
-    if not tools.get("snmpwalk") or not shutil.which("snmpwalk"):
-        return {"status": "tool_missing", "tool": "snmpwalk", "hosts": []}
-
-    results: List[Dict[str, Any]] = []
-    errors: List[str] = []
-
-    for ip_str in target_ips[:20]:
-        # Keep it quick and read-only: 1s timeout, 0 retries, system group only.
-        cmd = [
-            "snmpwalk",
-            "-v2c",
-            "-c",
-            community,
-            "-t",
-            "1",
-            "-r",
-            "0",
-            "-On",
-            ip_str,
-            "1.3.6.1.2.1.1",
-        ]
-        rc, out, err = _run_cmd(cmd, timeout_s=4, logger=logger)
-        text = out or ""
-        if rc != 0 and not text.strip():
-            if err.strip():
-                errors.append(f"{ip_str}: {err.strip()[:160]}")
-            continue
-        if "timeout" in (err or "").lower() or "timeout" in text.lower():
-            continue
-        parsed = _parse_snmpwalk(text)
-        if parsed:
-            results.append({"ip": ip_str, **parsed})
-        else:
-            # Keep a tiny sample for debugging (avoid bloating the report).
-            snippet = (text.strip() or err.strip())[:400]
-            if snippet:
-                results.append({"ip": ip_str, "raw": snippet})
-
-    status = "ok" if results else "no_data"
-    payload: Dict[str, Any] = {
-        "status": status,
-        "community": community,
-        "hosts": results,
-    }
-    if errors:
-        payload["errors"] = errors[:20]
-    return payload
-
-
-def _parse_smb_nmap(output: str) -> Dict[str, Any]:
-    text = output or ""
-    parsed: Dict[str, Any] = {}
-
-    # smb-os-discovery patterns (best-effort)
-    patterns = {
-        "os": r"\bOS:\s*(.+)",
-        "computer_name": r"\bComputer name:\s*(\S+)",
-        "netbios_name": r"\bNetBIOS computer name:\s*(\S+)",
-        "domain": r"\bDomain name:\s*(\S+)",
-        "workgroup": r"\bWorkgroup:\s*(\S+)",
-    }
-    for key, pat in patterns.items():
-        m = re.search(pat, text, re.IGNORECASE)
-        if m:
-            parsed[key] = m.group(1).strip()[:200]
-
-    shares: List[str] = []
-    # Match "Sharename: ..." (legacy/other) OR "\\IP\Share:" (standard nmap)
-    for m in re.finditer(r"\bSharename:\s*([^\s]+)", text, re.IGNORECASE):
-        share = m.group(1).strip()
-        if share and share not in shares:
-            shares.append(share)
-
-    # Standard nmap smb-enum-shares: |  \\1.2.3.4\IPC$:
-    if not shares:
-        for m in re.finditer(r"\\\\(?:\d{1,3}(?:\.\d{1,3}){3}|[^\\]+)\\([^\s:]+):", text):
-            share = m.group(1).strip()
-            if share and share not in shares:
-                shares.append(share)
-
-    if shares:
-        parsed["shares"] = shares[:20]
-
-    return parsed
-
-
-def _redteam_smb_enum(
-    target_ips: List[str],
-    tools: Dict[str, bool],
-    logger=None,
-) -> Dict[str, Any]:
-    if not target_ips:
-        return {"status": "no_targets", "hosts": []}
-
-    has_enum4linux = tools.get("enum4linux") and shutil.which("enum4linux")
-    has_nmap = tools.get("nmap") and shutil.which("nmap")
-
-    if not has_enum4linux and not has_nmap:
-        return {"status": "tool_missing", "tool": "enum4linux/nmap", "hosts": []}
-
-    tool = "enum4linux" if has_enum4linux else "nmap"
-    results: List[Dict[str, Any]] = []
-
-    for ip_str in target_ips[:15]:
-        if tool == "enum4linux":
-            cmd = ["enum4linux", "-a", ip_str]
-            rc, out, err = _run_cmd(cmd, timeout_s=25, logger=logger)
-            text = (out or "") + "\n" + (err or "")
-            snippet = text.strip()[:1200]
-            if not snippet:
-                continue
-            results.append({"ip": ip_str, "tool": "enum4linux", "raw": snippet})
-        else:
-            cmd = [
-                "nmap",
-                "-p",
-                "445",
-                "--script",
-                "smb-os-discovery,smb-enum-shares,smb-enum-users",
-                ip_str,
-            ]
-            rc, out, err = _run_cmd(cmd, timeout_s=25, logger=logger)
-            text = (out or "") + "\n" + (err or "")
-            parsed = _parse_smb_nmap(text)
-            if parsed:
-                results.append({"ip": ip_str, "tool": "nmap", **parsed})
-            else:
-                snippet = text.strip()[:800]
-                if snippet:
-                    results.append({"ip": ip_str, "tool": "nmap", "raw": snippet})
-
-    return {"status": "ok" if results else "no_data", "tool": tool, "hosts": results}
-
-
-def _is_root() -> bool:
-    try:
-        return hasattr(os, "geteuid") and os.geteuid() == 0
-    except Exception:
-        return False
-
-
-def _redteam_masscan_sweep(
-    target_networks: List[str],
-    tools: Dict[str, bool],
-    logger=None,
-) -> Dict[str, Any]:
-    """
-    Optional fast port discovery using masscan.
-
-    Safety defaults:
-    - Requires root
-    - Skips if targets are too large (to avoid accidental large-scale scans)
-    - Scans only a small port set used by redteam discovery
-    """
-    if not target_networks:
-        return {"status": "no_targets"}
-    if not tools.get("masscan") or not shutil.which("masscan"):
-        return {"status": "tool_missing", "tool": "masscan"}
-    if not _is_root():
-        return {"status": "skipped_requires_root"}
-
-    nets: List[ipaddress.IPv4Network] = []
-    total_addrs = 0
-    for token in target_networks:
-        try:
-            net = ipaddress.ip_network(token, strict=False)
-        except ValueError:
-            continue
-        if net.version != 4:
-            continue
-        nets.append(net)
-        total_addrs += int(net.num_addresses)
-
-    if total_addrs > 4096:
-        return {"status": "skipped_too_large", "total_addresses": total_addrs}
-
-    port_spec = "T:53,T:88,T:135,T:389,T:445,T:636,U:161"
-    cmd = [
-        "masscan",
-        "-p",
-        port_spec,
-        "--rate",
-        "500",
-        "--wait",
-        "0",
-        "--open-only",
-    ] + [str(n) for n in nets]
-
-    rc, out, err = _run_cmd(cmd, timeout_s=25, logger=logger)
-    text = (out or "") + "\n" + (err or "")
-
-    open_ports: List[Dict[str, Any]] = []
-    for line in text.splitlines():
-        m = re.search(
-            r"Discovered open port (\d+)/(tcp|udp) on (\d{1,3}(?:\.\d{1,3}){3})",
-            line,
-            re.IGNORECASE,
-        )
-        if not m:
-            continue
-        port = int(m.group(1))
-        proto = m.group(2).lower()
-        ip_str = m.group(3)
-        open_ports.append({"ip": ip_str, "port": port, "protocol": proto})
-
-    payload: Dict[str, Any] = {
-        "status": "ok" if open_ports else "no_data",
-        "ports_scanned": [53, 88, 135, 389, 445, 636, 161],
-        "ports_scanned_spec": port_spec,
-        "open_ports": open_ports[:200],
-    }
-    if rc != 0 and err.strip():
-        payload["error"] = err.strip()[:200]
-    return payload
-
-
-def _safe_truncate(text: str, limit: int) -> str:
-    if not isinstance(text, str):
-        return ""
-    if limit <= 0:
-        return ""
-    return text if len(text) <= limit else text[:limit]
-
-
-def _tcpdump_capture(
-    iface: str,
-    bpf_expr: str,
-    tools: Dict[str, bool],
-    timeout_s: int,
-    packets: int = 50,
-    logger=None,
-) -> Dict[str, Any]:
-    if not iface:
-        return {"status": "skipped_no_interface"}
-    if not tools.get("tcpdump") or not shutil.which("tcpdump"):
-        return {"status": "tool_missing", "tool": "tcpdump"}
-    if not _is_root():
-        return {"status": "skipped_requires_root"}
-
-    if not isinstance(packets, int) or packets < 1:
-        packets = 50
-    if packets > 200:
-        packets = 200
-
-    cmd = ["tcpdump", "-i", iface, "-n", "-e", "-vv", "-c", str(packets)]
-    if isinstance(bpf_expr, str) and bpf_expr.strip():
-        cmd.append(bpf_expr.strip())
-
-    rc, out, err = _run_cmd(cmd, timeout_s=timeout_s, logger=logger)
-    text = (out or "") + "\n" + (err or "")
-    snippet = text.strip()
-
-    payload: Dict[str, Any] = {
-        "status": "ok" if snippet else "no_data",
-        "returncode": rc,
-    }
-    if snippet:
-        payload["raw_sample"] = _safe_truncate(snippet, 1600)
-    if rc != 0 and err.strip():
-        payload["error"] = _safe_truncate(err.strip(), 300)
-    return payload
-
-
-def _redteam_rpc_enum(
-    target_ips: List[str],
-    tools: Dict[str, bool],
-    logger=None,
-) -> Dict[str, Any]:
-    if not target_ips:
-        return {"status": "no_targets", "hosts": []}
-
-    has_rpcclient = tools.get("rpcclient") and shutil.which("rpcclient")
-    has_nmap = tools.get("nmap") and shutil.which("nmap")
-    if not has_rpcclient and not has_nmap:
-        return {"status": "tool_missing", "tool": "rpcclient/nmap", "hosts": []}
-
-    tool = "rpcclient" if has_rpcclient else "nmap"
-    results: List[Dict[str, Any]] = []
-
-    for ip_str in target_ips[:15]:
-        if tool == "rpcclient":
-            cmd = ["rpcclient", "-U", "", "-N", ip_str, "-c", "srvinfo"]
-            rc, out, err = _run_cmd(cmd, timeout_s=12, logger=logger)
-            text = (out or "") + "\n" + (err or "")
-            snippet = text.strip()
-            if not snippet:
-                continue
-
-            parsed: Dict[str, Any] = {}
-            patterns = {
-                "os_version": r"(?i)^\s*os version\s*:\s*(.+)$",
-                "server_type": r"(?i)^\s*server type\s*:\s*(.+)$",
-                "comment": r"(?i)^\s*comment\s*:\s*(.+)$",
-                "domain": r"(?i)^\s*domain\s*:\s*(.+)$",
-            }
-            for key, pat in patterns.items():
-                m = re.search(pat, snippet, re.MULTILINE)
-                if m:
-                    parsed[key] = m.group(1).strip()[:200]
-
-            if parsed:
-                results.append({"ip": ip_str, "tool": "rpcclient", **parsed})
-            else:
-                results.append(
-                    {"ip": ip_str, "tool": "rpcclient", "raw": _safe_truncate(snippet, 1200)}
-                )
-        else:
-            cmd = ["nmap", "-p", "135", "--script", "msrpc-enum", ip_str]
-            rc, out, err = _run_cmd(cmd, timeout_s=20, logger=logger)
-            text = (out or "") + "\n" + (err or "")
-            snippet = text.strip()
-            if snippet:
-                results.append({"ip": ip_str, "tool": "nmap", "raw": _safe_truncate(snippet, 1200)})
-
-    return {"status": "ok" if results else "no_data", "tool": tool, "hosts": results}
-
-
-def _parse_ldap_rootdse(text: str) -> Dict[str, Any]:
-    parsed: Dict[str, Any] = {}
-    naming_contexts: List[str] = []
-    sasl: List[str] = []
-    versions: List[str] = []
-
-    for line in (text or "").splitlines():
-        line = line.strip()
-        if not line or ":" not in line:
-            continue
-        key, val = line.split(":", 1)
-        key = key.strip()
-        val = val.strip()
-        if not key or not val:
-            continue
-
-        if key in (
-            "defaultNamingContext",
-            "rootDomainNamingContext",
-            "dnsHostName",
-            "ldapServiceName",
-        ):
-            parsed[key] = val[:250]
-        elif key == "namingContexts":
-            naming_contexts.append(val[:250])
-        elif key == "supportedLDAPVersion":
-            versions.append(val[:50])
-        elif key == "supportedSASLMechanisms":
-            sasl.append(val[:100])
-
-    if naming_contexts:
-        parsed["namingContexts"] = naming_contexts[:20]
-    if versions:
-        parsed["supportedLDAPVersion"] = versions[:10]
-    if sasl:
-        parsed["supportedSASLMechanisms"] = sasl[:20]
-
-    return parsed
-
-
-def _redteam_ldap_enum(
-    target_ips: List[str],
-    tools: Dict[str, bool],
-    logger=None,
-) -> Dict[str, Any]:
-    if not target_ips:
-        return {"status": "no_targets", "hosts": []}
-
-    has_ldapsearch = tools.get("ldapsearch") and shutil.which("ldapsearch")
-    has_nmap = tools.get("nmap") and shutil.which("nmap")
-    if not has_ldapsearch and not has_nmap:
-        return {"status": "tool_missing", "tool": "ldapsearch/nmap", "hosts": []}
-
-    tool = "ldapsearch" if has_ldapsearch else "nmap"
-    results: List[Dict[str, Any]] = []
-
-    for ip_str in target_ips[:10]:
-        if tool == "ldapsearch":
-            attrs = [
-                "defaultNamingContext",
-                "rootDomainNamingContext",
-                "namingContexts",
-                "dnsHostName",
-                "ldapServiceName",
-                "supportedLDAPVersion",
-                "supportedSASLMechanisms",
-            ]
-            cmd = [
-                "ldapsearch",
-                "-x",
-                "-LLL",
-                "-H",
-                f"ldap://{ip_str}",
-                "-s",
-                "base",
-                "-b",
-                "",
-                "(objectClass=*)",
-            ] + attrs
-            rc, out, err = _run_cmd(cmd, timeout_s=12, logger=logger)
-            text = (out or "") + "\n" + (err or "")
-            parsed = _parse_ldap_rootdse(text)
-            if parsed:
-                results.append({"ip": ip_str, "tool": "ldapsearch", **parsed})
-            else:
-                snippet = text.strip()
-                if snippet:
-                    results.append(
-                        {"ip": ip_str, "tool": "ldapsearch", "raw": _safe_truncate(snippet, 1200)}
-                    )
-        else:
-            cmd = ["nmap", "-p", "389,636", "--script", "ldap-rootdse", ip_str]
-            rc, out, err = _run_cmd(cmd, timeout_s=18, logger=logger)
-            text = (out or "") + "\n" + (err or "")
-            parsed = _parse_ldap_rootdse(text)
-            if parsed:
-                results.append({"ip": ip_str, "tool": "nmap", **parsed})
-            else:
-                snippet = text.strip()
-                if snippet:
-                    results.append(
-                        {"ip": ip_str, "tool": "nmap", "raw": _safe_truncate(snippet, 1200)}
-                    )
-
-    return {"status": "ok" if results else "no_data", "tool": tool, "hosts": results}
-
-
-def _parse_nmap_krb5_info(text: str) -> List[str]:
-    realms: List[str] = []
-    for line in (text or "").splitlines():
-        m = re.search(r"(?i)\brealm:\s*([A-Za-z0-9.-]+)", line)
-        if not m:
-            continue
-        realm = m.group(1).strip().strip(".")
-        if realm and realm not in realms:
-            realms.append(realm[:200])
-    return realms
-
-
-def _redteam_kerberos_enum(
-    target_ips: List[str],
-    tools: Dict[str, bool],
-    realm: Optional[str] = None,
-    userlist_path: Optional[str] = None,
-    logger=None,
-) -> Dict[str, Any]:
-    if not target_ips:
-        return {"status": "no_targets", "hosts": []}
-
-    has_nmap = tools.get("nmap") and shutil.which("nmap")
-    has_kerbrute = tools.get("kerbrute") and shutil.which("kerbrute")
-    if not has_nmap and not has_kerbrute:
-        return {"status": "tool_missing", "tool": "nmap/kerbrute", "hosts": []}
-
-    results: List[Dict[str, Any]] = []
-    detected_realms: List[str] = []
-
-    if has_nmap:
-        for ip_str in target_ips[:10]:
-            cmd = ["nmap", "-p", "88", "--script", "krb5-info", ip_str]
-            rc, out, err = _run_cmd(cmd, timeout_s=18, logger=logger)
-            text = (out or "") + "\n" + (err or "")
-            realms = _parse_nmap_krb5_info(text)
-            if realms:
-                for r in realms:
-                    if r not in detected_realms:
-                        detected_realms.append(r)
-                results.append({"ip": ip_str, "tool": "nmap", "realms": realms[:10]})
-            else:
-                snippet = text.strip()
-                if snippet:
-                    results.append(
-                        {"ip": ip_str, "tool": "nmap", "raw": _safe_truncate(snippet, 800)}
-                    )
-
-    userenum: Dict[str, Any] = {"status": "skipped_no_userlist"}
-    if userlist_path:
-        if not has_kerbrute:
-            userenum = {"status": "tool_missing", "tool": "kerbrute"}
-        elif not os.path.exists(userlist_path):
-            userenum = {"status": "error", "error": "kerberos_userlist not found"}
-        else:
-            used_realm = realm or (detected_realms[0] if detected_realms else None)
-            if not used_realm:
-                userenum = {"status": "skipped_no_realm"}
-            else:
-                dc_ip = target_ips[0]
-                cmd = ["kerbrute", "userenum", "-d", used_realm, "--dc", dc_ip, userlist_path]
-                rc, out, err = _run_cmd(cmd, timeout_s=25, logger=logger)
-                text = (out or "") + "\n" + (err or "")
-                valid_users: List[str] = []
-                for line in text.splitlines():
-                    if "VALID USERNAME" not in line.upper():
-                        continue
-                    m = re.search(r"(?i)valid username:\s*([^\s@]+)@", line)
-                    if m:
-                        u = m.group(1).strip()
-                        if u and u not in valid_users:
-                            valid_users.append(u[:120])
-                    if len(valid_users) >= 50:
-                        break
-                userenum = {
-                    "status": "ok" if valid_users else "no_data",
-                    "tool": "kerbrute",
-                    "realm": used_realm,
-                    "dc": dc_ip,
-                    "valid_users_sample": valid_users[:50],
-                }
-                if rc != 0 and err.strip():
-                    userenum["error"] = _safe_truncate(err.strip(), 200)
-
-    payload: Dict[str, Any] = {
-        "status": (
-            "ok" if results else ("no_data" if has_nmap else userenum.get("status", "no_data"))
-        ),
-        "detected_realms": detected_realms[:10],
-        "hosts": results,
-        "userenum": userenum,
-    }
-    if realm:
-        payload["realm_hint"] = realm
-    return payload
-
-
-def _extract_dhcp_dns_servers(discovery_result: Dict[str, Any]) -> List[str]:
-    servers: List[str] = []
-    for dhcp in discovery_result.get("dhcp_servers", []) or []:
-        if not isinstance(dhcp, dict):
-            continue
-        for ip_str in dhcp.get("dns", []) or []:
-            if isinstance(ip_str, str) and _is_ipv4(ip_str) and ip_str not in servers:
-                servers.append(ip_str)
-    return servers
-
-
-def _extract_dhcp_domains(discovery_result: Dict[str, Any]) -> List[str]:
-    domains: List[str] = []
-    for dhcp in discovery_result.get("dhcp_servers", []) or []:
-        if not isinstance(dhcp, dict):
-            continue
-        for key in ("domain", "domain_search"):
-            val = dhcp.get(key)
-            if isinstance(val, str) and val.strip():
-                dom = _sanitize_dns_zone(val.strip())
-                if dom and dom not in domains:
-                    domains.append(dom)
-    return domains
-
-
-def _redteam_dns_zone_transfer(
-    discovery_result: Dict[str, Any],
-    tools: Dict[str, bool],
-    zone: Optional[str] = None,
-    logger=None,
-) -> Dict[str, Any]:
-    if not tools.get("dig") or not shutil.which("dig"):
-        return {"status": "tool_missing", "tool": "dig"}
-
-    dns_servers = _extract_dhcp_dns_servers(discovery_result)
-    if not dns_servers:
-        return {"status": "no_targets", "reason": "no_dns_servers"}
-
-    zone_hint = _sanitize_dns_zone(zone) if zone else None
-    if not zone_hint:
-        domains = _extract_dhcp_domains(discovery_result)
-        zone_hint = domains[0] if domains else None
-
-    if not zone_hint:
-        return {"status": "skipped_no_zone", "dns_servers": dns_servers[:5]}
-
-    attempts: List[Dict[str, Any]] = []
-    errors: List[str] = []
-    for dns_ip in dns_servers[:3]:
-        cmd = ["dig", "+time=2", "+tries=1", "axfr", zone_hint, f"@{dns_ip}"]
-        rc, out, err = _run_cmd(cmd, timeout_s=12, logger=logger)
-        text = (out or "") + "\n" + (err or "")
-        lines = []
-        for line in (out or "").splitlines():
-            line = line.strip()
-            if not line or line.startswith(";"):
-                continue
-            lines.append(line[:300])
-            if len(lines) >= 50:
-                break
-
-        success = bool(re.search(r"\bXFR size:\s*\d+", out or "", re.IGNORECASE))
-        if not success and "transfer failed" in (text or "").lower():
-            errors.append(f"{dns_ip}: transfer failed")
-        attempts.append(
-            {
-                "dns_server": dns_ip,
-                "success": success,
-                "records_sample": lines,
-                "raw_sample": _safe_truncate(text.strip(), 900) if not success else None,
-            }
-        )
-
-    status = "ok" if any(a.get("success") for a in attempts) else "no_data"
-    payload: Dict[str, Any] = {
-        "status": status,
-        "zone": zone_hint,
-        "dns_servers": dns_servers[:5],
-        "attempts": attempts,
-    }
-    if errors:
-        payload["errors"] = errors[:10]
-    return payload
-
-
-def _redteam_vlan_enum(
-    iface: Optional[str],
-    tools: Dict[str, bool],
-    logger=None,
-) -> Dict[str, Any]:
-    safe_iface = _sanitize_iface(iface)
-    cap = _tcpdump_capture(
-        safe_iface or "",
-        "vlan or ether proto 0x8100 or ether dst 01:00:0c:cc:cc:cc",
-        tools=tools,
-        timeout_s=8,
-        packets=60,
-        logger=logger,
-    )
-    if cap.get("status") != "ok":
-        return cap
-
-    raw = cap.get("raw_sample", "") or ""
-    vlan_ids: List[int] = []
-    for m in re.finditer(r"\bvlan\s+(\d{1,4})\b", raw, re.IGNORECASE):
-        try:
-            vid = int(m.group(1))
-        except Exception:
-            continue
-        if 1 <= vid <= 4094 and vid not in vlan_ids:
-            vlan_ids.append(vid)
-    dtp_observed = bool(re.search(r"(?i)\bDTP\b|01:00:0c:cc:cc:cc", raw))
-
-    payload: Dict[str, Any] = {
-        "status": "ok" if vlan_ids or dtp_observed else "no_data",
-        "vlan_ids": vlan_ids[:50],
-        "dtp_observed": dtp_observed,
-    }
-    if cap.get("raw_sample"):
-        payload["raw_sample"] = cap["raw_sample"]
-    if cap.get("error"):
-        payload["error"] = cap["error"]
-    return payload
-
-
-def _redteam_stp_topology(
-    iface: Optional[str],
-    tools: Dict[str, bool],
-    logger=None,
-) -> Dict[str, Any]:
-    safe_iface = _sanitize_iface(iface)
-    cap = _tcpdump_capture(
-        safe_iface or "",
-        "ether dst 01:80:c2:00:00:00",
-        tools=tools,
-        timeout_s=8,
-        packets=40,
-        logger=logger,
-    )
-    if cap.get("status") != "ok":
-        return cap
-
-    raw = cap.get("raw_sample", "") or ""
-    root_ids: List[str] = []
-    bridge_ids: List[str] = []
-
-    for m in re.finditer(r"(?i)\broot id\s+([0-9a-f:.]+)", raw):
-        val = m.group(1).strip()
-        if val and val not in root_ids:
-            root_ids.append(val[:200])
-    for m in re.finditer(r"(?i)\bbridge id\s+([0-9a-f:.]+)", raw):
-        val = m.group(1).strip()
-        if val and val not in bridge_ids:
-            bridge_ids.append(val[:200])
-
-    payload: Dict[str, Any] = {
-        "status": "ok" if (root_ids or bridge_ids) else "no_data",
-        "root_ids": root_ids[:10],
-        "bridge_ids": bridge_ids[:10],
-        "raw_sample": cap.get("raw_sample"),
-    }
-    if cap.get("error"):
-        payload["error"] = cap["error"]
-    return payload
-
-
-def _redteam_hsrp_vrrp_discovery(
-    iface: Optional[str],
-    tools: Dict[str, bool],
-    logger=None,
-) -> Dict[str, Any]:
-    safe_iface = _sanitize_iface(iface)
-    cap = _tcpdump_capture(
-        safe_iface or "",
-        "udp port 1985 or udp port 2029 or ip proto 112",
-        tools=tools,
-        timeout_s=8,
-        packets=60,
-        logger=logger,
-    )
-    if cap.get("status") != "ok":
-        return cap
-
-    raw = cap.get("raw_sample", "") or ""
-    protocols: List[str] = []
-    if re.search(r"(?i)\bHSRP\b", raw):
-        protocols.append("hsrp")
-    if re.search(r"(?i)\bVRRP\b|ip proto 112", raw):
-        protocols.append("vrrp")
-
-    src_ips: List[str] = []
-    for m in re.finditer(r"\b(\d{1,3}(?:\.\d{1,3}){3})\b", raw):
-        ip_str = m.group(1)
-        if ip_str and ip_str not in src_ips:
-            src_ips.append(ip_str)
-        if len(src_ips) >= 20:
-            break
-
-    payload: Dict[str, Any] = {
-        "status": "ok" if protocols else "no_data",
-        "protocols_observed": protocols,
-        "ip_candidates": src_ips[:20],
-        "raw_sample": cap.get("raw_sample"),
-    }
-    if cap.get("error"):
-        payload["error"] = cap["error"]
-    return payload
-
-
-def _redteam_llmnr_nbtns_capture(
-    iface: Optional[str],
-    tools: Dict[str, bool],
-    logger=None,
-) -> Dict[str, Any]:
-    safe_iface = _sanitize_iface(iface)
-    cap = _tcpdump_capture(
-        safe_iface or "",
-        "udp port 5355 or udp port 137",
-        tools=tools,
-        timeout_s=10,
-        packets=80,
-        logger=logger,
-    )
-    if cap.get("status") != "ok":
-        return cap
-
-    raw = cap.get("raw_sample", "") or ""
-    llmnr: List[str] = []
-    nbns: List[str] = []
-
-    for line in raw.splitlines():
-        line_stripped = line.strip()
-        if not line_stripped:
-            continue
-        if ".5355" in line_stripped or " 5355" in line_stripped:
-            m = re.search(r"\?\s*([A-Za-z0-9._-]+)", line_stripped)
-            if m:
-                q = m.group(1).strip()
-                if q and q not in llmnr:
-                    llmnr.append(q[:200])
-        if ".137" in line_stripped or " 137" in line_stripped:
-            m = re.search(r"\?\s*([A-Za-z0-9._-]+)", line_stripped)
-            if m:
-                q = m.group(1).strip()
-                if q and q not in nbns:
-                    nbns.append(q[:200])
-
-    payload: Dict[str, Any] = {
-        "status": "ok" if (llmnr or nbns) else "no_data",
-        "llmnr_queries_sample": llmnr[:30],
-        "nbns_queries_sample": nbns[:30],
-        "raw_sample": cap.get("raw_sample"),
-    }
-    if cap.get("error"):
-        payload["error"] = cap["error"]
-    return payload
-
-
-def _redteam_router_discovery(
-    iface: Optional[str],
-    tools: Dict[str, bool],
-    logger=None,
-) -> Dict[str, Any]:
-    safe_iface = _sanitize_iface(iface)
-    has_nmap = tools.get("nmap") and shutil.which("nmap")
-    if has_nmap:
-        cmd = ["nmap", "--script", "broadcast-igmp-discovery"]
-        if safe_iface:
-            cmd.extend(["-e", safe_iface])
-        rc, out, err = _run_cmd(cmd, timeout_s=15, logger=logger)
-        text = (out or "") + "\n" + (err or "")
-        snippet = text.strip()
-        if snippet:
-            ips = []
-            for m in re.finditer(r"\b(\d{1,3}(?:\.\d{1,3}){3})\b", snippet):
-                ip_str = m.group(1)
-                if ip_str and ip_str not in ips:
-                    ips.append(ip_str)
-                if len(ips) >= 20:
-                    break
-            return {
-                "status": "ok" if ips else "no_data",
-                "tool": "nmap",
-                "router_candidates": ips[:20],
-                "raw_sample": _safe_truncate(snippet, 1400),
-            }
-
-    # Fallback: passive IGMP capture
-    cap = _tcpdump_capture(
-        safe_iface or "",
-        "igmp",
-        tools=tools,
-        timeout_s=8,
-        packets=50,
-        logger=logger,
-    )
-    if cap.get("status") != "ok":
-        return cap
-    raw = cap.get("raw_sample", "") or ""
-    ips = []
-    for m in re.finditer(r"\b(\d{1,3}(?:\.\d{1,3}){3})\b", raw):
-        ip_str = m.group(1)
-        if ip_str and ip_str not in ips:
-            ips.append(ip_str)
-        if len(ips) >= 20:
-            break
-    return {
-        "status": "ok" if ips else "no_data",
-        "tool": "tcpdump",
-        "router_candidates": ips[:20],
-        "raw_sample": cap.get("raw_sample"),
-        "error": cap.get("error"),
-    }
-
-
-def _parse_ip6_neighbors(text: str) -> List[Dict[str, Any]]:
-    neigh: List[Dict[str, Any]] = []
-    for line in (text or "").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        # ip -6 neigh: fe80::1 dev eth0 lladdr aa:bb:cc:dd:ee:ff REACHABLE
-        parts = line.split()
-        entry: Dict[str, Any] = {"raw": line[:250]}
-        if parts:
-            entry["ip"] = parts[0]
-        if "lladdr" in parts:
-            try:
-                entry["mac"] = parts[parts.index("lladdr") + 1].lower()
-            except Exception:
-                pass
-        else:
-            # Fallback for ndp (macOS) or other formats: find MAC-like string
-            for part in parts:
-                if re.match(r"^([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}$", part):
-                    entry["mac"] = part.lower()
-                    break
-
-        if "dev" in parts:
-            try:
-                entry["dev"] = parts[parts.index("dev") + 1]
-            except Exception:
-                pass
-        if entry.get("ip"):
-            neigh.append(entry)
-    return neigh
-
-
-def _redteam_ipv6_discovery(
-    iface: Optional[str],
-    tools: Dict[str, bool],
-    logger=None,
-) -> Dict[str, Any]:
-    safe_iface = _sanitize_iface(iface)
-    if not safe_iface:
-        return {"status": "skipped_no_interface"}
-
-    if not _is_root():
-        # On many systems, ICMPv6 + neighbor listing are restricted without CAP_NET_RAW.
-        return {"status": "skipped_requires_root"}
-
-    errors: List[str] = []
-
-    # Stimulate neighbor discovery (best-effort).
-    if tools.get("ping6") and shutil.which("ping6"):
-        rc, out, err = _run_cmd(
-            ["ping6", "-c", "2", "-I", safe_iface, "ff02::1"],
-            timeout_s=6,
-            logger=logger,
-        )
-        if rc != 0 and err.strip():
-            errors.append(_safe_truncate(err.strip(), 200))
-    elif tools.get("ping") and shutil.which("ping"):
-        rc, out, err = _run_cmd(
-            ["ping", "-6", "-c", "2", "-I", safe_iface, "ff02::1"],
-            timeout_s=6,
-            logger=logger,
-        )
-        if rc != 0 and err.strip():
-            errors.append(_safe_truncate(err.strip(), 200))
-
-    neigh: List[Dict[str, Any]] = []
-    if tools.get("ip") and shutil.which("ip"):
-        rc, out, err = _run_cmd(
-            ["ip", "-6", "neigh", "show", "dev", safe_iface], timeout_s=4, logger=logger
-        )
-        neigh = _parse_ip6_neighbors((out or "") + "\n" + (err or ""))
-    else:
-        # macOS fallback
-        if shutil.which("ndp"):
-            rc, out, err = _run_cmd(["ndp", "-an"], timeout_s=4, logger=logger)
-            neigh = _parse_ip6_neighbors((out or "") + "\n" + (err or ""))
-
-    payload: Dict[str, Any] = {
-        "status": "ok" if neigh else "no_data",
-        "neighbors": neigh[:50],
-    }
-    if errors:
-        payload["errors"] = errors[:10]
-    return payload
-
-
-def _redteam_bettercap_recon(
-    iface: Optional[str],
-    tools: Dict[str, bool],
-    active_l2: bool = False,
-    logger=None,
-) -> Dict[str, Any]:
-    safe_iface = _sanitize_iface(iface)
-    if not safe_iface:
-        return {"status": "skipped_no_interface"}
-    if not active_l2:
-        return {"status": "skipped_disabled", "reason": "active_l2_false"}
-    if not tools.get("bettercap") or not shutil.which("bettercap"):
-        return {"status": "tool_missing", "tool": "bettercap"}
-    if not _is_root():
-        return {"status": "skipped_requires_root"}
-
-    cmd = [
-        "bettercap",
-        "-iface",
-        safe_iface,
-        "-eval",
-        "net.recon on; net.probe on; net.show; quit",
-    ]
-    rc, out, err = _run_cmd(cmd, timeout_s=15, logger=logger)
-    text = (out or "") + "\n" + (err or "")
-    snippet = text.strip()
-    payload: Dict[str, Any] = {
-        "status": "ok" if snippet else "no_data",
-        "tool": "bettercap",
-    }
-    if snippet:
-        payload["raw_sample"] = _safe_truncate(snippet, 1600)
-    if rc != 0 and err.strip():
-        payload["error"] = _safe_truncate(err.strip(), 200)
-    return payload
-
-
-def _redteam_scapy_custom(
-    iface: Optional[str],
-    tools: Dict[str, bool],
-    active_l2: bool = False,
-    logger=None,
-) -> Dict[str, Any]:
-    safe_iface = _sanitize_iface(iface)
-    if not safe_iface:
-        return {"status": "skipped_no_interface"}
-    if not active_l2:
-        return {"status": "skipped_disabled", "reason": "active_l2_false"}
-    if not _is_root():
-        return {"status": "skipped_requires_root"}
-
-    try:
-        import scapy  # type: ignore
-        from scapy.all import Dot1Q, sniff, conf  # type: ignore
-        import logging
-
-        # 4.3: Suppress scapy warnings
-        conf.verb = 0
-        logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
-    except Exception:
-        return {"status": "tool_missing", "tool": "scapy"}
-
-    vlan_ids: List[int] = []
-
-    def _on_pkt(pkt) -> None:  # type: ignore[no-untyped-def]
-        try:
-            if pkt.haslayer(Dot1Q):
-                vid = int(pkt[Dot1Q].vlan)
-                if 1 <= vid <= 4094 and vid not in vlan_ids:
-                    vlan_ids.append(vid)
-        except Exception:
-            return
-
-    try:
-        sniff(iface=safe_iface, timeout=3, prn=_on_pkt, store=False)
-    except Exception as exc:
-        return {"status": "error", "error": _safe_truncate(str(exc), 200)}
-
-    payload: Dict[str, Any] = {
-        "status": "ok" if vlan_ids else "no_data",
-        "tool": "scapy",
-        "scapy_version": getattr(scapy, "__version__", None),
-        "vlan_ids": vlan_ids[:50],
-        "note": "Passive sniff only (no packet injection).",
-    }
-    return payload

@@ -1,29 +1,6 @@
-# AGENTS.md Enforcement Rule
+# Repository Workflow Pointer
 
-> **CRITICAL**: This project has a STRICT engineering protocol defined in `AGENTS.md`.
-> **YOU MUST READ `AGENTS.md` AT THE START OF EVERY SESSION/TASK.**
+This repo's workflow is defined in `AGENTS.md` (root). Always follow it.
 
-## SYSTEM RULES (MANDATORY)
-
-These rules are lifted from `AGENTS.md` and MUST be followed at the system level. Failure to follow these results in rejected work.
-
-### 1. ABSOLUTE NON-NEGOTIABLES
-- **NO EMOJIS**: Do NOT use emojis in ANY documentation, release notes, commit messages, or artifacts. Maintain a professional, neutral tone.
-- **WORK ON A BRANCH**: Never commit directly to `main`. Use `feature/`, `hotfix/`, `docs/`.
-- **CLEAN HANDOFF**: Ensure `git status` is clean before finishing a task.
-- **NO FORCED MERGES**: Wait for CI to pass before merging to `main`.
-
-### 2. RELEASE PROTOCOL (STRICT)
-When performing a release (vX.Y.Z), you MUST follow this sequence:
-1. **DEPENDENCIES**: Before running tests, ALWAYS run: `pip install -e ".[dev]"` to ensure the environment is correct.
-2. **AUDIT REPORT**: You MUST create `docs/AUDIT_REPORT_vX.Y.Z.md` validating the fixes/features.
-3. **RELEASE PAYLOAD**: You MUST create a `release_payload.md` file containing the clean release notes (NO EMOJIS) before creating the GitHub release.
-   - **Command**: `gh release create vX.Y.Z -t "vX.Y.Z - <Title>" -F release_payload.md`
-
-### 3. AUTHORITY
-`AGENTS.md` is the FULL SOURCE OF TRUTH.
-- Branching names? See `AGENTS.md`.
-- CI failure handling? See `AGENTS.md`.
-- Documentation structure? See `AGENTS.md`.
-
-**REFER TO `AGENTS.md` FOR DETAILED PROCEDURES.**
+- Read `AGENTS.md` at the start of every task.
+- If anything conflicts, `AGENTS.md` is canonical.

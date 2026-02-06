@@ -9,6 +9,7 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Tuple
 
 from redaudit.core.command_runner import CommandRunner
+from redaudit.core.identity_utils import is_infra_identity
 from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.core.scanner import http_enrichment, ssl_deep_analysis, tls_enrichment
 
@@ -73,6 +74,80 @@ class AuditorVuln:
         if isinstance(host_info, Host):
             return host_info.to_dict()
         return host_info
+
+    @staticmethod
+    def _extract_server_header(headers: str) -> str:
+        if not headers:
+            return ""
+        for line in str(headers).splitlines():
+            if line.lower().startswith("server:"):
+                return line.split(":", 1)[1].strip()
+        return ""
+
+    def _should_run_app_scans(
+        self, host_info: Dict[str, Any], finding: Dict[str, Any]
+    ) -> Tuple[bool, str]:
+        if self.config.get("scan_mode") != "completo":
+            return False, "mode_not_full"
+
+        agentless = host_info.get("agentless_fingerprint") or {}
+        device_type = str(agentless.get("device_type") or "")
+        host_device_type = str(host_info.get("device_type") or "")
+        device_type_hints = host_info.get("device_type_hints") or []
+
+        title = str(agentless.get("http_title") or "")
+        server = str(agentless.get("http_server") or finding.get("server") or "")
+        vendor = str(agentless.get("device_vendor") or host_info.get("vendor") or "")
+        model = str(agentless.get("device_model") or "")
+        combined = f"{title} {server} {vendor} {model}"
+
+        is_infra, reason = is_infra_identity(
+            device_type=device_type,
+            device_type_hints=[host_device_type, *device_type_hints],
+            text=combined,
+        )
+        if is_infra:
+            return False, reason or "infra_identity"
+
+        return True, ""
+
+    def _should_run_nikto(
+        self, host_info: Dict[str, Any], finding: Dict[str, Any]
+    ) -> Tuple[bool, str]:
+        """v4.12.0: Profile-aware Nikto gating.
+
+        - 'fast' profile: Skip Nikto entirely (quick CVE-only scan)
+        - 'balanced' profile: Skip Nikto on infrastructure devices
+        - 'full' profile: Run Nikto on all web hosts (original behavior)
+        """
+        nuclei_profile = self.config.get("nuclei_profile", "balanced")
+
+        # v4.12.0: Fast profile skips Nikto entirely
+        if nuclei_profile == "fast":
+            return False, "profile_fast"
+
+        # v4.12.0: Balanced profile skips Nikto on infrastructure devices
+        if nuclei_profile == "balanced":
+            agentless = host_info.get("agentless_fingerprint") or {}
+            device_type = str(agentless.get("device_type") or "")
+            host_device_type = str(host_info.get("device_type") or "")
+            device_type_hints = host_info.get("device_type_hints") or []
+
+            title = str(agentless.get("http_title") or "")
+            server = str(agentless.get("http_server") or finding.get("server") or "")
+            vendor = str(agentless.get("device_vendor") or host_info.get("vendor") or "")
+            model = str(agentless.get("device_model") or "")
+            combined = f"{title} {server} {vendor} {model}"
+
+            is_infra, reason = is_infra_identity(
+                device_type=device_type,
+                device_type_hints=[host_device_type, *device_type_hints],
+                text=combined,
+            )
+            if is_infra:
+                return False, f"infra_{reason}"
+
+        return True, ""
 
     def _merge_nuclei_findings(self, findings: List[Dict[str, Any]]) -> int:
         if not findings:
@@ -164,7 +239,7 @@ class AuditorVuln:
 
         return max(5.0, budget)
 
-    def scan_vulnerabilities_web(self, host_info, status_callback=None):
+    def scan_vulnerabilities_web(self, host_info, status_callback=None, *, host_obj=None):
         """Scan web vulnerabilities on a host.
 
         v4.1: Parallelizes testssl, whatweb, and nikto execution per port
@@ -183,6 +258,27 @@ class AuditorVuln:
                 status_callback(msg)
             else:
                 self._set_ui_detail(msg)
+
+        def _update_agentless_http(target, title: str, server: str) -> None:
+            if not target or not (title or server):
+                return
+            if hasattr(target, "agentless_fingerprint"):
+                fp = target.agentless_fingerprint or {}
+                target.agentless_fingerprint = fp
+            elif isinstance(target, dict):
+                fp = target.setdefault("agentless_fingerprint", {})
+            else:
+                return
+            http_source = str(fp.get("http_source") or "")
+            can_override = http_source in ("", "upnp")
+            if http_source == "upnp" and fp.get("http_title"):
+                fp.setdefault("upnp_device_name", str(fp["http_title"])[:80])
+            if title and (not fp.get("http_title") or can_override):
+                fp["http_title"] = title[:256]
+            if server and (not fp.get("http_server") or can_override):
+                fp["http_server"] = server[:256]
+            if (title or server) and can_override:
+                fp["http_source"] = "enrichment"
 
         for p in web_ports:
             port = p["port"]
@@ -203,6 +299,22 @@ class AuditorVuln:
                 proxy_manager=getattr(self, "proxy_manager", None),
             )
             finding.update(http_data)
+            headers_raw = "\n".join(
+                [
+                    str(http_data.get("curl_headers") or ""),
+                    str(http_data.get("wget_headers") or ""),
+                ]
+            ).strip()
+            if headers_raw:
+                finding["headers"] = headers_raw[:2000]
+                server_header = self._extract_server_header(headers_raw)
+                if server_header:
+                    finding["server"] = server_header[:200]
+                    _update_agentless_http(host_info, "", server_header)
+                    if host_obj is not host_info:
+                        _update_agentless_http(host_obj, "", server_header)
+
+            app_scan_allowed, app_scan_reason = self._should_run_app_scans(host_info, finding)
 
             # TLS enrichment (always sequential - quick)
             if scheme == "https":
@@ -224,7 +336,15 @@ class AuditorVuln:
             if parallel_vuln_enabled and is_full_mode:
                 # Run testssl, whatweb, nikto concurrently
                 parallel_results = self._run_vuln_tools_parallel(
-                    ip, port, url, scheme, finding, status_callback=_update_status
+                    ip,
+                    port,
+                    url,
+                    scheme,
+                    finding,
+                    host_info=host_info,
+                    status_callback=_update_status,
+                    app_scan_allowed=app_scan_allowed,
+                    app_scan_reason=app_scan_reason,
                 )
                 finding.update(parallel_results)
             else:
@@ -245,7 +365,11 @@ class AuditorVuln:
         url: str,
         scheme: str,
         finding: Dict[str, Any],
+        host_info: Dict[str, Any] = None,
         status_callback=None,
+        *,
+        app_scan_allowed: bool = True,
+        app_scan_reason: str = "",
     ) -> Dict[str, Any]:
         """v4.1: Run testssl, whatweb, nikto in parallel for faster scanning."""
         results: Dict[str, Any] = {}
@@ -305,6 +429,14 @@ class AuditorVuln:
             if not self.extra_tools.get("nikto"):
                 return {}
 
+            # v4.12.0: Profile-based Nikto gating
+            if host_info:
+                nikto_allowed, nikto_reason = self._should_run_nikto(host_info, finding)
+                if not nikto_allowed:
+                    if self.logger:
+                        self.logger.info("Skipping Nikto for %s:%d - %s", ip, port, nikto_reason)
+                    return {"nikto_skipped": nikto_reason}
+
             # v4.1: Pre-filter CDN/proxy hosts to reduce false positives
             CDN_PROXY_INDICATORS = {
                 "cloudflare",
@@ -357,6 +489,9 @@ class AuditorVuln:
                     text=True,
                     timeout=330.0,
                 )
+                if res.timed_out:
+                    _update("nikto timeout")
+                    return {"nikto_timeout": True}
                 if not res.timed_out:
                     output = str(res.stdout or "") or str(res.stderr or "")
                     if output:
@@ -387,6 +522,8 @@ class AuditorVuln:
             sqlmap_path = self.extra_tools.get("sqlmap") or shutil.which("sqlmap")
             if not sqlmap_path:
                 return {}
+            if not app_scan_allowed:
+                return {"sqlmap_skipped": app_scan_reason or "policy"}
 
             try:
                 _update("sqlmap")
@@ -451,6 +588,8 @@ class AuditorVuln:
             zap_path = self.extra_tools.get("zap.sh") or shutil.which("zap.sh")
             if not zap_path:
                 return {}
+            if not app_scan_allowed:
+                return {"zap_skipped": app_scan_reason or "policy"}
 
             import tempfile
 
@@ -546,7 +685,7 @@ class AuditorVuln:
                     finding["testssl_analysis"] = ssl_analysis
                     if ssl_analysis.get("vulnerabilities"):
                         self.ui.print_status(
-                            f"⚠️  SSL/TLS vulnerabilities detected on {ip}:{port}", "WARNING"
+                            f"⚠  SSL/TLS vulnerabilities detected on {ip}:{port}", "WARNING"
                         )
 
         # WhatWeb
@@ -601,6 +740,9 @@ class AuditorVuln:
                     text=True,
                     timeout=330.0,
                 )
+                if res.timed_out:
+                    _update("nikto timeout")
+                    finding["nikto_timeout"] = True
                 if not res.timed_out:
                     output = str(res.stdout or "") or str(res.stderr or "")
                     if output:
@@ -639,13 +781,15 @@ class AuditorVuln:
 
         normalized_hosts = [self._normalize_host_info(h) for h in (host_results or [])]
         # v4.0.4: Include hosts with HTTP fingerprint even if web_ports_count == 0
-        web_hosts = [
-            h
-            for h in normalized_hosts
-            if h.get("web_ports_count", 0) > 0
-            or (h.get("agentless_fingerprint") or {}).get("http_title")
-            or (h.get("agentless_fingerprint") or {}).get("http_server")
-        ]
+        web_hosts = []
+        for h in normalized_hosts:
+            agentless = h.get("agentless_fingerprint") or {}
+            http_source = str(agentless.get("http_source") or "")
+            has_http_identity = (
+                agentless.get("http_title") or agentless.get("http_server")
+            ) and http_source != "upnp"
+            if h.get("web_ports_count", 0) > 0 or has_http_identity:
+                web_hosts.append(h)
         if not web_hosts:
             return
 
@@ -667,7 +811,9 @@ class AuditorVuln:
             def _cb(msg):
                 host_status_map[h["ip"]] = msg
 
-            return self.scan_vulnerabilities_web(h, status_callback=_cb)
+            return self.scan_vulnerabilities_web(
+                h, status_callback=_cb, host_obj=ip_to_host.get(h["ip"])
+            )
 
         with self._progress_ui():
             with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -697,6 +843,7 @@ class AuditorVuln:
                                 host_tasks[ip] = (task_id, time.time())
 
                             pending = set(futures)
+                            completed_hosts = set()
                             while pending:
                                 if self.interrupted:
                                     for pending_fut in pending:
@@ -706,22 +853,24 @@ class AuditorVuln:
                                 completed, pending = wait(
                                     pending, timeout=0.25, return_when=FIRST_COMPLETED
                                 )
+                                completed_ips = {futures[f] for f in completed}
 
                                 # Update progress details from host_status_map
                                 now = time.time()
                                 for ip, status in host_status_map.items():
+                                    if ip in completed_hosts or ip in completed_ips:
+                                        continue
                                     task_id, start_time = host_tasks[ip]
                                     budget = budgets.get(ip, 300.0)
                                     elapsed = now - start_time
                                     # Estimate percentage based on budget (cap 95%)
                                     pct = min(95, int((elapsed / max(1, budget)) * 100))
                                     # Update bar: If done, it will be handled in completed loop
-                                    if ip not in [futures[f] for f in completed]:
-                                        progress.update(
-                                            task_id,
-                                            completed=pct,
-                                            detail=f"[yellow]{status}[/]",
-                                        )
+                                    progress.update(
+                                        task_id,
+                                        completed=pct,
+                                        detail=f"[yellow]{status}[/]",
+                                    )
 
                                 for fut in completed:
                                     host_ip = futures[fut]
@@ -744,22 +893,23 @@ class AuditorVuln:
 
                                             vuln_count = len(findings)
                                             count_str = (
-                                                f"({vuln_count} vulns)" if vuln_count else "✓"
+                                                f"({vuln_count} vulns)" if vuln_count else "Clean"
                                             )
                                             # Final green update
                                             progress.update(
                                                 task_id,
                                                 completed=100,
-                                                description=f"[green]✅ {host_ip} {count_str}",
+                                                description=f"[green]✔ {host_ip} {count_str}",
                                                 detail="",
                                             )
                                         else:
                                             progress.update(
                                                 task_id,
                                                 completed=100,
-                                                description=f"[green]✅ {host_ip} (Clean)",
+                                                description=f"[green]✔ {host_ip} (Clean)",
                                                 detail="",
                                             )
+                                        completed_hosts.add(host_ip)
                                     except Exception as exc:
                                         self.logger.error(
                                             "Vuln worker error for %s: %s", host_ip, exc
@@ -767,10 +917,18 @@ class AuditorVuln:
                                         progress.update(
                                             task_id,
                                             completed=100,
-                                            description=f"[red]❌ {host_ip}",
+                                            description=f"[red]✖ {host_ip}",
                                             detail=str(exc),
                                         )
+                                        completed_hosts.add(host_ip)
                                     done += 1
+
+                            # v4.5.3: Ensure all progress bars are at 100% after loop completes
+                            for ip, (task_id, _) in host_tasks.items():
+                                try:
+                                    progress.update(task_id, completed=100)
+                                except Exception:
+                                    pass
                 else:
                     # Fallback without rich
                     for fut in as_completed(futures):

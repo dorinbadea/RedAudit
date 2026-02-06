@@ -107,6 +107,35 @@ class TestUdpProbeRunner(unittest.TestCase):
         self.assertEqual(res, expected)
 
 
+def test_normalize_ports_and_hex_sample():
+    import redaudit.core.udp_probe as udp_module
+
+    ports = udp_module._normalize_ports([53, "bad", None, 70000, 53])
+    assert ports == [53]
+    assert udp_module._hex_sample(b"") == ""
+
+
+def test_run_udp_probe_thread_exception():
+    import redaudit.core.udp_probe as udp_module
+
+    calls = {"count": 0}
+
+    def _fake_run(_coroutine):
+        try:
+            _coroutine.close()
+        except Exception:
+            pass
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise RuntimeError("loop already running")
+        raise Exception("boom")
+
+    with patch.object(udp_module.asyncio, "run", side_effect=_fake_run):
+        res = run_udp_probe("127.0.0.1", [53], timeout=0.1, concurrency=1)
+
+    assert res == []
+
+
 if __name__ == "__main__":
     unittest.main()
 

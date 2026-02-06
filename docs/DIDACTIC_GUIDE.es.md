@@ -33,6 +33,8 @@
 - [ ] Proyector/pantalla para demo en vivo
 - [ ] Rúbrica impresa (Sección 5)
 
+Sugerencia para el instructor: Al iniciar escaneos, muestra el resumen de objetivos normalizados (hosts estimados) para reforzar la validación de alcance.
+
 ---
 
 ## 2. Conceptos Clave para Enseñar
@@ -66,6 +68,8 @@ Las auditorías profesionales requieren **evidencia verificable**. Un informe qu
 - JSON con `timestamp`, `version`, `scan_duration`
 - Capturas PCAP opcionales
 - Permisos de archivo (0600) para prevenir manipulación
+- Metadatos de evidencia por hallazgo (herramienta fuente, matched_at, hash/ref de salida cruda si aplica)
+- Manifiesto de ejecución con snapshot de config y pipeline (si el cifrado está deshabilitado)
 
 **Pregunta práctica:** "Si un cliente disputa tus hallazgos, ¿cómo demuestras que ejecutaste el escaneo correctamente?"
 
@@ -80,12 +84,14 @@ Escanear cada host con UDP completo (-p- -sU) tomaría horas. RedAudit usa **heu
 
 | Condición | Razonamiento |
 |:---|:---|
-| Puntuación de identidad por debajo del umbral (p. ej., falta de MAC/fabricante/nombre de host, sin CPE/banner, señales HTTP/sin agente débiles) | Identidad sigue débil |
+| Puntuación de identidad por debajo del umbral (p. ej., falta de MAC/fabricante/nombre de host, sin CPE/banner, señales HTTP de título/servidor o sin agente débiles) | Identidad sigue débil |
 | ≤3 puertos abiertos **y** la identidad es débil | Baja visibilidad, requiere sondeo extra |
-| Fingerprint de servicio débil (`unknown`, `tcpwrapped` o sin versión) | Identidad ambigua o filtrada |
+| Fingerprint de servicio débil (`unknown`, `tcpwrapped` o sin versión sin evidencia HTTP) | Identidad ambigua o filtrada |
 | >8 puertos abiertos **o** pistas de dispositivo de red | Host complejo o infraestructura, merece enumeración adicional |
 
 **Ubicación en código:** Condiciones en [`scan_host_ports()`](../redaudit/core/auditor_scan.py)
+
+**Nota operativa:** El resumen de pipeline en JSON/HTML incluye args/timing de Nmap, ajustes de deep scan y el resumen HyperScan vs final (cuando existe).
 
 ---
 
@@ -132,7 +138,7 @@ Una frustración común en auditorías son los "Falsos Positivos" (herramientas 
 **Qué explicar:**
 ¿Por qué usar modelos de escalado diferentes?
 
-- **Escaneo de Hosts (Threading):** Nmap es un proceso bloqueante. Usamos `ThreadPoolExecutor` (2-16 hilos, auto-detectado según CPU) para que un host lento no bloquee todo el escaneo.
+- **Escaneo de Hosts (Threading):** Nmap es un proceso bloqueante. Usamos `ThreadPoolExecutor` (2-100 hilos, auto-detectado según CPU) para que un host lento no bloquee todo el escaneo.
 - **Descubrimiento (Async):** La transmisión de paquetes UDP (para IoT/Descubrimiento de Servicios) es intensiva en E/S. Usamos `asyncio` en `HyperScan` para lanzar miles de paquetes pequeños instantáneamente sin crear miles de hilos del sistema operativo.
 
 **Ubicación en código:**
@@ -213,7 +219,7 @@ flowchart TD
 
 ---
 
-### Lab 3: Reto de Integración de Reportes (60 min)
+### Lab 3: Reto de Integración de Informes (60 min)
 
 **Objetivo:** Ingestar la salida de RedAudit en un sistema tipo SIEM.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Vendor Hints Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.10.1: Infer vendor hints from hostnames when MAC vendor is unavailable.
@@ -19,7 +19,8 @@ HOSTNAME_VENDOR_PATTERNS: List[Tuple[re.Pattern, str]] = [
     (re.compile(r"(?i)\bmacbook\b"), "Apple"),
     (re.compile(r"(?i)\bimac\b"), "Apple"),
     (re.compile(r"(?i)^apple[_-]"), "Apple"),
-    (re.compile(r"(?i)fritz\.?box|\.fritz\.box$"), "AVM"),
+    # Avoid generic domain-suffix matches (e.g. android.fritz.box); match explicit AVM host labels only.
+    (re.compile(r"(?i)^(?:fritz|fritzbox)(?:[._-]|$)"), "AVM"),
     (re.compile(r"(?i)^vodafone[_-]"), "Vodafone"),
     (re.compile(r"(?i)\bwiz[_-]|\.wiz$"), "WiZ"),
     (re.compile(r"(?i)\bsynology\b|diskstation"), "Synology"),
