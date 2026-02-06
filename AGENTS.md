@@ -15,8 +15,7 @@ This file is the canonical operating guide for collaborators (human or non-human
 - Do not commit private data. `scan_results_private/` must never be pushed.
 - Before merging to `main`, run the local quality gate (`scripts/ci_local.sh` or at least `pre-commit run --all-files` + `pytest tests/ -v`). CI can arrive after the merge; if any checks fail, treat it as a regression and fix it promptly. Do not force-merge with failing checks.
   - Run the local quality gate once after changes are final. Re-run only if you changed files after a previous pass.
-  Exception: documentation-only changes may merge with owner approval if checks are
-  pending/skipped and there are no red failures.
+  - **Docs-only exception**: when changes are strictly documentation (`.md`) and do not alter executable behavior/contracts, you may skip full `pytest` and run a reduced gate (`pre-commit run --files <changed-docs>`). Merge still requires owner approval and no red CI checks.
 - **No Emojis**: Do not use emojis in documentation (`.md` files). Maintain a professional, neutral tone.
 
 **Codex exception:** When working inside Codex, the environment enforces a `codex/` branch prefix. In that case, `codex/*` is acceptable and compliant with this workflow. If preferred, the branch can be renamed to `feature/*`, `hotfix/*`, or `docs/*` before merge.
@@ -28,6 +27,7 @@ This file is the canonical operating guide for collaborators (human or non-human
 3. Update code, tests, and docs together; keep EN/ES in sync when behavior changes.
 4. Keep versions aligned: update version sources, README/ES README version strings and badges, changelog, roadmap, and release notes when required.
 5. Run `pre-commit run --all-files` and `pytest tests/ -v` (or `scripts/ci_local.sh` for CI parity).
+   For strict docs-only changes, run `pre-commit run --files <changed-docs>` and skip `pytest`.
 6. Merge only with approval; tag and publish the release with a full payload body.
 7. Clean up branches and ensure `git status` is clean.
 
@@ -152,6 +152,15 @@ Optional (also supported in this repo):
 
 ```bash
 python3 -m unittest discover -s tests
+```
+
+**Docs-only shortcut:**
+
+- If the change is strictly documentation (`.md`) and does not modify behavior/contracts/examples relied on by tests, you may skip `pytest tests/ -v`.
+- In that case run:
+
+```bash
+pre-commit run --files <changed-docs>
 ```
 
 ### Local CI Parity (Multi-Python)
