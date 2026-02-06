@@ -515,6 +515,11 @@ def guess_asset_type(host: Dict) -> str:
         ]
     ):
         return "workstation"
+    if any(x in vendor for x in ["synology", "qnap", "asustor", "terramaster"]):
+        # NAS appliances: treat as server-class assets unless media signals are explicit.
+        if media_signal:
+            return "media"
+        return "server"
     if any(x in vendor for x in ["wiz", "philips", "tp-link", "tuya"]):
         return "iot"
     if any(x in vendor for x in ["amazon", "google"]):

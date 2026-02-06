@@ -13,12 +13,26 @@ import json
 import re
 from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
+from redaudit.utils.vendor_hints import infer_vendor_from_hostname
+
 
 # ECS Version for Elastic integration
 ECS_VERSION = "8.11"
 
 # v3.2.3: Schema version for JSONL/ECS output stability
 SCHEMA_VERSION = "1.0"
+
+
+_UNKNOWN_VENDOR_TOKENS = (
+    "unknown",
+    "n/a",
+    "none",
+    "unavailable",
+    "(mac privado)",
+    "(private mac)",
+    "private mac",
+    "-",
+)
 
 
 class SeverityInfo(TypedDict):
@@ -54,6 +68,65 @@ def _score_from_existing_fields(vuln_record: Dict) -> Optional[float]:
         return float(max(0.0, min(100.0, normalized * 10.0)))
 
     return None
+
+
+def _normalize_vendor_text(vendor: Optional[str]) -> str:
+    return str(vendor or "").strip()
+
+
+def _is_unknown_vendor(vendor: Optional[str]) -> bool:
+    value = _normalize_vendor_text(vendor).lower()
+    if not value:
+        return True
+    return any(token in value for token in _UNKNOWN_VENDOR_TOKENS)
+
+
+def _is_guess_vendor(vendor: Optional[str]) -> bool:
+    return "(guess)" in _normalize_vendor_text(vendor).lower()
+
+
+def resolve_canonical_vendor(host_record: Dict) -> Dict[str, str]:
+    """
+    Resolve a canonical vendor from all available host identity sources.
+    """
+    deep_scan = host_record.get("deep_scan", {}) or {}
+    agentless = host_record.get("agentless_fingerprint", {}) or {}
+    ecs_host = host_record.get("ecs_host", {}) or {}
+    hostname = host_record.get("hostname") or ""
+
+    candidates = [
+        ("host", host_record.get("vendor")),
+        ("deep_scan", deep_scan.get("vendor")),
+        ("agentless", agentless.get("device_vendor")),
+        ("ecs", ecs_host.get("vendor")),
+    ]
+
+    guessed_candidates: List[Tuple[str, str]] = []
+    fallback_candidates: List[Tuple[str, str]] = []
+
+    for source, raw_vendor in candidates:
+        vendor = _normalize_vendor_text(raw_vendor)
+        if not vendor:
+            continue
+        if _is_unknown_vendor(vendor):
+            fallback_candidates.append((vendor, f"{source}_fallback"))
+            continue
+        if _is_guess_vendor(vendor):
+            guessed_candidates.append((vendor, source))
+            continue
+        return {"vendor": vendor, "source": source, "confidence": "high"}
+
+    for vendor, source in guessed_candidates:
+        return {"vendor": vendor, "source": source, "confidence": "medium"}
+
+    hostname_guess = infer_vendor_from_hostname(hostname)
+    if hostname_guess:
+        return {"vendor": hostname_guess, "source": "hostname_guess", "confidence": "low"}
+
+    for vendor, source in fallback_candidates:
+        return {"vendor": vendor, "source": source, "confidence": "low"}
+
+    return {"vendor": "", "source": "none", "confidence": "none"}
 
 
 def _testssl_is_experimental(testssl: Dict) -> bool:
@@ -755,6 +828,13 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
                 "exposure_multiplier": 1.0,
                 "total_vulns": 0,
                 "evidence_vulns": 0,
+                "service_cve_total": 0,
+                "service_cve_critical": 0,
+                "service_cve_high": 0,
+                "service_exploit_total": 0,
+                "service_backdoor_total": 0,
+                "finding_total": 0,
+                "finding_risk_total": 0,
                 "heuristic_flags": [],
                 "has_exposed_port": False,
             },
@@ -765,6 +845,13 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
     evidence_vulns = 0
     has_exposed_port = False
     heuristic_flags = set()
+    service_cve_total = 0
+    service_cve_critical = 0
+    service_cve_high = 0
+    service_exploit_total = 0
+    service_backdoor_total = 0
+    finding_total = 0
+    finding_risk_total = 0
 
     def _set_max(score: float, source: str) -> None:
         nonlocal max_cvss, max_cvss_source
@@ -802,13 +889,20 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
         for cve in cves:
             cvss = cve.get("cvss_score")
             if cvss and isinstance(cvss, (int, float)):
-                _set_max(float(cvss), "evidence")
+                score = float(cvss)
+                _set_max(score, "evidence")
                 evidence_vulns += 1
+                service_cve_total += 1
+                if score >= 9.0:
+                    service_cve_critical += 1
+                elif score >= 7.0:
+                    service_cve_high += 1
 
         exploits = port.get("known_exploits", [])
         if exploits:
             _set_max(8.0, "evidence")
             evidence_vulns += len(exploits)
+            service_exploit_total += len(exploits)
 
         service = (port.get("service") or "").lower()
         if service in ("telnet", "rlogin", "rsh"):
@@ -820,6 +914,17 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
         elif "ssl" in service and port_number not in (443, 8443):
             heuristic_flags.add("nonstandard_ssl")
             _set_max(5.0, "heuristic")
+
+        version = port.get("version") or ""
+        product = port.get("product") or ""
+        banner = port.get("banner") or ""
+        service_info = f"{service} {product} {version} {banner}".strip()
+        if service_info:
+            backdoors = detect_known_vulnerable_services(service_info)
+            if backdoors:
+                _set_max(10.0, "evidence")
+                evidence_vulns += len(backdoors)
+                service_backdoor_total += len(backdoors)
 
     # v4.3.1: Include vulnerabilities from Nikto/Nuclei finding dumps (Fix M3)
     # Ensure findings logic matches calculate_risk_score()
@@ -845,6 +950,7 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
             # Only count as 'vuln' for density if it adds risk (Med+)
             if score >= 4.0:
                 evidence_vulns += 1
+                finding_risk_total += 1
 
     base_score = max_cvss * 10
     density_bonus = 0.0
@@ -865,6 +971,13 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
             "exposure_multiplier": exposure_multiplier,
             "total_vulns": evidence_vulns,
             "evidence_vulns": evidence_vulns,
+            "service_cve_total": service_cve_total,
+            "service_cve_critical": service_cve_critical,
+            "service_cve_high": service_cve_high,
+            "service_exploit_total": service_exploit_total,
+            "service_backdoor_total": service_backdoor_total,
+            "finding_total": finding_total,
+            "finding_risk_total": finding_risk_total,
             "heuristic_flags": sorted(heuristic_flags),
             "has_exposed_port": has_exposed_port,
         },
@@ -988,7 +1101,7 @@ def build_ecs_host(host_record: Dict) -> Dict:
     Returns:
         ECS host dictionary
     """
-    ecs_host = {
+    ecs_host: Dict[str, Any] = {
         "ip": [host_record.get("ip")] if host_record.get("ip") else [],
     }
 
@@ -1000,7 +1113,10 @@ def build_ecs_host(host_record: Dict) -> Dict:
     if deep_scan.get("mac_address"):
         ecs_host["mac"] = [deep_scan["mac_address"]]
 
-    if deep_scan.get("vendor"):
+    canonical_vendor = _normalize_vendor_text(host_record.get("vendor"))
+    if canonical_vendor:
+        ecs_host["vendor"] = canonical_vendor
+    elif deep_scan.get("vendor"):
         ecs_host["vendor"] = deep_scan["vendor"]
 
     return ecs_host
@@ -1423,6 +1539,11 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
     # Enrich each host with stable metadata first.
     # Risk scores are computed later, after findings are normalized.
     for host in enriched.get("hosts", []):
+        canonical_vendor = resolve_canonical_vendor(host)
+        host["vendor"] = canonical_vendor.get("vendor", "")
+        host["vendor_source"] = canonical_vendor.get("source", "none")
+        host["vendor_confidence"] = canonical_vendor.get("confidence", "none")
+
         # Add ECS host format
         host["ecs_host"] = build_ecs_host(host)
 

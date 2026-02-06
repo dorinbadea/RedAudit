@@ -465,14 +465,21 @@
                         <td>
                             {% set bd = host.risk_score_breakdown %}
                             {% set evidence = bd.evidence_vulns|default(bd.total_vulns|default(0)) %}
+                            {% set service_cves = bd.service_cve_total|default(0) %}
+                            {% set service_critical = bd.service_cve_critical|default(0) %}
+                            {% set service_high = bd.service_cve_high|default(0) %}
+                            {% set service_exploits = bd.service_exploit_total|default(0) %}
+                            {% set service_backdoors = bd.service_backdoor_total|default(0) %}
+                            {% set risk_findings = bd.finding_risk_total|default(0) %}
+                            {% set total_findings = bd.finding_total|default(0) %}
                             {% set heuristics = bd.heuristic_flags|join(', ') if bd.heuristic_flags else '-' %}
                             {% set source = bd.max_cvss_source|default('none') %}
                             {% if host.risk_score >= 70 %}
-                            <span class="risk-high risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
+                            <span class="risk-high risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Service CVEs: {{ service_cves }} (critical {{ service_critical }}, high {{ service_high }}) | Service Exploits: {{ service_exploits }} | Service Backdoors: {{ service_backdoors }} | Risk Findings: {{ risk_findings }}/{{ total_findings }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
                             {% elif host.risk_score >= 40 %}
-                            <span class="risk-medium risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
+                            <span class="risk-medium risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Service CVEs: {{ service_cves }} (critical {{ service_critical }}, high {{ service_high }}) | Service Exploits: {{ service_exploits }} | Service Backdoors: {{ service_backdoors }} | Risk Findings: {{ risk_findings }}/{{ total_findings }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
                             {% else %}
-                            <span class="risk-low risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
+                            <span class="risk-low risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Service CVEs: {{ service_cves }} (critical {{ service_critical }}, high {{ service_high }}) | Service Exploits: {{ service_exploits }} | Service Backdoors: {{ service_backdoors }} | Risk Findings: {{ risk_findings }}/{{ total_findings }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
                             {% endif %}
                         </td>
                         <td>
@@ -488,7 +495,7 @@
                         <td>{{ host.asset_type }}</td>
                         <td>{{ host.os }}</td>
                         <td><code>{{ host.mac }}</code></td>
-                        <td>{{ host.vendor }}</td>
+                        <td title="source: {{ host.vendor_source|default('unknown') }}">{{ host.vendor }}</td>
                         <td>
                             <div class="tag-list">
                                 {% for tag in host.tags.split(',') if tag %}
