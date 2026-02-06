@@ -402,6 +402,11 @@ Prefer `gh` (GitHub CLI):
   - Example: `https://github.com/dorinbadea/RedAudit/blob/vX.Y.Z/docs/releases/RELEASE_NOTES_vX.Y.Z_ES.md`
 - **Emoji-Free**: No emojis in the payload. Maintain a professional tone.
 - **Structure**: Organize content into `## Summary`, `## Added`, `## Improved`, `## Fixed`, `## Testing`, and `## Upgrade`.
+- **Audience-First Detail Level**: Write for end users (outcomes and impact), not for maintainers (internal validation workflow).
+- **No User Validation Steps by Default**: Do not ask users to run manual checks in `Testing`/`Upgrade` unless a release truly requires migration or explicit operator action.
+- **Testing Section Style**: Keep it concise and non-actionable for users (for example: `Internal validation completed.`).
+- **Upgrade Section Style**: If no migration is needed, state `No action required.` Include upgrade steps only when strictly necessary.
+- **Concision Rule**: Keep Added/Improved/Fixed focused on what was resolved; avoid low-level implementation details unless they are critical for safe adoption.
 - **Verify**: Ensure the release body is correctly rendered and links work before finalization.
 
 ## Sudo / Paths / Ownership (Critical for UX)
