@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-![Versión](https://img.shields.io/badge/v4.4.0-blue?style=flat-square)
+[![Version](https://img.shields.io/badge/version-4.19.41-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.9+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -12,15 +12,145 @@
 
 ## ¿Qué es RedAudit?
 
-RedAudit es un **framework de auditoría de red automatizada** para evaluaciones autorizadas. Coordina descubrimiento, resolución de identidad y comprobaciones de vulnerabilidades con escalado basado en evidencias, y consolida resultados en informes estructurados (JSON, TXT, HTML y exportaciones JSONL).
+RedAudit es un **framework de auditoría de red automatizado** para evaluaciones autorizadas. Coordina descubrimiento, resolución de identidad y comprobaciones de vulnerabilidades con escalado basado en evidencias, y consolida resultados en informes estructurados (JSON, TXT, HTML y exportaciones JSONL).
 
-En lugar de ejecutar todas las herramientas contra todos los hosts, RedAudit escala solo cuando la identidad es débil o las señales son ambiguas, reduciendo ruido sin perder cobertura en entornos complejos.
+En lugar de ejecutar todas las herramientas contra todos los hosts, RedAudit escala solo cuando la identidad es débil o las señales son ambiguas, reduciendo ruido sin perder cobertura en entornos complejos. Las pistas HTTP (título/servidor) y el tipo de dispositivo ayudan a evitar deep scans innecesarios y escáneres web pesados en infraestructura.
 
-Orquesta herramientas estándar (`nmap`, `nikto`, `nuclei` cuando está disponible) y aplica verificación **Smart-Check** para reducir falsos positivos antes de reportar.
+Orquesta un toolchain completo (nmap, nikto, nuclei, whatweb, testssl.sh, sqlmap, rustscan y más) y aplica verificación **Smart-Check** para reducir falsos positivos antes de reportar.
 
 **Casos de uso**: Hardening defensivo, acotación de pentests, seguimiento de cambios entre evaluaciones.
 
-**Diferenciador clave**: Escalado por identidad (TCP → sondas UDP) combinado con **Smart-Check** (Content-Type, tamaño, magic bytes y señales de cabeceras/fabricante) para reducir falsos positivos.
+**Diferenciador clave**: Optimización de velocidad **HyperScan-first** que alimenta un motor de escalado por identidad (Deep TCP a sondas UDP), combinado con filtrado **Smart-Check** para reducir falsos positivos sin perder activos críticos.
+
+---
+
+## Cómo Funciona
+
+### Vista General de Arquitectura
+
+RedAudit opera como una capa de orquestación, gestionando hilos de ejecución concurrentes para la interacción de red y el procesamiento de datos. Implementa una arquitectura multifase:
+
+> **Filosofía de Diseño**: *"Optimización por Defecto, Resiliencia por Excepción."*
+> Una arquitectura diseñada para equilibrar velocidad y seguridad, evitando redundancia en casos claros y aplicando certeza absoluta (escaneo profundo) solo ante la ambigüedad. Este es el diseño óptimo para auditorías.
+
+1. **HyperScan**: Descubrimiento async UDP/TCP con control de congestión **Smart-Throttle (AIMD)**.
+2. **Deep Scan Adaptativo**: Enumeración dirigida basada en la identidad del host.
+3. **Resolución de Entidad**: Consolidación basada en identidad de dispositivos multi-interfaz (heurística).
+4. **Filtrado Inteligente**: Reducción de ruido vía verificación consciente del contexto.
+5. **Selección de Nuclei**: Selección de objetivos basada en identidad con reintentos por excepción para evitar redundancia. Cambia automáticamente al perfil **rápido** en hosts con alta densidad web cuando la cobertura completa está desactivada para evitar timeouts largos.
+6. **Resiliencia**: **Reintentos de Host Muerto** automáticos para abandonar hosts que no responden y evitar bloqueos.
+
+![Vista General del Sistema](../docs/images/system_overview_v4.x_es.png)
+
+### Lógica de Escaneo Adaptativo
+
+RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa heurísticas en tiempo de ejecución para decidir el escalado, incluyendo sondas HTTP breves de título/metadatos/cabeceras en rutas de inicio de sesión habituales para hosts silenciosos:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│             FASE 0: HyperScan Discovery (Opcional)          │
+│       (Opcional RustScan/Masscan en modo Red Team)          │
+│              Alimenta puertos abiertos a Fase 1             │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+
+┌─────────────────────────────────────────────────────────────┐
+│      FASE 0b: Enriquecimiento de bajo impacto (optativo)    │
+│        DNS/mDNS/SNMP + sonda HTTP/HTTPS breve para          │
+│         hosts con fabricante y cero puertos abiertos        │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+
+┌─────────────────────────────────────────────────────────────┐
+│          FASE 1: Perfil Nmap según el modo de escaneo       │
+│            rápido/normal/completo definen el scan base      │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+              ┌────────────────────────────────┐
+              │      Evaluacion de identidad   │
+              │  • MAC/fabricante?             │
+              │  • Hostname/DNS?               │
+              │  • Version de servicio?        │
+              │  • CPE/banner?                 │
+              │  • HTTP titulo/encab.?         │
+              │  • Hints sin agente?           │
+              └────────────────┬───────────────┘
+                              │
+            ┌─────────────────┴─────────────────┐
+            │                                   │
+            ▼                                   ▼
+    ┌──────────────────┐               ┌──────────────────┐
+    │    SUFICIENTE    │               │   HOST AMBIGUO   │
+    │   Detener scan   │               │   Trigger Deep   │
+    └──────────────────┘               └────────┬─────────┘
+                                                │
+                                                ▼
+                    ┌──────────────────────────────────────┐
+                    │      DEEP PHASE 1: TCP Agresivo      │
+                    │         nmap -p- -A --open           │
+                    └──────────────────┬───────────────────┘
+                                       │
+                          ┌────────────┴────────────┐
+                          │                         │
+                          ▼                         ▼
+                  ┌──────────────────┐      ┌──────────────────┐
+                  │   Identidad OK   │      │  Sigue ambiguo   │
+                  │       Stop       │      │   Continuar...   │
+                  └──────────────────┘      └────────┬─────────┘
+                                                     │
+                                                     ▼
+                                ┌──────────────────────────────────────┐
+                                │     DEEP PHASE 2a: UDP Prioritario   │
+                                │     17 puertos (DNS/DHCP/etc)        │
+                                └──────────────────┬───────────────────┘
+                                                   │
+                                    ┌──────────────┴──────────────┐
+                                    │                             │
+                                    ▼                             ▼
+                            ┌──────────────────┐         ┌──────────────────┐
+                            │   Identidad OK   │         │  Sigue ambiguo   │
+                            │       Stop       │         │   (modo full)    │
+                            └──────────────────┘         └────────┬─────────┘
+                                                                  │
+                                                                  ▼
+                                          ┌─────────────────────────────────┐
+                                          │   DEEP PHASE 2b: UDP Extendido  │
+                                          │   --top-ports N (hasta 500)     │
+                                          └─────────────────────────────────┘
+```
+
+En modo **full/completo**, el perfil base ya es agresivo, por lo que el deep scan se activa menos y solo cuando la identidad
+sigue siendo débil o hay señales sospechosas.
+
+**Heurísticas de Disparo** (qué hace un host "ambiguo", sobre todo en rápido/normal):
+
+- Pocos puertos abiertos (≤3) solo si la identidad está por debajo del umbral
+- Servicios sospechosos (`unknown`, `tcpwrapped`)
+- Falta de MAC/fabricante/nombre de host
+- Sin versión de servicio cuando la evidencia de identidad sigue siendo débil (título/servidor/tipo)
+- Puertos filtrados o sin respuesta (fallback)
+- Hosts silenciosos con fabricante detectado pueden recibir una sonda HTTP/HTTPS breve de título/metadatos/cabeceras en puertos habituales para resolver identidad antes
+
+**Resultado**: Escaneos más rápidos que UDP siempre activo, manteniendo calidad de detección para IoT, servicios filtrados
+y equipos legacy.
+
+### Modelo de Concurrencia
+
+RedAudit usa `ThreadPoolExecutor` de Python para escanear múltiples hosts simultáneamente.
+
+| Parámetro | Defecto | Rango | Notas |
+| :--- | :--- | :--- | :--- |
+| `--threads` | Autodetectado (respaldo: 6) | 1-100 | Hilos comparten memoria, ejecutan nmap independientemente |
+| `--rate-limit` | 0 | 0-∞ | Segundos entre hosts (jitter ±30% aplicado) |
+
+**Guía**:
+
+- **Hilos altos (50-100)**: Más rápido, pero más ruido de red. Riesgo de congestión.
+- **Hilos bajos (1-4)**: Más lento, más sigiloso, más amable con redes legacy.
+- **Rate limit >0**: Recomendado para entornos de producción para evitar triggers IDS.
 
 ---
 
@@ -41,6 +171,9 @@ Para modo interactivo (asistente guiado), simplemente ejecuta:
 sudo redaudit
 ```
 
+> **¿Quieres probar RedAudit de forma segura?**
+> Configura el Laboratorio Vulnerable usando Docker: **[Guía del Laboratorio](../docs/LAB_SETUP_ES.md)**
+
 ---
 
 ## Capacidades Principales
@@ -49,12 +182,12 @@ sudo redaudit
 
 | Capacidad | Descripción |
 | :--- | :--- |
-| **Deep Scan Paralelo** | Fase de deep scan totalmente desacoplada ejecutándose en paralelo (hasta 50 hilos) para aceleración masiva |
+| **Deep Scan Paralelo** | Tareas de deep scan en paralelo dentro del pool de hosts (hasta 100 hilos) |
 | **HyperScan** | Barrido TCP asíncrono + sondas UDP de descubrimiento (incluye broadcast cuando procede) + ARP agresivo |
 | **Smart-Throttle** | Control de congestión adaptativo (AIMD) que previene la pérdida de paquetes ajustando dinámicamente los lotes de escaneo |
 | **Descubrimiento de Topología** | Mapeo L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para contexto de red |
 | **Descubrimiento de Red** | Protocolos broadcast (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) para visibilidad L2 |
-| **Seguridad Web App** | Integración de `sqlmap` (SQLi) y `OWASP ZAP` (DAST) para escaneo profundo de aplicaciones web |
+| **Seguridad Web App** | Integración de `sqlmap` (SQLi) y `OWASP ZAP` (DAST) para escaneo profundo de aplicaciones web, con gating de infraestructura |
 | **Verificación sin agente** | Sondas SMB/RDP/LDAP/SSH/HTTP para pistas de identidad |
 | **Detección Interfaces VPN** | Clasifica endpoints VPN por OUI del fabricante, puertos VPN (500/4500/1194/51820) y patrones de hostname |
 | **Modo Sigiloso** | Timing T1, 1 hilo, retardos 5s+ para entornos sensibles a IDS (`--stealth`) |
@@ -65,11 +198,11 @@ sudo redaudit
 | :--- | :--- |
 | **Correlación CVE** | NVD API 2.0 con matching CPE 2.3 y caché de 7 días |
 | **Búsqueda de Exploits** | Consultas automáticas a ExploitDB (`searchsploit`) para servicios detectados |
-| **Escaneo de Plantillas** | Plantillas Nuclei con comprobaciones best-effort de falsos positivos (cabeceras/fabricante/título) |
+| **Escaneo de Plantillas** | Plantillas Nuclei con comprobaciones best-effort de falsos positivos (cabeceras/fabricante/título) y informe de timeout parcial |
 | **Filtro Smart-Check** | Reducción de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |
 | **Indicios de Fuga de Red** | Señala múltiples subredes/VLANs anunciadas por DHCP como posibles redes ocultas |
 
-### Reportes e Integración
+### Informes e Integración
 
 | Capacidad | Descripción |
 | :--- | :--- |
@@ -77,7 +210,7 @@ sudo redaudit
 | **Playbooks de Remediación** | Guías Markdown auto-generadas por host/categoría |
 | **Análisis Diferencial** | Compara informes JSON para rastrear cambios en la red |
 | **Exportaciones SIEM-Ready** | JSONL con scoring de riesgo y hash de observables para deduplicación |
-| **Cifrado de Reportes** | AES-128-CBC (Fernet) con derivación PBKDF2-HMAC-SHA256 |
+| **Cifrado de Informes** | AES-128-CBC (Fernet) con derivación PBKDF2-HMAC-SHA256 |
 
 ### Operaciones
 
@@ -87,131 +220,23 @@ sudo redaudit
 | **Targeting basado en Generadores** | Procesador de targets en streaming para tamaño de red ilimitado (ej. /16 o /8) sin agotar la RAM |
 | **Webhooks Interactivos** | Alertas por webhook para hallazgos high/critical (asistente o CLI) |
 | **Logging de Sesión** | Captura de salida terminal en doble formato (`.log` raw + `.txt` limpio) |
-| **Escaneo con Timeout** | Escaneos de host con timeout duro; progreso con ETA límite |
+| **Escaneo con Timeout** | Escaneos de host con timeout duro; progreso con ETA de límite superior |
 | **Soporte IPv6 + Proxy** | Escaneo dual-stack con pivoting SOCKS5 vía proxychains4 (solo TCP connect) |
 | **Rate Limiting** | Retardo inter-host configurable con jitter ±30% para entornos sensibles a IDS |
 | **Interfaz Bilingüe** | Localización completa Inglés/Español |
 | **Auto-Actualización** | Actualizaciones atómicas staged con rollback automático en caso de fallo |
 
-### Nuevo en v4.4: Escalabilidad Enterprise y Smart-Throttle
+### Mejoras Recientes
 
-> **Escala Masiva + Velocidad Adaptativa.**
+**Smart-Throttle:** Control de congestión adaptativo basado en AIMD que ajusta el tamaño de los lotes según las condiciones de la red.
 
-**Smart-Throttle:** Se acabó el tuning manual. RedAudit ahora "siente" la congestión de la red usando un algoritmo AIMD (Incremento Aditivo, Decremento Multiplicativo). Frena cuando hay pérdida de paquetes y acelera en enlaces estables, asegurando la máxima velocidad sin romper la red objetivo.
+**Targeting basado en Generadores:** Arquitectura en streaming para soportar redes grandes (por ejemplo, /16 o /8) sin agotar memoria.
 
-**Targeting basado en Generadores:** Hemos reescrito el motor de targeting para usar generadores en streaming. Ahora puedes alimentar una red `/8` o millones de IPs aleatorias sin llenar tu RAM.
+**Escalado de Hilos:** `MAX_THREADS` aumentado de 16 a 100 (v4.6.29) para aprovechar hardware moderno.
 
-**Risk Scoring V2:** El motor de riesgos ahora integra la severidad de los hallazgos (low/med/high/crit) de Nikto y Nuclei en la puntuación final. Un host con cero CVEs pero fallos críticos de configuración (ej. falta de auth) ahora reflejará correctamente un riesgo alto.
+**Risk Scoring Integrado:** Hallazgos de configuración (Nikto/Nuclei) integrados en la matriz de decisión con severidades Low/Medium/High.
 
-**Optimización Docker/Deep (H2):**
-
-- **Nikto**: Timeouts extendidos (5m) y perfiles de tuning completos.
-- **Nuclei**: Añadidos hallazgos de severidad "Low" (ej. fugas de info, paneles expuestos) a la matriz de decisión.
-- **Silencio Scapy**: Supresión de advertencias ARP de bajo nivel para una salida más limpia.
-
-| Característica | Beneficio |
-|:---|:---|
-| **Enterprise Risk Scoring (V2)** | Los hallazgos de configuración ahora impactan la puntuación. |
-| **Modo HyperScan SYN** | Escaneo de puertos 10x más rápido. |
-| **Optimizaciones H2** | Análisis profundo para entornos Docker. e insights de severidad "Low" |
-| **Supresión de Advertencias** | Salida de terminal más limpia (fixes M1.1 / M2) |
-
-Ver [NOTAS DE LANZAMIENTO](../docs/releases/RELEASE_NOTES_v4.3.3_ES.md) para más detalles.
-
----
-
-## Cómo Funciona
-
-### Vista General de Arquitectura
-
-RedAudit opera como una capa de orquestación, gestionando hilos de ejecución concurrentes para la interacción de red y el procesamiento de datos. Implementa una arquitectura multifase:
-
-1. **HyperScan**: Descubrimiento async UDP/TCP.
-2. **Deep Scan Adaptativo**: Enumeración dirigida basada en la identidad del host.
-3. **Resolución de Entidad**: Consolidación basada en identidad de dispositivos multi-interfaz (heurística).
-4. **Filtrado Inteligente**: Reducción de ruido vía verificación consciente del contexto (`verify_vuln.py`).
-
-![Vista General del Sistema](../docs/images/system_overview_es.png)
-
-### Lógica de Escaneo Adaptativo
-
-RedAudit no aplica un perfil de escaneo fijo a todos los hosts. En su lugar, usa heurísticas en tiempo de ejecución para decidir el escalado, incluyendo sondas HTTP breves de título/metadatos/cabeceras en rutas de inicio de sesión habituales para hosts silenciosos:
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│         FASE 1: Perfil Nmap según el modo de escaneo        │
-│        rápido/normal/completo definen el scan base          │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
-              ┌───────────────────────┐
-              │  Evaluación Identidad │
-              │  • ¿MAC/fabricante?   │
-              │  • ¿Hostname/DNS?     │
-              │  • ¿Versión servicio? │
-              │  • ¿CPE/banner?       │
-              │  • HTTP título/encab.?│
-              │  • ¿Hints sin agente? │
-              └───────────┬───────────┘
-                          │
-            ┌─────────────┴─────────────┐
-            │                           │
-            ▼                           ▼
-    ┌───────────────┐          ┌────────────────┐
-    │  SUFICIENTE   │          │ HOST AMBIGUO   │
-    │  Detener scan │          │ Continuar...   │
-    └───────────────┘          └───────┬────────┘
-                                       │
-                                       ▼
-                    ┌──────────────────────────────────────┐
-                    │  FASE 2a: UDP Prioritario            │
-                    │  17 puertos comunes (DNS/DHCP/SNMP)  │
-                    └──────────────────┬───────────────────┘
-                                       │
-                          ┌────────────┴────────────┐
-                          │                         │
-                          ▼                         ▼
-                  ┌───────────────┐        ┌────────────────┐
-                  │ Identidad OK  │        │ Aún ambiguo    │
-                  │ Detener       │        │ (modo full)    │
-                  └───────────────┘        └───────┬────────┘
-                                                   │
-                                                   ▼
-                              ┌─────────────────────────────────┐
-                              │     FASE 2b: UDP Extendido      │
-                              │  --top-ports N (configurable)   │
-                              └─────────────────────────────────┘
-```
-
-En modo **full/completo**, el perfil base ya es agresivo, por lo que el deep scan se activa menos y solo cuando la identidad
-sigue siendo débil o hay señales sospechosas.
-
-**Heurísticas de Disparo** (qué hace un host "ambiguo", sobre todo en rápido/normal):
-
-- Pocos puertos abiertos (≤3) solo si la identidad está por debajo del umbral
-- Servicios sospechosos (`unknown`, `tcpwrapped`)
-- Falta de MAC/fabricante/nombre de host
-- Sin versión de servicio (identidad por debajo del umbral)
-- Puertos filtrados o sin respuesta (fallback)
-- Hosts silenciosos con fabricante detectado pueden recibir una sonda HTTP/HTTPS breve de título/metadatos/cabeceras en puertos habituales
-
-**Resultado**: Escaneos más rápidos que UDP siempre activo, manteniendo calidad de detección para IoT, servicios filtrados
-y equipos legacy.
-
-### Modelo de Concurrencia
-
-RedAudit usa `ThreadPoolExecutor` de Python para escanear múltiples hosts simultáneamente.
-
-| Parámetro | Defecto | Rango | Notas |
-| :--- | :--- | :--- | :--- |
-| `--threads` | Autodetectado | 1-16 | Hilos comparten memoria, ejecutan nmap independientemente |
-| `--rate-limit` | 0 | 0-∞ | Segundos entre hosts (jitter ±30% aplicado) |
-
-**Guía**:
-
-- **Hilos altos (10-16)**: Más rápido, pero más ruido de red. Riesgo de congestión.
-- **Hilos bajos (1-4)**: Más lento, más sigiloso, más amable con redes legacy.
-- **Rate limit >0**: Recomendado para entornos de producción para evitar triggers IDS.
+Consulta [CHANGELOG](../CHANGELOG.md) para el historial completo.
 
 ---
 
@@ -226,6 +251,16 @@ cd RedAudit
 
 # 2. Ejecutar el instalador (gestiona dependencias y aliases)
 sudo bash redaudit_install.sh
+```
+
+Anclaje opcional del toolchain:
+
+```bash
+# Usa versiones latest para herramientas descargadas de GitHub (testssl, kerbrute)
+REDAUDIT_TOOLCHAIN_MODE=latest sudo bash redaudit_install.sh
+
+# O fija versiones específicas
+TESTSSL_VERSION=v3.2 KERBRUTE_VERSION=v1.0.3 RUSTSCAN_VERSION=2.3.0 sudo bash redaudit_install.sh
 ```
 
 ### Docker (Windows / macOS / Linux)
@@ -255,12 +290,34 @@ Después de instalar, recarga la configuración de tu shell:
 
 **O simplemente abre una nueva ventana de terminal.**
 
-### Verificación Post-Instalación
+### Verificacion Post-Instalacion
 
 ```bash
-which redaudit            # Debería devolver: /usr/local/bin/redaudit
-redaudit --version        # Debería mostrar la versión actual
-bash redaudit_verify.sh   # Verificación completa de integridad
+which redaudit            # Deberia devolver: /usr/local/bin/redaudit
+redaudit --version        # Deberia mostrar la version actual
+bash redaudit_verify.sh   # Verificacion completa de integridad
+```
+
+### Actualizar RedAudit
+
+RedAudit incluye **deteccion automatica de actualizaciones**. Al ejecutar `sudo redaudit`, comprueba si hay nuevas versiones y pregunta:
+
+```text
+Buscar actualizaciones? [s/N]:
+```
+
+Si aceptas, RedAudit realiza una **actualización atómica escalonada** con rollback automático en caso de fallo. No requiere pasos manuales.
+
+> **Nota para Ubuntu 24.04+ (Noble):** **No** uses `pip install` directamente. El instalador usa paquetes del sistema (`python3-*`) para evitar errores de `externally-managed-environment`.
+>
+> **Nota (repo git):** Si mantienes un checkout `~/RedAudit`, el updater refresca tags y hace fast‑forward de `main` cuando el repo esta limpio para evitar prompts desfasados. Si tienes cambios locales o estas en otra rama/tag, actualiza manualmente.
+
+**Actualizacion manual (solo desarrolladores):**
+
+```bash
+cd ~/RedAudit
+git pull origin main
+sudo bash redaudit_install.sh -y
 ```
 
 ---
@@ -280,13 +337,15 @@ El asistente te guía por la selección de objetivo y el perfil de auditoría. O
 - **Express**: Descubrimiento rápido (solo hosts). Topología + descubrimiento de red activados; escaneo de vulnerabilidades desactivado.
 - **Estándar**: Auditoría equilibrada (nmap `-F`/top 100 puertos + comprobaciones web). El preset de temporización se elige al inicio.
 - **Exhaustivo**: Escaneo completo con más profundidad. UDP top-ports (500) se activa en hosts ambiguos; Red Team y verificación sin agente activadas. La correlación CVE solo se habilita si ya hay API key NVD configurada.
-- **Custom**: Wizard completo de 8 pasos con navegación atrás para control granular.
+- **Custom**: Wizard completo de 9 pasos con navegación atrás para control granular.
 
 La Fase 0 de enriquecimiento de bajo impacto es un prompt opt-in en todos los perfiles (por defecto desactivada).
 
+El modo de escaneo (`fast`/`normal`/`full`) controla la cobertura y la profundidad; el preset de temporización (Sigiloso/Normal/Agresivo) controla la rapidez y el ruido. Para detalles completos, ver `docs/MANUAL.es.md`.
+
 El asistente cubre:
 
-1. **Selección de objetivo**: Elige una subred local o introduce CIDR manual
+1. **Selección de objetivo**: Elige una subred local o introduce objetivos CIDR/IP/rango
 2. **Preset de temporización**: Stealth (T1), Normal (T4) o Agresivo (T5) en Estándar/Exhaustivo
 3. **Opciones**: Hilos, rate limiting, Fase 0 de bajo impacto, UDP/topología/descubrimiento, verificación sin agente (según perfil)
 4. **Autorización**: Confirma que tienes permiso para escanear
@@ -319,31 +378,21 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | :--- | :--- |
 | `-t, --target` | Red(es) objetivo en notación CIDR |
 | `-m, --mode` | Modo de escaneo: `fast` / `normal` / `full` (defecto: normal) |
-| `-j, --threads` | Hilos concurrentes (1-16, autodetectado) |
+| `-j, --threads` | Hilos concurrentes (1-100, autodetectado; respaldo: 6) |
 | `--rate-limit` | Retardo entre hosts en segundos (jitter ±30%) |
-| `-e, --encrypt` | Cifrar informes con AES-128 |
 | `-o, --output` | Directorio de salida |
-| `--topology` | Activar descubrimiento de topología |
-| `--net-discovery` | Descubrimiento L2/broadcast mejorado |
-| `--redteam` | Activar técnicas de descubrimiento Red Team |
-| `--agentless-verify` | Verificación sin agente (SMB/RDP/LDAP/SSH/HTTP) |
-| `--nuclei` | Habilitar escaneo de plantillas Nuclei (solo modo full) |
-| `--proxy URL` | Proxy SOCKS5 para pivoting (requiere proxychains4; solo TCP) |
-| `--ipv6` | Modo de escaneo solo IPv6 |
-| `--deep-scan-budget N` | Presupuesto para deep scan agresivo (0 = sin límite) |
-| `--identity-threshold N` | Umbral mínimo de identidad para omitir deep scan |
-| `--cve-lookup` | Correlación CVE vía NVD API |
-| `--nvd-key KEY` | API key NVD para rate limits más rápidos |
-| `--diff OLD NEW` | Análisis diferencial entre escaneos |
-| `--html-report` | Generar dashboard HTML interactivo |
-| `--stealth` | Activar temporización paranoica para entornos sensibles a IDS |
-| `--hyperscan-mode MODE` | Modo de descubrimiento HyperScan: `auto`, `connect` o `syn` |
-| `--max-hosts N` | Limitar número de hosts a escanear |
-| `--no-deep-scan` | Deshabilitar deep scan adaptativo |
-| `--no-txt-report` | Omitir generación de informe TXT |
 | `-y, --yes` | Omitir confirmaciones (modo automatización) |
+| `-e, --encrypt` | Cifrar informes con AES-128 |
+| `--net-discovery` | Descubrimiento L2/broadcast mejorado |
+| `--topology` | Activar descubrimiento de topología |
+| `--nuclei` | Habilitar escaneo de plantillas Nuclei (solo modo full) |
+| `--nuclei-max-runtime` | Tiempo maximo de Nuclei en minutos (0 = ilimitado; crea reanudacion) |
+| `--nuclei-exclude` | Excluir objetivos de Nuclei (host, host:puerto, URL; repetible) |
+| `--nuclei-resume` | Reanudar Nuclei pendiente desde carpeta o archivo de reanudacion |
+| `--html-report` | Generar dashboard HTML interactivo |
+| `--diff OLD NEW` | Análisis diferencial entre escaneos |
 
-Consulta `redaudit --help` o [USAGE.md](../docs/USAGE.es.md) para la lista completa de opciones.
+Ver `redaudit --help` o [USAGE.es.md](docs/USAGE.es.md) para la lista completa de opciones.
 
 ---
 
@@ -357,7 +406,7 @@ RedAudit aplica plantillas de temporización nmap según tu selección:
 | :--- | :--- | :--- | :--- | :--- |
 | **Stealth** | `-T1` | 1 (forzado por `--stealth`) | 5s+ | Redes sensibles a IDS |
 | **Normal** | `-T4` | Autodetectado (configurable) | 0s | Auditorías estándar (equilibrio velocidad/ruido) |
-| **Agresivo** | `-T5` | Autodetectado (límite 16; configurable) | 0s | Escaneos urgentes en redes confiables |
+| **Agresivo** | `-T5` | Autodetectado (límite 100; configurable) | 0s | Escaneos urgentes en redes confiables |
 
 ### Comportamiento de Escaneo
 
@@ -421,44 +470,61 @@ RedAudit orquesta estas herramientas:
 | **DNS/Whois** | `dig`, `whois` | DNS inverso y consulta de propiedad |
 | **Topología** | `arp-scan`, `ip route` | Descubrimiento L2, detección VLAN, mapeo gateway |
 | **Descubrimiento Red** | `nbtscan`, `netdiscover`, `fping`, `avahi` | Descubrimiento broadcast/L2 |
-| **Red Team Recon** | `snmpwalk`, `enum4linux`, `masscan`, `kerbrute` | Enumeración activa opcional (opt-in) |
+| **Red Team Recon** | `snmpwalk`, `enum4linux`, `rustscan`, `masscan`, `kerbrute` | Enumeración activa opcional (opt-in) |
 | **Cifrado** | `python3-cryptography` | Cifrado AES-128 para informes |
 
 ### Estructura del Proyecto
 
 ```text
 redaudit/
-├── core/                   # Funcionalidad principal
-│   ├── auditor.py          # Orquestador principal (entrypoint por composición)
-│   ├── auditor_runtime.py  # Adaptador de composición (puente de componentes)
-│   ├── wizard.py           # UI interactiva (componente Wizard)
-│   ├── scanner/            # Lógica de escaneo Nmap + helpers IPv6
-│   ├── network.py          # Detección de interfaces/red
-│   ├── hyperscan.py        # Descubrimiento paralelo ultrarrápido
-│   ├── net_discovery.py    # Descubrimiento L2/broadcast mejorado
-│   ├── topology.py         # Descubrimiento de topología de red
+├── core/                   # Funcionalidad Core
+│   ├── auditor.py          # Orquestador principal
+│   ├── auditor_components.py # Helpers compartidos de orquestacion
+│   ├── auditor_scan.py     # Lógica de escaneo (Nmap + HyperScan + integración de seeds)
+│   ├── auditor_vuln.py     # Escaneo de vulnerabilidades (Nikto/Nuclei/Exploits)
+│   ├── auditor_runtime.py  # Adaptador de composición
+│   ├── scope_expansion.py  # Controles de expansión de alcance (Leak-follow e IoT)
+│   ├── wizard.py           # Interfaz Interactiva (Wizard)
+│   ├── ui_manager.py       # Gestor centralizado de UI/Salida
+│   ├── scanner/            # Wrapper de bajo nivel Nmap + Helpers IPv6
+│   ├── network.py          # Detección de interfaces de red
+│   ├── network_scanner.py  # Orquestacion del escaneo de hosts
+│   ├── hyperscan.py        # Descubrimiento paralelo ultra-rápido (Fase 0)
+│   ├── rustscan.py         # Integracion RustScan para descubrimiento de puertos (v4.8+)
+│   ├── net_discovery.py    # Descubrimiento L2/Broadcast mejorado
+│   ├── redteam.py          # Helpers de descubrimiento Red Team (opt-in)
+│   ├── topology.py         # Descubrimiento de topología de red (L3/VLAN)
 │   ├── udp_probe.py        # Helpers de sondeo UDP
-│   ├── agentless_verify.py # Verificación sin agente SMB/RDP/LDAP/SSH/HTTP
-│   ├── nuclei.py           # Integración del escáner de plantillas Nuclei
-│   ├── playbook_generator.py # Generador de playbooks remediación
-│   ├── nvd.py              # Correlación CVE vía NVD API
-│   ├── osquery.py          # Helpers de verificación Osquery (opcional)
-│   ├── entity_resolver.py  # Consolidación de activos / resolución de entidades
-│   ├── evidence_parser.py  # Helpers de parsing de evidencias
-│   ├── reporter.py         # Salida de informes JSON/TXT/HTML/JSONL
-│   ├── html_reporter.py    # Renderizado de informes HTML
+│   ├── syn_scanner.py      # Helpers de escaneo TCP SYN
+│   ├── agentless_verify.py # Verificaciones sin agente (SMB/RDP/LDAP/SSH/HTTP)
+│   ├── identity_utils.py   # Helpers de scoring de identidad
+│   ├── config_context.py   # Vista de configuracion en runtime
+│   ├── auth_*.py           # Manejadores de autenticación por protocolo
+│   ├── nuclei.py           # Integración scanner de plantillas Nuclei
+│   ├── playbook_generator.py # Generador de playbooks de remediación
+│   ├── nvd.py              # Correlación CVE vía API NVD
+│   ├── osquery.py          # Helpers de verificación Osquery
+│   ├── entity_resolver.py  # Consolidación de activos / Smart-Check
+│   ├── evidence_parser.py  # Helpers de parsing de evidencia
+│   ├── reporter.py         # Salida JSON/TXT/HTML/JSONL
+│   ├── html_reporter.py    # Renderizador de informes HTML
 │   ├── jsonl_exporter.py   # Exportación JSONL para SIEM
-│   ├── siem.py             # Integración SIEM (alineación ECS)
+│   ├── siem.py             # Integración SIEM (Alineado a ECS)
 │   ├── diff.py             # Análisis diferencial
-│   ├── crypto.py           # Cifrado/descifrado AES-128
-│   ├── command_runner.py   # Ejecución segura comandos externos
-│   ├── power.py            # Inhibición de reposo
+│   ├── crypto.py           # Cifrado/Descifrado AES-128
+│   ├── command_runner.py   # Ejecución segura de comandos externos
+│   ├── power.py            # Inhibición de suspensión
 │   ├── proxy.py            # Manejo de proxy
-│   ├── scanner_versions.py # Detección de versiones de herramientas
-│   ├── verify_vuln.py      # Filtro Smart-Check falsos positivos
+│   ├── tool_compat.py      # Helpers de compatibilidad del toolchain
+│   ├── signature_store.py  # Helpers de almacenamiento de firmas
+│   ├── scanner_versions.py # Detección de versiones de herramientas externas
+│   ├── verify_vuln.py      # Filtro de falsos positivos Smart-Check
+│   ├── credentials.py      # Proveedor de credenciales (keyring/env/file)
+│   ├── credentials_manager.py # Helpers de orquestacion de credenciales
+│   ├── models.py           # Modelos/dataclasses compartidos
 │   └── updater.py          # Sistema de auto-actualización
 ├── templates/              # Plantillas de informes HTML
-└── utils/                  # Utilidades (i18n, config, constantes)
+└── utils/                  # Utilidades (i18n, config, constants)
 ```
 
 ---
@@ -471,6 +537,8 @@ redaudit/
 | :--- | :--- |
 | **Deep Scan** | Escalado selectivo (fingerprinting TCP + UDP) cuando la identidad es débil o el host no responde |
 | **HyperScan** | Módulo de descubrimiento async ultrarrápido (batch TCP, UDP IoT, ARP agresivo) |
+| **Fase 0 Enriquecimiento** | DNS/mDNS/SNMP de bajo impacto y sonda HTTP/HTTPS breve para hosts con fabricante y cero puertos |
+| **IoT sin puertos TCP** | Dispositivos sin puertos TCP abiertos (WiZ, Tapo) detectados vía sondas UDP broadcast |
 | **Smart-Check** | Filtro de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |
 | **Entity Resolution** | Consolidación de dispositivos multi-interfaz en activos unificados |
 | **ECS** | Elastic Common Schema (ECS) para compatibilidad SIEM |
@@ -485,7 +553,7 @@ redaudit/
 
 ### Solución de Problemas
 
-Para solución de problemas completa, consulta: 📖 **[Guía Completa de Solución de Problemas](../docs/TROUBLESHOOTING.es.md)**
+Para solución de problemas completa, consulta: **[Guía Completa de Solución de Problemas](../docs/TROUBLESHOOTING.es.md)**
 
 **Enlaces Rápidos**:
 
@@ -514,10 +582,26 @@ RedAudit se distribuye bajo la **GNU General Public License v3.0 (GPLv3)**. Cons
 
 ---
 
+## Agradecimientos
+
+RedAudit integra los siguientes proyectos de código abierto:
+
+- **[RustScan](https://github.com/RustScan/RustScan)** - Escáner de puertos ultra-rápido por [@bee-san](https://github.com/bee-san).
+- **[Nmap](https://nmap.org/)** - El mapeador de red por Gordon Lyon (Fyodor).
+- **[Nuclei](https://github.com/projectdiscovery/nuclei)** - Escáner de plantillas por [@projectdiscovery](https://github.com/projectdiscovery).
+- **[Nikto](https://github.com/sullo/nikto)** - Escáner web por [@sullo](https://github.com/sullo).
+- **[WhatWeb](https://github.com/urbanadventurer/whatweb)** - Fingerprinting web por [@urbanadventurer](https://github.com/urbanadventurer) y [@bcoles](https://github.com/bcoles).
+- **[testssl.sh](https://github.com/testssl/testssl.sh)** - Escáner de configuración TLS por [@testssl](https://github.com/testssl).
+- **[sqlmap](https://github.com/sqlmapproject/sqlmap)** - Herramienta de inyección SQL por [@sqlmapproject](https://github.com/sqlmapproject).
+- **[OWASP ZAP](https://github.com/zaproxy/zaproxy)** - Escáner DAST por [@zaproxy](https://github.com/zaproxy).
+- **[masscan](https://github.com/robertdavidgraham/masscan)** - Escáner de puertos de alta velocidad por [@robertdavidgraham](https://github.com/robertdavidgraham).
+
+---
+
 ## Aviso Legal
 
 **RedAudit** es una herramienta de seguridad únicamente para **auditorías autorizadas**. Escanear redes sin permiso es ilegal. Al usar esta herramienta, aceptas total responsabilidad por tus acciones y acuerdas usarla solo en sistemas de tu propiedad o para los que tengas autorización explícita.
 
 ---
 
-[Documentación Completa](../docs/INDEX.md) | [Esquema de Reporte](../docs/REPORT_SCHEMA.es.md) | [Especificaciones de Seguridad](../docs/SECURITY.es.md)
+[Documentación Completa](../docs/INDEX.md) | [Esquema de Informe](../docs/REPORT_SCHEMA.es.md) | [Especificaciones de Seguridad](../docs/SECURITY.es.md)

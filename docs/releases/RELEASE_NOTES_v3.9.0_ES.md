@@ -1,6 +1,6 @@
 # RedAudit v3.9.0 Notas de Lanzamiento
 
-[![English Version](https://img.shields.io/badge/🇬🇧-English-blue)](./RELEASE_NOTES_v3.9.0.md)
+[![English Version](https://img.shields.io/badge/-English-blue)](./RELEASE_NOTES_v3.9.0.md)
 
 **Fecha de Lanzamiento**: 2025-12-27
 
@@ -52,10 +52,10 @@ Las plantillas de timing de Nmap ahora se aplican correctamente según el modo s
 - **Corregido**: `get_nmap_arguments()` ahora recibe el objeto config
 - Los modos Sigiloso/Normal/Agresivo usan correctamente T1/T4/T5
 
-### Playbooks No Aparecían en Reporte HTML
+### Playbooks No Aparecían en Informe HTML
 
 - **Corregido**: La generación de playbooks ahora ocurre antes del renderizado HTML
-- Los datos de playbooks se inyectan correctamente en la plantilla del reporte
+- Los datos de playbooks se inyectan correctamente en la plantilla del informe
 
 ---
 
@@ -64,7 +64,7 @@ Las plantillas de timing de Nmap ahora se aplican correctamente según el modo s
 ### Tipo de Retorno de `save_playbooks()`
 
 - Ahora devuelve `tuple[int, list]` en lugar de `int`
-- Devuelve `(count, playbook_data)` para integración con reporte HTML
+- Devuelve `(count, playbook_data)` para integración con informe HTML
 
 ---
 

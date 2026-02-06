@@ -10,7 +10,7 @@ RedAudit v3.4.3 es un hotfix pequeño que mejora la legibilidad generando títul
 
 ## Correcciones
 
-- **Títulos de hallazgos**: Los hallazgos web ahora tienen un `descriptive_title` corto derivado de observaciones parseadas (mejora títulos en el reporte HTML, webhooks y encabezados de playbooks).
+- **Títulos de hallazgos**: Los hallazgos web ahora tienen un `descriptive_title` corto derivado de observaciones parseadas (mejora títulos en el informe HTML, webhooks y encabezados de playbooks).
 - **Directorio de salida (wizard)**: Cuando el default iba a caer bajo `/root/...`, RedAudit ahora prefiere la carpeta `Documentos` del usuario (usuario invocador bajo `sudo`, y un único usuario detectado bajo `/home/<usuario>` cuando se ejecuta como root sin `sudo`).
 - **Marcador de selección (wizard)**: Usa un marcador ASCII `>` para máxima compatibilidad con terminales/fuentes.
 

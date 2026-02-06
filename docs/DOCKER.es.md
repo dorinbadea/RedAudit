@@ -2,26 +2,26 @@
 
 RedAudit es una herramienta para Linux, pero puedes ejecutarla en **Windows** o **macOS** usando Docker.
 
-> ⚠️ **Limitación Importante**: Docker en Windows/macOS **no permite descubrimiento L2 fiable** en tu red. Corre en una máquina virtual que no puede ver tu red real a nivel 2. Ver [Limitaciones](#limitaciones-en-windowsmacos) más abajo.
+> **Limitación Importante**: Docker en Windows/macOS **no permite descubrimiento L2 fiable** en tu red. Corre en una máquina virtual que no puede ver tu red real a nivel 2. Ver [Limitaciones](#limitaciones-en-windowsmacos) más abajo.
 
 ## Cuándo Usar Docker
 
 | Caso de Uso | Docker en Win/Mac | Linux Nativo |
 | :--- | :--- | :--- |
-| **Escanear servidores conocidos** | ✅ Funciona | ✅ Funciona |
-| **Demo/pruebas con IPs conocidas** | ✅ Funciona | ✅ Funciona |
-| **Descubrir todos los dispositivos** | ❌ Incompleto | ✅ Funciona |
-| **Auditoría profesional de red** | ❌ Limitado | ✅ Capacidad completa |
-| **Escaneo ARP/Nivel 2** | ❌ No es posible | ✅ Funciona |
-| **Detección VPN (MAC/GW)** | ❌ Limitada/Imprecisa | ✅ Funciona |
+| **Escanear servidores conocidos** | Funciona | Funciona |
+| **Demo/pruebas con IPs conocidas** | Funciona | Funciona |
+| **Descubrir todos los dispositivos** | Incompleto | Funciona |
+| **Auditoría profesional de red** | Limitado | Capacidad completa |
+| **Escaneo ARP/Nivel 2** | No es posible | Funciona |
+| **Detección VPN (MAC/GW)** | Limitada/Imprecisa | Funciona |
 
 **Recomendación para auditorías profesionales**: Usa Linux nativo, o una VM Linux con networking en modo puente (bridged).
 
 ---
 
-## 🚀 Inicio Rápido (Recomendado)
+## Inicio Rápido (Recomendado)
 
-Nuestros scripts de ayuda manejan todo automáticamente: detectar tu red, descargar la última imagen y ejecutar el escaneo.
+Los scripts de ayuda manejan todo automáticamente: detectar tu red, descargar la última imagen y ejecutar el escaneo.
 
 ## macOS
 
@@ -38,7 +38,7 @@ chmod +x redaudit-docker.sh
 ./redaudit-docker.sh
 ```
 
-> 💡 El script **hace pull de la última imagen de RedAudit** antes de cada escaneo. No necesitas actualizar manualmente.
+> Nota: El script **hace pull de la última imagen de RedAudit** antes de cada escaneo. No necesitas actualizar manualmente.
 
 ## Windows (PowerShell)
 
@@ -54,15 +54,15 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/ma
 .\redaudit-docker.ps1
 ```
 
-> 💡 El script **descarga automáticamente la última imagen de RedAudit** antes de cada escaneo. No necesitas actualizar manualmente.
+> Nota: El script **descarga automáticamente la última imagen de RedAudit** antes de cada escaneo. No necesitas actualizar manualmente.
 
 ## Qué hacen los scripts
 
-- ✅ Verificar que Docker esté corriendo
-- ✅ Detectar tu red automáticamente
-- ✅ Hacer pull de la última imagen
-- ✅ Ejecutar el escaneo
-- ✅ Ofrecer abrir el informe cuando termine
+- Verificar que Docker esté corriendo
+- Detectar tu red automáticamente
+- Hacer pull de la última imagen
+- Ejecutar el escaneo
+- Ofrecer abrir el informe cuando termine
 
 ---
 
@@ -89,7 +89,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/ma
 
 8. Salta el tutorial/inicio de sesión (no es necesario)
 
-9. **Espera** hasta que el icono de la ballena en la barra de menú esté **verde** ✅
+9. **Espera** hasta que el icono de la ballena en la barra de menú esté **verde**
 
 ## macOS - 2. Abrir Terminal
 
@@ -111,7 +111,7 @@ Verifica que la imagen está descargada:
 docker images | grep redaudit
 ```
 
-## macOS - 4. Crear Carpeta de Reportes
+## macOS - 4. Crear Carpeta de Informes
 
 ```bash
 mkdir ~/RedAudit-Reports
@@ -153,7 +153,7 @@ docker run -it --rm \
 
 *Nota: El asistente mostrará la red interna de Docker (172.17.x.x). Debes introducir manualmente tu red real.*
 
-## macOS - 7. Ver Reportes
+## macOS - 7. Ver Informes
 
 ```bash
 open ~/RedAudit-Reports/report.html
@@ -179,9 +179,9 @@ open ~/RedAudit-Reports/report.html
 
 7. Salta el tutorial/inicio de sesión (no es necesario)
 
-8. **Espera** hasta que el icono de la ballena en la bandeja del sistema esté **verde** ✅
+8. **Espera** hasta que el icono de la ballena en la bandeja del sistema esté **verde**
 
-> ⚠️ **Windows 10/11 Home**: Docker puede pedirte que instales WSL2. Sigue las instrucciones - es necesario.
+> **Windows 10/11 Home**: Docker puede pedirte que instales WSL2. Sigue las instrucciones - es necesario.
 
 ## Windows - 2. Abrir PowerShell
 
@@ -202,7 +202,7 @@ Verifica:
 docker images | Select-String redaudit
 ```
 
-## 4. Crear Carpeta de Reportes
+## 4. Crear Carpeta de Informes
 
 ```powershell
 mkdir C:\RedAudit-Reports
@@ -234,7 +234,7 @@ docker run -it --rm -v C:\RedAudit-Reports:/reports ghcr.io/dorinbadea/redaudit:
 docker run -it --rm -v C:\RedAudit-Reports:/reports ghcr.io/dorinbadea/redaudit:latest --lang es
 ```
 
-## Windows - 7. Ver Reportes
+## Windows - 7. Ver Informes
 
 Abre el Explorador de Archivos → Navega a `C:\RedAudit-Reports` → Haz doble clic en `report.html`
 
@@ -297,10 +297,10 @@ sudo docker run --rm --network host \
 
 **Ventajas de `--network host` en Linux:**
 
-- ✅ Visibilidad completa de la red
-- ✅ Escaneo ARP funciona
-- ✅ Todos los protocolos de descubrimiento funcionan
-- ✅ Mismo rendimiento que nativo
+- Visibilidad completa de la red
+- Escaneo ARP funciona
+- Todos los protocolos de descubrimiento funcionan
+- Mismo rendimiento que nativo
 
 ---
 
@@ -391,6 +391,22 @@ docker pull ghcr.io/dorinbadea/redaudit:latest
 
 Probablemente estás escaneando la red interna de Docker (172.17.x.x) en lugar de tu red real. Usa `--target` con el CIDR de tu red real.
 
+## Masscan y Redes Docker Bridge (v4.7.1+)
+
+> **Nota**: Masscan usa su propia pila de red (sockets raw libpcap) que tiene problemas conocidos con las redes bridge de Docker (172.x.x.x). Al escanear contenedores Docker desde el host, masscan puede retornar 0 puertos aunque haya servicios corriendo.
+
+**RedAudit maneja esto automaticamente**:
+
+- Si masscan encuentra 0 puertos, RedAudit usa Scapy como fallback para deteccion precisa
+- Las redes fisicas (192.168.x.x, 10.x.x.x) funcionan normalmente con masscan
+- Las redes Docker se escanean via fallback Scapy (un poco mas lento pero fiable)
+
+**Si estás probando RedAudit contra contenedores Docker**:
+
+- Espera que el escaneo use Scapy en lugar de masscan para subredes Docker
+- Los tiempos de escaneo seran ~1 min/host en lugar de segundos para redes Docker
+- Los resultados son precisos; solo difiere la velocidad
+
 ## Permiso denegado
 
 En Linux, ejecuta con `sudo` o añade tu usuario al grupo docker:
@@ -407,7 +423,7 @@ Si ves texto como `[1m[95m` o `[0m[91m` en lugar de colores, tu terminal no sopo
 
 **Soluciones:**
 
-1. **Usa nuestro script de ayuda** - Detecta y corrige esto automáticamente:
+1. **Usa el script de ayuda** - Detecta y corrige esto automáticamente:
 
    ```powershell
    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dorinbadea/RedAudit/main/scripts/redaudit-docker.ps1" -OutFile "redaudit-docker.ps1"
@@ -424,8 +440,8 @@ Si ves texto como `[1m[95m` o `[0m[91m` en lugar de colores, tu terminal no sopo
 
 | Terminal | Colores ANSI |
 | :--- | :--- |
-| Windows Terminal | ✅ Sí |
-| PowerShell 7+ | ✅ Sí |
-| PowerShell 5 (negro) | ⚠️ Parcial |
-| PowerShell ISE (azul) | ❌ No |
-| CMD | ⚠️ Parcial |
+| Windows Terminal | Sí |
+| PowerShell 7+ | Sí |
+| PowerShell 5 (negro) | Parcial |
+| PowerShell ISE (azul) | No |
+| CMD | Parcial |

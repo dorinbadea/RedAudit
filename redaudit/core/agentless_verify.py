@@ -184,13 +184,20 @@ def parse_smb_nmap(text: str) -> Dict[str, Any]:
     def _grab(pattern: str, key: str, *, flags=0) -> None:
         m = re.search(pattern, t, flags)
         if m:
-            out[key] = (m.group(1) or "").strip()
+            val = (m.group(1) or "").strip()
+            if val:
+                out[key] = val
 
-    _grab(r"OS:\s*(.+)", "os", flags=re.IGNORECASE)
-    _grab(r"Computer name:\s*(.+)", "computer_name", flags=re.IGNORECASE)
-    _grab(r"NetBIOS computer name:\s*(.+)", "netbios_name", flags=re.IGNORECASE)
-    _grab(r"Domain name:\s*(.+)", "domain", flags=re.IGNORECASE)
-    _grab(r"Workgroup:\s*(.+)", "workgroup", flags=re.IGNORECASE)
+    line_labels = {
+        "os": "OS",
+        "computer_name": "Computer name",
+        "netbios_name": "NetBIOS computer name",
+        "domain": "Domain name",
+        "workgroup": "Workgroup",
+    }
+    for key, label in line_labels.items():
+        pattern = rf"^[ \t]*\|?[ \t]*{re.escape(label)}:[ \t]*([^\r\n]+)$"
+        _grab(pattern, key, flags=re.IGNORECASE | re.MULTILINE)
 
     # SMB signing posture (common phrasing from smb2-security-mode)
     signing_required = None

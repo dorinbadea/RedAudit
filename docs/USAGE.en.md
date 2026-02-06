@@ -18,12 +18,29 @@ Run these commands to get started immediately.
 
 ### Interactive Wizard (Best for first time)
 
-Step-by-step navigation with a "< Go Back" option (v4.0.1+). Webhook configuration and network discovery options are available in the wizard; SIEM exports are generated automatically when encryption is off.
+Step-by-step navigation with a "Cancel" option (v4.0.1+). Webhook configuration and network discovery options are available in the wizard; SIEM exports are generated automatically when encryption is off. If saved credentials are detected, the wizard offers to load them and then asks if you want to add more.
 Phase 0 low-impact enrichment can be enabled from the wizard (default off) or via `--low-impact-enrichment`.
+When enabled, it may run a short HTTP/HTTPS probe on common ports for vendor-only hosts with zero open ports.
+Manual target entry accepts comma-separated CIDR, IP, or range values.
+The wizard prints normalized targets with estimated host counts before you confirm the run.
 
 ```bash
 sudo redaudit
 ```
+
+**Wizard modes (short):**
+
+- **fast**: Discovery only, lowest noise, fastest.
+- **normal**: Top ports, balanced time vs coverage (recommended default).
+- **full**: All ports + scripts + web tools, slowest and noisiest.
+
+**Timing presets (wizard):**
+
+- **Stealth**: Slowest, lowest noise.
+- **Normal**: Balanced speed and reliability.
+- **Aggressive**: Fastest, more noise; can miss slow/filtered services.
+
+**Runtime note:** With Nuclei enabled, scans can run significantly longer (e.g., >2-4 hours) depending on the number of targets (hosts) and detected services.
 
 ### Fast Inventory (LAN)
 
@@ -41,11 +58,15 @@ sudo redaudit -t 10.10.10.5 -m normal --html-report
 sudo redaudit -t 192.168.56.101 \
   --mode full \
   --udp-mode full \
-  --threads 16 \
+  --threads 100 \
   --no-prevent-sleep
 ```
 
-**Artifacts:** JSON/TXT, optional HTML, PCAP (deep scan + tcpdump), playbooks (when findings match categories and encryption is off).
+**Artifacts:** JSON/TXT, optional HTML, JSONL, run manifest, PCAP (deep scan + tcpdump), playbooks (when findings match categories and encryption is off).
+
+## 2. Scenario Examples
+
+Examples aligned with common audit workflows. Adjust timing and encryption based on client requirements.
 
 ### Authorized Pentest (Stealth/Corporate)
 
@@ -106,6 +127,8 @@ Identify VPN interfaces and endpoints within a report:
 cat redaudit_*.json | jq '.hosts[] | select(.asset_type == "vpn")'
 ```
 
+Note: If the VPN is inactive, the VPN interface can appear as a separate asset with the same MAC as the gateway and no open ports. This is expected.
+
 ---
 
 ## 3. CLI Flags Reference
@@ -118,12 +141,16 @@ Grouped by operational function. Verified against the current codebase.
 | :--- | :--- |
 | `-t, --target CIDR` | IP, range, or CIDR (comma-separated supported) |
 | `-m, --mode` | `fast` (host discovery), `normal` (top 100), `full` (all ports + scripts/OS detection) |
-| `-j, --threads N` | Parallel hosts 1-16 (Auto-detected) |
-| `--rate-limit S` | Delay between hosts in seconds (applies jitter) |
+| `-j, --threads N` | Parallel hosts 1-100 (auto-detected; fallback 4) |
+| `--max-hosts N` | Maximum number of hosts to scan (default: all) |
+| `--rate-limit S` | Delay between hosts in seconds (±30% jitter applied) |
 | `--deep-scan-budget N` | Max hosts eligible for aggressive deep scan (0 = unlimited) |
-| `--identity-threshold N` | Minimum identity score to skip deep scan |
+| `--identity-threshold N` | Minimum identity score to skip deep scan (0-100) |
+| `--no-deep-scan` | Disable adaptive deep scan |
 | `--stealth` | Force T1 timing, 1 thread, 5s delay |
 | `--dry-run` | Show commands without executing them |
+| `--profile {fast,balanced,full}` | Set Nuclei scan intensity/speed (v4.11+) |
+| `--dead-host-retries N` | Abandon host after N consecutive timeouts (v4.13+) |
 
 ### Connectivity & Proxy
 
@@ -139,15 +166,50 @@ Grouped by operational function. Verified against the current codebase.
 
 | Flag | Description |
 | :--- | :--- |
-| `--yes` | Auto-confirm all prompts |
-| `--net-discovery` | Broadcast protocols (dhcp,netbios,mdns,upnp,arp,fping) |
+| `-y, --yes` | Auto-confirm all prompts |
+| `--net-discovery [PROTOCOLS]` | Broadcast protocols (dhcp,netbios,mdns,upnp,arp,fping) |
+| `--net-discovery-interface IFACE` | Network interface for discovery and L2 captures |
+| `--scan-routed` | Include routed networks discovered via local gateways |
+| `--follow-routes` | Include remote networks discovered via routing/SNMP |
 | `--topology` | L2/L3 topology mapping (routes/gateways) |
+| `--no-topology` | Disable topology discovery |
+| `--topology-only` | Run topology discovery only (skip host scanning) |
+| `--hyperscan-mode MODE` | `auto`, `connect`, or `syn` (default: auto) |
+| `--trust-hyperscan, --trust-discovery` | Trust HyperScan results for Deep Scan (skip -p- check) |
 | `--udp-mode` | `quick` (priority ports) or `full` (top ports) |
+| `--udp-ports N` | Number of top UDP ports to scan in full mode |
 | `--redteam` | Add AD/Kerberos/SNMP recon techniques |
+| `--redteam-max-targets N` | Max target IPs sampled for redteam checks (1-500) |
 | `--redteam-active-l2` | Enable noisier L2 active probing |
+| `--snmp-community COMMUNITY` | SNMP community for discovery (default: public) |
+| `--dns-zone ZONE` | DNS zone for AXFR attempts |
+| `--kerberos-realm REALM` | Kerberos realm hint for discovery |
+| `--kerberos-userlist PATH` | Optional userlist for Kerberos userenum |
 | `--agentless-verify` | Enable agentless verification (SMB/RDP/LDAP/SSH/HTTP) |
 | `--no-agentless-verify` | Disable agentless verification (overrides defaults) |
 | `--agentless-verify-max-targets N` | Cap agentless verification targets (1-200, default: 20) |
+
+### Authenticated Scanning (Phase 4)
+
+| Flag | Description |
+| :--- | :--- |
+| `--auth-provider {env,keyring}` | Credential backend (default: keyring) |
+| `--credentials-file PATH` | Load universal credentials list from JSON |
+| `--generate-credentials-template` | Create template `credentials.json` and exit |
+| `--ssh-user USER` | SSH Username |
+| `--ssh-key PATH` | Private Key path |
+| `--ssh-key-pass PASS` | SSH private key passphrase |
+| `--ssh-trust-keys` | Auto-accept unknown host keys (Caution!) |
+| `--smb-user USER` | SMB/Windows Username |
+| `--smb-pass PASS` | SMB Password (preferred via wizard/env) |
+| `--smb-domain DOMAIN` | Windows Domain |
+| `--snmp-user USER` | SNMPv3 Username |
+| `--snmp-auth-proto {SHA,MD5...}` | SNMPv3 Auth Protocol |
+| `--snmp-auth-pass PASS` | SNMPv3 Auth Password |
+| `--snmp-priv-proto {AES,DES...}` | SNMPv3 Privacy Protocol |
+| `--snmp-priv-pass PASS` | SNMPv3 Privacy Password |
+| `--snmp-topology` | Enable deep SNMP topology queries |
+| `--lynis` | Enable Lynis hardening audit (requires SSH) |
 
 ### Reporting & Integration
 
@@ -156,11 +218,110 @@ Grouped by operational function. Verified against the current codebase.
 | `-o, --output DIR` | Custom output directory |
 | `--lang` | Interface/report language (en/es) |
 | `--html-report` | Generate interactive dashboard (HTML) |
-| `--webhook URL` | Send webhook alerts (JSON) for high/critical findings |
-| `--nuclei` | Enable Nuclei template scanning (requires `nuclei`; runs in full mode only) |
-| `--no-nuclei` | Disable Nuclei template scanning (overrides persisted defaults) |
+| `--no-txt-report` | Disable TXT report generation |
+| `--webhook URL` | Send webhook alerts (JSON) for high/critical findings (HTTPS only) |
+| `--nuclei` | Enable Nuclei template scanning (requires `nuclei`; runs in full mode only; OFF by default) |
+| `--nuclei-timeout S` | Nuclei batch timeout in seconds (default: 300) |
+| `--nuclei-max-runtime MIN` | Max Nuclei runtime in minutes (0 = unlimited). Creates a resume file when exceeded. |
+| `--leak-follow {off,safe}` | Leak-follow control (`off` by default; `safe` = in-scope internal candidates only) |
+| `--leak-follow-allowlist TARGET` | Extra in-scope candidates for leak-follow safe mode (repeatable or comma-separated) |
+| `--iot-probes {off,safe}` | IoT probe control (`off` by default; `safe` = ambiguity + corroborated signals) |
+| `--iot-probe-budget-seconds SEC` | Per-host IoT probe budget (default: 20) |
+| `--iot-probe-timeout-seconds SEC` | Per-probe IoT timeout (default: 3) |
+| `--nuclei-exclude TARGET` | Exclude Nuclei targets (host, host:port, URL; repeatable or comma-separated) |
+| `--nuclei-resume PATH` | Resume pending Nuclei targets from a resume file or scan folder |
+| `--nuclei-resume-latest` | Resume the latest pending Nuclei run from the default reports folder |
+| `--no-nuclei` | Disable Nuclei template scanning (default) |
 | `--no-vuln-scan` | Skip Nikto/Web vulnerability scanning |
 | `--cve-lookup` | Correlate services with NVD CVE data |
+| `--nvd-key KEY` | NVD API key for CVE lookups |
+
+Notes:
+
+- Web app scanners (sqlmap/ZAP) are skipped on infrastructure UIs when identity evidence indicates router/switch/AP devices.
+- In adaptive mode, Nuclei targets are optimized by identity: strong-identity hosts are limited to priority ports, while ambiguous hosts keep full target coverage and receive exception-only retries (fatigue-limited; wizard default is 3).
+- Auto-switch profile: when multiple hosts expose 3+ HTTP ports and full coverage is off, RedAudit switches Nuclei to **fast** to prevent long timeouts (shown in CLI and stored in the summary).
+- Leak-follow and IoT probes use explicit controls: `off` keeps default behavior, while `safe` applies strict in-scope and timeout guardrails.
+- Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.
+- In the Nuclei resume menu, entries that were resumed before show `resumes: N` so repeated partial runs are easy to identify.
+- **Nuclei on web-dense networks:** On networks with many HTTP/HTTPS services (e.g., Docker labs, microservices), Nuclei scans may take significantly longer (30-90+ minutes). Use `--nuclei-timeout 600` to increase the batch timeout, or `--no-nuclei` to skip Nuclei entirely if speed is critical. When full coverage is enabled, RedAudit raises the batch timeout to 900s if a lower value is configured.
+- When a runtime budget is set, it is a **total wall-clock limit for the Nuclei phase** (not per batch). RedAudit runs batches sequentially and stops before starting a new batch if the remaining budget cannot cover the estimated batch runtime. It saves `nuclei_resume.json` + `nuclei_pending.txt` when the budget is reached. Timeouts that end the run as partial also save pending targets for resume. If you do nothing, the **audit continues after Nuclei** and the resume stays available. Resume uses the saved budget unless overridden (pass `--nuclei-max-runtime` during resume or set a new value in the wizard; `0` disables the budget).
+- Resumes are stored in the same scan folder and are updated in place. If a resume run ends as partial again, the existing `nuclei_resume.json`/`nuclei_pending.txt` is refreshed (not duplicated). To clean old resumes, delete those two files inside scan folders you no longer need to resume. List them first with `find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt`, then remove with `find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt -delete`.
+
+### Nuclei Configuration (v4.17+)
+
+Nuclei scanning has three independent configuration options:
+
+**1. Scan Profile (`--profile`)**
+
+Controls which templates are executed:
+
+| Profile | Description | Time Estimate |
+|:--------|:------------|:--------------|
+| `full` | All templates, all severity levels | ~2 hours |
+| `balanced` | Core security templates (cve, default-login, exposure, misconfig) | ~1 hour (recommended) |
+| `fast` | Critical CVEs only | ~30-60 minutes |
+
+**2. Coverage Mode (wizard only)**
+
+During interactive mode, the wizard asks for **Nuclei port coverage mode**:
+
+| Option | Behavior |
+|:-------|:---------|
+| **Adaptive auto-switch** (recommended; default for balanced/fast) | Priority ports for strong-identity hosts; full detected ports for ambiguous hosts. Keeps auto-switch to fast profile when web density is high. |
+| **Full coverage** (default for full profile) | Scan all detected HTTP ports; auto-switch is skipped so the selected profile is honored. |
+
+Important clarification: selecting **Adaptive** does **not** mean "80/443 only". Strong-identity hosts use priority ports (`80/443/8080/8443`), while ambiguous hosts still keep all detected HTTP ports. If leak-follow is enabled in `safe`, additional in-scope follow targets may be appended.
+
+Note: This mode is only available in the interactive wizard, not via CLI flags.
+
+**3. Fatigue Limit (wizard only)**
+
+Controls how many times exception targets can be split/retried on timeouts (depth 0-10; default 3). Lower values keep
+scans fast; higher values prioritize certainty for ambiguous hosts.
+
+**4. Exclude List (CLI or wizard)**
+
+Use `--nuclei-exclude` (repeatable or comma-separated) or the wizard prompt to skip known slow or irrelevant targets.
+Accepts host, host:port, or full URL.
+
+**When to use each combination:**
+
+| Scenario | Recommended Settings |
+|:---------|:--------------------|
+| Quick vulnerability check | `--profile fast` |
+| Standard audit | `--profile balanced` (wizard: No to full coverage) |
+| Thorough pentest | `--profile full` (wizard: Yes to full coverage) |
+| Time-constrained audit | `--profile fast` |
+
+**Performance notes:**
+
+- Hosts with many HTTP ports (e.g., FRITZ!Box with 8+ ports) can dominate scan time.
+- Audit-focus mode (default) significantly reduces scan time on multi-port hosts.
+- Enable full coverage only when exhaustive HTTP scanning is required.
+
+**Optional Performance Boost:**
+
+Install [RustScan](https://github.com/RustScan/RustScan) for faster port discovery:
+
+```bash
+# Ubuntu/Debian
+cargo install rustscan
+```
+
+RustScan is automatically detected and used for HyperScan when available.
+
+### Installer Toolchain Policy
+
+The installer can pin or use latest versions for GitHub-downloaded tools:
+
+```bash
+# Latest versions for testssl and kerbrute
+REDAUDIT_TOOLCHAIN_MODE=latest sudo bash redaudit_install.sh
+
+# Explicit version overrides
+TESTSSL_VERSION=v3.2 KERBRUTE_VERSION=v1.0.3 RUSTSCAN_VERSION=2.3.0 sudo bash redaudit_install.sh
+```
 
 ### Security & Privacy
 
@@ -177,6 +338,9 @@ Grouped by operational function. Verified against the current codebase.
 | `--defaults {ask,use,ignore}` | Control how persisted defaults are applied |
 | `--use-defaults` | Load args from config.json automatically |
 | `--ignore-defaults` | Force factory defaults |
+| `-v, --verbose` | Enable verbose logging output |
+| `-V, --version` | Show program version and exit |
+| `-h, --help` | Show CLI help and exit |
 | `--no-color` | Disable colored output |
 | `--skip-update-check` | Skip startup update check |
 
@@ -200,10 +364,15 @@ sudo redaudit --output /opt/redaudit/reports --save-defaults --yes
 - **.html**: Dashboard (requires `--html-report`, disabled by `--encrypt`).
 - **.jsonl**: Streaming events for SIEM (disabled by `--encrypt`).
 - **playbooks/*.md**: Remediation guides (disabled by `--encrypt`).
-- **run_manifest.json**: Output manifest (disabled by `--encrypt`).
+- **run_manifest.json**: Output manifest with config/pipeline snapshot (disabled by `--encrypt`).
 - **.pcap**: Packet captures (only if Deep Scan + tcpdump + Root).
 - **session_*.log**: Raw terminal output with color codes (in `session_logs/`).
 - **session_*.txt**: Clean plain-text terminal output (in `session_logs/`).
+
+**Evidence & pipeline transparency:**
+
+- The main JSON includes per-finding evidence metadata (source tool, matched_at, raw output hash/ref when available).
+- HTML shows the resolved Nmap args/timing, deep scan settings, and HyperScan vs final summary (when present).
 
 **Progress/ETA Notes:**
 
@@ -227,12 +396,21 @@ Dependencies missing from PATH.
 **Fix:** Run `sudo bash redaudit_install.sh` or check `/usr/local/lib/redaudit`.
 
 **`testssl.sh not found`**
-TLS deep checks are skipped in full mode.
+TLS deep checks are skipped when `testssl.sh` is not available.
 **Fix:** Run `sudo bash redaudit_install.sh` to install the core toolchain.
 
 **`Decryption failed`**
 Missing `.salt` file or wrong password.
 **Fix:** Ensure the `.salt` file is in the same directory as the `.enc` file.
+
+**Hidden VLANs not detected (802.1Q)**
+RedAudit discovers networks via routing tables (`ip route`) and ARP neighbors.
+VLANs isolated at Layer 2 (e.g., ISP IPTV VLANs tagged by managed switches) are **not discoverable** from the audit host.
+**Workarounds:**
+
+- Query router/switch via SNMP (`--redteam` with SNMP enabled)
+- Manually add known VLANs to target list
+- For Cisco environments, use `--net-discovery` with CDP/LLDP if switches broadcast topology
 
 ---
 

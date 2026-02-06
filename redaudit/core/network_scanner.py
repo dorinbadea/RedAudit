@@ -15,6 +15,7 @@ import re
 import shlex
 import shutil
 import socket
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
@@ -28,6 +29,10 @@ from redaudit.utils.dry_run import is_dry_run
 from redaudit.core.config_context import ConfigurationContext
 from redaudit.core.models import Host
 from redaudit.core.network import detect_all_networks
+from redaudit.core.signature_store import (
+    load_device_hostname_hints,
+    load_device_vendor_hints,
+)
 from redaudit.core.ui_manager import UIManager
 from redaudit.utils.constants import (
     STATUS_DOWN,
@@ -122,53 +127,35 @@ class NetworkScanner:
             score += 1
             signals.append("mac_vendor")
             vendor_lower = str(deep_meta.get("vendor") or "").lower()
-            if any(
-                x in vendor_lower
-                for x in ("apple", "samsung", "xiaomi", "huawei", "oppo", "oneplus")
-            ):
-                device_type_hints.append("mobile")
-            elif any(
-                x in vendor_lower for x in ("hp", "canon", "epson", "brother", "lexmark", "xerox")
-            ):
-                device_type_hints.append("printer")
-            elif any(
-                x in vendor_lower
-                for x in ("philips", "signify", "wiz", "yeelight", "lifx", "tp-link tapo")
-            ):
-                device_type_hints.append("iot_lighting")
-            elif "tuya" in vendor_lower:
-                device_type_hints.append("iot")
-            elif any(
-                x in vendor_lower
-                for x in (
-                    "avm",
-                    "fritz",
-                    "cisco",
-                    "juniper",
-                    "mikrotik",
-                    "ubiquiti",
-                    "netgear",
-                    "dlink",
-                    "asus",
-                    "linksys",
-                    "tp-link",
-                    "sercomm",
-                    "sagemcom",
-                )
-            ):
-                device_type_hints.append("router")
-            elif any(
-                x in vendor_lower for x in ("google", "amazon", "roku", "lg", "sony", "vizio")
-            ):
-                device_type_hints.append("smart_tv")
+            for hint in load_device_vendor_hints():
+                device_type = hint.get("device_type")
+                vendors = hint.get("vendors") or []
+                if device_type and any(x in vendor_lower for x in vendors):
+                    device_type_hints.append(device_type)
+                    break
 
         hostname_lower = str(host_record.get("hostname") or "").lower()
-        if any(x in hostname_lower for x in ("iphone", "ipad", "ipod", "macbook", "imac")):
-            if "mobile" not in device_type_hints:
-                device_type_hints.append("mobile")
-        elif any(x in hostname_lower for x in ("android", "galaxy", "pixel", "oneplus")):
-            if "mobile" not in device_type_hints:
-                device_type_hints.append("mobile")
+        if hostname_lower:
+            for hint in load_device_hostname_hints():
+                device_type = hint.get("device_type")
+                if not device_type:
+                    continue
+                keywords = list(hint.get("hostname_keywords") or [])
+                keywords += hint.get("hostname_keywords_identity") or []
+                keywords += hint.get("hostname_keywords_media_override") or []
+                regexes = hint.get("hostname_regex") or []
+                if any(x in hostname_lower for x in keywords):
+                    if device_type not in device_type_hints:
+                        device_type_hints.append(device_type)
+                    continue
+                for pattern in regexes:
+                    try:
+                        if re.search(pattern, hostname_lower):
+                            if device_type not in device_type_hints:
+                                device_type_hints.append(device_type)
+                            break
+                    except re.error:
+                        continue
 
         if host_record.get("os_detected") or deep_meta.get("os_detected"):
             score += 1
@@ -226,9 +213,15 @@ class NetworkScanner:
                 device_type_hints.append("hypervisor")
 
         agentless = host_record.get("agentless_fingerprint") or {}
-        if agentless.get("http_title") or agentless.get("http_server"):
+        http_source = str(agentless.get("http_source") or "")
+        if (agentless.get("http_title") or agentless.get("http_server")) and http_source != "upnp":
             score += 1
             signals.append("http_probe")
+        agentless_type = str(agentless.get("device_type") or "").strip().lower()
+        if agentless_type:
+            device_type_hints.append(agentless_type)
+            score += 1
+            signals.append("device_type")
 
         phase0 = host_record.get("phase0_enrichment") or {}
         if phase0.get("dns_reverse"):
@@ -265,6 +258,12 @@ class NetworkScanner:
         # Always deep scan if identity is below threshold
         if identity_score < threshold:
             return True, f"low_identity:{identity_score}<{threshold}"
+
+        # v4.5.14: Fix for "Ghost Identity" - If we have high identity confidence (e.g. from
+        # Phase 0 broadcast/SNMP hints) but found ZERO open ports, we likely missed the
+        # services (UDP/Filtered). Force Deep Scan to verify.
+        if total_ports == 0:
+            return True, "high_identity_zero_ports"
 
         # Deep scan suspicious services
         if suspicious:
@@ -367,14 +366,19 @@ class NetworkScanner:
         Returns:
             Hostname or empty string
         """
+        # v4.6.28: Replaced global socket.setdefaulttimeout with ThreadPoolExecutor
+        # to avoid polluting global socket state and causing race conditions in other threads.
         try:
-            socket.setdefaulttimeout(timeout)
-            hostname, _, _ = socket.gethostbyaddr(ip)
-            return hostname
-        except (socket.herror, socket.gaierror, socket.timeout, OSError):
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(socket.gethostbyaddr, ip)
+                try:
+                    hostname, _, _ = future.result(timeout=timeout)
+                    return hostname
+                except Exception:
+                    # Timeout or lookup failure
+                    return ""
+        except Exception:
             return ""
-        finally:
-            socket.setdefaulttimeout(None)
 
     # -------------------------------------------------------------------------
     # Host Status Helpers
@@ -415,7 +419,7 @@ class NetworkScanner:
             (PortScanner or None, error message string if any)
         """
         if is_dry_run(self.config.get("dry_run")):
-            return None, "dry_run"
+            return None, ""
         if shutil.which("nmap") is None:
             return None, "nmap_not_available"
         if nmap is None:

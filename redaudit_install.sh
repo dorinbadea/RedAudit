@@ -29,6 +29,26 @@ if [[ -n "$REDAUDIT_AUTO_UPDATE" ]]; then
     AUTO_YES=true
 fi
 
+# Toolchain install policy: pinned (default) or latest
+TOOLCHAIN_MODE="${REDAUDIT_TOOLCHAIN_MODE:-pinned}"
+if [[ "$TOOLCHAIN_MODE" != "latest" ]]; then
+    TOOLCHAIN_MODE="pinned"
+fi
+
+# Detect distro for dependency strategy
+OS_ID=""
+OS_LIKE=""
+if [[ -f /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    OS_ID="${ID:-}"
+    OS_LIKE="${ID_LIKE:-}"
+fi
+IS_UBUNTU=false
+if [[ "$OS_ID" == "ubuntu" || "$OS_LIKE" == *"ubuntu"* ]]; then
+    IS_UBUNTU=true
+fi
+
 # Determine real user early (before any operations that need it)
 REAL_USER=${SUDO_USER:-$USER}
 REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
@@ -72,6 +92,22 @@ if [[ "$LANG_OPT" == "2" ]]; then
     MSG_TESTSSL_SKIP="[WARN] testssl.sh no instalado. Los análisis TLS profundos no estarán disponibles."
     MSG_TESTSSL_HINT="Ejecuta de nuevo el instalador y acepta el toolchain principal para habilitarlo."
     MSG_APT_ERR="[ERROR] Error con apt."
+    MSG_APT_MISSING="[WARN] Algunos paquetes no están disponibles via apt. Se usarán alternativas cuando existan."
+    MSG_ENABLE_UNIVERSE="[INFO] Habilitando repositorios Universe/Multiverse en Ubuntu..."
+    MSG_ENABLE_UNIVERSE_FAIL="[WARN] No se pudieron habilitar Universe/Multiverse. Continuando."
+    MSG_INSTALL_NUCLEI="[INFO] Instalando Nuclei desde GitHub..."
+    MSG_INSTALL_NUCLEI_FAIL="[WARN] Falló la instalación de Nuclei desde GitHub."
+    MSG_INSTALL_EXPLOITDB="[INFO] Instalando exploitdb/searchsploit desde GitHub..."
+    MSG_INSTALL_EXPLOITDB_FAIL="[WARN] Falló la instalación de exploitdb/searchsploit."
+    MSG_INSTALL_EXPLOITDB_SNAP="[INFO] Instalando searchsploit via snap..."
+    MSG_INSTALL_EXPLOITDB_SNAP_FAIL="[WARN] Falló la instalación de searchsploit via snap."
+    MSG_INSTALL_ENUM4LINUX="[INFO] Instalando enum4linux-ng desde GitHub..."
+    MSG_INSTALL_ENUM4LINUX_FAIL="[WARN] Falló la instalación de enum4linux-ng."
+    MSG_INSTALL_SNAPD="[INFO] Instalando snapd para habilitar paquetes snap..."
+    MSG_INSTALL_SNAPD_FAIL="[WARN] No se pudo instalar snapd. Continuando sin snap."
+    MSG_OUI_INSTALL="[INFO] Instalando base OUI local (Wireshark) en ~/.redaudit/manuf..."
+    MSG_OUI_SKIP="[INFO] Base OUI ya existe, no se sobrescribe."
+    MSG_OUI_FAIL="[WARN] No se pudo instalar la base OUI local."
 else
     LANG_CODE="en"
     MSG_INSTALL="[INFO] Installing/updating RedAudit v${REDAUDIT_VERSION}..."
@@ -85,15 +121,62 @@ else
     MSG_TESTSSL_SKIP="[WARN] testssl.sh not installed. TLS deep checks will be unavailable."
     MSG_TESTSSL_HINT="Re-run the installer and accept the core toolchain to enable it."
     MSG_APT_ERR="❌ apt error."
+    MSG_APT_MISSING="[WARN] Some packages are not available via apt. Using fallbacks when possible."
+    MSG_ENABLE_UNIVERSE="[INFO] Enabling Ubuntu Universe/Multiverse repositories..."
+    MSG_ENABLE_UNIVERSE_FAIL="[WARN] Could not enable Universe/Multiverse. Continuing."
+    MSG_INSTALL_NUCLEI="[INFO] Installing Nuclei from GitHub..."
+    MSG_INSTALL_NUCLEI_FAIL="[WARN] Failed to install Nuclei from GitHub."
+    MSG_INSTALL_EXPLOITDB="[INFO] Installing exploitdb/searchsploit from GitHub..."
+    MSG_INSTALL_EXPLOITDB_FAIL="[WARN] Failed to install exploitdb/searchsploit."
+    MSG_INSTALL_EXPLOITDB_SNAP="[INFO] Installing searchsploit via snap..."
+    MSG_INSTALL_EXPLOITDB_SNAP_FAIL="[WARN] Failed to install searchsploit via snap."
+    MSG_INSTALL_ENUM4LINUX="[INFO] Installing enum4linux-ng from GitHub..."
+    MSG_INSTALL_ENUM4LINUX_FAIL="[WARN] Failed to install enum4linux-ng."
+    MSG_INSTALL_SNAPD="[INFO] Installing snapd to enable snap packages..."
+    MSG_INSTALL_SNAPD_FAIL="[WARN] Could not install snapd. Continuing without snap."
+    MSG_OUI_INSTALL="[INFO] Installing local OUI database (Wireshark) to ~/.redaudit/manuf..."
+    MSG_OUI_SKIP="[INFO] OUI database already exists, keeping current file."
+    MSG_OUI_FAIL="[WARN] Could not install local OUI database."
 fi
 
+install_oui_db() {
+    local src="$SCRIPT_DIR/redaudit/data/manuf"
+    local dst_dir="$REAL_HOME/.redaudit"
+    local dst="$dst_dir/manuf"
+    local group_name
+    group_name=$(id -gn "$REAL_USER" 2>/dev/null || echo "$REAL_USER")
+
+    if [[ ! -f "$src" ]]; then
+        echo "$MSG_OUI_FAIL"
+        return 0
+    fi
+
+    mkdir -p "$dst_dir" 2>/dev/null || true
+
+    if [[ -s "$dst" ]]; then
+        echo "$MSG_OUI_SKIP"
+        return 0
+    fi
+
+    echo "$MSG_OUI_INSTALL"
+    if install -m 0644 "$src" "$dst" >/dev/null 2>&1; then
+        chown "$REAL_USER:$group_name" "$dst_dir" "$dst" >/dev/null 2>&1 || true
+        chmod 700 "$dst_dir" >/dev/null 2>&1 || true
+        return 0
+    fi
+
+    echo "$MSG_OUI_FAIL"
+    return 0
+}
+
 echo "$MSG_INSTALL"
+install_oui_db
 
 # -------------------------------------------
 # 2) Dependencies
 # -------------------------------------------
 
-EXTRA_PKGS="curl wget openssl nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4 nuclei whatweb nikto sqlmap traceroute"
+EXTRA_PKGS="curl wget openssl unzip nmap tcpdump tshark whois bind9-dnsutils python3-nmap python3-cryptography python3-netifaces python3-requests python3-jinja2 python3-keyring python3-pip exploitdb git nbtscan netdiscover fping avahi-utils arp-scan lldpd snmp snmp-mibs-downloader enum4linux smbclient samba-common-bin masscan ldap-utils bettercap python3-scapy proxychains4 nuclei whatweb nikto sqlmap traceroute"
 
 echo ""
 echo "$MSG_PKGS"
@@ -113,27 +196,348 @@ else
     [[ -z "$INSTALL" || "$INSTALL" =~ ^(y|yes)$ ]] && INSTALL=true || INSTALL=false
 fi
 
+apt_pkg_exists() {
+    local pkg="$1"
+    apt-cache show "$pkg" 2>/dev/null | grep -q "^Package:"
+}
+
+ensure_snapd() {
+    if [[ -d /snap/bin && ":$PATH:" != *":/snap/bin:"* ]]; then
+        export PATH="/snap/bin:$PATH"
+    fi
+    if command -v snap >/dev/null 2>&1; then
+        return 0
+    fi
+    if ! $IS_UBUNTU; then
+        return 1
+    fi
+    echo "$MSG_INSTALL_SNAPD"
+    if apt install -y snapd >/dev/null 2>&1; then
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl enable --now snapd.socket >/dev/null 2>&1 || true
+        fi
+        if [[ -d /snap/bin && ":$PATH:" != *":/snap/bin:"* ]]; then
+            export PATH="/snap/bin:$PATH"
+        fi
+        hash -r 2>/dev/null || true
+        if command -v snap >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    echo "$MSG_INSTALL_SNAPD_FAIL"
+    return 1
+}
+
+enable_ubuntu_repos() {
+    if ! $IS_UBUNTU; then
+        return
+    fi
+    echo "$MSG_ENABLE_UNIVERSE"
+    if ! command -v add-apt-repository >/dev/null 2>&1; then
+        apt install -y software-properties-common >/dev/null 2>&1 || true
+    fi
+    if command -v add-apt-repository >/dev/null 2>&1; then
+        add-apt-repository -y universe >/dev/null 2>&1 || echo "$MSG_ENABLE_UNIVERSE_FAIL"
+        add-apt-repository -y multiverse >/dev/null 2>&1 || echo "$MSG_ENABLE_UNIVERSE_FAIL"
+    else
+        echo "$MSG_ENABLE_UNIVERSE_FAIL"
+    fi
+}
+
+python_module_available() {
+    local module="$1"
+    python3 - <<PY >/dev/null 2>&1
+import importlib
+import sys
+
+try:
+    importlib.import_module("${module}")
+except Exception:
+    sys.exit(1)
+sys.exit(0)
+PY
+}
+
+install_exploitdb_fallback() {
+    if command -v searchsploit >/dev/null 2>&1; then
+        return 0
+    fi
+    echo "$MSG_INSTALL_EXPLOITDB"
+    rm -rf /opt/exploitdb 2>/dev/null || true
+    if git clone --depth 1 https://github.com/offensive-security/exploitdb.git /opt/exploitdb 2>/dev/null; then
+        if [[ -f "/opt/exploitdb/searchsploit" ]]; then
+            chmod +x /opt/exploitdb/searchsploit
+            ln -sf /opt/exploitdb/searchsploit /usr/local/bin/searchsploit
+            return 0
+        fi
+    fi
+    local tmp_zip="/tmp/exploitdb.zip"
+    if curl -fsSL -o "$tmp_zip" "https://github.com/offensive-security/exploitdb/archive/refs/heads/master.zip" \
+        2>/dev/null; then
+        rm -rf /opt/exploitdb 2>/dev/null || true
+        if unzip -o "$tmp_zip" -d /opt >/dev/null 2>&1; then
+            if [[ -d "/opt/exploitdb-master" ]]; then
+                mv /opt/exploitdb-master /opt/exploitdb
+            elif [[ -d "/opt/exploitdb-main" ]]; then
+                mv /opt/exploitdb-main /opt/exploitdb
+            fi
+            if [[ -f "/opt/exploitdb/searchsploit" ]]; then
+                chmod +x /opt/exploitdb/searchsploit
+                ln -sf /opt/exploitdb/searchsploit /usr/local/bin/searchsploit
+                rm -f "$tmp_zip" 2>/dev/null || true
+                return 0
+            fi
+        fi
+    fi
+    rm -f "$tmp_zip" 2>/dev/null || true
+    if ensure_snapd; then
+        echo "$MSG_INSTALL_EXPLOITDB_SNAP"
+        if snap install searchsploit >/dev/null 2>&1; then
+            hash -r 2>/dev/null || true
+            if [[ -f "/snap/bin/searchsploit" ]]; then
+                mkdir -p /usr/local/bin 2>/dev/null || true
+                ln -sf /snap/bin/searchsploit /usr/local/bin/searchsploit 2>/dev/null || true
+            fi
+            if command -v searchsploit >/dev/null 2>&1; then
+                return 0
+            fi
+        fi
+        echo "$MSG_INSTALL_EXPLOITDB_SNAP_FAIL"
+    fi
+    echo "$MSG_INSTALL_EXPLOITDB_FAIL"
+    return 1
+}
+
+install_enum4linux_fallback() {
+    if command -v enum4linux >/dev/null 2>&1; then
+        return 0
+    fi
+    echo "$MSG_INSTALL_ENUM4LINUX"
+    rm -rf /opt/enum4linux-ng 2>/dev/null || true
+    if git clone --depth 1 https://github.com/cddmp/enum4linux-ng.git /opt/enum4linux-ng 2>/dev/null; then
+        if [[ -f "/opt/enum4linux-ng/enum4linux-ng.py" ]]; then
+            cat > /usr/local/bin/enum4linux <<'EOF'
+#!/bin/bash
+exec /usr/bin/env python3 /opt/enum4linux-ng/enum4linux-ng.py "$@"
+EOF
+            chmod +x /usr/local/bin/enum4linux
+            ln -sf /usr/local/bin/enum4linux /usr/local/bin/enum4linux-ng
+            return 0
+        fi
+    fi
+    echo "$MSG_INSTALL_ENUM4LINUX_FAIL"
+    return 1
+}
+
+install_nuclei_fallback() {
+    if command -v nuclei >/dev/null 2>&1; then
+        return 0
+    fi
+    local version="${NUCLEI_VERSION:-}"
+    if [[ -z "$version" ]]; then
+        if [[ "$TOOLCHAIN_MODE" == "latest" ]]; then
+            version="latest"
+        else
+            version="v3.2.4"
+        fi
+    fi
+    local arch
+    case "$(uname -m)" in
+        x86_64|amd64)
+            arch="amd64"
+            ;;
+        aarch64|arm64)
+            arch="arm64"
+            ;;
+        *)
+            arch="amd64"
+            ;;
+    esac
+    local url=""
+    if [[ "$version" == "latest" ]]; then
+        url=$(curl -sL https://api.github.com/repos/projectdiscovery/nuclei/releases/latest \
+            | grep -Eo "https://[^\"]+nuclei_[0-9.]+_linux_${arch}\\.zip" \
+            | head -n 1)
+    else
+        local version_num="${version#v}"
+        url="https://github.com/projectdiscovery/nuclei/releases/download/${version}/nuclei_${version_num}_linux_${arch}.zip"
+    fi
+    if [[ -z "$url" ]]; then
+        echo "$MSG_INSTALL_NUCLEI_FAIL"
+        return 1
+    fi
+    echo "$MSG_INSTALL_NUCLEI"
+    local tmp_zip="/tmp/nuclei_${arch}.zip"
+    local tmp_dir="/tmp/nuclei_unpack"
+    rm -rf "$tmp_dir" "$tmp_zip" 2>/dev/null || true
+    if curl -fsSL -o "$tmp_zip" "$url" 2>/dev/null; then
+        mkdir -p "$tmp_dir"
+        if unzip -o "$tmp_zip" -d "$tmp_dir" >/dev/null 2>&1; then
+            if [[ -f "$tmp_dir/nuclei" ]]; then
+                mv "$tmp_dir/nuclei" /usr/local/bin/nuclei
+                chmod +x /usr/local/bin/nuclei
+                rm -rf "$tmp_dir" "$tmp_zip" 2>/dev/null || true
+                return 0
+            fi
+        fi
+    fi
+    echo "$MSG_INSTALL_NUCLEI_FAIL"
+    return 1
+}
+
 if $INSTALL; then
-    apt update && apt install -y $EXTRA_PKGS || { echo "$MSG_APT_ERR"; exit 1; }
+    read -r -a extra_pkgs <<< "$EXTRA_PKGS"
+    if ! apt update; then
+        echo "$MSG_APT_ERR"
+        exit 1
+    fi
+    enable_ubuntu_repos
+    if $IS_UBUNTU; then
+        if ! apt update; then
+            echo "$MSG_APT_ERR"
+            exit 1
+        fi
+    fi
+    apt_pkgs=()
+    missing_pkgs=()
+    for pkg in "${extra_pkgs[@]}"; do
+        if apt_pkg_exists "$pkg"; then
+            apt_pkgs+=("$pkg")
+        else
+            missing_pkgs+=("$pkg")
+        fi
+    done
+    if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
+        echo "$MSG_APT_MISSING"
+        echo "   ${missing_pkgs[*]}"
+    fi
+    if [[ ${#apt_pkgs[@]} -gt 0 ]]; then
+        if ! apt install -y "${apt_pkgs[@]}"; then
+            echo "$MSG_APT_ERR"
+            exit 1
+        fi
+    fi
+
+
+
+    # Try to install python3-pysnmp via apt (missing in some distros like Ubuntu Noble)
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Intentando instalar python3-pysnmp via apt (opcional)..."
+    else
+        echo "[INFO] Trying to install python3-pysnmp via apt (optional)..."
+    fi
+    apt install -y python3-pysnmp 2>/dev/null || true
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Intentando instalar python3-impacket via apt (opcional)..."
+    else
+        echo "[INFO] Trying to install python3-impacket via apt (optional)..."
+    fi
+    apt install -y python3-impacket 2>/dev/null || true
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Intentando instalar python3-paramiko via apt (opcional)..."
+    else
+        echo "[INFO] Trying to install python3-paramiko via apt (optional)..."
+    fi
+    apt install -y python3-paramiko 2>/dev/null || true
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Intentando instalar python3-keyrings-alt via apt (opcional)..."
+    else
+        echo "[INFO] Trying to install python3-keyrings-alt via apt (optional)..."
+    fi
+    apt install -y python3-keyrings-alt 2>/dev/null || true
+
+    # Python packages for authenticated scanning (Phase 4: SSH/SMB/SNMP + Keyring)
+    echo "[INFO] Installing Python packages for authenticated scanning..."
+
+    pip_pkgs=()
+    pip_checks=("paramiko:paramiko" "impacket:impacket" "pysnmp:pysnmp" "keyring:keyring" "keyrings.alt:keyrings.alt")
+    for item in "${pip_checks[@]}"; do
+        pkg="${item%%:*}"
+        mod="${item#*:}"
+        if ! python_module_available "$mod"; then
+            pip_pkgs+=("$pkg")
+        fi
+    done
+    if [[ ${#pip_pkgs[@]} -eq 0 ]]; then
+        if [[ "$LANG_CODE" == "es" ]]; then
+            echo "[OK] Paquetes Python ya disponibles"
+        else
+            echo "[OK] Python packages already available"
+        fi
+    else
+        pep668=false
+        for f in /usr/lib/python3*/EXTERNALLY-MANAGED /usr/lib/python3/dist-packages/EXTERNALLY-MANAGED; do
+            if [[ -f "$f" ]]; then
+                pep668=true
+                break
+            fi
+        done
+        if $pep668 && pip3 install --help | grep -q "\-\-break\-system\-packages"; then
+            if [[ "$LANG_CODE" == "es" ]]; then
+                echo "[INFO] Usando --break-system-packages por entorno PEP 668..."
+            else
+                echo "[INFO] Using --break-system-packages due to PEP 668 environment..."
+            fi
+            pip3 install "${pip_pkgs[@]}" --break-system-packages --upgrade-strategy only-if-needed \
+                || echo "[WARN] pip install failed even with break-system-packages"
+        elif pip3 install "${pip_pkgs[@]}" --upgrade-strategy only-if-needed; then
+            if [[ "$LANG_CODE" == "es" ]]; then
+                echo "[OK] Paquetes Python instalados via pip"
+            else
+                echo "[OK] Python packages installed via pip"
+            fi
+        else
+            echo "[WARN] Standard pip3 install failed. Checking for PEP 668 managed environment..."
+            # Retry with --break-system-packages if relevant (modern Kali/Ubuntu/Debian)
+            if pip3 install --help | grep -q "\-\-break\-system\-packages"; then
+                 echo "[INFO] Retrying with --break-system-packages (required for system-wide install on modern distros)..."
+                 pip3 install "${pip_pkgs[@]}" --break-system-packages --upgrade-strategy only-if-needed \
+                     || echo "[WARN] pip install failed even with break-system-packages"
+            else
+                 echo "[WARN] pip install failed and --break-system-packages flag is not supported."
+            fi
+        fi
+    fi
+
+    # Fallback installs for packages missing from apt (Ubuntu/Debian)
+    install_nuclei_fallback || true
+    install_exploitdb_fallback || true
+    install_enum4linux_fallback || true
+
     # -------------------------------------------
     # 2b) Install testssl.sh from GitHub
     # -------------------------------------------
 
     TESTSSL_REPO="https://github.com/drwetter/testssl.sh.git"
-    TESTSSL_VERSION="${TESTSSL_VERSION:-v3.2}"
+    if [[ -z "${TESTSSL_VERSION+x}" ]]; then
+        if [[ "$TOOLCHAIN_MODE" == "latest" ]]; then
+            TESTSSL_VERSION="latest"
+        else
+            TESTSSL_VERSION="v3.2"
+        fi
+    fi
 
     if [[ ! -f "/usr/local/bin/testssl.sh" ]]; then
         echo "[INFO] Installing testssl.sh ($TESTSSL_VERSION) from GitHub..."
         if command -v git &> /dev/null; then
             rm -rf /opt/testssl.sh 2>/dev/null
             # Try version tag first, fallback to latest if it fails
-            if git clone --depth 1 --branch "$TESTSSL_VERSION" "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
-                echo "[OK] Cloned testssl.sh $TESTSSL_VERSION"
-            elif git clone --depth 1 "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
-                echo "[OK] Cloned testssl.sh (latest)"
+            if [[ "$TESTSSL_VERSION" == "latest" ]]; then
+                if git clone --depth 1 "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
+                    echo "[OK] Cloned testssl.sh (latest)"
+                else
+                    echo "[WARN] git clone failed; skipping testssl.sh installation"
+                    rm -rf /opt/testssl.sh 2>/dev/null
+                fi
             else
-                echo "[WARN] git clone failed; skipping testssl.sh installation"
-                rm -rf /opt/testssl.sh 2>/dev/null
+                if git clone --depth 1 --branch "$TESTSSL_VERSION" "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
+                    echo "[OK] Cloned testssl.sh $TESTSSL_VERSION"
+                elif git clone --depth 1 "$TESTSSL_REPO" /opt/testssl.sh 2>/dev/null; then
+                    echo "[OK] Cloned testssl.sh (latest)"
+                else
+                    echo "[WARN] git clone failed; skipping testssl.sh installation"
+                    rm -rf /opt/testssl.sh 2>/dev/null
+                fi
             fi
             # Create symlink if clone succeeded
             if [[ -f "/opt/testssl.sh/testssl.sh" ]]; then
@@ -162,19 +566,121 @@ fi
 # -------------------------------------------
 
 if [[ ! -f "/usr/local/bin/kerbrute" ]]; then
-    echo "[INFO] Installing kerbrute (v1.0.3)..."
-    KERBRUTE_URL="https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64"
+    if [[ -z "${KERBRUTE_VERSION+x}" ]]; then
+        if [[ "$TOOLCHAIN_MODE" == "latest" ]]; then
+            KERBRUTE_VERSION="latest"
+        else
+            KERBRUTE_VERSION="v1.0.3"
+        fi
+    fi
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Instalando kerbrute (${KERBRUTE_VERSION})..."
+    else
+        echo "[INFO] Installing kerbrute (${KERBRUTE_VERSION})..."
+    fi
+    if [[ "$KERBRUTE_VERSION" == "latest" ]]; then
+        KERBRUTE_URL="https://github.com/ropnop/kerbrute/releases/latest/download/kerbrute_linux_amd64"
+    else
+        KERBRUTE_URL="https://github.com/ropnop/kerbrute/releases/download/${KERBRUTE_VERSION}/kerbrute_linux_amd64"
+    fi
     if wget -q -O /usr/local/bin/kerbrute "$KERBRUTE_URL"; then
         chmod +x /usr/local/bin/kerbrute
-        echo "[OK] kerbrute installed at /usr/local/bin/kerbrute"
+        if [[ "$LANG_CODE" == "es" ]]; then
+            echo "[OK] kerbrute instalado en /usr/local/bin/kerbrute"
+        else
+            echo "[OK] kerbrute installed at /usr/local/bin/kerbrute"
+        fi
     else
-        echo "[WARN] Failed to download kerbrute from GitHub. Skipping."
+        if [[ "$LANG_CODE" == "es" ]]; then
+            echo "[WARN] Falló la descarga de kerbrute desde GitHub. Se omite."
+        else
+            echo "[WARN] Failed to download kerbrute from GitHub. Skipping."
+        fi
     fi
-    echo "[OK] kerbrute already installed"
+else
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[OK] kerbrute ya instalado"
+    else
+        echo "[OK] kerbrute already installed"
+    fi
 fi
 
 # -------------------------------------------
 # 2d) Install OWASP ZAP (apt for Kali/Debian, snap for Ubuntu)
+# -------------------------------------------
+
+# -------------------------------------------
+# 2e) Install RustScan (fast port scanner)
+# -------------------------------------------
+
+if [[ -z "${RUSTSCAN_VERSION+x}" ]]; then
+    RUSTSCAN_VERSION="2.3.0"
+fi
+
+if ! command -v rustscan &> /dev/null; then
+    # Detect Architecture
+    ARCH=$(uname -m)
+    case $ARCH in
+        x86_64)
+            DEB_ARCH="amd64"
+            ;;
+        aarch64|arm64)
+            # RustScan 2.3.0 does not consistently provide a .deb for aarch64 on the main release page.
+            # However, for robustness, we will try to fetch if available or fallback.
+            # IMPORTANT: For v2.3.0, only amd64 .deb is standard.
+            # If we are on ARM, we might need to skip or warn if no .deb exists.
+            DEB_ARCH="aarch64"
+            ;;
+        *)
+            DEB_ARCH="unknown"
+            ;;
+    esac
+
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[INFO] Instalando RustScan v${RUSTSCAN_VERSION}..."
+    else
+        echo "[INFO] Installing RustScan v${RUSTSCAN_VERSION}..."
+    fi
+
+    # NOTE: As of 2024/2025, RustScan release assets for ARM .deb are not always guaranteed
+    # compatible or consistent in naming (sometimes zip).
+    # For now, we only support amd64 officially via .deb.
+    # For ARM/Kali-ARM/Pi, we fallback to nmap to avoid breaking the install.
+
+    if [[ "$DEB_ARCH" == "amd64" ]]; then
+        RUSTSCAN_DEB="/tmp/rustscan_${RUSTSCAN_VERSION}_amd64.deb"
+        RUSTSCAN_URL="https://github.com/RustScan/RustScan/releases/download/${RUSTSCAN_VERSION}/rustscan_${RUSTSCAN_VERSION}_amd64.deb"
+
+        if wget -q -O "$RUSTSCAN_DEB" "$RUSTSCAN_URL" 2>/dev/null; then
+            if dpkg -i "$RUSTSCAN_DEB" 2>/dev/null; then
+                 if [[ "$LANG_CODE" == "es" ]]; then echo "[OK] RustScan instalado"; else echo "[OK] RustScan installed"; fi
+            else
+                 if [[ "$LANG_CODE" == "es" ]]; then echo "[WARN] Falló la instalación del .deb. Usando nmap."; else echo "[WARN] .deb install failed. Using nmap."; fi
+            fi
+            rm -f "$RUSTSCAN_DEB" 2>/dev/null
+        else
+            if [[ "$LANG_CODE" == "es" ]]; then echo "[WARN] Falló descarga. Usando nmap."; else echo "[WARN] Download failed. Using nmap."; fi
+        fi
+    else
+        # Non-amd64 architecture
+        if [[ "$LANG_CODE" == "es" ]]; then
+            echo "[WARN] Arquitectura $ARCH detectada. RustScan .deb solo disponible para amd64."
+            echo "       Usando nmap como fallback (más lento pero compatible)."
+        else
+            echo "[WARN] Architecture $ARCH detected. RustScan .deb checks only support amd64."
+            echo "       Using nmap as fallback (slower but compatible)."
+        fi
+    fi
+else
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[OK] RustScan ya instalado ($(rustscan --version 2>/dev/null | head -1 || echo 'version unknown'))"
+    else
+        echo "[OK] RustScan already installed ($(rustscan --version 2>/dev/null | head -1 || echo 'version unknown'))"
+    fi
+fi
+
+# -------------------------------------------
+# 2f) Install OWASP ZAP (apt for Kali/Debian, snap for Ubuntu)
 # -------------------------------------------
 
 if ! command -v zap.sh >/dev/null 2>&1 && ! command -v zaproxy >/dev/null 2>&1; then
@@ -202,11 +708,12 @@ if ! command -v zap.sh >/dev/null 2>&1 && ! command -v zaproxy >/dev/null 2>&1; 
             echo "[INFO] apt failed, trying snap..."
         fi
 
-        if command -v snap >/dev/null 2>&1; then
+        if ensure_snapd; then
             if snap install zaproxy --classic 2>/dev/null; then
                 ZAP_INSTALLED=true
                 # Create symlink for zap.sh detection
                 if [[ -f "/snap/bin/zaproxy" ]]; then
+                    mkdir -p /usr/local/bin 2>/dev/null || true
                     ln -sf /snap/bin/zaproxy /usr/local/bin/zap.sh 2>/dev/null || true
                 fi
                 if [[ "$LANG_CODE" == "es" ]]; then
@@ -328,7 +835,32 @@ if [[ -n "$NVD_KEY" ]]; then
         CONFIG_FILE="$CONFIG_DIR/config.json"
         mkdir -p "$CONFIG_DIR"
         chmod 700 "$CONFIG_DIR"
-        echo "{\"version\": \"${REDAUDIT_VERSION}\", \"nvd_api_key\": \"$NVD_KEY\", \"nvd_api_key_storage\": \"config\"}" > "$CONFIG_FILE"
+        if command -v jq >/dev/null 2>&1; then
+            jq -n \
+                --arg version "$REDAUDIT_VERSION" \
+                --arg nvd_api_key "$NVD_KEY" \
+                --arg nvd_api_key_storage "config" \
+                '{version: $version, nvd_api_key: $nvd_api_key, nvd_api_key_storage: $nvd_api_key_storage}' \
+                > "$CONFIG_FILE"
+        else
+            python3 - "$CONFIG_FILE" "$REDAUDIT_VERSION" "$NVD_KEY" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+version = sys.argv[2]
+nvd_api_key = sys.argv[3]
+
+payload = {
+    "version": version,
+    "nvd_api_key": nvd_api_key,
+    "nvd_api_key_storage": "config",
+}
+
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(payload, handle)
+PY
+        fi
         chmod 600 "$CONFIG_FILE"
         chown "$REAL_USER:$REAL_USER" "$CONFIG_DIR" "$CONFIG_FILE"
         echo "$MSG_NVD_SAVED $CONFIG_FILE"
@@ -364,10 +896,8 @@ fi
 # Create the specific source command message based on the shell
 if [[ "$RC_FILE" == *".zshrc" ]]; then
     SOURCE_CMD="source ~/.zshrc"
-    SHELL_NAME="Zsh"
 else
     SOURCE_CMD="source ~/.bashrc"
-    SHELL_NAME="Bash"
 fi
 
 echo ""
@@ -392,10 +922,14 @@ if [[ "$LANG_CODE" == "es" ]]; then
     echo "   $SOURCE_CMD"
     echo ""
     echo "(O simplemente abre una nueva terminal)"
+    echo ""
+    echo "$MSG_USAGE"
 else
     echo ""
     echo "IMPORTANT: To use 'redaudit' immediately, run:"
     echo "   $SOURCE_CMD"
     echo ""
     echo "(Or simply open a new terminal)"
+    echo ""
+    echo "$MSG_USAGE"
 fi

@@ -1,0 +1,27 @@
+{
+  "CVE-2022-26143": {
+    "expected_vendors": ["mitel", "micollab", "mivoice"],
+    "false_positive_vendors": [
+      "fritz",
+      "fritz!os",
+      "avm",
+      "netgear",
+      "tp-link",
+      "asus",
+      "linksys",
+      "ubiquiti"
+    ],
+    "description": "Mitel MiCollab Information Disclosure"
+  },
+  "CVE-2021-44228": {
+    "expected_vendors": ["java", "log4j", "apache"],
+    "false_positive_vendors": [],
+    "description": "Log4Shell"
+  },
+  "CVE-2024-54767": {
+    "expected_vendors": ["avm", "fritz"],
+    "expected_models": ["7530"],
+    "false_positive_models": ["7590", "repeater", "1200", "2400", "3000"],
+    "description": "AVM FRITZ!Box 7530 AX Unauthorized Access"
+  }
+}

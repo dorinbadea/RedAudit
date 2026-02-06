@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Evidence Parser Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.1: Parse and structure tool output for SIEM/AI consumption.
@@ -270,6 +270,42 @@ def extract_observations(vuln_record: Dict) -> Tuple[List[str], str]:
             if len(tech) < 50 and tech not in observations:
                 observations.append(f"Technology: {tech}")
 
+    # v4.14: Generate fallback observations from service/port data
+    # This ensures findings with source "redaudit" have some technical details
+    if not observations:
+        port = vuln_record.get("port")
+        url = vuln_record.get("url")
+        description = vuln_record.get("description")
+        service = vuln_record.get("service")
+        banner = vuln_record.get("banner")
+
+        # Type-safe extraction with validation
+        if isinstance(url, str) and url.strip():
+            observations.append(f"Endpoint: {url.strip()}")
+        elif port is not None:
+            observations.append(f"Port: {port}")
+
+        if isinstance(service, str) and service.strip():
+            observations.append(f"Service: {service.strip()}")
+        if isinstance(banner, str) and banner.strip():
+            # Clean and truncate banner
+            clean_banner = banner.strip()[:100]
+            observations.append(f"Banner: {clean_banner}")
+
+        if isinstance(description, str) and description.strip():
+            # Use description as observation
+            observations.append(description.strip()[:200])
+
+        # Check for headers if available
+        headers = vuln_record.get("headers", {})
+        if isinstance(headers, dict):
+            server = headers.get("server")
+            powered_by = headers.get("x-powered-by")
+            if isinstance(server, str) and server.strip():
+                observations.append(f"Server: {server.strip()}")
+            if isinstance(powered_by, str) and powered_by.strip():
+                observations.append(f"X-Powered-By: {powered_by.strip()}")
+
     raw_output = "\n\n".join(raw_parts)
 
     return observations[:25], raw_output
@@ -339,6 +375,33 @@ def enrich_with_observations(vuln_record: Dict, output_dir: Optional[str] = None
 
     if observations:
         enriched["parsed_observations"] = observations
+
+        # v4.9.0: Auto-extract CVEs from observations (Nikto/TestSSL legacy support)
+        # This ensures SIEMs get structured CVE data even if the tool doesn't provide it natively.
+        found_cves = set(enriched.get("cve_ids", []))
+
+        # 1. Scan normalized observations (fastest)
+        for obs in observations:
+            cve_matches = _CVE_PATTERN.findall(obs)
+            for cve in cve_matches:
+                found_cves.add(cve.upper())
+
+        # 2. Scan raw Nikto findings (source of truth)
+        for line in vuln_record.get("nikto_findings", []):
+            cve_matches = _CVE_PATTERN.findall(str(line))
+            for cve in cve_matches:
+                found_cves.add(cve.upper())
+
+        # 3. Scan raw TestSSL vulnerabilities
+        testssl = vuln_record.get("testssl_analysis", {})
+        for vuln in testssl.get("vulnerabilities", []):
+            cve_matches = _CVE_PATTERN.findall(str(vuln))
+            for cve in cve_matches:
+                found_cves.add(cve.upper())
+
+        if found_cves:
+            enriched["cve_ids"] = sorted(list(found_cves))
+
         if not enriched.get("descriptive_title"):
             title = _derive_descriptive_title(observations)
             if title:

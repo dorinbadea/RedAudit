@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
 RedAudit - OUI Lookup Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.6.1: Online fallback for MAC vendor lookup when local OUI database is incomplete.
 """
 
 import logging
+import os
 from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -29,58 +30,153 @@ def normalize_oui(mac: str) -> str:
     Returns:
         Uppercase 6-character OUI string
     """
-    return mac.replace(":", "").replace("-", "").replace(".", "")[:6].upper()
+    return _normalize_mac_hex(mac)[:6]
 
 
 # v4.3.1: Offline fallback with local manuf database
 # Loads from redaudit/data/manuf (Wireshark format)
 _OFFLINE_CACHE: Dict[str, str] = {}
+_OFFLINE_CACHE_EXT: Dict[int, Dict[str, str]] = {}
+_CUSTOM_OUI_LOADED = False
 
 
-def _load_offline_db() -> None:
-    """Load OUI database from local file."""
-    import os
+def _normalize_mac_hex(value: str) -> str:
+    return value.replace(":", "").replace("-", "").replace(".", "").upper()
 
-    global _OFFLINE_CACHE
+
+def _get_builtin_oui_path() -> str:
+    # utils/oui_lookup.py -> ../data/manuf
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_dir, "data", "manuf")
+
+
+def _normalize_oui_paths(paths: list[str]) -> list[str]:
+    normalized = []
+    seen = set()
+    for path in paths:
+        if not path:
+            continue
+        expanded = os.path.expanduser(path)
+        if expanded in seen:
+            continue
+        seen.add(expanded)
+        normalized.append(expanded)
+    return normalized
+
+
+def _resolve_custom_oui_paths() -> list[str]:
+    paths: list[str] = []
+    env_paths = os.environ.get("REDAUDIT_OUI_DB") or os.environ.get("REDAUDIT_OUI_PATH")
+    if env_paths:
+        for part in env_paths.split(os.pathsep):
+            if part:
+                paths.append(part)
 
     try:
-        # Locate data file relative to this module
-        # utils/oui_lookup.py -> ../data/manuf
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        manuf_path = os.path.join(base_dir, "data", "manuf")
+        from redaudit.utils.config import load_config
 
-        if not os.path.exists(manuf_path):
-            logger.debug("Local OUI database not found at %s", manuf_path)
-            return
+        config = load_config()
+        cfg_paths = config.get("oui_db_paths") or config.get("oui_db_path") or []
+        if isinstance(cfg_paths, str):
+            paths.append(cfg_paths)
+        elif isinstance(cfg_paths, list):
+            paths.extend([p for p in cfg_paths if isinstance(p, str)])
+    except Exception:  # pragma: no cover
+        pass
 
-        count = 0
-        with open(manuf_path, "r", encoding="utf-8", errors="ignore") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
+    # Auto-discover OUI DB under config dir (if user dropped Wireshark manuf file)
+    try:
+        from redaudit.utils.config import get_config_paths
 
-                # Format: OUI<TAB>ShortName<TAB>LongName
-                # 00:00:0C	Cisco	Cisco Systems, Inc
-                parts = line.split("\t")
-                if len(parts) >= 2:
+        config_dir, _ = get_config_paths()
+        for candidate in ("manuf", "oui.manuf", "oui.txt"):
+            path = os.path.join(config_dir, candidate)
+            paths.append(path)
+    except Exception:  # pragma: no cover
+        pass
+
+    return _normalize_oui_paths(paths)
+
+
+def _load_offline_db(paths: list[str]) -> None:
+    """Load OUI database from local file(s). Later files override earlier ones."""
+    count = 0
+    for raw_path in _normalize_oui_paths(paths):
+        if not os.path.exists(raw_path):
+            continue
+        try:
+            with open(raw_path, "r", encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+
+                    # Format: OUI<TAB>ShortName<TAB>LongName
+                    # 00:00:0C	Cisco	Cisco Systems, Inc
+                    parts = line.split("\t")
+                    if len(parts) < 2:
+                        continue
                     oui_raw = parts[0].strip()
                     name = parts[2].strip() if len(parts) > 2 else parts[1].strip()
 
-                    # Normalize OUI
-                    oui = normalize_oui(oui_raw)
-                    if len(oui) == 6:
-                        _OFFLINE_CACHE[oui] = name
-                        count += 1
+                    prefix_len = 24
+                    oui_part = oui_raw
+                    if "/" in oui_raw:
+                        oui_part, prefix_len_str = oui_raw.split("/", 1)
+                        try:
+                            prefix_len = int(prefix_len_str)
+                        except ValueError:
+                            continue
 
+                    if prefix_len % 4 != 0:
+                        continue
+
+                    hex_len = prefix_len // 4
+                    prefix = _normalize_mac_hex(oui_part)[:hex_len]
+                    if len(prefix) != hex_len:
+                        continue
+
+                    if prefix_len == 24:
+                        _OFFLINE_CACHE[prefix] = name
+                    else:
+                        _OFFLINE_CACHE_EXT.setdefault(prefix_len, {})[prefix] = name
+                    count += 1
+        except Exception as exc:  # pragma: no cover
+            logger.debug("Failed to load OUI database %s: %s", raw_path, exc)
+
+    if count == 0:
+        logger.debug("No vendors loaded from local OUI database")
+    else:
         logger.debug("Loaded %d vendors from local OUI database", count)
 
-    except Exception as e:
-        logger.warning("Failed to load local OUI database: %s", e)
+
+def reload_oui_db(paths: Optional[list[str]] = None) -> None:
+    """Reload OUI database caches (used by tests or dynamic updates)."""
+    global _CUSTOM_OUI_LOADED
+    _OFFLINE_CACHE.clear()
+    _OFFLINE_CACHE_EXT.clear()
+    builtin = _get_builtin_oui_path()
+    load_paths = [builtin]
+    if paths:
+        load_paths.extend(paths)
+        _CUSTOM_OUI_LOADED = True
+    else:
+        _CUSTOM_OUI_LOADED = False
+    _load_offline_db(load_paths)
 
 
-# Initialize on module load
-_load_offline_db()
+def _ensure_custom_oui_loaded() -> None:
+    global _CUSTOM_OUI_LOADED
+    if _CUSTOM_OUI_LOADED:
+        return
+    custom_paths = _resolve_custom_oui_paths()
+    if custom_paths:
+        _load_offline_db(custom_paths)
+    _CUSTOM_OUI_LOADED = True
+
+
+# Initialize on module load with builtin DB
+reload_oui_db()
 
 
 def lookup_vendor_online(mac: str, timeout: float = 2.0) -> Optional[str]:
@@ -101,11 +197,24 @@ def lookup_vendor_online(mac: str, timeout: float = 2.0) -> Optional[str]:
     if not mac:
         return None
 
-    oui = normalize_oui(mac)
-    if len(oui) < 6:
+    clean = _normalize_mac_hex(mac)
+    if len(clean) < 6:
         return None
 
+    _ensure_custom_oui_loaded()
+
     # Check offline cache first (optimization + reliability)
+    if _OFFLINE_CACHE_EXT:
+        for prefix_len in sorted(_OFFLINE_CACHE_EXT.keys(), reverse=True):
+            hex_len = prefix_len // 4
+            if len(clean) < hex_len:
+                continue
+            prefix = clean[:hex_len]
+            vendor = _OFFLINE_CACHE_EXT.get(prefix_len, {}).get(prefix)
+            if vendor:
+                return vendor
+
+    oui = clean[:6]
     if oui in _OFFLINE_CACHE:
         return _OFFLINE_CACHE[oui]
 
@@ -181,6 +290,8 @@ def get_vendor_with_fallback(
     Returns:
         Vendor name or None
     """
+    _ensure_custom_oui_loaded()
+
     # v4.2: Check Key: Private/Randomized MAC
     if is_locally_administered(mac):
         return "(MAC privado)"
@@ -198,5 +309,4 @@ def get_vendor_with_fallback(
 
 def clear_cache() -> None:
     """Clear the vendor cache (useful for testing)."""
-    global _VENDOR_CACHE
     _VENDOR_CACHE.clear()

@@ -13,6 +13,7 @@ from collections.abc import MutableMapping
 from typing import Any, Dict, Iterator, List, Optional
 
 from redaudit.utils.constants import (
+    DEFAULT_DEAD_HOST_RETRIES,
     DEFAULT_DEEP_SCAN_BUDGET,
     DEFAULT_IDENTITY_THRESHOLD,
     DEFAULT_THREADS,
@@ -67,6 +68,7 @@ class ConfigurationContext(MutableMapping):
             "deep_id_scan": True,
             "low_impact_enrichment": False,
             "deep_scan_budget": DEFAULT_DEEP_SCAN_BUDGET,
+            "dead_host_retries": DEFAULT_DEAD_HOST_RETRIES,
             "identity_threshold": DEFAULT_IDENTITY_THRESHOLD,
             "topology_enabled": False,
             "topology_only": False,
@@ -83,6 +85,13 @@ class ConfigurationContext(MutableMapping):
             "windows_verify_enabled": False,
             "windows_verify_max_targets": 20,
             "nuclei_enabled": False,
+            "nuclei_timeout": 300,
+            # v4.x Phase A: explicit safe defaults for scope expansion features
+            "leak_follow_mode": "off",
+            "leak_follow_allowlist": [],
+            "iot_probes_mode": "off",
+            "iot_probe_budget_seconds": 20,
+            "iot_probe_timeout_seconds": 3,
             "sqlmap_level": 1,
             "sqlmap_risk": 1,
             "zap_enabled": False,
@@ -199,6 +208,11 @@ class ConfigurationContext(MutableMapping):
         return bool(self._config.get("nuclei_enabled", False))
 
     @property
+    def nuclei_timeout(self) -> int:
+        """Get Nuclei batch timeout."""
+        return int(self._config.get("nuclei_timeout", 300) or 300)
+
+    @property
     def deep_id_scan(self) -> bool:
         """Check if deep identity scan is enabled."""
         return bool(self._config.get("deep_id_scan", True))
@@ -257,6 +271,14 @@ class ConfigurationContext(MutableMapping):
         return int(
             self._config.get("deep_scan_budget", DEFAULT_DEEP_SCAN_BUDGET)
             or DEFAULT_DEEP_SCAN_BUDGET
+        )
+
+    @property
+    def dead_host_retries(self) -> int:
+        """Get dead host retry limit (abandon after N consecutive timeouts)."""
+        return int(
+            self._config.get("dead_host_retries", DEFAULT_DEAD_HOST_RETRIES)
+            or DEFAULT_DEAD_HOST_RETRIES
         )
 
     @property

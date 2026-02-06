@@ -40,3 +40,11 @@ repos:
         files: ^redaudit/
         additional_dependencies: [types-requests]
         args: ['--ignore-missing-imports', '--no-strict-optional']
+
+  - repo: local
+    hooks:
+      - id: agent-pointer-check
+        name: agent pointer check
+        entry: scripts/check_agent_pointers.sh
+        language: script
+        pass_filenames: false

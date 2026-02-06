@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - Scanner Versions Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.1: Detect and report versions of external scanning tools.

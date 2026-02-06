@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
     <title>RedAudit Report - {{ target }}</title>
     <style>
         :root {
@@ -187,6 +188,8 @@
                         <li>Scanned <span>{{ pipeline.host_scan.scanned or 0 }}</span></li>
                         <li>Threads <span>{{ pipeline.host_scan.threads or 0 }}</span></li>
                         <li>Mode <span>{{ config_snapshot.scan_mode or scan_mode }}</span></li>
+                        <li>Nmap Args <span>{{ pipeline.host_scan.nmap_args or '-' }}</span></li>
+                        <li>Nmap Timing <span>{{ pipeline.host_scan.nmap_timing or '-' }}</span></li>
                     </ul>
                 </div>
                 <div class="meta-item">
@@ -196,7 +199,11 @@
                         <li>Protocols <span>{{ (pipeline.net_discovery.protocols_used or [])|join(', ') }}</span></li>
                         <li>ARP Hosts <span>{{ pipeline.net_discovery.counts.arp_hosts or 0 }}</span></li>
                         <li>HyperScan TCP <span>{{ pipeline.net_discovery.counts.hyperscan_tcp_hosts or 0 }}</span></li>
+                        <li>HyperScan UDP Ports <span>{{ pipeline.net_discovery.counts.hyperscan_udp_ports or 0 }}</span></li>
                         <li>Red Team <span>{{ 'On' if pipeline.net_discovery.redteam_enabled else 'Off' }}</span></li>
+                        {% if pipeline.net_discovery.errors %}
+                        <li>Errors <span>{{ pipeline.net_discovery.errors|join('; ') }}</span></li>
+                        {% endif %}
                     </ul>
                 </div>
                 <div class="meta-item">
@@ -209,14 +216,105 @@
                         <li>HTTP <span>{{ pipeline.agentless_verify.signals.http or 0 }}</span></li>
                     </ul>
                 </div>
+                {% if auth_scan.enabled or auth_scan.targets or auth_scan.completed %}
+                <div class="meta-item">
+                    <h4>Authenticated Scan</h4>
+                    <ul>
+                        <li>Enabled <span>{{ 'Yes' if auth_scan.enabled else 'No' }}</span></li>
+                        <li>Targets <span>{{ auth_scan.targets or 0 }}</span></li>
+                        <li>Completed <span>{{ auth_scan.completed or 0 }}</span></li>
+                        <li>SSH Success <span>{{ auth_scan.ssh_success or 0 }}</span></li>
+                        <li>Lynis Success <span>{{ auth_scan.lynis_success or 0 }}</span></li>
+                        <li>Failures <span>{{ auth_scan.failures or 0 }}</span></li>
+                        {% if auth_scan.errors %}
+                        <li>Errors <span>{{ auth_scan.errors|join('; ') }}</span></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
                 <div class="meta-item">
                     <h4>Nuclei</h4>
                     <ul>
-                        <li>Targets <span>{{ pipeline.nuclei.targets or 0 }}</span></li>
-                        <li>Findings <span>{{ pipeline.nuclei.findings or 0 }}</span></li>
-                        <li>Status <span>{{ 'OK' if pipeline.nuclei.success else 'N/A' }}</span></li>
+                        {% set nuclei = pipeline.nuclei or {} %}
+                        <li>Targets <span>{{ nuclei.targets or 0 }}</span></li>
+                        <li>Findings <span>{{ nuclei.findings or 0 }}</span></li>
+                        {% if nuclei.profile_selected and nuclei.profile_effective and nuclei.profile_selected != nuclei.profile_effective %}
+                        <li>Profile (selected) <span>{{ nuclei.profile_selected }}</span></li>
+                        <li>Profile (effective) <span>{{ nuclei.profile_effective }}</span></li>
+                        <li>Auto-switch <span>Yes</span></li>
+                        {% else %}
+                        <li>Profile <span>{{ nuclei.profile_effective or nuclei.profile or '-' }}</span></li>
+                        {% if nuclei.auto_switched is not none %}
+                        <li>Auto-switch <span>{{ 'Yes' if nuclei.auto_switched else 'No' }}</span></li>
+                        {% endif %}
+                        {% endif %}
+                        <li>Full coverage <span>{{ 'Yes' if nuclei.full_coverage else 'No' }}</span></li>
+                        {% if nuclei.findings_suspected is not none %}
+                        <li>Suspected <span>{{ nuclei.findings_suspected }}</span></li>
+                        {% endif %}
+                        {% if nuclei.partial %}
+                        <li>Timeout batches <span>{{ (nuclei.timeout_batches or [])|length }}</span></li>
+                        <li>Failed batches <span>{{ (nuclei.failed_batches or [])|length }}</span></li>
+                        {% endif %}
+                        {% if nuclei.partial %}
+                        <li>Status <span>Partial</span></li>
+                        {% elif nuclei.success %}
+                        <li>Status <span>OK</span></li>
+                        {% elif nuclei.error %}
+                        <li>Status <span>Error</span></li>
+                        {% else %}
+                        <li>Status <span>N/A</span></li>
+                        {% endif %}
                     </ul>
                 </div>
+                <div class="meta-item">
+                    <h4>Deep Scan</h4>
+                    <ul>
+                        <li>Identity Threshold <span>{{ pipeline.deep_scan.identity_threshold or 0 }}</span></li>
+                        <li>UDP Mode <span>{{ pipeline.deep_scan.udp_mode or '-' }}</span></li>
+                        <li>UDP Top Ports <span>{{ pipeline.deep_scan.udp_top_ports or 0 }}</span></li>
+                        {% if pipeline.deep_scan.deep_scan_budget %}
+                        <li>Deep Budget <span>{{ pipeline.deep_scan.deep_scan_budget }}</span></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class="meta-item">
+                    <h4>Scope Expansion</h4>
+                    {% set scope = pipeline.scope_expansion or {} %}
+                    {% set leak_runtime = scope.leak_follow_runtime or {} %}
+                    <ul>
+                        <li>Leak Following <span>{{ scope.leak_follow_mode or 'off' }}</span></li>
+                        <li>Leak Allowlist <span>{{ (scope.leak_follow_allowlist or [])|join(', ') or '-' }}</span></li>
+                        <li>Leak candidates detected <span>{{ leak_runtime.detected or 0 }}</span></li>
+                        <li>Leak candidates eligible <span>{{ leak_runtime.eligible or 0 }}</span></li>
+                        <li>Leak targets followed <span>{{ leak_runtime.followed or 0 }}</span></li>
+                        <li>Leak candidates skipped <span>{{ leak_runtime.skipped or 0 }}</span></li>
+                        <li>IoT Probes <span>{{ scope.iot_probes_mode or 'off' }}</span></li>
+                        <li>IoT Budget (s) <span>{{ scope.iot_probe_budget_seconds or '-' }}</span></li>
+                        <li>IoT Timeout (s) <span>{{ scope.iot_probe_timeout_seconds or '-' }}</span></li>
+                    </ul>
+                    {% if leak_runtime.follow_targets %}
+                    <details style="margin-top: 0.5rem;">
+                        <summary style="cursor: pointer; color: var(--accent-blue); font-size: 0.85rem;">Show followed leak targets</summary>
+                        <ul style="margin-top: 0.4rem;">
+                            {% for target in leak_runtime.follow_targets %}
+                            <li style="font-size: 0.8rem; color: var(--text-secondary);">{{ target }}</li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                    {% endif %}
+                </div>
+                {% set hyperscan_vs_final = pipeline.hyperscan_vs_final or {} %}
+                {% if hyperscan_vs_final.by_subnet %}
+                <div class="meta-item">
+                    <h4>HyperScan vs Final</h4>
+                    <ul>
+                        {% for subnet, stats in hyperscan_vs_final.by_subnet.items() %}
+                        <li>{{ subnet }} <span>{{ stats.hyperscan_ports or 0 }} / {{ stats.final_ports or 0 }} (missed TCP {{ stats.missed_tcp or 0 }}, UDP {{ stats.missed_udp or 0 }})</span></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
                 <div class="meta-item">
                     <h4>Smart Scan</h4>
                     <ul>
@@ -292,7 +390,35 @@
                 {% for playbook in playbooks %}
                 <div class="playbook-card">
                     <h5>{{ playbook.title or playbook.path|basename }}</h5>
-                    <p class="ip">{{ playbook.target_ip or '-' }}</p>
+                    <p class="ip">{{ playbook.target_ip or playbook.host or '-' }}</p>
+                    <details style="margin-top: 0.5rem;">
+                        <summary style="cursor: pointer; color: var(--accent-blue); font-size: 0.85rem;">View Steps & Commands</summary>
+                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                            {% if playbook.steps %}
+                            <strong style="display: block; margin-bottom: 0.25rem;">Remediation Steps:</strong>
+                            <ol style="padding-left: 1.2rem; margin-bottom: 0.75rem;">
+                                {% for step in playbook.steps %}
+                                <li style="margin-bottom: 0.2rem;">{{ step }}</li>
+                                {% endfor %}
+                            </ol>
+                            {% endif %}
+
+                            {% if playbook.commands %}
+                            <strong style="display: block; margin-bottom: 0.25rem;">Suggested Commands:</strong>
+                            <pre style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; overflow-x: auto; color: var(--text-primary); font-family: monospace;">{% for cmd in playbook.commands %}
+{{ cmd }}{% endfor %}</pre>
+                            {% endif %}
+
+                            {% if playbook.references %}
+                            <div style="margin-top: 0.75rem;">
+                                <strong>References:</strong><br>
+                                {% for ref in playbook.references %}
+                                <a href="{{ ref }}" target="_blank" style="color: var(--accent-blue); text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🔗 {{ ref }}</a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </details>
                 </div>
                 {% endfor %}
             </div>
@@ -338,12 +464,22 @@
                         <td>{{ host.ports_count }}</td>
                         <td>
                             {% set bd = host.risk_score_breakdown %}
+                            {% set evidence = bd.evidence_vulns|default(bd.total_vulns|default(0)) %}
+                            {% set service_cves = bd.service_cve_total|default(0) %}
+                            {% set service_critical = bd.service_cve_critical|default(0) %}
+                            {% set service_high = bd.service_cve_high|default(0) %}
+                            {% set service_exploits = bd.service_exploit_total|default(0) %}
+                            {% set service_backdoors = bd.service_backdoor_total|default(0) %}
+                            {% set risk_findings = bd.finding_risk_total|default(0) %}
+                            {% set total_findings = bd.finding_total|default(0) %}
+                            {% set heuristics = bd.heuristic_flags|join(', ') if bd.heuristic_flags else '-' %}
+                            {% set source = bd.max_cvss_source|default('none') %}
                             {% if host.risk_score >= 70 %}
-                            <span class="risk-high risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }}">{{ host.risk_score }}</span>
+                            <span class="risk-high risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Service CVEs: {{ service_cves }} (critical {{ service_critical }}, high {{ service_high }}) | Service Exploits: {{ service_exploits }} | Service Backdoors: {{ service_backdoors }} | Risk Findings: {{ risk_findings }}/{{ total_findings }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
                             {% elif host.risk_score >= 40 %}
-                            <span class="risk-medium risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }}">{{ host.risk_score }}</span>
+                            <span class="risk-medium risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Service CVEs: {{ service_cves }} (critical {{ service_critical }}, high {{ service_high }}) | Service Exploits: {{ service_exploits }} | Service Backdoors: {{ service_backdoors }} | Risk Findings: {{ risk_findings }}/{{ total_findings }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
                             {% else %}
-                            <span class="risk-low risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }}">{{ host.risk_score }}</span>
+                            <span class="risk-low risk-tooltip" title="CVSS: {{ bd.max_cvss|default(0) }} ({{ source }}) | Base: {{ bd.base_score|default(0) }} | Density: +{{ bd.density_bonus|default(0) }} | Exposure: x{{ bd.exposure_multiplier|default(1.0) }} | Evidence: {{ evidence }} | Service CVEs: {{ service_cves }} (critical {{ service_critical }}, high {{ service_high }}) | Service Exploits: {{ service_exploits }} | Service Backdoors: {{ service_backdoors }} | Risk Findings: {{ risk_findings }}/{{ total_findings }} | Heuristics: {{ heuristics }}">{{ host.risk_score }}</span>
                             {% endif %}
                         </td>
                         <td>
@@ -359,7 +495,7 @@
                         <td>{{ host.asset_type }}</td>
                         <td>{{ host.os }}</td>
                         <td><code>{{ host.mac }}</code></td>
-                        <td>{{ host.vendor }}</td>
+                        <td title="source: {{ host.vendor_source|default('unknown') }}">{{ host.vendor }}</td>
                         <td>
                             <div class="tag-list">
                                 {% for tag in host.tags.split(',') if tag %}
@@ -373,6 +509,30 @@
                 </tbody>
             </table>
         </div>
+
+        {% if nuclei_suspected and nuclei_suspected|length > 0 %}
+        <div class="section">
+            <div class="section-title">Nuclei Suspected ({{ nuclei_suspected|length }}) <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal;">— Unconfirmed signals for review</span></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Template</th>
+                        <th>Matched URL</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in nuclei_suspected %}
+                    <tr>
+                        <td><code>{{ item.template_id }}</code></td>
+                        <td><code>{{ item.matched_at }}</code></td>
+                        <td>{{ item.fp_reason }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
 
         <div class="section">
             <div class="section-title">Findings ({{ finding_count }}) <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal;">— Click row to expand technical details</span></div>
@@ -403,14 +563,70 @@
                     </tr>
                     <tr class="details-row">
                         <td colspan="8" class="details-cell">
+                            {% if finding.description %}
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong style="color: var(--text-secondary); font-size: 0.8rem;">Description:</strong>
+                                <p style="font-size: 0.9rem; margin-top: 0.2rem;">{{ finding.description }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if finding.evidence_meta %}
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong style="color: var(--text-secondary); font-size: 0.8rem;">Evidence Source:</strong>
+                                <span style="font-size: 0.85rem;">{{ finding.evidence_meta.source_tool or finding.source }}</span>
+                                {% if finding.evidence_meta.signals %}
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">({{ finding.evidence_meta.signals|join(', ') }})</span>
+                                {% endif %}
+                                {% if finding.evidence_meta.template_id %}
+                                <div style="font-size: 0.85rem; color: var(--text-secondary);">Template ID: {{ finding.evidence_meta.template_id }}</div>
+                                {% endif %}
+                                {% if finding.evidence_meta.matched_at %}
+                                <div style="font-size: 0.85rem; color: var(--text-secondary);">Matched At: {{ finding.evidence_meta.matched_at }}</div>
+                                {% endif %}
+                                {% if finding.evidence_meta.raw_output_sha256 %}
+                                <div style="font-size: 0.85rem; color: var(--text-secondary);">Raw Output SHA256: <code>{{ finding.evidence_meta.raw_output_sha256 }}</code></div>
+                                {% endif %}
+                                {% if finding.evidence_meta.raw_output_ref %}
+                                <div style="font-size: 0.85rem; color: var(--text-secondary);">Raw Output Ref: <code>{{ finding.evidence_meta.raw_output_ref }}</code></div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            {% if finding.evidence %}
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong style="color: var(--text-secondary); font-size: 0.8rem;">Technical Evidence:</strong>
+                                <pre style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; color: var(--accent-green); margin-top: 0.25rem; white-space: pre-wrap;">{{ finding.evidence }}</pre>
+                            </div>
+                            {% endif %}
+
                             {% if finding.observations %}
                             <strong style="color: var(--text-secondary); font-size: 0.8rem;">Technical Observations:</strong>
-                            <ul class="observations">
+                            <ul class="observations" style="margin-bottom: 0.75rem;">
                                 {% for obs in finding.observations %}
                                 <li>{{ obs }}</li>
                                 {% endfor %}
                             </ul>
-                            {% else %}
+                            {% endif %}
+
+                            {% if finding.potential_false_positives %}
+                            <strong style="color: var(--text-secondary); font-size: 0.8rem;">Possible False Positives:</strong>
+                            <ul class="observations" style="margin-bottom: 0.75rem;">
+                                {% for fp in finding.potential_false_positives %}
+                                <li>{{ fp }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+
+                            {% if finding.references %}
+                            <strong style="color: var(--text-secondary); font-size: 0.8rem;">References:</strong>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem;">
+                                {% for ref in finding.references %}
+                                <a href="{{ ref }}" target="_blank" style="color: var(--accent-blue); text-decoration: none; font-size: 0.85rem;">🔗 {{ ref }}</a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            {% if not finding.description and not finding.evidence and not finding.observations and not finding.references %}
                             <p style="color: var(--text-secondary); font-size: 0.85rem;">No additional technical details available.</p>
                             {% endif %}
                         </td>
@@ -425,13 +641,13 @@
                 Generated by <strong>RedAudit</strong> v{{ version }} — {{ generated_at }}
             </div>
             <div style="font-size: 0.75rem; opacity: 0.7;">
-                GPLv3 License | © 2025 RedAudit |
+                GPLv3 License | © 2026 RedAudit |
                 <a href="https://github.com/dorinbadea/RedAudit" style="color: var(--accent-blue);">github.com/dorinbadea/RedAudit</a>
             </div>
         </footer>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="chart.umd.min.js"></script>
     <script>
         // Severity Chart
         const severityCtx = document.getElementById('severityChart').getContext('2d');

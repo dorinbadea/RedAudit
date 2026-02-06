@@ -40,12 +40,50 @@ def test_parse_arp_scan_and_ip_neigh():
     assert neigh[0]["mac"] == "aa:bb:cc:dd:ee:ff"
 
 
+def test_parse_arp_scan_unknown_vendor_enrichment(monkeypatch):
+    monkeypatch.setattr(topology, "lookup_vendor_online", lambda _mac: "EnrichedVendor")
+    out = "\n".join(
+        [
+            "192.168.1.10\tAA:BB:CC:DD:EE:FF\t(Unknown)",
+            "192.168.1.10\tAA:BB:CC:DD:EE:FF\t(Unknown)",
+        ]
+    )
+    hosts = topology._parse_arp_scan(out)
+    assert len(hosts) == 1
+    assert hosts[0]["vendor"] == "EnrichedVendor"
+
+
 def test_parse_vlan_ids():
     ip_link_out = "vlan protocol 802.1Q id 10 <REORDER_HDR>"
     assert topology._parse_vlan_ids_from_ip_link(ip_link_out) == [10]
 
     tcpdump_out = "12:34:56.789012 vlan 20, p 0, ethertype IPv4"
     assert topology._parse_vlan_ids_from_tcpdump(tcpdump_out) == [20]
+
+
+def test_parse_vlan_ids_from_ifconfig_invalid(monkeypatch):
+    def _fake_finditer(*_args, **_kwargs):
+        class _Match:
+            def group(self, _idx):
+                return "invalid"
+
+        return [_Match()]
+
+    monkeypatch.setattr(topology.re, "finditer", _fake_finditer)
+    assert topology._parse_vlan_ids_from_ifconfig("vlan: x") == []
+
+
+def test_parse_lldp_from_tcpdump():
+    tcpdump_out = "\n".join(
+        [
+            "System Name TLV (5), length 18: Switch-01",
+            "Port ID TLV (2), length 11: Gi1/0/1",
+            "System Description TLV (6), length 12: Sample Switch",
+            "Management Address TLV (8), length 4: 192.168.1.2",
+        ]
+    )
+    neighbors = topology._parse_lldp_from_tcpdump(tcpdump_out)
+    assert neighbors[0]["chassis"]["name"] == "Switch-01"
 
 
 def test_extract_lldp_neighbors_and_networks():

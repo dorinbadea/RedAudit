@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - SIEM Enhancement Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v2.9: SIEM-compatible output enhancements for Splunk, Elastic, QRadar, ArcSight.
@@ -11,7 +11,9 @@ Implements ECS (Elastic Common Schema), severity scoring, and CEF format.
 import hashlib
 import json
 import re
-from typing import Dict, List, Optional, Tuple, TypedDict
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
+
+from redaudit.utils.vendor_hints import infer_vendor_from_hostname
 
 
 # ECS Version for Elastic integration
@@ -19,6 +21,18 @@ ECS_VERSION = "8.11"
 
 # v3.2.3: Schema version for JSONL/ECS output stability
 SCHEMA_VERSION = "1.0"
+
+
+_UNKNOWN_VENDOR_TOKENS = (
+    "unknown",
+    "n/a",
+    "none",
+    "unavailable",
+    "(mac privado)",
+    "(private mac)",
+    "private mac",
+    "-",
+)
 
 
 class SeverityInfo(TypedDict):
@@ -41,6 +55,92 @@ def _severity_from_label(label: str) -> Tuple[str, int]:
     if value not in SEVERITY_LEVELS:
         value = "info"
     return value, SEVERITY_LEVELS[value]["score"]
+
+
+def _score_from_existing_fields(vuln_record: Dict) -> Optional[float]:
+    """Return persisted severity score (0-100) when available."""
+    score = vuln_record.get("severity_score")
+    if isinstance(score, (int, float)):
+        return float(max(0.0, min(100.0, score)))
+
+    normalized = vuln_record.get("normalized_severity")
+    if isinstance(normalized, (int, float)):
+        return float(max(0.0, min(100.0, normalized * 10.0)))
+
+    return None
+
+
+def _normalize_vendor_text(vendor: Optional[str]) -> str:
+    return str(vendor or "").strip()
+
+
+def _is_unknown_vendor(vendor: Optional[str]) -> bool:
+    value = _normalize_vendor_text(vendor).lower()
+    if not value:
+        return True
+    return any(token in value for token in _UNKNOWN_VENDOR_TOKENS)
+
+
+def _is_guess_vendor(vendor: Optional[str]) -> bool:
+    return "(guess)" in _normalize_vendor_text(vendor).lower()
+
+
+def resolve_canonical_vendor(host_record: Dict) -> Dict[str, str]:
+    """
+    Resolve a canonical vendor from all available host identity sources.
+    """
+    deep_scan = host_record.get("deep_scan", {}) or {}
+    agentless = host_record.get("agentless_fingerprint", {}) or {}
+    ecs_host = host_record.get("ecs_host", {}) or {}
+    hostname = host_record.get("hostname") or ""
+
+    candidates = [
+        ("host", host_record.get("vendor")),
+        ("deep_scan", deep_scan.get("vendor")),
+        ("agentless", agentless.get("device_vendor")),
+        ("ecs", ecs_host.get("vendor")),
+    ]
+
+    guessed_candidates: List[Tuple[str, str]] = []
+    fallback_candidates: List[Tuple[str, str]] = []
+
+    for source, raw_vendor in candidates:
+        vendor = _normalize_vendor_text(raw_vendor)
+        if not vendor:
+            continue
+        if _is_unknown_vendor(vendor):
+            fallback_candidates.append((vendor, f"{source}_fallback"))
+            continue
+        if _is_guess_vendor(vendor):
+            guessed_candidates.append((vendor, source))
+            continue
+        return {"vendor": vendor, "source": source, "confidence": "high"}
+
+    for vendor, source in guessed_candidates:
+        return {"vendor": vendor, "source": source, "confidence": "medium"}
+
+    hostname_guess = infer_vendor_from_hostname(hostname)
+    if hostname_guess:
+        return {"vendor": hostname_guess, "source": "hostname_guess", "confidence": "low"}
+
+    for vendor, source in fallback_candidates:
+        return {"vendor": vendor, "source": source, "confidence": "low"}
+
+    return {"vendor": "", "source": "none", "confidence": "none"}
+
+
+def _testssl_is_experimental(testssl: Dict) -> bool:
+    """Detect low-confidence TestSSL findings marked as experimental/potentially vulnerable."""
+    if not isinstance(testssl, dict):
+        return False
+    vulns = testssl.get("vulnerabilities", [])
+    if not isinstance(vulns, list):
+        return False
+    for vuln in vulns:
+        text = str(vuln).lower()
+        if "experimental" in text or "potentially vulnerable" in text:
+            return True
+    return False
 
 
 # Keywords to detect severity from findings
@@ -73,6 +173,36 @@ SEVERITY_KEYWORDS = {
     "low": ["cookie", "header", "missing", "deprecated", "outdated"],
 }
 
+# v4.6.19: Specific severity overrides for common Nikto/scanner findings
+# These patterns are checked FIRST and override the generic keyword matching.
+# Regex patterns (case-insensitive) mapped to severity level.
+SEVERITY_OVERRIDES = {
+    "low": [
+        r"missing.*x-frame-options",
+        r"anti-clickjacking.*x-frame-options",  # v4.6.21: Nikto wording
+        r"x-frame-options.*not present",  # v4.6.21: Alternative Nikto wording
+        r"missing.*x-content-type",
+        r"missing.*strict-transport-security",
+        r"missing.*content-security-policy",
+        r"clickjacking",
+        r"httponly.*flag",
+        r"secure.*flag.*cookie",
+        r"anti-clickjacking.*header",
+        r"x-xss-protection",
+    ],
+    "info": [
+        r"etag.*inode",
+        r"server\s*banner",
+        r"version\s*disclosed",
+        r"x-powered-by",
+        r"uncommon\s*header",
+        r"items\s*checked.*error",
+        r"no\s*cgi\s*directories",
+        r"root\s*page.*redirects",
+        r"allowed\s*http\s*methods",
+    ],
+}
+
 # Asset type to tags mapping
 ASSET_TYPE_TAGS = {
     "router": ["network", "infrastructure", "gateway"],
@@ -100,6 +230,51 @@ SERVICE_TAGS = {
     "rdp": ["remote-access", "windows", "admin"],
     "telnet": ["remote-access", "legacy", "insecure"],
     "vnc": ["remote-access", "desktop"],
+}
+
+# v4.6.19: Known vulnerable service versions with backdoors or critical vulns
+# Format: regex pattern -> (CVE-ID, severity, description)
+KNOWN_VULNERABLE_SERVICES = {
+    r"vsftpd[/ ]2\.3\.4": (
+        "CVE-2011-2523",
+        "critical",
+        "vsftpd 2.3.4 backdoor - Remote code execution via :) trigger",
+    ),
+    r"unreal(ircd)?[/ ]?3\.2\.8\.1": (
+        "CVE-2010-2075",
+        "critical",
+        "UnrealIRCd 3.2.8.1 backdoor - Remote code execution via DEBUG command",
+    ),
+    r"proftpd[/ ]1\.3\.3[a-c]": (
+        "CVE-2010-4221",
+        "critical",
+        "ProFTPD 1.3.3a-c Telnet IAC buffer overflow",
+    ),
+    r"samba[/ ]3\.0\.(2[0-5]|[0-9])": (
+        "CVE-2007-2447",
+        "critical",
+        "Samba 3.0.0-3.0.25 username map script RCE",
+    ),
+    r"distccd": (
+        "CVE-2004-2687",
+        "high",
+        "distcc daemon allows arbitrary command execution",
+    ),
+    r"java rmi": (
+        "JAVA-RMI-DESER",
+        "high",
+        "Java RMI registry - potential deserialization vulnerability",
+    ),
+    r"apache[/ ]2\.2\.[0-8]\\b": (
+        "CVE-2011-3192",
+        "high",
+        "Apache 2.2.0-2.2.8 Range header DoS vulnerability",
+    ),
+    r"openssh[/ ][1-4]\\.": (
+        "OPENSSH-OLD",
+        "medium",
+        "OpenSSH version < 5.0 has known vulnerabilities",
+    ),
 }
 
 # v3.1: Finding categories for classification
@@ -160,6 +335,157 @@ FINDING_CATEGORIES = {
         "command injection",
     ],
 }
+
+
+def detect_known_vulnerable_services(banner: str) -> List[Dict]:
+    """
+    Detect known vulnerable services from banner text.
+
+    v4.6.19: Checks service banners against KNOWN_VULNERABLE_SERVICES patterns.
+
+    Args:
+        banner: Service banner or version string
+
+    Returns:
+        List of detected vulnerabilities, each with cve_id, severity, description
+    """
+    if not banner:
+        return []
+
+    banner_lower = banner.lower()
+    detected = []
+
+    for pattern, (cve_id, severity, description) in KNOWN_VULNERABLE_SERVICES.items():
+        if re.search(pattern, banner_lower, re.IGNORECASE):
+            detected.append(
+                {
+                    "cve_id": cve_id,
+                    "severity": severity,
+                    "description": description,
+                    "matched_pattern": pattern,
+                    "banner_excerpt": banner[:100],
+                }
+            )
+
+    return detected
+
+
+def extract_finding_title(vuln: Dict) -> str:
+    """
+    Extract a descriptive title from vulnerability record.
+
+    v4.6.20: Unified function for HTML and JSONL exporters.
+    Previously duplicated in jsonl_exporter._extract_title and html_reporter._extract_finding_title.
+
+    Priority:
+    1. Use existing descriptive_title if available
+    2. Use Nuclei template_id
+    3. Use CVE IDs
+    4. Generate from parsed_observations
+    5. Fallback based on source/port
+
+    Args:
+        vuln: Vulnerability dictionary
+
+    Returns:
+        Human-readable title string
+    """
+    import re
+
+    # 1. Use existing descriptive_title if set
+    if vuln.get("descriptive_title"):
+        return vuln["descriptive_title"]
+
+    obs = vuln.get("parsed_observations") or []
+    port = vuln.get("port", 0)
+
+    # 2. If we have a template_id from Nuclei, use it
+    template_id = vuln.get("template_id", "")
+    if template_id:
+        if template_id.upper().startswith("CVE-"):
+            return f"Nuclei: {template_id.upper()}"
+        nice_name = template_id.replace("-", " ").replace("_", " ").title()
+        return f"Nuclei: {nice_name}"
+
+    # 3. If we have CVE IDs, prioritize them
+    cve_ids = vuln.get("cve_ids", [])
+    if cve_ids and isinstance(cve_ids, list) and cve_ids[0]:
+        return f"Known Vulnerability: {cve_ids[0].upper()}"
+
+    # 4. Generate descriptive title based on observations
+    for observation in obs:
+        if not isinstance(observation, str):
+            continue
+        obs_lower = observation.lower()
+
+        # Security headers
+        if "missing hsts" in obs_lower or "strict-transport-security" in obs_lower:
+            return "Missing HTTP Strict Transport Security Header"
+        if "x-frame-options" in obs_lower and (
+            "missing" in obs_lower or "not present" in obs_lower
+        ):
+            return "Missing X-Frame-Options Header (Clickjacking Risk)"
+        if "x-content-type" in obs_lower and ("missing" in obs_lower or "not set" in obs_lower):
+            return "Missing X-Content-Type-Options Header"
+
+        # SSL/TLS issues
+        if "ssl hostname mismatch" in obs_lower or "does not match certificate" in obs_lower:
+            return "SSL Certificate Hostname Mismatch"
+        if "certificate expired" in obs_lower or ("expired" in obs_lower and "ssl" in obs_lower):
+            return "SSL Certificate Expired"
+        if "self-signed" in obs_lower or "self signed" in obs_lower:
+            return "Self-Signed SSL Certificate"
+        if "beast" in obs_lower:
+            return "BEAST Vulnerability (SSL/TLS)"
+        if "poodle" in obs_lower:
+            return "POODLE Vulnerability (SSL 3.0)"
+
+        # CVE references in observations
+        if "cve-" in obs_lower:
+            match = re.search(r"(cve-\d{4}-\d+)", obs_lower)
+            if match:
+                return f"Known Vulnerability: {match.group(1).upper()}"
+
+        # Information disclosure
+        if "rfc-1918" in obs_lower or "private ip" in obs_lower:
+            return "Internal IP Address Disclosed in Headers"
+        if "server banner" in obs_lower and "no banner" not in obs_lower:
+            return "Server Version Disclosed in Banner"
+        if "directory listing" in obs_lower or "index of" in obs_lower:
+            return "Directory Listing Enabled"
+        if "etag" in obs_lower and "inode" in obs_lower:
+            return "ETag Inode Disclosure"
+
+        # HTTP methods
+        if "put method" in obs_lower or "delete method" in obs_lower:
+            return "Dangerous HTTP Methods Enabled"
+
+    # 5. Fallback: first nikto finding (v4.6.20: backward compat with old html_reporter)
+    nikto = vuln.get("nikto_findings") or []
+    if nikto and isinstance(nikto, list):
+        for finding in nikto:
+            if not isinstance(finding, str):
+                continue
+            # Skip metadata lines
+            finding_lower = finding.lower()
+            if any(x in finding_lower for x in ["target ip:", "start time:", "end time:"]):
+                continue
+            if finding.strip():
+                text = finding.strip()
+                return text[:80] + ("..." if len(text) > 80 else "")
+
+    # 6. Improved fallback based on available info
+    source = vuln.get("source", "") or (vuln.get("original_severity", {}) or {}).get("tool", "")
+    url = vuln.get("url", "")
+
+    if source == "testssl":
+        return f"SSL/TLS Configuration Issue on Port {port}"
+    if source == "nikto" and url:
+        return f"Web Security Finding on Port {port}"
+    if url:
+        return f"HTTP Service Finding on Port {port}"
+
+    return f"Service Finding on Port {port}"
 
 
 def generate_finding_id(
@@ -239,10 +565,18 @@ def calculate_severity(finding: str) -> str:
         "host(s) tested",
         "server: no banner retrieved",
         "scan terminated:",
+        "no web server found",
         "no cgi directories found",
     )
     if any(s in finding_lower for s in benign_substrings):
         return "info"
+
+    # v4.6.19: Check specific severity overrides FIRST (regex patterns)
+    # These take precedence over generic keyword matching for common Nikto findings.
+    for level in ["info", "low"]:  # Check info first, then low
+        for pattern in SEVERITY_OVERRIDES.get(level, []):
+            if re.search(pattern, finding_lower):
+                return level
 
     def keyword_matches(keyword: str) -> bool:
         kw = (keyword or "").lower()
@@ -305,6 +639,17 @@ def calculate_risk_score(host_record: Dict) -> int:
     if not ports and not findings:
         return 0
 
+    # v4.6.21: IoT lwIP false positive detection
+    # lwIP TCP/IP stack (common in cheap IoT) responds SYN-ACK to all SYN probes,
+    # making Nmap report many "open" ports that aren't real services.
+    # Heuristic: IoT device with >20 ports is likely a false positive.
+    asset_type = str(host_record.get("asset_type") or "").lower()
+    os_detected = str(host_record.get("os_detected") or "").lower()
+    is_iot = asset_type == "iot" or "lwip" in os_detected
+    if is_iot and len(ports) > 20:
+        # Cap risk score for IoT with suspiciously many ports
+        return 30  # Low-medium risk, flag for manual review
+
     max_cvss = 0.0
     total_vulns = 0
     has_exposed_port = False
@@ -341,9 +686,9 @@ def calculate_risk_score(host_record: Dict) -> int:
         cves = port.get("cves", [])
         for cve in cves:
             cvss = cve.get("cvss_score")
-            if cvss and isinstance(cvss, (int, float)) and cvss > max_cvss:
-                max_cvss = float(cvss)
-            total_vulns += 1
+            if cvss and isinstance(cvss, (int, float)):
+                max_cvss = max(max_cvss, float(cvss))
+                total_vulns += 1
 
         # Count known exploits
         exploits = port.get("known_exploits", [])
@@ -357,14 +702,49 @@ def calculate_risk_score(host_record: Dict) -> int:
         if service in ("telnet", "rlogin", "rsh"):
             # Plaintext remote access = critical (9.0)
             max_cvss = max(max_cvss, 9.0)
-            total_vulns += 1
         elif service == "ftp":
             # FTP = high risk (7.5)
             max_cvss = max(max_cvss, 7.5)
-            total_vulns += 1
         elif "ssl" in service and port_number not in (443, 8443):
             # SSL on non-standard port = medium concern
             max_cvss = max(max_cvss, 5.0)
+
+        # v4.6.20: Check for known backdoored services using service+version
+        # nmap reports version in 'version' field, not just in banner text
+        version = port.get("version") or ""
+        product = port.get("product") or ""
+        banner = port.get("banner") or ""
+        # Build a combined string for pattern matching
+        service_info = f"{service} {product} {version} {banner}".strip()
+        if service_info:
+            backdoors = detect_known_vulnerable_services(service_info)
+            if backdoors:
+                # Known backdoor = critical (10.0)
+                max_cvss = max(max_cvss, 10.0)
+                total_vulns += len(backdoors)
+                # Store detected backdoors on the port for downstream use
+                if "detected_backdoors" not in port:
+                    port["detected_backdoors"] = []
+                port["detected_backdoors"].extend(backdoors)
+
+                # v4.6.22: Also inject CVE into port cves list for JSONL propagation
+                if "cves" not in port:
+                    port["cves"] = []
+                for bd in backdoors:
+                    cve_id = bd.get("cve_id", "")
+                    # Only add if it's a real CVE and not already present
+                    if cve_id.upper().startswith("CVE-"):
+                        existing_cves = {c.get("cve_id", "").upper() for c in port["cves"]}
+                        if cve_id.upper() not in existing_cves:
+                            port["cves"].append(
+                                {
+                                    "cve_id": cve_id.upper(),
+                                    "cvss_score": 9.8,
+                                    "cvss_severity": "CRITICAL",
+                                    "description": bd.get("description", ""),
+                                    "source": "banner_analysis",
+                                }
+                            )
 
     # v4.3.1: Include vulnerabilities from Nikto/Nuclei finding dumps
     # These findings may not be attached to specific ports
@@ -424,31 +804,60 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
     Returns:
         Dict with 'score' and 'breakdown' containing:
         - max_cvss: Maximum CVSS score found
+        - max_cvss_source: "evidence" or "heuristic" based on the max score source
         - base_score: Base score (max_cvss * 10)
         - density_bonus: Logarithmic density bonus
         - exposure_multiplier: 1.0 or 1.15
         - total_vulns: Count of vulnerabilities
+        - evidence_vulns: Count of evidence-backed vulnerabilities
+        - heuristic_flags: List of heuristic risk signals (telnet/ftp/etc.)
         - has_exposed_port: Boolean for external-facing ports
     """
     import math
 
     ports = host_record.get("ports", [])
-    if not ports:
+    findings = host_record.get("findings", [])
+    if not ports and not findings:
         return {
             "score": 0,
             "breakdown": {
                 "max_cvss": 0.0,
+                "max_cvss_source": "none",
                 "base_score": 0.0,
                 "density_bonus": 0.0,
                 "exposure_multiplier": 1.0,
                 "total_vulns": 0,
+                "evidence_vulns": 0,
+                "service_cve_total": 0,
+                "service_cve_critical": 0,
+                "service_cve_high": 0,
+                "service_exploit_total": 0,
+                "service_backdoor_total": 0,
+                "finding_total": 0,
+                "finding_risk_total": 0,
+                "heuristic_flags": [],
                 "has_exposed_port": False,
             },
         }
 
     max_cvss = 0.0
-    total_vulns = 0
+    max_cvss_source = "none"
+    evidence_vulns = 0
     has_exposed_port = False
+    heuristic_flags = set()
+    service_cve_total = 0
+    service_cve_critical = 0
+    service_cve_high = 0
+    service_exploit_total = 0
+    service_backdoor_total = 0
+    finding_total = 0
+    finding_risk_total = 0
+
+    def _set_max(score: float, source: str) -> None:
+        nonlocal max_cvss, max_cvss_source
+        if score > max_cvss:
+            max_cvss = score
+            max_cvss_source = source
 
     exposed_ports = {
         21,
@@ -479,28 +888,46 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
         cves = port.get("cves", [])
         for cve in cves:
             cvss = cve.get("cvss_score")
-            if cvss and isinstance(cvss, (int, float)) and cvss > max_cvss:
-                max_cvss = float(cvss)
-            total_vulns += 1
+            if cvss and isinstance(cvss, (int, float)):
+                score = float(cvss)
+                _set_max(score, "evidence")
+                evidence_vulns += 1
+                service_cve_total += 1
+                if score >= 9.0:
+                    service_cve_critical += 1
+                elif score >= 7.0:
+                    service_cve_high += 1
 
         exploits = port.get("known_exploits", [])
         if exploits:
-            max_cvss = max(max_cvss, 8.0)
-            total_vulns += len(exploits)
+            _set_max(8.0, "evidence")
+            evidence_vulns += len(exploits)
+            service_exploit_total += len(exploits)
 
         service = (port.get("service") or "").lower()
         if service in ("telnet", "rlogin", "rsh"):
-            max_cvss = max(max_cvss, 9.0)
-            total_vulns += 1
+            heuristic_flags.add(service)
+            _set_max(9.0, "heuristic")
         elif service == "ftp":
-            max_cvss = max(max_cvss, 7.5)
-            total_vulns += 1
+            heuristic_flags.add("ftp")
+            _set_max(7.5, "heuristic")
         elif "ssl" in service and port_number not in (443, 8443):
-            max_cvss = max(max_cvss, 5.0)
+            heuristic_flags.add("nonstandard_ssl")
+            _set_max(5.0, "heuristic")
+
+        version = port.get("version") or ""
+        product = port.get("product") or ""
+        banner = port.get("banner") or ""
+        service_info = f"{service} {product} {version} {banner}".strip()
+        if service_info:
+            backdoors = detect_known_vulnerable_services(service_info)
+            if backdoors:
+                _set_max(10.0, "evidence")
+                evidence_vulns += len(backdoors)
+                service_backdoor_total += len(backdoors)
 
     # v4.3.1: Include vulnerabilities from Nikto/Nuclei finding dumps (Fix M3)
     # Ensure findings logic matches calculate_risk_score()
-    findings = host_record.get("findings", [])
     severity_map = {
         "critical": 9.5,
         "high": 8.0,
@@ -519,15 +946,16 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
             score = float(norm)
 
         if score > 0:
-            max_cvss = max(max_cvss, score)
+            _set_max(score, "evidence")
             # Only count as 'vuln' for density if it adds risk (Med+)
             if score >= 4.0:
-                total_vulns += 1
+                evidence_vulns += 1
+                finding_risk_total += 1
 
     base_score = max_cvss * 10
     density_bonus = 0.0
-    if total_vulns > 0:
-        density_bonus = min(20.0, math.log10(total_vulns + 1) * 15)
+    if evidence_vulns > 0:
+        density_bonus = min(20.0, math.log10(evidence_vulns + 1) * 15)
 
     exposure_multiplier = 1.15 if has_exposed_port else 1.0
     final_score = (base_score + density_bonus) * exposure_multiplier
@@ -537,10 +965,20 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
         "score": capped_score,
         "breakdown": {
             "max_cvss": round(max_cvss, 1),
+            "max_cvss_source": max_cvss_source,
             "base_score": round(base_score, 1),
             "density_bonus": round(density_bonus, 1),
             "exposure_multiplier": exposure_multiplier,
-            "total_vulns": total_vulns,
+            "total_vulns": evidence_vulns,
+            "evidence_vulns": evidence_vulns,
+            "service_cve_total": service_cve_total,
+            "service_cve_critical": service_cve_critical,
+            "service_cve_high": service_cve_high,
+            "service_exploit_total": service_exploit_total,
+            "service_backdoor_total": service_backdoor_total,
+            "finding_total": finding_total,
+            "finding_risk_total": finding_risk_total,
+            "heuristic_flags": sorted(heuristic_flags),
             "has_exposed_port": has_exposed_port,
         },
     }
@@ -601,15 +1039,22 @@ def generate_host_tags(host_record: Dict, asset_type: Optional[str] = None) -> L
         if port.get("is_web_service"):
             tags.add("web")
 
+    # Add web tag if web ports were detected but ports lack web flags
+    if host_record.get("web_ports_count", 0) > 0:
+        tags.add("web")
+
     # Add status-based tags
     status = host_record.get("status", "")
     if status == "filtered":
         tags.add("firewall-protected")
 
-    # Add deep scan tags
-    if host_record.get("deep_scan"):
+    # Add deep scan tags - v4.5.16: Only if deep scan was actually executed
+    deep_scan = host_record.get("deep_scan", {})
+    smart_scan = host_record.get("smart_scan", {})
+    deep_executed = smart_scan.get("deep_scan_executed", False)
+    if deep_scan and deep_executed:
         tags.add("deep-scanned")
-        if host_record["deep_scan"].get("mac_address"):
+        if deep_scan.get("mac_address"):
             tags.add("mac-identified")
 
     # Add vulnerability tags
@@ -656,7 +1101,7 @@ def build_ecs_host(host_record: Dict) -> Dict:
     Returns:
         ECS host dictionary
     """
-    ecs_host = {
+    ecs_host: Dict[str, Any] = {
         "ip": [host_record.get("ip")] if host_record.get("ip") else [],
     }
 
@@ -668,7 +1113,10 @@ def build_ecs_host(host_record: Dict) -> Dict:
     if deep_scan.get("mac_address"):
         ecs_host["mac"] = [deep_scan["mac_address"]]
 
-    if deep_scan.get("vendor"):
+    canonical_vendor = _normalize_vendor_text(host_record.get("vendor"))
+    if canonical_vendor:
+        ecs_host["vendor"] = canonical_vendor
+    elif deep_scan.get("vendor"):
         ecs_host["vendor"] = deep_scan["vendor"]
 
     return ecs_host
@@ -762,10 +1210,11 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
 
     # Calculate max severity from all findings
     max_severity = "info"
-    max_score = 0
+    max_score = 0.0
     all_categories = set()
     primary_finding = ""
     has_rfc1918_finding = False
+    has_no_web_server_signal = False
     source = str(vuln_record.get("source") or "").strip().lower()
     explicit_severity = str(vuln_record.get("severity") or "").strip()
     has_tool_findings = bool(vuln_record.get("nikto_findings")) or bool(
@@ -773,7 +1222,9 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
     )
 
     if explicit_severity and not has_tool_findings:
-        max_severity, max_score = _severity_from_label(explicit_severity)
+        max_severity, default_score = _severity_from_label(explicit_severity)
+        persisted_score = _score_from_existing_fields(vuln_record)
+        max_score = persisted_score if persisted_score is not None else default_score
         primary_finding = (
             vuln_record.get("name")
             or vuln_record.get("descriptive_title")
@@ -805,14 +1256,22 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
         # Track RFC-1918 findings
         if "rfc-1918" in finding.lower() and "ip address found" in finding.lower():
             has_rfc1918_finding = True
+        if "no web server found" in finding.lower():
+            has_no_web_server_signal = True
 
     # Check TestSSL vulnerabilities
     testssl = vuln_record.get("testssl_analysis", {})
+    testssl_experimental = _testssl_is_experimental(testssl)
     if testssl.get("vulnerabilities"):
-        # TestSSL vulnerabilities are typically high severity
-        if max_score < 70:
-            max_score = 70
-            max_severity = "high"
+        # TestSSL vulnerabilities are typically high, but experimental findings are ambiguous.
+        if testssl_experimental:
+            if max_score < 50:
+                max_score = 50
+                max_severity = "medium"
+        else:
+            if max_score < 70:
+                max_score = 70
+                max_severity = "high"
         all_categories.add("crypto")
         if not primary_finding and testssl.get("vulnerabilities"):
             primary_finding = (
@@ -824,6 +1283,14 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
             max_score = 50
             max_severity = "medium"
         all_categories.add("crypto")
+
+    if testssl_experimental and has_no_web_server_signal and max_score > 30:
+        max_score = 30
+        max_severity = "low"
+        enriched["severity_note"] = (
+            "TestSSL experimental signal with no confirmed web service "
+            "(degraded to low confidence)"
+        )
 
     # v3.1.4: Adjust severity for RFC-1918 findings on private networks
     url = vuln_record.get("url", "")
@@ -851,8 +1318,11 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
     enriched["normalized_severity"] = round(max_score / 10, 1)
 
     # v3.1: Preserve original tool severity for traceability
+    # v4.13.2: Improved source attribution with whatweb detection, 'redaudit' fallback
     tool_name = source or (
-        "nikto" if vuln_record.get("nikto_findings") else "testssl" if testssl else "unknown"
+        "nikto"
+        if vuln_record.get("nikto_findings")
+        else "testssl" if testssl else "whatweb" if vuln_record.get("whatweb") else "redaudit"
     )
     enriched["original_severity"] = {
         "tool": tool_name,
@@ -872,6 +1342,11 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
 
     # v3.1.4: Detect potential false positives via cross-validation
     fps = detect_nikto_false_positives(vuln_record)
+    if testssl_experimental:
+        fps = list(fps) if fps else []
+        fps.append("TestSSL reported experimental/potentially vulnerable signal")
+        if has_no_web_server_signal:
+            fps.append("TestSSL signal observed while Nikto reported no web server")
     if fps:
         enriched["potential_false_positives"] = fps
         # v3.6.1: Degrade severity when cross-validation proves finding is wrong
@@ -892,6 +1367,8 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
                 enriched["severity"] = "info"
                 enriched["severity_score"] = 10
                 enriched["normalized_severity"] = 1.0
+        if testssl_experimental and has_no_web_server_signal:
+            enriched["verified"] = False
 
     # v3.1: Generate finding_id for deduplication
     port = vuln_record.get("port", 0)
@@ -927,6 +1404,61 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
         signature=signature,
         title=primary_finding[:100] if primary_finding else url,
     )
+
+    # v4.6.19: Add confirmed_exploitable flag for findings with CVE or Nuclei validation
+    has_cve = bool(cve_ids) or "cve-" in primary_finding.lower()
+    has_cve_confident = has_cve and not testssl_experimental
+    has_nuclei = source == "nuclei" or bool(template_id)
+    has_known_exploit = bool(vuln_record.get("known_exploits"))
+    enriched["confirmed_exploitable"] = has_cve_confident or has_nuclei or has_known_exploit
+
+    # v4.6.19: Calculate priority_score for finding ordering
+    # Higher = more critical (0-100 scale)
+    priority = enriched["severity_score"]  # Base from severity
+
+    # Boost for confirmed exploitable findings
+    if enriched["confirmed_exploitable"]:
+        priority += 20
+
+    # Boost for CVE findings (evidence of real vulnerability)
+    if has_cve_confident:
+        priority += 10
+
+    # Penalty for likely false positives
+    if enriched.get("potential_false_positives"):
+        priority -= 30
+
+    # Penalty for low-value header findings
+    if enriched.get("category") == "misconfig":
+        priority -= 10
+
+    enriched["priority_score"] = max(0, min(100, priority))
+
+    # v4.6.19: Add confidence_score (0.0-1.0) for report quality
+    # Higher = more confident the finding is real and actionable
+    confidence = 0.5  # Base confidence
+
+    # Boost for confirmed sources
+    if enriched["confirmed_exploitable"]:
+        confidence += 0.3
+    if has_cve_confident:
+        confidence += 0.1
+    if vuln_record.get("testssl_analysis") and not testssl_experimental:
+        confidence += 0.1  # TestSSL findings are high-confidence
+    if testssl_experimental:
+        confidence -= 0.2
+    if testssl_experimental and has_no_web_server_signal:
+        confidence -= 0.1
+
+    # Penalty for potential false positives
+    if enriched.get("potential_false_positives"):
+        confidence -= 0.4
+
+    # Slight boost for cross-validated (not FP'd) findings
+    if enriched.get("verified") is True:
+        confidence += 0.1
+
+    enriched["confidence_score"] = round(max(0.0, min(1.0, confidence)), 2)
 
     return enriched
 
@@ -1004,15 +1536,16 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
     ecs_event = build_ecs_event(scan_mode, duration)
     enriched.update(ecs_event)
 
-    # Enrich each host
+    # Enrich each host with stable metadata first.
+    # Risk scores are computed later, after findings are normalized.
     for host in enriched.get("hosts", []):
+        canonical_vendor = resolve_canonical_vendor(host)
+        host["vendor"] = canonical_vendor.get("vendor", "")
+        host["vendor_source"] = canonical_vendor.get("source", "none")
+        host["vendor_confidence"] = canonical_vendor.get("confidence", "none")
+
         # Add ECS host format
         host["ecs_host"] = build_ecs_host(host)
-
-        # Add risk score with breakdown for HTML tooltips (v4.3)
-        risk_result = calculate_risk_score_with_breakdown(host)
-        host["risk_score"] = risk_result["score"]
-        host["risk_score_breakdown"] = risk_result["breakdown"]
 
         # Add observable hash
         host["observable_hash"] = generate_observable_hash(host)
@@ -1056,6 +1589,33 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
                 obs_enriched = enrich_with_observations(vuln, output_dir)
                 vuln.update(obs_enriched)
 
+            evidence_meta = _build_evidence_meta(vuln)
+            if evidence_meta:
+                existing = vuln.get("evidence")
+                if isinstance(existing, dict):
+                    merged = {**existing, **evidence_meta}
+                else:
+                    merged = evidence_meta
+                vuln["evidence"] = merged
+
+    # v3.6.1: Consolidate duplicate findings by (host, title)
+    enriched["vulnerabilities"] = consolidate_findings(enriched.get("vulnerabilities", []))
+
+    # Map normalized findings back to hosts, then calculate final risk.
+    findings_map: Dict[str, List[Dict[str, Any]]] = {}
+    for vuln_entry in enriched.get("vulnerabilities", []):
+        host_ip = vuln_entry.get("host")
+        if not host_ip:
+            continue
+        findings_map[host_ip] = list(vuln_entry.get("vulnerabilities", []) or [])
+
+    for host in enriched.get("hosts", []):
+        ip = host.get("ip")
+        host["findings"] = findings_map.get(ip, [])
+        risk_result = calculate_risk_score_with_breakdown(host)
+        host["risk_score"] = risk_result["score"]
+        host["risk_score_breakdown"] = risk_result["breakdown"]
+
     # Add summary statistics for SIEM dashboards
     summary = enriched.get("summary", {})
     hosts = enriched.get("hosts", [])
@@ -1068,10 +1628,54 @@ def enrich_report_for_siem(results: Dict, config: Dict) -> Dict:
         )
         summary["high_risk_hosts"] = sum(1 for r in risk_scores if r >= 70)
 
-    # v3.6.1: Consolidate duplicate findings by (host, title)
-    enriched["vulnerabilities"] = consolidate_findings(enriched.get("vulnerabilities", []))
-
     return enriched
+
+
+def _build_evidence_meta(vuln_record: Dict[str, Any]) -> Dict[str, Any]:
+    meta: Dict[str, Any] = {}
+
+    source = (
+        vuln_record.get("source")
+        or (vuln_record.get("original_severity") or {}).get("tool")
+        or "redaudit"
+    )
+    if source:
+        meta["source_tool"] = source
+
+    matched_at = vuln_record.get("matched_at") or vuln_record.get("url")
+    if matched_at:
+        meta["matched_at"] = matched_at
+
+    template_id = vuln_record.get("template_id")
+    if template_id:
+        meta["template_id"] = template_id
+
+    raw_hash = vuln_record.get("raw_tool_output_sha256")
+    if raw_hash:
+        meta["raw_output_sha256"] = raw_hash
+
+    raw_ref = vuln_record.get("raw_tool_output_ref")
+    if raw_ref:
+        meta["raw_output_ref"] = raw_ref
+
+    signals = []
+    if vuln_record.get("template_id") or vuln_record.get("matched_at"):
+        signals.append("nuclei")
+    if vuln_record.get("nikto_findings"):
+        signals.append("nikto")
+    if vuln_record.get("testssl_analysis"):
+        signals.append("testssl")
+    if vuln_record.get("whatweb"):
+        signals.append("whatweb")
+    if vuln_record.get("extracted_results") or vuln_record.get("extracted-results"):
+        signals.append("extracted_results")
+    if vuln_record.get("curl_headers") or vuln_record.get("wget_headers"):
+        signals.append("http_headers")
+
+    if signals:
+        meta["signals"] = sorted({s for s in signals if s})
+
+    return meta
 
 
 def consolidate_findings(vulnerabilities: List[Dict]) -> List[Dict]:
@@ -1185,3 +1789,34 @@ def consolidate_findings(vulnerabilities: List[Dict]) -> List[Dict]:
         for host in host_order
         if host in consolidated
     ]
+
+
+def get_top_critical_findings(findings: List[Dict], limit: int = 5) -> List[Dict]:
+    """
+    Get the top N most critical findings sorted by priority_score.
+
+    v4.6.19: Used for "Top Critical Findings" summary in reports.
+
+    Args:
+        findings: List of enriched finding dictionaries
+        limit: Maximum number of findings to return (default 5)
+
+    Returns:
+        List of top findings sorted by priority_score descending
+    """
+    if not findings:
+        return []
+
+    # Filter to only confirmed exploitable or high-severity findings
+    critical = [
+        f for f in findings if f.get("confirmed_exploitable") or f.get("severity_score", 0) >= 70
+    ]
+
+    # Sort by priority_score descending, then severity_score
+    sorted_findings = sorted(
+        critical,
+        key=lambda f: (f.get("priority_score", 0), f.get("severity_score", 0)),
+        reverse=True,
+    )
+
+    return sorted_findings[:limit]

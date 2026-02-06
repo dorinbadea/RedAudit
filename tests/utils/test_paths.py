@@ -3,6 +3,7 @@
 RedAudit - Path Helpers Tests
 """
 
+import logging
 import os
 import sys
 import tempfile
@@ -209,9 +210,17 @@ def test_get_preferred_human_home_entry_exception():
     """Test _get_preferred_human_home_under_home with entry exception (lines 101-102)."""
     with patch("redaudit.utils.paths._is_root", return_value=True):
         with patch("redaudit.utils.paths.pwd") as mock_pwd:
-            mock_entry = MagicMock()
-            mock_entry.pw_name = "testuser"
-            mock_entry.pw_uid = MagicMock(side_effect=Exception("Failed"))
+
+            class _BadEntry:
+                pw_name = "testuser"
+                pw_dir = "/home/testuser"
+                pw_shell = "/bin/bash"
+
+                @property
+                def pw_uid(self):
+                    raise Exception("Failed")
+
+            mock_entry = _BadEntry()
             mock_pwd.getpwall.return_value = [mock_entry]
 
             result = _get_preferred_human_home_under_home()
@@ -322,20 +331,24 @@ def test_resolve_invoking_user_owner_pwd_exception():
                 assert result is None
 
 
-def test_maybe_chown_exception():
+def test_maybe_chown_exception(caplog):
     """Test maybe_chown_to_invoking_user with exception (lines 269-270)."""
     with patch("redaudit.utils.paths.resolve_invoking_user_owner", return_value=(1000, 1000)):
         with patch("os.chown", side_effect=PermissionError("Access denied")):
+            caplog.set_level(logging.DEBUG)
             maybe_chown_to_invoking_user("/tmp/test")
             # Should not raise
+            assert "Failed to chown path to invoking user" in caplog.text
 
 
-def test_maybe_chown_tree_root_exception():
+def test_maybe_chown_tree_root_exception(caplog):
     """Test maybe_chown_tree_to_invoking_user with root exception (lines 289-290)."""
     with patch("redaudit.utils.paths.resolve_invoking_user_owner", return_value=(1000, 1000)):
         with patch("os.chown", side_effect=PermissionError("Access denied")):
+            caplog.set_level(logging.DEBUG)
             maybe_chown_tree_to_invoking_user("/tmp/test")
             # Should not raise
+            assert "Failed to chown root path to invoking user" in caplog.text
 
 
 def test_maybe_chown_tree_dir_exception():
@@ -351,9 +364,135 @@ def test_maybe_chown_tree_dir_exception():
                 # Should handle exception gracefully
 
 
-def test_maybe_chown_tree_walk_exception():
+def test_maybe_chown_tree_walk_exception(caplog):
     """Test maybe_chown_tree_to_invoking_user with walk exception (lines 302-305)."""
     with patch("redaudit.utils.paths.resolve_invoking_user_owner", return_value=(1000, 1000)):
         with patch("os.walk", side_effect=Exception("Walk failed")):
+            caplog.set_level(logging.DEBUG)
             maybe_chown_tree_to_invoking_user("/tmp/test")
             # Should not raise
+            assert "Failed to walk path for chown" in caplog.text
+
+
+def test_is_root_exception_returns_false():
+    with patch("redaudit.utils.paths.os.geteuid", side_effect=Exception("boom")):
+        assert paths._is_root() is False
+
+
+def test_resolve_home_dir_invalid_input():
+    assert _resolve_home_dir_for_user(None) is None
+
+
+def test_resolve_home_dir_expanduser_unresolved():
+    with patch("redaudit.utils.paths.pwd", None):
+        with patch("redaudit.utils.paths.os.path.expanduser", return_value="~user"):
+            assert _resolve_home_dir_for_user("user") is None
+
+
+def test_get_preferred_human_home_invalid_username():
+    class _Entry:
+        pw_name = None
+        pw_uid = 1000
+        pw_dir = "/home/user"
+        pw_shell = "/bin/bash"
+
+    with (
+        patch("redaudit.utils.paths._is_root", return_value=True),
+        patch("redaudit.utils.paths.pwd.getpwall", return_value=[_Entry()]),
+        patch("redaudit.utils.paths.os.path.isdir", return_value=True),
+    ):
+        assert _get_preferred_human_home_under_home() is None
+
+
+def test_get_preferred_human_home_non_home_dir():
+    class _Entry:
+        pw_name = "user"
+        pw_uid = 1000
+        pw_dir = "/Users/user"
+        pw_shell = "/bin/bash"
+
+    with (
+        patch("redaudit.utils.paths._is_root", return_value=True),
+        patch("redaudit.utils.paths.pwd.getpwall", return_value=[_Entry()]),
+    ):
+        assert _get_preferred_human_home_under_home() is None
+
+
+def test_get_preferred_human_home_not_dir():
+    class _Entry:
+        pw_name = "user"
+        pw_uid = 1000
+        pw_dir = "/home/user"
+        pw_shell = "/bin/bash"
+
+    with (
+        patch("redaudit.utils.paths._is_root", return_value=True),
+        patch("redaudit.utils.paths.pwd.getpwall", return_value=[_Entry()]),
+        patch("redaudit.utils.paths.os.path.isdir", return_value=False),
+    ):
+        assert _get_preferred_human_home_under_home() is None
+
+
+def test_get_preferred_human_home_multiple_candidates():
+    class _Entry:
+        def __init__(self, name):
+            self.pw_name = name
+            self.pw_uid = 1000
+            self.pw_dir = f"/home/{name}"
+            self.pw_shell = "/bin/bash"
+
+    with (
+        patch("redaudit.utils.paths._is_root", return_value=True),
+        patch("redaudit.utils.paths.pwd.getpwall", return_value=[_Entry("a"), _Entry("b")]),
+        patch("redaudit.utils.paths.os.path.isdir", return_value=True),
+    ):
+        assert _get_preferred_human_home_under_home() is None
+
+
+def test_expand_user_path_non_str():
+    class _Obj:
+        def __str__(self):
+            return "value"
+
+    assert expand_user_path(_Obj()) == "value"
+
+
+def test_read_xdg_documents_dir_no_match_returns_none():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config_dir = os.path.join(tmpdir, ".config")
+        os.makedirs(config_dir)
+        user_dirs = os.path.join(config_dir, "user-dirs.dirs")
+        with open(user_dirs, "w") as f:
+            f.write('XDG_DESKTOP_DIR="$HOME/Desktop"\\n')
+        assert _read_xdg_documents_dir(tmpdir) is None
+
+
+def test_resolve_invoking_user_owner_no_env_and_no_user():
+    with patch("redaudit.utils.paths._is_root", return_value=True):
+        with patch.dict(os.environ, {"SUDO_UID": "", "SUDO_GID": ""}, clear=False):
+            with patch("redaudit.utils.paths.get_invoking_user", return_value=None):
+                assert resolve_invoking_user_owner() is None
+
+
+def test_maybe_chown_to_invoking_user_no_chown(monkeypatch):
+    monkeypatch.setattr(paths, "resolve_invoking_user_owner", lambda: (1000, 1000))
+    monkeypatch.delattr(paths.os, "chown", raising=False)
+    maybe_chown_to_invoking_user("/tmp/test")
+
+
+def test_maybe_chown_tree_no_chown(monkeypatch):
+    monkeypatch.setattr(paths, "resolve_invoking_user_owner", lambda: (1000, 1000))
+    monkeypatch.delattr(paths.os, "chown", raising=False)
+    maybe_chown_tree_to_invoking_user("/tmp/test")
+
+
+def test_maybe_chown_tree_file_exception():
+    with (
+        patch("redaudit.utils.paths.resolve_invoking_user_owner", return_value=(1000, 1000)),
+        patch(
+            "redaudit.utils.paths.os.walk",
+            return_value=[("/tmp/out", [], ["a.json"])],
+        ),
+        patch("redaudit.utils.paths.os.chown", side_effect=[None, PermissionError("fail")]),
+    ):
+        maybe_chown_tree_to_invoking_user("/tmp/out")

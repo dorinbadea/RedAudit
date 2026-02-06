@@ -6,11 +6,11 @@
 
 ## Resumen
 
-RedAudit v3.4.1 es un hotfix pequeño que corrige dónde se guardan los reportes cuando se ejecuta con `sudo`.
+RedAudit v3.4.1 es un hotfix pequeño que corrige dónde se guardan los informes cuando se ejecuta con `sudo`.
 
 ## Correcciones
 
-- **Directorio de salida por defecto bajo sudo**: Los reportes ahora se guardan por defecto en la carpeta Documentos del usuario invocador (en lugar de `/root`).
+- **Directorio de salida por defecto bajo sudo**: Los informes ahora se guardan por defecto en la carpeta Documentos del usuario invocador (en lugar de `/root`).
 - **Expansión de `~` bajo sudo**: Rutas como `--output ~/Documents/...` y defaults persistidos se expanden para el usuario invocador.
 - **Propietario de archivos**: Se aplica `chown` best-effort al directorio de salida para evitar artefactos propiedad de root bajo el home del usuario.
 

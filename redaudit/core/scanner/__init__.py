@@ -39,6 +39,7 @@ from redaudit.core.scanner.status import (
     output_has_identity,
     extract_vendor_mac,
     extract_os_detection,
+    extract_detailed_identity,
 )
 
 from redaudit.core.scanner.enrichment import (
@@ -81,6 +82,7 @@ __all__ = [
     "output_has_identity",
     "extract_vendor_mac",
     "extract_os_detection",
+    "extract_detailed_identity",
     "enrich_host_with_dns",
     "enrich_host_with_whois",
     "http_enrichment",

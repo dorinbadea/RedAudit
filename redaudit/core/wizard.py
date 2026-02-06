@@ -2,7 +2,7 @@
 # mypy: disable-error-code="attr-defined"
 """
 RedAudit - Wizard UI Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.6: Extracted from auditor.py for better code organization.
@@ -11,11 +11,12 @@ Contains interactive UI methods: prompts, menus, input utilities.
 
 import os
 import sys
-import ipaddress
 import platform
 import re
 import shutil
-from typing import Dict, List
+import subprocess
+import time
+from typing import Dict, List, Optional
 
 from redaudit.utils.constants import (
     VERSION,
@@ -26,8 +27,9 @@ from redaudit.utils.constants import (
     UDP_SCAN_MODE_QUICK,
     UDP_TOP_PORTS,
 )
-from redaudit.utils.paths import expand_user_path, get_default_reports_base_dir
+from redaudit.utils.paths import expand_user_path, get_default_reports_base_dir, get_invoking_user
 from redaudit.utils.dry_run import is_dry_run
+from redaudit.utils.targets import parse_target_tokens
 
 
 class Wizard:
@@ -44,7 +46,21 @@ class Wizard:
         """Clear the terminal screen."""
         if is_dry_run(self.config.get("dry_run")):
             return
-        os.system("clear" if os.name == "posix" else "cls")
+        try:
+            if os.name == "posix":
+                clear_cmd = shutil.which("clear")
+                if clear_cmd:
+                    subprocess.run([clear_cmd], check=False)
+                    return
+            else:
+                subprocess.run(["cmd", "/c", "cls"], check=False)
+                return
+        except Exception:  # pragma: no cover
+            pass
+        try:
+            print("\033[2J\033[H", end="", flush=True)
+        except Exception:  # pragma: no cover
+            return
 
     def print_banner(self) -> None:
         """Print the RedAudit banner."""
@@ -160,7 +176,7 @@ class Wizard:
                 return ch
             finally:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old)
-        except Exception:
+        except Exception:  # pragma: no cover
             return ""
 
     def _clear_menu_lines(self, line_count: int) -> None:
@@ -211,6 +227,36 @@ class Wizard:
         out.append(self.ui.colors["ENDC"])
         return "".join(out)
 
+    def _style_prompt_text(self, text: str) -> str:
+        if not text:  # pragma: no cover
+            return text
+        bold = self.ui.colors.get("BOLD", "")
+        okblue = self.ui.colors.get("OKBLUE", "")
+        endc = self.ui.colors.get("ENDC", "")
+        if not (bold or okblue or endc):
+            return text
+        return f"{bold}{okblue}{text}{endc}"
+
+    def _style_default_hint(self, text: str, color_key: str) -> str:
+        if not text:  # pragma: no cover
+            return text
+        color = self.ui.colors.get(color_key, "")
+        bold = self.ui.colors.get("BOLD", "")
+        endc = self.ui.colors.get("ENDC", "")
+        if not (color or bold or endc):
+            return text
+        return f"{bold}{color}{text}{endc}"
+
+    def _style_default_value(self, text: str) -> str:
+        if not text:  # pragma: no cover
+            return text
+        bold = self.ui.colors.get("BOLD", "")
+        okgreen = self.ui.colors.get("OKGREEN", "")
+        endc = self.ui.colors.get("ENDC", "")
+        if not (bold or okgreen or endc):
+            return text
+        return f"{bold}{okgreen}{text}{endc}"
+
     def _arrow_menu(
         self,
         question: str,
@@ -218,7 +264,7 @@ class Wizard:
         default: int = 0,
         *,
         header: str = "",
-    ) -> int:
+    ) -> int:  # pragma: no cover
         if not options:
             return 0
         index = max(0, min(default, len(options) - 1)) if options else 0
@@ -244,12 +290,15 @@ class Wizard:
                 )
             lines.append(
                 self._truncate_menu_text(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {question}", width
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self._style_prompt_text(question)}",
+                    width,
                 )
             )
             for i, opt in enumerate(options):
                 marker = f"{self.ui.colors['BOLD']}❯{self.ui.colors['ENDC']}" if i == index else " "
-                opt_display = self._format_menu_option(opt)
+                # v4.14: Pass is_selected for enhanced color scheme
+                opt_display = self._format_menu_option(opt, is_selected=(i == index))
                 lines.append(self._truncate_menu_text(f"  {marker} {opt_display}", width))
             lines.append(
                 self._truncate_menu_text(
@@ -285,22 +334,71 @@ class Wizard:
                 print("")
                 return index
 
-    def _format_menu_option(self, option: str) -> str:
+    def _format_menu_option(self, option: str, is_selected: bool = False) -> str:
+        """Format menu option with professional color scheme.
+
+        v4.14: Enhanced colors for better visual hierarchy:
+        - Selected option: Bold cyan
+        - Yes/Si options: Green
+        - No options: Dim red
+        - Cancel/Back: Dim yellow
+        """
         if not option:
             return option
         if "\x1b[" in option:
             return option
         stripped = option.strip()
+
+        def _label_matches(value: str, label: str) -> bool:
+            if not label:  # pragma: no cover
+                return False
+            if value == label:
+                return True
+            if not value.startswith(label):
+                return False
+            if len(value) == len(label):  # pragma: no cover
+                return True
+            next_char = value[len(label)]
+            if next_char.isspace():  # pragma: no cover
+                return True
+            if next_char in ("(", "[", "-", "—", ":", "/"):  # pragma: no cover
+                return True
+            return False
+
+        # Define label-color mappings
         labels = (
-            (self.ui.t("yes_default"), "OKGREEN"),
-            (self.ui.t("yes_option"), "OKGREEN"),
-            (self.ui.t("no_default"), "FAIL"),
-            (self.ui.t("no_option"), "FAIL"),
-            (self.ui.t("wizard_go_back"), "OKBLUE"),
+            (self.ui.t("yes_default"), "OKGREEN", True),
+            (self.ui.t("yes_option"), "OKGREEN", False),
+            (self.ui.t("no_default"), "FAIL", True),
+            (self.ui.t("no_option"), "FAIL", False),
+            (self.ui.t("wizard_go_back"), "WARNING", False),
+            (self.ui.t("go_back"), "WARNING", False),
         )
-        for label, color in labels:
-            if label and stripped.startswith(label):
-                return f"{self.ui.colors[color]}{option}{self.ui.colors['ENDC']}"
+
+        # Check for matching labels
+        for label, color, is_default in labels:
+            if _label_matches(stripped, label):
+                dim = self.ui.colors.get("DIM", "")
+                bold = self.ui.colors.get("BOLD", "")
+                if color == "WARNING":
+                    tone = self.ui.colors.get(color, "")
+                    if dim:
+                        return f"{dim}{tone}{option}{self.ui.colors['ENDC']}"
+                    return f"{tone}{option}{self.ui.colors['ENDC']}"
+                if is_default:
+                    return f"{bold}{self.ui.colors.get(color, '')}{option}{self.ui.colors['ENDC']}"
+                return f"{dim}{self.ui.colors.get(color, '')}{option}{self.ui.colors['ENDC']}"
+
+        # v4.14: Selected option gets bold cyan for prominence
+        if is_selected:
+            return (
+                f"{self.ui.colors['BOLD']}{self.ui.colors['CYAN']}"
+                f"{option}{self.ui.colors['ENDC']}"
+            )
+
+        accent = self.ui.colors.get("OKBLUE", "")
+        if accent:
+            return f"{accent}{option}{self.ui.colors['ENDC']}"
         return option
 
     def show_main_menu(self) -> int:
@@ -308,13 +406,14 @@ class Wizard:
         Display main menu and return user choice.
 
         Returns:
-            int: 0=exit, 1=scan, 2=update, 3=diff
+            int: 0=exit, 1=scan, 2=update, 3=diff, 4=resume nuclei
         """
         if self._use_arrow_menu():
             opts = [
                 f"1) {self.ui.t('menu_option_scan')}",
                 f"2) {self.ui.t('menu_option_update')}",
                 f"3) {self.ui.t('menu_option_diff')}",
+                f"4) {self.ui.t('menu_option_resume_nuclei')}",
                 f"0) {self.ui.t('menu_option_exit')}",
             ]
             choice = self._arrow_menu(
@@ -323,33 +422,42 @@ class Wizard:
                 0,
                 header=f"RedAudit v{VERSION}",
             )
-            return 0 if choice == 3 else choice + 1
+            return 0 if choice == 4 else choice + 1
 
         print(f"\n{self.ui.colors['HEADER']}RedAudit v{VERSION}{self.ui.colors['ENDC']}")
         print("─" * 60)
         print(
-            f"  {self.ui.colors['CYAN']}1){self.ui.colors['ENDC']} {self.ui.t('menu_option_scan')}"
+            f"  {self.ui.colors['CYAN']}1){self.ui.colors['ENDC']} "
+            f"{self._style_prompt_text(self.ui.t('menu_option_scan'))}"
         )
         print(
-            f"  {self.ui.colors['CYAN']}2){self.ui.colors['ENDC']} {self.ui.t('menu_option_update')}"
+            f"  {self.ui.colors['CYAN']}2){self.ui.colors['ENDC']} "
+            f"{self._style_prompt_text(self.ui.t('menu_option_update'))}"
         )
         print(
-            f"  {self.ui.colors['CYAN']}3){self.ui.colors['ENDC']} {self.ui.t('menu_option_diff')}"
+            f"  {self.ui.colors['CYAN']}3){self.ui.colors['ENDC']} "
+            f"{self._style_prompt_text(self.ui.t('menu_option_diff'))}"
         )
         print(
-            f"  {self.ui.colors['CYAN']}0){self.ui.colors['ENDC']} {self.ui.t('menu_option_exit')}"
+            f"  {self.ui.colors['CYAN']}4){self.ui.colors['ENDC']} "
+            f"{self._style_prompt_text(self.ui.t('menu_option_resume_nuclei'))}"
+        )
+        print(
+            f"  {self.ui.colors['CYAN']}0){self.ui.colors['ENDC']} "
+            f"{self._style_prompt_text(self.ui.t('menu_option_exit'))}"
         )
         print("─" * 60)
 
         while True:
             try:
                 ans = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('menu_prompt')} "
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self._style_prompt_text(self.ui.t('menu_prompt'))} "
                 ).strip()
-                if ans in ("0", "1", "2", "3"):
+                if ans in ("0", "1", "2", "3", "4"):
                     return int(ans)
                 self.ui.print_status(self.ui.t("menu_invalid_option"), "WARNING")
-            except KeyboardInterrupt:
+            except KeyboardInterrupt:  # pragma: no cover
                 print("")
                 return 0
 
@@ -374,11 +482,11 @@ class Wizard:
                 return self._arrow_menu(question, options, default_idx) == 0
             except Exception:
                 pass
-        opts = (
-            self.ui.t("ask_yes_no_opts")
-            if default in ("yes", "y", "s", "si", "sí")
-            else self.ui.t("ask_yes_no_opts_neg")
+        is_yes_default = default in ("yes", "y", "s", "si", "sí")
+        opts_raw = (
+            self.ui.t("ask_yes_no_opts") if is_yes_default else self.ui.t("ask_yes_no_opts_neg")
         )
+        opts = self._style_default_hint(opts_raw, "OKGREEN" if is_yes_default else "FAIL")
         valid = {
             "yes": True,
             "y": True,
@@ -392,7 +500,10 @@ class Wizard:
             try:
                 print(f"\n{self.ui.colors['OKBLUE']}{'—' * 60}{self.ui.colors['ENDC']}")
                 ans = (
-                    input(f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {question}{opts}: ")
+                    input(
+                        f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                        f"{self._style_prompt_text(question)}{opts}: "
+                    )
                     .strip()
                     .lower()
                 )
@@ -400,10 +511,84 @@ class Wizard:
                     return valid.get(default, True)
                 if ans in valid:
                     return valid[ans]
-            except KeyboardInterrupt:
+            except KeyboardInterrupt:  # pragma: no cover
                 print("")
                 self.signal_handler(None, None)
                 sys.exit(0)
+
+    def ask_yes_no_with_timeout(
+        self, question: str, default: str = "no", timeout_s: int = 15
+    ) -> bool:
+        """Ask a yes/no question with a timeout; returns default on timeout."""
+        default = default.lower()
+        is_yes_default = default in ("yes", "y", "s", "si", "sí")
+        opts_raw = (
+            self.ui.t("ask_yes_no_opts") if is_yes_default else self.ui.t("ask_yes_no_opts_neg")
+        )
+        opts = self._style_default_hint(opts_raw, "OKGREEN" if is_yes_default else "FAIL")
+        prompt = (
+            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+            f"{self._style_prompt_text(question)}{opts}: "
+        )
+
+        def _resolve_answer(ans: str) -> Optional[bool]:
+            if ans == "":  # pragma: no cover
+                return is_yes_default
+            val = ans.lower()
+            if val in ("yes", "y", "s", "si", "sí"):
+                return True
+            if val in ("no", "n"):  # pragma: no cover
+                return False
+            return None
+
+        if timeout_s <= 0 or not (sys.stdin.isatty() and sys.stdout.isatty()):
+            return is_yes_default
+
+        countdown_label = self.ui.t("auto_continue_countdown")
+        try:
+            if os.name == "nt":  # pragma: no cover
+                import msvcrt
+
+                buffer = ""
+                for remaining in range(int(timeout_s), 0, -1):
+                    sys.stdout.write(f"\r\x1b[2K{prompt}{countdown_label.format(remaining)}")
+                    sys.stdout.flush()
+                    start = time.time()
+                    while time.time() - start < 1.0:
+                        if msvcrt.kbhit():
+                            ch = msvcrt.getwch()
+                            if ch in ("\r", "\n"):
+                                sys.stdout.write("\n")
+                                sys.stdout.flush()
+                                resolved = _resolve_answer(buffer.strip())
+                                return resolved if resolved is not None else is_yes_default
+                            if ch == "\x03":
+                                sys.stdout.write("\n")
+                                sys.stdout.flush()
+                                return is_yes_default
+                            buffer += ch
+                        time.sleep(0.05)
+                sys.stdout.flush()
+                return is_yes_default
+
+            import select
+
+            for remaining in range(int(timeout_s), 0, -1):
+                sys.stdout.write(f"\r\x1b[2K{prompt}{countdown_label.format(remaining)}")
+                sys.stdout.flush()
+                ready, _, _ = select.select([sys.stdin], [], [], 1)
+                if ready:
+                    ans = sys.stdin.readline().strip()
+                    sys.stdout.write("\n")
+                    sys.stdout.flush()
+                    resolved = _resolve_answer(ans)
+                    return resolved if resolved is not None else is_yes_default
+            sys.stdout.flush()  # pragma: no cover
+            return is_yes_default
+        except KeyboardInterrupt:  # pragma: no cover
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+            return is_yes_default
 
     def ask_number(self, question: str, default=10, min_val: int = 1, max_val: int = 1000):
         """Ask for a number within a range."""
@@ -412,11 +597,13 @@ class Wizard:
         if isinstance(default, str) and default.lower() in ("all", "todos", "todo"):
             default_return = "all"
             default_display = "todos" if self.lang == "es" else "all"
+        default_display = self._style_default_value(str(default_display))
         while True:
             try:
                 print(f"\n{self.ui.colors['OKBLUE']}{'—' * 60}{self.ui.colors['ENDC']}")
                 ans = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {question} [{default_display}]: "
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self._style_prompt_text(question)} [{default_display}]: "
                 ).strip()
                 if ans == "":
                     return default_return
@@ -429,7 +616,7 @@ class Wizard:
                     self.ui.print_status(self.ui.t("val_out_of_range", min_val, max_val), "WARNING")
                 except ValueError:
                     continue
-            except KeyboardInterrupt:
+            except KeyboardInterrupt:  # pragma: no cover
                 print("")
                 self.signal_handler(None, None)
                 sys.exit(0)
@@ -442,14 +629,19 @@ class Wizard:
             except Exception:
                 pass
         print(f"\n{self.ui.colors['OKBLUE']}{'—' * 60}{self.ui.colors['ENDC']}")
-        print(f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {question}")
+        print(
+            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+            f"{self._style_prompt_text(question)}"
+        )
         for i, opt in enumerate(options):
             marker = f"{self.ui.colors['BOLD']}>{self.ui.colors['ENDC']}" if i == default else " "
-            print(f"  {marker} {i + 1}. {opt}")
+            opt_display = self._format_menu_option(opt)
+            print(f"  {marker} {i + 1}. {opt_display}")
         while True:
             try:
+                default_choice = self._style_default_value(str(default + 1))
                 ans = input(
-                    f"\n{self.ui.t('select_opt')} [1-{len(options)}] ({default + 1}): "
+                    f"\n{self.ui.t('select_opt')} [1-{len(options)}] ({default_choice}): "
                 ).strip()
                 if ans == "":
                     return default
@@ -459,13 +651,18 @@ class Wizard:
                         return idx
                 except ValueError:
                     continue
-            except KeyboardInterrupt:
+            except KeyboardInterrupt:  # pragma: no cover
                 print("")
                 self.signal_handler(None, None)
                 sys.exit(0)
 
-    # v3.8.1: Navigation-aware choice with "Go Back" option
+    # v3.8.1: Navigation-aware choice with "Cancel" option
     WIZARD_BACK = -1  # Sentinel value for "go back"
+
+    def _is_cancel_input(self, value: str) -> bool:
+        if not value:
+            return False
+        return value.strip().lower() in {"cancel", "cancelar", "c"}
 
     def ask_choice_with_back(
         self,
@@ -477,7 +674,7 @@ class Wizard:
         total_steps: int = 0,
     ) -> int:
         """
-        Ask to choose from a list of options with a "< Volver" (Go Back) option.
+        Ask to choose from a list of options with a "Cancel" option.
 
         Returns:
             int: Selected index (0 to len(options)-1), or WIZARD_BACK (-1) if user chose to go back.
@@ -486,8 +683,10 @@ class Wizard:
         step_header = ""
         if step_num > 0 and total_steps > 0:
             step_header = f"[{step_num}/{total_steps}] "
+        else:
+            step_header = ""
 
-        # Add "< Volver" / "< Go Back" as the last option (only if not first step)
+        # Add "Cancel" as the last option (only if not first step)
         back_label = self.ui.t("wizard_go_back")
         show_back = step_num > 1  # Don't show back on first step
         display_options = list(options) + ([back_label] if show_back else [])
@@ -503,21 +702,28 @@ class Wizard:
 
         # Fallback text-based menu
         print(f"\n{self.ui.colors['OKBLUE']}{'—' * 60}{self.ui.colors['ENDC']}")
-        print(f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {step_header}{question}")
+        print(
+            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+            f"{self._style_prompt_text(f'{step_header}{question}')}"
+        )
         for i, opt in enumerate(display_options):
             marker = f"{self.ui.colors['BOLD']}>{self.ui.colors['ENDC']}" if i == default else " "
-            print(f"  {marker} {i + 1}. {opt}")
+            opt_display = self._format_menu_option(opt)
+            print(f"  {marker} {i + 1}. {opt_display}")
 
         while True:
             try:
                 prompt_range = f"1-{len(display_options)}"
+                default_choice = self._style_default_value(str(default + 1))
                 ans = input(
-                    f"\n{self.ui.t('select_opt')} [{prompt_range}] ({default + 1}): "
+                    f"\n{self.ui.t('select_opt')} [{prompt_range}] ({default_choice}): "
                 ).strip()
                 if ans == "":
                     return default
-                # Support "0" or "b" or "back" for going back
-                if show_back and ans.lower() in ("0", "b", "back", "volver", "<"):
+                # Support common "back/cancel" inputs in text fallback
+                if show_back and (
+                    ans.lower() in ("0", "b", "back", "volver", "<") or self._is_cancel_input(ans)
+                ):
                     return self.WIZARD_BACK
                 try:
                     idx = int(ans) - 1
@@ -527,27 +733,32 @@ class Wizard:
                         return self.WIZARD_BACK
                 except ValueError:
                     continue
-            except KeyboardInterrupt:
+            except KeyboardInterrupt:  # pragma: no cover
                 print("")
                 self.signal_handler(None, None)
                 sys.exit(0)
 
-    def ask_manual_network(self) -> str:
-        """Ask for manual network CIDR input."""
+    def ask_manual_network(self) -> list[str]:
+        """Ask for one or more manual network CIDRs."""
         while True:
             try:
-                net = input(
-                    f"\n{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} CIDR (e.g. 192.168.1.0/24): "
+                raw = input(
+                    f"\n{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self._style_prompt_text(self.ui.t('manual_cidr_prompt'))}"
                 ).strip()
-                if len(net) > MAX_CIDR_LENGTH:
+                tokens = [token.strip() for token in raw.split(",") if token.strip()]
+                if not tokens:
                     self.ui.print_status(self.ui.t("invalid_cidr"), "WARNING")
                     continue
-                try:
-                    ipaddress.ip_network(net, strict=False)
-                    return net
-                except ValueError:
+                parsed, invalid = parse_target_tokens(tokens, MAX_CIDR_LENGTH)
+                if invalid:
+                    self.ui.print_status(self.ui.t("invalid_cidr_target", invalid[0]), "WARNING")
+                    continue
+                if not parsed:
                     self.ui.print_status(self.ui.t("invalid_cidr"), "WARNING")
-            except KeyboardInterrupt:
+                    continue
+                return parsed
+            except KeyboardInterrupt:  # pragma: no cover
                 print("")
                 self.signal_handler(None, None)
                 sys.exit(0)
@@ -658,7 +869,8 @@ class Wizard:
                 )
                 print(f"  {hint}")
                 url = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('webhook_url_prompt')} "
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self._style_prompt_text(self.ui.t('webhook_url_prompt'))} "
                 ).strip()
 
                 if not url:
@@ -732,8 +944,9 @@ class Wizard:
             )
             print(f"  {hint}")
             snmp = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('net_discovery_snmp_prompt')} "
-                f"[{options['snmp_community']}]: "
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self._style_prompt_text(self.ui.t('net_discovery_snmp_prompt'))} "
+                f"[{self._style_default_value(str(options['snmp_community']))}]: "
             ).strip()
             if snmp:
                 options["snmp_community"] = snmp[:64]  # Safety limit
@@ -748,7 +961,8 @@ class Wizard:
             )
             print(f"  {hint_dns}")
             dns_zone = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('net_discovery_dns_zone_prompt')} "
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self._style_prompt_text(self.ui.t('net_discovery_dns_zone_prompt'))} "
             ).strip()
             if dns_zone:
                 options["dns_zone"] = dns_zone[:128]
@@ -768,3 +982,504 @@ class Wizard:
             print("")
 
         return options
+
+    # ---------- v4.0: Authenticated Scanning ----------
+
+    def ask_auth_config(self, skip_intro: bool = False) -> dict:
+        """
+        Interactive authentication setup for Phase 4.
+
+        Refactored in Phase 4.1.1 to offer two modes:
+        - Universal: Simple user/pass pairs, auto-detect protocol
+        - Advanced: Per-protocol configuration (SSH key, SMB domain, SNMP v3)
+        """
+        auth_config: dict = {
+            "auth_enabled": False,
+            "auth_credentials": [],  # Universal credentials list
+            "auth_ssh_user": None,
+            "auth_ssh_key": None,
+            "auth_ssh_pass": None,
+            "auth_ssh_key_pass": None,
+            "auth_smb_user": None,
+            "auth_smb_pass": None,
+            "auth_smb_domain": None,
+            "auth_snmp_user": None,
+            "auth_snmp_auth_proto": None,
+            "auth_snmp_auth_pass": None,
+            "auth_snmp_priv_proto": None,
+            "auth_snmp_priv_pass": None,
+            "auth_save_keyring": False,
+        }
+
+        if not skip_intro:
+            # v4.5.17: Ask about auth scanning FIRST, before keyring access
+            # This avoids unnecessary keyring password prompts when user doesn't want auth scanning
+            if not self.ask_yes_no(self.ui.t("auth_scan_q"), default="no"):
+                return auth_config
+
+        # v4.5.3: Check for saved credentials in keyring (only if user wants auth)
+        loaded_from_keyring = self._check_and_load_saved_credentials(auth_config)
+        if loaded_from_keyring:
+            # Credentials loaded from keyring, allow optional manual additions
+            auth_config["auth_enabled"] = True
+            if not self.ask_yes_no(self.ui.t("auth_add_more_q"), default="no"):
+                return auth_config
+        else:
+            # v4.14: No credentials loaded - ask if user wants to configure manually
+            # This fixes the bug where mode selection appeared after declining keyring load
+            if not self.ask_yes_no(self.ui.t("auth_configure_manual_q"), default="no"):
+                auth_config["auth_enabled"] = False
+                return auth_config
+
+        auth_config["auth_enabled"] = True
+
+        # Mode selection: Universal vs Advanced
+        mode_opts = [
+            self.ui.t("auth_mode_universal"),
+            self.ui.t("auth_mode_advanced"),
+        ]
+        # v4.5.1: Use back-aware menu to avoid trapping user
+        mode_choice = self.ask_choice_with_back(
+            self.ui.t("auth_mode_q"),
+            mode_opts,
+            0,
+            step_num=2,  # Arbitrary step number to show "Back"
+            total_steps=2,
+        )
+
+        if mode_choice == self.WIZARD_BACK:
+            # User chose to go back -> disable auth unless keyring already loaded
+            if loaded_from_keyring:
+                return auth_config
+            auth_config["auth_enabled"] = False
+            return auth_config
+
+        if mode_choice == 0:
+            # Universal mode: collect simple user/pass pairs
+            # Show protocol detection hint
+            print(
+                f"\n{self.ui.colors['OKBLUE']}"
+                f"{self.ui.t('auth_protocol_hint')}"
+                f"{self.ui.colors['ENDC']}"
+            )
+            existing_creds = list(auth_config.get("auth_credentials") or [])
+            creds = self._collect_universal_credentials(start_index=len(existing_creds) + 1)
+            if creds is None:
+                if loaded_from_keyring:
+                    return auth_config
+                auth_config["auth_enabled"] = False
+                return auth_config
+            auth_config["auth_credentials"] = existing_creds + creds
+        else:
+            # Advanced mode: per-protocol configuration
+            if self._collect_advanced_credentials(auth_config):
+                if loaded_from_keyring:
+                    return auth_config
+                auth_config["auth_enabled"] = False
+                return auth_config
+
+        # Keyring option
+        if (
+            auth_config.get("auth_credentials")
+            or auth_config.get("auth_ssh_pass")
+            or auth_config.get("auth_smb_pass")
+        ):
+            if self.ask_yes_no(self.ui.t("auth_save_keyring_q"), default="no"):
+                auth_config["auth_save_keyring"] = True
+
+        # v4.10: SNMP Topology & Route Following (if auth enabled)
+        if auth_config.get("auth_enabled"):
+            if self.ask_yes_no(self.ui.t("snmp_topology_q"), default="no"):
+                auth_config["snmp_topology"] = True
+                if self.ask_yes_no(self.ui.t("follow_routes_q"), default="no"):
+                    auth_config["follow_routes"] = True
+
+        return auth_config
+
+    def _load_keyring_from_invoking_user(self, invoking_user: str) -> Optional[dict]:
+        if not invoking_user:
+            return None
+        if shutil.which("sudo") is None:
+            return None
+
+        try:
+            import json
+            import subprocess
+            from pathlib import Path
+
+            extra_env = {}
+            try:
+                import pwd
+
+                user_info = pwd.getpwnam(invoking_user)
+                runtime_dir = f"/run/user/{user_info.pw_uid}"
+                bus_path = os.path.join(runtime_dir, "bus")
+                if os.path.isdir(runtime_dir):
+                    extra_env["XDG_RUNTIME_DIR"] = runtime_dir
+                if os.path.exists(bus_path):
+                    extra_env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={bus_path}"
+            except Exception:
+                extra_env = {}
+
+            package_root = Path(__file__).resolve().parents[1]
+            script = (
+                "import json, os, sys, logging\n"
+                "logging.disable(logging.CRITICAL)\n"
+                "root = os.environ.get('REDAUDIT_PYTHONPATH')\n"
+                "if root:\n"
+                "    sys.path.insert(0, root)\n"
+                "from redaudit.core.credentials import KeyringCredentialProvider\n"
+                "provider = KeyringCredentialProvider()\n"
+                "summary = provider.get_saved_credential_summary()\n"
+                "creds = []\n"
+                "for item in summary:\n"
+                "    protocol = item[0] if len(item) > 0 else ''\n"
+                "    username = item[1] if len(item) > 1 else ''\n"
+                "    cred = provider.get_credential('default', protocol.lower())\n"
+                "    if not cred:\n"
+                "        continue\n"
+                "    creds.append({\n"
+                "        'protocol': protocol,\n"
+                "        'username': cred.username,\n"
+                "        'password': cred.password,\n"
+                "        'private_key': cred.private_key,\n"
+                "        'private_key_passphrase': cred.private_key_passphrase,\n"
+                "        'domain': cred.domain,\n"
+                "        'snmp_auth_proto': cred.snmp_auth_proto,\n"
+                "        'snmp_auth_pass': cred.snmp_auth_pass,\n"
+                "        'snmp_priv_proto': cred.snmp_priv_proto,\n"
+                "        'snmp_priv_pass': cred.snmp_priv_pass,\n"
+                "    })\n"
+                "payload = {'summary': summary, 'creds': creds}\n"
+                "sys.stdout.write(json.dumps(payload))\n"
+            )
+
+            cmd = [
+                "sudo",
+                "-H",
+                "-u",
+                invoking_user,
+                "env",
+                f"REDAUDIT_PYTHONPATH={package_root}",
+            ]
+            for key, value in extra_env.items():
+                cmd.append(f"{key}={value}")
+            cmd += [
+                sys.executable,
+                "-c",
+                script,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            if result.returncode != 0:
+                return None
+            payload_raw = result.stdout.strip()
+            if not payload_raw:
+                return None
+            payload = json.loads(payload_raw)
+            if not isinstance(payload, dict):
+                return None
+            return payload
+        except Exception:
+            return None
+
+    def _apply_keyring_credentials(self, auth_config: dict, credentials: list[dict]) -> int:
+        loaded = 0
+        for cred in credentials:
+            if not isinstance(cred, dict):
+                continue
+            protocol = str(cred.get("protocol", "")).upper()
+            if protocol == "SSH":
+                auth_config["auth_ssh_user"] = cred.get("username")
+                auth_config["auth_ssh_pass"] = cred.get("password")
+                auth_config["auth_ssh_key"] = cred.get("private_key")
+                auth_config["auth_ssh_key_pass"] = cred.get("private_key_passphrase")
+                loaded += 1
+            elif protocol == "SMB":
+                auth_config["auth_smb_user"] = cred.get("username")
+                auth_config["auth_smb_pass"] = cred.get("password")
+                auth_config["auth_smb_domain"] = cred.get("domain")
+                loaded += 1
+            elif protocol == "SNMP":
+                auth_config["auth_snmp_user"] = cred.get("username")
+                auth_config["auth_snmp_auth_proto"] = cred.get("snmp_auth_proto")
+                auth_config["auth_snmp_auth_pass"] = cred.get("snmp_auth_pass")
+                auth_config["auth_snmp_priv_proto"] = cred.get("snmp_priv_proto")
+                auth_config["auth_snmp_priv_pass"] = cred.get("snmp_priv_pass")
+                loaded += 1
+        return loaded
+
+    def _check_and_load_saved_credentials(self, auth_config: dict) -> bool:
+        """
+        Check for saved credentials in keyring and offer to load them.
+
+        v4.5.3: Implements B5 - Credential Loading for Future Scans
+
+        Returns:
+            True if credentials were loaded, False otherwise.
+        """
+        try:
+            from redaudit.core.credentials import KeyringCredentialProvider
+
+            provider = KeyringCredentialProvider()
+            summary = provider.get_saved_credential_summary()
+            invoking_user = get_invoking_user()
+            invoking_payload = None
+            using_invoking_user = False
+
+            if not summary and invoking_user:
+                invoking_payload = self._load_keyring_from_invoking_user(invoking_user)
+                summary_raw = (
+                    invoking_payload.get("summary", [])
+                    if isinstance(invoking_payload, dict)
+                    else []
+                )
+                summary = []
+                for item in summary_raw:
+                    if isinstance(item, (list, tuple)) and len(item) == 2:
+                        summary.append((item[0], item[1]))
+                using_invoking_user = bool(summary)
+
+            if not summary:
+                return False
+
+            # Show saved credentials
+            found_msg = (
+                self.ui.t("auth_saved_creds_found_invoking", invoking_user)
+                if using_invoking_user
+                else self.ui.t("auth_saved_creds_found")
+            )
+            print(f"\n{self.ui.colors['OKGREEN']}{found_msg}{self.ui.colors['ENDC']}")
+            for item in summary:
+                protocol = item[0] if len(item) > 0 else ""
+                username = item[1] if len(item) > 1 else ""
+                spray_count = item[2] if len(item) > 2 else 0
+                spray_info = f" (+{spray_count} spray)" if spray_count > 0 else ""
+                print(f"  - {protocol}: {username}{spray_info}")
+
+            # Ask to load
+            if self.ask_yes_no(self.ui.t("auth_load_saved_q"), default="yes"):
+                loaded_count = 0
+                if using_invoking_user and isinstance(invoking_payload, dict):
+                    creds = invoking_payload.get("creds", [])
+                    if isinstance(creds, list):
+                        loaded_count = self._apply_keyring_credentials(auth_config, creds)
+                else:
+                    for item in summary:
+                        protocol = item[0] if len(item) > 0 else ""
+                        username = item[1] if len(item) > 1 else ""
+                        cred = provider.get_credential("default", protocol.lower())
+                        if cred:
+                            if protocol == "SSH":
+                                auth_config["auth_ssh_user"] = cred.username
+                                auth_config["auth_ssh_pass"] = cred.password
+                                auth_config["auth_ssh_key"] = cred.private_key
+                                auth_config["auth_ssh_key_pass"] = cred.private_key_passphrase
+                                loaded_count += 1
+                            elif protocol == "SMB":
+                                auth_config["auth_smb_user"] = cred.username
+                                auth_config["auth_smb_pass"] = cred.password
+                                auth_config["auth_smb_domain"] = cred.domain
+                                loaded_count += 1
+                            elif protocol == "SNMP":
+                                auth_config["auth_snmp_user"] = cred.username
+                                auth_config["auth_snmp_auth_proto"] = cred.snmp_auth_proto
+                                auth_config["auth_snmp_auth_pass"] = cred.snmp_auth_pass
+                                auth_config["auth_snmp_priv_proto"] = cred.snmp_priv_proto
+                                auth_config["auth_snmp_priv_pass"] = cred.snmp_priv_pass
+                                loaded_count += 1
+
+                if loaded_count:
+                    print(
+                        f"{self.ui.colors['OKGREEN']}"
+                        f"{self.ui.t('auth_loaded_creds').format(loaded_count)}"
+                        f"{self.ui.colors['ENDC']}\n"
+                    )
+                    return True
+                return False
+
+            return False
+        except Exception as e:
+            # Keyring not available or other error - continue with manual setup
+            import logging
+
+            logging.getLogger(__name__).debug("Keyring check failed: %s", e)
+            return False
+
+    def _collect_universal_credentials(self, start_index: int = 1) -> Optional[list]:
+        """Collect universal credentials (user/pass pairs)."""
+        import getpass
+
+        credentials: list = []
+        cred_num = max(1, int(start_index))
+
+        self.ui.print_status(self.ui.t("auth_cancel_hint"), "WARNING")
+        print(
+            f"\n{self.ui.colors['OKBLUE']}--- "
+            f"{self.ui.t('auth_cred_number') % cred_num} "
+            f"---{self.ui.colors['ENDC']}"
+        )
+
+        while True:
+            user = input(
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self._style_prompt_text(self.ui.t('auth_cred_user_prompt'))}: "
+            ).strip()
+
+            if self._is_cancel_input(user):
+                self.ui.print_status(self.ui.t("config_cancel"), "WARNING")
+                return None
+
+            if not user:
+                break
+
+            try:
+                password = getpass.getpass(
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self._style_prompt_text(self.ui.t('auth_cred_pass_prompt'))}: "
+                )
+            except Exception:
+                password = ""  # nosec
+
+            credentials.append({"user": user, "pass": password})
+
+            if not self.ask_yes_no(self.ui.t("auth_add_another"), default="no"):
+                break
+
+            cred_num += 1
+            print(
+                f"\n{self.ui.colors['OKBLUE']}--- "
+                f"{self.ui.t('auth_cred_number') % cred_num} "
+                f"---{self.ui.colors['ENDC']}"
+            )
+
+        if credentials:
+            print(
+                f"\n{self.ui.colors['OKGREEN']}"
+                f"{self.ui.t('auth_creds_summary') % len(credentials)}"
+                f"{self.ui.colors['ENDC']}"
+            )
+
+        return credentials
+
+    def _collect_advanced_credentials(self, auth_config: Dict) -> bool:
+        """Collect advanced credentials."""
+        import getpass
+
+        self.ui.print_status(self.ui.t("auth_cancel_hint"), "WARNING")
+
+        # 1. SSH
+        if self.ask_yes_no(self.ui.t("auth_ssh_configure_q"), default="yes"):
+            print(f"\n{self.ui.colors['OKBLUE']}--- SSH ---{self.ui.colors['ENDC']}")
+            default_user = "root"
+            default_user_display = self._style_default_value(default_user)
+            u = input(
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self._style_prompt_text(self.ui.t('auth_ssh_user_prompt'))} "
+                f"[{default_user_display}]: "
+            ).strip()
+            if self._is_cancel_input(u):
+                self.ui.print_status(self.ui.t("config_cancel"), "WARNING")
+                return True
+            auth_config["auth_ssh_user"] = u if u else default_user
+
+            method_opts = [
+                self.ui.t("auth_method_key"),
+                self.ui.t("auth_method_pass"),
+            ]
+            choice = self.ask_choice(self.ui.t("auth_method_q"), method_opts, 0)
+
+            if choice == 0:
+                default_key = "~/.ssh/id_rsa"
+                default_key_display = self._style_default_value(default_key)
+                k = input(
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self._style_prompt_text(self.ui.t('auth_ssh_key_prompt'))} "
+                    f"[{default_key_display}]: "
+                ).strip()
+                auth_config["auth_ssh_key"] = expand_user_path(k if k else default_key)
+            else:
+                print(
+                    f"{self.ui.colors['OKBLUE']}"
+                    f"{self.ui.t('auth_ssh_pass_hint')}:{self.ui.colors['ENDC']}"
+                )
+                try:
+                    pwd = getpass.getpass(
+                        f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                        f"{self._style_prompt_text('Password: ')}"
+                    )
+                    auth_config["auth_ssh_pass"] = pwd
+                except Exception:
+                    pass
+
+        # 2. SMB
+        if self.ask_yes_no(self.ui.t("auth_smb_configure_q"), default="no"):
+            print(f"\n{self.ui.colors['OKBLUE']}--- SMB ---{self.ui.colors['ENDC']}")
+            default_user = "Administrator"
+            default_user_display = self._style_default_value(default_user)
+            u = input(
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self._style_prompt_text(self.ui.t('auth_smb_user_prompt'))} "
+                f"[{default_user_display}]: "
+            ).strip()
+            if self._is_cancel_input(u):
+                self.ui.print_status(self.ui.t("config_cancel"), "WARNING")
+                return True
+            auth_config["auth_smb_user"] = u if u else default_user
+
+            d = input(
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self._style_prompt_text(self.ui.t('auth_smb_domain_prompt'))} []: "
+            ).strip()
+            auth_config["auth_smb_domain"] = d if d else None
+
+            print(
+                f"{self.ui.colors['OKBLUE']}"
+                f"{self.ui.t('auth_smb_pass_hint')}:{self.ui.colors['ENDC']}"
+            )
+            try:
+                pwd = getpass.getpass(
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self._style_prompt_text('Password: ')}"
+                )
+                auth_config["auth_smb_pass"] = pwd
+            except Exception:
+                pass
+
+        # 3. SNMP v3
+        if self.ask_yes_no(self.ui.t("auth_snmp_configure_q"), default="no"):
+            print(f"\n{self.ui.colors['OKBLUE']}--- SNMP v3 ---{self.ui.colors['ENDC']}")
+            u = input(
+                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                f"{self._style_prompt_text(self.ui.t('auth_snmp_user_prompt'))}: "
+            ).strip()
+            if self._is_cancel_input(u):
+                self.ui.print_status(self.ui.t("config_cancel"), "WARNING")
+                return True
+            auth_config["auth_snmp_user"] = u
+
+            auth_protos = ["SHA", "MD5", "SHA224", "SHA256", "SHA384", "SHA512"]
+            a_idx = self.ask_choice(self.ui.t("auth_snmp_auth_proto_q"), auth_protos, 0)
+            auth_config["auth_snmp_auth_proto"] = auth_protos[a_idx]
+
+            try:
+                auth_pass = getpass.getpass(
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self._style_prompt_text('Auth Key: ')}"
+                )
+                auth_config["auth_snmp_auth_pass"] = auth_pass
+            except Exception:
+                pass
+
+            priv_protos = ["AES", "DES", "AES192", "AES256", "3DES"]
+            p_idx = self.ask_choice(self.ui.t("auth_snmp_priv_proto_q"), priv_protos, 0)
+            auth_config["auth_snmp_priv_proto"] = priv_protos[p_idx]
+
+            try:
+                priv_pass = getpass.getpass(
+                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
+                    f"{self._style_prompt_text('Priv Key: ')}"
+                )
+                auth_config["auth_snmp_priv_pass"] = priv_pass
+            except Exception:
+                pass
+        return False

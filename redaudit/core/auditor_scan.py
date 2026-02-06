@@ -19,6 +19,7 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from redaudit.core.agentless_verify import (
+    _fingerprint_device_from_http,
     probe_agentless_services,
     select_agentless_probe_targets,
     summarize_agentless_fingerprint,
@@ -32,6 +33,7 @@ from redaudit.core.scanner import (
     enrich_host_with_dns,
     enrich_host_with_whois,
     exploit_lookup,
+    extract_detailed_identity,
     extract_os_detection,
     extract_vendor_mac,
     finalize_host_status,
@@ -54,6 +56,7 @@ from redaudit.utils.constants import (
     DEFAULT_UDP_MODE,
     DEEP_SCAN_TIMEOUT,
     MAX_PORTS_DISPLAY,
+    MAX_THREADS,
     PHASE0_TIMEOUT,
     STATUS_DOWN,
     STATUS_NO_RESPONSE,
@@ -65,7 +68,13 @@ from redaudit.utils.constants import (
     UDP_TOP_PORTS,
 )
 from redaudit.utils.dry_run import is_dry_run
+
 from redaudit.utils.oui_lookup import get_vendor_with_fallback
+
+# v4.0: Authenticated Scanning
+from redaudit.core.auth_ssh import SSHScanner, SSHConnectionError
+from redaudit.core.credentials import Credential, get_credential_provider
+from dataclasses import asdict
 
 # Try to import nmap
 nmap = None
@@ -80,6 +89,7 @@ class AuditorScan:
     interrupted: bool
     scanner: NetworkScanner
     ui: Any  # Defined in Auditor subclass, typed as Any to satisfy mypy
+    proxy_manager: Any  # Defined in Auditor subclass
     # v4.1: Pre-discovered ports from sequential HyperScan-First phase
     _hyperscan_discovery_ports: Dict[str, List[int]]
 
@@ -87,6 +97,139 @@ class AuditorScan:
 
         def _coerce_text(self, value: object) -> str:
             raise NotImplementedError
+
+        def _set_ui_detail(self, detail: str) -> None:
+            raise NotImplementedError
+
+        def _progress_ui(self):
+            raise NotImplementedError
+
+    # v4.0: Authenticated Scanning Helpers
+    @property
+    def credential_provider(self):
+        """Lazy initialization of credential provider."""
+        if not hasattr(self, "_credential_provider_instance"):
+            auth_backend = self.config.get("auth_provider", "keyring")
+            try:
+                self._credential_provider_instance = get_credential_provider(auth_backend)
+            except Exception as e:
+                if self.logger:
+                    self.logger.warning("Error initializing credential provider: %s", e)
+                # Fallback
+                from redaudit.core.credentials import EnvironmentCredentialProvider
+
+                self._credential_provider_instance = EnvironmentCredentialProvider()
+        return self._credential_provider_instance
+
+    def _resolve_ssh_credential(self, host: str) -> Optional[Credential]:
+        """Resolve SSH credential for host (Global Config > Provider)."""
+        # 1. Global Config (CLI/Wizard) overrides provider for now (MVP simplified)
+        # Or better: check Config, if not present, check Provider.
+        # But if user provided --ssh-user, they likely want to use it for all targets
+        # (or at least try it).
+
+        user = self.config.get("auth_ssh_user")
+        key = self.config.get("auth_ssh_key")
+        password = self.config.get("auth_ssh_pass")
+        # v4.1: Key Passphrase
+        key_pass = self.config.get("auth_ssh_key_pass")
+
+        if user and (key or password):
+            return Credential(
+                username=user, password=password, private_key=key, private_key_passphrase=key_pass
+            )
+
+        # 2. Provider
+        return self.credential_provider.get_credential(host, "ssh")
+
+    def _resolve_all_ssh_credentials(self, host: str) -> list:
+        """
+        Resolve ALL SSH credentials for spray mode.
+
+        Returns list of Credential objects to try in order.
+        If CLI provides explicit credential, that is returned as single-item list.
+        Otherwise, returns all credentials from keyring spray list.
+
+        v4.6.18: Added for credential spraying support.
+        """
+
+        # 1. Global Config (CLI/Wizard) overrides - return as single credential
+        user = self.config.get("auth_ssh_user")
+        key = self.config.get("auth_ssh_key")
+        password = self.config.get("auth_ssh_pass")
+        key_pass = self.config.get("auth_ssh_key_pass")
+
+        if user and (key or password):
+            return [
+                Credential(
+                    username=user,
+                    password=password,
+                    private_key=key,
+                    private_key_passphrase=key_pass,
+                )
+            ]
+
+        # 2. Provider - get all credentials from spray list
+        provider = self.credential_provider
+        if hasattr(provider, "get_all_credentials"):
+            return provider.get_all_credentials("ssh")
+
+        # Fallback: single credential from provider
+        cred = provider.get_credential(host, "ssh")
+        return [cred] if cred else []
+
+    def _resolve_smb_credential(self, host: str) -> Optional[Credential]:
+        """Resolve SMB/Windows credential for host."""
+        user = self.config.get("auth_smb_user")
+        password = self.config.get("auth_smb_pass")
+        domain = self.config.get("auth_smb_domain")
+
+        if user and password:
+            # Handle DOMAIN\User in username if domain not separate?
+            # Impacket usually handles this, or we split properly.
+            # But let's pass as provided, and use domain arg if present.
+            return Credential(username=user, password=password, domain=domain)
+
+        return self.credential_provider.get_credential(host, "smb")
+
+    def _resolve_all_smb_credentials(self, host: str) -> list:
+        """
+        Resolve ALL SMB credentials for spray mode.
+
+        v4.6.22: Added for credential spraying support, mirroring SSH pattern.
+
+        Returns list of Credential objects to try in order.
+        If CLI provides explicit credential, that is returned as single-item list.
+        Otherwise, returns all credentials from keyring spray list.
+        """
+        # 1. CLI override - return as single credential
+        user = self.config.get("auth_smb_user")
+        password = self.config.get("auth_smb_pass")
+        domain = self.config.get("auth_smb_domain")
+
+        if user and password:
+            return [Credential(username=user, password=password, domain=domain)]
+
+        # 2. Provider - get all credentials from spray list
+        provider = self.credential_provider
+        if hasattr(provider, "get_all_credentials"):
+            return provider.get_all_credentials("smb")
+
+        # Fallback: single credential from provider
+        cred = provider.get_credential(host, "smb")
+        return [cred] if cred else []
+
+    def _resolve_snmp_credential(self, host: str) -> Optional[Credential]:
+        """Resolve SNMP v3 credential for host."""
+        user = self.config.get("auth_snmp_user")
+        if user:
+            c = Credential(username=user)
+            c.snmp_auth_proto = self.config.get("auth_snmp_auth_proto")
+            c.snmp_auth_pass = self.config.get("auth_snmp_auth_pass")
+            c.snmp_priv_proto = self.config.get("auth_snmp_priv_proto")
+            c.snmp_priv_pass = self.config.get("auth_snmp_priv_pass")
+            return c
+        return self.credential_provider.get_credential(host, "snmp")
 
     # ---------- Dependencies ----------
 
@@ -102,6 +245,22 @@ class AuditorScan:
         try:
             nmap = importlib.import_module("nmap")
             self.ui.print_status(self.ui.t("nmap_avail"), "OKGREEN")
+
+            # v4.2: Impacket check
+            try:
+                import impacket  # noqa: F401
+
+                self.ui.print_status(self.ui.t("impacket_available"), "OKGREEN")
+            except ImportError:
+                self.ui.print_status(self.ui.t("impacket_missing"), "WARN")
+
+            # v4.3: PySNMP check
+            try:
+                import pysnmp  # noqa: F401
+
+                self.ui.print_status(self.ui.t("pysnmp_available"), "OKGREEN")
+            except ImportError:
+                self.ui.print_status(self.ui.t("pysnmp_missing"), "WARN")
         except ImportError:
             self.ui.print_status(self.ui.t("nmap_missing"), "FAIL")
             return False
@@ -230,6 +389,34 @@ class AuditorScan:
         # v4.0: Use Scanner directly (Populate results for consistency)
         nets = self.scanner.detect_local_networks()
         self.results["network_info"] = nets
+        # v4.9: Detect hidden routed networks (Option C)
+        extra_scope = []
+        try:
+            from redaudit.core.net_discovery import detect_routed_networks
+
+            # Filter local networks from routed results to find "hidden" ones
+            local_cidrs = set()
+            for n in nets:
+                if n.get("network"):
+                    local_cidrs.add(n["network"])
+
+            routed_res = detect_routed_networks(logger=self.logger)
+            routed_nets = routed_res.get("networks", [])
+
+            hidden_nets = [r for r in routed_nets if r not in local_cidrs]
+
+            if hidden_nets:
+                self.ui.print_status(
+                    self.ui.t("net_discovery_routed_found", len(hidden_nets)), "OKGREEN"
+                )
+                for n in hidden_nets:
+                    print(f"  - {n}")
+
+                if self.ask_yes_no(self.ui.t("net_discovery_routed_add_q"), default="yes"):
+                    extra_scope = hidden_nets
+        except ImportError:
+            pass
+
         if nets:
             g = self.ui.colors["OKGREEN"]
             print(f"{g}{self.ui.t('interface_detected')}{self.ui.colors['ENDC']}")
@@ -241,23 +428,32 @@ class AuditorScan:
             opts.append(self.ui.t("manual_entry"))
             opts.append(self.ui.t("scan_all"))
             choice = self.ask_choice(self.ui.t("select_net"), opts)
+
+            selected_nets = []
             if choice == len(opts) - 2:
-                return [self.ask_manual_network()]
-            if choice == len(opts) - 1:
+                selected_nets = self.ask_manual_network()
+            elif choice == len(opts) - 1:
                 # v3.2.3: Deduplicate networks (same CIDR on multiple
                 # interfaces)
                 seen = set()
-                unique_nets = []
                 for n in nets:
                     cidr = n["network"]
                     if cidr not in seen:
                         seen.add(cidr)
-                        unique_nets.append(cidr)
-                return unique_nets
-            return [nets[choice]["network"]]
+                        selected_nets.append(cidr)
+            else:
+                selected_nets = [nets[choice]["network"]]
+
+            # Merge hidden/routed networks if user accepted them
+            if extra_scope:
+                selected_nets.extend(extra_scope)
+                # Deduplicate again just in case
+                selected_nets = sorted(list(set(selected_nets)))
+
+            return selected_nets
         else:
             self.ui.print_status(self.ui.t("no_nets_auto"), "WARNING")
-            return [self.ask_manual_network()]
+            return self.ask_manual_network()
 
     def _select_net_discovery_interface(self) -> Optional[str]:
         explicit = self.config.get("net_discovery_interface")
@@ -414,8 +610,11 @@ class AuditorScan:
                 device_name = str(device.get("device") or "").strip()
                 if device_name:
                     agentless = host_record.setdefault("agentless_fingerprint", {})
+                    if not agentless.get("upnp_device_name"):
+                        agentless["upnp_device_name"] = device_name[:80]
                     if not agentless.get("http_title"):
                         agentless["http_title"] = device_name[:80]
+                        agentless.setdefault("http_source", "upnp")
                 break
 
     def _run_low_impact_enrichment(self, host: str) -> Dict[str, Any]:
@@ -488,6 +687,10 @@ class AuditorScan:
                 if data:
                     mdns_name = self._extract_mdns_name(data) or "mdns_response"
                     signals["mdns_name"] = mdns_name[:255]
+            except (socket.timeout, TimeoutError):
+                # Expected behavior for most hosts (no mDNS response)
+                if self.logger:
+                    self.logger.debug("Phase0 mDNS probe timed out for %s (expected)", safe_ip)
             finally:
                 try:
                     sock.close()
@@ -535,7 +738,7 @@ class AuditorScan:
                     line = text.splitlines()[0].strip()
                     if "=" in line:
                         line = line.split("=", 1)[1].strip()
-                    line = re.sub(r"^[A-Z][A-Z0-9\\-]*:\\s*", "", line).strip().strip('"')
+                    line = re.sub(r"^[A-Z][A-Z0-9-]*:\s*", "", line).strip().strip('"')
                     if line:
                         signals["snmp_sysDescr"] = line[:255]
         except Exception:
@@ -570,6 +773,7 @@ class AuditorScan:
         device_type_hints: List[str],
         identity_score: int,
         identity_threshold: int,
+        identity_evidence: bool,
     ) -> Tuple[bool, List[str]]:
         trigger_deep = False
         deep_reasons: List[str] = []
@@ -586,7 +790,7 @@ class AuditorScan:
         if 0 < total_ports <= 3 and identity_is_weak:
             trigger_deep = True
             deep_reasons.append("low_visibility")
-        if total_ports > 0 and not any_version:
+        if total_ports > 0 and not any_version and not identity_evidence:
             trigger_deep = True
             deep_reasons.append("no_version_info")
         if "router" in device_type_hints or "network_device" in device_type_hints:
@@ -596,11 +800,19 @@ class AuditorScan:
             trigger_deep = True
             deep_reasons.append("identity_weak")
 
+        # v4.5.15: Ghost Identity - If we have NO ports but identity is weak,
+        # force deep scan to discover hidden/filtered services (UDP, etc.)
+        if total_ports == 0 and identity_is_weak:
+            trigger_deep = True
+            deep_reasons.append("ghost_identity")
+
+        # v4.5.17: Raised port limit from 12 to 20 to allow well-identified routers
+        # (which often have 14+ ports) to reach identity_strong and skip deep scan
         if (
             identity_score >= identity_threshold
             and not suspicious
-            and total_ports <= 12
-            and any_version
+            and total_ports <= 20
+            and (any_version or identity_evidence)
         ):
             trigger_deep = False
             deep_reasons.append("identity_strong")
@@ -701,7 +913,150 @@ class AuditorScan:
             return float(val) * 3600.0
         return None
 
-    def deep_scan_host(self, host_ip):
+    @staticmethod
+    def _split_nmap_product_version(rest: str) -> Tuple[str, str, str]:
+        rest = str(rest or "").strip()
+        if not rest:
+            return "", "", ""
+        extra = ""
+        idx = rest.find(" (")
+        if idx == -1 and rest.startswith("("):
+            idx = 0
+        if idx >= 0:
+            extra = rest[idx:].strip()
+            rest = rest[:idx].strip()
+        tokens = rest.split()
+        product = rest
+        version = ""
+        if tokens:
+            version_idx = None
+            for i, tok in enumerate(tokens):
+                if any(ch.isdigit() for ch in tok):
+                    version_idx = i
+                    break
+            if version_idx is not None:
+                product = " ".join(tokens[:version_idx]) or tokens[0]
+                version = tokens[version_idx]
+                if version_idx + 1 < len(tokens):
+                    tail = " ".join(tokens[version_idx + 1 :])
+                    extra = f"{tail} {extra}".strip()
+        return product.strip(), version.strip(), extra.strip()
+
+    def _parse_nmap_open_ports(self, text: str) -> List[Dict[str, Any]]:
+        if not text:
+            return []
+        ports: List[Dict[str, Any]] = []
+        for raw_line in str(text).splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("PORT") or line.startswith("Nmap "):
+                continue
+            match = re.match(
+                r"^(\d+)/(tcp|udp)\s+(open|open\|filtered)\s+(\S+)(?:\s+(.*))?$",
+                line,
+                re.IGNORECASE,
+            )
+            if not match:
+                continue
+            port = int(match.group(1))
+            protocol = match.group(2).lower()
+            service = match.group(4) or ""
+            rest = match.group(5) or ""
+            product, version, extrainfo = self._split_nmap_product_version(rest)
+            is_web = is_web_service(service)
+            if not is_web:
+                from redaudit.utils.constants import WEB_LIKELY_PORTS
+
+                if port in WEB_LIKELY_PORTS:
+                    is_web = True
+            ports.append(
+                {
+                    "port": port,
+                    "protocol": protocol,
+                    "service": service,
+                    "product": product,
+                    "version": version,
+                    "extrainfo": extrainfo,
+                    "cpe": [],
+                    "is_web_service": is_web,
+                }
+            )
+        return ports
+
+    @staticmethod
+    def _merge_port_record(base: Dict[str, Any], incoming: Dict[str, Any]) -> Dict[str, Any]:
+        merged = dict(base)
+        for key in ("service", "product", "version", "extrainfo"):
+            base_val = str(merged.get(key) or "").strip()
+            incoming_val = incoming.get(key)
+            if not base_val or base_val in ("unknown", "tcpwrapped", "hyperscan-discovered"):
+                if incoming_val:
+                    merged[key] = incoming_val
+        if incoming.get("cpe"):
+            base_cpe = merged.get("cpe") or []
+            incoming_cpe = incoming.get("cpe") or []
+            merged["cpe"] = sorted({*base_cpe, *incoming_cpe})
+        if incoming.get("is_web_service"):
+            merged["is_web_service"] = True
+        return merged
+
+    def _merge_ports(
+        self,
+        existing: List[Dict[str, Any]],
+        incoming: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        merged: Dict[Tuple[int, str], Dict[str, Any]] = {}
+        for port in existing or []:
+            try:
+                key = (int(port.get("port")), str(port.get("protocol") or "tcp"))
+            except Exception:
+                continue
+            merged[key] = dict(port)
+        for port in incoming or []:
+            try:
+                key = (int(port.get("port")), str(port.get("protocol") or "tcp"))
+            except Exception:
+                continue
+            if key in merged:
+                merged[key] = self._merge_port_record(merged[key], port)
+            else:
+                merged[key] = dict(port)
+        return [merged[k] for k in sorted(merged.keys())]
+
+    @staticmethod
+    def _merge_services_from_ports(host_obj: Host, ports: List[Dict[str, Any]]) -> None:
+        if not host_obj or not hasattr(host_obj, "services"):
+            return
+        existing = {(s.port, s.protocol): s for s in (host_obj.services or [])}
+        for port in ports or []:
+            try:
+                key = (int(port.get("port")), str(port.get("protocol") or "tcp"))
+            except Exception:
+                continue
+            if key in existing:
+                svc = existing[key]
+                if svc.name in ("", "unknown") and port.get("service"):
+                    svc.name = port.get("service") or svc.name
+                if not svc.product and port.get("product"):
+                    svc.product = port.get("product") or svc.product
+                if not svc.version and port.get("version"):
+                    svc.version = port.get("version") or svc.version
+                if not svc.extrainfo and port.get("extrainfo"):
+                    svc.extrainfo = port.get("extrainfo") or svc.extrainfo
+                if not svc.cpe and port.get("cpe"):
+                    svc.cpe = port.get("cpe") or svc.cpe
+                continue
+            svc_obj = Service(
+                port=port.get("port", 0),
+                protocol=port.get("protocol") or "tcp",
+                name=port.get("service") or "unknown",
+                product=port.get("product") or "",
+                version=port.get("version") or "",
+                extrainfo=port.get("extrainfo") or "",
+                cpe=port.get("cpe") or [],
+            )
+            host_obj.add_service(svc_obj)
+
+    def deep_scan_host(self, host_ip, trusted_ports: List[int] = None):
         """
         Adaptive Deep Scan v2.8.0
 
@@ -720,10 +1075,12 @@ class AuditorScan:
 
         self.current_phase = f"deep:{safe_ip}"
         self._set_ui_detail(f"[deep] {safe_ip} tcp")
-        deep_obj = {"strategy": "adaptive_v2.8", "commands": []}
+        deep_obj: Dict[str, Any] = {"strategy": "adaptive_v2.8", "commands": []}
 
+        strategy_label = self.ui.t("deep_strategy_adaptive")
+        strategy_label = re.sub(r"\s*\([^)]*\)", "", strategy_label).strip()
         self.ui.print_status(
-            self.ui.t("deep_identity_start", safe_ip, self.ui.t("deep_strategy_adaptive")),
+            self.ui.t("deep_identity_start", safe_ip, strategy_label),
             "WARNING",
         )
 
@@ -738,22 +1095,62 @@ class AuditorScan:
         )
 
         try:
-            # Phase 1: Aggressive TCP
+            # Phase 1: Aggressive TCP - ALWAYS -p- (65,535 ports) as per scan logic diagram
+            # Infrastructure devices should be excluded via identity_strong at evaluation level
             cmd_p1 = [
                 "nmap",
-                "-A",
-                "-sV",
-                "-Pn",
                 "-p-",
-                "--open",
-                "--version-intensity",
-                "9",
+                "-A",
+                "-Pn",
                 safe_ip,
             ]
+
+            # v4.6.0: Trust HyperScan Optimization
+            # If enabled and we have discovery ports, use them instead of -p-
+            # v4.6.2: Handle "Mute" hosts (0 ports). Untrusted->-p-. Trusted->top-1000 check.
+            if self.config.get("trust_hyperscan"):
+                if trusted_ports is not None:
+                    # Case A: Ports found (Speed++)
+                    if len(trusted_ports) > 0:
+                        port_list = ",".join(map(str, trusted_ports))
+                        cmd_p1 = [
+                            "nmap",
+                            "-A",
+                            "-Pn",
+                            f"-p{port_list}",
+                            "--open",
+                            "--version-intensity",
+                            "9",
+                            safe_ip,
+                        ]
+                        self.ui.print_status(
+                            f"⚡ Trust HyperScan active: Scanning {len(trusted_ports)} ports "
+                            "instead of 65k",
+                            "OKBLUE",
+                        )
+                    # Case B: No ports found (Sanity Check)
+                    else:
+                        # Scan top 1000 ports to be safe, but fast (skip 64k empty ports)
+                        cmd_p1 = [
+                            "nmap",
+                            "-A",
+                            "-Pn",
+                            "--top-ports",
+                            "1000",
+                            "--open",
+                            "--version-intensity",
+                            "9",
+                            safe_ip,
+                        ]
+                        self.ui.print_status(
+                            "⚡ Trust HyperScan active: 0 ports found, sanity checking top-1000",
+                            "OKBLUE",
+                        )
+
             self.ui.print_status(
                 self.ui.t("deep_identity_cmd", safe_ip, " ".join(cmd_p1), "120-180"), "WARNING"
             )
-            rec1 = run_nmap_command(
+            rec1: Dict[str, Any] = run_nmap_command(
                 cmd_p1,
                 DEEP_SCAN_TIMEOUT,
                 safe_ip,
@@ -761,7 +1158,11 @@ class AuditorScan:
                 logger=self.logger,
                 dry_run=bool(self.config.get("dry_run", False)),
                 proxy_manager=self.proxy_manager,
+                max_stdout=None,
             )
+
+            deep_ports: List[Dict[str, Any]] = self._parse_nmap_open_ports(rec1.get("stdout", ""))
+            has_open_ports = bool(deep_ports)
 
             # Check for Identity
             has_identity = output_has_identity([rec1])
@@ -777,8 +1178,22 @@ class AuditorScan:
             if os_detected:
                 deep_obj["os_detected"] = os_detected
 
+            # v4.13: Enhanced Identification (FRITZ!Repeater, etc)
+            detailed_id = extract_detailed_identity(
+                f"{self._coerce_text(rec1.get('stdout'))}\n{self._coerce_text(rec1.get('stderr'))}"
+            )
+            if detailed_id:
+                if detailed_id.get("vendor"):
+                    deep_obj["vendor"] = detailed_id["vendor"]
+                if detailed_id.get("model"):
+                    deep_obj["model"] = detailed_id["model"]
+                if detailed_id.get("device_type"):
+                    deep_obj["device_type"] = detailed_id["device_type"]
+                if detailed_id.get("os_detected"):
+                    deep_obj["os_detected"] = detailed_id["os_detected"]
+
             # Phase 2: UDP scanning (Intelligent strategy)
-            if has_identity:
+            if has_identity and has_open_ports:
                 self.ui.print_status(self.ui.t("deep_scan_skip"), "OKGREEN")
                 deep_obj["phase2_skipped"] = True
             else:
@@ -820,7 +1235,10 @@ class AuditorScan:
                 noresp_count = sum(1 for r in udp_probe if r.get("state") == "no_response")
 
                 record = {
-                    "command": f"udp_probe {safe_ip} priority_ports={len(priority_ports)} timeout={udp_probe_timeout}",
+                    "command": (
+                        f"udp_probe {safe_ip} priority_ports={len(priority_ports)} "
+                        f"timeout={udp_probe_timeout}"
+                    ),
                     "returncode": 0,
                     "stdout": (
                         f"responded_ports: {', '.join(responded) if responded else 'none'}\n"
@@ -835,6 +1253,30 @@ class AuditorScan:
                     "timeout_seconds": udp_probe_timeout,
                     "results": udp_probe,
                 }
+                responded_ports = [
+                    p.get("port") for p in udp_probe if p.get("state") == "responded"
+                ]
+                for port in responded_ports:
+                    service_name = "udp-probe"
+                    try:
+                        service_name = socket.getservbyport(int(port), "udp")
+                    except Exception:
+                        pass
+                    deep_ports = self._merge_ports(
+                        deep_ports,
+                        [
+                            {
+                                "port": port,
+                                "protocol": "udp",
+                                "service": service_name,
+                                "product": "",
+                                "version": "",
+                                "extrainfo": "",
+                                "cpe": [],
+                                "is_web_service": False,
+                            }
+                        ],
+                    )
 
                 # Extract MAC from neighbor cache if not found yet (LAN best-effort).
                 if not mac:
@@ -855,8 +1297,8 @@ class AuditorScan:
 
                 # Phase 2b: Full UDP scan (only if mode is 'full' and still no identity)
                 # v2.9: Optimized to use top-ports instead of full 65535 port scan
-                has_identity_now = output_has_identity(deep_obj.get("commands", []))
-                if udp_mode == UDP_SCAN_MODE_FULL and not has_identity_now and not mac:
+                has_ports_now = bool(deep_ports)
+                if udp_mode == UDP_SCAN_MODE_FULL and not has_ports_now:
                     udp_top_ports = self.config.get("udp_top_ports", UDP_TOP_PORTS)
                     if not isinstance(udp_top_ports, int) or not (50 <= udp_top_ports <= 500):
                         udp_top_ports = UDP_TOP_PORTS
@@ -887,6 +1329,7 @@ class AuditorScan:
                         logger=self.logger,
                         dry_run=bool(self.config.get("dry_run", False)),
                         proxy_manager=self.proxy_manager,
+                        max_stdout=None,
                     )
                     if not mac:
                         m2b, v2b = extract_vendor_mac(rec2b.get("stdout", ""))
@@ -894,9 +1337,13 @@ class AuditorScan:
                             deep_obj["mac_address"] = m2b
                         if v2b:
                             deep_obj["vendor"] = v2b
+                    deep_ports = self._merge_ports(
+                        deep_ports, self._parse_nmap_open_ports(rec2b.get("stdout", ""))
+                    )
                     if "os_detected" not in deep_obj:
                         os2b = extract_os_detection(
-                            f"{self._coerce_text(rec2b.get('stdout'))}\n{self._coerce_text(rec2b.get('stderr'))}"
+                            f"{self._coerce_text(rec2b.get('stdout'))}\n"
+                            f"{self._coerce_text(rec2b.get('stderr'))}"
                         )
                         if os2b:
                             deep_obj["os_detected"] = os2b
@@ -912,6 +1359,10 @@ class AuditorScan:
                     deep_obj["pcap_capture"] = pcap_result
 
         total_dur = sum(c.get("duration_seconds", 0) for c in deep_obj["commands"])
+        if deep_ports:
+            deep_obj["ports"] = deep_ports
+            deep_obj["web_ports_count"] = sum(1 for p in deep_ports if p.get("is_web_service"))
+            deep_obj["total_ports_found"] = len(deep_ports)
         self.ui.print_status(self.ui.t("deep_identity_done", safe_ip, total_dur), "OKGREEN")
         return deep_obj
 
@@ -1005,23 +1456,22 @@ class AuditorScan:
             and not self.config.get("stealth")
             and not self.config.get("no_hyperscan_first")
         )
+
+        # v4.5.17: Always check HyperScan ports (preservation, even if not full mode)
         discovery_ports: List[int] = []
+        if "_hyperscan_discovery_ports" in self.__dict__:
+            discovery_ports = self._hyperscan_discovery_ports.get(safe_ip, [])
 
-        if hyperscan_first_enabled:
-            # Check for pre-discovered ports (use __dict__ to avoid __getattr__ recursion)
-            if "_hyperscan_discovery_ports" in self.__dict__:
-                discovery_ports = self._hyperscan_discovery_ports.get(safe_ip, [])
-
-            if discovery_ports:
-                # Use pre-discovered ports for nmap fingerprinting (-A includes -sV -sC -O)
-                port_list = ",".join(str(p) for p in discovery_ports)
-                args = f"-A -Pn -p {port_list}"
-                timing = self.config.get("nmap_timing")
-                if timing:
-                    args = f"-T{timing} {args}"
-            else:
-                # No discovery results - fall back to standard nmap scan
-                args = get_nmap_arguments(self.config["scan_mode"], self.config)
+        if hyperscan_first_enabled and discovery_ports:
+            # Use pre-discovered ports for nmap fingerprinting (-A includes -sV -sC -O)
+            port_list = ",".join(str(p) for p in discovery_ports)
+            args = f"-A -Pn -p {port_list}"
+            timing = self.config.get("nmap_timing")
+            if timing:
+                args = f"-T{timing} {args}"
+        else:
+            # No discovery results or not in full mode - fall back to standard nmap scan
+            args = get_nmap_arguments(self.config["scan_mode"], self.config)
 
         self._set_ui_detail(f"[nmap] {safe_ip} ({mode_label})")
         self.logger.debug("Nmap scan %s %s", safe_ip, args)
@@ -1033,7 +1483,7 @@ class AuditorScan:
             if not nm:
                 self.logger.warning("Nmap scan failed for %s: %s", safe_ip, scan_error)
                 self.ui.print_status(
-                    f"⚠️  Nmap scan failed {safe_ip}: {scan_error}",
+                    f"⚠  Nmap scan failed {safe_ip}: {scan_error}",
                     "FAIL",
                     force=True,
                 )
@@ -1058,6 +1508,7 @@ class AuditorScan:
                 # v4.0: Populate Host model on scan failure (topology only)
                 host_obj = self.scanner.get_or_create_host(safe_ip)
                 host_obj.status = STATUS_NO_RESPONSE
+                host_obj.tags.append("no_response:nmap_failed")
                 host_obj.raw_nmap_data = {"error": scan_error}
                 if deep_meta:
                     host_obj.deep_scan = deep_meta
@@ -1074,12 +1525,37 @@ class AuditorScan:
                 deep = None
                 # But we must update the host object later to indicate pending deep scan
                 pass
+
+                # v4.5.16: Preserve HyperScan-discovered ports when nmap doesn't find host
+                preserved_ports = []
+                if discovery_ports:
+                    for mp in discovery_ports:
+                        preserved_ports.append(
+                            {
+                                "port": mp,
+                                "protocol": "tcp",
+                                "service": "hyperscan-discovered",
+                                "product": "",
+                                "version": "",
+                                "extrainfo": "(Port found by HyperScan, not confirmed by nmap)",
+                                "cpe": [],
+                                "is_web_service": mp in (80, 443, 8080, 8443, 3000, 8000),
+                            }
+                        )
+                    if self.logger:
+                        self.logger.info(
+                            "Host %s not in nmap results, preserving %d HyperScan ports: %s",
+                            safe_ip,
+                            len(discovery_ports),
+                            discovery_ports[:10],
+                        )
+
                 base = {
                     "ip": safe_ip,
                     "hostname": "",
-                    "ports": [],
-                    "web_ports_count": 0,
-                    "total_ports_found": 0,
+                    "ports": preserved_ports,
+                    "web_ports_count": sum(1 for p in preserved_ports if p.get("is_web_service")),
+                    "total_ports_found": len(preserved_ports),
                 }
                 if self.config.get("low_impact_enrichment"):
                     base["phase0_enrichment"] = phase0_enrichment or {}
@@ -1196,6 +1672,307 @@ class AuditorScan:
                         }
                     )
 
+            # v4.5.16: Preserve HyperScan-discovered ports that nmap missed
+            # This handles timing issues where ports close between HyperScan and nmap
+            if self.logger:
+                self.logger.info(
+                    "[PORT-PRESERVE] %s: discovery_ports=%s, nmap_ports=%d",
+                    safe_ip,
+                    discovery_ports[:5] if discovery_ports else [],
+                    len(ports),
+                )
+            if discovery_ports:
+                nmap_port_nums = {p["port"] for p in ports}
+                missing_ports = [p for p in discovery_ports if p not in nmap_port_nums]
+                if missing_ports and self.logger:
+                    self.logger.info(
+                        "Preserving %d HyperScan ports not confirmed by nmap for %s: %s",
+                        len(missing_ports),
+                        safe_ip,
+                        missing_ports[:10],  # Log first 10
+                    )
+                for mp in missing_ports:
+                    ports.append(
+                        {
+                            "port": mp,
+                            "protocol": "tcp",
+                            "service": "hyperscan-discovered",
+                            "product": "",
+                            "version": "",
+                            "extrainfo": "(Port found by HyperScan, not confirmed by nmap)",
+                            "cpe": [],
+                            "is_web_service": mp in (80, 443, 8080, 8443, 3000, 8000),
+                        }
+                    )
+
+            # v4.9.x: Quick Win #5 - Honeypot Detection
+            if len(ports) > 100:
+                if "honeypot" not in host_obj.tags:
+                    host_obj.tags.append("honeypot")
+                if self.logger:
+                    self.logger.warning(
+                        "Potential honeypot detected: %s has %d open ports", safe_ip, len(ports)
+                    )
+
+            # v4.0: Authenticated Scanning Integration (Phase 4)
+            # v4.6.18: Credential spraying - try all credentials until one works
+            # Guard auth lookups to avoid keyring stalls when auth is disabled.
+            auth_enabled = bool(self.config.get("auth_enabled"))
+            ssh_credentials = []
+            if auth_enabled:
+                # Get ALL credentials for spray mode
+                ssh_credentials = self._resolve_all_ssh_credentials(safe_ip)
+
+            if auth_enabled and ssh_credentials:
+                # Check for open SSH port (22 or service name "ssh")
+                ssh_port = 22
+                ssh_open = False
+
+                # Check if 22 is open in discovered ports
+                for p_dict in ports:
+                    if p_dict["port"] == 22:
+                        ssh_open = True
+                        break
+
+                # If 22 wasn't found, check if any port is "ssh"
+                if not ssh_open:
+                    for p_dict in ports:
+                        if p_dict["service"] == "ssh":
+                            ssh_port = p_dict["port"]
+                            ssh_open = True
+                            break
+
+                if ssh_open:
+                    # v4.5.15: Default to True for automated scanning environments
+                    trust_keys = self.config.get("auth_ssh_trust_keys", True)
+                    timeout = self.config.get("timeout", 30)
+
+                    # v4.6.18: Spray all credentials until one succeeds
+                    ssh_auth_success = False
+                    last_error = None
+
+                    for ssh_credential in ssh_credentials:
+                        if ssh_auth_success:
+                            break  # Already authenticated with a previous credential
+
+                        if hasattr(self, "ui") and self.ui:
+                            self.ui.print_status(
+                                self.ui.t("auth_scan_start", safe_ip, ssh_credential.username),
+                                "INFO",
+                            )
+
+                        ssh_scanner = SSHScanner(
+                            ssh_credential,
+                            timeout=int(timeout) if timeout else 30,
+                            trust_unknown_keys=trust_keys,
+                        )
+
+                        try:
+                            if ssh_scanner.connect(safe_ip, port=ssh_port):
+                                ssh_auth_success = True
+                                if hasattr(self, "ui") and self.ui:
+                                    self.ui.print_status(
+                                        self.ui.t("auth_scan_connected", "SSH"), "OKBLUE"
+                                    )
+
+                                info = ssh_scanner.gather_host_info()
+                                host_obj.auth_scan = asdict(info)
+
+                                # Merge high-fidelity OS detection
+                                if info.os_name and info.os_name != "unknown":
+                                    host_obj.os_detected = (
+                                        f"{info.os_name} {info.os_version}".strip()
+                                    )
+
+                                # v4.3: Lynis Integration
+                                should_run_lynis = self.config.get("lynis_enabled")
+                                is_linux = "linux" in (info.os_name or "").lower()
+
+                                if should_run_lynis and is_linux:
+                                    try:
+                                        from redaudit.core.auth_lynis import LynisScanner
+
+                                        if hasattr(self, "ui") and self.ui:
+                                            self.ui.print_status(
+                                                self.ui.t("auth_scan_start", safe_ip, "Lynis"),
+                                                "INFO",
+                                            )
+
+                                        lynis = LynisScanner(ssh_scanner)
+                                        l_res = lynis.run_audit(use_portable=True)
+
+                                        if l_res:
+                                            if not host_obj.auth_scan:
+                                                host_obj.auth_scan = {}
+                                            host_obj.auth_scan["lynis_hardening_index"] = (
+                                                l_res.hardening_index
+                                            )
+                                            if hasattr(self, "ui") and self.ui:
+                                                self.ui.print_status(
+                                                    f"Lynis Index: {l_res.hardening_index}",
+                                                    "OKBLUE",
+                                                )
+
+                                    except Exception as e:
+                                        if self.logger:
+                                            self.logger.error("Lynis audit failed: %s", e)
+
+                                ssh_scanner.close()
+                        except SSHConnectionError as e:
+                            last_error = str(e)
+                            # Don't warn yet - try next credential
+                            if self.logger:
+                                self.logger.debug(
+                                    "SSH auth failed for %s with %s: %s",
+                                    safe_ip,
+                                    ssh_credential.username,
+                                    e,
+                                )
+                        except Exception as e:
+                            last_error = str(e)
+                            if self.logger:
+                                self.logger.debug(
+                                    "Auth scan error on %s with %s: %s",
+                                    safe_ip,
+                                    ssh_credential.username,
+                                    e,
+                                )
+
+                    # If all credentials failed, report the last error
+                    if not ssh_auth_success and last_error:
+                        if hasattr(self, "ui") and self.ui:
+                            self.ui.print_status(self.ui.t("auth_scan_failed", last_error), "WARN")
+                            self.ui.print_status(self.ui.t("ssh_auth_failed_all", safe_ip), "WARN")
+                        host_obj.auth_scan = {"error": last_error}
+
+            # v4.2: SMB/WMI Authenticated Scan (Impacket)
+            # Check port 445 (SMB) - Prefer 445 over 139 for modern Windows
+            smb_open = False
+            if host_obj.services:
+                smb_open = any(s.port == 445 and s.state == "open" for s in host_obj.services)
+            # v4.6.22: SMB Credential Spray - try all SMB credentials
+            smb_credentials = []
+            if auth_enabled:
+                smb_credentials = self._resolve_all_smb_credentials(safe_ip)
+
+            if auth_enabled and smb_open and smb_credentials:
+                from redaudit.core.auth_smb import SMBScanner, SMBConnectionError
+
+                smb_auth_success = False
+                last_error = ""
+                successful_user = ""
+
+                # v4.6.22: Spray through all SMB credentials
+                for smb_idx, smb_cred in enumerate(smb_credentials):
+                    if smb_auth_success:
+                        break
+                    if smb_cred is None:
+                        continue
+
+                    try:
+                        self._set_ui_detail(
+                            f"[SMB] {safe_ip} ({smb_idx + 1}/{len(smb_credentials)}) "
+                            f"{smb_cred.username}"
+                        )
+
+                        smb_scanner = SMBScanner(smb_cred)
+
+                        if smb_scanner.connect(safe_ip, 445):
+                            self._set_ui_detail(self.ui.t("auth_scan_connected", "SMB"))
+                            smb_auth_success = True
+                            successful_user = smb_cred.username
+
+                            # Gather Info
+                            info = smb_scanner.gather_host_info()
+                            smb_scanner.close()
+
+                            smb_data = asdict(info)
+                            clean_data = {k: v for k, v in smb_data.items() if v and v != "unknown"}
+
+                            if not host_obj.auth_scan:
+                                host_obj.auth_scan = {}
+                            if isinstance(host_obj.auth_scan, dict):
+                                host_obj.auth_scan.update(clean_data)
+                                host_obj.auth_scan["smb_user"] = successful_user
+
+                            # Update OS detection if confident
+                            if info.os_name and info.os_name != "unknown":
+                                combined = f"{info.os_name} {info.os_version}".strip()
+                                if (
+                                    not host_obj.os_detected
+                                    or "unknown" in host_obj.os_detected.lower()
+                                ):
+                                    host_obj.os_detected = combined
+                            break
+
+                    except SMBConnectionError as e:
+                        last_error = str(e)
+                        if self.logger:
+                            self.logger.debug(
+                                "SMB auth failed for %s@%s: %s", smb_cred.username, safe_ip, e
+                            )
+                    except ImportError:
+                        if self.config.get("verbose"):
+                            self.logger.warning("Impacket not installed, skipping SMB scan")
+                        break
+                    except Exception as e:
+                        last_error = str(e)
+                        if self.logger:
+                            self.logger.debug("SMB scan error on %s: %s", safe_ip, e)
+
+                # Report failure if all credentials failed
+                if not smb_auth_success and smb_credentials and last_error:
+                    if hasattr(self, "ui") and self.ui:
+                        self.ui.print_status(self.ui.t("smb_auth_failed_all", safe_ip), "WARN")
+
+            # v4.3: SNMP v3 Authenticated Scan (PySNMP)
+            snmp_open = False
+            if host_obj.services:
+                snmp_open = any(
+                    s.port == 161 and s.protocol == "udp" and "open" in s.state
+                    for s in host_obj.services
+                )
+
+            snmp_credential = None
+            if auth_enabled:
+                snmp_credential = self._resolve_snmp_credential(safe_ip)
+
+            if auth_enabled and snmp_open and snmp_credential:
+                try:
+                    from redaudit.core.auth_snmp import SNMPScanner
+
+                    self._set_ui_detail(self.ui.t("auth_scan_start", safe_ip, "SNMP"))
+
+                    scanner = SNMPScanner(snmp_credential)
+
+                    if self.config.get("snmp_topology"):
+                        self._set_ui_detail(self.ui.t("auth_scan_start", safe_ip, "SNMP Topology"))
+                        info = scanner.get_topology_info(safe_ip)
+                    else:
+                        info = scanner.get_system_info(safe_ip)
+
+                    snmp_data = asdict(info)
+                    clean_data = {k: v for k, v in snmp_data.items() if v and v != "unknown"}
+
+                    if not host_obj.auth_scan:
+                        host_obj.auth_scan = {}
+
+                    if isinstance(host_obj.auth_scan, dict):
+                        host_obj.auth_scan.update(clean_data)
+
+                    if info.sys_descr and info.sys_descr != "unknown":
+                        current = host_obj.os_detected or ""
+                        # Don't duplicate if already present
+                        if info.sys_descr not in current:
+                            host_obj.os_detected = (current + " " + info.sys_descr).strip()
+
+                except ImportError:
+                    if self.config.get("verbose"):
+                        self.logger.warning("PySNMP not installed, skipping SNMP scan")
+                except Exception as e:
+                    if self.logger:
+                        self.logger.error("SNMP scan error on %s: %s", safe_ip, e)
+
             total_ports = len(ports)
             if total_ports > MAX_PORTS_DISPLAY:
                 self.ui.print_status(self.ui.t("ports_truncated", safe_ip, total_ports), "WARNING")
@@ -1212,7 +1989,7 @@ class AuditorScan:
             if self.config.get("low_impact_enrichment"):
                 host_record["phase0_enrichment"] = phase0_enrichment or {}
 
-            # Best-effort identity capture from nmap host data (fast, avoids deep scan for quiet hosts).
+            # Best-effort ID from nmap (fast, avoids deep scan for quiet hosts).
             try:
                 addresses = (data.get("addresses") or {}) if hasattr(data, "get") else {}
                 mac = addresses.get("mac") if isinstance(addresses, dict) else None
@@ -1269,8 +2046,67 @@ class AuditorScan:
                             if extra.get("ssl_cert"):
                                 port_info["ssl_cert"] = extra["ssl_cert"]
 
+            agentless_fp = host_record.get("agentless_fingerprint") or {}
+            http_source = str(agentless_fp.get("http_source") or "")
+            has_http_identity = (
+                bool(agentless_fp.get("http_title") or agentless_fp.get("http_server"))
+                and http_source != "upnp"
+            )
+            if (
+                web_count > 0
+                and self.config.get("deep_id_scan", True)
+                and not has_http_identity
+                and not any_version
+            ):
+                web_ports = [p.get("port") for p in ports if p.get("is_web_service")]
+                web_ports = [p for p in web_ports if isinstance(p, int)][:5]
+                if web_ports:
+                    http_probe = http_identity_probe(
+                        safe_ip,
+                        self.extra_tools,
+                        ports=web_ports,
+                        dry_run=bool(self.config.get("dry_run", False)),
+                        logger=self.logger,
+                        proxy_manager=self.proxy_manager,
+                    )
+                    if http_probe:
+                        agentless_fp = host_record.setdefault("agentless_fingerprint", {})
+                        http_source = str(agentless_fp.get("http_source") or "")
+                        if http_source == "upnp" and agentless_fp.get("http_title"):
+                            agentless_fp.setdefault(
+                                "upnp_device_name", str(agentless_fp["http_title"])[:80]
+                            )
+                        if http_probe.get("http_title") and (
+                            not agentless_fp.get("http_title") or http_source == "upnp"
+                        ):
+                            agentless_fp["http_title"] = str(http_probe["http_title"])[:256]
+                        if http_probe.get("http_server") and (
+                            not agentless_fp.get("http_server") or http_source == "upnp"
+                        ):
+                            agentless_fp["http_server"] = str(http_probe["http_server"])[:256]
+                        if http_probe.get("http_title") or http_probe.get("http_server"):
+                            agentless_fp["http_source"] = "probe"
+                        title = str(agentless_fp.get("http_title") or "")
+                        server = str(agentless_fp.get("http_server") or "")
+                        if title or server:
+                            fp = _fingerprint_device_from_http(title, server)
+                            for key in ("device_vendor", "device_model", "device_type"):
+                                if fp.get(key) and not agentless_fp.get(key):
+                                    agentless_fp[key] = fp[key]
+
             identity_score, identity_signals = self._compute_identity_score(host_record)
             device_type_hints = host_record.get("device_type_hints") or []
+            agentless_fp = host_record.get("agentless_fingerprint") or {}
+            http_source = str(agentless_fp.get("http_source") or "")
+            has_http_identity = (
+                bool(agentless_fp.get("http_title") or agentless_fp.get("http_server"))
+                and http_source != "upnp"
+            )
+            identity_evidence = bool(
+                has_http_identity
+                or agentless_fp.get("device_type")
+                or agentless_fp.get("device_vendor")
+            )
 
             if self.logger:
                 self.logger.debug(
@@ -1288,6 +2124,7 @@ class AuditorScan:
             if is_full_mode and identity_threshold < 4:
                 identity_threshold = 4
 
+            deep_id_enabled = bool(self.config.get("deep_id_scan", True))
             trigger_deep, deep_reasons = self._should_trigger_deep(
                 total_ports=total_ports,
                 any_version=any_version,
@@ -1295,6 +2132,7 @@ class AuditorScan:
                 device_type_hints=device_type_hints,
                 identity_score=identity_score,
                 identity_threshold=identity_threshold,
+                identity_evidence=identity_evidence,
             )
 
             # v4.0.4: Use HyperScan results to override deep scan decision
@@ -1303,17 +2141,18 @@ class AuditorScan:
                 self.results.get("net_discovery", {}) if isinstance(self.results, dict) else {}
             )
             hyperscan_ports = (nd_results.get("hyperscan_tcp_hosts") or {}).get(safe_ip, [])
-            if hyperscan_ports and not trigger_deep:
-                # HyperScan found ports but we decided not to deep scan - override
-                if total_ports == 0:
-                    trigger_deep = True
-                    deep_reasons.append("hyperscan_ports_detected")
-                    if self.logger:
-                        self.logger.info(
-                            "HyperScan detected %d ports on %s, forcing deep scan",
-                            len(hyperscan_ports),
-                            safe_ip,
-                        )
+            if hyperscan_ports:
+                if deep_id_enabled and not trigger_deep:
+                    # HyperScan found ports but we decided not to deep scan - override
+                    if total_ports == 0:
+                        trigger_deep = True
+                        deep_reasons.append("hyperscan_ports_detected")
+                        if self.logger:
+                            self.logger.info(
+                                "HyperScan detected %d ports on %s, forcing deep scan",
+                                len(hyperscan_ports),
+                                safe_ip,
+                            )
                 # Check for web ports in HyperScan results
                 from redaudit.utils.constants import WEB_LIKELY_PORTS
 
@@ -1332,7 +2171,12 @@ class AuditorScan:
             # v4.0.4: Force web vuln scan for hosts with HTTP fingerprint from net_discovery
             # This fixes the detection gap where hosts passing identity threshold skip vuln scan
             agentless_fp = host_record.get("agentless_fingerprint") or {}
-            if agentless_fp.get("http_title") or agentless_fp.get("http_server"):
+            http_source = str(agentless_fp.get("http_source") or "")
+            has_http_identity = (
+                bool(agentless_fp.get("http_title") or agentless_fp.get("http_server"))
+                and http_source != "upnp"
+            )
+            if has_http_identity:
                 if web_count == 0:
                     web_count = 1  # Ensure host is included in web vulnerability scanning
                     host_record["web_ports_count"] = web_count
@@ -1342,7 +2186,7 @@ class AuditorScan:
                             safe_ip,
                             agentless_fp.get("http_title") or agentless_fp.get("http_server"),
                         )
-                if not trigger_deep and total_ports == 0:
+                if deep_id_enabled and not trigger_deep and total_ports == 0:
                     # Force deep scan to discover ports when we know HTTP is present
                     trigger_deep = True
                     deep_reasons.append("http_fingerprint_present")
@@ -1350,7 +2194,8 @@ class AuditorScan:
             open_tcp_ports = sum(1 for p in ports if p.get("protocol") == "tcp")
             open_tcp_ports = sum(1 for p in ports if p.get("protocol") == "tcp")
             if (
-                trigger_deep
+                deep_id_enabled
+                and trigger_deep
                 and not self.config.get("stealth_mode")
                 and open_tcp_ports <= 1
                 and identity_score < 2
@@ -1360,6 +2205,13 @@ class AuditorScan:
                 if udp_identity:
                     identity_score, identity_signals = self._compute_identity_score(host_record)
                     device_type_hints = host_record.get("device_type_hints") or []
+                    agentless_fp = host_record.get("agentless_fingerprint") or {}
+                    identity_evidence = bool(
+                        agentless_fp.get("http_title")
+                        or agentless_fp.get("http_server")
+                        or agentless_fp.get("device_type")
+                        or agentless_fp.get("device_vendor")
+                    )
                     trigger_deep, deep_reasons = self._should_trigger_deep(
                         total_ports=total_ports,
                         any_version=any_version,
@@ -1367,13 +2219,14 @@ class AuditorScan:
                         device_type_hints=device_type_hints,
                         identity_score=identity_score,
                         identity_threshold=identity_threshold,
+                        identity_evidence=identity_evidence,
                     )
                     if identity_score >= identity_threshold:
                         trigger_deep = False
                         if "udp_resolved_identity" not in deep_reasons:
                             deep_reasons.append("udp_resolved_identity")
 
-            if trigger_deep:
+            if deep_id_enabled and trigger_deep:
                 budget = self.config.get("deep_scan_budget", 0)
                 reserved, deep_count = self._reserve_deep_scan_slot(budget)
                 if not reserved:
@@ -1419,17 +2272,40 @@ class AuditorScan:
             if trigger_deep:
                 # v4.2: Deep scan is now decoupled. Just mark passing the signal.
                 # The orchestrator will run deep_scan_host later.
+
                 if isinstance(host_record.get("smart_scan"), dict):
                     host_record["smart_scan"]["deep_scan_suggested"] = True
 
             if total_ports == 0 and self.config.get("deep_id_scan", True):
                 identity_source = host_record.get("deep_scan") or {}
-                has_identity_hint = bool(
-                    identity_source.get("vendor")
-                    or host_record.get("hostname")
-                    or host_record.get("device_type_hints")
+                phase0 = host_record.get("phase0_enrichment") or {}
+                agentless_fp = host_record.get("agentless_fingerprint") or {}
+                has_http_identity = bool(
+                    agentless_fp.get("http_title") or agentless_fp.get("http_server")
                 )
-                if has_identity_hint and host_record.get("status") != STATUS_DOWN:
+                vendor_hint = (
+                    identity_source.get("vendor")
+                    or phase0.get("vendor")
+                    or host_record.get("vendor")
+                )
+                mac_hint = (
+                    identity_source.get("mac_address")
+                    or host_record.get("mac")
+                    or host_record.get("mac_address")
+                )
+                hostname_hint = host_record.get("hostname")
+                device_hints = host_record.get("device_type_hints") or []
+                has_identity_hint = bool(vendor_hint or mac_hint or hostname_hint or device_hints)
+                vendor_only = bool(vendor_hint or mac_hint) and not (hostname_hint or device_hints)
+                allow_probe = bool(self.config.get("low_impact_enrichment"))
+
+                if (
+                    allow_probe
+                    and has_identity_hint
+                    and vendor_only
+                    and not has_http_identity
+                    and host_record.get("status") != STATUS_DOWN
+                ):
                     http_probe = http_identity_probe(
                         safe_ip,
                         self.extra_tools,
@@ -1442,6 +2318,8 @@ class AuditorScan:
                         for key in ("http_title", "http_server"):
                             if http_probe.get(key) and not agentless_fp.get(key):
                                 agentless_fp[key] = http_probe[key]
+                        if http_probe.get("http_title") or http_probe.get("http_server"):
+                            agentless_fp["http_source"] = "probe"
                         smart = host_record.get("smart_scan")
                         if isinstance(smart, dict):
                             signals = list(smart.get("signals") or [])
@@ -1497,7 +2375,7 @@ class AuditorScan:
         except Exception as exc:
             self.logger.error("Scan error %s: %s", safe_ip, exc, exc_info=True)
             # Keep terminal output clean while progress UIs are active.
-            self.ui.print_status(f"⚠️  Scan error {safe_ip}: {exc}", "FAIL", force=True)
+            self.ui.print_status(self.ui.t("scan_error_host", safe_ip, exc), "FAIL", force=True)
 
             # v4.0: Return Host object on error
             host_obj = self.scanner.get_or_create_host(safe_ip)
@@ -1561,7 +2439,7 @@ class AuditorScan:
         if "_hyperscan_discovery_ports" not in self.__dict__:
             self._hyperscan_discovery_ports = {}
 
-        # Check for existing masscan results to reuse
+        # Check for existing masscan results to reuse as a fallback/merge (never replace)
         net_discovery = self.results.get("net_discovery") or {}
         redteam = net_discovery.get("redteam") or {}
         masscan_result = redteam.get("masscan") or {}
@@ -1579,52 +2457,129 @@ class AuditorScan:
                     masscan_ports[ip].append(port)
 
         discovery_count = len(host_ips)
+
+        # v4.15: HyperScan is now always parallel (RustScan or asyncio TCP connect)
         self.ui.print_status(
             self.ui.t("hyperscan_start").format(discovery_count),
             "INFO",
         )
 
         start_time = time.time()
-        # Run HyperScan sequentially (one at a time to avoid FD exhaustion)
-        for idx, ip in enumerate(host_ips, 1):
+        # Calculate safe concurrency based on estimated FD usage
+        # We aim for ~1000 concurrent sockets max to stay safe on macOS/default limits
+        try:
+            import resource
+
+            soft, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+            safe_limit = max(800, soft - 200)  # Reserve 200 for system/logs
+        except (ImportError, Exception):
+            safe_limit = 800
+
+        # Heuristic:
+        # If we use 10 workers, max batch size per worker = safe_limit / 10
+        # But small batch size increases scan time per host.
+        # Sweet spot: 4-8 parallel hosts, batch size 200-500.
+
+        # Max 8 workers for this phase (balance between parallelism and per-host speed)
+        hs_workers = min(8, len(host_ips))
+        hs_batch_size = max(100, int(safe_limit / max(1, hs_workers)))
+
+        if self.logger:
+            self.logger.info(
+                "HyperScan-First Parallel Mode: %d workers, batch_size=%d (FD limit: %d)",
+                hs_workers,
+                hs_batch_size,
+                safe_limit,
+            )
+
+        # v4.15: Add Rich progress bar for HyperScan-First
+        use_rich = self.ui.get_progress_console() is not None
+        progress = None
+        use_rich_progress = False
+        if use_rich and discovery_count > 0:
+            progress = self.ui.get_standard_progress(transient=False)
+            use_rich_progress = progress is not None
+
+        emit_worker_status = not use_rich_progress
+        completed_count = 0
+
+        def _hs_worker(w_idx: int, w_ip: str) -> None:
             if self.interrupted:
-                break
+                return
 
-            # Check if masscan already has ports for this host
-            if ip in masscan_ports:
-                self._hyperscan_discovery_ports[ip] = sorted(set(masscan_ports[ip]))
-                self.ui.print_status(
-                    self.ui.t("hyperscan_masscan_reuse").format(
-                        idx, discovery_count, ip, len(masscan_ports[ip])
-                    ),
-                    "OKGREEN",
-                )
-                continue
+            seed_ports = sorted(set(masscan_ports.get(w_ip, []) or []))
 
-            # Run HyperScan for this host
+            # Run HyperScan
+            # v4.15: Removed SYN lock - hyperscan_full_port_sweep uses RustScan (parallel)
+            # or asyncio TCP connect, both of which handle concurrency correctly.
             try:
-                ports = hyperscan_full_port_sweep(
-                    ip,
-                    batch_size=2000,  # High batch_size is safe with sequential execution
-                    timeout=0.5,
+                w_ports = hyperscan_full_port_sweep(
+                    w_ip,
+                    batch_size=hs_batch_size,
+                    timeout=1.5,
                     logger=self.logger,
                 )
-                self._hyperscan_discovery_ports[ip] = ports
-                if ports:
-                    self.ui.print_status(
-                        self.ui.t("hyperscan_ports_found").format(
-                            idx, discovery_count, ip, len(ports)
-                        ),
-                        "OKGREEN",
-                    )
+                if seed_ports:
+                    w_ports = sorted(set(w_ports or []) | set(seed_ports))
+                self._hyperscan_discovery_ports[w_ip] = w_ports
+                if w_ports:
+                    if emit_worker_status:
+                        self.ui.print_status(
+                            self.ui.t("hyperscan_ports_found").format(
+                                w_idx, discovery_count, w_ip, len(w_ports)
+                            ),
+                            "OKGREEN",
+                        )
                 else:
-                    self.ui.print_status(
-                        self.ui.t("hyperscan_no_ports").format(idx, discovery_count, ip),
-                        "WARNING",
-                    )
+                    if emit_worker_status:
+                        self.ui.print_status(
+                            self.ui.t("hyperscan_no_ports").format(w_idx, discovery_count, w_ip),
+                            "WARNING",
+                        )
             except Exception as e:
-                self.logger.warning("HyperScan discovery failed for %s: %s", ip, e)
-                self._hyperscan_discovery_ports[ip] = []  # Empty = fallback to nmap
+                if seed_ports:
+                    self._hyperscan_discovery_ports[w_ip] = seed_ports
+                if self.logger:
+                    self.logger.warning("HyperScan discovery failed for %s: %s", w_ip, e)
+
+        # Execute parallel scan
+        with ThreadPoolExecutor(max_workers=hs_workers) as executor:
+            futures = {
+                executor.submit(_hs_worker, idx, ip): (idx, ip)
+                for idx, ip in enumerate(host_ips, 1)
+            }
+
+            if use_rich_progress and progress:
+                with self._progress_ui():
+                    with progress:
+                        # Single global progress bar (magenta for HyperScan)
+                        task_id = progress.add_task(
+                            "[magenta]HyperScan",
+                            total=discovery_count,
+                            start=True,
+                        )
+                        for fut in as_completed(futures):
+                            if self.interrupted:
+                                executor.shutdown(wait=False, cancel_futures=True)
+                                break
+                            completed_count += 1
+                            idx, ip = futures[fut]
+                            ports = self._hyperscan_discovery_ports.get(ip, [])
+                            port_str = f"{len(ports)} ports" if ports else "no ports"
+                            progress.update(
+                                task_id,
+                                advance=1,
+                                description=(
+                                    f"[magenta]HyperScan ({completed_count}/{discovery_count}) "
+                                    f"{ip}: {port_str}"
+                                ),
+                            )
+            else:
+                # Fallback without rich
+                for fut in as_completed(futures):
+                    if self.interrupted:
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        break
 
         duration = time.time() - start_time
         total_ports = sum(len(p) for p in self._hyperscan_discovery_ports.values())
@@ -1642,8 +2597,8 @@ class AuditorScan:
 
         self.ui.print_status(self.ui.t("deep_scan_running").format(len(hosts)), "HEADER")
         workers = int(self.config.get("threads", 1))
-        # Cap at 50 to avoid system exhaustion, but respect aggression
-        workers = max(1, min(50, workers))
+        # Cap at MAX_THREADS (100) to avoid system exhaustion, but respect aggression
+        workers = max(1, min(MAX_THREADS, workers))
 
         # Try to use rich for better progress visualization
         use_rich = self.ui.get_progress_console() is not None
@@ -1689,11 +2644,22 @@ class AuditorScan:
                                 self.logger.info(f"Deep scan budget exhausted for {ip}")
                             return
 
-                        deep = self.deep_scan_host(ip)
+                        # v4.6.0: Pass discovery ports
+                        disc_ports = self._hyperscan_discovery_ports.get(ip, [])
+                        deep = self.deep_scan_host(ip, trusted_ports=disc_ports)
                         if deep and host_obj:
                             host_obj.deep_scan = deep
                             if deep.get("os_detected"):
                                 host_obj.os_detected = deep["os_detected"]
+                            deep_ports = deep.get("ports") or []
+                            if deep_ports:
+                                merged_ports = self._merge_ports(host_obj.ports or [], deep_ports)
+                                host_obj.ports = merged_ports
+                                host_obj.total_ports_found = len(merged_ports)
+                                host_obj.web_ports_count = sum(
+                                    1 for p in merged_ports if p.get("is_web_service")
+                                )
+                                self._merge_services_from_ports(host_obj, deep_ports)
                             # Re-finalize status
                             host_obj.status = finalize_host_status(host_obj.to_dict())
                     except Exception as e:
@@ -1745,8 +2711,15 @@ class AuditorScan:
                                 if now - last_heartbeat >= 60.0:
                                     elapsed = int(now - start_t)
                                     mins, secs = divmod(elapsed, 60)
-                                    msg = f"Deep Scan... {done}/{total} ({mins}:{secs:02d})"
-                                    progress.console.print(f"[dim]{msg}[/dim]")
+                                    # v4.18: Use Text() to avoid Rich markup issues
+                                    from rich.text import Text
+
+                                    heartbeat_msg = Text()
+                                    heartbeat_msg.append(
+                                        self.ui.t("deep_scan_heartbeat", done, total, mins, secs),
+                                        style="dim",
+                                    )
+                                    progress.console.print(heartbeat_msg)
                                     last_heartbeat = now
 
                                 # Update progress for pending hosts
@@ -1768,14 +2741,14 @@ class AuditorScan:
                                         progress.update(
                                             task_id,
                                             completed=100,
-                                            description=f"[green]✅ {host_ip}",
+                                            description=f"[green]✔ {host_ip}",
                                         )
                                     except Exception as e:
                                         self.logger.error(f"Deep scan error for {host_ip}: {e}")
                                         progress.update(
                                             task_id,
                                             completed=100,
-                                            description=f"[red]❌ {host_ip}",
+                                            description=f"[red]✖ {host_ip}",
                                         )
                 else:
                     # Fallback loop
@@ -1791,7 +2764,11 @@ class AuditorScan:
                             pass
                         done += 1
                         if total and done % max(1, total // 10) == 0:
-                            self.ui.print_status(f"Deep Scan: {done}/{total}", "INFO", force=True)
+                            self.ui.print_status(
+                                self.ui.t("deep_scan_progress", done, total),
+                                "INFO",
+                                force=True,
+                            )
 
     def scan_hosts_concurrent(self, hosts):
         """Scan multiple hosts concurrently with progress bar."""
@@ -1893,11 +2870,18 @@ class AuditorScan:
                                 if now - last_heartbeat >= 60.0:
                                     elapsed = int(now - start_t)
                                     mins, secs = divmod(elapsed, 60)
-                                    # Use progress.console to print safely without breaking the Live display
-                                    progress.console.print(
-                                        f"[grey50]INFO: {self.ui.t('scanning_hosts')}... {done}/{total} ({mins}:{secs:02d} transcurrido)[/]",
-                                        highlight=False,
+                                    # Use progress.console to print without breaking Live
+                                    # v4.16: Use Text objects to avoid Rich markup issues with [INFO]
+                                    from rich.text import Text
+
+                                    heartbeat_msg = Text()
+                                    heartbeat_msg.append("[INFO] ", style="cyan")
+                                    heartbeat_msg.append(
+                                        self.ui.t(
+                                            "scanning_hosts_heartbeat", done, total, mins, secs
+                                        )
                                     )
+                                    progress.console.print(heartbeat_msg)
                                     last_heartbeat = now
 
                                 # Update progress for still-pending hosts
@@ -1923,7 +2907,7 @@ class AuditorScan:
                                         progress.update(
                                             task_id,
                                             completed=100,
-                                            description=f"[green]✅ {host_ip}",
+                                            description=f"[green]✔ {host_ip}",
                                         )
                                     except Exception as exc:
                                         self.logger.error("Worker error for %s: %s", host_ip, exc)
@@ -1936,7 +2920,7 @@ class AuditorScan:
                                         progress.update(
                                             task_id,
                                             completed=100,
-                                            description=f"[red]❌ {host_ip}",
+                                            description=f"[red]✖ {host_ip}",
                                         )
                                     done += 1
                 else:
@@ -1962,7 +2946,7 @@ class AuditorScan:
                             elapsed = int(time.time() - start_t)
                             mins, secs = divmod(elapsed, 60)
                             self.ui.print_status(
-                                f"{self.ui.t('progress', done, total)} ({mins}:{secs:02d} transcurrido)",
+                                self.ui.t("progress_elapsed", done, total, mins, secs),
                                 "INFO",
                                 update_activity=False,
                                 force=True,
@@ -2022,7 +3006,16 @@ class AuditorScan:
 
         self.ui.print_status(self.ui.t("windows_verify_start", len(targets)), "HEADER")
 
-        host_index = {h.get("ip"): h for h in host_results if isinstance(h, dict)}
+        host_index = {}
+        for h in host_results:
+            # v4.4.3: Handle both dict and Host objects
+            if isinstance(h, dict):
+                ip = h.get("ip")
+            else:
+                ip = getattr(h, "ip", None)
+            if ip:
+                host_index[ip] = h
+
         results: List[Dict[str, Any]] = []
 
         workers = min(4, max(1, int(self.config.get("threads", 1))))
@@ -2079,7 +3072,8 @@ class AuditorScan:
                                     progress.update(
                                         task,
                                         advance=1,
-                                        description=f"[cyan]{self.ui.t('windows_verify_label')} ({done}/{total})",
+                                        description=f"[cyan]{self.ui.t('windows_verify_label')} "
+                                        f"({done}/{total})",
                                     )
                 else:
                     for fut in as_completed(futures):
@@ -2107,9 +3101,9 @@ class AuditorScan:
                             elapsed = int(time.time() - start_t)
                             mins, secs = divmod(elapsed, 60)
                             self.ui.print_status(
-                                f"{self.ui.t('windows_verify_label')} {done}/{total} | ETA≈ {eta_est_val}",
+                                f"{self.ui.t('windows_verify_label')} {done}/{total} | "
+                                f"ETA≈ {eta_est_val}",
                                 "INFO",
-                                update_activity=False,
                                 force=True,
                             )
 
@@ -2118,17 +3112,30 @@ class AuditorScan:
             if not ip or ip not in host_index:
                 continue
             host = host_index[ip]
-            host["agentless_probe"] = res
+
             agentless_fp = summarize_agentless_fingerprint(res)
-            existing_fp = host.get("agentless_fingerprint") or {}
+
+            if isinstance(host, dict):
+                host["agentless_probe"] = res
+                existing_fp = host.get("agentless_fingerprint") or {}
+            else:
+                setattr(host, "agentless_probe", res)
+                existing_fp = getattr(host, "agentless_fingerprint", {}) or {}
+
             if existing_fp:
                 merged = dict(existing_fp)
                 for key, value in (agentless_fp or {}).items():
                     if value not in (None, ""):
                         merged[key] = value
                 agentless_fp = merged
-            host["agentless_fingerprint"] = agentless_fp
-            smart = host.get("smart_scan")
+
+            if isinstance(host, dict):
+                host["agentless_fingerprint"] = agentless_fp
+                smart = host.get("smart_scan")
+            else:
+                setattr(host, "agentless_fingerprint", agentless_fp)
+                smart = getattr(host, "smart_scan", None)
+
             if isinstance(smart, dict) and isinstance(agentless_fp, dict) and agentless_fp:
                 signals = list(smart.get("signals") or [])
                 if "agentless" not in signals:

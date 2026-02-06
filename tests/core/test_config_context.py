@@ -8,7 +8,7 @@ These tests verify that ConfigurationContext works independently.
 import pytest
 
 from redaudit.core.config_context import ConfigurationContext, create_config_context
-from redaudit.utils.constants import DEFAULT_THREADS
+from redaudit.utils.constants import DEFAULT_DEAD_HOST_RETRIES, DEFAULT_THREADS
 
 
 class TestConfigurationContextCreation:
@@ -63,6 +63,19 @@ class TestDictCompatibility:
         result = cfg.setdefault("new_key", "default_val")
         assert result == "default_val"
         assert cfg["new_key"] == "default_val"
+
+    def test_delitem(self):
+        """Test __delitem__ removes keys."""
+        cfg = ConfigurationContext({"remove": "x", "keep": "y"})
+        del cfg["remove"]
+        assert "remove" not in cfg
+        assert cfg["keep"] == "y"
+
+    def test_iter(self):
+        """Test __iter__ exposes keys."""
+        cfg = ConfigurationContext({"a": 1, "b": 2})
+        keys = set(iter(cfg))
+        assert {"a", "b"}.issubset(keys)
 
     def test_raw_property(self):
         """Test raw dict access."""
@@ -129,6 +142,13 @@ class TestTypedProperties:
         assert cfg.topology_enabled is True
         assert cfg.windows_verify_enabled is True
 
+    def test_nuclei_timeout_default(self):
+        cfg = ConfigurationContext()
+        assert cfg.nuclei_timeout == 300
+
+        cfg = ConfigurationContext({"nuclei_timeout": 450})
+        assert cfg.nuclei_timeout == 450
+
     def test_prevent_sleep_default(self):
         """Test prevent_sleep defaults to True."""
         cfg = ConfigurationContext({})
@@ -147,6 +167,14 @@ class TestThresholdProperties:
         """Test deep_scan_budget property."""
         cfg = ConfigurationContext({"deep_scan_budget": 10})
         assert cfg.deep_scan_budget == 10
+
+    def test_dead_host_retries(self):
+        """Test dead_host_retries property."""
+        cfg = ConfigurationContext()
+        assert cfg.dead_host_retries == DEFAULT_DEAD_HOST_RETRIES
+
+        cfg = ConfigurationContext({"dead_host_retries": 7})
+        assert cfg.dead_host_retries == 7
 
     def test_windows_verify_max_targets(self):
         """Test windows_verify_max_targets property."""

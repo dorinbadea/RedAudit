@@ -59,7 +59,7 @@ MY_IP=$(detect_network)
 if [ -z "$MY_IP" ]; then
     echo -e "${YELLOW}⚠ Could not auto-detect your network.${NC}"
     echo -e "  Please enter your target network manually."
-    read -p "  Target (e.g., 192.168.1.0/24): " TARGET_NETWORK
+    read -r -p "  Target (e.g., 192.168.1.0/24): " TARGET_NETWORK
 else
     # Convert IP to network (e.g., 192.168.1.50 -> 192.168.1.0/24)
     MY_NETWORK="${MY_IP%.*}.0/24"
@@ -67,9 +67,9 @@ else
     echo -e "${GREEN}✓${NC} Target network: ${BLUE}$MY_NETWORK${NC}"
     echo ""
 
-    read -p "Use this network? [Y/n]: " confirm
+    read -r -p "Use this network? [Y/n]: " confirm
     if [[ "$confirm" =~ ^[Nn] ]]; then
-        read -p "Enter target network: " TARGET_NETWORK
+        read -r -p "Enter target network: " TARGET_NETWORK
     else
         TARGET_NETWORK="$MY_NETWORK"
     fi
@@ -82,10 +82,10 @@ echo -e "${GREEN}✓${NC} Reports will be saved to: ${BLUE}$REPORTS_DIR${NC}"
 echo ""
 
 # Default language to Spanish, but allow override
-LANG_FLAG="--lang es"
+LANG_ARGS=(--lang es)
 for arg in "$@"; do
     if [[ "$arg" == "--lang" ]]; then
-        LANG_FLAG=""
+        LANG_ARGS=()
         break
     fi
 done
@@ -105,7 +105,7 @@ docker run -it --rm \
     -v "$REPORTS_DIR:/reports" \
     ghcr.io/dorinbadea/redaudit:latest \
     --target "$TARGET_NETWORK" \
-    $LANG_FLAG \
+    "${LANG_ARGS[@]}" \
     --output /reports \
     "$@"
 
@@ -118,7 +118,7 @@ echo -e "${GREEN}═════════════════════
 # Try to open the report
 if [ -f "$REPORTS_DIR/report.html" ]; then
     echo ""
-    read -p "Open HTML report in browser? [Y/n]: " open_report
+    read -r -p "Open HTML report in browser? [Y/n]: " open_report
     if [[ ! "$open_report" =~ ^[Nn] ]]; then
         open "$REPORTS_DIR/report.html" 2>/dev/null || xdg-open "$REPORTS_DIR/report.html" 2>/dev/null || echo "Open $REPORTS_DIR/report.html manually"
     fi

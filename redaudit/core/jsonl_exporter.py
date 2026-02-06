@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - JSONL Exporter Module
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.1: Generate flat JSONL exports for SIEM/AI pipelines.
@@ -14,6 +14,67 @@ from typing import Any, Dict
 from datetime import datetime
 
 from redaudit.utils.constants import SECURE_FILE_MODE
+from redaudit.core.siem import extract_finding_title
+
+
+def _cvss_to_severity(cvss: float) -> str:
+    """Map CVSS score to severity buckets used in summaries."""
+    if cvss >= 9.0:
+        return "critical"
+    if cvss >= 7.0:
+        return "high"
+    if cvss >= 4.0:
+        return "medium"
+    if cvss > 0.0:
+        return "low"
+    return "info"
+
+
+def _count_port_evidence_severity(results: Dict) -> Dict[str, int]:
+    """
+    Count severity from host/port evidence used by risk scoring (CVEs/exploits/backdoors).
+
+    This complements scanner finding severities and explains risk contributions that
+    come from service evidence directly attached to ports.
+    """
+    severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+
+    for host in results.get("hosts", []):
+        for port in host.get("ports", []) or []:
+            seen_ids = set()
+
+            for cve in port.get("cves", []) or []:
+                cve_id = str(cve.get("cve_id") or "").strip().upper()
+                cvss_score = cve.get("cvss_score")
+                cvss_sev = str(cve.get("cvss_severity") or "").strip().lower()
+                evidence_id = cve_id or f"CVSS:{cvss_score}"
+                if evidence_id in seen_ids:
+                    continue
+                seen_ids.add(evidence_id)
+
+                if cvss_sev in severity_counts:
+                    severity_counts[cvss_sev] += 1
+                elif isinstance(cvss_score, (int, float)):
+                    severity_counts[_cvss_to_severity(float(cvss_score))] += 1
+                else:
+                    severity_counts["medium"] += 1
+
+            for exploit in port.get("known_exploits", []) or []:
+                exploit_id = str(exploit or "").strip().upper() or "EXPLOIT"
+                if exploit_id in seen_ids:
+                    continue
+                seen_ids.add(exploit_id)
+                severity_counts["high"] += 1
+
+            for backdoor in port.get("detected_backdoors", []) or []:
+                cve_id = str((backdoor or {}).get("cve_id") or "").strip().upper()
+                backdoor_id = cve_id or str((backdoor or {}).get("description") or "BACKDOOR")
+                if backdoor_id in seen_ids:
+                    continue
+                seen_ids.add(backdoor_id)
+                severity_counts["critical"] += 1
+
+    return severity_counts
 
 
 def export_findings_jsonl(results: Dict, output_path: str) -> int:
@@ -65,7 +126,8 @@ def export_findings_jsonl(results: Dict, output_path: str) -> int:
                 ):
                     if candidate and candidate not in sources:
                         sources.append(candidate)
-                descriptive_title = vuln.get("descriptive_title") or _extract_title(vuln)
+                # v4.6.20: Use unified extract_finding_title from siem
+                descriptive_title = extract_finding_title(vuln)
                 finding = {
                     "finding_id": vuln.get("finding_id", ""),
                     "asset_id": asset_id,
@@ -78,8 +140,13 @@ def export_findings_jsonl(results: Dict, output_path: str) -> int:
                     "url": vuln.get("url", ""),
                     "severity": vuln.get("severity", "info"),
                     "normalized_severity": vuln.get("normalized_severity", 0.0),
+                    # v4.6.19: New quality fields
+                    "confidence_score": vuln.get("confidence_score", 0.5),
+                    "priority_score": vuln.get("priority_score", 0),
+                    "confirmed_exploitable": vuln.get("confirmed_exploitable", False),
                     "category": vuln.get("category", "surface"),
-                    "title": _extract_title(vuln),
+                    # v4.6.20: Use descriptive_title for both fields for consistency with HTML
+                    "title": descriptive_title,
                     "descriptive_title": descriptive_title,
                     "source": source,
                     "sources": sources,
@@ -161,14 +228,31 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
                 "scanner_version": redaudit_version,
             }
 
+            ports = host.get("ports", []) or []
+            if ports:
+                asset["open_ports"] = [
+                    {
+                        "port": p.get("port"),
+                        "protocol": p.get("protocol") or "tcp",
+                        "service": p.get("service") or "",
+                    }
+                    for p in ports
+                    if p.get("port")
+                ]
+
             # Add MAC if available
             ecs_host = host.get("ecs_host", {})
             if ecs_host.get("mac"):
                 asset["mac"] = (
                     ecs_host["mac"][0] if isinstance(ecs_host["mac"], list) else ecs_host["mac"]
                 )
-            if ecs_host.get("vendor"):
+            canonical_vendor = str(host.get("vendor") or "").strip()
+            if canonical_vendor:
+                asset["vendor"] = canonical_vendor
+            elif ecs_host.get("vendor"):
                 asset["vendor"] = ecs_host["vendor"]
+            if host.get("vendor_source"):
+                asset["vendor_source"] = host.get("vendor_source")
             if agentless:
                 filtered = {}
                 for key in (
@@ -216,6 +300,7 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
     """
     # Count severities
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+    evidence_severity_counts = _count_port_evidence_severity(results)
     category_counts: Dict[str, int] = {}
 
     for vuln_entry in results.get("vulnerabilities", []):
@@ -228,6 +313,10 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
             category_counts[cat] = category_counts.get(cat, 0) + 1
 
     total_findings = sum(severity_counts.values())
+    total_evidence_findings = sum(evidence_severity_counts.values())
+    combined_severity_counts = {
+        level: severity_counts[level] + evidence_severity_counts[level] for level in severity_counts
+    }
     raw_total_findings = (results.get("summary", {}) or {}).get("vulns_found_raw")
     if raw_total_findings is None:
         raw_total_findings = total_findings
@@ -248,10 +337,20 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "net_discovery_active_l2": config_snapshot.get("net_discovery_active_l2"),
         "scan_vulnerabilities": config_snapshot.get("scan_vulnerabilities"),
         "nuclei_enabled": config_snapshot.get("nuclei_enabled"),
+        "nuclei_profile": config_snapshot.get("nuclei_profile"),
+        "nuclei_full_coverage": config_snapshot.get("nuclei_full_coverage"),
+        "leak_follow_mode": config_snapshot.get("leak_follow_mode"),
+        "leak_follow_allowlist": config_snapshot.get("leak_follow_allowlist"),
+        "iot_probes_mode": config_snapshot.get("iot_probes_mode"),
+        "iot_probe_budget_seconds": config_snapshot.get("iot_probe_budget_seconds"),
+        "iot_probe_timeout_seconds": config_snapshot.get("iot_probe_timeout_seconds"),
         "cve_lookup_enabled": config_snapshot.get("cve_lookup_enabled"),
         "windows_verify_enabled": config_snapshot.get("windows_verify_enabled"),
     }
     options = {k: v for k, v in options.items() if v is not None}
+
+    auth_scan = results.get("auth_scan", {}) or {}
+    auth_errors = auth_scan.get("errors") or []
 
     summary = {
         "schema_version": results.get("schema_version", "3.1"),
@@ -261,8 +360,12 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "total_assets": len(results.get("hosts", [])),
         "total_findings": total_findings,
         "total_findings_raw": raw_total_findings,
+        "total_risk_evidence_findings": total_evidence_findings,
+        "total_findings_with_risk_evidence": total_findings + total_evidence_findings,
         "severity_breakdown": severity_counts,
         "severity_counts": severity_counts,
+        "risk_evidence_severity_breakdown": evidence_severity_counts,
+        "combined_severity_breakdown": combined_severity_counts,
         "category_breakdown": category_counts,
         "max_risk_score": results.get("summary", {}).get("max_risk_score", 0),
         "high_risk_assets": results.get("summary", {}).get("high_risk_hosts", 0),
@@ -277,6 +380,16 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "redaudit_version": results.get("version")
         or (results.get("scanner_versions", {}) or {}).get("redaudit", ""),
     }
+    if auth_scan:
+        summary["auth_scan"] = {
+            "enabled": bool(auth_scan.get("enabled")),
+            "targets": auth_scan.get("targets") or 0,
+            "completed": auth_scan.get("completed") or 0,
+            "ssh_success": auth_scan.get("ssh_success") or 0,
+            "lynis_success": auth_scan.get("lynis_success") or 0,
+            "failures": len(auth_errors),
+            "errors": auth_errors,
+        }
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
@@ -317,56 +430,5 @@ def export_all(results: Dict, output_dir: str) -> Dict[str, Any]:
     }
 
 
-def _extract_title(vuln: Dict) -> str:
-    """
-    Extract a descriptive title from vulnerability record.
-
-    v3.1.4: Generate human-readable titles based on finding type
-    instead of generic "Finding on URL" messages.
-    """
-    import re
-
-    obs = vuln.get("parsed_observations", [])
-
-    # Generate descriptive title based on observations
-    for observation in obs:
-        obs_lower = observation.lower()
-
-        # Security headers
-        if "missing hsts" in obs_lower or "strict-transport-security" in obs_lower:
-            return "Missing HTTP Strict Transport Security Header"
-        if "x-frame-options" in obs_lower and (
-            "missing" in obs_lower or "not present" in obs_lower
-        ):
-            return "Missing X-Frame-Options Header (Clickjacking Risk)"
-        if "x-content-type" in obs_lower and ("missing" in obs_lower or "not set" in obs_lower):
-            return "Missing X-Content-Type-Options Header"
-
-        # SSL/TLS issues
-        if "ssl hostname mismatch" in obs_lower or "does not match certificate" in obs_lower:
-            return "SSL Certificate Hostname Mismatch"
-        if "certificate expired" in obs_lower or ("expired" in obs_lower and "ssl" in obs_lower):
-            return "SSL Certificate Expired"
-        if "self-signed" in obs_lower or "self signed" in obs_lower:
-            return "Self-Signed SSL Certificate"
-
-        # CVE references
-        if "cve-" in obs_lower:
-            match = re.search(r"(cve-\d{4}-\d+)", obs_lower)
-            if match:
-                return f"Known Vulnerability: {match.group(1).upper()}"
-
-        # Information disclosure
-        if "rfc-1918" in obs_lower or "private ip" in obs_lower:
-            return "Internal IP Address Disclosed in Headers"
-        if "server banner" in obs_lower and "no banner" not in obs_lower:
-            return "Server Version Disclosed in Banner"
-
-    # Fallback to URL-based title with port
-    url = vuln.get("url", "")
-    port = vuln.get("port", 0)
-
-    if url:
-        return f"Web Service Finding on Port {port}"
-
-    return f"Service Finding on Port {port}"
+# v4.6.20: _extract_title moved to redaudit.core.siem.extract_finding_title
+# for unified title generation across HTML and JSONL exporters

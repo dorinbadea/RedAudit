@@ -8,7 +8,7 @@
 
 ## Overview
 
-RedAudit v3.3.0 represents a significant leap in usability and operational awareness. While previous versions focused on deep scanning capabilities, this release focuses on how that data is consumed and acted upon. We introduce professional-grade HTML dashboards, real-time webhook alerting, and visual differential analysis.
+RedAudit v3.3.0 represents a significant leap in usability and operational awareness. While previous versions focused on deep scanning capabilities, this release focuses on how that data is consumed and acted upon. This release introduces professional-grade HTML dashboards, real-time webhook alerting, and visual differential analysis.
 
 ## Key Features
 

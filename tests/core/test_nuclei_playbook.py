@@ -165,7 +165,8 @@ def test_classify_finding_ssl():
     """Test classify_finding for SSL issues."""
     finding = {"title": "Expired SSL certificate detected"}
     result = classify_finding(finding)
-    assert result in (None, "ssl_tls", "crypto", "misconfig")
+    # v4.14: tls_hardening is the correct category for SSL issues
+    assert result in (None, "ssl_tls", "crypto", "misconfig", "tls_hardening")
 
 
 def test_classify_finding_auth():

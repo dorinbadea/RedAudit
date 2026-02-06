@@ -15,7 +15,7 @@ RedAudit v3.8.2 es un release de pulido UX enfocado en **navegación del wizard*
 - Navegación paso a paso con opción "< Volver" en todos los menús del wizard
 - Permite revisar y modificar elecciones previas sin reiniciar
 
-### Marca de Agua en Reportes HTML
+### Marca de Agua en Informes HTML
 
 - Footer profesional con licencia GPLv3, crédito del autor (Dorin Badea) y enlace al repositorio GitHub
 

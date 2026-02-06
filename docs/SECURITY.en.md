@@ -23,21 +23,18 @@ If you discover a security vulnerability in RedAudit, please report it responsib
    - Potential impact
    - Suggested fix (if available)
 3. **Response Time**: You will receive an acknowledgment within 48 hours
-4. **Disclosure**: We follow responsible disclosure - we will coordinate with you on public disclosure timing
-
-## Security Audit (Summary)
-
-- **Audit Date**: 2025-02-14
-- **Coverage**: ~93.03% (High confidence)
-- **Status**: Best-effort internal review. No critical vulnerabilities found.
-- **See**: [SECURITY_AUDIT.md](../SECURITY_AUDIT.md) for full details.
+4. **Disclosure**: Responsible disclosure is followed, and public disclosure timing is coordinated with the reporter
 
 ### Supported Versions
 
 | Version | Supported | Status |
-| 4.3.x | Yes | Current stable |
-| 4.2.x | Yes | Supported |
-| 3.9.x | Yes | Supported |
+| 4.13.x | Yes | Current stable |
+| 4.12.x | Yes | Supported |
+| 4.11.x | Yes | Supported |
+| 4.6.x | Yes | Maintenance |
+| 4.5.x | Yes | Maintenance |
+| 4.4.x | Yes | EOL: June 2026 |
+| < 4.4 | No | EOL |
 | 3.8.x | Yes | Supported |
 | 3.7.x | Yes | Supported |
 | 3.6.x | Security fixes only | Maintenance |
@@ -78,15 +75,20 @@ Report encryption is handled via the `cryptography` library to ensure confidenti
 - **Artifact Permissions**: RedAudit enforces `0o600` (read/write by owner only) on generated artifacts (reports, HTML/playbooks, JSONL export views, externalized evidence) to reduce leakage to other users on the same system.
 - **Encrypted Mode Safety**: When report encryption is enabled, RedAudit avoids generating additional plaintext artifacts (HTML/JSONL/playbooks/summary/manifests and externalized evidence) alongside `.enc` reports.
 - **Jitter Rate-Limiting**: Configurable rate limiting with ±30% random variance to evade threshold-based IDS and behavioral analysis.
+- **Selective App Scanning**: SQLmap/ZAP are skipped on infrastructure UIs (router/switch/AP class) when identity evidence indicates non-application endpoints.
 - **HyperScan Discovery**: Async TCP/UDP/ARP discovery can reduce nmap invocations when enabled (net discovery).
 - **Heartbeat**: Background monitoring ensures process integrity without requiring interactive shell access.
-- **Module Location**: `redaudit/core/reporter.py` (file permissions), `redaudit/core/auditor.py` (heartbeat, jitter), `redaudit/core/hyperscan.py` (async discovery)
+- **Credentials File Security**: The universal credentials file (e.g., `~/.redaudit/credentials.json`) is strictly validated. It MUST have `0600` permissions (read/write only by owner); otherwise, RedAudit refuses to load it (v4.5.2+).
+- **Credential Provider Backends**: Credential retrieval uses OS keyring backends when available. In headless/root environments where no secure backend exists, fallback to `keyrings.alt` may use plaintext storage and should be treated as lower assurance for enterprise deployments.
+- **Module Location**: `redaudit/core/reporter.py` (file permissions), `redaudit/core/auditor.py` (heartbeat, jitter), `redaudit/core/hyperscan.py` (async discovery), `redaudit/core/credentials_manager.py` (secrets validation)
 
 ## 4. Audit Trail
 
 All operations are logged to `~/.redaudit/logs/` with rotation policies (max 10MB, 5 backups). Logs contain execution timestamps, thread identifiers, and raw command invocations for accountability.
 
 **Session Capture Security (v3.7+)**: The `session_logs/` directory contains raw terminal output (`session_*.log`) which may include sensitive data displayed during the scan. Permissions follow the output directory and user umask; treat these logs as sensitive artifacts.
+
+**Credential Access Audit Events (v4.19.38+)**: Credential provider access/store operations emit `credential_audit` log events with key/value fields (`action`, `provider`, `protocol`, `target`, `outcome`) and never include secrets.
 
 ## 5. CI/CD Security
 
@@ -156,15 +158,15 @@ RedAudit v3.2 introduces **Active Reconnaissance** capabilities (`--redteam`, `-
 
 | Tool | Capability | Risk Level | Authorization Required |
 | :--- | :--- | :--- | :--- |
-| `snmpwalk` | Queries SNMP agents for network device information (VLANs, ARP tables, interface configs) | **Medium** - Logs on SNMP-enabled devices | ✅ Internal admin approval |
-| `enum4linux` | Enumerates Windows SMB shares, users, password policies, domain info | **High** - Triggers security logs, may alert SOC | ✅ Domain admin approval |
-| `masscan` | Ultra-fast port scanner (1M packets/sec capability) | **High** - High network noise, likely IDS trigger | ✅ Network team + security approval |
-| `rpcclient` | Windows RPC enumeration (users, groups, shares) | **High** - Active Directory logs, auth attempts | ✅ Domain admin approval |
-| `ldapsearch` | LDAP/AD queries for organizational structure | **Medium** - LDAP server logs queries | ✅ Directory admin approval |
-| `bettercap` | Multi-purpose L2 attack framework (ARP spoofing, MITM, injection) | **Critical** - Active network attacks, illegal without authorization | ✅ Executive + legal approval |
-| `scapy` (passive) | Passive packet sniffing for 802.1Q VLAN tags | **Low** - Passive only (no injection) | ⚠️ Requires promiscuous mode (root) |
-| `kerbrute` | Kerberos user enumeration via pre-auth checks | **High** - Generates Failed Logons (Event 4771) on DC | ✅ Domain admin approval |
-| `proxychains4` | Routes traffic through SOCKS5 proxies | **Medium** - Evades network controls / firewall logging | ✅ Network security approval |
+| `snmpwalk` | Queries SNMP agents for network device information (VLANs, ARP tables, interface configs) | **Medium** - Logs on SNMP-enabled devices | Internal admin approval |
+| `enum4linux` | Enumerates Windows SMB shares, users, password policies, domain info | **High** - Triggers security logs, may alert SOC | Domain admin approval |
+| `masscan` | Ultra-fast port scanner (1M packets/sec capability) | **High** - High network noise, likely IDS trigger | Network team + security approval |
+| `rpcclient` | Windows RPC enumeration (users, groups, shares) | **High** - Active Directory logs, auth attempts | Domain admin approval |
+| `ldapsearch` | LDAP/AD queries for organizational structure | **Medium** - LDAP server logs queries | Directory admin approval |
+| `bettercap` | Multi-purpose L2 attack framework (ARP spoofing, MITM, injection) | **Critical** - Active network attacks, illegal without authorization | Executive + legal approval |
+| `scapy` (passive) | Passive packet sniffing for 802.1Q VLAN tags | **Low** - Passive only (no injection) | Requires promiscuous mode (root) |
+| `kerbrute` | Kerberos user enumeration via pre-auth checks | **High** - Generates Failed Logons (Event 4771) on DC | Domain admin approval |
+| `proxychains4` | Routes traffic through SOCKS5 proxies | **Medium** - Evades network controls / firewall logging | Network security approval |
 
 ### Best Practices for Red Team Features
 
@@ -184,7 +186,7 @@ RedAudit v3.2 introduces **Active Reconnaissance** capabilities (`--redteam`, `-
 ### Webhook Alerts (`--webhook`)
 
 - **Sensitive Data Transmission**: This feature sends finding details (Target IP, Vulnerability Title, Severity) to the configured URL.
-- **HTTPS Required**: Always use `https://` webhook URLs to protect this data in transit.
+- **HTTPS Required**: Only `https://` webhook URLs are accepted to protect this data in transit.
 - **Verification**: Ensure the webhook URL is correct and trusted (e.g., your internal Slack/Teams instance) to avoid leaking vulnerability data to third parties.
 
 ## 12. License

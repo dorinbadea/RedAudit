@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RedAudit - HTML Report Generator
-Copyright (C) 2025  Dorin Badea
+Copyright (C) 2026  Dorin Badea
 GPLv3 License
 
 v3.3: Generate interactive HTML reports with Bootstrap + Chart.js.
@@ -9,11 +9,17 @@ v3.3: Generate interactive HTML reports with Bootstrap + Chart.js.
 
 import os
 import re
+import json
+import copy
+import xml.dom.minidom  # nosec B408
 from datetime import datetime
 from typing import Dict, Optional
 
 from redaudit.utils.constants import SECURE_FILE_MODE, VERSION
 from redaudit.utils.vendor_hints import get_best_vendor
+from redaudit.core.siem import extract_finding_title
+
+CHART_JS_FILENAME = "chart.umd.min.js"
 
 
 def _get_reverse_dns(host: Dict) -> str:
@@ -57,6 +63,30 @@ def get_template_env():
     return env
 
 
+def _get_chart_js_source_path() -> str:
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", CHART_JS_FILENAME))
+
+
+def _write_chart_js_asset(output_dir: str) -> bool:
+    source_path = _get_chart_js_source_path()
+    if not os.path.exists(source_path):
+        return False
+
+    dest_path = os.path.join(output_dir, CHART_JS_FILENAME)
+    try:
+        with open(source_path, "r", encoding="utf-8") as src_file:
+            content = src_file.read()
+        with open(dest_path, "w", encoding="utf-8") as dest_file:
+            dest_file.write(content)
+        try:
+            os.chmod(dest_path, SECURE_FILE_MODE)
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
+
+
 def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dict:
     """
     Prepare data for HTML template rendering.
@@ -71,9 +101,10 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
     hosts = results.get("hosts", [])
     vulnerabilities = results.get("vulnerabilities", [])
     summary = results.get("summary", {})
-    pipeline = results.get("pipeline", {}) or {}
+    pipeline = copy.deepcopy(results.get("pipeline", {}) or {})
     smart_scan_summary = results.get("smart_scan_summary", {}) or {}
     config_snapshot = results.get("config_snapshot", {}) or {}
+    auth_scan = results.get("auth_scan", {}) or {}
 
     # Severity distribution for chart
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
@@ -120,8 +151,14 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
             mac_address = "-"
         mac_vendor = deep_scan.get("vendor")
         hostname = host.get("hostname") or _get_reverse_dns(host) or "-"
-        # Use vendor_hints for hostname-based fallback when MAC vendor missing
-        display_vendor = get_best_vendor(mac_vendor, hostname, allow_guess=True) or "-"
+        canonical_vendor = str(host.get("vendor") or "").strip()
+        if canonical_vendor:
+            display_vendor = canonical_vendor
+            vendor_source = str(host.get("vendor_source") or "canonical")
+        else:
+            # Backward compatibility for reports generated before canonical vendor resolution.
+            display_vendor = get_best_vendor(mac_vendor, hostname, allow_guess=True) or "-"
+            vendor_source = "legacy_fallback" if display_vendor != "-" else "none"
         # v4.3: Extract identity_score and signals from smart_scan
         smart_scan = host.get("smart_scan", {}) or {}
         identity_score = smart_scan.get("identity_score", 0)
@@ -138,6 +175,7 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
                 "identity_signals": identity_signals,
                 "mac": mac_address,
                 "vendor": display_vendor,
+                "vendor_source": vendor_source,
                 "os": host.get("os_detected")
                 or deep_scan.get("os_detected")
                 or agentless.get("os", "-"),
@@ -152,8 +190,11 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
     for vuln_entry in vulnerabilities:
         host_ip = vuln_entry.get("host", "")
         for vuln in vuln_entry.get("vulnerabilities", []):
+            # v4.13.2: Changed fallback from 'unknown' to 'redaudit' for auto-generated findings
             source = (
-                vuln.get("source") or (vuln.get("original_severity") or {}).get("tool") or "unknown"
+                vuln.get("source")
+                or (vuln.get("original_severity") or {}).get("tool")
+                or "redaudit"
             )
             cve_ids = vuln.get("cve_ids") or []
             cve_txt = ", ".join(cve_ids[:3]) if isinstance(cve_ids, list) else ""
@@ -163,10 +204,51 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
                 observations = [obs for obs in observations[:5] if obs]  # Limit to 5
             else:
                 observations = []
+            # v4.13.2: Fallback to description if no observations
+            if not observations:
+                desc_fallback = vuln.get("description") or vuln.get("info", {}).get(
+                    "description", ""
+                )
+                if desc_fallback:
+                    observations = [desc_fallback]
 
             title = _extract_finding_title(vuln)
             if lang:
                 title = _translate_finding_title(title, lang)
+
+            # v4.3.0: Extract rich details
+            # v4.13.2: Fixed key mismatch - nuclei outputs "reference", not "references"
+            description = vuln.get("description") or vuln.get("info", {}).get("description", "")
+            references = (
+                vuln.get("reference")
+                or vuln.get("references")
+                or vuln.get("info", {}).get("reference", [])
+            )
+            if not references and cve_ids:
+                references = [f"https://nvd.nist.gov/vuln/detail/{cve}" for cve in cve_ids]
+
+            evidence = ""
+            extracted_results = vuln.get("extracted_results") or vuln.get("extracted-results") or []
+            if extracted_results:
+                raw_evidence = "\n".join(str(r) for r in extracted_results)
+                # Try to pretty print if it looks like XML
+                if raw_evidence.strip().startswith("<") and raw_evidence.strip().endswith(">"):
+                    try:
+                        dom = xml.dom.minidom.parseString(raw_evidence)  # nosec B318
+                        evidence = dom.toprettyxml()
+                    except Exception:
+                        evidence = raw_evidence
+                # Try to pretty print if it looks like JSON
+                elif raw_evidence.strip().startswith("{") and raw_evidence.strip().endswith("}"):
+                    try:
+                        obj = json.loads(raw_evidence)
+                        evidence = json.dumps(obj, indent=2)
+                    except Exception:
+                        evidence = raw_evidence
+                else:
+                    evidence = raw_evidence
+
+            evidence_meta = vuln.get("evidence") if isinstance(vuln.get("evidence"), dict) else {}
 
             finding_table.append(
                 {
@@ -179,6 +261,13 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
                     "source": source,
                     "cve": cve_txt,
                     "observations": observations,
+                    # v4.3.0: Rich details
+                    "description": description,
+                    "references": references,
+                    "evidence": evidence,
+                    "evidence_meta": evidence_meta,
+                    "template_id": vuln.get("template_id"),
+                    "potential_false_positives": vuln.get("potential_false_positives") or [],
                 }
             )
 
@@ -202,12 +291,60 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
         ],
     }
 
-    # Extract playbooks from results
+    # Extract playbooks from results (fallback to generator when missing)
     playbooks = results.get("playbooks", []) or []
+    if not playbooks:
+        try:
+            from redaudit.core.playbook_generator import get_playbooks_for_results
+
+            playbooks = get_playbooks_for_results(results) or []
+        except Exception:
+            playbooks = []
 
     # Extract artifacts/evidence
     artifacts = results.get("artifacts", []) or []
     pcaps = [a for a in artifacts if a.get("path", "").endswith(".pcap")]
+
+    nuclei_data = results.get("nuclei") or {}
+    suspected_items = nuclei_data.get("suspected") or []
+    nuclei_suspected = []
+    for item in suspected_items:
+        if not isinstance(item, dict):
+            continue
+        nuclei_suspected.append(
+            {
+                "template_id": item.get("template_id") or "-",
+                "matched_at": item.get("matched_at") or "-",
+                "fp_reason": item.get("fp_reason") or "",
+            }
+        )
+
+    if lang.lower() == "es":
+        net_discovery = pipeline.get("net_discovery", {}) or {}
+        errors = net_discovery.get("errors") or []
+        if errors:
+            net_discovery["errors"] = [_translate_pipeline_error(err, lang) for err in errors]
+            pipeline["net_discovery"] = net_discovery
+
+    auth_errors = []
+    for item in auth_scan.get("errors") or []:
+        if not isinstance(item, dict):
+            continue
+        ip = item.get("ip") or "-"
+        msg = item.get("error") or "Unknown error"
+        if lang.lower() == "es":
+            msg = _translate_auth_error(msg, lang)
+        auth_errors.append(f"{ip}: {msg}")
+
+    auth_summary = {
+        "enabled": bool(auth_scan.get("enabled")),
+        "targets": auth_scan.get("targets") or 0,
+        "completed": auth_scan.get("completed") or 0,
+        "ssh_success": auth_scan.get("ssh_success") or 0,
+        "lynis_success": auth_scan.get("lynis_success") or 0,
+        "failures": len(auth_errors),
+        "errors": auth_errors,
+    }
 
     return {
         "version": VERSION,
@@ -224,46 +361,66 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
         "host_table": host_table,
         "finding_table": finding_table,
         "pipeline": pipeline,
+        "auth_scan": auth_summary,
         "smart_scan": smart_scan_summary,
         "smart_scan_reasons": smart_scan_reasons,
         "config_snapshot": config_snapshot,
         "topology_summary": topology_summary,
         "playbooks": playbooks,
         "pcaps": pcaps,
+        "nuclei_suspected": nuclei_suspected,
         "scan_duration": summary.get("duration", "-"),
     }
 
 
+def _translate_pipeline_error(error: str, lang: str) -> str:
+    if not error or lang.lower() != "es":
+        return error
+    replacements = {
+        "no response to DHCP broadcast on ": "sin respuesta al broadcast DHCP en ",
+        " (timeout).": " (timeout).",
+        "Possible causes:": "Posibles causas:",
+        "interface is loopback; DHCP is not applicable": "la interfaz es loopback; DHCP no aplica",
+        "interface appears down or has no carrier": "la interfaz parece caída o sin portadora",
+        "no IPv4 address detected on interface": "no se detectó IPv4 en la interfaz",
+        "interface looks virtual/bridge; DHCP may be unavailable": (
+            "la interfaz parece virtual/bridge; DHCP puede no estar disponible"
+        ),
+        "wireless interface; AP isolation can block DHCP broadcasts": (
+            "interfaz inalámbrica; el aislamiento del AP puede bloquear el broadcast DHCP"
+        ),
+        "no DHCP server responding on this network": "ningún servidor DHCP responde en esta red",
+        "dhcp-discover failed on ": "dhcp-discover falló en ",
+        "dhcp-discover failed": "dhcp-discover falló",
+    }
+    translated = error
+    for src, dst in replacements.items():
+        translated = translated.replace(src, dst)
+    return translated
+
+
+def _translate_auth_error(error: str, lang: str) -> str:
+    if not error or lang.lower() != "es":
+        return error
+    replacements = {
+        "All credentials failed": "Todas las credenciales fallaron",
+        "Authentication failed": "Autenticación fallida",
+        "Unknown error": "Error desconocido",
+    }
+    translated = error
+    for src, dst in replacements.items():
+        translated = translated.replace(src, dst)
+    return translated
+
+
 def _extract_finding_title(vuln: Dict) -> str:
-    """Extract a readable title from a vulnerability finding."""
-    # Use descriptive_title if available (v3.1.4+)
-    if vuln.get("descriptive_title"):
-        return vuln["descriptive_title"]
+    """
+    Extract a readable title from a vulnerability finding.
 
-    observations = vuln.get("parsed_observations") or []
-    if observations:
-        try:
-            from redaudit.core.evidence_parser import _derive_descriptive_title
-
-            derived = _derive_descriptive_title(observations)
-            if derived:
-                return derived
-        except Exception:
-            pass
-
-    # Fallback: first nikto finding or URL
-    nikto = vuln.get("nikto_findings", [])
-    if nikto and isinstance(nikto, list) and len(nikto) > 0:
-        first = nikto[0]
-        # Skip metadata lines
-        if not any(x in first.lower() for x in ["target ip:", "start time:", "end time:"]):
-            return first[:80] + ("..." if len(first) > 80 else "")
-
-    port = vuln.get("port")
-    if port:
-        return f"Web Service Finding on Port {port}"
-
-    return vuln.get("url", "Finding")[:60]
+    v4.6.20: Now delegates to unified extract_finding_title from siem.py.
+    """
+    # Use unified function from siem module
+    return extract_finding_title(vuln)
 
 
 def _translate_finding_title(title: str, lang: str) -> str:
@@ -361,6 +518,8 @@ def save_html_report(
             os.chmod(output_path, SECURE_FILE_MODE)
         except Exception:
             pass
+
+        _write_chart_js_asset(output_dir)
 
         return output_path
     except Exception as e:

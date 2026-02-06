@@ -58,7 +58,7 @@ Para herramientas web/TLS (Nikto/TestSSL), RedAudit extrae:
 
 ### 5. Proveniencia de herramientas (`scanner_versions`)
 
-Los reportes incluyen `scanner_versions`, un mapa best-effort de versiones detectadas (p. ej., nmap/nikto/testssl/whatweb/searchsploit) además de RedAudit.
+Los informes incluyen `scanner_versions`, un mapa best-effort de versiones detectadas (p. ej., nmap/nikto/testssl/whatweb/searchsploit) además de RedAudit.
 
 ### 6. Módulos nuevos
 
@@ -77,6 +77,6 @@ redaudit/core/
 - **GitHub Release Notes**: [GitHub Release Draft](DRAFT_TEMPLATE.md)
 - **Manual de usuario (EN)**: [docs/MANUAL.es.md](../MANUAL.es.md)
 - **Manual (ES)**: [docs/MANUAL.es.md](../MANUAL.es.md)
-- **Esquema de reporte (EN)**: [docs/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
-- **Esquema de reporte (ES)**: [docs/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
+- **Esquema de informe (EN)**: [docs/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
+- **Esquema de informe (ES)**: [docs/REPORT_SCHEMA.es.md](../REPORT_SCHEMA.es.md)
 - **Especificación de seguridad**: [EN](../SECURITY.es.md) / [ES](../SECURITY.es.md)
