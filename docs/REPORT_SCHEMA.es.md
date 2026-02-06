@@ -49,7 +49,9 @@ Metadatos del manifiesto usados para inventariar artefactos de salida en pipelin
 | `counts` | object | Conteos de hosts, hallazgos y PCAPs |
 | `counts.findings_raw` | integer | (Opcional) Conteo bruto de hallazgos antes de normalizar |
 | `counts.auditor_excluded` | integer | Número de IPs del auditor eliminadas de los objetivos |
+| `counts.nuclei_pending_targets` | integer | (Opcional) Objetivos Nuclei pendientes guardados para reanudar |
 | `artifacts` | array | Lista de archivos con `path` relativo y `size_bytes` |
+| `nuclei_resume` | object/null | Metadatos de reanudacion cuando `nuclei_resume.json` existe en artefactos |
 
 ## Definición del Esquema
 
@@ -147,7 +149,8 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | :--- | :--- | :--- |
 | `enabled` | boolean | True cuando Nuclei se ejecutó (best-effort) |
 | `targets` | integer | Targets HTTP/HTTPS enviados a Nuclei |
-| `targets_total` | integer | Targets HTTP/HTTPS totales antes de la optimizacion |
+| `targets_total` | integer | Targets HTTP/HTTPS efectivamente ejecutados tras la optimizacion |
+| `targets_pre_optimization` | integer | Targets HTTP/HTTPS descubiertos antes de optimizar (best-effort) |
 | `targets_exception` | integer | Targets tratados como excepcion (cobertura completa + reintentos) |
 | `targets_optimized` | integer | Targets seleccionados tras la optimizacion |
 | `targets_excluded` | integer | Targets excluidos por filtros del usuario |
@@ -246,7 +249,8 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | Campo | Tipo | Descripción |
 | :--- | :--- | :--- |
 | `targets` | integer | Objetivos HTTP enviados a Nuclei |
-| `targets_total` | integer | Objetivos HTTP totales antes de optimizar |
+| `targets_total` | integer | Objetivos HTTP efectivamente ejecutados tras optimizar |
+| `targets_pre_optimization` | integer | Objetivos HTTP descubiertos antes de optimizar (best-effort) |
 | `targets_exception` | integer | Objetivos tratados como excepcion (cobertura completa + reintentos) |
 | `targets_optimized` | integer | Objetivos seleccionados tras optimizar |
 | `targets_excluded` | integer | Objetivos excluidos por filtros del usuario |
@@ -313,7 +317,7 @@ Exportación plana, un activo por línea, para inventario.
 | Campo | Tipo | Descripción |
 | :--- | :--- | :--- |
 | `ip` | string | IP del activo |
-| `hostname` | string | Hostname (best-effort) |
+| `hostname` | string | Hostname (best-effort: hostname del host, luego `dns.reverse`, luego `phase0_enrichment.dns_reverse`) |
 | `status` | string | Estado del host (up/filtered/down) |
 | `risk_score` | number | Riesgo (0-100) |
 | `open_ports` | array | (Opcional) Lista de puertos abiertos (`port`, `protocol`, `service`) |

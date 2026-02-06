@@ -77,6 +77,9 @@ Cada línea contiene un hallazgo de vulnerabilidad:
 }
 ```
 
+Notas:
+- `asset_hostname` usa fallback best-effort en este orden: `hostname`, luego `dns.reverse`, luego `phase0_enrichment.dns_reverse`.
+
 ### assets.jsonl
 
 Cada línea contiene un host/servicio descubierto:
@@ -104,6 +107,9 @@ Cada línea contiene un host/servicio descubierto:
   "scanner_version": "3.10.0"
 }
 ```
+
+Notas:
+- `hostname` usa fallback best-effort en este orden: `hostname`, luego `dns.reverse`, luego `phase0_enrichment.dns_reverse`.
 
 ## Reglas Sigma Incluidas
 

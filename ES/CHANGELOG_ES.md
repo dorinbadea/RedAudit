@@ -10,6 +10,22 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.42] - 06-02-2026
+
+### Anadido
+
+- **Metadatos de reanudacion en manifiesto**: `run_manifest.json` incluye ahora un bloque `nuclei_resume` con contadores de pendientes y reanudaciones cuando existen artefactos de resume.
+
+### Mejorado
+
+- **Claridad de contabilidad Nuclei**: El resumen de pipeline expone tanto objetivos ejecutados tras optimizacion (`targets_total`) como el total previo (`targets_pre_optimization`).
+
+### Corregido
+
+- **Completitud de artefactos de reanudacion**: Los session logs se cierran antes de persistir informes, por lo que `run_manifest.json` captura de forma fiable los artefactos finales `session_resume_*`.
+- **Consistencia de evidencia de riesgo**: El desglose SIEM ahora contabiliza correctamente `finding_total` y evita mostrar ratios invalidos `risk findings 1/0` en salidas TXT/HTML.
+- **Consistencia de hostname en JSONL**: `assets.jsonl` y `findings.jsonl` aplican fallback de DNS inverso (`dns.reverse` / `phase0_enrichment.dns_reverse`) cuando `hostname` esta vacio.
+
 ## [4.19.41] - 06-02-2026
 
 ### Anadido
