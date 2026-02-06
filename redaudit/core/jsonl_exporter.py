@@ -77,6 +77,32 @@ def _count_port_evidence_severity(results: Dict) -> Dict[str, int]:
     return severity_counts
 
 
+def _hostname_fallback(host: Dict[str, Any]) -> str:
+    """Return hostname with reverse-DNS fallbacks used by report outputs."""
+    hostname = str(host.get("hostname") or "").strip()
+    if hostname:
+        return hostname
+    dns = host.get("dns") or {}
+    reverse = dns.get("reverse") or []
+    if isinstance(reverse, list):
+        for item in reverse:
+            value = str(item or "").strip().rstrip(".")
+            if value:
+                return value
+    phase0 = host.get("phase0_enrichment") or {}
+    dns_reverse = phase0.get("dns_reverse")
+    if isinstance(dns_reverse, list):
+        for item in dns_reverse:
+            value = str(item or "").strip().rstrip(".")
+            if value:
+                return value
+    if isinstance(dns_reverse, str):
+        value = dns_reverse.strip().rstrip(".")
+        if value:
+            return value
+    return ""
+
+
 def export_findings_jsonl(results: Dict, output_path: str) -> int:
     """
     Export findings as JSONL (one finding per line).
@@ -108,7 +134,7 @@ def export_findings_jsonl(results: Dict, output_path: str) -> int:
                 continue
             host_info = host_index.get(host, {}) if host else {}
             asset_id = host_info.get("observable_hash", "")
-            hostname = host_info.get("hostname", "")
+            hostname = _hostname_fallback(host_info)
             tags = host_info.get("tags", []) or []
             risk_score = host_info.get("risk_score", 0)
             status = host_info.get("status", "")
@@ -210,7 +236,7 @@ def export_assets_jsonl(results: Dict, output_path: str) -> int:
             asset = {
                 "asset_id": host.get("observable_hash", ""),
                 "ip": ip,
-                "hostname": host.get("hostname", ""),
+                "hostname": _hostname_fallback(host),
                 "status": host.get("status", "unknown"),
                 "risk_score": host.get("risk_score", 0),
                 "asset_type": host.get("asset_type", ""),

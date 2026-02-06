@@ -1025,6 +1025,8 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                 service_backdoors = int(risk_bd.get("service_backdoor_total", 0) or 0)
                 finding_risk = int(risk_bd.get("finding_risk_total", 0) or 0)
                 finding_total = int(risk_bd.get("finding_total", 0) or 0)
+                if finding_total < finding_risk:
+                    finding_total = finding_risk
                 heuristics = risk_bd.get("heuristic_flags") or []
                 heuristics_txt = ", ".join(str(x) for x in heuristics) if heuristics else "-"
                 lines.append(
@@ -1490,6 +1492,42 @@ def _write_output_manifest(
     pcap_count = sum(1 for item in artifacts if str(item.get("path", "")).lower().endswith(".pcap"))
     manifest["artifacts"] = artifacts
     manifest["counts"]["pcaps"] = pcap_count
+    artifact_paths = {str(item.get("path", "")) for item in artifacts}
+    resume_rel_path = "nuclei_resume.json"
+    pending_rel_path = "nuclei_pending.txt"
+    manifest["nuclei_resume"] = None
+    if resume_rel_path in artifact_paths:
+        resume_meta: Dict[str, Any] = {
+            "path": resume_rel_path,
+            "has_pending_file": pending_rel_path in artifact_paths,
+        }
+        resume_path = os.path.join(output_dir, resume_rel_path)
+        try:
+            with open(resume_path, "r", encoding="utf-8") as handle:
+                resume_state = json.load(handle)
+            pending_targets = resume_state.get("pending_targets") or []
+            if not isinstance(pending_targets, list):
+                pending_targets = []
+            resume_meta["pending_targets"] = len(pending_targets)
+            manifest["counts"]["nuclei_pending_targets"] = len(pending_targets)
+            try:
+                resume_meta["resume_count"] = int(resume_state.get("resume_count") or 0)
+            except (TypeError, ValueError):
+                resume_meta["resume_count"] = 0
+            if resume_state.get("last_resume_at"):
+                resume_meta["last_resume_at"] = resume_state.get("last_resume_at")
+            if resume_state.get("updated_at"):
+                resume_meta["updated_at"] = resume_state.get("updated_at")
+            profile = (resume_state.get("nuclei") or {}).get("profile")
+            if profile:
+                resume_meta["profile"] = profile
+            if resume_state.get("output_file"):
+                resume_meta["output_file"] = resume_state.get("output_file")
+        except Exception:
+            resume_meta["error"] = "invalid_resume_state"
+            if logger:
+                logger.debug("Failed to parse nuclei resume state", exc_info=True)
+        manifest["nuclei_resume"] = resume_meta
 
     out_path = os.path.join(output_dir, "run_manifest.json")
     with open(out_path, "w", encoding="utf-8") as f:

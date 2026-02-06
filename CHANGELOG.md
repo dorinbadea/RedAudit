@@ -10,6 +10,22 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.42] - 2026-02-06
+
+### Added
+
+- **Resume manifest metadata**: `run_manifest.json` now includes a `nuclei_resume` block with pending-target and resume counters when resume artifacts are present.
+
+### Improved
+
+- **Nuclei accounting clarity**: Pipeline summary now exposes both optimized execution targets (`targets_total`) and pre-optimization totals (`targets_pre_optimization`).
+
+### Fixed
+
+- **Resume artifact completeness**: Session logs are now closed before report persistence, so `run_manifest.json` captures final `session_resume_*` artifacts reliably.
+- **Risk evidence consistency**: SIEM risk breakdown now counts `finding_total` correctly and avoids invalid `risk findings 1/0` display in TXT/HTML outputs.
+- **Hostname consistency in JSONL**: `assets.jsonl` and `findings.jsonl` now apply reverse-DNS fallback (`dns.reverse` / `phase0_enrichment.dns_reverse`) when `hostname` is empty.
+
 ## [4.19.41] - 2026-02-06
 
 ### Added

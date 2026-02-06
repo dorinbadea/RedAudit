@@ -250,6 +250,50 @@ def test_export_assets_prefers_canonical_vendor_over_ecs(tmp_path):
     assert asset["vendor_source"] == "host"
 
 
+def test_export_assets_uses_hostname_fallback_from_phase0_dns_reverse(tmp_path):
+    results = {
+        "hosts": [
+            {
+                "ip": "10.0.0.55",
+                "hostname": "",
+                "phase0_enrichment": {"dns_reverse": ["iphone.local."]},
+            }
+        ],
+        "vulnerabilities": [],
+        "summary": {},
+    }
+    output_path = tmp_path / "assets.jsonl"
+    count = export_assets_jsonl(results, str(output_path))
+    assert count == 1
+    asset = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert asset["hostname"] == "iphone.local"
+
+
+def test_export_findings_uses_hostname_fallback(tmp_path):
+    results = {
+        "hosts": [
+            {
+                "ip": "10.0.0.55",
+                "hostname": "",
+                "phase0_enrichment": {"dns_reverse": "iphone.local."},
+                "observable_hash": "asset-55",
+            }
+        ],
+        "vulnerabilities": [
+            {
+                "host": "10.0.0.55",
+                "vulnerabilities": [{"severity": "low", "port": 80, "url": "http://10.0.0.55"}],
+            }
+        ],
+        "summary": {},
+    }
+    output_path = tmp_path / "findings.jsonl"
+    count = export_findings_jsonl(results, str(output_path))
+    assert count == 1
+    finding = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert finding["asset_hostname"] == "iphone.local"
+
+
 def test_export_summary_includes_port_evidence_breakdown(tmp_path):
     output_path = tmp_path / "summary.json"
     results = {

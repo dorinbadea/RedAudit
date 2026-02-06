@@ -522,6 +522,7 @@ class InteractiveNetworkAuditor:
         self.scan_start_time = datetime.now()
         self.start_heartbeat()
         self._deep_executed_count = 0
+        session_log_closed = False
 
         inhibitor = None
         if self.config.get("prevent_sleep", True):
@@ -1057,26 +1058,27 @@ class InteractiveNetworkAuditor:
                             )
                         except (TypeError, ValueError):
                             base_targets_total = selected_targets_before_leak
-                        targets_total = max(
+                        targets_pre_optimization = max(
                             base_targets_total + len(leak_follow_targets),
                             len(nuclei_targets),
                         )
+                        targets_total = len(nuclei_targets)
                         targets_exception = int(selection.get("targets_exception") or 0)
                         targets_optimized = int(selection.get("targets_optimized") or 0)
                         targets_excluded = int(selection.get("targets_excluded") or 0)
-                        if targets_total > len(nuclei_targets):
+                        if targets_pre_optimization > targets_total:
                             if self.logger:
                                 self.logger.info(
                                     "Nuclei targets optimized: %d -> %d (exceptions %d)",
+                                    targets_pre_optimization,
                                     targets_total,
-                                    len(nuclei_targets),
                                     targets_exception,
                                 )
                             self.ui.print_status(
                                 self.ui.t(
                                     "nuclei_targets_optimized",
-                                    len(nuclei_targets),
                                     targets_total,
+                                    targets_pre_optimization,
                                     targets_exception,
                                 ),
                                 "INFO",
@@ -1278,6 +1280,7 @@ class InteractiveNetworkAuditor:
                             "full_coverage": bool(nuclei_full_coverage),
                             "targets": len(nuclei_targets),
                             "targets_total": targets_total,
+                            "targets_pre_optimization": targets_pre_optimization,
                             "targets_exception": targets_exception,
                             "targets_optimized": targets_optimized,
                             "targets_excluded": targets_excluded,
@@ -1509,16 +1512,26 @@ class InteractiveNetworkAuditor:
                     if self.logger:
                         self.logger.debug("PCAP finalization skipped: %s", pcap_err)
 
+            # Close session log before saving reports so run_manifest captures
+            # the final session log artifacts from this execution.
+            from redaudit.utils.session_log import stop_session_log
+
+            session_log_path = stop_session_log()
+            session_log_closed = True
+            if session_log_path and self.logger:
+                self.logger.info("Session log saved: %s", session_log_path)
+
             self.save_results(partial=self.interrupted)
             self.show_results()
 
         finally:
             # v3.7: Stop session logging
-            from redaudit.utils.session_log import stop_session_log
+            if not session_log_closed:
+                from redaudit.utils.session_log import stop_session_log
 
-            session_log_path = stop_session_log()
-            if session_log_path and self.logger:
-                self.logger.info("Session log saved: %s", session_log_path)
+                session_log_path = stop_session_log()
+                if session_log_path and self.logger:
+                    self.logger.info("Session log saved: %s", session_log_path)
 
             if self.proxy_manager:
                 try:
@@ -3874,6 +3887,7 @@ class InteractiveNetworkAuditor:
         max_runtime_s = max_runtime_minutes * 60 if max_runtime_minutes else None
 
         session_log_started = False
+        session_log_closed = False
         try:
             try:
                 from redaudit.utils.session_log import start_session_log
@@ -4094,6 +4108,18 @@ class InteractiveNetworkAuditor:
                 self.ui.print_status(self.ui.t("nuclei_resume_done", 0), "INFO")
 
             if save_after:
+                if session_log_started and not session_log_closed:
+                    try:
+                        from redaudit.utils.session_log import stop_session_log
+
+                        session_log_path = stop_session_log()
+                        session_log_closed = True
+                        session_log_started = False
+                        if session_log_path and self.logger:
+                            self.logger.info("Session log saved: %s", session_log_path)
+                    except Exception:  # pragma: no cover
+                        if self.logger:
+                            self.logger.debug("Failed to stop resume session log", exc_info=True)
                 hosts = self.results.get("hosts") or []
                 host_ips = []
                 for host in hosts:
@@ -4123,7 +4149,7 @@ class InteractiveNetworkAuditor:
 
             return bool(resume_result.get("success"))
         finally:
-            if session_log_started:
+            if session_log_started and not session_log_closed:
                 try:
                     from redaudit.utils.session_log import stop_session_log
 

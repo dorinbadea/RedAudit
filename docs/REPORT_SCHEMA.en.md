@@ -49,7 +49,9 @@ Run manifest metadata used to inventory output artifacts for automation pipeline
 | `counts` | object | Summary counts for hosts, findings, and PCAPs |
 | `counts.findings_raw` | integer | (Optional) Raw findings count before normalization |
 | `counts.auditor_excluded` | integer | Number of auditor IPs removed from targets |
+| `counts.nuclei_pending_targets` | integer | (Optional) Pending Nuclei targets saved for resume |
 | `artifacts` | array | List of files with relative `path` and `size_bytes` |
+| `nuclei_resume` | object/null | Resume metadata when `nuclei_resume.json` exists in artifacts |
 
 ## Schema Definition
 
@@ -149,7 +151,8 @@ Appears only when Nuclei scanning is enabled and available.
 | :--- | :--- | :--- |
 | `enabled` | boolean | True when Nuclei was executed (best-effort) |
 | `targets` | integer | HTTP/HTTPS targets sent to Nuclei |
-| `targets_total` | integer | Total HTTP/HTTPS targets before optimization |
+| `targets_total` | integer | Total HTTP/HTTPS targets effectively executed after optimization |
+| `targets_pre_optimization` | integer | Total HTTP/HTTPS targets discovered before optimization (best-effort) |
 | `targets_exception` | integer | Targets treated as exceptions (full coverage + retries) |
 | `targets_optimized` | integer | Targets selected after optimization |
 | `targets_excluded` | integer | Targets excluded by user filters |
@@ -252,7 +255,8 @@ Compact roll-up for dashboards.
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `targets` | integer | Total HTTP targets sent to Nuclei |
-| `targets_total` | integer | Total HTTP targets before optimization |
+| `targets_total` | integer | Total HTTP targets effectively executed after optimization |
+| `targets_pre_optimization` | integer | Total HTTP targets discovered before optimization (best-effort) |
 | `targets_exception` | integer | Targets treated as exceptions (full coverage + retries) |
 | `targets_optimized` | integer | Targets selected after optimization |
 | `targets_excluded` | integer | Targets excluded by user filters |
@@ -319,7 +323,7 @@ Flat, one-asset-per-line export for inventory pipelines.
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `ip` | string | Asset IP address |
-| `hostname` | string | Best-effort hostname |
+| `hostname` | string | Best-effort hostname (host hostname, then `dns.reverse`, then `phase0_enrichment.dns_reverse`) |
 | `status` | string | Host status (up/filtered/down) |
 | `risk_score` | number | Risk score (0-100) |
 | `open_ports` | array | (Optional) List of open ports (`port`, `protocol`, `service`) |

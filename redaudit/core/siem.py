@@ -937,6 +937,7 @@ def calculate_risk_score_with_breakdown(host_record: Dict) -> Dict:
     }
 
     for finding in findings:
+        finding_total += 1
         severity = str(finding.get("severity", "info")).lower()
         score = severity_map.get(severity, 0.0)
 

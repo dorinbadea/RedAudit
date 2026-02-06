@@ -1589,6 +1589,38 @@ def test_write_output_manifest_marks_nuclei_partial(tmp_path):
     assert manifest["partial"] is True
 
 
+def test_write_output_manifest_includes_nuclei_resume_metadata(tmp_path):
+    output_dir = tmp_path / "manifest_resume"
+    output_dir.mkdir()
+    resume_state = {
+        "pending_targets": ["http://10.0.0.1:80", "https://10.0.0.2:443"],
+        "resume_count": 3,
+        "last_resume_at": "2026-02-06T20:00:00",
+        "updated_at": "2026-02-06T20:05:00",
+        "output_file": "nuclei_output.json",
+        "nuclei": {"profile": "fast"},
+    }
+    (output_dir / "nuclei_resume.json").write_text(json.dumps(resume_state), encoding="utf-8")
+    (output_dir / "nuclei_pending.txt").write_text(
+        "http://10.0.0.1:80\nhttps://10.0.0.2:443\n", encoding="utf-8"
+    )
+    manifest_path = _write_output_manifest(
+        output_dir=str(output_dir),
+        results={"summary": {}, "hosts": []},
+        config={},
+        encryption_enabled=False,
+        partial=False,
+        logger=MagicMock(),
+    )
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest = json.load(f)
+    assert manifest["nuclei_resume"]["path"] == "nuclei_resume.json"
+    assert manifest["nuclei_resume"]["pending_targets"] == 2
+    assert manifest["nuclei_resume"]["resume_count"] == 3
+    assert manifest["nuclei_resume"]["profile"] == "fast"
+    assert manifest["counts"]["nuclei_pending_targets"] == 2
+
+
 def test_show_results_summary_detail():
     results = {"summary": {"vulns_found": 5, "vulns_found_raw": 10}}
     t_fn = MagicMock(return_value="Detail output")
