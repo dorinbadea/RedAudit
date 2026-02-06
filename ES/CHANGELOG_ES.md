@@ -10,6 +10,15 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.38] - 06-02-2026
+
+### Corregido
+
+- **Coherencia en informes parciales**: `save_results()` ahora trata las ejecuciones parciales de Nuclei como salida parcial real, alineando nombre de archivo y estado TXT con el manifiesto.
+- **Estabilidad del score de riesgo**: El enriquecimiento SIEM ahora calcula el riesgo del host despues de normalizar/consolidar vulnerabilidades y volver a asociar findings enriquecidos al host, evitando deriva entre ejecucion inicial y reanudaciones.
+- **Trazabilidad de credenciales**: Los proveedores de credenciales ahora emiten eventos `credential_audit` para resultados de acceso/almacenamiento sin exponer secretos.
+- **Seguridad JSON en instalador**: La generacion de `config.json` para NVD en `redaudit_install.sh` ahora usa `jq` si existe y fallback con `python3`, evitando construccion JSON cruda con `echo`.
+
 ## [4.19.37] - 05-02-2026
 
 ### Corregido

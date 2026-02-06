@@ -10,6 +10,15 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.38] - 2026-02-06
+
+### Fixed
+
+- **Partial report coherence**: `save_results()` now treats Nuclei partial runs as partial outputs, keeping filenames and TXT status aligned with manifest metadata.
+- **Risk score stability**: SIEM enrichment now computes host risk after vulnerability normalization/consolidation and maps enriched findings back to hosts, avoiding score drift between initial and resumed runs.
+- **Credential auditability**: Credential providers now emit `credential_audit` events for access/store outcomes without exposing secrets.
+- **Installer JSON safety**: NVD config generation in `redaudit_install.sh` now uses `jq` when available, with a `python3` fallback instead of raw shell JSON echoing.
+
 ## [4.19.37] - 2026-02-05
 
 ### Fixed
