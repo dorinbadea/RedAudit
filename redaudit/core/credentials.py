@@ -19,6 +19,30 @@ import json
 logger = logging.getLogger(__name__)
 
 
+def _audit_credential_event(
+    *,
+    action: str,
+    provider: str,
+    protocol: str,
+    target: str,
+    outcome: str,
+) -> None:
+    """
+    Emit credential access/store audit events without exposing secrets.
+
+    Format is intentionally key=value for easy ingestion by SIEM parsers.
+    """
+    safe_target = target or "default"
+    logger.info(
+        "credential_audit action=%s provider=%s protocol=%s target=%s outcome=%s",
+        action,
+        provider,
+        protocol or "unknown",
+        safe_target,
+        outcome,
+    )
+
+
 @dataclass
 class Credential:
     """
@@ -109,6 +133,13 @@ class EnvironmentCredentialProvider(CredentialProvider):
         username = os.environ.get(f"{prefix}_USER")
         if not username:
             logger.debug("No %s_USER environment variable found", prefix)
+            _audit_credential_event(
+                action="get",
+                provider="environment",
+                protocol=protocol,
+                target=target,
+                outcome="miss",
+            )
             return None
 
         password = os.environ.get(f"{prefix}_PASS")
@@ -117,6 +148,13 @@ class EnvironmentCredentialProvider(CredentialProvider):
         domain = os.environ.get(f"{prefix}_DOMAIN")
 
         logger.debug("Found %s credentials for user %s", protocol.upper(), username)
+        _audit_credential_event(
+            action="get",
+            provider="environment",
+            protocol=protocol,
+            target=target,
+            outcome="hit",
+        )
 
         return Credential(
             username=username,
@@ -129,6 +167,13 @@ class EnvironmentCredentialProvider(CredentialProvider):
     def store_credential(self, target: str, protocol: str, credential: Credential) -> bool:
         """Environment provider does not support storing credentials."""
         logger.warning("EnvironmentCredentialProvider does not support store_credential")
+        _audit_credential_event(
+            action="store",
+            provider="environment",
+            protocol=protocol,
+            target=target,
+            outcome="unsupported",
+        )
         return False
 
 
@@ -178,7 +223,15 @@ class KeyringCredentialProvider(CredentialProvider):
     def get_credential(self, target: str, protocol: str) -> Optional[Credential]:
         """Get credential from OS keyring."""
         if not self._keyring_available:
-            return self._fallback.get_credential(target, protocol)
+            cred = self._fallback.get_credential(target, protocol)
+            _audit_credential_event(
+                action="get",
+                provider="keyring-fallback",
+                protocol=protocol,
+                target=target,
+                outcome="hit" if cred else "miss",
+            )
+            return cred
 
         service_name = f"redaudit-{protocol}"
 
@@ -190,6 +243,13 @@ class KeyringCredentialProvider(CredentialProvider):
 
         if not username:
             logger.debug("No keyring credential found for %s/%s", protocol, target)
+            _audit_credential_event(
+                action="get",
+                provider="keyring",
+                protocol=protocol,
+                target=target,
+                outcome="miss",
+            )
             return None
 
         # Get associated data (stored as JSON blob in password field for v4.1+)
@@ -231,6 +291,13 @@ class KeyringCredentialProvider(CredentialProvider):
             domain = self._keyring.get_password(service_name, "default:domain")
 
         logger.debug("Found keyring credential for %s/%s", protocol, target)
+        _audit_credential_event(
+            action="get",
+            provider="keyring",
+            protocol=protocol,
+            target=target,
+            outcome="hit",
+        )
 
         return Credential(
             username=username,
@@ -360,6 +427,13 @@ class KeyringCredentialProvider(CredentialProvider):
     def store_credential(self, target: str, protocol: str, credential: Credential) -> bool:
         """Store credential in OS keyring."""
         if not self._keyring_available:
+            _audit_credential_event(
+                action="store",
+                provider="keyring",
+                protocol=protocol,
+                target=target,
+                outcome="unavailable",
+            )
             return False
 
         service_name = f"redaudit-{protocol}"
@@ -391,10 +465,24 @@ class KeyringCredentialProvider(CredentialProvider):
                 self._keyring.set_password(service_name, f"{key_prefix}:domain", credential.domain)
 
             logger.info("Stored credential for %s/%s in keyring", protocol, target)
+            _audit_credential_event(
+                action="store",
+                provider="keyring",
+                protocol=protocol,
+                target=target,
+                outcome="success",
+            )
             return True
 
         except Exception as e:
             logger.error("Failed to store credential in keyring: %s", e)
+            _audit_credential_event(
+                action="store",
+                provider="keyring",
+                protocol=protocol,
+                target=target,
+                outcome="error",
+            )
             return False
 
 
