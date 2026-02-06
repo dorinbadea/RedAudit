@@ -226,3 +226,50 @@ def test_export_assets_filters_agentless_and_chmod_error(tmp_path):
     assert "agentless" in asset
     assert asset["agentless"]["domain"] == "corp"
     assert "http_server" not in asset["agentless"]
+
+
+def test_export_summary_includes_port_evidence_breakdown(tmp_path):
+    output_path = tmp_path / "summary.json"
+    results = {
+        "hosts": [
+            {
+                "ip": "192.168.1.20",
+                "ports": [
+                    {
+                        "port": 445,
+                        "cves": [
+                            {
+                                "cve_id": "CVE-2024-9999",
+                                "cvss_score": 9.8,
+                                "cvss_severity": "CRITICAL",
+                            },
+                            {
+                                "cve_id": "CVE-2024-9999",
+                                "cvss_score": 9.8,
+                                "cvss_severity": "CRITICAL",
+                            },
+                        ],
+                        "known_exploits": ["CVE-2024-9999", "EXP-1"],
+                        "detected_backdoors": [{"cve_id": "CVE-2025-1111"}],
+                    }
+                ],
+            }
+        ],
+        "vulnerabilities": [
+            {
+                "host": "192.168.1.20",
+                "vulnerabilities": [{"severity": "low", "category": "surface"}],
+            }
+        ],
+        "summary": {},
+    }
+
+    summary = export_summary_json(results, str(output_path))
+    assert summary["severity_breakdown"]["low"] == 1
+    assert summary["risk_evidence_severity_breakdown"]["critical"] == 2
+    assert summary["risk_evidence_severity_breakdown"]["high"] == 1
+    assert summary["total_risk_evidence_findings"] == 3
+    assert summary["total_findings_with_risk_evidence"] == 4
+    assert summary["combined_severity_breakdown"]["critical"] == 2
+    assert summary["combined_severity_breakdown"]["high"] == 1
+    assert summary["combined_severity_breakdown"]["low"] == 1
