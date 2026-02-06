@@ -19,6 +19,7 @@ from redaudit.core.siem import (
     generate_host_tags,
     build_ecs_event,
     build_ecs_host,
+    resolve_canonical_vendor,
     enrich_vulnerability_severity,
     enrich_report_for_siem,
     consolidate_findings,
@@ -155,6 +156,10 @@ class TestSIEM(unittest.TestCase):
         self.assertEqual(result["breakdown"]["max_cvss_source"], "evidence")
         self.assertEqual(result["breakdown"]["exposure_multiplier"], 1.15)
         self.assertTrue(result["breakdown"]["has_exposed_port"])
+        self.assertEqual(result["breakdown"]["service_cve_total"], 1)
+        self.assertEqual(result["breakdown"]["service_cve_critical"], 1)
+        self.assertEqual(result["breakdown"]["service_exploit_total"], 0)
+        self.assertEqual(result["breakdown"]["finding_risk_total"], 0)
         self.assertGreater(result["score"], 0)
 
     def test_calculate_risk_score_with_exploits(self):
@@ -279,6 +284,44 @@ class TestSIEM(unittest.TestCase):
         self.assertEqual(ecs_host["mac"], ["AA:BB:CC:DD:EE:FF"])
         self.assertEqual(ecs_host["vendor"], "Intel")
 
+    def test_build_ecs_host_prefers_canonical_vendor(self):
+        """ECS vendor should come from canonical host vendor when available."""
+        host = {
+            "ip": "192.168.1.10",
+            "hostname": "server.local",
+            "vendor": "Canonical Vendor",
+            "deep_scan": {"mac_address": "AA:BB:CC:DD:EE:FF", "vendor": "Legacy Vendor"},
+        }
+        ecs_host = build_ecs_host(host)
+        self.assertEqual(ecs_host["vendor"], "Canonical Vendor")
+
+    def test_resolve_canonical_vendor_prefers_known_host_vendor(self):
+        host = {
+            "hostname": "android.fritz.box",
+            "vendor": "Sagemcom Broadband SAS",
+            "deep_scan": {"vendor": "Unknown"},
+        }
+        resolved = resolve_canonical_vendor(host)
+        self.assertEqual(resolved["vendor"], "Sagemcom Broadband SAS")
+        self.assertEqual(resolved["source"], "host")
+        self.assertEqual(resolved["confidence"], "high")
+
+    def test_resolve_canonical_vendor_falls_back_to_deep_vendor(self):
+        host = {
+            "hostname": "fritz-repeater",
+            "vendor": "(MAC privado)",
+            "deep_scan": {"vendor": "AVM"},
+        }
+        resolved = resolve_canonical_vendor(host)
+        self.assertEqual(resolved["vendor"], "AVM")
+        self.assertEqual(resolved["source"], "deep_scan")
+
+    def test_resolve_canonical_vendor_avoids_fritz_domain_guess(self):
+        host = {"hostname": "android.fritz.box", "vendor": "", "deep_scan": {"vendor": "Unknown"}}
+        resolved = resolve_canonical_vendor(host)
+        self.assertEqual(resolved["vendor"], "Unknown")
+        self.assertEqual(resolved["source"], "deep_scan_fallback")
+
     def test_enrich_vulnerability_severity(self):
         """Test vulnerability severity enrichment."""
         vuln = {"url": "http://192.168.1.1/", "nikto_findings": ["+ SQL injection in parameter id"]}
@@ -328,6 +371,7 @@ class TestSIEM(unittest.TestCase):
         self.assertIn("risk_score", host)
         self.assertIn("observable_hash", host)
         self.assertIn("tags", host)
+        self.assertIn("vendor_source", host)
 
         # Check summary stats
         summary = enriched.get("summary", {})

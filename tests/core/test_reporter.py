@@ -1346,6 +1346,18 @@ def test_generate_text_report_rich_sections():
                 "status": "up",
                 "total_ports_found": 1,
                 "risk_score": 75,
+                "vendor": "Vendor Canonical",
+                "vendor_source": "host",
+                "risk_score_breakdown": {
+                    "service_cve_total": 2,
+                    "service_cve_critical": 1,
+                    "service_cve_high": 1,
+                    "service_exploit_total": 2,
+                    "service_backdoor_total": 0,
+                    "finding_risk_total": 1,
+                    "finding_total": 2,
+                    "heuristic_flags": ["nonstandard_ssl"],
+                },
                 "ports": [
                     {
                         "port": 22,
@@ -1404,6 +1416,8 @@ def test_generate_text_report_rich_sections():
     assert "PIPELINE SUMMARY" in report
     assert "Nuclei: partial" in report
     assert "Nuclei suspected details" in report
+    assert "Risk evidence: service CVEs 2 (critical 1, high 1)" in report
+    assert "Vendor (canonical): Vendor Canonical [host]" in report
     assert "CVE Summary" in report
     assert "Nikto" in report
     assert "TestSSL" in report

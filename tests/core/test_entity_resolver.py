@@ -395,6 +395,7 @@ def test_guess_asset_type_vendor_patterns():
     assert guess_asset_type({"deep_scan": {"vendor": "Apple Inc."}}) == "workstation"
     assert guess_asset_type({"deep_scan": {"vendor": "Tuya Smart"}}) == "iot"
     assert guess_asset_type({"deep_scan": {"vendor": "Google LLC"}}) == "smart_device"
+    assert guess_asset_type({"deep_scan": {"vendor": "Synology Incorporated"}}) == "server"
 
 
 def test_guess_asset_type_port_patterns():
