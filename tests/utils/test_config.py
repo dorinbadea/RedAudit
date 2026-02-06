@@ -12,6 +12,7 @@ import json
 import stat
 import sys
 import tempfile
+import glob
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -344,6 +345,47 @@ class TestConfigEdgeCases(unittest.TestCase):
             ):
                 config = load_config()
         assert config == DEFAULT_CONFIG
+
+    def test_load_config_decode_error_self_heals_and_keeps_backup(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = os.path.join(tmpdir, "config.json")
+            with open(config_file, "w", encoding="utf-8") as f:
+                f.write("{invalid-json")
+
+            with (
+                patch("redaudit.utils.config.get_config_paths", return_value=(tmpdir, config_file)),
+                patch("redaudit.utils.config.ensure_config_dir", return_value=tmpdir),
+            ):
+                config = load_config()
+
+            assert config["version"] == CONFIG_VERSION
+            assert config["defaults"] == DEFAULT_CONFIG["defaults"]
+            assert os.path.isfile(config_file)
+
+            backup_files = glob.glob(config_file + ".invalid.*")
+            assert len(backup_files) == 1
+            with open(backup_files[0], "r", encoding="utf-8") as f:
+                assert f.read() == "{invalid-json"
+
+            with open(config_file, "r", encoding="utf-8") as f:
+                repaired = json.load(f)
+            assert repaired["version"] == CONFIG_VERSION
+            assert repaired["defaults"] == DEFAULT_CONFIG["defaults"]
+
+    def test_load_config_invalid_defaults_type_falls_back_to_default_block(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = os.path.join(tmpdir, "config.json")
+            with open(config_file, "w", encoding="utf-8") as f:
+                json.dump({"version": "3.0.0", "nvd_api_key": "abc", "defaults": "bad"}, f)
+
+            with (
+                patch("redaudit.utils.config.get_config_paths", return_value=(tmpdir, config_file)),
+                patch("redaudit.utils.config.ensure_config_dir", return_value=tmpdir),
+            ):
+                config = load_config()
+
+            assert config["nvd_api_key"] == "abc"
+            assert config["defaults"] == DEFAULT_CONFIG["defaults"]
 
     def test_save_config_raises_returns_false(self):
         with tempfile.TemporaryDirectory() as tmpdir:

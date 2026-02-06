@@ -10,6 +10,10 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+### Corregido
+
+- **Resiliencia de configuracion**: `load_config()` ahora autocorrige `~/.redaudit/config.json` cuando esta malformado, guardando copia en `config.json.invalid.<timestamp>` y reconstruyendo una configuracion valida por defecto; los bloques `defaults` con tipos invalidos vuelven de forma segura al esquema base.
+
 ## [4.19.38] - 06-02-2026
 
 ### Corregido

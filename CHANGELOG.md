@@ -10,6 +10,10 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Config resilience**: `load_config()` now self-heals malformed `~/.redaudit/config.json` files by backing them up as `config.json.invalid.<timestamp>` and rebuilding a valid default config; invalid `defaults` payload types now safely fall back to schema defaults.
+
 ## [4.19.38] - 2026-02-06
 
 ### Fixed
