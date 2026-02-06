@@ -110,8 +110,12 @@ Resumen compacto para dashboards y automatización (se genera solo cuando el cif
 | `total_assets` | `integer` | Total de activos descubiertos |
 | `total_findings` | `integer` | Total de hallazgos |
 | `total_findings_raw` | `integer` | Total de hallazgos antes de consolidar |
+| `total_risk_evidence_findings` | `integer` | Hallazgos inferidos desde evidencia de host/puerto (CVEs, exploits y firmas de backdoor) |
+| `total_findings_with_risk_evidence` | `integer` | `total_findings` + `total_risk_evidence_findings` |
 | `severity_breakdown` | `object` | Hallazgos por severidad (critical/high/medium/low/info) |
 | `severity_counts` | `object` | Alias de `severity_breakdown` |
+| `risk_evidence_severity_breakdown` | `object` | Severidad de evidencia de riesgo en host/puerto no emitida como hallazgo del escáner |
+| `combined_severity_breakdown` | `object` | Totales combinados de severidad entre hallazgos y evidencia de riesgo |
 | `category_breakdown` | `object` | Hallazgos por categoría (surface/vuln/...) |
 | `max_risk_score` | `integer` | Puntuación de riesgo máxima |
 | `high_risk_assets` | `integer` | Activos por encima del umbral de alto riesgo |

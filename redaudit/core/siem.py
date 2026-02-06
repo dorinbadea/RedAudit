@@ -43,6 +43,19 @@ def _severity_from_label(label: str) -> Tuple[str, int]:
     return value, SEVERITY_LEVELS[value]["score"]
 
 
+def _score_from_existing_fields(vuln_record: Dict) -> Optional[float]:
+    """Return persisted severity score (0-100) when available."""
+    score = vuln_record.get("severity_score")
+    if isinstance(score, (int, float)):
+        return float(max(0.0, min(100.0, score)))
+
+    normalized = vuln_record.get("normalized_severity")
+    if isinstance(normalized, (int, float)):
+        return float(max(0.0, min(100.0, normalized * 10.0)))
+
+    return None
+
+
 def _testssl_is_experimental(testssl: Dict) -> bool:
     """Detect low-confidence TestSSL findings marked as experimental/potentially vulnerable."""
     if not isinstance(testssl, dict):
@@ -1081,10 +1094,11 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
 
     # Calculate max severity from all findings
     max_severity = "info"
-    max_score = 0
+    max_score = 0.0
     all_categories = set()
     primary_finding = ""
     has_rfc1918_finding = False
+    has_no_web_server_signal = False
     source = str(vuln_record.get("source") or "").strip().lower()
     explicit_severity = str(vuln_record.get("severity") or "").strip()
     has_tool_findings = bool(vuln_record.get("nikto_findings")) or bool(
@@ -1092,7 +1106,9 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
     )
 
     if explicit_severity and not has_tool_findings:
-        max_severity, max_score = _severity_from_label(explicit_severity)
+        max_severity, default_score = _severity_from_label(explicit_severity)
+        persisted_score = _score_from_existing_fields(vuln_record)
+        max_score = persisted_score if persisted_score is not None else default_score
         primary_finding = (
             vuln_record.get("name")
             or vuln_record.get("descriptive_title")
@@ -1124,15 +1140,22 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
         # Track RFC-1918 findings
         if "rfc-1918" in finding.lower() and "ip address found" in finding.lower():
             has_rfc1918_finding = True
+        if "no web server found" in finding.lower():
+            has_no_web_server_signal = True
 
     # Check TestSSL vulnerabilities
     testssl = vuln_record.get("testssl_analysis", {})
     testssl_experimental = _testssl_is_experimental(testssl)
     if testssl.get("vulnerabilities"):
-        # TestSSL vulnerabilities are typically high severity
-        if max_score < 70:
-            max_score = 70
-            max_severity = "high"
+        # TestSSL vulnerabilities are typically high, but experimental findings are ambiguous.
+        if testssl_experimental:
+            if max_score < 50:
+                max_score = 50
+                max_severity = "medium"
+        else:
+            if max_score < 70:
+                max_score = 70
+                max_severity = "high"
         all_categories.add("crypto")
         if not primary_finding and testssl.get("vulnerabilities"):
             primary_finding = (
@@ -1144,6 +1167,14 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
             max_score = 50
             max_severity = "medium"
         all_categories.add("crypto")
+
+    if testssl_experimental and has_no_web_server_signal and max_score > 30:
+        max_score = 30
+        max_severity = "low"
+        enriched["severity_note"] = (
+            "TestSSL experimental signal with no confirmed web service "
+            "(degraded to low confidence)"
+        )
 
     # v3.1.4: Adjust severity for RFC-1918 findings on private networks
     url = vuln_record.get("url", "")
@@ -1198,6 +1229,8 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
     if testssl_experimental:
         fps = list(fps) if fps else []
         fps.append("TestSSL reported experimental/potentially vulnerable signal")
+        if has_no_web_server_signal:
+            fps.append("TestSSL signal observed while Nikto reported no web server")
     if fps:
         enriched["potential_false_positives"] = fps
         # v3.6.1: Degrade severity when cross-validation proves finding is wrong
@@ -1218,6 +1251,8 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
                 enriched["severity"] = "info"
                 enriched["severity_score"] = 10
                 enriched["normalized_severity"] = 1.0
+        if testssl_experimental and has_no_web_server_signal:
+            enriched["verified"] = False
 
     # v3.1: Generate finding_id for deduplication
     port = vuln_record.get("port", 0)
@@ -1296,6 +1331,8 @@ def enrich_vulnerability_severity(vuln_record: Dict, asset_id: str = "") -> Dict
         confidence += 0.1  # TestSSL findings are high-confidence
     if testssl_experimental:
         confidence -= 0.2
+    if testssl_experimental and has_no_web_server_signal:
+        confidence -= 0.1
 
     # Penalty for potential false positives
     if enriched.get("potential_false_positives"):

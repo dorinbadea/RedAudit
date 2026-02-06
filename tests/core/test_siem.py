@@ -1295,6 +1295,40 @@ class TestSIEMAdditionalCoverage(unittest.TestCase):
         self.assertIn("potential_false_positives", enriched)
         self.assertLess(enriched["confidence_score"], 0.7)
 
+    def test_enrich_vulnerability_severity_idempotent_info_score(self):
+        vuln = {
+            "source": "redaudit",
+            "severity": "info",
+            "severity_score": 0,
+            "normalized_severity": 0.0,
+            "name": "Service endpoint discovered",
+        }
+        first = enrich_vulnerability_severity(vuln, asset_id="asset")
+        second = enrich_vulnerability_severity(first, asset_id="asset")
+        self.assertEqual(first["severity"], "info")
+        self.assertEqual(first["severity_score"], 0)
+        self.assertEqual(first["normalized_severity"], 0.0)
+        self.assertEqual(second["severity"], "info")
+        self.assertEqual(second["severity_score"], 0)
+        self.assertEqual(second["normalized_severity"], 0.0)
+
+    def test_enrich_vulnerability_severity_testssl_ambiguous_service_degrades(self):
+        vuln = {
+            "source": "testssl",
+            "cve_ids": ["CVE-2013-0169"],
+            "nikto_findings": ["No web server found on target host"],
+            "testssl_analysis": {
+                "vulnerabilities": ["LUCKY13 (CVE-2013-0169), experimental potentially VULNERABLE"]
+            },
+        }
+        enriched = enrich_vulnerability_severity(vuln, asset_id="asset")
+        self.assertEqual(enriched["severity"], "low")
+        self.assertEqual(enriched["severity_score"], 30)
+        self.assertFalse(enriched["confirmed_exploitable"])
+        self.assertFalse(enriched.get("verified", True))
+        self.assertIn("potential_false_positives", enriched)
+        self.assertLessEqual(enriched["confidence_score"], 0.1)
+
     def test_enrich_vulnerability_severity_verified_boost(self):
         vuln = {"verified": True}
         enriched = enrich_vulnerability_severity(vuln, asset_id="asset")

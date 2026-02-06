@@ -10,6 +10,14 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.40] - 06-02-2026
+
+### Corregido
+
+- **Consistencia en reanudaciones**: `enrich_vulnerability_severity()` ahora es idempotente para hallazgos ya normalizados y evita deriva de riesgo en reanudaciones cuando los hallazgos informativos ya traian `severity_score`/`normalized_severity`.
+- **Ambiguedad TLS experimental**: Las señales experimentales de TestSSL ahora se degradan cuando coinciden con "no web server found", reduciendo presion de falsos positivos sin perder trazabilidad.
+- **Coherencia resumen-riesgo**: `summary.json` ahora expone contadores de severidad por evidencia de riesgo en host/puerto (CVEs/exploits/firmas de backdoor), ademas de totales combinados con hallazgos del escaner.
+
 ## [4.19.39] - 06-02-2026
 
 ### Corregido

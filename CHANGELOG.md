@@ -10,6 +10,14 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.40] - 2026-02-06
+
+### Fixed
+
+- **Resume consistency**: `enrich_vulnerability_severity()` is now idempotent for already-normalized findings, preventing risk drift on resumed runs when informational findings had explicit `severity_score`/`normalized_severity`.
+- **Experimental TLS ambiguity handling**: Experimental TestSSL signals are now degraded when cross-signaled with "no web server found", reducing false-positive pressure while preserving traceability metadata.
+- **Summary-risk coherence**: `summary.json` now exposes risk-evidence severity counters from host/port evidence (CVEs/exploits/backdoor signatures), plus combined totals with scanner findings.
+
 ## [4.19.39] - 2026-02-06
 
 ### Fixed
