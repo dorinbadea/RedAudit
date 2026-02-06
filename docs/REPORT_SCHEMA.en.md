@@ -110,8 +110,12 @@ Compact, flattened summary for dashboards and automation (generated only when re
 | `total_assets` | `integer` | Total assets discovered |
 | `total_findings` | `integer` | Total findings count |
 | `total_findings_raw` | `integer` | Raw findings count before consolidation |
+| `total_risk_evidence_findings` | `integer` | Findings inferred from host/port evidence (CVEs, exploits, backdoor signatures) |
+| `total_findings_with_risk_evidence` | `integer` | `total_findings` + `total_risk_evidence_findings` |
 | `severity_breakdown` | `object` | Findings by severity (critical/high/medium/low/info) |
 | `severity_counts` | `object` | Alias of `severity_breakdown` |
+| `risk_evidence_severity_breakdown` | `object` | Severity breakdown for host/port risk evidence not emitted as scanner findings |
+| `combined_severity_breakdown` | `object` | Combined severity totals from findings and risk evidence |
 | `category_breakdown` | `object` | Findings by category (surface/vuln/...) |
 | `max_risk_score` | `integer` | Maximum asset risk score |
 | `high_risk_assets` | `integer` | Assets over the high-risk threshold |
