@@ -10,6 +10,8 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.43] - 07-02-2026
+
 ### Mejorado
 
 - **UX de actualizaciones al iniciar**: RedAudit ahora realiza una comprobacion automatica, no bloqueante y cache-first al arrancar, y solo muestra aviso cuando hay una version mas nueva.

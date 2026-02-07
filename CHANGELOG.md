@@ -10,6 +10,8 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.43] - 2026-02-07
+
 ### Improved
 
 - **Startup update UX**: RedAudit now performs an automatic, non-blocking, cache-first update check at launch and only shows a notice when a newer version is available.
