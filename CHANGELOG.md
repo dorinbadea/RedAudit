@@ -10,6 +10,16 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.44] - 2026-02-07
+
+### Improved
+
+- **CLI rendering resilience**: Upgraded Rich from 14.2.0 to 14.3.2 to improve terminal output stability.
+
+### Fixed
+
+- **Dependency lock alignment**: `requirements.lock`, `requirements-dev.lock`, and `poetry.lock` now pin Rich consistently to 14.3.2 for Python >= 3.10.
+
 ## [4.19.43] - 2026-02-07
 
 ### Improved
