@@ -63,3 +63,9 @@ def test_installer_writes_nvd_config_with_jq_or_python() -> None:
     assert "jq -n" in content
     assert 'python3 - "$CONFIG_FILE" "$REDAUDIT_VERSION" "$NVD_KEY"' in content
     assert "json.dump(payload, handle)" in content
+
+
+def test_installer_persists_selected_language_in_user_config() -> None:
+    content = _read_installer()
+    assert 'python3 - "$LANG_CFG_FILE" "$REDAUDIT_VERSION" "$LANG_CODE"' in content
+    assert 'defaults["lang"] = lang_code' in content

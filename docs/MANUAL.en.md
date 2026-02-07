@@ -59,6 +59,8 @@ The installer:
 3. Creates the `redaudit` shell alias
 4. Prompts for language preference (EN/ES)
 
+Selected language is persisted in `~/.redaudit/config.json` and reused on next launches/reinstalls unless changed.
+
 Toolchain version policy (optional):
 
 ```bash

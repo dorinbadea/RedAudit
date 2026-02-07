@@ -59,6 +59,8 @@ El instalador:
 3. Crea el alias `redaudit` en el shell
 4. Solicita preferencia de idioma (EN/ES)
 
+El idioma elegido se guarda en `~/.redaudit/config.json` y se reutiliza en los siguientes arranques/reinstalaciones salvo que lo cambies.
+
 Política de versiones del toolchain (opcional):
 
 ```bash

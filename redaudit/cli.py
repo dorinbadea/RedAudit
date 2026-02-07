@@ -1174,8 +1174,10 @@ def main():
     app.lang = detect_preferred_language(getattr(args, "lang", None))
     app.defaults_mode = getattr(args, "defaults", "ask")
 
-    # Startup update check (network-first, short timeout, non-blocking).
-    if not args.skip_update_check:
+    def _run_startup_update_check() -> None:
+        """Run startup update check once, where output will remain visible."""
+        if args.skip_update_check:
+            return
         auto_check_updates_on_startup(
             print_fn=app.print_status,
             t_fn=app.t,
@@ -1242,6 +1244,7 @@ def main():
 
     # Non-interactive mode if --target is provided
     if args.target:
+        _run_startup_update_check()
         if configure_from_args(app, args):
             ok = app.run_complete_scan()
             sys.exit(0 if ok else 1)
@@ -1251,6 +1254,7 @@ def main():
         # Interactive mode with main menu (v3.2.2+)
         app.clear_screen()
         app.print_banner()
+        _run_startup_update_check()
 
         # Main menu loop
         while True:
@@ -1292,12 +1296,8 @@ def main():
                 )
 
                 try:
-                    old_path = input(
-                        f"{app.COLORS['CYAN']}?{app.COLORS['ENDC']} {app.t('diff_enter_old_path')} "
-                    ).strip()
-                    new_path = input(
-                        f"{app.COLORS['CYAN']}?{app.COLORS['ENDC']} {app.t('diff_enter_new_path')} "
-                    ).strip()
+                    old_path = input(f"{app.t('diff_enter_old_path')} ").strip()
+                    new_path = input(f"{app.t('diff_enter_new_path')} ").strip()
 
                     if old_path and new_path:
                         diff = generate_diff_report(old_path, new_path)

@@ -2171,10 +2171,7 @@ class InteractiveNetworkAuditor:
         auditor_default_display = (
             self._style_default_value(auditor_default) if auditor_default else ""
         )
-        auditor_name = input(
-            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {auditor_prompt} "
-            f"[{auditor_default_display}]: "
-        ).strip()
+        auditor_name = input(f"{auditor_prompt} " f"[{auditor_default_display}]: ").strip()
         if not auditor_name:
             auditor_name = auditor_default
         self.config["auditor_name"] = auditor_name.strip() if auditor_name else None
@@ -2189,10 +2186,7 @@ class InteractiveNetworkAuditor:
 
         output_prompt = self._style_prompt_text(self.ui.t("output_dir_q"))
         default_output_display = self._style_default_value(default_output)
-        output_dir = input(
-            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {output_prompt} "
-            f"[{default_output_display}]: "
-        ).strip()
+        output_dir = input(f"{output_prompt} " f"[{default_output_display}]: ").strip()
         if not output_dir:
             output_dir = default_output
         self.config["output_dir"] = expand_user_path(output_dir)
@@ -2476,8 +2470,7 @@ class InteractiveNetworkAuditor:
                         self._style_default_value(exclude_default) if exclude_default else ""
                     )
                     exclude_text = input(
-                        f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {exclude_prompt} "
-                        f"[{exclude_default_display}]: "
+                        f"{exclude_prompt} " f"[{exclude_default_display}]: "
                     ).strip()
                     if not exclude_text:
                         exclude_text = exclude_default
@@ -2800,8 +2793,7 @@ class InteractiveNetworkAuditor:
                             self._style_default_value(exclude_default) if exclude_default else ""
                         )
                         exclude_text = input(
-                            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {exclude_prompt} "
-                            f"[{exclude_default_display}]: "
+                            f"{exclude_prompt} " f"[{exclude_default_display}]: "
                         ).strip()
                         if not exclude_text:
                             exclude_text = exclude_default
@@ -3097,8 +3089,7 @@ class InteractiveNetworkAuditor:
                                 defaults_for_run.get("net_discovery_kerberos_realm") or ""
                             )
                             realm = input(
-                                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('kerberos_realm_q')} "
-                                f"[{persisted_realm}]: "
+                                f"{self.ui.t('kerberos_realm_q')} " f"[{persisted_realm}]: "
                             ).strip()
                             self.config["net_discovery_kerberos_realm"] = (
                                 realm or persisted_realm or None
@@ -3108,8 +3099,7 @@ class InteractiveNetworkAuditor:
                                 defaults_for_run.get("net_discovery_kerberos_userlist") or ""
                             )
                             userlist = input(
-                                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('kerberos_userlist_q')} "
-                                f"[{persisted_userlist}]: "
+                                f"{self.ui.t('kerberos_userlist_q')} " f"[{persisted_userlist}]: "
                             ).strip()
                             self.config["net_discovery_kerberos_userlist"] = (
                                 expand_user_path(userlist)
@@ -3243,10 +3233,7 @@ class InteractiveNetworkAuditor:
                 )
                 auditor_default = auditor_default or ""
                 auditor_prompt = self.ui.t("auditor_name_q")
-                auditor_name = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {auditor_prompt} "
-                    f"[{auditor_default}]: "
-                ).strip()
+                auditor_name = input(f"{auditor_prompt} " f"[{auditor_default}]: ").strip()
                 if not auditor_name:
                     auditor_name = auditor_default
                 auditor_name = auditor_name.strip()
@@ -3258,10 +3245,7 @@ class InteractiveNetworkAuditor:
                 if isinstance(persisted_output, str) and persisted_output.strip():
                     default_reports = expand_user_path(persisted_output.strip())
 
-                out_dir = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} {self.ui.t('output_dir')} "
-                    f"[{default_reports}]: "
-                ).strip()
+                out_dir = input(f"{self.ui.t('output_dir')} " f"[{default_reports}]: ").strip()
                 if not out_dir:
                     out_dir = default_reports
                 self.config["output_dir"] = expand_user_path(out_dir)

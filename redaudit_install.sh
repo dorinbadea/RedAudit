@@ -791,7 +791,64 @@ chown root:root /usr/local/bin/redaudit
 echo "Wrapper installed at /usr/local/bin/redaudit"
 
 # -------------------------------------------
-# 3b) NVD API Key Setup (Optional)
+# 3b) Persist selected language in user config
+# -------------------------------------------
+
+LANG_CFG_DIR="$REAL_HOME/.redaudit"
+LANG_CFG_FILE="$LANG_CFG_DIR/config.json"
+mkdir -p "$LANG_CFG_DIR"
+chmod 700 "$LANG_CFG_DIR" 2>/dev/null || true
+
+if python3 - "$LANG_CFG_FILE" "$REDAUDIT_VERSION" "$LANG_CODE" <<'PY'
+import json
+import os
+import sys
+
+config_file = sys.argv[1]
+version = sys.argv[2]
+lang_code = sys.argv[3] if sys.argv[3] in ("en", "es") else "en"
+
+payload = {}
+if os.path.isfile(config_file):
+    try:
+        with open(config_file, "r", encoding="utf-8") as handle:
+            loaded = json.load(handle)
+        if isinstance(loaded, dict):
+            payload = loaded
+    except Exception:
+        payload = {}
+
+defaults = payload.get("defaults")
+if not isinstance(defaults, dict):
+    defaults = {}
+
+defaults["lang"] = lang_code
+payload["defaults"] = defaults
+payload["version"] = payload.get("version") or version
+
+with open(config_file, "w", encoding="utf-8") as handle:
+    json.dump(payload, handle, ensure_ascii=False, indent=2)
+PY
+then
+    chmod 600 "$LANG_CFG_FILE" 2>/dev/null || true
+    if [[ "$(id -u)" -eq 0 ]]; then
+        chown "$REAL_USER":"$(id -gn "$REAL_USER" 2>/dev/null || echo "$REAL_USER")" "$LANG_CFG_FILE" 2>/dev/null || true
+    fi
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[OK] Idioma por defecto guardado en $LANG_CFG_FILE"
+    else
+        echo "[OK] Default language saved in $LANG_CFG_FILE"
+    fi
+else
+    if [[ "$LANG_CODE" == "es" ]]; then
+        echo "[WARN] No se pudo guardar el idioma por defecto en $LANG_CFG_FILE"
+    else
+        echo "[WARN] Could not persist default language to $LANG_CFG_FILE"
+    fi
+fi
+
+# -------------------------------------------
+# 3c) NVD API Key Setup (Optional)
 # -------------------------------------------
 
 if [[ "$LANG_CODE" == "es" ]]; then
