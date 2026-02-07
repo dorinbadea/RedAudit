@@ -21,12 +21,14 @@ fi
 
 AUTO_YES=false
 [[ "$1" == "-y" ]] && AUTO_YES=true
+IS_AUTO_UPDATE=false
 
 # Support non-interactive mode via environment variables (for auto-update)
 # REDAUDIT_AUTO_UPDATE=1 enables fully non-interactive install
 # REDAUDIT_LANG=en|es sets language without prompting
 if [[ -n "$REDAUDIT_AUTO_UPDATE" ]]; then
     AUTO_YES=true
+    IS_AUTO_UPDATE=true
 fi
 
 # Toolchain install policy: pinned (default) or latest
@@ -53,6 +55,7 @@ fi
 REAL_USER=${SUDO_USER:-$USER}
 REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
 USER_SHELL=$(getent passwd "$REAL_USER" | cut -d: -f7)
+REAL_GROUP=$(id -gn "$REAL_USER" 2>/dev/null || echo "$REAL_USER")
 
 # -------------------------------------------
 # 1) Language selector
@@ -796,10 +799,18 @@ echo "Wrapper installed at /usr/local/bin/redaudit"
 
 LANG_CFG_DIR="$REAL_HOME/.redaudit"
 LANG_CFG_FILE="$LANG_CFG_DIR/config.json"
+PRESERVE_LANG_CFG="0"
 mkdir -p "$LANG_CFG_DIR"
 chmod 700 "$LANG_CFG_DIR" 2>/dev/null || true
 
-if python3 - "$LANG_CFG_FILE" "$REDAUDIT_VERSION" "$LANG_CODE" <<'PY'
+if $IS_AUTO_UPDATE; then
+    PRESERVE_LANG_CFG="1"
+else
+    # Fresh/reinstall path: reset persisted preferences to avoid stale settings.
+    rm -f "$LANG_CFG_FILE" 2>/dev/null || true
+fi
+
+if python3 - "$LANG_CFG_FILE" "$REDAUDIT_VERSION" "$LANG_CODE" "$PRESERVE_LANG_CFG" <<'PY'
 import json
 import os
 import sys
@@ -807,9 +818,10 @@ import sys
 config_file = sys.argv[1]
 version = sys.argv[2]
 lang_code = sys.argv[3] if sys.argv[3] in ("en", "es") else "en"
+preserve_existing = sys.argv[4] == "1"
 
 payload = {}
-if os.path.isfile(config_file):
+if preserve_existing and os.path.isfile(config_file):
     try:
         with open(config_file, "r", encoding="utf-8") as handle:
             loaded = json.load(handle)
@@ -824,7 +836,7 @@ if not isinstance(defaults, dict):
 
 defaults["lang"] = lang_code
 payload["defaults"] = defaults
-payload["version"] = payload.get("version") or version
+payload["version"] = version
 
 with open(config_file, "w", encoding="utf-8") as handle:
     json.dump(payload, handle, ensure_ascii=False, indent=2)
@@ -832,7 +844,7 @@ PY
 then
     chmod 600 "$LANG_CFG_FILE" 2>/dev/null || true
     if [[ "$(id -u)" -eq 0 ]]; then
-        chown "$REAL_USER":"$(id -gn "$REAL_USER" 2>/dev/null || echo "$REAL_USER")" "$LANG_CFG_FILE" 2>/dev/null || true
+        chown "$REAL_USER:$REAL_GROUP" "$LANG_CFG_FILE" 2>/dev/null || true
     fi
     if [[ "$LANG_CODE" == "es" ]]; then
         echo "[OK] Idioma por defecto guardado en $LANG_CFG_FILE"
@@ -891,36 +903,44 @@ if [[ -n "$NVD_KEY" ]]; then
         CONFIG_DIR="$REAL_HOME/.redaudit"
         CONFIG_FILE="$CONFIG_DIR/config.json"
         mkdir -p "$CONFIG_DIR"
-        chmod 700 "$CONFIG_DIR"
-        if command -v jq >/dev/null 2>&1; then
-            jq -n \
-                --arg version "$REDAUDIT_VERSION" \
-                --arg nvd_api_key "$NVD_KEY" \
-                --arg nvd_api_key_storage "config" \
-                '{version: $version, nvd_api_key: $nvd_api_key, nvd_api_key_storage: $nvd_api_key_storage}' \
-                > "$CONFIG_FILE"
-        else
-            python3 - "$CONFIG_FILE" "$REDAUDIT_VERSION" "$NVD_KEY" <<'PY'
+        chmod 700 "$CONFIG_DIR" 2>/dev/null || true
+        if python3 - "$CONFIG_FILE" "$REDAUDIT_VERSION" "$NVD_KEY" <<'PY'
 import json
+import os
 import sys
 
 path = sys.argv[1]
 version = sys.argv[2]
 nvd_api_key = sys.argv[3]
 
-payload = {
-    "version": version,
-    "nvd_api_key": nvd_api_key,
-    "nvd_api_key_storage": "config",
-}
+payload = {}
+if os.path.isfile(path):
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            loaded = json.load(handle)
+        if isinstance(loaded, dict):
+            payload = loaded
+    except Exception:
+        payload = {}
+
+payload["version"] = version
+payload["nvd_api_key"] = nvd_api_key
+payload["nvd_api_key_storage"] = "config"
 
 with open(path, "w", encoding="utf-8") as handle:
-    json.dump(payload, handle)
+    json.dump(payload, handle, ensure_ascii=False, indent=2)
 PY
+        then
+            chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+            chown "$REAL_USER:$REAL_GROUP" "$CONFIG_DIR" "$CONFIG_FILE" 2>/dev/null || true
+            echo "$MSG_NVD_SAVED $CONFIG_FILE"
+        else
+            if [[ "$LANG_CODE" == "es" ]]; then
+                echo "[WARN] No se pudo guardar la API key en $CONFIG_FILE"
+            else
+                echo "[WARN] Could not save API key to $CONFIG_FILE"
+            fi
         fi
-        chmod 600 "$CONFIG_FILE"
-        chown "$REAL_USER:$REAL_USER" "$CONFIG_DIR" "$CONFIG_FILE"
-        echo "$MSG_NVD_SAVED $CONFIG_FILE"
     else
         echo "⚠️  Invalid API key format (expected UUID). Skipping."
     fi
