@@ -290,7 +290,6 @@ class Wizard:
                 )
             lines.append(
                 self._truncate_menu_text(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                     f"{self._style_prompt_text(question)}",
                     width,
                 )
@@ -450,10 +449,7 @@ class Wizard:
 
         while True:
             try:
-                ans = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-                    f"{self._style_prompt_text(self.ui.t('menu_prompt'))} "
-                ).strip()
+                ans = input(f"{self._style_prompt_text(self.ui.t('menu_prompt'))} ").strip()
                 if ans in ("0", "1", "2", "3", "4"):
                     return int(ans)
                 self.ui.print_status(self.ui.t("menu_invalid_option"), "WARNING")
@@ -499,14 +495,7 @@ class Wizard:
         while True:
             try:
                 print(f"\n{self.ui.colors['OKBLUE']}{'—' * 60}{self.ui.colors['ENDC']}")
-                ans = (
-                    input(
-                        f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-                        f"{self._style_prompt_text(question)}{opts}: "
-                    )
-                    .strip()
-                    .lower()
-                )
+                ans = input(f"{self._style_prompt_text(question)}{opts}: ").strip().lower()
                 if ans == "":
                     return valid.get(default, True)
                 if ans in valid:
@@ -526,10 +515,7 @@ class Wizard:
             self.ui.t("ask_yes_no_opts") if is_yes_default else self.ui.t("ask_yes_no_opts_neg")
         )
         opts = self._style_default_hint(opts_raw, "OKGREEN" if is_yes_default else "FAIL")
-        prompt = (
-            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-            f"{self._style_prompt_text(question)}{opts}: "
-        )
+        prompt = f"{self._style_prompt_text(question)}{opts}: "
 
         def _resolve_answer(ans: str) -> Optional[bool]:
             if ans == "":  # pragma: no cover
@@ -601,10 +587,7 @@ class Wizard:
         while True:
             try:
                 print(f"\n{self.ui.colors['OKBLUE']}{'—' * 60}{self.ui.colors['ENDC']}")
-                ans = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-                    f"{self._style_prompt_text(question)} [{default_display}]: "
-                ).strip()
+                ans = input(f"{self._style_prompt_text(question)} [{default_display}]: ").strip()
                 if ans == "":
                     return default_return
                 if ans.lower() in ("todos", "todo", "all"):
@@ -629,10 +612,7 @@ class Wizard:
             except Exception:
                 pass
         print(f"\n{self.ui.colors['OKBLUE']}{'—' * 60}{self.ui.colors['ENDC']}")
-        print(
-            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-            f"{self._style_prompt_text(question)}"
-        )
+        print(f"{self._style_prompt_text(question)}")
         for i, opt in enumerate(options):
             marker = f"{self.ui.colors['BOLD']}>{self.ui.colors['ENDC']}" if i == default else " "
             opt_display = self._format_menu_option(opt)
@@ -702,10 +682,7 @@ class Wizard:
 
         # Fallback text-based menu
         print(f"\n{self.ui.colors['OKBLUE']}{'—' * 60}{self.ui.colors['ENDC']}")
-        print(
-            f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-            f"{self._style_prompt_text(f'{step_header}{question}')}"
-        )
+        print(f"{self._style_prompt_text(f'{step_header}{question}')}")
         for i, opt in enumerate(display_options):
             marker = f"{self.ui.colors['BOLD']}>{self.ui.colors['ENDC']}" if i == default else " "
             opt_display = self._format_menu_option(opt)
@@ -743,8 +720,7 @@ class Wizard:
         while True:
             try:
                 raw = input(
-                    f"\n{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-                    f"{self._style_prompt_text(self.ui.t('manual_cidr_prompt'))}"
+                    f"\n" f"{self._style_prompt_text(self.ui.t('manual_cidr_prompt'))}"
                 ).strip()
                 tokens = [token.strip() for token in raw.split(",") if token.strip()]
                 if not tokens:
@@ -868,10 +844,7 @@ class Wizard:
                     + self.ui.colors["ENDC"]
                 )
                 print(f"  {hint}")
-                url = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-                    f"{self._style_prompt_text(self.ui.t('webhook_url_prompt'))} "
-                ).strip()
+                url = input(f"{self._style_prompt_text(self.ui.t('webhook_url_prompt'))} ").strip()
 
                 if not url:
                     return ""
@@ -944,7 +917,6 @@ class Wizard:
             )
             print(f"  {hint}")
             snmp = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                 f"{self._style_prompt_text(self.ui.t('net_discovery_snmp_prompt'))} "
                 f"[{self._style_default_value(str(options['snmp_community']))}]: "
             ).strip()
@@ -961,7 +933,6 @@ class Wizard:
             )
             print(f"  {hint_dns}")
             dns_zone = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                 f"{self._style_prompt_text(self.ui.t('net_discovery_dns_zone_prompt'))} "
             ).strip()
             if dns_zone:
@@ -1320,10 +1291,7 @@ class Wizard:
         )
 
         while True:
-            user = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-                f"{self._style_prompt_text(self.ui.t('auth_cred_user_prompt'))}: "
-            ).strip()
+            user = input(f"{self._style_prompt_text(self.ui.t('auth_cred_user_prompt'))}: ").strip()
 
             if self._is_cancel_input(user):
                 self.ui.print_status(self.ui.t("config_cancel"), "WARNING")
@@ -1334,7 +1302,6 @@ class Wizard:
 
             try:
                 password = getpass.getpass(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                     f"{self._style_prompt_text(self.ui.t('auth_cred_pass_prompt'))}: "
                 )
             except Exception:
@@ -1373,7 +1340,6 @@ class Wizard:
             default_user = "root"
             default_user_display = self._style_default_value(default_user)
             u = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                 f"{self._style_prompt_text(self.ui.t('auth_ssh_user_prompt'))} "
                 f"[{default_user_display}]: "
             ).strip()
@@ -1392,7 +1358,6 @@ class Wizard:
                 default_key = "~/.ssh/id_rsa"
                 default_key_display = self._style_default_value(default_key)
                 k = input(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                     f"{self._style_prompt_text(self.ui.t('auth_ssh_key_prompt'))} "
                     f"[{default_key_display}]: "
                 ).strip()
@@ -1403,10 +1368,7 @@ class Wizard:
                     f"{self.ui.t('auth_ssh_pass_hint')}:{self.ui.colors['ENDC']}"
                 )
                 try:
-                    pwd = getpass.getpass(
-                        f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-                        f"{self._style_prompt_text('Password: ')}"
-                    )
+                    pwd = getpass.getpass(f"{self._style_prompt_text('Password: ')}")
                     auth_config["auth_ssh_pass"] = pwd
                 except Exception:
                     pass
@@ -1417,7 +1379,6 @@ class Wizard:
             default_user = "Administrator"
             default_user_display = self._style_default_value(default_user)
             u = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                 f"{self._style_prompt_text(self.ui.t('auth_smb_user_prompt'))} "
                 f"[{default_user_display}]: "
             ).strip()
@@ -1427,7 +1388,6 @@ class Wizard:
             auth_config["auth_smb_user"] = u if u else default_user
 
             d = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
                 f"{self._style_prompt_text(self.ui.t('auth_smb_domain_prompt'))} []: "
             ).strip()
             auth_config["auth_smb_domain"] = d if d else None
@@ -1437,10 +1397,7 @@ class Wizard:
                 f"{self.ui.t('auth_smb_pass_hint')}:{self.ui.colors['ENDC']}"
             )
             try:
-                pwd = getpass.getpass(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-                    f"{self._style_prompt_text('Password: ')}"
-                )
+                pwd = getpass.getpass(f"{self._style_prompt_text('Password: ')}")
                 auth_config["auth_smb_pass"] = pwd
             except Exception:
                 pass
@@ -1448,10 +1405,7 @@ class Wizard:
         # 3. SNMP v3
         if self.ask_yes_no(self.ui.t("auth_snmp_configure_q"), default="no"):
             print(f"\n{self.ui.colors['OKBLUE']}--- SNMP v3 ---{self.ui.colors['ENDC']}")
-            u = input(
-                f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-                f"{self._style_prompt_text(self.ui.t('auth_snmp_user_prompt'))}: "
-            ).strip()
+            u = input(f"{self._style_prompt_text(self.ui.t('auth_snmp_user_prompt'))}: ").strip()
             if self._is_cancel_input(u):
                 self.ui.print_status(self.ui.t("config_cancel"), "WARNING")
                 return True
@@ -1462,10 +1416,7 @@ class Wizard:
             auth_config["auth_snmp_auth_proto"] = auth_protos[a_idx]
 
             try:
-                auth_pass = getpass.getpass(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-                    f"{self._style_prompt_text('Auth Key: ')}"
-                )
+                auth_pass = getpass.getpass(f"{self._style_prompt_text('Auth Key: ')}")
                 auth_config["auth_snmp_auth_pass"] = auth_pass
             except Exception:
                 pass
@@ -1475,10 +1426,7 @@ class Wizard:
             auth_config["auth_snmp_priv_proto"] = priv_protos[p_idx]
 
             try:
-                priv_pass = getpass.getpass(
-                    f"{self.ui.colors['CYAN']}?{self.ui.colors['ENDC']} "
-                    f"{self._style_prompt_text('Priv Key: ')}"
-                )
+                priv_pass = getpass.getpass(f"{self._style_prompt_text('Priv Key: ')}")
                 auth_config["auth_snmp_priv_pass"] = priv_pass
             except Exception:
                 pass
