@@ -231,6 +231,10 @@ TRANSLATIONS = {
         "update_check_failed": "Could not check for updates (network issue or GitHub unavailable)",
         "update_current": "You are running the latest version ({})",
         "update_available": "RedAudit v{} available (current: v{})",
+        "update_auto_available": (
+            "Update available: RedAudit v{} (current: v{}). "
+            "Use 'Check for updates' to install it."
+        ),
         "update_release_date": "Release date: {}",
         "update_release_type": "Type: {}",
         "update_highlights": "Highlights:",
@@ -760,6 +764,10 @@ TRANSLATIONS = {
         "update_check_failed": "No se pudo verificar actualizaciones (problema de red o GitHub no disponible)",
         "update_current": "Estás ejecutando la última versión ({})",
         "update_available": "RedAudit v{} disponible (actual: v{})",
+        "update_auto_available": (
+            "Actualización disponible: RedAudit v{} (actual: v{}). "
+            "Usa 'Buscar actualizaciones' para instalarla."
+        ),
         "update_release_date": "Fecha: {}",
         "update_release_type": "Tipo: {}",
         "update_highlights": "Novedades:",

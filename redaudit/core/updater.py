@@ -16,6 +16,7 @@ import sys
 import re
 import json
 import hashlib
+import time
 import subprocess
 import tempfile
 import textwrap
@@ -37,6 +38,11 @@ GITHUB_RAW_BASE = "https://raw.githubusercontent.com"
 # Timeouts
 API_TIMEOUT = 10  # seconds
 DOWNLOAD_TIMEOUT = 30  # seconds
+
+# Startup auto-check behavior (non-blocking, cache-first)
+AUTO_UPDATE_TIMEOUT = 3  # seconds
+AUTO_UPDATE_CACHE_TTL_SECONDS = 24 * 60 * 60
+AUTO_UPDATE_CACHE_FILENAME = "update_check_cache.json"
 
 
 def parse_version(version_str: str) -> Tuple[int, int, int, str]:
@@ -100,7 +106,7 @@ def compare_versions(current: str, remote: str) -> int:
     return 0
 
 
-def fetch_latest_version(logger=None) -> Optional[Dict]:
+def fetch_latest_version(logger=None, timeout_seconds: int = API_TIMEOUT) -> Optional[Dict]:
     """
     Fetch latest release information from GitHub API.
 
@@ -117,7 +123,7 @@ def fetch_latest_version(logger=None) -> Optional[Dict]:
         req.add_header("Accept", "application/vnd.github+json")
         req.add_header("User-Agent", f"RedAudit/{VERSION}")
 
-        with urlopen(req, timeout=API_TIMEOUT) as response:
+        with urlopen(req, timeout=timeout_seconds) as response:
             if response.status == 200:
                 data = json.loads(response.read().decode("utf-8"))
                 return {
@@ -186,8 +192,150 @@ def fetch_changelog_snippet(
     return None
 
 
+def _get_update_check_cache_path(logger=None) -> str:
+    """
+    Resolve startup update-check cache path in the user config directory.
+
+    Falls back to ~/.redaudit if config helpers are unavailable.
+    """
+    try:
+        from redaudit.utils.config import ensure_config_dir, get_config_paths
+
+        ensure_config_dir()
+        config_dir, _ = get_config_paths()
+        return os.path.join(config_dir, AUTO_UPDATE_CACHE_FILENAME)
+    except Exception as e:
+        if logger:
+            logger.debug("Failed to resolve update cache path: %s", e)
+    return os.path.expanduser(f"~/.redaudit/{AUTO_UPDATE_CACHE_FILENAME}")
+
+
+def _read_update_check_cache(logger=None) -> Optional[Dict[str, Any]]:
+    path = _get_update_check_cache_path(logger=logger)
+    try:
+        if not os.path.isfile(path):
+            return None
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else None
+    except Exception as e:
+        if logger:
+            logger.debug("Failed to read update cache: %s", e)
+        return None
+
+
+def _write_update_check_cache(cache_data: Dict[str, Any], logger=None) -> None:
+    path = _get_update_check_cache_path(logger=logger)
+    temp_path = f"{path}.tmp"
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(cache_data, f, ensure_ascii=False, indent=2)
+        os.replace(temp_path, path)
+        try:
+            os.chmod(path, 0o600)
+        except Exception:
+            pass
+    except Exception as e:
+        if logger:
+            logger.debug("Failed to write update cache: %s", e)
+        try:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+        except Exception:
+            pass
+
+
+def _fetch_latest_version_with_timeout(logger=None, timeout_seconds: int = API_TIMEOUT):
+    """
+    Backward-compatible wrapper for fetch_latest_version.
+
+    Some tests monkeypatch fetch_latest_version with single-arg callables.
+    """
+    try:
+        return fetch_latest_version(logger=logger, timeout_seconds=timeout_seconds)
+    except TypeError:
+        return fetch_latest_version(logger)
+
+
+def auto_check_updates_on_startup(
+    print_fn=None,
+    t_fn=None,
+    logger=None,
+    lang: str = "en",
+    cache_ttl_seconds: int = AUTO_UPDATE_CACHE_TTL_SECONDS,
+    timeout_seconds: int = AUTO_UPDATE_TIMEOUT,
+) -> Optional[Dict[str, Any]]:
+    """
+    Startup update check:
+    - cache-first (24h by default),
+    - short timeout,
+    - only notifies when an update is available.
+
+    Returns:
+        Dict with `update_available` and `latest_version` when data is available,
+        otherwise None.
+    """
+    if not print_fn:
+        print_fn = print
+    if not t_fn:
+        t_fn = lambda key, *args: key.format(*args) if args else key  # noqa: E731
+
+    now_ts = int(time.time())
+    cached = _read_update_check_cache(logger=logger)
+    latest_version = None
+    release_url = None
+    cache_fresh = False
+
+    if isinstance(cached, dict):
+        checked_at = cached.get("checked_at")
+        try:
+            checked_at_int = int(checked_at)
+        except (TypeError, ValueError):
+            checked_at_int = 0
+        cache_fresh = checked_at_int > 0 and (now_ts - checked_at_int) <= max(
+            int(cache_ttl_seconds), 0
+        )
+        latest_version = str(cached.get("latest_version", "")).lstrip("v").strip() or None
+        release_url = str(cached.get("release_url", "")).strip() or None
+
+    if not cache_fresh:
+        release_info = _fetch_latest_version_with_timeout(
+            logger=logger, timeout_seconds=timeout_seconds
+        )
+        if release_info and release_info.get("tag_name"):
+            latest_version = str(release_info.get("tag_name", "")).lstrip("v").strip() or None
+            release_url = str(release_info.get("html_url", "")).strip() or None
+            _write_update_check_cache(
+                {
+                    "checked_at": now_ts,
+                    "latest_version": latest_version,
+                    "release_url": release_url,
+                    "published_at": release_info.get("published_at", ""),
+                    "lang": lang,
+                },
+                logger=logger,
+            )
+
+    if not latest_version:
+        return None
+
+    update_available = compare_versions(VERSION, latest_version) < 0
+    if update_available:
+        print_fn(t_fn("update_auto_available", latest_version, VERSION), "WARNING")
+        if release_url:
+            print_fn(t_fn("update_release_url", release_url), "INFO")
+
+    return {
+        "update_available": update_available,
+        "latest_version": latest_version,
+        "release_url": release_url,
+        "source": "cache" if cache_fresh else "network",
+    }
+
+
 def check_for_updates(
-    logger=None, lang: str = "en"
+    logger=None, lang: str = "en", timeout_seconds: int = API_TIMEOUT
 ) -> Tuple[bool, Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
     """
     Check if updates are available.
@@ -199,7 +347,9 @@ def check_for_updates(
     Returns:
         Tuple of (update_available, latest_version, release_notes, release_url, published_at, notes_lang)
     """
-    release_info = fetch_latest_version(logger)
+    release_info = _fetch_latest_version_with_timeout(
+        logger=logger, timeout_seconds=timeout_seconds
+    )
 
     if not release_info:
         return (False, None, None, None, None, None)
