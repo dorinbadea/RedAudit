@@ -1290,3 +1290,35 @@ def test_perform_git_update_unexpected_error_logs(tmp_path, monkeypatch):
     assert ok is False
     assert "Update failed" in msg
     assert logger.error.called
+
+
+def test_perform_git_update_clone_missing_git_binary(tmp_path, monkeypatch):
+    monkeypatch.delenv("REDAUDIT_DRY_RUN", raising=False)
+    monkeypatch.setattr(updater, "CommandRunner", _DummyRunner)
+
+    def _raise_missing_git(*_args, **_kwargs):
+        raise FileNotFoundError(2, "No such file or directory", "git")
+
+    monkeypatch.setattr(updater.subprocess, "Popen", _raise_missing_git)
+    monkeypatch.setattr(updater.os, "geteuid", lambda: 1000)
+
+    ok, msg = updater.perform_git_update(repo_path=str(tmp_path), lang="en")
+
+    assert ok is False
+    assert "Git not found" in msg
+
+
+def test_perform_git_update_clone_missing_non_git_binary(tmp_path, monkeypatch):
+    monkeypatch.delenv("REDAUDIT_DRY_RUN", raising=False)
+    monkeypatch.setattr(updater, "CommandRunner", _DummyRunner)
+
+    def _raise_missing_helper(*_args, **_kwargs):
+        raise FileNotFoundError(2, "No such file or directory", "clone-helper")
+
+    monkeypatch.setattr(updater.subprocess, "Popen", _raise_missing_helper)
+    monkeypatch.setattr(updater.os, "geteuid", lambda: 1000)
+
+    ok, msg = updater.perform_git_update(repo_path=str(tmp_path), lang="en")
+
+    assert ok is False
+    assert "required file not found (clone-helper)" in msg

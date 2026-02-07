@@ -10,6 +10,17 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.47] - 07-02-2026
+
+### Mejorado
+
+- **Robustez del timeout del updater**: El manejo de salida de `git clone` ahora es no bloqueante, por lo que el timeout de seguridad de 120 segundos sigue siendo efectivo incluso cuando no hay salida.
+
+### Corregido
+
+- **Limpieza async en HyperScan**: El fallback de escaneo completo ahora cierra corrutinas pendientes de forma segura cuando falla la ejecucion del event loop, reduciendo ruido de warnings en tiempo de ejecucion.
+- **Diagnostico del updater**: La ausencia de `git` ahora se reporta por separado del resto de fallos por ficheros faltantes para facilitar el troubleshooting.
+
 ## [4.19.46] - 07-02-2026
 
 ### Mejorado

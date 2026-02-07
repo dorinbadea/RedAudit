@@ -10,6 +10,17 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.47] - 2026-02-07
+
+### Improved
+
+- **Updater timeout robustness**: Git clone output handling is now non-blocking, so the 120-second safety timeout remains effective even when output stalls.
+
+### Fixed
+
+- **HyperScan async cleanup**: Full-port fallback now closes pending coroutines safely when event-loop execution fails, reducing runtime warning noise.
+- **Updater diagnostics**: Missing `git` is now reported separately from other missing-file failures for clearer troubleshooting.
+
 ## [4.19.46] - 2026-02-07
 
 ### Improved
