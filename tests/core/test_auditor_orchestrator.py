@@ -1949,9 +1949,123 @@ def test_resume_nuclei_interactive_cancel():
     candidate = {"path": "/tmp/scan/nuclei_resume.json", "label": "scan (1 targets)"}
     with (
         patch.object(auditor, "_find_nuclei_resume_candidates", return_value=[candidate]),
-        patch.object(auditor, "ask_choice", return_value=1),
+        patch.object(auditor, "ask_choice", return_value=2),
     ):
         assert auditor.resume_nuclei_interactive() is False
+
+
+def test_resume_nuclei_interactive_delete_one():
+    auditor = _make_resume_auditor()
+    candidate_a = {
+        "path": "/tmp/scan_a/nuclei_resume.json",
+        "label": "scan_a (2 targets)",
+        "output_dir": "/tmp/scan_a",
+    }
+    candidate_b = {
+        "path": "/tmp/scan_b/nuclei_resume.json",
+        "label": "scan_b (1 targets)",
+        "output_dir": "/tmp/scan_b",
+    }
+    with (
+        patch.object(
+            auditor,
+            "_find_nuclei_resume_candidates",
+            side_effect=[[candidate_a, candidate_b], [candidate_b]],
+        ),
+        patch.object(auditor, "ask_choice", side_effect=[2, 0, 0, 2]),
+        patch.object(auditor, "_clear_nuclei_resume_state") as mock_clear,
+    ):
+        assert auditor.resume_nuclei_interactive() is False
+    mock_clear.assert_called_once_with(candidate_a["path"], candidate_a["output_dir"])
+    auditor.ui.print_status.assert_any_call("nuclei_resume_deleted_one", "OK")
+
+
+def test_resume_nuclei_interactive_delete_all():
+    auditor = _make_resume_auditor()
+    candidate_a = {
+        "path": "/tmp/scan_a/nuclei_resume.json",
+        "label": "scan_a (2 targets)",
+        "output_dir": "/tmp/scan_a",
+    }
+    candidate_b = {
+        "path": "/tmp/scan_b/nuclei_resume.json",
+        "label": "scan_b (1 targets)",
+        "output_dir": "/tmp/scan_b",
+    }
+    with (
+        patch.object(
+            auditor,
+            "_find_nuclei_resume_candidates",
+            side_effect=[[candidate_a, candidate_b], []],
+        ),
+        patch.object(auditor, "ask_choice", side_effect=[2, 1]),
+        patch.object(auditor, "ask_yes_no", return_value=True),
+        patch.object(auditor, "_clear_nuclei_resume_state") as mock_clear,
+    ):
+        assert auditor.resume_nuclei_interactive() is False
+    assert mock_clear.call_count == 2
+    mock_clear.assert_any_call(candidate_a["path"], candidate_a["output_dir"])
+    mock_clear.assert_any_call(candidate_b["path"], candidate_b["output_dir"])
+    auditor.ui.print_status.assert_any_call("nuclei_resume_deleted_all", "OK")
+
+
+def test_resume_nuclei_interactive_manage_back():
+    auditor = _make_resume_auditor()
+    candidate = {
+        "path": "/tmp/scan/nuclei_resume.json",
+        "label": "scan (1 targets)",
+        "output_dir": "/tmp/scan",
+    }
+    with (
+        patch.object(
+            auditor,
+            "_find_nuclei_resume_candidates",
+            side_effect=[[candidate], [candidate]],
+        ),
+        patch.object(auditor, "ask_choice", side_effect=[1, 2, 2]),
+    ):
+        assert auditor.resume_nuclei_interactive() is False
+
+
+def test_resume_nuclei_interactive_delete_one_cancel_selection():
+    auditor = _make_resume_auditor()
+    candidate = {
+        "path": "/tmp/scan/nuclei_resume.json",
+        "label": "scan (1 targets)",
+        "output_dir": "/tmp/scan",
+    }
+    with (
+        patch.object(
+            auditor,
+            "_find_nuclei_resume_candidates",
+            side_effect=[[candidate], [candidate]],
+        ),
+        patch.object(auditor, "ask_choice", side_effect=[1, 0, 1, 2]),
+        patch.object(auditor, "_clear_nuclei_resume_state") as mock_clear,
+    ):
+        assert auditor.resume_nuclei_interactive() is False
+    mock_clear.assert_not_called()
+
+
+def test_resume_nuclei_interactive_delete_all_declined():
+    auditor = _make_resume_auditor()
+    candidate = {
+        "path": "/tmp/scan/nuclei_resume.json",
+        "label": "scan (1 targets)",
+        "output_dir": "/tmp/scan",
+    }
+    with (
+        patch.object(
+            auditor,
+            "_find_nuclei_resume_candidates",
+            side_effect=[[candidate], [candidate]],
+        ),
+        patch.object(auditor, "ask_choice", side_effect=[1, 1, 2]),
+        patch.object(auditor, "ask_yes_no", return_value=False),
+        patch.object(auditor, "_clear_nuclei_resume_state") as mock_clear,
+    ):
+        assert auditor.resume_nuclei_interactive() is False
+    mock_clear.assert_not_called()
 
 
 def test_resume_nuclei_interactive_keyboard_interrupt():

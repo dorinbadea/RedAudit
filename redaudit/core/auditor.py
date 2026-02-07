@@ -4194,20 +4194,74 @@ class InteractiveNetworkAuditor:
             return False
 
     def resume_nuclei_interactive(self) -> bool:
-        base_dir = get_default_reports_base_dir()
-        candidates = self._find_nuclei_resume_candidates(base_dir)
-        if not candidates:
-            self.ui.print_status(self.ui.t("nuclei_resume_none"), "INFO")
-            return False
-        options = [c["label"] for c in candidates]
-        options.append(self.ui.t("wizard_go_back"))
-        choice = self.ask_choice(self.ui.t("nuclei_resume_select"), options, default=0)
-        if choice == len(options) - 1:
-            self.ui.print_status(self.ui.t("nuclei_resume_cancel"), "INFO")
-            return False
-        resume_path = candidates[choice]["path"]
         try:
-            return self.resume_nuclei_from_path(resume_path, prompt_budget_override=True)
+            base_dir = get_default_reports_base_dir()
+            while True:
+                candidates = self._find_nuclei_resume_candidates(base_dir)
+                if not candidates:
+                    self.ui.print_status(self.ui.t("nuclei_resume_none"), "INFO")
+                    return False
+
+                options = [c["label"] for c in candidates]
+                manage_idx = len(options)
+                options.append(self.ui.t("nuclei_resume_manage"))
+                back_idx = len(options)
+                options.append(self.ui.t("wizard_go_back"))
+
+                choice = self.ask_choice(self.ui.t("nuclei_resume_select"), options, default=0)
+                if choice == back_idx:
+                    self.ui.print_status(self.ui.t("nuclei_resume_cancel"), "INFO")
+                    return False
+                if choice == manage_idx:
+                    manage_options = [
+                        self.ui.t("nuclei_resume_delete_one"),
+                        self.ui.t("nuclei_resume_delete_all"),
+                        self.ui.t("wizard_go_back"),
+                    ]
+                    manage_choice = self.ask_choice(
+                        self.ui.t("nuclei_resume_manage_select"), manage_options, default=0
+                    )
+                    if manage_choice == len(manage_options) - 1:
+                        continue
+                    if manage_choice == 0:
+                        delete_options = [c["label"] for c in candidates]
+                        delete_options.append(self.ui.t("wizard_go_back"))
+                        delete_choice = self.ask_choice(
+                            self.ui.t("nuclei_resume_delete_select"), delete_options, default=0
+                        )
+                        if delete_choice == len(delete_options) - 1:
+                            continue
+                        selected = candidates[delete_choice]
+                        resume_path = str(selected.get("path") or "")
+                        output_dir = selected.get("output_dir") or (
+                            os.path.dirname(resume_path) if resume_path else ""
+                        )
+                        self._clear_nuclei_resume_state(resume_path, output_dir)
+                        self.ui.print_status(
+                            self.ui.t("nuclei_resume_deleted_one", selected.get("label") or ""),
+                            "OK",
+                        )
+                        continue
+
+                    confirm_delete_all = self.ask_yes_no(
+                        self.ui.t("nuclei_resume_delete_all_confirm", len(candidates)),
+                        default="no",
+                    )
+                    if not confirm_delete_all:
+                        continue
+                    deleted = 0
+                    for candidate in candidates:
+                        resume_path = str(candidate.get("path") or "")
+                        output_dir = candidate.get("output_dir") or (
+                            os.path.dirname(resume_path) if resume_path else ""
+                        )
+                        self._clear_nuclei_resume_state(resume_path, output_dir)
+                        deleted += 1
+                    self.ui.print_status(self.ui.t("nuclei_resume_deleted_all", deleted), "OK")
+                    continue
+
+                resume_path = candidates[choice]["path"]
+                return self.resume_nuclei_from_path(resume_path, prompt_budget_override=True)
         except KeyboardInterrupt:
             self.ui.print_status(self.ui.t("nuclei_resume_cancel"), "INFO")
             return False

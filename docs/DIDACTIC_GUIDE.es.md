@@ -34,6 +34,7 @@
 - [ ] Rúbrica impresa (Sección 5)
 
 Sugerencia para el instructor: Al iniciar escaneos, muestra el resumen de objetivos normalizados (hosts estimados) para reforzar la validación de alcance.
+Para labs largos con parciales repetidos de Nuclei, usa **Reanudar Nuclei (pendiente) -> Gestionar entradas de reanudacion** y manten la lista limpia entre ejercicios.
 
 ---
 
