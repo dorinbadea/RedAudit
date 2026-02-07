@@ -329,7 +329,11 @@ def build_leak_follow_targets(
             str(d.get("candidate") or ""),
             str(d.get("source_host") or ""),
             str(d.get("source_field") or ""),
-            int(d.get("candidate_port") or 0),
+            (
+                0
+                if not str(d.get("candidate_port") or "").isdigit()
+                else int(d.get("candidate_port") or 0)
+            ),
         ),
     )
 
