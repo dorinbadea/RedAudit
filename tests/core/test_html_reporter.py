@@ -104,6 +104,50 @@ def test_generate_html_report_minimal_es():
     assert "Content-Security-Policy" in res
 
 
+def test_generate_html_report_minimal_no_data_placeholders_en():
+    results = {
+        "summary": {},
+        "hosts": [],
+        "vulnerabilities": [],
+        "pipeline": {
+            "net_discovery": {"counts": {}},
+            "host_scan": {"targets": 0},
+            "agentless_verify": {"completed": 0, "signals": {}},
+            "nuclei": {"findings": 0},
+            "vulnerability_scan": {"sources": {}},
+            "auth_scan": {"lynis_success": 0},
+            "deep_scan": {"identity_threshold": 0},
+        },
+    }
+    res = html_reporter.generate_html_report(results, {}, lang="en")
+    assert "No data available for this run." in res
+    assert "No open-port data in this profile." in res
+    assert 'id="severityChart"' not in res
+    assert 'id="portsChart"' not in res
+
+
+def test_generate_html_report_minimal_no_data_placeholders_es():
+    results = {
+        "summary": {},
+        "hosts": [],
+        "vulnerabilities": [],
+        "pipeline": {
+            "net_discovery": {"counts": {}},
+            "host_scan": {"targets": 0},
+            "agentless_verify": {"completed": 0, "signals": {}},
+            "nuclei": {"findings": 0},
+            "vulnerability_scan": {"sources": {}},
+            "auth_scan": {"lynis_success": 0},
+            "deep_scan": {"identity_threshold": 0},
+        },
+    }
+    res = html_reporter.generate_html_report(results, {}, lang="es")
+    assert "Sin datos disponibles para esta ejecución." in res
+    assert "Sin datos de puertos abiertos en este perfil." in res
+    assert 'id="severityChart"' not in res
+    assert 'id="portsChart"' not in res
+
+
 def test_generate_html_report_includes_auth_failures():
     results = {
         "summary": {},

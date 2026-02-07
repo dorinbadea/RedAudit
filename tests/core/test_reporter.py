@@ -1123,8 +1123,8 @@ def test_save_results_hooks_and_prints(tmp_path):
         patch("redaudit.core.playbook_generator.save_playbooks", side_effect=RuntimeError("fail")),
         patch(
             "redaudit.core.html_reporter.save_html_report",
-            side_effect=["/tmp/report.html", "/tmp/report_es.html"],
-        ),
+            return_value="/tmp/report.html",
+        ) as mock_html,
         patch("redaudit.utils.webhook.process_findings_for_alerts", return_value=2),
     ):
         ok = save_results(
@@ -1138,6 +1138,9 @@ def test_save_results_hooks_and_prints(tmp_path):
     assert ok is True
     assert any("json_report" in msg for msg in messages)
     assert any("txt_report" in msg for msg in messages)
+    mock_html.assert_called_once()
+    assert mock_html.call_args.kwargs["filename"] == "report.html"
+    assert mock_html.call_args.kwargs["lang"] == "es"
 
 
 def test_save_results_html_failure_and_exception(tmp_path):
