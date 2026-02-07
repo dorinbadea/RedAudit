@@ -58,14 +58,27 @@ def test_installer_installs_oui_db() -> None:
     assert ".redaudit/manuf" in content
 
 
-def test_installer_writes_nvd_config_with_jq_or_python() -> None:
+def test_installer_writes_nvd_config_with_merge_python_logic() -> None:
     content = _read_installer()
-    assert "jq -n" in content
     assert 'python3 - "$CONFIG_FILE" "$REDAUDIT_VERSION" "$NVD_KEY"' in content
-    assert "json.dump(payload, handle)" in content
+    assert 'payload["nvd_api_key"] = nvd_api_key' in content
+    assert 'payload["nvd_api_key_storage"] = "config"' in content
+    assert "json.dump(payload, handle, ensure_ascii=False, indent=2)" in content
 
 
 def test_installer_persists_selected_language_in_user_config() -> None:
     content = _read_installer()
-    assert 'python3 - "$LANG_CFG_FILE" "$REDAUDIT_VERSION" "$LANG_CODE"' in content
+    assert (
+        'python3 - "$LANG_CFG_FILE" "$REDAUDIT_VERSION" "$LANG_CODE" "$PRESERVE_LANG_CFG"'
+        in content
+    )
     assert 'defaults["lang"] = lang_code' in content
+
+
+def test_installer_resets_config_on_manual_reinstall_but_preserves_on_auto_update() -> None:
+    content = _read_installer()
+    assert "IS_AUTO_UPDATE=false" in content
+    assert "IS_AUTO_UPDATE=true" in content
+    assert 'PRESERVE_LANG_CFG="0"' in content
+    assert 'PRESERVE_LANG_CFG="1"' in content
+    assert 'rm -f "$LANG_CFG_FILE"' in content
