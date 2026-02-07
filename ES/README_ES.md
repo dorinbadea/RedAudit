@@ -300,13 +300,10 @@ bash redaudit_verify.sh   # Verificacion completa de integridad
 
 ### Actualizar RedAudit
 
-RedAudit incluye **deteccion automatica de actualizaciones**. Al ejecutar `sudo redaudit`, comprueba si hay nuevas versiones y pregunta:
+RedAudit incluye **deteccion automatica de actualizaciones** al iniciar. La comprobacion es no bloqueante, cache-first y solo notifica cuando hay una version mas nueva.
+Para desactivar la comprobacion al iniciar, usa `--skip-update-check`.
 
-```text
-Buscar actualizaciones? [s/N]:
-```
-
-Si aceptas, RedAudit realiza una **actualización atómica escalonada** con rollback automático en caso de fallo. No requiere pasos manuales.
+Cuando eliges actualizar (opcion de menu **Buscar actualizaciones**), RedAudit realiza una **actualizacion atomica escalonada** con rollback automatico en caso de fallo.
 
 > **Nota para Ubuntu 24.04+ (Noble):** **No** uses `pip install` directamente. El instalador usa paquetes del sistema (`python3-*`) para evitar errores de `externally-managed-environment`.
 >

@@ -96,6 +96,7 @@ class _DummyAuditor:
 def _patch_auditor(monkeypatch, choices):
     _DummyAuditor.choices = list(choices)
     monkeypatch.setattr("redaudit.core.auditor.InteractiveNetworkAuditor", _DummyAuditor)
+    monkeypatch.setattr("redaudit.core.updater.auto_check_updates_on_startup", lambda **_k: None)
     monkeypatch.setattr("redaudit.core.updater.interactive_update_check", lambda **_k: False)
 
 
@@ -843,6 +844,44 @@ def test_main_non_root_allow_non_root(monkeypatch):
         cli.main()
 
 
+def test_main_auto_update_check_runs(monkeypatch):
+    args = _base_args(skip_update_check=False)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
+    called = {}
+
+    def _configure(_app, _args):
+        return False
+
+    def _auto_check(**_kwargs):
+        called["auto"] = called.get("auto", 0) + 1
+
+    monkeypatch.setattr(cli, "configure_from_args", _configure)
+    monkeypatch.setattr("redaudit.core.updater.auto_check_updates_on_startup", _auto_check)
+    with pytest.raises(SystemExit):
+        cli.main()
+    assert called.get("auto") == 1
+
+
+def test_main_auto_update_check_skipped(monkeypatch):
+    args = _base_args(skip_update_check=True)
+    monkeypatch.setattr(cli, "parse_arguments", lambda: args)
+    monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
+    called = {}
+
+    def _configure(_app, _args):
+        return False
+
+    def _auto_check(**_kwargs):
+        called["auto"] = called.get("auto", 0) + 1
+
+    monkeypatch.setattr(cli, "configure_from_args", _configure)
+    monkeypatch.setattr("redaudit.core.updater.auto_check_updates_on_startup", _auto_check)
+    with pytest.raises(SystemExit):
+        cli.main()
+    assert "auto" not in called
+
+
 def test_cli_main_interactive_exit(monkeypatch):
     _patch_auditor(monkeypatch, [0])
     monkeypatch.setattr(cli.os, "geteuid", lambda: 0)
@@ -896,7 +935,10 @@ def test_cli_main_interactive_diff_reports(monkeypatch, tmp_path):
 
 
 def test_cli_max_hosts_arg():
-    with patch("sys.argv", ["redaudit", "--target", "1.1.1.1", "--max-hosts", "5", "--yes"]):
+    with patch(
+        "sys.argv",
+        ["redaudit", "--target", "1.1.1.1", "--max-hosts", "5", "--yes", "--skip-update-check"],
+    ):
         with patch("os.geteuid", return_value=0):
             with patch("redaudit.core.auditor.InteractiveNetworkAuditor") as MockAuditor:
                 mock_app = MockAuditor.return_value
@@ -940,7 +982,16 @@ def test_cli_diff_chmod_exception(tmp_path, monkeypatch):
 
 def test_cli_proxy_failure():
     with patch(
-        "sys.argv", ["redaudit", "--target", "1.1.1.1", "--proxy", "socks5://bad:1080", "--yes"]
+        "sys.argv",
+        [
+            "redaudit",
+            "--target",
+            "1.1.1.1",
+            "--proxy",
+            "socks5://bad:1080",
+            "--yes",
+            "--skip-update-check",
+        ],
     ):
         with patch("os.geteuid", return_value=0):
             with patch("redaudit.core.proxy.ProxyManager") as MockProxy:
@@ -963,15 +1014,15 @@ def test_cli_update_check_interactive():
                 mock_app = MockAuditor.return_value
                 mock_app.clear_screen = MagicMock()
                 mock_app.print_banner = MagicMock()
-                mock_app.ask_yes_no.return_value = True
+                mock_app.show_main_menu.side_effect = [0]
 
                 with patch(
-                    "redaudit.core.updater.interactive_update_check", return_value=True
-                ) as mock_update:
+                    "redaudit.core.updater.auto_check_updates_on_startup", return_value=None
+                ) as mock_auto_check:
                     with pytest.raises(SystemExit) as e:
                         cli.main()
                     assert e.value.code == 0
-                    assert mock_update.called
+                    assert mock_auto_check.called
 
 
 def test_cli_main_menu_diff_failure():
@@ -979,14 +1030,16 @@ def test_cli_main_menu_diff_failure():
         with patch("os.geteuid", return_value=0):
             with patch("redaudit.core.auditor.InteractiveNetworkAuditor") as MockAuditor:
                 mock_app = MockAuditor.return_value
-                mock_app.ask_yes_no.return_value = False
                 mock_app.show_main_menu.side_effect = [3, 0]
                 with patch("builtins.input", side_effect=["old.json", "new.json"]):
                     with patch("redaudit.core.diff.generate_diff_report", return_value=None):
-                        with pytest.raises(SystemExit) as e:
-                            cli.main()
-                        assert e.value.code == 0
-                        assert mock_app.print_status.called
+                        with patch(
+                            "redaudit.core.updater.auto_check_updates_on_startup", return_value=None
+                        ):
+                            with pytest.raises(SystemExit) as e:
+                                cli.main()
+                            assert e.value.code == 0
+                            assert mock_app.print_status.called
 
 
 def test_cli_main_menu_update_check():
@@ -994,9 +1047,11 @@ def test_cli_main_menu_update_check():
         with patch("os.geteuid", return_value=0):
             with patch("redaudit.core.auditor.InteractiveNetworkAuditor") as MockAuditor:
                 mock_app = MockAuditor.return_value
-                mock_app.ask_yes_no.return_value = False
                 mock_app.show_main_menu.side_effect = [2, 0]
-                with patch("redaudit.core.updater.interactive_update_check") as mock_update:
+                with (
+                    patch("redaudit.core.updater.auto_check_updates_on_startup", return_value=None),
+                    patch("redaudit.core.updater.interactive_update_check") as mock_update,
+                ):
                     with pytest.raises(SystemExit) as e:
                         cli.main()
                     assert e.value.code == 0
@@ -1004,7 +1059,10 @@ def test_cli_main_menu_update_check():
 
 
 def test_cli_stealth_mode_config():
-    with patch("sys.argv", ["redaudit", "--target", "1.1.1.1", "--stealth", "--yes"]):
+    with patch(
+        "sys.argv",
+        ["redaudit", "--target", "1.1.1.1", "--stealth", "--yes", "--skip-update-check"],
+    ):
         with patch("os.geteuid", return_value=0):
             with patch("redaudit.core.auditor.InteractiveNetworkAuditor") as MockAuditor:
                 mock_app = MockAuditor.return_value

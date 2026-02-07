@@ -111,7 +111,7 @@ docker run --rm --network host \
 
 ### Update
 
-RedAudit checks for updates on startup (interactive mode). To skip: `--skip-update-check`.
+RedAudit checks for updates on startup (all launch modes). The check is non-blocking and cache-first. To skip: `--skip-update-check`.
 If you keep a local `~/RedAudit` git checkout, system updates refresh that home copy so documentation stays current. When local changes are detected, the updater backs up the folder with a timestamped suffix before updating; clean `main` repos may be fast-forwarded, while dirty or non-`main` branches are left untouched.
 
 ---
@@ -122,7 +122,7 @@ The interactive wizard is the recommended way to use RedAudit. It guides you ste
 
 ### Workflow
 
-1. **Startup & Updates:** Upon running `sudo redaudit`, the tool automatically checks for new versions (unless `--skip-update-check` is used).
+1. **Startup & Updates:** Upon running `sudo redaudit`, the tool automatically checks for new versions (unless `--skip-update-check` is used). It only displays a notice when an update is available.
 2. **Profile Selection:** Choose a preset or configure manually.
 3. **Target Selection:** Choose detected networks or enter manual targets; the wizard shows normalized targets with estimated host counts.
 4. **Authentication Setup:** (New in v4.0) Configure SSH/SMB/SNMP credentials for deep audits.

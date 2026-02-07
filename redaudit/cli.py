@@ -1168,11 +1168,20 @@ def main():
 
     # Import here to avoid circular imports
     from redaudit.core.auditor import InteractiveNetworkAuditor
-    from redaudit.core.updater import interactive_update_check
+    from redaudit.core.updater import auto_check_updates_on_startup, interactive_update_check
 
     app = InteractiveNetworkAuditor()
     app.lang = detect_preferred_language(getattr(args, "lang", None))
     app.defaults_mode = getattr(args, "defaults", "ask")
+
+    # Startup update check (cache-first, short timeout, non-blocking).
+    if not args.skip_update_check:
+        auto_check_updates_on_startup(
+            print_fn=app.print_status,
+            t_fn=app.t,
+            logger=app.logger,
+            lang=app.lang,
+        )
 
     if getattr(args, "nuclei_resume", None) or getattr(args, "nuclei_resume_latest", False):
         resume_path = getattr(args, "nuclei_resume", None)
@@ -1242,19 +1251,6 @@ def main():
         # Interactive mode with main menu (v3.2.2+)
         app.clear_screen()
         app.print_banner()
-
-        # Update check before menu (respects --skip-update-check)
-        if not args.skip_update_check and os.geteuid() == 0:
-            if app.ask_yes_no(app.t("update_check_prompt"), default="no"):
-                did_update = interactive_update_check(
-                    print_fn=app.print_status,
-                    ask_fn=app.ask_yes_no,
-                    t_fn=app.t,
-                    logger=app.logger,
-                    lang=app.lang,
-                )
-                if did_update:
-                    sys.exit(0)
 
         # Main menu loop
         while True:

@@ -302,13 +302,10 @@ bash redaudit_verify.sh   # Full integrity check
 
 ### Updating RedAudit
 
-RedAudit includes **automatic update detection**. When launched with `sudo redaudit`, it checks for new versions and prompts:
+RedAudit includes **automatic update detection** at startup. The check is non-blocking, cache-first, and only notifies when a newer version exists.
+To disable startup checks, use `--skip-update-check`.
 
-```text
-Check for updates? [y/N]:
-```
-
-If you accept, RedAudit performs an **atomic staged update** with automatic rollback on failure. No manual steps required.
+When you choose to update (menu option **Check for updates**), RedAudit performs an **atomic staged update** with automatic rollback on failure.
 
 > **Note for Ubuntu 24.04+ (Noble):** Do **not** use `pip install` directly. The installer uses system packages (`python3-*`) to avoid `externally-managed-environment` errors.
 >

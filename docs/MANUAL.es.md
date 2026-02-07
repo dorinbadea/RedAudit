@@ -111,7 +111,7 @@ docker run --rm --network host \
 
 ### Actualización
 
-RedAudit verifica actualizaciones al iniciar (modo interactivo). Para omitir: `--skip-update-check`.
+RedAudit verifica actualizaciones al iniciar (todos los modos de ejecucion). La comprobacion es no bloqueante y cache-first. Para omitir: `--skip-update-check`.
 Si mantienes un checkout git en `~/RedAudit`, las actualizaciones del sistema refrescan esa copia en home para mantener la documentación al día. Si se detectan cambios locales, el updater crea una copia de seguridad con sufijo de timestamp antes de actualizar; los repos limpios en `main` pueden avanzar, mientras que repos con cambios o ramas distintas de `main` no se tocan.
 
 ---
@@ -122,7 +122,7 @@ El asistente interactivo es la forma recomendada de usar RedAudit. Le guía paso
 
 ### Flujo de Trabajo
 
-1. **Inicio y Actualizaciones:** Al ejecutar `sudo redaudit`, la herramienta verifica automáticamente si hay nuevas versiones (a menos que use `--skip-update-check`).
+1. **Inicio y Actualizaciones:** Al ejecutar `sudo redaudit`, la herramienta verifica automaticamente si hay nuevas versiones (a menos que use `--skip-update-check`). Solo muestra aviso cuando hay una actualizacion disponible.
 2. **Selección de Perfil:** Elija un preset o configure manualmente.
 3. **Selección de Objetivos:** Elija redes detectadas o introduzca objetivos manuales; el asistente muestra los objetivos normalizados con hosts estimados.
 4. **Configuración de Autenticación:** (Nuevo en v4.0) Configure credenciales SSH/SMB/SNMP para auditorías profundas.
