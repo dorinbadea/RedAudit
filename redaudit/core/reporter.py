@@ -1318,28 +1318,21 @@ def save_results(
             try:
                 from redaudit.core.html_reporter import save_html_report
 
+                report_lang = str(config.get("lang") or "en").lower()
+                if report_lang not in {"en", "es"}:
+                    report_lang = "en"
                 html_path = save_html_report(
                     results,
                     config,
                     output_dir,
                     filename="report.html",
-                    lang="en",
+                    lang=report_lang,
                 )
                 if html_path and print_fn and t_fn:
-                    print_fn(t_fn("html_report", html_path), "OKGREEN")
+                    status_key = "html_report_es" if report_lang == "es" else "html_report"
+                    print_fn(t_fn(status_key, html_path), "OKGREEN")
                 elif not html_path and print_fn:
                     print_fn("HTML report generation failed (check log)", "WARNING")
-
-                if (config.get("lang") or "").lower() == "es":
-                    html_es_path = save_html_report(
-                        results,
-                        config,
-                        output_dir,
-                        filename="report_es.html",
-                        lang="es",
-                    )
-                    if html_es_path and print_fn and t_fn:
-                        print_fn(t_fn("html_report_es", html_es_path), "OKGREEN")
             except Exception as html_err:
                 if logger:
                     logger.warning("HTML report generation failed: %s", html_err)

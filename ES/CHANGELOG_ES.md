@@ -10,6 +10,18 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.52] - 07-02-2026
+
+### Mejorado
+
+- **Consistencia de idioma en informe HTML**: `report.html` ahora respeta el idioma activo de la ejecucion (`en` o `es`) en lugar de mezclar salidas por defecto.
+- **Claridad de graficas con pocos datos**: El dashboard HTML ahora muestra estados explicitos sin datos cuando los conjuntos de severidad/puertos estan vacios.
+
+### Corregido
+
+- **Salida HTML en un unico idioma**: Las ejecuciones en espanol ya no generan un `report_es.html` adicional; ahora la salida es un unico `report.html` en el idioma elegido.
+- **UX de graficas vacias**: Los perfiles sin hallazgos o sin distribucion de puertos ya no parecen graficas rotas.
+
 ## [4.19.51] - 07-02-2026
 
 ### Mejorado
