@@ -16,9 +16,11 @@ import sys
 import re
 import json
 import hashlib
+import queue
 import time
 import subprocess
 import tempfile
+import threading
 import textwrap
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List, Any
@@ -1083,10 +1085,26 @@ def perform_git_update(
         )
 
         # Read output with timeout monitoring
-        import time
-
         start_time = time.time()
         output_lines = []
+        output_queue: "queue.Queue[str]" = queue.Queue()
+
+        def _read_clone_output(stream) -> None:
+            try:
+                while True:
+                    line = stream.readline()
+                    if not line:
+                        break
+                    output_queue.put(line)
+            except Exception as e:
+                if logger:
+                    logger.debug("Clone output reader stopped: %s", e)
+
+        if process.stdout is not None:
+            reader_thread = threading.Thread(
+                target=_read_clone_output, args=(process.stdout,), daemon=True
+            )
+            reader_thread.start()
 
         while True:
             # Check timeout
@@ -1095,14 +1113,30 @@ def perform_git_update(
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 return (False, "Git clone timed out after 120 seconds")
 
-            line = process.stdout.readline()
-            if line:
+            # Drain output produced so far (non-blocking)
+            while True:
+                try:
+                    line = output_queue.get_nowait()
+                except queue.Empty:
+                    break
                 output_lines.append(line)
                 # Print progress indicators
                 if "Receiving objects:" in line or "Resolving deltas:" in line:
                     print(f"  → {line.strip()}", flush=True)
-            elif process.poll() is not None:
+
+            if process.poll() is not None:
                 break
+            time.sleep(0.05)
+
+        # Final drain after process exit
+        while True:
+            try:
+                line = output_queue.get_nowait()
+            except queue.Empty:
+                break
+            output_lines.append(line)
+            if "Receiving objects:" in line or "Resolving deltas:" in line:
+                print(f"  → {line.strip()}", flush=True)
 
         returncode = process.wait()
 
@@ -1492,7 +1526,17 @@ def perform_git_update(
     except FileNotFoundError as e:
         if logger:
             logger.warning("FileNotFoundError during update: %s", e)
-        return (False, "Git not found. Install git or update manually.")
+        missing_name = str(getattr(e, "filename", "") or "").strip()
+        error_text = str(e).lower()
+        missing_is_git = (
+            bool(missing_name and os.path.basename(missing_name).lower() == "git")
+            or "git" in error_text
+        )
+        if missing_is_git:
+            return (False, "Git not found. Install git or update manually.")
+        if missing_name:
+            return (False, f"Update failed: required file not found ({missing_name}).")
+        return (False, "Update failed: required file not found.")
     except Exception as e:
         if logger:
             logger.error("Update failed: %s", e)

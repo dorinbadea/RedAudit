@@ -9,6 +9,7 @@ Discovers IoT devices, hidden hosts, and potential backdoors.
 """
 
 import asyncio
+import inspect
 import ipaddress
 import socket
 import struct
@@ -486,16 +487,20 @@ def hyperscan_full_port_sweep(
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        results = loop.run_until_complete(
-            hyperscan_tcp_sweep(
-                targets=[target_ip],
-                ports=all_ports,
-                batch_size=batch_size,
-                timeout=timeout,
-                logger=logger,
-                progress_callback=progress_callback,
-            )
+        scan_coro = hyperscan_tcp_sweep(
+            targets=[target_ip],
+            ports=all_ports,
+            batch_size=batch_size,
+            timeout=timeout,
+            logger=logger,
+            progress_callback=progress_callback,
         )
+        try:
+            results = loop.run_until_complete(scan_coro)
+        except Exception:
+            if inspect.iscoroutine(scan_coro):
+                scan_coro.close()
+            raise
         open_ports = sorted(results.get(target_ip, []))
     except Exception as e:
         if logger:
@@ -505,7 +510,13 @@ def hyperscan_full_port_sweep(
         # Ensure loop is properly closed to release file descriptors
         if loop is not None:
             try:
-                loop.run_until_complete(loop.shutdown_asyncgens())
+                shutdown_coro = loop.shutdown_asyncgens()
+                try:
+                    loop.run_until_complete(shutdown_coro)
+                except Exception:
+                    if inspect.iscoroutine(shutdown_coro):
+                        shutdown_coro.close()
+                    raise
             except Exception:
                 pass
             try:
