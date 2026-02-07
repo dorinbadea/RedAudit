@@ -174,12 +174,12 @@ bash scripts/ci_local.sh
 
 Requirements:
 
-- Python 3.9-3.12 available in PATH (`python3.9`, `python3.10`, `python3.11`, `python3.12`).
+- Python 3.10-3.12 available in PATH (`python3.10`, `python3.11`, `python3.12`).
 - Uses `requirements-dev.lock` and creates venvs under `.venv/ci` (ignored).
 
 Optional environment variables:
 
-- `PYTHON_VERSIONS="3.9 3.10"` to limit which versions run.
+- `PYTHON_VERSIONS="3.10 3.11"` to limit which versions run.
 - `RUN_PRECOMMIT=0` or `RUN_TESTS=0` to skip steps.
 
 ### Test Organization (Quality over Quantity)
@@ -206,7 +206,7 @@ When modifying tests:
 
 Workflow: `.github/workflows/tests.yml`
 
-- Tests job: Python `3.9`-`3.12`, installs `nmap`, runs:
+- Tests job: Python `3.10`-`3.12`, installs `nmap`, runs:
   - `pytest tests/ -v --cov=redaudit --cov-report=xml --cov-report=term-missing`
   - coverage threshold: `coverage report --fail-under=25`
 - Lint job: runs `pre-commit` via `pre-commit/action`

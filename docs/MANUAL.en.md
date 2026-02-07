@@ -35,7 +35,7 @@ RedAudit is an **automated network auditing framework** for Linux (Debian-family
 | Requirement | Details |
 | :--- | :--- |
 | **OS** | Kali Linux, Debian 11+, Ubuntu 20.04+, Parrot OS |
-| **Python** | 3.9+ |
+| **Python** | 3.10+ |
 | **Privileges** | `sudo` / root required for: OS detection, UDP scans, packet capture (tcpdump), ARP/L2 discovery |
 | **Dependencies** | The installer provides the recommended toolchain (nmap, whatweb, nikto, nuclei, searchsploit, tcpdump, tshark, and others) and installs `testssl.sh` from GitHub |
 

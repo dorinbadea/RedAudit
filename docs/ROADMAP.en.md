@@ -143,6 +143,13 @@ Phase B moves from contract-level controls to production behavior, while keeping
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.49 Python 3.10+ Baseline and Lock Hardening (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Python Runtime Baseline** | Done (v4.19.49) | RedAudit runtime/CI support now targets Python 3.10-3.12. |
+| **Lock Security Alignment** | Done (v4.19.49) | Dependency lockfiles no longer include the Python 3.9-only `filelock` branch. |
+
 ### v4.19.48 Nuclei Resume Entry Management (Done)
 
 | Feature | Status | Description |
