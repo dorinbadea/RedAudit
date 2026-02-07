@@ -343,10 +343,9 @@ redaudit --nuclei-resume-latest
 Las reanudaciones actualizan la misma carpeta del escaneo y regeneran los informes. La reanudacion usa el presupuesto
 guardado salvo que lo sobrescribas (prompt en wizard o `--nuclei-max-runtime`; `0` desactiva el presupuesto).
 Las reanudaciones se guardan en la misma carpeta del escaneo y se actualizan en el mismo sitio. Si una reanudacion
-termina como parcial otra vez, `nuclei_resume.json`/`nuclei_pending.txt` se actualiza (no se duplica). Para limpiar
-reanudaciones antiguas, borra esos dos archivos dentro de las carpetas que ya no vas a reanudar. Puedes listarlos primero
-con `find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt` y luego borrar con
-`find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt -delete`.
+termina como parcial otra vez, `nuclei_resume.json`/`nuclei_pending.txt` se actualiza (no se duplica). En el menu
+interactivo (**Reanudar Nuclei (pendiente)**), usa **Gestionar entradas de reanudacion** para borrar una o todas las
+entradas antiguas directamente.
 Si interrumpes una reanudacion con Ctrl+C, la reanudacion se cancela limpiamente y vuelves al menu.
 
 ### Perfiles y Cobertura de Nuclei (v4.17+)

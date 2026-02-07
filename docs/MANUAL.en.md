@@ -349,10 +349,8 @@ Resumed runs update the same scan folder and refresh reports in place. The resum
 override it (wizard prompt or `--nuclei-max-runtime`; `0` disables the budget).
 If you interrupt a resume with Ctrl+C, the resume is canceled cleanly and you return to the menu.
 Resumes are stored in the same scan folder and are updated in place. If a resume run ends as partial again, the
-existing `nuclei_resume.json`/`nuclei_pending.txt` is refreshed (not duplicated). To clean old resumes, delete those
-two files inside scan folders you no longer need to resume. List them first with
-`find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt`, then remove with
-`find "$HOME/Documents/RedAuditReports" -name nuclei_resume.json -o -name nuclei_pending.txt -delete`.
+existing `nuclei_resume.json`/`nuclei_pending.txt` is refreshed (not duplicated). In the interactive menu (**Resume
+Nuclei (pending)**), use **Manage resume entries** to delete one or all stale entries directly.
 
 ### Nuclei Profiles and Coverage (v4.17+)
 

@@ -34,6 +34,7 @@
 - [ ] Printed rubric (Section 5)
 
 Instructor tip: When launching scans, point to the normalized target summary (estimated host counts) to reinforce scope validation.
+For long labs with repeated Nuclei partial runs, use **Resume Nuclei (pending) -> Manage resume entries** to keep the resume list clean between exercises.
 
 ---
 

@@ -143,6 +143,13 @@ Phase B moves from contract-level controls to production behavior, while keeping
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.48 Nuclei Resume Entry Management (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Resume Entry Management** | Done (v4.19.48) | The resume menu can delete one or all stale entries without manual file cleanup. |
+| **Resume Cleanup Documentation** | Done (v4.19.48) | README/USAGE/MANUAL and didactic guidance now document in-menu cleanup. |
+
 ### v4.19.35 Nuclei Resume & Profile Transparency (Done)
 
 | Feature | Status | Description |

@@ -143,6 +143,13 @@ La Fase B pasa de controles contractuales a comportamiento de producción, mante
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.48 Gestion de entradas de reanudacion Nuclei (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Gestion de entradas de reanudacion** | Hecho (v4.19.48) | El menu de reanudacion permite borrar una o todas las entradas antiguas sin limpieza manual de ficheros. |
+| **Documentacion de limpieza de reanudaciones** | Hecho (v4.19.48) | README/USAGE/MANUAL y la guia didactica ya documentan la limpieza desde el propio menu. |
+
 ### v4.19.35 Reanudación y transparencia de perfiles Nuclei (Hecho)
 
 | Funcionalidad | Estado | Descripción |
