@@ -1174,7 +1174,7 @@ def main():
     app.lang = detect_preferred_language(getattr(args, "lang", None))
     app.defaults_mode = getattr(args, "defaults", "ask")
 
-    # Startup update check (cache-first, short timeout, non-blocking).
+    # Startup update check (network-first, short timeout, non-blocking).
     if not args.skip_update_check:
         auto_check_updates_on_startup(
             print_fn=app.print_status,

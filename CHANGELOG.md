@@ -10,6 +10,16 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.45] - 2026-02-07
+
+### Improved
+
+- **Startup update freshness**: RedAudit now checks for updates at every launch (non-blocking, short-timeout) so users are notified as soon as a new release exists.
+
+### Fixed
+
+- **Offline fallback behavior**: When startup update checks cannot reach GitHub, RedAudit now falls back to cached release metadata and still shows the update notice when applicable.
+
 ## [4.19.44] - 2026-02-07
 
 ### Improved

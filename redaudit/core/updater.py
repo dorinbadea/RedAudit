@@ -39,9 +39,10 @@ GITHUB_RAW_BASE = "https://raw.githubusercontent.com"
 API_TIMEOUT = 10  # seconds
 DOWNLOAD_TIMEOUT = 30  # seconds
 
-# Startup auto-check behavior (non-blocking, cache-first)
+# Startup auto-check behavior (non-blocking, network-first with cache fallback)
 AUTO_UPDATE_TIMEOUT = 3  # seconds
-AUTO_UPDATE_CACHE_TTL_SECONDS = 24 * 60 * 60
+# 0 means "always attempt network check"; cache is used as fallback on failures.
+AUTO_UPDATE_CACHE_TTL_SECONDS = 0
 AUTO_UPDATE_CACHE_FILENAME = "update_check_cache.json"
 
 
@@ -268,8 +269,8 @@ def auto_check_updates_on_startup(
 ) -> Optional[Dict[str, Any]]:
     """
     Startup update check:
-    - cache-first (24h by default),
-    - short timeout,
+    - network-first with short timeout,
+    - cache fallback when network is unavailable,
     - only notifies when an update is available.
 
     Returns:
@@ -293,17 +294,23 @@ def auto_check_updates_on_startup(
             checked_at_int = int(checked_at)
         except (TypeError, ValueError):
             checked_at_int = 0
-        cache_fresh = checked_at_int > 0 and (now_ts - checked_at_int) <= max(
-            int(cache_ttl_seconds), 0
+        ttl_seconds = max(int(cache_ttl_seconds), 0)
+        cache_fresh = (
+            ttl_seconds > 0 and checked_at_int > 0 and (now_ts - checked_at_int) <= ttl_seconds
         )
         latest_version = str(cached.get("latest_version", "")).lstrip("v").strip() or None
         release_url = str(cached.get("release_url", "")).strip() or None
 
+    network_attempted = False
+    network_succeeded = False
+
     if not cache_fresh:
+        network_attempted = True
         release_info = _fetch_latest_version_with_timeout(
             logger=logger, timeout_seconds=timeout_seconds
         )
         if release_info and release_info.get("tag_name"):
+            network_succeeded = True
             latest_version = str(release_info.get("tag_name", "")).lstrip("v").strip() or None
             release_url = str(release_info.get("html_url", "")).strip() or None
             _write_update_check_cache(
@@ -326,11 +333,17 @@ def auto_check_updates_on_startup(
         if release_url:
             print_fn(t_fn("update_release_url", release_url), "INFO")
 
+    source = "cache"
+    if network_succeeded:
+        source = "network"
+    elif network_attempted and latest_version:
+        source = "cache_fallback"
+
     return {
         "update_available": update_available,
         "latest_version": latest_version,
         "release_url": release_url,
-        "source": "cache" if cache_fresh else "network",
+        "source": source,
     }
 
 
