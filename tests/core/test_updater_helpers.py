@@ -597,6 +597,43 @@ def test_auto_check_updates_on_startup_uses_fresh_cache():
     mock_fetch.assert_not_called()
 
 
+def test_auto_check_updates_on_startup_default_attempts_network_with_fresh_cache():
+    now_ts = int(time.time())
+    cached = {
+        "checked_at": now_ts,
+        "latest_version": "0.0.1",
+        "release_url": "https://old.example/release",
+    }
+    written = {}
+
+    def _capture_write(cache_data, logger=None):
+        written["payload"] = cache_data
+
+    with (
+        patch.object(updater, "_read_update_check_cache", return_value=cached),
+        patch.object(
+            updater,
+            "fetch_latest_version",
+            return_value={
+                "tag_name": "999.2.0",
+                "html_url": "https://example.com/fresh-release",
+                "published_at": "2026-02-08T00:00:00Z",
+            },
+        ) as mock_fetch,
+        patch.object(updater, "_write_update_check_cache", side_effect=_capture_write),
+    ):
+        result = updater.auto_check_updates_on_startup(
+            print_fn=lambda *_a, **_k: None,
+            t_fn=lambda key, *args: key,
+        )
+
+    assert result is not None
+    assert result["source"] == "network"
+    assert result["latest_version"] == "999.2.0"
+    assert written["payload"]["latest_version"] == "999.2.0"
+    mock_fetch.assert_called_once_with(logger=None, timeout_seconds=updater.AUTO_UPDATE_TIMEOUT)
+
+
 def test_auto_check_updates_on_startup_fetches_when_cache_stale():
     stale = {
         "checked_at": 1,
@@ -635,6 +672,30 @@ def test_auto_check_updates_on_startup_fetches_when_cache_stale():
     assert written["payload"]["latest_version"] == "999.1.0"
     assert written["payload"]["release_url"] == "https://example.com/new-release"
     mock_fetch.assert_called_once_with(logger=None, timeout_seconds=2)
+
+
+def test_auto_check_updates_on_startup_uses_cache_fallback_when_network_unavailable():
+    now_ts = int(time.time())
+    cached = {
+        "checked_at": now_ts,
+        "latest_version": "999.3.0",
+        "release_url": "https://example.com/cached-release",
+    }
+    messages = []
+
+    with (
+        patch.object(updater, "_read_update_check_cache", return_value=cached),
+        patch.object(updater, "fetch_latest_version", return_value=None),
+    ):
+        result = updater.auto_check_updates_on_startup(
+            print_fn=lambda msg, *_a: messages.append(msg),
+            t_fn=lambda key, *args: key,
+        )
+
+    assert result is not None
+    assert result["source"] == "cache_fallback"
+    assert result["update_available"] is True
+    assert any("update_auto_available" in msg for msg in messages)
 
 
 def test_auto_check_updates_on_startup_no_notice_when_up_to_date():
