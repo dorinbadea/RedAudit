@@ -10,6 +10,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.45] - 07-02-2026
+
+### Mejorado
+
+- **Frescura de actualizaciones al inicio**: RedAudit ahora comprueba actualizaciones en cada arranque (sin bloquear y con timeout corto) para avisar en cuanto exista una nueva version.
+
+### Corregido
+
+- **Comportamiento de fallback sin red**: Si la comprobacion de inicio no puede contactar con GitHub, RedAudit usa la cache de releases y mantiene el aviso de actualizacion cuando corresponde.
+
 ## [4.19.44] - 07-02-2026
 
 ### Mejorado
