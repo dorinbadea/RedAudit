@@ -10,6 +10,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.48] - 07-02-2026
+
+### Anadido
+
+- **Gestion de entradas de reanudacion Nuclei**: El menu interactivo de reanudacion ahora permite borrar una entrada o todas las entradas antiguas directamente desde el wizard.
+
+### Mejorado
+
+- **Flujo de limpieza para operadores**: Las reanudaciones antiguas de Nuclei ahora se pueden depurar desde el menu, sin borrar ficheros manualmente en las carpetas de reportes.
+
 ## [4.19.47] - 07-02-2026
 
 ### Mejorado

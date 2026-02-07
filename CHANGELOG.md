@@ -10,6 +10,16 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.48] - 2026-02-07
+
+### Added
+
+- **Nuclei resume entry management**: The interactive resume menu now supports deleting one entry or all stale entries directly from the wizard.
+
+### Improved
+
+- **Operator cleanup workflow**: Stale Nuclei resumes can now be pruned in-menu, avoiding manual file deletion in report folders.
+
 ## [4.19.47] - 2026-02-07
 
 ### Improved
