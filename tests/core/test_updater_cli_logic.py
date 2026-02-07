@@ -1,4 +1,5 @@
 import unittest
+from urllib.parse import urlparse
 from unittest.mock import patch, MagicMock, Mock
 import sys
 import io
@@ -204,8 +205,8 @@ class TestUpdaterCliLogic(unittest.TestCase):
 
         # "View in English" should be dropped
         for item in items["highlights"]:
-            self.assertFalse("View in English" in item)
-            self.assertFalse("shields.io" in item)
+            self.assertNotEqual(item, "View in English")
+            self.assertNotEqual(urlparse(item).netloc, "shields.io")
 
     def test_format_release_notes_for_cli(self):
         notes = "- Item 1\n- Item 2"

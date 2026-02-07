@@ -89,8 +89,9 @@ def test_parse_allowlist_edge_cases():
 
     assert len(ips) == 0
 
-    assert "example.com" in hosts
-    assert "invalid-stuff" in hosts
+    # Use explicit set membership check to avoid CodeQL false positive
+    expected_hosts = {"example.com", "invalid-stuff"}
+    assert hosts == expected_hosts
 
 
 def test_evaluate_leak_follow_candidates_edge_cases():
