@@ -18,7 +18,7 @@ For a clean timeline and consistent releases, see `AGENTS.md` (branching, commit
 ### Prerequisites
 
 - **OS**: Kali Linux, Debian 11+, Ubuntu 20.04+, or Parrot OS
-- **Python**: 3.9 or higher
+- **Python**: 3.10 or higher
 - **Git**: Latest stable version
 - **Tools**: nmap, tcpdump, curl, wget (see `redaudit_install.sh` for full list)
 
@@ -110,7 +110,7 @@ The codebase is organized as a Python package:
 - **Coverage**: New features must include tests
 - **Local Validation**: Run `python3 -m unittest discover tests/` before submitting PRs
 - **Verification Script**: Run `bash redaudit_verify.sh` for environment checks
-- **CI/CD**: GitHub Actions runs tests automatically on PRs (Python 3.9-3.12)
+- **CI/CD**: GitHub Actions runs tests automatically on PRs (Python 3.10-3.12)
 
 ---
 

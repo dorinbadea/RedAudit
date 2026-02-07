@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-PYTHON_VERSIONS="${PYTHON_VERSIONS:-3.9 3.10 3.11 3.12}"
+PYTHON_VERSIONS="${PYTHON_VERSIONS:-3.10 3.11 3.12}"
 VENV_ROOT="${VENV_ROOT:-$ROOT_DIR/.venv/ci}"
 RUN_PRECOMMIT="${RUN_PRECOMMIT:-1}"
 RUN_TESTS="${RUN_TESTS:-1}"
@@ -23,7 +23,7 @@ done
 
 if [ "${#found_versions[@]}" -eq 0 ]; then
   echo "No requested Python versions found in PATH."
-  echo "Install Python 3.9-3.12 or set PYTHON_VERSIONS to match what is available."
+  echo "Install Python 3.10-3.12 or set PYTHON_VERSIONS to match what is available."
   exit 1
 fi
 

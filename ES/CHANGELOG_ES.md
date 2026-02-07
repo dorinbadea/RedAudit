@@ -10,6 +10,14 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+### Mejorado
+
+- **Baseline de soporte Python**: RedAudit pasa a objetivo Python 3.10+ en metadatos del paquete, tooling de paridad local y matriz de tests en GitHub Actions.
+
+### Corregido
+
+- **Alineacion de seguridad en dependencias**: Los lockfiles dejan de arrastrar la rama de `filelock` para Python 3.9, reduciendo alertas residuales de Dependabot ligadas a versiones no soportadas.
+
 ## [4.19.48] - 07-02-2026
 
 ### Anadido
