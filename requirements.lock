@@ -14,16 +14,26 @@ cryptography==46.0.3
     # via redaudit (pyproject.toml)
 idna==3.11
     # via requests
+jaraco-classes==3.4.0
+    # via keyring
+jaraco-context==6.1.0
+    # via keyring
+jaraco-functools==4.4.0
+    # via keyring
 jinja2==3.1.6
     # via redaudit (pyproject.toml)
-markdown-it-py==4.0.0 ; python_version >= "3.10"
-    # via rich
-markdown-it-py==3.0.0 ; python_version < "3.10"
+keyring==25.7.0
+    # via redaudit (pyproject.toml)
+markdown-it-py==4.0.0
     # via rich
 markupsafe==3.0.3
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
+more-itertools==10.8.0
+    # via
+    #   jaraco-classes
+    #   jaraco-functools
 netifaces==0.11.0
     # via redaudit (pyproject.toml)
 pycparser==2.23

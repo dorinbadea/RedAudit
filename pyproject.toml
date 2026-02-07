@@ -7,7 +7,7 @@ name = "redaudit"
 version = "4.19.48"
 description = "CLI tool for structured network auditing and hardening on Kali/Debian systems"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.9.2"
 license = {text = "GPL-3.0-or-later"}
 authors = [
     {name = "Dorin Badea", email = "dorinidtech@gmail.com"}
@@ -38,7 +38,7 @@ classifiers = [
 
 dependencies = [
     "python-nmap>=0.7.1",
-    "cryptography>=41.0.0",
+    "cryptography>=44.0.1",
     "netifaces>=0.11.0",
     "requests>=2.31.0",
     "jinja2>=3.1.0",
@@ -82,9 +82,9 @@ authors = ["Dorin Badea <dorinidtech@gmail.com>"]
 packages = [{ include = "redaudit" }]
 
 [tool.poetry.dependencies]
-python = ">=3.9"
+python = ">=3.9.2"
 python-nmap = ">=0.7.1"
-cryptography = ">=41.0.0"
+cryptography = ">=44.0.1"
 netifaces = ">=0.11.0"
 requests = ">=2.31.0"
 jinja2 = ">=3.1.0"
