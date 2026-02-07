@@ -50,6 +50,17 @@
         .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
         .chart-container { background: var(--bg-card); border-radius: 8px; padding: 1.5rem; border: 1px solid var(--border-color); }
         .chart-title { font-size: 1rem; margin-bottom: 1rem; color: var(--text-secondary); }
+        .chart-empty {
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--text-secondary);
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+        }
         table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
         th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
         th { background: var(--bg-card); color: var(--text-secondary); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; }
@@ -167,14 +178,23 @@
             </div>
         </div>
 
+        {% set severity_total = severity_counts.critical + severity_counts.high + severity_counts.medium + severity_counts.low + severity_counts.info %}
         <div class="charts">
             <div class="chart-container">
                 <div class="chart-title">Severity Distribution</div>
+                {% if severity_total > 0 %}
                 <canvas id="severityChart"></canvas>
+                {% else %}
+                <div class="chart-empty">No data available for this run.</div>
+                {% endif %}
             </div>
             <div class="chart-container">
                 <div class="chart-title">Top 10 Ports</div>
+                {% if top_ports and top_ports|length > 0 %}
                 <canvas id="portsChart"></canvas>
+                {% else %}
+                <div class="chart-empty">No open-port data in this profile.</div>
+                {% endif %}
             </div>
         </div>
 
@@ -653,50 +673,56 @@
     <script src="chart.umd.min.js"></script>
     <script>
         // Severity Chart
-        const severityCtx = document.getElementById('severityChart').getContext('2d');
-        new Chart(severityCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
-                datasets: [{
-                    data: [{{ severity_counts.critical }}, {{ severity_counts.high }}, {{ severity_counts.medium }}, {{ severity_counts.low }}, {{ severity_counts.info }}],
-                    backgroundColor: ['#e74c3c', '#f39c12', '#f1c40f', '#3498db', '#7f8c8d'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'right', labels: { color: '#a0a3a8' } }
+        const severityCanvas = document.getElementById('severityChart');
+        if (severityCanvas) {
+            const severityCtx = severityCanvas.getContext('2d');
+            new Chart(severityCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+                    datasets: [{
+                        data: [{{ severity_counts.critical }}, {{ severity_counts.high }}, {{ severity_counts.medium }}, {{ severity_counts.low }}, {{ severity_counts.info }}],
+                        backgroundColor: ['#e74c3c', '#f39c12', '#f1c40f', '#3498db', '#7f8c8d'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#a0a3a8' } }
+                    }
                 }
-            }
-        });
+            });
+        }
 
         // Ports Chart
-        const portsCtx = document.getElementById('portsChart').getContext('2d');
-        new Chart(portsCtx, {
-            type: 'bar',
-            data: {
-                labels: [{% for port, count in top_ports %}'{{ port }}'{% if not loop.last %}, {% endif %}{% endfor %}],
-                datasets: [{
-                    label: 'Host Count',
-                    data: [{% for port, count in top_ports %}{{ count }}{% if not loop.last %}, {% endif %}{% endfor %}],
-                    backgroundColor: '#3498db',
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                indexAxis: 'y',
-                plugins: {
-                    legend: { display: false }
+        const portsCanvas = document.getElementById('portsChart');
+        if (portsCanvas) {
+            const portsCtx = portsCanvas.getContext('2d');
+            new Chart(portsCtx, {
+                type: 'bar',
+                data: {
+                    labels: [{% for port, count in top_ports %}'{{ port }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+                    datasets: [{
+                        label: 'Host Count',
+                        data: [{% for port, count in top_ports %}{{ count }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                        backgroundColor: '#3498db',
+                        borderRadius: 4
+                    }]
                 },
-                scales: {
-                    x: { ticks: { color: '#a0a3a8' }, grid: { color: '#3a3f47' } },
-                    y: { ticks: { color: '#a0a3a8' }, grid: { display: false } }
+                options: {
+                    responsive: true,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#a0a3a8' }, grid: { color: '#3a3f47' } },
+                        y: { ticks: { color: '#a0a3a8' }, grid: { display: false } }
+                    }
                 }
-            }
-        });
+            });
+        }
 
         // Simple table sorting
         document.querySelectorAll('.sortable').forEach(th => {
