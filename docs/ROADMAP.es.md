@@ -143,6 +143,14 @@ La Fase B pasa de controles contractuales a comportamiento de producción, mante
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.51 Alineacion de politica de config en instalador (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Resiembra en reinstalacion manual** | Hecho (v4.19.51) | Las reinstalaciones manuales del instalador ahora reinician `~/.redaudit/config.json` para aplicar limpio el idioma elegido. |
+| **Preservacion en auto-update** | Hecho (v4.19.51) | El flujo de auto-update mantiene preferencias existentes del usuario en lugar de reiniciar la configuracion. |
+| **Seguridad de merge en config NVD** | Hecho (v4.19.51) | Guardar la API key de NVD durante instalacion ahora hace merge y preserva defaults existentes. |
+
 ### v4.19.50 UX de inicio y persistencia de idioma (Hecho)
 
 | Funcionalidad | Estado | Descripción |

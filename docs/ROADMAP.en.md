@@ -143,6 +143,14 @@ Phase B moves from contract-level controls to production behavior, while keeping
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.51 Installer Config Policy Alignment (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Manual Reinstall Reseed** | Done (v4.19.51) | Manual installer runs now reset stale `~/.redaudit/config.json` so selected language is applied cleanly. |
+| **Auto-Update Preference Preserve** | Done (v4.19.51) | Auto-update path keeps existing user preferences instead of resetting stored config. |
+| **NVD Config Merge Safety** | Done (v4.19.51) | Saving NVD API key during install now merges into config and preserves existing defaults. |
+
 ### v4.19.50 Startup UX and Language Persistence (Done)
 
 | Feature | Status | Description |
