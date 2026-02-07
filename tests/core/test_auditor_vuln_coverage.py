@@ -53,13 +53,17 @@ class TestAuditorVulnCoverage(unittest.TestCase):
         self.assertEqual(fp["http_source"], "enrichment")
         self.assertEqual(fp["upnp_device_name"], "OldTitle")
 
+    @patch("redaudit.core.auditor_vuln.as_completed")
     @patch("redaudit.core.auditor_vuln.ThreadPoolExecutor")
-    def test_run_vuln_tools_parallel_exception(self, mock_executor):
+    def test_run_vuln_tools_parallel_exception(self, mock_executor, mock_as_completed):
         """Lines 646-648: Parallel tools exception path."""
         mock_exec_inst = mock_executor.return_value.__enter__.return_value
         mock_future = MagicMock()
         mock_future.result.side_effect = Exception("Parallel tool crash")
         mock_exec_inst.submit.return_value = mock_future
+
+        # Mock as_completed to return the mock future immediately
+        mock_as_completed.return_value = [mock_future]
 
         # Should log debug and continue
         res = self.auditor._run_vuln_tools_parallel("1.2.3.4", 80, "http://1.2.3.4", "http", {})
