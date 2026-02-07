@@ -1489,7 +1489,9 @@ def perform_git_update(
 
     except subprocess.TimeoutExpired:
         return (False, "Update timed out. Check network connection.")
-    except FileNotFoundError:
+    except FileNotFoundError as e:
+        if logger:
+            logger.warning("FileNotFoundError during update: %s", e)
         return (False, "Git not found. Install git or update manually.")
     except Exception as e:
         if logger:

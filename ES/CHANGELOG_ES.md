@@ -10,6 +10,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.46] - 07-02-2026
+
+### Mejorado
+
+- **Cobertura Estratégica**: Incremento de la cobertura de tests en `updater.py` (99.67%), `jsonl_exporter.py` (100%), `config.py` (99.48%), `auditor_scan.py` (96.30%) y `auditor_vuln.py` (97.48%) cubriendo casos borde y rutas de excepción.
+
+### Corregido
+
+- **Resiliencia en expansión de alcance**: Corregido un fallo potencial en `build_leak_follow_targets` al procesar datos de puerto malformados o no numéricos procedentes de candidatos.
+
 ## [4.19.45] - 07-02-2026
 
 ### Mejorado
