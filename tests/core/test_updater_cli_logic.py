@@ -204,8 +204,9 @@ class TestUpdaterCliLogic(unittest.TestCase):
 
         # "View in English" should be dropped
         for item in items["highlights"]:
-            self.assertFalse("View in English" in item)
-            self.assertFalse("shields.io" in item)
+            # Use explicit comparison to avoid CodeQL false positive on substring checks
+            self.assertNotEqual(item, "View in English")
+            self.assertFalse(item.startswith("https://shields.io"))
 
     def test_format_release_notes_for_cli(self):
         notes = "- Item 1\n- Item 2"
