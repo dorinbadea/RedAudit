@@ -10,6 +10,8 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.49] - 07-02-2026
+
 ### Mejorado
 
 - **Baseline de soporte Python**: RedAudit pasa a objetivo Python 3.10+ en metadatos del paquete, tooling de paridad local y matriz de tests en GitHub Actions.

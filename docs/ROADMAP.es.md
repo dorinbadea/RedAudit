@@ -143,6 +143,13 @@ La Fase B pasa de controles contractuales a comportamiento de producción, mante
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.49 Baseline Python 3.10+ y endurecimiento de locks (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Baseline de runtime Python** | Hecho (v4.19.49) | El soporte de runtime/CI de RedAudit pasa a Python 3.10-3.12. |
+| **Alineacion de seguridad en locks** | Hecho (v4.19.49) | Los lockfiles ya no incluyen la rama de `filelock` exclusiva de Python 3.9. |
+
 ### v4.19.48 Gestion de entradas de reanudacion Nuclei (Hecho)
 
 | Funcionalidad | Estado | Descripción |

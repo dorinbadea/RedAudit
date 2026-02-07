@@ -10,6 +10,8 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.49] - 2026-02-07
+
 ### Improved
 
 - **Python support baseline**: RedAudit now targets Python 3.10+ across packaging metadata, local CI parity tooling, and GitHub Actions test matrix.
