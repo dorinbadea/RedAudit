@@ -863,6 +863,28 @@ def test_main_auto_update_check_runs(monkeypatch):
     assert called.get("auto") == 1
 
 
+def test_main_auto_update_check_runs_after_banner_in_interactive_mode():
+    order = []
+    with patch("sys.argv", ["redaudit"]):
+        with patch("os.geteuid", return_value=0):
+            with patch("redaudit.core.auditor.InteractiveNetworkAuditor") as MockAuditor:
+                mock_app = MockAuditor.return_value
+                mock_app.clear_screen.side_effect = lambda: order.append("clear")
+                mock_app.print_banner.side_effect = lambda: order.append("banner")
+                mock_app.show_main_menu.side_effect = lambda: order.append("menu") or 0
+                mock_app.t.return_value = "msg"
+
+                with patch(
+                    "redaudit.core.updater.auto_check_updates_on_startup",
+                    side_effect=lambda **_kwargs: order.append("auto"),
+                ):
+                    with pytest.raises(SystemExit) as e:
+                        cli.main()
+                    assert e.value.code == 0
+
+    assert order[:4] == ["clear", "banner", "auto", "menu"]
+
+
 def test_main_auto_update_check_skipped(monkeypatch):
     args = _base_args(skip_update_check=True)
     monkeypatch.setattr(cli, "parse_arguments", lambda: args)
