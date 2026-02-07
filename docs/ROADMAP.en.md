@@ -143,6 +143,14 @@ Phase B moves from contract-level controls to production behavior, while keeping
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.50 Startup UX and Language Persistence (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Startup Update Notice Visibility** | Done (v4.19.50) | Auto-update notices are now displayed after banner/menu rendering so users can see them reliably. |
+| **Installer Language Persistence** | Done (v4.19.50) | Installer now persists selected language (`en`/`es`) into user config for consistent first-run UX after reinstall. |
+| **Wizard Prompt Cleanup** | Done (v4.19.50) | Interactive prompts no longer prepend the decorative `?` marker. |
+
 ### v4.19.49 Python 3.10+ Baseline and Lock Hardening (Done)
 
 | Feature | Status | Description |

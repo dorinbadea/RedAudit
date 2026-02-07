@@ -10,6 +10,18 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.50] - 07-02-2026
+
+### Mejorado
+
+- **Visibilidad de actualizaciones al inicio**: El aviso automatico de nueva version ahora se muestra despues de renderizar banner/menu interactivo, evitando que se borre antes de leerse.
+- **Claridad de prompts del wizard**: Los prompts interactivos ya no anteponen el marcador decorativo `?`, reduciendo ruido visual en la configuracion guiada.
+
+### Corregido
+
+- **Persistencia de idioma en instalacion**: El instalador ahora guarda el idioma elegido (`en`/`es`) en la configuracion de usuario (`~/.redaudit/config.json`), evitando que una reinstalacion en ingles vuelva a abrir en espanol por fallback de locale.
+- **Seguridad de propiedad en config**: Al ejecutar como root, la persistencia de idioma aplica permisos/propietario best-effort para el usuario invocante.
+
 ## [4.19.49] - 07-02-2026
 
 ### Mejorado

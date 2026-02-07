@@ -10,6 +10,18 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.50] - 2026-02-07
+
+### Improved
+
+- **Startup update visibility**: Automatic update notices are now shown after the interactive banner/menu render, so they are no longer cleared before users can read them.
+- **Wizard prompt clarity**: Interactive prompts no longer prepend the decorative `?` marker, reducing visual noise during guided setup.
+
+### Fixed
+
+- **Installer language persistence**: The installer now stores the selected language (`en`/`es`) in the user config (`~/.redaudit/config.json`), so a reinstall in English no longer reopens in Spanish due to locale-only fallback.
+- **Config ownership safety**: When running installer as root, language persistence now applies best-effort ownership/permissions for the invoking user config file.
+
 ## [4.19.49] - 2026-02-07
 
 ### Improved
