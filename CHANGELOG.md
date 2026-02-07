@@ -10,6 +10,18 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.51] - 2026-02-07
+
+### Improved
+
+- **Installer config policy**: Manual reinstall now starts from a clean user config so installer selections apply predictably.
+- **Updater preference continuity**: Auto-update keeps existing user preferences (language, API keys, and defaults).
+
+### Fixed
+
+- **Language drift after reinstall**: Reinstalling in English no longer reuses stale Spanish config from previous installs.
+- **NVD key persistence merge**: Saving NVD API key during install no longer overwrites other config fields (for example `defaults.lang`).
+
 ## [4.19.50] - 2026-02-07
 
 ### Improved

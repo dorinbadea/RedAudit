@@ -143,12 +143,20 @@ Phase B moves from contract-level controls to production behavior, while keeping
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.51 Installer Config Policy Alignment (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Manual Reinstall Reseed** | Done (v4.19.51) | Manual installer runs now reset stale `~/.redaudit/config.json` so selected language is applied cleanly. |
+| **Auto-Update Preference Preserve** | Done (v4.19.51) | Auto-update path keeps existing user preferences instead of resetting stored config. |
+| **NVD Config Merge Safety** | Done (v4.19.51) | Saving NVD API key during install now merges into config and preserves existing defaults. |
+
 ### v4.19.50 Startup UX and Language Persistence (Done)
 
 | Feature | Status | Description |
 | --- | --- | --- |
 | **Startup Update Notice Visibility** | Done (v4.19.50) | Auto-update notices are now displayed after banner/menu rendering so users can see them reliably. |
-| **Installer Language Persistence** | Done (v4.19.50) | Installer now persists selected language (`en`/`es`) into user config for consistent first-run UX after reinstall. |
+| **Installer Language Persistence** | Done (v4.19.50) | Installer persists selected language (`en`/`es`) to user config; auto-update preserves config while manual reinstall can reseed preferences. |
 | **Wizard Prompt Cleanup** | Done (v4.19.50) | Interactive prompts no longer prepend the decorative `?` marker. |
 
 ### v4.19.49 Python 3.10+ Baseline and Lock Hardening (Done)
