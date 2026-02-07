@@ -10,6 +10,18 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.19.52] - 2026-02-07
+
+### Improved
+
+- **HTML report language consistency**: `report.html` now follows the active run language (`en` or `es`) instead of generating mixed-language defaults.
+- **Chart clarity on low-data runs**: HTML dashboards now show explicit no-data states when severity/port datasets are empty.
+
+### Fixed
+
+- **Single-language HTML output**: Spanish runs no longer create an additional `report_es.html`; output is now a single `report.html` in the selected language.
+- **Empty-chart UX**: Profiles with no findings or no collected port distribution no longer look like broken charts.
+
 ## [4.19.51] - 2026-02-07
 
 ### Improved
