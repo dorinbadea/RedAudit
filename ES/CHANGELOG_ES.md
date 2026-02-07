@@ -10,6 +10,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.19.44] - 07-02-2026
+
+### Mejorado
+
+- **Resiliencia del renderizado CLI**: Se actualiza Rich de 14.2.0 a 14.3.2 para mejorar la estabilidad de la salida en terminal.
+
+### Corregido
+
+- **Alineacion de locks de dependencias**: `requirements.lock`, `requirements-dev.lock` y `poetry.lock` fijan Rich de forma coherente en 14.3.2 para Python >= 3.10.
+
 ## [4.19.43] - 07-02-2026
 
 ### Mejorado
