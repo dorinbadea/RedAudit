@@ -59,7 +59,10 @@ The installer:
 3. Creates the `redaudit` shell alias
 4. Prompts for language preference (EN/ES)
 
-Selected language is persisted in `~/.redaudit/config.json` and reused on next launches/reinstalls unless changed.
+Selected language is stored in `~/.redaudit/config.json`.
+Behavior by path:
+- Auto-update preserves existing preferences (language, API keys, defaults).
+- Manual reinstall resets persisted config and seeds language from the installer selection.
 
 Toolchain version policy (optional):
 

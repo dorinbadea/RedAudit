@@ -148,7 +148,7 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 | Funcionalidad | Estado | Descripción |
 |---|---|---|
 | **Visibilidad del aviso de actualizacion al inicio** | Hecho (v4.19.50) | Los avisos de auto-update se muestran tras renderizar banner/menu para que sean visibles de forma fiable. |
-| **Persistencia de idioma en el instalador** | Hecho (v4.19.50) | El instalador persiste el idioma seleccionado (`en`/`es`) en la configuracion de usuario para un arranque coherente tras reinstalar. |
+| **Persistencia de idioma en el instalador** | Hecho (v4.19.50) | El instalador persiste el idioma seleccionado (`en`/`es`) en configuracion de usuario; el auto-update conserva la config y la reinstalacion manual puede resembrar preferencias. |
 | **Limpieza de prompts del wizard** | Hecho (v4.19.50) | Los prompts interactivos ya no anteponen el marcador decorativo `?`. |
 
 ### v4.19.49 Baseline Python 3.10+ y endurecimiento de locks (Hecho)

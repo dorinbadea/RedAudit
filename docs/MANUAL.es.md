@@ -59,7 +59,10 @@ El instalador:
 3. Crea el alias `redaudit` en el shell
 4. Solicita preferencia de idioma (EN/ES)
 
-El idioma elegido se guarda en `~/.redaudit/config.json` y se reutiliza en los siguientes arranques/reinstalaciones salvo que lo cambies.
+El idioma elegido se guarda en `~/.redaudit/config.json`.
+Comportamiento según el flujo:
+- El auto-update conserva las preferencias existentes (idioma, API keys y defaults).
+- La reinstalación manual reinicia la configuración persistida y fija el idioma según la selección del instalador.
 
 Política de versiones del toolchain (opcional):
 
