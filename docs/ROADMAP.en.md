@@ -10,113 +10,77 @@
 
 This document outlines the technical roadmap, verifies implemented capabilities, and records discarded approaches for RedAudit.
 
-## 1. Active Roadmap (Future & In-Progress)
+## 1. Active Roadmap (Planned / In Progress / Deferred)
 
-These items represent the current backlog of planned or deferred work for the remaining v4.x series.
+This section contains only pending roadmap work. Implemented baseline items are tracked in **Completed Milestones**.
 
-### v4.14 Dependency Management (Priority: Low)
+### Status Legend
 
-| Feature | Status | Description |
-| --- | --- | --- |
-| **Dependency Pinning Mode** | Done (v4.18.8) | Optional toolchain pinning for GitHub-downloaded tools via `REDAUDIT_TOOLCHAIN_MODE` and version overrides. |
-| **Poetry Lockfile Evaluation** | Done (v4.18.8) | Added `poetry.lock` alongside pip-tools for evaluation and workflow parity. |
-| **Streaming JSON Report (Large-Network Tuning)** | Planned (v5.x) | Baseline streaming behavior is already implemented; remaining work is tuning for extreme report sizes and memory pressure scenarios. |
-
-### Cross-Environment Intelligence Expansion (Design Baseline)
-
-This baseline targets home, office, and enterprise environments with conservative defaults and exception-based escalation.
-
-| Feature | Status | Default | Guardrails |
-| --- | --- | --- | --- |
-| **Leak Following (Safe Scope)** | Done (v4.19.x baseline) | `off` (report hints only) | Follow only in-scope candidates in `safe` mode; never expand to public/third-party targets by default. |
-| **Protocol-Specific IoT Probes (Minimal Set)** | Done (v4.19.x baseline) | `off` | Trigger only on ambiguity + strong signals; per-host budget and strict per-probe timeout. |
-| **Evidence vs Heuristic Marking** | Done (v4.19.x baseline) | Enabled when feature is used | Store probe/headers as evidence, keep heuristic deductions explicitly labeled. |
-
-Implemented operator controls (safe defaults):
-
-- `--leak-follow off|safe`
-- `--leak-follow-allowlist <csv>`
-- `--iot-probes off|safe`
-- `--iot-probe-budget-seconds <n>`
-- `--iot-probe-timeout-seconds <n>`
-
-### Phase A Implementation Contract (Implemented in v4.19.x)
-
-This contract defined the first implementation slice and is kept as reference so behavior remains predictable across home, office, and enterprise audits.
-
-| Area | Contract |
+| Status | Meaning |
 | --- | --- |
-| **Goal** | Add safe, opt-in primitives for leak-follow hints and minimal IoT protocol checks without changing default scan scope. |
-| **Non-goal** | No automatic scope expansion to Internet/public ranges; no unaudited "always-on" deep protocol probing. |
-| **CLI Controls** | `--leak-follow off|safe` and `--iot-probes off|safe`, both defaulting to `off`. |
-| **Wizard UX** | Prompts must state that `off` is default and `safe` is in-scope only; wording must be explicit and operator-friendly. |
-| **Activation Rule (Leak Following)** | In `safe` mode, follow only RFC1918/ULA candidates already in scan scope or explicitly allowlisted by operator. |
-| **Activation Rule (IoT Probes)** | Run only for ambiguous assets with strong corroborating signals (for example vendor OUI + matching service hints). |
-| **Budgets/Timeouts** | Per-host probe budget and per-probe timeout are mandatory guardrails; timeout exhaustion must degrade to report-only hints. |
-| **Evidence Marking** | Every promoted signal must store raw evidence (header/probe/response metadata) and heuristic labels separately. |
-| **Reporting Contract** | Add explicit sections/fields for: mode used, candidates detected, actions taken, skipped reasons, and guardrail hits. |
-| **Failure Mode** | On parser/probe uncertainty, fall back to "hint" classification rather than confirmed finding. |
+| **Planned** | Scoped and approved for a future milestone, not started. |
+| **In Progress** | Actively being implemented or validated. |
+| **Deferred** | Explicitly postponed until constraints are resolved. |
+| **Done** | Implemented and tracked only in Completed Milestones. |
+| **Replaced** | Superseded by a newer implementation path. |
 
-Acceptance criteria for Phase A:
+### v5.x Expansion Backlog (Pending)
 
-- New controls are visible in CLI help and wizard prompts with safe defaults.
-- JSON/HTML output shows whether leak following and IoT probes were off, safe-applied, or skipped by guardrails.
-- No behavior change when both features remain `off`.
-- Tests cover all new decision branches (including timeout and deny paths) in touched modules.
-
-### Phase B Execution Plan (v4.x, completed)
-
-Phase B moved from contract-level controls to production behavior, while keeping the philosophy
-"Optimization by Default, Resilience by Exception."
-
-#### Scope of Phase B
-
-| Block | Goal | Main Deliverables | Guardrails |
+| Workstream | Status | Description | Guardrails |
 | --- | --- | --- | --- |
-| **B1 - Leak candidate extraction** | Detect internal scope-expansion hints at runtime. | Parse candidate hosts/IPs from trusted HTTP evidence (headers and redirect targets), normalize and deduplicate candidates. | No finding promotion from parsing alone; malformed/ambiguous values stay as hints. |
-| **B2 - Safe scope gate** | Apply strict in-scope filtering for any candidate follow-up. | RFC1918/ULA checks, target-scope matching, explicit allowlist matching, skip reason codes. | Reject public/third-party ranges by default; never auto-follow out-of-scope targets. |
-| **B3 - Controlled follow execution** | Follow accepted candidates without changing default behavior. | Runtime integration into Nuclei target planning, bounded follow-up queue, deterministic ordering. | `off` remains no-op; `safe` is bounded by per-run limits and existing timeout budgets. |
-| **B4 - Evidence and reporting** | Make every decision auditable. | Report fields for detected/followed/skipped candidates, skip reasons, and guardrail hits in JSON/HTML/summary. | Keep evidence and heuristic interpretation explicitly separated. |
-| **B5 - UX and docs alignment** | Keep operator intent clear and predictable. | Prompt/help text clarifying selected profile vs effective behavior (including auto-switch), updated EN/ES docs and schema notes. | No ambiguous wording about port coverage or follow behavior. |
-| **B6 - Test and regression hardening** | Guarantee reliability before release. | Branch-complete tests for parser/gating/runtime/report paths, fixture updates, negative-path coverage. | 100% coverage on touched paths; no silent behavior drift in `off` mode. |
+| **Streaming JSON Report (Large-Network Tuning)** | Planned (v5.x) | Extend current streaming/report memory protections for extreme dataset sizes and long-running exports. | Keep deterministic output and avoid behavior changes in normal-size runs. |
+| **Advanced Leak Following Policies** | Planned (v5.x) | Add policy packs and richer allowlist controls over the current safe baseline. | Preserve default `off`; never auto-follow public or third-party targets. |
+| **Expanded Protocol-Specific IoT Probes** | In Progress (v5.x) | Expand beyond current minimal probe set with protocol/vendor-specific signal packs. | Enforce per-host budget, per-probe timeout, and strict ambiguity thresholds. |
+| **Evidence Model Hardening for Expansion Signals** | Planned (v5.x) | Strengthen evidence-vs-heuristic traceability for new expansion pathways. | Every promoted signal must remain auditable and reproducible in reports. |
+
+### v5.x Execution Program (Expansion Work)
+
+| Block | Status | Goal | Main Deliverables | Guardrails |
+| --- | --- | --- | --- | --- |
+| **C1 - Policy Layer for Leak Following** | Planned | Add policy-level controls on top of safe baseline behavior. | Policy schema, allowlist profiles, deterministic precedence rules. | No scope expansion outside explicit policy boundaries. |
+| **C2 - IoT Probe Pack Expansion** | In Progress | Broaden protocol/vendor coverage without weakening defaults. | New probe packs, bounded execution planner, confidence thresholds. | `off` remains no-op; safe controls remain mandatory. |
+| **C3 - Runtime Budget Governance** | Planned | Keep expansion features predictable under constrained runtimes. | Unified budget accounting for follow-up/probe operations, skip reason taxonomy extensions. | Budget exhaustion must degrade to hints, not confirmed findings. |
+| **C4 - Reporting and Schema Extensions** | Planned | Expose expansion outcomes with full auditability. | JSON/HTML/TXT fields for policy decisions, evidence payloads, and skip reasons. | Preserve backward compatibility for existing report consumers. |
+| **C5 - UX and Documentation Alignment (EN/ES)** | Planned | Keep operator intent explicit across CLI/wizard/docs. | Help/prompt/documentation synchronization for all new controls. | No ambiguous wording about defaults, safety, or scope boundaries. |
+| **C6 - Regression and Release Gate** | Planned | Validate reliability before release promotion. | Branch-complete tests for touched logic and docs/schema consistency sweep. | 100% coverage on touched code paths; no drift in `off` behavior. |
 
 #### Detailed Work Plan and Acceptance Gates
 
-1. **Implement B1 + B2 first (logic before orchestration).**
-   - Add isolated helpers for candidate extraction and scope gating.
-   - Add explicit skip reason taxonomy (`out_of_scope`, `public_ip`, `invalid_candidate`, `budget_exceeded`, etc.).
-   - Exit gate: deterministic unit tests for extraction/gating, including malformed and mixed inputs.
+1. **Deliver C1 first (policy semantics before orchestration).**
+   - Define policy model and evaluation precedence.
+   - Keep skip reason taxonomy deterministic and user-auditable.
+   - Exit gate: unit tests for precedence and deny paths.
 
-2. **Implement B3 runtime wiring.**
-   - Integrate accepted candidates into runtime Nuclei planning only when `--leak-follow safe`.
-   - Preserve the existing selected/effective profile model and auto-switch behavior.
-   - Exit gate: integration tests proving `off` mode parity and bounded `safe` behavior.
+2. **Deliver C2 runtime wiring with bounded execution.**
+   - Integrate expanded probe packs only under safe/explicit modes.
+   - Keep baseline behavior unchanged when expansion controls are `off`.
+   - Exit gate: integration tests for parity in off mode and bounded expansion mode.
 
-3. **Implement B4 reporting contract.**
-   - Persist runtime counters and per-candidate outcomes in report data structures.
-   - Surface the same semantics in HTML, JSON, and summary outputs.
-   - Exit gate: snapshot/assertion tests for report payload fields and human-readable sections.
+3. **Deliver C3 + C4 for runtime governance and reporting.**
+   - Persist budget and policy decisions in runtime/report payloads.
+   - Keep report outputs coherent across JSON/HTML/TXT.
+   - Exit gate: snapshot/assertion coverage for all new report fields.
 
-4. **Implement B5 docs + wording pass (EN/ES).**
-   - Align CLI help, wizard prompts, `USAGE`, `REPORT_SCHEMA`, and `README` references.
-   - Ensure wording reflects operator intent: defaults, guardrails, and effective runtime behavior.
-   - Exit gate: docs consistency check against actual CLI/wizard options and report fields.
+4. **Deliver C5 docs and UX synchronization.**
+   - Align CLI help, wizard prompts, roadmap/schema/usage docs in EN/ES.
+   - Validate wording consistency against implemented options.
+   - Exit gate: docs consistency review with no EN/ES semantic drift.
 
-5. **Finalize with B6 regression pass and release readiness checks.**
-   - Run pre-commit and full pytest suite once final changes are in place.
-   - Verify no regression in resume flow, Nuclei progress rendering, and report coherence.
-   - Exit gate: local quality gate green; roadmap items moved to completed milestones on release.
+5. **Close with C6 release gate.**
+   - Run local quality gate after final changes.
+   - Verify no regressions in resume flow, progress rendering, and reporting coherence.
+   - Exit gate: all quality checks green and changelog/release notes aligned.
 
-#### Phase B Tracking Checklist
+#### C-Program Tracking Checklist
 
-- [x] B1 candidate extraction implemented and tested.
-- [x] B2 safe scope gate implemented and tested.
-- [x] B3 runtime follow integration implemented and tested.
-- [x] B4 reporting fields and templates updated and tested.
-- [x] B5 EN/ES documentation updated and synchronized.
-- [x] B6 full regression pass completed and release-ready.
+- [ ] C1 policy layer implemented and tested.
+- [ ] C2 probe-pack expansion implemented and tested.
+- [ ] C3 budget governance implemented and tested.
+- [ ] C4 reporting/schema extensions implemented and tested.
+- [ ] C5 EN/ES UX and documentation synchronized.
+- [ ] C6 release gate passed with regression checks.
 
-### Deferred / Technical Backlog
+### Deferred Technical Backlog
 
 | Feature | Status | Description |
 | --- | --- | --- |
@@ -125,9 +89,6 @@ Phase B moved from contract-level controls to production behavior, while keeping
 | **Plugin Engine** | Deferred | "Plugin-first" architecture to decouple core scanner from tools. |
 | **AsyncIO Migration** | Deferred | Full migration to AsyncIO deferred to v5.0. |
 | **Centralized Timeout Registry** | Deferred | Consolidate scanner timeouts in one place for easier tuning and testing. |
-| **Red Team Module Split** | Done (v4.18.8) | Split Red Team discovery logic into a dedicated module to reduce `net_discovery.py` size. |
-
----
 
 ### Future Features (v5.0.0)
 
@@ -607,6 +568,77 @@ Internal refactoring using Strangler Fig pattern. Completed in v4.0.0.
 | Feature | Status | Description |
 | :--- | :--- | :--- |
 | **Test Suite Consolidation** | Done | Refactored 199 test files → 123 files. Created `conftest.py`. Removed 76 coverage-gaming artifacts. 1130 tests at 85% coverage. |
+
+### Baseline Milestones Moved from Active Roadmap (Done)
+
+These baseline entries were moved from section 1 during roadmap logic refactoring so
+`Active Roadmap` keeps pending work only. Existing milestone order above remains unchanged.
+
+### v4.19.x Scope Controls and Evidence Contract Baseline (Done)
+
+| Feature | Status | Default | Guardrails |
+| --- | --- | --- | --- |
+| **Leak Following (Safe Scope)** | Done (v4.19.x baseline) | `off` (report hints only) | Follow only in-scope candidates in `safe` mode; never expand to public/third-party targets by default. |
+| **Protocol-Specific IoT Probes (Minimal Set)** | Done (v4.19.x baseline) | `off` | Trigger only on ambiguity + strong signals; per-host budget and strict per-probe timeout. |
+| **Evidence vs Heuristic Marking** | Done (v4.19.x baseline) | Enabled when feature is used | Store probe/headers as evidence, keep heuristic deductions explicitly labeled. |
+
+Implemented operator controls (safe defaults):
+
+- `--leak-follow off|safe`
+- `--leak-follow-allowlist <csv>`
+- `--iot-probes off|safe`
+- `--iot-probe-budget-seconds <n>`
+- `--iot-probe-timeout-seconds <n>`
+
+#### Phase A Implementation Contract (Implemented in v4.19.x)
+
+| Area | Contract |
+| --- | --- |
+| **Goal** | Add safe, opt-in primitives for leak-follow hints and minimal IoT protocol checks without changing default scan scope. |
+| **Non-goal** | No automatic scope expansion to Internet/public ranges; no unaudited "always-on" deep protocol probing. |
+| **CLI Controls** | `--leak-follow off|safe` and `--iot-probes off|safe`, both defaulting to `off`. |
+| **Wizard UX** | Prompts must state that `off` is default and `safe` is in-scope only; wording must be explicit and operator-friendly. |
+| **Activation Rule (Leak Following)** | In `safe` mode, follow only RFC1918/ULA candidates already in scan scope or explicitly allowlisted by operator. |
+| **Activation Rule (IoT Probes)** | Run only for ambiguous assets with strong corroborating signals (for example vendor OUI + matching service hints). |
+| **Budgets/Timeouts** | Per-host probe budget and per-probe timeout are mandatory guardrails; timeout exhaustion must degrade to report-only hints. |
+| **Evidence Marking** | Every promoted signal must store raw evidence (header/probe/response metadata) and heuristic labels separately. |
+| **Reporting Contract** | Add explicit sections/fields for: mode used, candidates detected, actions taken, skipped reasons, and guardrail hits. |
+| **Failure Mode** | On parser/probe uncertainty, fall back to "hint" classification rather than confirmed finding. |
+
+Acceptance criteria for Phase A:
+
+- New controls are visible in CLI help and wizard prompts with safe defaults.
+- JSON/HTML output shows whether leak following and IoT probes were off, safe-applied, or skipped by guardrails.
+- No behavior change when both features remain `off`.
+- Tests cover all new decision branches (including timeout and deny paths) in touched modules.
+
+#### Phase B Execution Plan (Completed Baseline)
+
+| Block | Goal | Main Deliverables | Guardrails |
+| --- | --- | --- | --- |
+| **B1 - Leak candidate extraction** | Detect internal scope-expansion hints at runtime. | Parse candidate hosts/IPs from trusted HTTP evidence (headers and redirect targets), normalize and deduplicate candidates. | No finding promotion from parsing alone; malformed/ambiguous values stay as hints. |
+| **B2 - Safe scope gate** | Apply strict in-scope filtering for any candidate follow-up. | RFC1918/ULA checks, target-scope matching, explicit allowlist matching, skip reason codes. | Reject public/third-party ranges by default; never auto-follow out-of-scope targets. |
+| **B3 - Controlled follow execution** | Follow accepted candidates without changing default behavior. | Runtime integration into Nuclei target planning, bounded follow-up queue, deterministic ordering. | `off` remains no-op; `safe` is bounded by per-run limits and existing timeout budgets. |
+| **B4 - Evidence and reporting** | Make every decision auditable. | Report fields for detected/followed/skipped candidates, skip reasons, and guardrail hits in JSON/HTML/summary. | Keep evidence and heuristic interpretation explicitly separated. |
+| **B5 - UX and docs alignment** | Keep operator intent clear and predictable. | Prompt/help text clarifying selected profile vs effective behavior (including auto-switch), updated EN/ES docs and schema notes. | No ambiguous wording about port coverage or follow behavior. |
+| **B6 - Test and regression hardening** | Guarantee reliability before release. | Branch-complete tests for parser/gating/runtime/report paths, fixture updates, negative-path coverage. | 100% coverage on touched paths; no silent behavior drift in `off` mode. |
+
+Phase B tracking checklist:
+
+- [x] B1 candidate extraction implemented and tested.
+- [x] B2 safe scope gate implemented and tested.
+- [x] B3 runtime follow integration implemented and tested.
+- [x] B4 reporting fields and templates updated and tested.
+- [x] B5 EN/ES documentation updated and synchronized.
+- [x] B6 full regression pass completed and release-ready.
+
+### v4.18.8 Dependency and Module Baseline (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Dependency Pinning Mode** | Done (v4.18.8) | Optional toolchain pinning for GitHub-downloaded tools via `REDAUDIT_TOOLCHAIN_MODE` and version overrides. |
+| **Poetry Lockfile Evaluation** | Done (v4.18.8) | Added `poetry.lock` alongside pip-tools for evaluation and workflow parity. |
+| **Red Team Module Split** | Done (v4.18.8) | Split Red Team discovery logic into a dedicated module to reduce `net_discovery.py` size. |
 
 ---
 
