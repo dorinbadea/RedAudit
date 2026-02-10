@@ -10,6 +10,8 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.1] - 10-02-2026
+
 ### Mejorado
 
 - **Scope Expansion por perfil en wizard**: El setup interactivo ahora expone controles de Scope Expansion segun perfil (`Express` forzado a off, `Standard` con toggle IoT safe, `Exhaustive`/`Custom` con guardarrailes safe y Leak Following condicionado a Nuclei).
