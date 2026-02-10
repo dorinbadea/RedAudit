@@ -104,6 +104,14 @@ Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos y
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.19.52 Coherencia de idioma y claridad de gráficos HTML (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Informe HTML coherente por idioma** | Hecho (v4.19.52) | `report.html` ahora respeta el idioma activo de ejecución y evita salidas mezcladas por defecto. |
+| **Salida HTML única por ejecución** | Hecho (v4.19.52) | Las ejecuciones en español ya no generan `report_es.html`; la salida queda unificada en el idioma seleccionado. |
+| **Estados explícitos sin datos en gráficos** | Hecho (v4.19.52) | El dashboard HTML muestra estados sin datos cuando los conjuntos de severidad o puertos están vacíos. |
+
 ### v4.19.51 Alineación de política de configuración en instalador (Hecho)
 
 | Funcionalidad | Estado | Descripción |
@@ -133,6 +141,99 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 |---|---|---|
 | **Gestión de entradas de reanudación** | Hecho (v4.19.48) | El menú de reanudación permite borrar una o todas las entradas antiguas sin limpieza manual de ficheros. |
 | **Documentación de limpieza de reanudaciones** | Hecho (v4.19.48) | README/USAGE/MANUAL y la guía didáctica ya documentan la limpieza desde el propio menú. |
+
+### v4.19.47 Robustez de timeout del updater y limpieza async (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Salida no bloqueante en `git clone`** | Hecho (v4.19.47) | El updater procesa la salida de clonación sin bloquear, manteniendo efectivo el timeout de seguridad de 120 segundos. |
+| **Limpieza async de HyperScan** | Hecho (v4.19.47) | El fallback de puertos completos ahora cierra corrutinas pendientes de forma segura cuando falla el event loop. |
+| **Diagnóstico explícito de `git` ausente** | Hecho (v4.19.47) | La falta de `git` se reporta por separado del resto de errores de archivos ausentes para facilitar troubleshooting. |
+
+### v4.19.46 Expansión de cobertura y guardia en leak-follow (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Expansión estratégica de cobertura** | Hecho (v4.19.46) | Se amplía la cobertura en `updater.py`, `jsonl_exporter.py`, `config.py`, `auditor_scan.py` y `auditor_vuln.py` con rutas de borde y excepción. |
+| **Guardia de parseo de puertos en leak-follow** | Hecho (v4.19.46) | `build_leak_follow_targets` ahora maneja de forma segura valores de puerto malformados o no numéricos. |
+
+### v4.19.45 Frescura de actualización en inicio (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Comprobación de actualización al arrancar** | Hecho (v4.19.45) | RedAudit comprueba actualizaciones en cada inicio con timeout corto y sin bloqueo. |
+| **Continuidad de aviso con fallback offline** | Hecho (v4.19.45) | Cuando GitHub no responde, la caché de releases mantiene el aviso de actualización cuando corresponde. |
+
+### v4.19.44 Alineación de Rich en runtime y locks (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Actualización de Rich en runtime** | Hecho (v4.19.44) | Rich se actualiza de 14.2.0 a 14.3.2 para mejorar la estabilidad del renderizado CLI. |
+| **Consistencia de lockfiles para Rich** | Hecho (v4.19.44) | `requirements.lock`, `requirements-dev.lock` y `poetry.lock` fijan Rich de forma coherente para Python >= 3.10. |
+
+### v4.19.43 Baseline UX de actualización al inicio (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Aviso de actualización cache-first al inicio** | Hecho (v4.19.43) | El arranque aplica comprobación automática no bloqueante con estrategia cache-first y solo avisa si hay versión más nueva. |
+
+### v4.19.42 Integridad de manifiesto de reanudación y contabilidad de riesgo (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Bloque de metadatos de reanudación en manifiesto** | Hecho (v4.19.42) | `run_manifest.json` incorpora `nuclei_resume` con contadores de pendientes y reanudaciones cuando hay artefactos. |
+| **Campos de contabilidad de objetivos Nuclei** | Hecho (v4.19.42) | El resumen del pipeline expone `targets_total` y `targets_pre_optimization` para mayor trazabilidad. |
+| **Captura final de artefactos de reanudación** | Hecho (v4.19.42) | Los logs de sesión se cierran antes de persistir para capturar de forma fiable los artefactos `session_resume_*`. |
+| **Coherencia en conteo de hallazgos de riesgo** | Hecho (v4.19.42) | El desglose SIEM contabiliza correctamente `finding_total` y evita ratios inválidos `risk findings 1/0`. |
+| **Fallback DNS inverso para hostname en JSONL** | Hecho (v4.19.42) | `assets.jsonl` y `findings.jsonl` aplican DNS inverso cuando `hostname` está vacío. |
+
+### v4.19.41 Vendor canónico y campos de evidencia de riesgo (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Metadatos de vendor canónico** | Hecho (v4.19.41) | El enriquecimiento SIEM resuelve un único vendor canónico y expone `vendor_source` y `vendor_confidence`. |
+| **Contadores detallados de evidencia de riesgo** | Hecho (v4.19.41) | El desglose de riesgo incluye contadores de CVEs de servicio, exploits, firmas de backdoor y total de hallazgos. |
+| **Consistencia de vendor entre salidas** | Hecho (v4.19.41) | HTML/TXT/JSONL priorizan el mismo campo canónico para reducir deriva entre formatos. |
+| **Guardarraíles de inferencia de vendor** | Hecho (v4.19.41) | `*.fritz.box` ya no fuerza AVM, las pistas NAS se mapean a `server` y ECS sigue resolución canónica antes del fallback. |
+
+### v4.19.40 Endurecimiento de estabilidad de riesgo en reanudación (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Normalización idempotente de severidad** | Hecho (v4.19.40) | `enrich_vulnerability_severity()` pasa a ser idempotente en hallazgos ya normalizados para evitar deriva en reanudaciones. |
+| **Degradación de ambigüedad TLS experimental** | Hecho (v4.19.40) | Las señales experimentales de TestSSL se degradan cuando coinciden con "no web server found". |
+| **Contadores de evidencia de riesgo en resumen** | Hecho (v4.19.40) | `summary.json` expone contadores de severidad por evidencia host/puerto y totales combinados con hallazgos de escáner. |
+
+### v4.19.39 Autocuración de configuración (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Recuperación automática de configuración inválida** | Hecho (v4.19.39) | `load_config()` respalda `config.json` inválido y reconstruye una configuración válida por defecto de forma segura. |
+
+### v4.19.38 Coherencia de salida parcial y riesgo SIEM (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Coherencia de salida parcial de Nuclei** | Hecho (v4.19.38) | Las ejecuciones parciales de Nuclei se persisten con nombres y estado TXT coherentes con el manifiesto. |
+| **Estabilidad de recálculo de riesgo SIEM** | Hecho (v4.19.38) | El riesgo por host se calcula tras normalizar/consolidar vulnerabilidades y se reasocia de forma consistente en reanudaciones. |
+| **Eventos de auditoría de credenciales** | Hecho (v4.19.38) | Los proveedores de credenciales emiten eventos `credential_audit` sin exposición de secretos. |
+| **Serialización segura de JSON en instalador** | Hecho (v4.19.38) | La generación de config NVD usa `jq` cuando existe y fallback con `python3` en lugar de JSON shell crudo. |
+
+### v4.19.37 Consistencia runtime en expansión de alcance (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Coherencia de `targets_total` en Nuclei** | Hecho (v4.19.37) | `targets_total` se mantiene coherente cuando leak-follow añade objetivos extra. |
+| **Alineación de mensajería de cobertura** | Hecho (v4.19.37) | El texto de cobertura completa refleja el comportamiento real del runtime y del perfil seleccionado. |
+| **Localización ES de etiquetas de alcance** | Hecho (v4.19.37) | Las etiquetas de expansión de alcance quedan completamente localizadas en informes HTML en español. |
+| **Guardias de parseo en contadores runtime** | Hecho (v4.19.37) | Los contadores runtime de expansión se parsean de forma segura ante valores persistidos malformados. |
+
+### v4.19.36 Campaña de expansión de cobertura core (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Impulso de cobertura core (>98%)** | Hecho (v4.19.36) | Se amplía de forma significativa la cobertura en módulos core, con valores casi completos en `nuclei.py` y `auditor.py`. |
+| **Objetivos al 100% de cobertura** | Hecho (v4.19.36) | `webhook.py`, `osquery.py` y `nvd.py` alcanzan 100% con validación adicional de rutas defensivas. |
 
 ### v4.19.35 Reanudación y transparencia de perfiles Nuclei (Hecho)
 

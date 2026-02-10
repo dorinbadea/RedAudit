@@ -104,6 +104,14 @@ This section contains only pending roadmap work. Implemented baseline items are 
 
 These items are ordered chronologically (most recent first).
 
+### v4.19.52 HTML Language and Chart Clarity (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Language-Coherent HTML Report** | Done (v4.19.52) | `report.html` now follows the active run language instead of producing mixed-language defaults. |
+| **Single HTML Output per Run** | Done (v4.19.52) | Spanish runs no longer create an additional `report_es.html`; output is unified in the selected language. |
+| **No-Data Chart States** | Done (v4.19.52) | HTML dashboards now render explicit no-data states when severity or port datasets are empty. |
+
 ### v4.19.51 Installer Config Policy Alignment (Done)
 
 | Feature | Status | Description |
@@ -133,6 +141,99 @@ These items are ordered chronologically (most recent first).
 | --- | --- | --- |
 | **Resume Entry Management** | Done (v4.19.48) | The resume menu can delete one or all stale entries without manual file cleanup. |
 | **Resume Cleanup Documentation** | Done (v4.19.48) | README/USAGE/MANUAL and didactic guidance now document in-menu cleanup. |
+
+### v4.19.47 Updater Timeout and Async Cleanup (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Non-Blocking Git Clone Output** | Done (v4.19.47) | Updater clone output handling is non-blocking, so the 120-second safety timeout remains effective. |
+| **HyperScan Async Cleanup** | Done (v4.19.47) | Full-port fallback now closes pending coroutines safely when event-loop execution fails. |
+| **Updater Missing-Git Diagnostics** | Done (v4.19.47) | Missing `git` is reported separately from generic missing-file failures for clearer troubleshooting. |
+
+### v4.19.46 Coverage Expansion and Leak-Follow Guard (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Strategic Coverage Expansion** | Done (v4.19.46) | Coverage was raised in `updater.py`, `jsonl_exporter.py`, `config.py`, `auditor_scan.py`, and `auditor_vuln.py` with added edge-case paths. |
+| **Leak-Follow Port Parsing Guard** | Done (v4.19.46) | `build_leak_follow_targets` now safely handles malformed or non-numeric candidate port values. |
+
+### v4.19.45 Startup Update Freshness (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Launch-Time Update Check** | Done (v4.19.45) | RedAudit now checks for updates at startup with a short non-blocking timeout. |
+| **Offline Fallback Notice Continuity** | Done (v4.19.45) | When GitHub cannot be reached, cached release metadata still drives update notices when applicable. |
+
+### v4.19.44 Rich Runtime and Lock Alignment (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Rich Runtime Upgrade** | Done (v4.19.44) | Rich was upgraded from 14.2.0 to 14.3.2 to improve CLI rendering stability. |
+| **Lockfile Consistency for Rich** | Done (v4.19.44) | `requirements.lock`, `requirements-dev.lock`, and `poetry.lock` now pin Rich coherently for Python >= 3.10. |
+
+### v4.19.43 Startup Update UX Baseline (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Cache-First Startup Update Notice** | Done (v4.19.43) | Startup now runs an automatic non-blocking cache-first update check and only shows notices when a newer version exists. |
+
+### v4.19.42 Resume Manifest and Risk Accounting Integrity (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Resume Manifest Metadata Block** | Done (v4.19.42) | `run_manifest.json` includes a `nuclei_resume` block with pending-target and resume counters when artifacts exist. |
+| **Nuclei Target Accounting Fields** | Done (v4.19.42) | Pipeline summary now exposes both `targets_total` and `targets_pre_optimization` for clearer accounting. |
+| **Final Resume Artifact Capture** | Done (v4.19.42) | Session logs are closed before persistence so final `session_resume_*` artifacts are captured reliably. |
+| **Risk Finding Count Coherence** | Done (v4.19.42) | SIEM risk breakdown now counts `finding_total` correctly and avoids invalid `risk findings 1/0` output. |
+| **JSONL Hostname Reverse-DNS Fallback** | Done (v4.19.42) | `assets.jsonl` and `findings.jsonl` now use reverse-DNS fallback when `hostname` is empty. |
+
+### v4.19.41 Canonical Vendor and Risk Evidence Fields (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Canonical Vendor Metadata** | Done (v4.19.41) | SIEM enrichment now resolves a single canonical vendor with `vendor_source` and `vendor_confidence`. |
+| **Risk Evidence Detail Counters** | Done (v4.19.41) | Risk breakdown now includes counters for service CVEs, exploits, backdoor signatures, and findings totals. |
+| **Cross-Output Vendor Consistency** | Done (v4.19.41) | HTML/TXT/JSONL exports now prefer the same canonical vendor field to reduce cross-report drift. |
+| **Vendor Guessing Guardrails** | Done (v4.19.41) | Generic `*.fritz.box` labels are no longer forced to AVM, NAS hints map to `server`, and ECS vendor follows canonical resolution. |
+
+### v4.19.40 Resume Risk Stability Hardening (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Idempotent Severity Enrichment** | Done (v4.19.40) | `enrich_vulnerability_severity()` is now idempotent for already-normalized findings to prevent resume risk drift. |
+| **Experimental TLS Ambiguity Downgrade** | Done (v4.19.40) | Experimental TestSSL signals are downgraded when cross-signaled with "no web server found". |
+| **Summary Risk Evidence Counters** | Done (v4.19.40) | `summary.json` now includes host/port evidence severity counters plus combined totals with scanner findings. |
+
+### v4.19.39 Config Self-Healing (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Malformed Config Auto-Recovery** | Done (v4.19.39) | `load_config()` now backs up invalid config files and rebuilds a valid default config safely. |
+
+### v4.19.38 Partial Output and SIEM Risk Coherence (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Nuclei Partial Output Coherence** | Done (v4.19.38) | Partial Nuclei runs are now persisted with coherent partial naming and TXT status metadata. |
+| **SIEM Risk Recompute Stability** | Done (v4.19.38) | Host risk is computed after vulnerability normalization/consolidation and mapped back consistently on resume. |
+| **Credential Audit Events** | Done (v4.19.38) | Credential providers now emit `credential_audit` events for access/store outcomes without exposing secrets. |
+| **Installer JSON Serialization Safety** | Done (v4.19.38) | Installer NVD config generation now uses `jq` when available with `python3` fallback instead of raw shell JSON echoing. |
+
+### v4.19.37 Scope-Expansion Runtime Consistency (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Nuclei Targets Total Coherence** | Done (v4.19.37) | `targets_total` now remains coherent when leak-follow appends additional targets. |
+| **Coverage Messaging Alignment** | Done (v4.19.37) | Full-coverage status text now matches runtime behavior and selected-profile handling. |
+| **Spanish Scope Label Localization** | Done (v4.19.37) | Scope-expansion labels are now fully localized in Spanish HTML reports. |
+| **Runtime Counter Parse Guards** | Done (v4.19.37) | Scope-expansion runtime counters are parsed safely even when persisted values are malformed. |
+
+### v4.19.36 Core Coverage Expansion Campaign (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Core Coverage Boost (>98%)** | Done (v4.19.36) | Coverage was significantly expanded across core modules, including near-complete coverage in `nuclei.py` and `auditor.py`. |
+| **100% Coverage Targets** | Done (v4.19.36) | `webhook.py`, `osquery.py`, and `nvd.py` reached 100% coverage with additional defensive-path validation. |
 
 ### v4.19.35 Nuclei Resume & Profile Transparency (Done)
 
