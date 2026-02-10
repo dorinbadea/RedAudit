@@ -16,7 +16,6 @@ from redaudit.core.auditor_components import (
 )
 from redaudit.core.auditor_scan import AuditorScan
 from redaudit.core.auditor_vuln import AuditorVuln
-from redaudit.core.wizard import Wizard
 
 
 class AuditorRuntime(
@@ -26,7 +25,6 @@ class AuditorRuntime(
     AuditorNVD,
     AuditorScan,
     AuditorVuln,
-    Wizard,
 ):
     """
     Adapter that binds component methods to the owning auditor instance.
