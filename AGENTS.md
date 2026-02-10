@@ -14,6 +14,7 @@ This file is the canonical operating guide for collaborators (human or non-human
 - Do not retag/rewrite published tags/releases. If something was released, publish a new version.
 - Do not commit private data. `scan_results_private/` must never be pushed.
 - Before first push and before merging to `main`, satisfy the **Local Quality Gate Contract** in this document. CI can arrive after the merge; if any checks fail, treat it as a regression and fix it promptly. Do not force-merge with failing checks.
+- `scripts/ci_local.sh` is the preferred local CI-parity entrypoint; a successful run is considered the local equivalent of GitHub CI for this workflow.
 - **No Emojis**: Do not use emojis in documentation (`.md` files), including release notes and release payload text. Maintain a professional, neutral tone.
 
 **Codex exception:** When working inside Codex, the environment enforces a `codex/` branch prefix. In that case, `codex/*` is acceptable and compliant with this workflow. If preferred, the branch can be renamed to `feature/*`, `hotfix/*`, or `docs/*` before merge.
@@ -225,6 +226,11 @@ Workflow: `.github/workflows/tests.yml`
 Do not merge if CI is red unless the failure is understood and explicitly accepted.
 For documentation-only changes, it is acceptable to merge with owner approval if CI is
 pending/skipped and no failures are present.
+
+If branch rules allow bypass for the acting role, GitHub may display a
+"Bypassed rule violations" notice when pushing to `main` before required checks
+finish remotely. This is expected and does not replace the requirement to run
+the local quality gate first and fix any later CI regressions.
 
 ## When CI Fails (Process)
 
