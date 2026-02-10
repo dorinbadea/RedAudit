@@ -20,7 +20,7 @@ These items represent the current backlog of planned or deferred work for the re
 | --- | --- | --- |
 | **Dependency Pinning Mode** | Done (v4.18.8) | Optional toolchain pinning for GitHub-downloaded tools via `REDAUDIT_TOOLCHAIN_MODE` and version overrides. |
 | **Poetry Lockfile Evaluation** | Done (v4.18.8) | Added `poetry.lock` alongside pip-tools for evaluation and workflow parity. |
-| **Streaming JSON Report** | Planned | Incremental write for reports >500MB on very large networks to prevent OOM. |
+| **Streaming JSON Report (Large-Network Tuning)** | Planned (v5.x) | Baseline streaming behavior is already implemented; remaining work is tuning for extreme report sizes and memory pressure scenarios. |
 
 ### Cross-Environment Intelligence Expansion (Design Baseline)
 
@@ -28,11 +28,11 @@ This baseline targets home, office, and enterprise environments with conservativ
 
 | Feature | Status | Default | Guardrails |
 | --- | --- | --- | --- |
-| **Leak Following (Safe Scope)** | Planned (v4.x) | `off` (report hints only) | Follow only in-scope candidates in `safe` mode; never expand to public/third-party targets by default. |
-| **Protocol-Specific IoT Probes (Minimal Set)** | Planned (v4.x) | `off` | Trigger only on ambiguity + strong signals; per-host budget and strict per-probe timeout. |
-| **Evidence vs Heuristic Marking** | Planned (v4.x) | Enabled when feature is used | Store probe/headers as evidence, keep heuristic deductions explicitly labeled. |
+| **Leak Following (Safe Scope)** | Done (v4.19.x baseline) | `off` (report hints only) | Follow only in-scope candidates in `safe` mode; never expand to public/third-party targets by default. |
+| **Protocol-Specific IoT Probes (Minimal Set)** | Done (v4.19.x baseline) | `off` | Trigger only on ambiguity + strong signals; per-host budget and strict per-probe timeout. |
+| **Evidence vs Heuristic Marking** | Done (v4.19.x baseline) | Enabled when feature is used | Store probe/headers as evidence, keep heuristic deductions explicitly labeled. |
 
-Proposed operator controls:
+Implemented operator controls (safe defaults):
 
 - `--leak-follow off|safe`
 - `--leak-follow-allowlist <csv>`
@@ -40,9 +40,9 @@ Proposed operator controls:
 - `--iot-probe-budget-seconds <n>`
 - `--iot-probe-timeout-seconds <n>`
 
-### Phase A Implementation Contract (v4.x, before feature coding)
+### Phase A Implementation Contract (Implemented in v4.19.x)
 
-This contract defines the first implementation slice so behavior stays predictable across home, office, and enterprise audits.
+This contract defined the first implementation slice and is kept as reference so behavior remains predictable across home, office, and enterprise audits.
 
 | Area | Contract |
 | --- | --- |
@@ -64,9 +64,9 @@ Acceptance criteria for Phase A:
 - No behavior change when both features remain `off`.
 - Tests cover all new decision branches (including timeout and deny paths) in touched modules.
 
-### Phase B Execution Plan (v4.x, implementation in progress)
+### Phase B Execution Plan (v4.x, completed)
 
-Phase B moves from contract-level controls to production behavior, while keeping the philosophy
+Phase B moved from contract-level controls to production behavior, while keeping the philosophy
 "Optimization by Default, Resilience by Exception."
 
 #### Scope of Phase B
@@ -114,7 +114,7 @@ Phase B moves from contract-level controls to production behavior, while keeping
 - [x] B3 runtime follow integration implemented and tested.
 - [x] B4 reporting fields and templates updated and tested.
 - [x] B5 EN/ES documentation updated and synchronized.
-- [ ] B6 full regression pass completed and release-ready.
+- [x] B6 full regression pass completed and release-ready.
 
 ### Deferred / Technical Backlog
 
@@ -133,8 +133,8 @@ Phase B moves from contract-level controls to production behavior, while keeping
 
 | Feature | Description |
 | --- | --- |
-| **Protocol Specific IoT Probes** | Exception-based CoAP/MQTT/vendor probes for ambiguous IoT identities with strict time budgets. |
-| **Leak Following** | Scope-safe expansion based on leaked internal headers, with report-only default and in-scope follow mode. |
+| **Expanded Protocol Specific IoT Probes** | Additional protocol/vendor coverage beyond the current minimal baseline, while keeping strict budgets and guardrails. |
+| **Advanced Leak Following Policies** | Next-stage scope-safe expansion controls (policy packs, richer allowlist controls, and stronger operator auditability). |
 | **Pipeline Audit** | Interactive visualization of the discovery flow. |
 
 ---

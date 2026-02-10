@@ -20,7 +20,7 @@ Estos elementos representan el backlog actual de trabajo planificado o aplazado 
 |---|---|---|
 | **Modo de Anclaje de Dependencias** | Hecho (v4.18.8) | Anclaje opcional del toolchain descargado desde GitHub vía `REDAUDIT_TOOLCHAIN_MODE` y overrides. |
 | **Evaluación de poetry.lock** | Hecho (v4.18.8) | Añadido `poetry.lock` junto a pip-tools para evaluación y paridad de workflows. |
-| **Streaming JSON Report** | Planeado | Escritura incremental para reportes >500MB en redes muy grandes para evitar OOM. |
+| **Streaming JSON Report (ajuste para redes grandes)** | Planeado (v5.x) | El comportamiento base en streaming ya está implementado; el trabajo pendiente es optimización para tamaños extremos de reporte y presión de memoria. |
 
 ### Expansión de Inteligencia Multientorno (Línea Base de Diseño)
 
@@ -28,11 +28,11 @@ Esta línea base cubre entornos de hogar, oficina y empresa con defaults conserv
 
 | Funcionalidad | Estado | Default | Guardarraíles |
 |---|---|---|---|
-| **Leak Following (alcance seguro)** | Planeado (v4.x) | `off` (solo hints en informe) | En modo `safe` solo sigue candidatos dentro del alcance; por defecto nunca expande a objetivos públicos/terceros. |
-| **Sondas IoT específicas (conjunto mínimo)** | Planeado (v4.x) | `off` | Solo se activan con ambigüedad + señal fuerte; presupuesto por host y timeout estricto por sonda. |
-| **Marcado evidencia vs heurística** | Planeado (v4.x) | Activo cuando se use la funcionalidad | Guarda sondas/cabeceras como evidencia y mantiene deducciones heurísticas etiquetadas explícitamente. |
+| **Leak Following (alcance seguro)** | Hecho (baseline v4.19.x) | `off` (solo hints en informe) | En modo `safe` solo sigue candidatos dentro del alcance; por defecto nunca expande a objetivos públicos/terceros. |
+| **Sondas IoT específicas (conjunto mínimo)** | Hecho (baseline v4.19.x) | `off` | Solo se activan con ambigüedad + señal fuerte; presupuesto por host y timeout estricto por sonda. |
+| **Marcado evidencia vs heurística** | Hecho (baseline v4.19.x) | Activo cuando se use la funcionalidad | Guarda sondas/cabeceras como evidencia y mantiene deducciones heurísticas etiquetadas explícitamente. |
 
-Controles propuestos para el operador:
+Controles de operador implementados (defaults seguros):
 
 - `--leak-follow off|safe`
 - `--leak-follow-allowlist <csv>`
@@ -40,9 +40,9 @@ Controles propuestos para el operador:
 - `--iot-probe-budget-seconds <n>`
 - `--iot-probe-timeout-seconds <n>`
 
-### Contrato de Implementación Fase A (v4.x, antes de codificar funcionalidades)
+### Contrato de Implementación Fase A (implementado en v4.19.x)
 
-Este contrato define el primer bloque de implementación para mantener un comportamiento predecible en auditorías de hogar, oficina y empresa.
+Este contrato definió el primer bloque de implementación y se conserva como referencia para mantener un comportamiento predecible en auditorías de hogar, oficina y empresa.
 
 | Área | Contrato |
 |---|---|
@@ -64,9 +64,9 @@ Criterios de aceptación de Fase A:
 - No hay cambio de comportamiento cuando ambas funcionalidades permanecen en `off`.
 - Los tests cubren todas las ramas de decisión nuevas (incluyendo timeout y denegación) en los módulos tocados.
 
-### Plan de Ejecución de Fase B (v4.x, implementación en curso)
+### Plan de Ejecución de Fase B (v4.x, completado)
 
-La Fase B pasa de controles contractuales a comportamiento de producción, manteniendo la filosofía
+La Fase B pasó de controles contractuales a comportamiento de producción, manteniendo la filosofía
 "Optimización por defecto, resiliencia por excepción."
 
 #### Alcance de la Fase B
@@ -114,7 +114,7 @@ La Fase B pasa de controles contractuales a comportamiento de producción, mante
 - [x] B3 integración runtime del seguimiento implementada y testeada.
 - [x] B4 campos de reporting y plantillas actualizados y testeados.
 - [x] B5 documentación EN/ES actualizada y sincronizada.
-- [ ] B6 pasada completa de regresión completada y lista para release.
+- [x] B6 pasada completa de regresión completada y lista para release.
 
 ### Diferido / Backlog Técnico
 
@@ -133,8 +133,8 @@ La Fase B pasa de controles contractuales a comportamiento de producción, mante
 
 | Funcionalidad | Descripción |
 |---|---|
-| **Sondas IoT Específicas de Protocolo** | Sondas por excepción (CoAP/MQTT/fabricante) para identidades IoT ambiguas con límites estrictos de tiempo. |
-| **Seguimiento de Fugas (Leak Following)** | Expansión segura de alcance basada en cabeceras internas filtradas, con default de solo reporte y modo de seguimiento in-scope. |
+| **Expansión de Sondas IoT Específicas de Protocolo** | Cobertura adicional de protocolos/fabricantes sobre el baseline mínimo actual, manteniendo presupuestos y guardarraíles estrictos. |
+| **Políticas Avanzadas de Leak Following** | Controles de siguiente etapa para expansión segura de alcance (paquetes de política, allowlists más expresivas y mayor auditabilidad para operadores). |
 | **Auditoría de Pipeline** | Visualización interactiva del flujo de descubrimiento. |
 
 ---
