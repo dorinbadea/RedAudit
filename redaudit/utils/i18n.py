@@ -196,6 +196,8 @@ TRANSLATIONS = {
         "defaults_summary_scope_expansion": "Scope expansion modes",
         "defaults_summary_leak_follow": "Leak-follow policy pack",
         "defaults_summary_iot_probes": "IoT probes settings",
+        "defaults_summary_leak_mode_label": "Leak Following",
+        "defaults_summary_iot_mode_label": "IoT Probes",
         "defaults_ignore_confirm": "OK. Saved defaults will be ignored for this run.",
         "jsonl_exports": "JSONL exports: {} findings, {} assets",
         # v3.1+: UDP configuration
@@ -481,13 +483,31 @@ TRANSLATIONS = {
         "scope_expansion_yes_leak": "Yes — follow in-scope leak candidates during Nuclei stage",
         "scope_expansion_yes_combined": "Yes — escalate only on ambiguity under safe guardrails",
         "scope_expansion_advanced_q": "Configure advanced scope expansion options?",
+        "scope_expansion_advanced_skipped_defaults": (
+            "Advanced scope expansion skipped. Using automatic recommended defaults."
+        ),
+        "scope_expansion_auto_defaults_applied": "Automatic safe defaults applied.",
+        "scope_expansion_empty_manual_fallback": (
+            "Empty manual input detected. Automatic safe defaults were applied."
+        ),
+        "scope_expansion_automatic_recommended": "Automatic (Recommended)",
+        "scope_expansion_manual_option": "Manual",
         "scope_expansion_policy_pack_q": "Leak Following policy pack:",
-        "scope_expansion_allowlist_profiles_q": "Leak Following allowlist profiles (CSV, optional)",
-        "scope_expansion_allowlist_profiles_hint": "available: {}",
-        "scope_expansion_allowlist_q": "Leak Following explicit allowlist targets (CSV, optional)",
-        "scope_expansion_denylist_q": "Leak Following denylist targets (CSV, optional)",
-        "scope_expansion_iot_packs_q": "IoT probe packs (CSV, optional)",
-        "scope_expansion_iot_packs_hint": "available: {}",
+        "scope_expansion_policy_pack_safe_default": "Safe Default (Recommended)",
+        "scope_expansion_policy_pack_safe_strict": "Safe Strict",
+        "scope_expansion_policy_pack_safe_extended": "Safe Extended",
+        "scope_expansion_allowlist_mode_q": "Leak Following allowlist setup:",
+        "scope_expansion_allowlist_profiles_q": "Leak Following allowlist profiles (CSV)",
+        "scope_expansion_allowlist_profiles_hint": "available: {}; empty = automatic",
+        "scope_expansion_allowlist_q": "Leak Following explicit allowlist targets (CSV)",
+        "scope_expansion_allowlist_hint": "empty = automatic",
+        "scope_expansion_add_denylist_q": "Add explicit Leak Following denylist targets?",
+        "scope_expansion_denylist_q": "Leak Following denylist targets (CSV)",
+        "scope_expansion_denylist_hint": "optional; empty = none",
+        "scope_expansion_iot_packs_mode_q": "IoT probe pack setup:",
+        "scope_expansion_iot_packs_q": "IoT probe packs (CSV)",
+        "scope_expansion_iot_packs_hint": "available: {}; empty = automatic",
+        "scope_expansion_automatic_all_packs": "Automatic (all packs)",
         "scope_expansion_iot_budget_q": "IoT probe budget per host in seconds (1-300):",
         "scope_expansion_iot_timeout_q": "IoT probe timeout per probe in seconds (1-60):",
         # v3.7: Interactive webhooks
@@ -775,6 +795,8 @@ TRANSLATIONS = {
         "defaults_summary_scope_expansion": "Modos de scope expansion",
         "defaults_summary_leak_follow": "Pack de política leak-follow",
         "defaults_summary_iot_probes": "Ajustes de sondas IoT",
+        "defaults_summary_leak_mode_label": "Leak Following",
+        "defaults_summary_iot_mode_label": "Sondas IoT",
         "defaults_ignore_confirm": "OK. Los defaults guardados se ignorarán en esta ejecución.",
         "jsonl_exports": "Exportaciones JSONL: {} hallazgos, {} activos",
         # v3.1+: Configuración UDP
@@ -1083,17 +1105,31 @@ TRANSLATIONS = {
             "Sí — escalar solo ante ambigüedad bajo guardarraíles seguros"
         ),
         "scope_expansion_advanced_q": "¿Configurar opciones avanzadas de scope expansion?",
+        "scope_expansion_advanced_skipped_defaults": (
+            "Opciones avanzadas omitidas. Se aplican valores automáticos recomendados."
+        ),
+        "scope_expansion_auto_defaults_applied": "Aplicados valores automáticos seguros.",
+        "scope_expansion_empty_manual_fallback": (
+            "Entrada manual vacía. Se aplican valores automáticos seguros."
+        ),
+        "scope_expansion_automatic_recommended": "Automático (Recomendado)",
+        "scope_expansion_manual_option": "Manual",
         "scope_expansion_policy_pack_q": "Pack de política Leak Following:",
-        "scope_expansion_allowlist_profiles_q": (
-            "Perfiles de allowlist para Leak Following (CSV, opcional)"
-        ),
-        "scope_expansion_allowlist_profiles_hint": "disponibles: {}",
-        "scope_expansion_allowlist_q": (
-            "Objetivos de allowlist explícita para Leak Following (CSV, opcional)"
-        ),
-        "scope_expansion_denylist_q": ("Objetivos de denylist para Leak Following (CSV, opcional)"),
-        "scope_expansion_iot_packs_q": "Packs de sondas IoT (CSV, opcional)",
-        "scope_expansion_iot_packs_hint": "disponibles: {}",
+        "scope_expansion_policy_pack_safe_default": "Safe Default (Recomendado)",
+        "scope_expansion_policy_pack_safe_strict": "Safe Strict",
+        "scope_expansion_policy_pack_safe_extended": "Safe Extended",
+        "scope_expansion_allowlist_mode_q": "Configuración de allowlist para Leak Following:",
+        "scope_expansion_allowlist_profiles_q": "Perfiles de allowlist para Leak Following (CSV)",
+        "scope_expansion_allowlist_profiles_hint": "disponibles: {}; vacío = automático",
+        "scope_expansion_allowlist_q": "Objetivos de allowlist explícita para Leak Following (CSV)",
+        "scope_expansion_allowlist_hint": "vacío = automático",
+        "scope_expansion_add_denylist_q": "¿Añadir objetivos de denylist explícita para Leak Following?",
+        "scope_expansion_denylist_q": "Objetivos de denylist para Leak Following (CSV)",
+        "scope_expansion_denylist_hint": "opcional; vacío = ninguno",
+        "scope_expansion_iot_packs_mode_q": "Configuración de packs de sondas IoT:",
+        "scope_expansion_iot_packs_q": "Packs de sondas IoT (CSV)",
+        "scope_expansion_iot_packs_hint": "disponibles: {}; vacío = automático",
+        "scope_expansion_automatic_all_packs": "Automático (todos los packs)",
         "scope_expansion_iot_budget_q": (
             "Presupuesto por host para sondas IoT en segundos (1-300):"
         ),

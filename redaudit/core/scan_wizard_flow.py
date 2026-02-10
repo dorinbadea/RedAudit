@@ -15,7 +15,6 @@ from redaudit.core.iot_scope_probes import IOT_PROBE_PACKS, normalize_iot_probe_
 from redaudit.core.nuclei import is_nuclei_available, normalize_nuclei_exclude
 from redaudit.core.scope_expansion import (
     LEAK_FOLLOW_ALLOWLIST_PROFILES,
-    LEAK_FOLLOW_POLICY_PACKS,
     normalize_leak_follow_policy_pack,
     normalize_leak_follow_profiles,
 )
@@ -312,64 +311,105 @@ class ScanWizardFlow:
 
     def _ask_scope_expansion_advanced(self) -> None:
         """Prompt optional advanced scope expansion settings."""
-        policy_options = list(LEAK_FOLLOW_POLICY_PACKS)
-        current_pack = self.config.get("leak_follow_policy_pack", "safe-default")
+        policy_options = [
+            ("safe-default", self.ui.t("scope_expansion_policy_pack_safe_default")),
+            ("safe-strict", self.ui.t("scope_expansion_policy_pack_safe_strict")),
+            ("safe-extended", self.ui.t("scope_expansion_policy_pack_safe_extended")),
+        ]
+        policy_values = [value for value, _label in policy_options]
+        policy_labels = [label for _value, label in policy_options]
+        current_pack = normalize_leak_follow_policy_pack(self.config.get("leak_follow_policy_pack"))
         default_policy_idx = (
-            policy_options.index(current_pack) if current_pack in policy_options else 0
+            policy_values.index(current_pack) if current_pack in policy_values else 0
         )
         policy_choice = self.ask_choice(
-            self.ui.t("scope_expansion_policy_pack_q"), policy_options, default_policy_idx
+            self.ui.t("scope_expansion_policy_pack_q"), policy_labels, default_policy_idx
         )
-        self.config["leak_follow_policy_pack"] = normalize_leak_follow_policy_pack(
-            policy_options[policy_choice]
-        )
+        self.config["leak_follow_policy_pack"] = policy_values[policy_choice]
 
-        profiles_default = ", ".join(self.config.get("leak_follow_allowlist_profiles") or [])
-        profiles_prompt = self._style_prompt_text(self.ui.t("scope_expansion_allowlist_profiles_q"))
-        profiles_hint = self.ui.t(
-            "scope_expansion_allowlist_profiles_hint",
-            ", ".join(LEAK_FOLLOW_ALLOWLIST_PROFILES),
+        mode_options = [
+            self.ui.t("scope_expansion_automatic_recommended"),
+            self.ui.t("scope_expansion_manual_option"),
+        ]
+        default_allowlist_mode = (
+            1
+            if self.config.get("leak_follow_allowlist_profiles")
+            or self.config.get("leak_follow_allowlist")
+            else 0
         )
-        profiles_input = input(
-            f"{profiles_prompt} ({profiles_hint}) [{self._style_default_value(profiles_default) if profiles_default else ''}]: "
-        ).strip()
-        if not profiles_input:
-            profiles_input = profiles_default
-        self.config["leak_follow_allowlist_profiles"] = normalize_leak_follow_profiles(
-            [profiles_input] if profiles_input else []
+        allowlist_mode_choice = self.ask_choice(
+            self.ui.t("scope_expansion_allowlist_mode_q"),
+            mode_options,
+            default_allowlist_mode,
         )
+        if allowlist_mode_choice == 0:
+            self.config["leak_follow_allowlist_profiles"] = []
+            self.config["leak_follow_allowlist"] = []
+            self.ui.print_status(self.ui.t("scope_expansion_auto_defaults_applied"), "INFO")
+        else:
+            profiles_prompt = self._style_prompt_text(
+                self.ui.t("scope_expansion_allowlist_profiles_q")
+            )
+            profiles_hint = self.ui.t(
+                "scope_expansion_allowlist_profiles_hint",
+                ", ".join(LEAK_FOLLOW_ALLOWLIST_PROFILES),
+            )
+            profiles_input = input(f"{profiles_prompt} ({profiles_hint}): ").strip()
+            if profiles_input:
+                self.config["leak_follow_allowlist_profiles"] = normalize_leak_follow_profiles(
+                    [profiles_input]
+                )
+            else:
+                self.config["leak_follow_allowlist_profiles"] = []
+                self.ui.print_status(self.ui.t("scope_expansion_empty_manual_fallback"), "INFO")
 
-        allow_default = ", ".join(self.config.get("leak_follow_allowlist") or [])
-        allow_prompt = self._style_prompt_text(self.ui.t("scope_expansion_allowlist_q"))
-        allow_input = input(
-            f"{allow_prompt} [{self._style_default_value(allow_default) if allow_default else ''}]: "
-        ).strip()
-        if not allow_input:
-            allow_input = allow_default
-        self.config["leak_follow_allowlist"] = self._normalize_csv_targets(allow_input)
+            allow_prompt = self._style_prompt_text(self.ui.t("scope_expansion_allowlist_q"))
+            allow_hint = self.ui.t("scope_expansion_allowlist_hint")
+            allow_input = input(f"{allow_prompt} ({allow_hint}): ").strip()
+            if allow_input:
+                self.config["leak_follow_allowlist"] = self._normalize_csv_targets(allow_input)
+            else:
+                self.config["leak_follow_allowlist"] = []
+                self.ui.print_status(self.ui.t("scope_expansion_empty_manual_fallback"), "INFO")
 
-        deny_default = ", ".join(self.config.get("leak_follow_denylist") or [])
-        deny_prompt = self._style_prompt_text(self.ui.t("scope_expansion_denylist_q"))
-        deny_input = input(
-            f"{deny_prompt} [{self._style_default_value(deny_default) if deny_default else ''}]: "
-        ).strip()
-        if not deny_input:
-            deny_input = deny_default
-        self.config["leak_follow_denylist"] = self._normalize_csv_targets(deny_input)
-
-        packs_default = ", ".join(self.config.get("iot_probe_packs") or [])
-        packs_prompt = self._style_prompt_text(self.ui.t("scope_expansion_iot_packs_q"))
-        packs_hint = self.ui.t(
-            "scope_expansion_iot_packs_hint",
-            ", ".join(sorted(IOT_PROBE_PACKS.keys())),
+        denylist_options = [self.ui.t("yes_option"), self.ui.t("no_default")]
+        add_denylist_choice = self.ask_choice(
+            self.ui.t("scope_expansion_add_denylist_q"),
+            denylist_options,
+            1,
         )
-        packs_input = input(
-            f"{packs_prompt} ({packs_hint}) [{self._style_default_value(packs_default) if packs_default else ''}]: "
-        ).strip()
-        if not packs_input:
-            packs_input = packs_default
-        normalized_packs = normalize_iot_probe_packs([packs_input] if packs_input else [])
-        self.config["iot_probe_packs"] = normalized_packs or list(IOT_PROBE_PACKS.keys())
+        if add_denylist_choice == 0:
+            deny_prompt = self._style_prompt_text(self.ui.t("scope_expansion_denylist_q"))
+            deny_hint = self.ui.t("scope_expansion_denylist_hint")
+            deny_input = input(f"{deny_prompt} ({deny_hint}): ").strip()
+            self.config["leak_follow_denylist"] = self._normalize_csv_targets(deny_input)
+        else:
+            self.config["leak_follow_denylist"] = []
+
+        known_packs = list(IOT_PROBE_PACKS.keys())
+        current_packs = normalize_iot_probe_packs(self.config.get("iot_probe_packs"))
+        iot_mode_default = 0 if not current_packs or set(current_packs) == set(known_packs) else 1
+        iot_packs_mode_choice = self.ask_choice(
+            self.ui.t("scope_expansion_iot_packs_mode_q"),
+            mode_options,
+            iot_mode_default,
+        )
+        if iot_packs_mode_choice == 0:
+            self.config["iot_probe_packs"] = known_packs
+            self.ui.print_status(self.ui.t("scope_expansion_auto_defaults_applied"), "INFO")
+        else:
+            packs_prompt = self._style_prompt_text(self.ui.t("scope_expansion_iot_packs_q"))
+            packs_hint = self.ui.t(
+                "scope_expansion_iot_packs_hint",
+                ", ".join(sorted(IOT_PROBE_PACKS.keys())),
+            )
+            packs_input = input(f"{packs_prompt} ({packs_hint}): ").strip()
+            normalized_packs = normalize_iot_probe_packs([packs_input] if packs_input else [])
+            if normalized_packs:
+                self.config["iot_probe_packs"] = normalized_packs
+            else:
+                self.config["iot_probe_packs"] = known_packs
+                self.ui.print_status(self.ui.t("scope_expansion_empty_manual_fallback"), "INFO")
 
         budget_default = self.config.get("iot_probe_budget_seconds", 20)
         if not isinstance(budget_default, int) or budget_default < 1 or budget_default > 300:
@@ -445,6 +485,8 @@ class ScanWizardFlow:
                 return None
             if advanced_enabled:
                 self._ask_scope_expansion_advanced()
+            else:
+                self.ui.print_status(self.ui.t("scope_expansion_advanced_skipped_defaults"), "INFO")
             return True
 
         if profile == "exhaustive":
@@ -480,6 +522,8 @@ class ScanWizardFlow:
                 return None
             if advanced_enabled:
                 self._ask_scope_expansion_advanced()
+            else:
+                self.ui.print_status(self.ui.t("scope_expansion_advanced_skipped_defaults"), "INFO")
             return True
 
         # Custom profile: separate toggles for IoT and Leak Following.
@@ -523,6 +567,8 @@ class ScanWizardFlow:
             return None
         if advanced_enabled:
             self._ask_scope_expansion_advanced()
+        else:
+            self.ui.print_status(self.ui.t("scope_expansion_advanced_skipped_defaults"), "INFO")
         return True
 
     def _configure_scan_interactive(self, defaults_for_run: Dict) -> None:
@@ -1664,14 +1710,28 @@ class ScanWizardFlow:
         def fmt_scope_mode(leak_mode: Any, iot_mode: Any) -> str:
             leak = leak_mode if leak_mode in ("off", "safe") else "off"
             iot = iot_mode if iot_mode in ("off", "safe") else "off"
-            return f"leak={leak}, iot={iot}"
+            return (
+                f"{self.ui.t('defaults_summary_leak_mode_label')}={leak}; "
+                f"{self.ui.t('defaults_summary_iot_mode_label')}={iot}"
+            )
 
         def fmt_policy(val: Any) -> str:
-            return normalize_leak_follow_policy_pack(val)
+            normalized = normalize_leak_follow_policy_pack(val)
+            labels = {
+                "safe-default": self.ui.t("scope_expansion_policy_pack_safe_default"),
+                "safe-strict": self.ui.t("scope_expansion_policy_pack_safe_strict"),
+                "safe-extended": self.ui.t("scope_expansion_policy_pack_safe_extended"),
+            }
+            return labels.get(normalized, normalized)
 
         def fmt_packs(val: Any) -> str:
             packs = normalize_iot_probe_packs(val)
-            return ", ".join(packs) if packs else "-"
+            if not packs:
+                return "-"
+            known_packs = list(IOT_PROBE_PACKS.keys())
+            if set(packs) == set(known_packs):
+                return self.ui.t("scope_expansion_automatic_all_packs")
+            return ", ".join(packs)
 
         # Display all saved defaults
         fields = [
