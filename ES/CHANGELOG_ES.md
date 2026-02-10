@@ -10,6 +10,18 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.2] - 10-02-2026
+
+### Mejorado
+
+- **UX guiada para Scope Expansion avanzado**: Los prompts avanzados del wizard ahora usan opciones explícitas `Automático (Recomendado)` o `Manual`, con etiquetas de pack de política en formato legible (`Safe Default`, `Safe Strict`, `Safe Extended`).
+- **Fallback determinista con CSV manual vacío**: Si se dejan vacíos los campos CSV en modo manual de scope expansion avanzado, RedAudit aplica automáticamente defaults seguros en lugar de mantener estados ambiguos.
+- **Resultado explícito al omitir avanzado**: Al seleccionar `No (por defecto)` en la configuración avanzada de scope expansion, se muestra un mensaje claro confirmando que se usan defaults automáticos recomendados.
+
+### Documentación
+
+- **Sincronización EN/ES del flujo wizard**: README, USAGE, MANUAL, ROADMAP y notas de versión documentan de forma coherente el flujo guiado y el comportamiento de defaults/fallback.
+
 ## [4.20.1] - 10-02-2026
 
 ### Mejorado

@@ -10,6 +10,18 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.20.2] - 2026-02-10
+
+### Improved
+
+- **Guided Scope Expansion advanced UX**: Wizard advanced prompts now use explicit `Automatic (Recommended)` or `Manual` choices, with Title Case policy-pack labels (`Safe Default`, `Safe Strict`, `Safe Extended`) for better operator readability.
+- **Deterministic manual-empty fallback**: Empty CSV values in manual advanced scope-expansion prompts now automatically resolve to safe defaults instead of leaving ambiguous behavior.
+- **Explicit advanced-skip outcome**: Selecting `No (default)` on advanced scope-expansion setup now prints a clear message confirming that automatic recommended defaults are being used.
+
+### Documentation
+
+- **EN/ES wizard guidance sync**: README, USAGE, MANUAL, ROADMAP, and release notes now document the guided scope-expansion flow and default/fallback behavior coherently.
+
 ## [4.20.1] - 2026-02-10
 
 ### Improved
