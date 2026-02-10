@@ -21,7 +21,9 @@ Run these commands to get started immediately.
 Step-by-step navigation with a "Cancel" option (v4.0.1+). Webhook configuration and network discovery options are available in the wizard; SIEM exports are generated automatically when encryption is off. If saved credentials are detected, the wizard offers to load them and then asks if you want to add more.
 Phase 0 low-impact enrichment can be enabled from the wizard (default off) or via `--low-impact-enrichment`.
 Scope Expansion controls are profile-aware in the wizard: Express keeps Leak Following and IoT probes off, Standard can enable IoT probes in `safe` mode, and Exhaustive/Custom can enable `safe` scope expansion with Leak Following gated by Nuclei availability.
-Custom profile now includes a dedicated Scope Expansion step (10-step flow) with optional advanced tuning.
+Custom profile now includes a dedicated Scope Expansion step (10-step flow) with guided advanced tuning.
+If advanced options are skipped, RedAudit keeps automatic recommended safe defaults.
+In manual advanced prompts, empty CSV inputs fall back to automatic safe defaults.
 When enabled, it may run a short HTTP/HTTPS probe on common ports for vendor-only hosts with zero open ports.
 Manual target entry accepts comma-separated CIDR, IP, or range values.
 The wizard prints normalized targets with estimated host counts before you confirm the run.

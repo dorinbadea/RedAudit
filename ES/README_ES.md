@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-[![Version](https://img.shields.io/badge/version-4.20.1-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.20.2-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -153,6 +153,7 @@ Señales del escaneo base
 - La precedencia de leak-follow se aplica como: `denylist` > allowlist explícita > allowlist por perfil > in-scope > rechazo.
 - La expansión IoT usa packs opt-in (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) con guardarraíles de presupuesto por host y timeout por sonda.
 - La promoción a clases de evidencia más fuertes exige corroboración; las señales ambiguas permanecen como `heuristic` o `hint`.
+- El modo avanzado del wizard ahora es guiado: muestra `Automático (Recomendado)` de forma explícita y permite ajustes manuales solo cuando se necesitan.
 
 ### Modelo de Concurrencia
 
@@ -255,7 +256,7 @@ sudo redaudit
 
 **Risk Scoring Integrado:** Hallazgos de configuración (Nikto/Nuclei) integrados en la matriz de decisión con severidades Low/Medium/High.
 
-**Endurecimiento de expansión de alcance (v4.20.0):** Packs de política leak-follow, packs de sondas IoT y `scope_expansion_evidence` auditable forman parte del contrato de reporting por defecto.
+**Endurecimiento UX de Scope Expansion (v4.20.2):** La configuración avanzada guiada explicita defaults seguros y aplica fallback automático cuando los campos manuales se dejan vacíos.
 
 Consulta [CHANGELOG](../CHANGELOG.md) para el historial completo.
 
@@ -355,7 +356,7 @@ El asistente te guía por la selección de objetivo y el perfil de auditoría. O
 - **Express**: Descubrimiento rápido (solo hosts). Topología + descubrimiento de red activados; escaneo de vulnerabilidades desactivado.
 - **Estándar**: Auditoría equilibrada (nmap `-F`/top 100 puertos + comprobaciones web). El preset de temporización se elige al inicio. Las sondas IoT pueden activarse en modo `safe`; Leak Following permanece desactivado en este perfil.
 - **Exhaustivo**: Escaneo completo con más profundidad. UDP top-ports (500) se activa en hosts ambiguos; Red Team y verificación sin agente activadas. La correlación CVE solo se habilita si ya hay API key NVD configurada. Scope expansion puede activarse en modo `safe`, y Leak Following solo se aplica cuando Nuclei está activo.
-- **Custom**: Wizard completo de 10 pasos con navegación atrás para control granular, con un paso específico de Scope Expansion.
+- **Custom**: Wizard completo de 10 pasos con navegación atrás para control granular, con un paso específico de Scope Expansion y configuración avanzada guiada (`Automático (Recomendado)` o ajustes manuales).
 
 La Fase 0 de enriquecimiento de bajo impacto es un prompt opt-in en todos los perfiles (por defecto desactivada).
 

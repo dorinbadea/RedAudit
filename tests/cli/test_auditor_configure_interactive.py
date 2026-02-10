@@ -10,6 +10,7 @@ import builtins
 from unittest.mock import MagicMock, patch
 
 from redaudit.core.auditor import InteractiveNetworkAuditor
+from redaudit.core.iot_scope_probes import IOT_PROBE_PACKS
 
 
 class MockWizardAuditor(InteractiveNetworkAuditor):
@@ -627,6 +628,9 @@ def test_scope_expansion_quick_standard_enables_iot_only(monkeypatch):
     auditor.config.update(
         {"scan_mode": "normal", "scan_vulnerabilities": True, "nuclei_enabled": False}
     )
+    monkeypatch.setattr(auditor.ui, "t", lambda key, *args: key)
+    status_mock = MagicMock()
+    monkeypatch.setattr(auditor.ui, "print_status", status_mock)
     monkeypatch.setattr(auditor, "ask_choice_with_back", MagicMock(side_effect=[0, 1]))
 
     result = auditor._ask_scope_expansion_quick(profile="standard", step_num=2, total_steps=2)
@@ -634,6 +638,8 @@ def test_scope_expansion_quick_standard_enables_iot_only(monkeypatch):
     assert result is True
     assert auditor.config["iot_probes_mode"] == "safe"
     assert auditor.config["leak_follow_mode"] == "off"
+    rendered = " ".join(str(call.args[0]) for call in status_mock.call_args_list)
+    assert "scope_expansion_advanced_skipped_defaults" in rendered
 
 
 def test_scope_expansion_quick_exhaustive_leak_dependency(monkeypatch):
@@ -668,7 +674,7 @@ def test_scope_expansion_quick_custom_advanced_normalizes_inputs(monkeypatch):
         "ask_choice_with_back",
         MagicMock(side_effect=[0, 0, 0]),
     )
-    monkeypatch.setattr(auditor, "ask_choice", MagicMock(return_value=2))
+    monkeypatch.setattr(auditor, "ask_choice", MagicMock(side_effect=[2, 1, 0, 1]))
     monkeypatch.setattr(auditor, "ask_number", MagicMock(side_effect=[40, 7]))
     input_values = iter(
         [
@@ -692,6 +698,42 @@ def test_scope_expansion_quick_custom_advanced_normalizes_inputs(monkeypatch):
     assert auditor.config["iot_probe_packs"] == ["ssdp", "coap", "wiz"]
     assert auditor.config["iot_probe_budget_seconds"] == 40
     assert auditor.config["iot_probe_timeout_seconds"] == 7
+
+
+def test_scope_expansion_quick_custom_advanced_empty_manual_falls_back(monkeypatch):
+    auditor = MockWizardAuditor()
+    auditor.config.update(
+        {
+            "scan_mode": "completo",
+            "scan_vulnerabilities": True,
+            "nuclei_enabled": True,
+            "iot_probes_mode": "off",
+            "leak_follow_mode": "off",
+        }
+    )
+    monkeypatch.setattr(auditor.ui, "t", lambda key, *args: key)
+    status_mock = MagicMock()
+    monkeypatch.setattr(auditor.ui, "print_status", status_mock)
+    monkeypatch.setattr(
+        auditor,
+        "ask_choice_with_back",
+        MagicMock(side_effect=[0, 0, 0]),
+    )
+    monkeypatch.setattr(auditor, "ask_choice", MagicMock(side_effect=[0, 1, 0, 1]))
+    monkeypatch.setattr(auditor, "ask_number", MagicMock(side_effect=[20, 3]))
+    input_values = iter(["", "", "", ""])
+    monkeypatch.setattr(builtins, "input", lambda *_a, **_k: next(input_values))
+
+    result = auditor._ask_scope_expansion_quick(profile="custom", step_num=9, total_steps=10)
+
+    assert result is True
+    assert auditor.config["leak_follow_policy_pack"] == "safe-default"
+    assert auditor.config["leak_follow_allowlist_profiles"] == []
+    assert auditor.config["leak_follow_allowlist"] == []
+    assert auditor.config["leak_follow_denylist"] == []
+    assert auditor.config["iot_probe_packs"] == list(IOT_PROBE_PACKS.keys())
+    rendered = " ".join(str(call.args[0]) for call in status_mock.call_args_list)
+    assert "scope_expansion_empty_manual_fallback" in rendered
 
 
 def test_scope_expansion_quick_custom_supports_back(monkeypatch):

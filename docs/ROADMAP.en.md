@@ -101,6 +101,14 @@ This section contains only pending roadmap work. Implemented baseline items are 
 
 These items are ordered chronologically (most recent first).
 
+### v4.20.2 Scope Expansion Wizard UX Polish (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Guided Advanced Scope Expansion** | Done (v4.20.2) | Advanced wizard options now use explicit guided paths with readable policy-pack labels and clear `Automatic (Recommended)`/manual choices. |
+| **Automatic Safe Fallback for Empty Manual Inputs** | Done (v4.20.2) | Empty manual CSV entries in advanced scope-expansion prompts now resolve deterministically to automatic safe defaults instead of ambiguous state. |
+| **Explicit Advanced-Skip Outcome** | Done (v4.20.2) | Selecting `No (default)` on advanced scope-expansion setup now explicitly confirms that automatic recommended defaults are in effect. |
+
 ### v4.20.x Wizard Composition Hardening (Done)
 
 | Feature | Status | Description |
