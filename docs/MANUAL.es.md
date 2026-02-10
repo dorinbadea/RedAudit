@@ -173,13 +173,19 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 - **Permite configurar:**
   - **Modo Nmap:** Fast/Normal/Full.
   - **Temporización:** Sigiloso/Normal/Agresivo.
-  - **Rendimiento:** Hilos (1-16) y Rate Limit (segundos entre peticiones).
+  - **Rendimiento:** Hilos (1-100) y Rate Limit (segundos entre peticiones).
   - **Topología & Discovery:** Activar/desactivar mapeo L2 y protocolos de descubrimiento (mDNS, UPnP, etc.).
   - **UDP:** Activar escaneo UDP (lento pero exhaustivo).
   - **Autenticación:** Configurar credenciales para escaneo autenticado.
   - **Verificación Sin Agente:** Habilitar/deshabilitar comprobaciones ligeras.
   - **Web & Vulnerabilidades:** Activar/desactivar Nikto, Nuclei, CVE lookup.
-  - **Scope Expansion:** Paso dedicado para activar/desactivar sondas IoT y Leak Following, con controles avanzados opcionales (pack de política, perfiles de allowlist, objetivos allow/deny, packs de sonda, presupuesto y timeout).
+  - **Scope Expansion:** Paso dedicado para activar/desactivar sondas IoT y Leak Following, con controles avanzados guiados:
+    - Etiquetas legibles para pack de política (`Safe Default (Recomendado)`, `Safe Strict`, `Safe Extended`)
+    - Ruta `Automático (Recomendado)` para allowlist y packs
+    - Modo manual por CSV solo cuando se selecciona explícitamente
+    - Si el CSV manual queda vacío, se aplica fallback a defaults automáticos seguros
+
+Si se omiten las opciones avanzadas de scope expansion (`No (por defecto)`), RedAudit mantiene defaults automáticos seguros recomendados en esa ejecución.
 
 ### Menú de Autenticación (Fase 4)
 

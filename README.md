@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-[![Version](https://img.shields.io/badge/version-4.20.1-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.20.2-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -155,6 +155,7 @@ Base scan signals
 - Leak-follow precedence is enforced as: `denylist` > explicit allowlist > profile allowlist > in-scope > reject.
 - IoT expansion uses opt-in packs (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) with per-host budget and per-probe timeout guards.
 - Promotion to stronger evidence classes requires corroboration; ambiguous signals remain `heuristic` or `hint`.
+- Wizard advanced setup is guided with clear defaults: `Automatic (Recommended)` for safe baseline and manual overrides only when needed.
 
 ### Concurrency Model
 
@@ -257,7 +258,7 @@ sudo redaudit
 
 **Enterprise-Grade Risk Scoring:** Configuration findings (Nikto/Nuclei) integrated into decision matrix with Low/Medium/High severity mappings.
 
-**Scope Expansion Hardening (v4.20.0):** Leak-follow policy packs, IoT probe packs, and auditable `scope_expansion_evidence` are now part of the default reporting contract.
+**Scope Expansion UX Hardening (v4.20.2):** Guided advanced setup makes safe defaults explicit and applies automatic fallback when manual scope-expansion inputs are left empty.
 
 See [CHANGELOG](CHANGELOG.md) for complete version history.
 
@@ -357,7 +358,7 @@ The wizard offers 4 audit profiles:
 - **Express**: Fast discovery (host discovery only). Topology + network discovery enabled; vulnerability scanning disabled.
 - **Standard**: Balanced audit (nmap `-F`/top 100 ports + web vuln checks). Timing preset is selected up front. IoT probes can be enabled in `safe` mode; Leak Following stays off in this profile.
 - **Exhaustive**: Full port scan with deeper discovery. UDP top-ports (500) is enabled for ambiguous hosts; Red Team discovery and agentless verification are enabled. CVE correlation is enabled only if an NVD API key is already configured. Scope expansion can be enabled in `safe` mode, with Leak Following active only when Nuclei is enabled.
-- **Custom**: Full 10-step wizard with back navigation for granular control, including a dedicated Scope Expansion step.
+- **Custom**: Full 10-step wizard with back navigation for granular control, including a dedicated Scope Expansion step with guided advanced setup (`Automatic (Recommended)` or manual overrides).
 
 Phase 0 low-impact enrichment is an opt-in wizard prompt across all profiles (default off).
 When enabled, it runs DNS/mDNS/SNMP checks and a short HTTP/HTTPS probe for vendor-only hosts with zero open ports.

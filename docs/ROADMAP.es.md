@@ -101,6 +101,14 @@ Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos y
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
+### v4.20.2 Pulido UX del wizard de Scope Expansion (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Scope Expansion avanzado guiado** | Hecho (v4.20.2) | Las opciones avanzadas del wizard ahora usan rutas guiadas explícitas con etiquetas legibles para packs de política y elección clara entre `Automático (Recomendado)` y manual. |
+| **Fallback automático seguro con entrada manual vacía** | Hecho (v4.20.2) | Las entradas CSV manuales vacías en prompts avanzados de scope expansion ahora resuelven de forma determinista a defaults automáticos seguros. |
+| **Resultado explícito al omitir avanzado** | Hecho (v4.20.2) | Al seleccionar `No (por defecto)` en opciones avanzadas de scope expansion, el wizard confirma explícitamente que se aplican defaults automáticos recomendados. |
+
 ### v4.20.x Endurecimiento de composicion del wizard (Hecho)
 
 | Funcionalidad | Estado | Descripción |

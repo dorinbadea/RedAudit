@@ -179,7 +179,13 @@ Pre-configured profiles adjust dozens of parameters automatically:
   - **Authentication:** Configure credentials for authenticated scanning.
   - **Agentless Verification:** Enable/disable lightweight checks.
   - **Web & Vulnerabilities:** Enable/disable Nikto, Nuclei, CVE lookup.
-  - **Scope Expansion:** Dedicated step to enable/disable IoT probes and Leak Following, plus optional advanced controls (policy pack, allowlist profiles, allow/deny targets, probe packs, budget, timeout).
+  - **Scope Expansion:** Dedicated step to enable/disable IoT probes and Leak Following, plus guided advanced controls:
+    - Policy pack labels in human-readable format (`Safe Default (Recommended)`, `Safe Strict`, `Safe Extended`)
+    - `Automatic (Recommended)` path for allowlist/packs
+    - Manual CSV override mode only when explicitly selected
+    - Empty manual CSV input falls back to automatic safe defaults
+
+When advanced scope expansion options are skipped (`No (default)`), RedAudit keeps automatic recommended safe defaults for that run.
 
 ### Authentication Menu (Phase 4)
 
