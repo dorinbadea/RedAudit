@@ -369,6 +369,7 @@ El asistente cubre:
 4. **Autorización**: Confirma que tienes permiso para escanear
 
 Desde el menu principal, **Reanudar Nuclei (pendiente)** incluye **Gestionar entradas de reanudacion** para borrar una o todas las entradas antiguas antes de continuar.
+Si interrumpes una ejecucion activa con `Ctrl+C`, RedAudit muestra un aviso explicito indicando que guarda progreso parcial y realiza limpieza antes de salir.
 
 ### Modo No Interactivo / Automatización
 
@@ -513,9 +514,11 @@ redaudit/
 │   ├── auditor_scan.py     # Lógica de escaneo (Nmap + HyperScan + integración de seeds)
 │   ├── auditor_vuln.py     # Escaneo de vulnerabilidades (Nikto/Nuclei/Exploits)
 │   ├── auditor_runtime.py  # Adaptador de composición
+│   ├── scan_wizard_flow.py # Coordinador del flujo interactivo (perfiles/pasos)
 │   ├── scope_expansion.py  # Controles de expansión de alcance (Leak-follow e IoT)
 │   ├── iot_scope_probes.py # Orquestación de packs de sondas IoT por protocolo/fabricante
-│   ├── wizard.py           # Interfaz Interactiva (Wizard)
+│   ├── wizard_service.py   # Servicio de prompts/entradas del wizard (composicion)
+│   ├── wizard.py           # Fachada de compatibilidad del wizard (imports/tests legacy)
 │   ├── ui_manager.py       # Gestor centralizado de UI/Salida
 │   ├── scanner/            # Wrapper de bajo nivel Nmap + Helpers IPv6
 │   ├── network.py          # Detección de interfaces de red

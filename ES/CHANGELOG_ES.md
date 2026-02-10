@@ -10,6 +10,15 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+### Mejorado
+
+- **Scope Expansion por perfil en wizard**: El setup interactivo ahora expone controles de Scope Expansion segun perfil (`Express` forzado a off, `Standard` con toggle IoT safe, `Exhaustive`/`Custom` con guardarrailes safe y Leak Following condicionado a Nuclei).
+- **UX de interrupcion durante escaneo activo**: Al pulsar `Ctrl+C`, RedAudit muestra un mensaje claro indicando que guarda progreso parcial y ejecuta limpieza antes de salir.
+
+### Refactorizado
+
+- **De-mixin wizard-first por composicion**: La logica interactiva del wizard ahora usa composicion via `wizard_service.py` y `scan_wizard_flow.py`; `AuditorRuntime` deja de heredar `Wizard`, y `wizard.py` queda como fachada de compatibilidad para imports/tests existentes.
+
 ## [4.20.0] - 10-02-2026
 
 ### Anadido

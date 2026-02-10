@@ -355,6 +355,7 @@ redaudit --nuclei-resume-latest
 
 Resumed runs update the same scan folder and refresh reports in place. The resume uses the saved budget unless you
 override it (wizard prompt or `--nuclei-max-runtime`; `0` disables the budget).
+If you interrupt an active audit with Ctrl+C, RedAudit prints a clear notice that partial progress is being saved and cleanup is in progress.
 If you interrupt a resume with Ctrl+C, the resume is canceled cleanly and you return to the menu.
 Resumes are stored in the same scan folder and are updated in place. If a resume run ends as partial again, the
 existing `nuclei_resume.json`/`nuclei_pending.txt` is refreshed (not duplicated). In the interactive menu (**Resume

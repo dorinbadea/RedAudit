@@ -372,6 +372,7 @@ The wizard covers:
 4. **Authorization**: Confirm you have permission to scan
 
 From the main menu, **Resume Nuclei (pending)** includes **Manage resume entries** so you can delete one or all stale resume entries before continuing.
+If you interrupt an active run with `Ctrl+C`, RedAudit prints an explicit notice that it is saving partial progress and performing cleanup before exit.
 
 ### Non-Interactive / Automation
 
@@ -516,9 +517,11 @@ redaudit/
 │   ├── auditor_scan.py     # Scanning logic (Nmap + HyperScan + seed integration)
 │   ├── auditor_vuln.py     # Vulnerability scanning (Nikto/Nuclei/Exploits)
 │   ├── auditor_runtime.py  # Composition adapter (auditor component bridge)
+│   ├── scan_wizard_flow.py # Interactive scan-flow coordinator (profile/step orchestration)
 │   ├── scope_expansion.py  # Leak-follow and IoT scope expansion controls
 │   ├── iot_scope_probes.py # Protocol/vendor IoT probe pack orchestration
-│   ├── wizard.py           # Interactive UI (Wizard component)
+│   ├── wizard_service.py   # Wizard prompt and input service (composition)
+│   ├── wizard.py           # Wizard compatibility facade (legacy imports/tests)
 │   ├── ui_manager.py       # Centralized UI/Output manager
 │   ├── scanner/            # Low-level Nmap wrapper + IPv6 helpers
 │   ├── network.py          # Network interface detection

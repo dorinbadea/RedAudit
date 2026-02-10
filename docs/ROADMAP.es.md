@@ -81,7 +81,7 @@ Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos y
 
 | Funcionalidad | Estado | Descripción |
 |---|---|---|
-| **Refactorización de auditor.py** | Diferido | Dividir orquestación y lógica de decisión solo si desbloquea tests o corrige defectos. |
+| **De-mixin del runtime del auditor (Fase 2)** | Diferido | El de-mixin wizard-first ya esta completado; la descomposicion restante del runtime se difiere hasta que desbloquee tests o corrija defectos. |
 | **Distribución PyPI** | Diferido | Publicar `pip install redaudit`. Bloqueado por necesidad de testeo extensivo multiplataforma. |
 | **Motor de plugins** | Diferido | Arquitectura plugin-first para desacoplar el escáner core de las herramientas. |
 | **Migración a AsyncIO** | Diferido | Migración completa a AsyncIO diferida a v5.0. |
@@ -100,6 +100,14 @@ Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos y
 ## 2. Hitos Completados (Histórico)
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
+
+### v4.20.x Endurecimiento de composicion del wizard (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **De-mixin wizard-first** | Hecho (v4.20.x) | El flujo interactivo se extrajo a servicios por composicion (`wizard_service.py`, `scan_wizard_flow.py`) y `AuditorRuntime` ya no hereda `Wizard`. |
+| **Migracion con compatibilidad** | Hecho (v4.20.x) | `wizard.py` se mantiene como fachada de compatibilidad para que imports/tests existentes sigan funcionando mientras se clarifican los limites de responsabilidad. |
+| **Claridad de estado en interrupcion** | Hecho (v4.20.x) | La interrupcion de escaneo activo ahora muestra un mensaje explicito de "guardando progreso parcial y limpieza" antes del cierre. |
 
 ### v4.20.0 Endurecimiento de expansión de alcance (Hecho)
 

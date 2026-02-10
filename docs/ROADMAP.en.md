@@ -81,7 +81,7 @@ This section contains only pending roadmap work. Implemented baseline items are 
 
 | Feature | Status | Description |
 | --- | --- | --- |
-| **auditor.py Refactor** | Deferred | Split orchestration and decision logic only if it unlocks testing or fixes defects. |
+| **Auditor Runtime De-mixin (Phase 2)** | Deferred | Wizard-first de-mixin is completed; remaining runtime decomposition is deferred until it unlocks testing or fixes defects. |
 | **PyPI Distribution** | Deferred | Publishing `pip install redaudit`. Blocked by need for extensive cross-platform testing. |
 | **Plugin Engine** | Deferred | "Plugin-first" architecture to decouple core scanner from tools. |
 | **AsyncIO Migration** | Deferred | Full migration to AsyncIO deferred to v5.0. |
@@ -100,6 +100,14 @@ This section contains only pending roadmap work. Implemented baseline items are 
 ## 2. Completed Milestones (History)
 
 These items are ordered chronologically (most recent first).
+
+### v4.20.x Wizard Composition Hardening (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Wizard-first de-mixin** | Done (v4.20.x) | Interactive flow was extracted into composed services (`wizard_service.py`, `scan_wizard_flow.py`) and `AuditorRuntime` no longer inherits `Wizard`. |
+| **Compatibility-preserving migration** | Done (v4.20.x) | `wizard.py` is kept as a compatibility facade so existing imports/tests continue to work while ownership boundaries are clearer. |
+| **Interrupt status clarity** | Done (v4.20.x) | Active-scan interruption now shows an explicit "saving partial progress and cleanup" operator message before shutdown. |
 
 ### v4.20.0 Scope Expansion Hardening (Done)
 

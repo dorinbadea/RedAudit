@@ -350,6 +350,7 @@ redaudit --nuclei-resume-latest
 
 Las reanudaciones actualizan la misma carpeta del escaneo y regeneran los informes. La reanudacion usa el presupuesto
 guardado salvo que lo sobrescribas (prompt en wizard o `--nuclei-max-runtime`; `0` desactiva el presupuesto).
+Si interrumpes una auditoria activa con Ctrl+C, RedAudit muestra un aviso claro indicando que guarda progreso parcial y ejecuta limpieza.
 Las reanudaciones se guardan en la misma carpeta del escaneo y se actualizan en el mismo sitio. Si una reanudacion
 termina como parcial otra vez, `nuclei_resume.json`/`nuclei_pending.txt` se actualiza (no se duplica). En el menu
 interactivo (**Reanudar Nuclei (pendiente)**), usa **Gestionar entradas de reanudacion** para borrar una o todas las
