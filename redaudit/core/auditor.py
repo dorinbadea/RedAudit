@@ -51,6 +51,8 @@ from redaudit.core.nuclei import (
     select_nuclei_targets,
 )
 from redaudit.core.scope_expansion import (
+    LEAK_FOLLOW_ALLOWLIST_PROFILES,
+    LEAK_FOLLOW_POLICY_PACKS,
     build_leak_follow_targets,
     evaluate_leak_follow_candidates,
     extract_leak_follow_candidates,
@@ -287,6 +289,15 @@ class InteractiveNetworkAuditor:
             "scan_mode",
             "scan_vulnerabilities",
             "nuclei_enabled",
+            "leak_follow_mode",
+            "leak_follow_policy_pack",
+            "leak_follow_allowlist",
+            "leak_follow_allowlist_profiles",
+            "leak_follow_denylist",
+            "iot_probes_mode",
+            "iot_probe_packs",
+            "iot_probe_budget_seconds",
+            "iot_probe_timeout_seconds",
             "cve_lookup_enabled",
             "generate_txt",
             "generate_html",
@@ -2197,7 +2208,10 @@ class InteractiveNetworkAuditor:
             if callable(printer):
                 printer(text, level)
 
-        _status("interrupted", "WARNING")
+        if self.scan_start_time is not None:
+            _status("interrupted_saving_progress", "WARNING")
+        else:
+            _status("interrupted", "WARNING")
         self.current_phase = "interrupted"
         self.interrupted = True
 
@@ -2379,6 +2393,322 @@ class InteractiveNetworkAuditor:
             output_dir = default_output
         self.config["output_dir"] = expand_user_path(output_dir)
 
+    @staticmethod
+    def _normalize_csv_targets(raw_value: Any) -> List[str]:
+        """Normalize comma-separated or list-based target values into a deduplicated list."""
+        if raw_value is None:
+            return []
+        if isinstance(raw_value, str):
+            raw_items = [raw_value]
+        elif isinstance(raw_value, list):
+            raw_items = raw_value
+        else:
+            return []
+
+        normalized: List[str] = []
+        seen: Set[str] = set()
+        for chunk in raw_items:
+            if chunk is None:
+                continue
+            for token in str(chunk).split(","):
+                value = token.strip()
+                if not value or value in seen:
+                    continue
+                seen.add(value)
+                normalized.append(value)
+        return normalized
+
+    def _leak_follow_available_for_run(self) -> bool:
+        """Leak Following is only meaningful in full mode when Nuclei is enabled."""
+        return bool(
+            self.config.get("scan_vulnerabilities")
+            and self.config.get("scan_mode") == "completo"
+            and self.config.get("nuclei_enabled")
+        )
+
+    def _apply_scope_expansion_profile_defaults(self, defaults_for_run: Dict, profile: str) -> None:
+        """Apply profile-aware defaults for scope expansion controls."""
+        persisted_leak_mode = defaults_for_run.get("leak_follow_mode")
+        if persisted_leak_mode not in ("off", "safe"):
+            persisted_leak_mode = None
+
+        persisted_iot_mode = defaults_for_run.get("iot_probes_mode")
+        if persisted_iot_mode not in ("off", "safe"):
+            persisted_iot_mode = None
+
+        self.config["leak_follow_policy_pack"] = normalize_leak_follow_policy_pack(
+            defaults_for_run.get("leak_follow_policy_pack")
+        )
+        self.config["leak_follow_allowlist_profiles"] = normalize_leak_follow_profiles(
+            defaults_for_run.get("leak_follow_allowlist_profiles")
+        )
+        self.config["leak_follow_allowlist"] = self._normalize_csv_targets(
+            defaults_for_run.get("leak_follow_allowlist")
+        )
+        self.config["leak_follow_denylist"] = self._normalize_csv_targets(
+            defaults_for_run.get("leak_follow_denylist")
+        )
+
+        iot_packs = normalize_iot_probe_packs(defaults_for_run.get("iot_probe_packs"))
+        self.config["iot_probe_packs"] = iot_packs or list(IOT_PROBE_PACKS.keys())
+
+        iot_budget = defaults_for_run.get("iot_probe_budget_seconds")
+        if not isinstance(iot_budget, int) or iot_budget < 1 or iot_budget > 300:
+            iot_budget = 20
+        self.config["iot_probe_budget_seconds"] = iot_budget
+
+        iot_timeout = defaults_for_run.get("iot_probe_timeout_seconds")
+        if not isinstance(iot_timeout, int) or iot_timeout < 1 or iot_timeout > 60:
+            iot_timeout = 3
+        self.config["iot_probe_timeout_seconds"] = iot_timeout
+
+        if profile == "express":
+            self.config["leak_follow_mode"] = "off"
+            self.config["iot_probes_mode"] = "off"
+            return
+
+        if profile == "standard":
+            self.config["leak_follow_mode"] = "off"
+            self.config["iot_probes_mode"] = (
+                persisted_iot_mode if persisted_iot_mode in ("off", "safe") else "off"
+            )
+            return
+
+        if profile == "exhaustive":
+            self.config["iot_probes_mode"] = (
+                persisted_iot_mode if persisted_iot_mode in ("off", "safe") else "safe"
+            )
+            default_leak_mode = (
+                persisted_leak_mode if persisted_leak_mode in ("off", "safe") else "safe"
+            )
+            self.config["leak_follow_mode"] = (
+                default_leak_mode if self._leak_follow_available_for_run() else "off"
+            )
+            return
+
+        # Custom profile keeps persisted modes with safe fallbacks.
+        self.config["leak_follow_mode"] = (
+            persisted_leak_mode if persisted_leak_mode in ("off", "safe") else "off"
+        )
+        self.config["iot_probes_mode"] = (
+            persisted_iot_mode if persisted_iot_mode in ("off", "safe") else "off"
+        )
+
+    def _ask_scope_expansion_advanced(self) -> None:
+        """Prompt optional advanced scope expansion settings."""
+        policy_options = list(LEAK_FOLLOW_POLICY_PACKS)
+        current_pack = self.config.get("leak_follow_policy_pack", "safe-default")
+        default_policy_idx = (
+            policy_options.index(current_pack) if current_pack in policy_options else 0
+        )
+        policy_choice = self.ask_choice(
+            self.ui.t("scope_expansion_policy_pack_q"), policy_options, default_policy_idx
+        )
+        self.config["leak_follow_policy_pack"] = normalize_leak_follow_policy_pack(
+            policy_options[policy_choice]
+        )
+
+        profiles_default = ", ".join(self.config.get("leak_follow_allowlist_profiles") or [])
+        profiles_prompt = self._style_prompt_text(self.ui.t("scope_expansion_allowlist_profiles_q"))
+        profiles_hint = self.ui.t(
+            "scope_expansion_allowlist_profiles_hint",
+            ", ".join(LEAK_FOLLOW_ALLOWLIST_PROFILES),
+        )
+        profiles_input = input(
+            f"{profiles_prompt} ({profiles_hint}) [{self._style_default_value(profiles_default) if profiles_default else ''}]: "
+        ).strip()
+        if not profiles_input:
+            profiles_input = profiles_default
+        self.config["leak_follow_allowlist_profiles"] = normalize_leak_follow_profiles(
+            [profiles_input] if profiles_input else []
+        )
+
+        allow_default = ", ".join(self.config.get("leak_follow_allowlist") or [])
+        allow_prompt = self._style_prompt_text(self.ui.t("scope_expansion_allowlist_q"))
+        allow_input = input(
+            f"{allow_prompt} [{self._style_default_value(allow_default) if allow_default else ''}]: "
+        ).strip()
+        if not allow_input:
+            allow_input = allow_default
+        self.config["leak_follow_allowlist"] = self._normalize_csv_targets(allow_input)
+
+        deny_default = ", ".join(self.config.get("leak_follow_denylist") or [])
+        deny_prompt = self._style_prompt_text(self.ui.t("scope_expansion_denylist_q"))
+        deny_input = input(
+            f"{deny_prompt} [{self._style_default_value(deny_default) if deny_default else ''}]: "
+        ).strip()
+        if not deny_input:
+            deny_input = deny_default
+        self.config["leak_follow_denylist"] = self._normalize_csv_targets(deny_input)
+
+        packs_default = ", ".join(self.config.get("iot_probe_packs") or [])
+        packs_prompt = self._style_prompt_text(self.ui.t("scope_expansion_iot_packs_q"))
+        packs_hint = self.ui.t(
+            "scope_expansion_iot_packs_hint",
+            ", ".join(sorted(IOT_PROBE_PACKS.keys())),
+        )
+        packs_input = input(
+            f"{packs_prompt} ({packs_hint}) [{self._style_default_value(packs_default) if packs_default else ''}]: "
+        ).strip()
+        if not packs_input:
+            packs_input = packs_default
+        normalized_packs = normalize_iot_probe_packs([packs_input] if packs_input else [])
+        self.config["iot_probe_packs"] = normalized_packs or list(IOT_PROBE_PACKS.keys())
+
+        budget_default = self.config.get("iot_probe_budget_seconds", 20)
+        if not isinstance(budget_default, int) or budget_default < 1 or budget_default > 300:
+            budget_default = 20
+        self.config["iot_probe_budget_seconds"] = self.ask_number(
+            self.ui.t("scope_expansion_iot_budget_q"),
+            default=budget_default,
+            min_val=1,
+            max_val=300,
+        )
+
+        timeout_default = self.config.get("iot_probe_timeout_seconds", 3)
+        if not isinstance(timeout_default, int) or timeout_default < 1 or timeout_default > 60:
+            timeout_default = 3
+        self.config["iot_probe_timeout_seconds"] = self.ask_number(
+            self.ui.t("scope_expansion_iot_timeout_q"),
+            default=timeout_default,
+            min_val=1,
+            max_val=60,
+        )
+
+    def _ask_scope_expansion_quick(
+        self,
+        *,
+        profile: str,
+        step_num: Optional[int] = None,
+        total_steps: Optional[int] = None,
+    ) -> Optional[bool]:
+        """Prompt quick scope expansion controls. Returns None when user chose back."""
+
+        def _ask_toggle(
+            question: str, yes_label: str, no_label: str, default_yes: bool
+        ) -> Optional[bool]:
+            options = [yes_label, no_label]
+            default_idx = 0 if default_yes else 1
+            if isinstance(step_num, int) and isinstance(total_steps, int):
+                choice = self.ask_choice_with_back(
+                    question,
+                    options,
+                    default_idx,
+                    step_num=step_num,
+                    total_steps=total_steps,
+                )
+                if choice == self.WIZARD_BACK:
+                    return None
+                return choice == 0
+            choice = self.ask_choice(question, options, default_idx)
+            return choice == 0
+
+        no_label = self.ui.t("no_default")
+
+        if profile == "standard":
+            iot_enabled = _ask_toggle(
+                self.ui.t("scope_expansion_quick_q_standard"),
+                self.ui.t("scope_expansion_yes_iot"),
+                no_label,
+                default_yes=self.config.get("iot_probes_mode") == "safe",
+            )
+            if iot_enabled is None:
+                return None
+            self.config["iot_probes_mode"] = "safe" if iot_enabled else "off"
+            self.config["leak_follow_mode"] = "off"
+            self.ui.print_status(self.ui.t("scope_expansion_standard_leak_note"), "INFO")
+            if not iot_enabled:
+                return True
+            advanced_enabled = _ask_toggle(
+                self.ui.t("scope_expansion_advanced_q"),
+                self.ui.t("yes_option"),
+                no_label,
+                default_yes=False,
+            )
+            if advanced_enabled is None:
+                return None
+            if advanced_enabled:
+                self._ask_scope_expansion_advanced()
+            return True
+
+        if profile == "exhaustive":
+            default_enabled = (
+                self.config.get("iot_probes_mode") == "safe"
+                or self.config.get("leak_follow_mode") == "safe"
+            )
+            scope_enabled = _ask_toggle(
+                self.ui.t("scope_expansion_quick_q_exhaustive"),
+                self.ui.t("scope_expansion_yes_combined"),
+                no_label,
+                default_yes=default_enabled,
+            )
+            if scope_enabled is None:
+                return None
+            if not scope_enabled:
+                self.config["iot_probes_mode"] = "off"
+                self.config["leak_follow_mode"] = "off"
+                return True
+            self.config["iot_probes_mode"] = "safe"
+            if self._leak_follow_available_for_run():
+                self.config["leak_follow_mode"] = "safe"
+            else:
+                self.config["leak_follow_mode"] = "off"
+                self.ui.print_status(self.ui.t("scope_expansion_leak_dependency_note"), "INFO")
+            advanced_enabled = _ask_toggle(
+                self.ui.t("scope_expansion_advanced_q"),
+                self.ui.t("yes_option"),
+                no_label,
+                default_yes=False,
+            )
+            if advanced_enabled is None:
+                return None
+            if advanced_enabled:
+                self._ask_scope_expansion_advanced()
+            return True
+
+        # Custom profile: separate toggles for IoT and Leak Following.
+        iot_enabled = _ask_toggle(
+            self.ui.t("scope_expansion_iot_q"),
+            self.ui.t("scope_expansion_yes_iot"),
+            no_label,
+            default_yes=self.config.get("iot_probes_mode") == "safe",
+        )
+        if iot_enabled is None:
+            return None
+        self.config["iot_probes_mode"] = "safe" if iot_enabled else "off"
+
+        if self._leak_follow_available_for_run():
+            leak_enabled = _ask_toggle(
+                self.ui.t("scope_expansion_leak_q"),
+                self.ui.t("scope_expansion_yes_leak"),
+                no_label,
+                default_yes=self.config.get("leak_follow_mode") == "safe",
+            )
+            if leak_enabled is None:
+                return None
+            self.config["leak_follow_mode"] = "safe" if leak_enabled else "off"
+        else:
+            self.config["leak_follow_mode"] = "off"
+            self.ui.print_status(self.ui.t("scope_expansion_leak_dependency_note"), "INFO")
+
+        if (
+            self.config.get("iot_probes_mode") != "safe"
+            and self.config.get("leak_follow_mode") != "safe"
+        ):
+            return True
+
+        advanced_enabled = _ask_toggle(
+            self.ui.t("scope_expansion_advanced_q"),
+            self.ui.t("yes_option"),
+            no_label,
+            default_yes=False,
+        )
+        if advanced_enabled is None:
+            return None
+        if advanced_enabled:
+            self._ask_scope_expansion_advanced()
+        return True
+
     def _configure_scan_interactive(self, defaults_for_run: Dict) -> None:
         """
         v3.8.1: Interactive prompt sequence with step-by-step navigation.
@@ -2499,6 +2829,7 @@ class InteractiveNetworkAuditor:
                 self.config["windows_verify_enabled"] = False
                 self.config["save_txt_report"] = True
                 self.config["save_html_report"] = True
+                self._apply_scope_expansion_profile_defaults(defaults_for_run, "express")
                 persisted_low_impact = defaults_for_run.get("low_impact_enrichment")
                 low_impact_default = "yes" if persisted_low_impact else "no"
                 low_impact = _ask_yes_no_with_back(
@@ -2507,6 +2838,7 @@ class InteractiveNetworkAuditor:
                 if low_impact is None:
                     continue
                 self.config["low_impact_enrichment"] = low_impact
+                self.ui.print_status(self.ui.t("scope_expansion_express_forced_off"), "INFO")
                 # v3.9.0: Ask auditor name and output dir for all profiles
                 self._ask_auditor_and_output_dir(defaults_for_run)
                 self.rate_limit_delay = 0.0  # Express = always fast
@@ -2528,6 +2860,7 @@ class InteractiveNetworkAuditor:
                 self.config["windows_verify_enabled"] = False
                 self.config["save_txt_report"] = True
                 self.config["save_html_report"] = True
+                self._apply_scope_expansion_profile_defaults(defaults_for_run, "standard")
                 persisted_low_impact = defaults_for_run.get("low_impact_enrichment")
                 low_impact_default = "yes" if persisted_low_impact else "no"
                 low_impact = _ask_yes_no_with_back(
@@ -2536,6 +2869,11 @@ class InteractiveNetworkAuditor:
                 if low_impact is None:
                     continue
                 self.config["low_impact_enrichment"] = low_impact
+                if (
+                    self._ask_scope_expansion_quick(profile="standard", step_num=2, total_steps=2)
+                    is None
+                ):
+                    continue
                 # v3.9.0: Ask auditor name and output dir for all profiles
                 self._ask_auditor_and_output_dir(defaults_for_run)
 
@@ -2675,6 +3013,12 @@ class InteractiveNetworkAuditor:
                         if defaults_for_run.get("nuclei_exclude")
                         else []
                     )
+                self._apply_scope_expansion_profile_defaults(defaults_for_run, "exhaustive")
+                if (
+                    self._ask_scope_expansion_quick(profile="exhaustive", step_num=2, total_steps=2)
+                    is None
+                ):
+                    continue
 
                 # NVD/CVE - enable if API key is configured, otherwise show reminder
                 if is_nvd_api_key_configured():
@@ -2747,10 +3091,11 @@ class InteractiveNetworkAuditor:
             if profile_choice == 3:
                 break
 
-        # PROFILE 3: Custom - Full wizard with 9 steps (original behavior)
+        # PROFILE 3: Custom - Full wizard with 10 steps
         # v3.8.1: Wizard step machine for "Cancel" navigation
 
-        TOTAL_STEPS = 9
+        self._apply_scope_expansion_profile_defaults(defaults_for_run, "custom")
+        TOTAL_STEPS = 10
         step = 1
 
         # Store choices for navigation (allows going back and reusing previous values)
@@ -3406,9 +3751,28 @@ class InteractiveNetworkAuditor:
                 continue
 
             # ═══════════════════════════════════════════════════════════════════
-            # STEP 9: Output Directory & Webhook
+            # STEP 9: Scope Expansion
             # ═══════════════════════════════════════════════════════════════════
             elif step == 9:
+                self.ui.print_status(
+                    f"[{step}/{TOTAL_STEPS}] " + self.ui.t("scope_expansion_step_title"),
+                    "INFO",
+                )
+                if (
+                    self._ask_scope_expansion_quick(
+                        profile="custom", step_num=step, total_steps=TOTAL_STEPS
+                    )
+                    is None
+                ):
+                    step -= 1
+                    continue
+                step += 1
+                continue
+
+            # ═══════════════════════════════════════════════════════════════════
+            # STEP 10: Output Directory & Webhook
+            # ═══════════════════════════════════════════════════════════════════
+            elif step == 10:
                 self.ui.print_status(f"[{step}/{TOTAL_STEPS}] " + self.ui.t("output_dir"), "INFO")
 
                 auditor_default = wizard_state.get(
@@ -3481,6 +3845,18 @@ class InteractiveNetworkAuditor:
                 minutes = 0
             return f"{minutes} min"
 
+        def fmt_scope_mode(leak_mode: Any, iot_mode: Any) -> str:
+            leak = leak_mode if leak_mode in ("off", "safe") else "off"
+            iot = iot_mode if iot_mode in ("off", "safe") else "off"
+            return f"leak={leak}, iot={iot}"
+
+        def fmt_policy(val: Any) -> str:
+            return normalize_leak_follow_policy_pack(val)
+
+        def fmt_packs(val: Any) -> str:
+            packs = normalize_iot_probe_packs(val)
+            return ", ".join(packs) if packs else "-"
+
         # Display all saved defaults
         fields = [
             ("defaults_summary_targets", fmt_targets(persisted_defaults.get("target_networks"))),
@@ -3537,6 +3913,25 @@ class InteractiveNetworkAuditor:
             (
                 "defaults_summary_windows_verify",
                 fmt_bool(persisted_defaults.get("windows_verify_enabled")),
+            ),
+            (
+                "defaults_summary_scope_expansion",
+                fmt_scope_mode(
+                    persisted_defaults.get("leak_follow_mode"),
+                    persisted_defaults.get("iot_probes_mode"),
+                ),
+            ),
+            (
+                "defaults_summary_leak_follow",
+                fmt_policy(persisted_defaults.get("leak_follow_policy_pack")),
+            ),
+            (
+                "defaults_summary_iot_probes",
+                (
+                    f"packs={fmt_packs(persisted_defaults.get('iot_probe_packs'))}; "
+                    f"budget={persisted_defaults.get('iot_probe_budget_seconds') or 20}s; "
+                    f"timeout={persisted_defaults.get('iot_probe_timeout_seconds') or 3}s"
+                ),
             ),
         ]
 

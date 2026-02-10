@@ -3257,6 +3257,7 @@ def test_auditor_subprocess_management():
 def test_auditor_signal_handler():
     """Test signal handler for SIGINT (lines 894-910)."""
     auditor = InteractiveNetworkAuditor()
+    auditor.ui.print_status = MagicMock()
     # Patch the instance method directly
     auditor.kill_all_subprocesses = MagicMock()
     auditor.stop_heartbeat = MagicMock()
@@ -3269,6 +3270,25 @@ def test_auditor_signal_handler():
     assert auditor.interrupted is True
     assert auditor.kill_all_subprocesses.called
     assert auditor.stop_heartbeat.called
+    auditor.ui.print_status.assert_any_call(auditor.ui.t("interrupted"), "WARNING")
+
+
+def test_auditor_signal_handler_running_scan_shows_saving_notice():
+    """Signal handler should notify partial-save cleanup when scan is active."""
+    auditor = InteractiveNetworkAuditor()
+    auditor.ui.print_status = MagicMock()
+    auditor.kill_all_subprocesses = MagicMock()
+    auditor.stop_heartbeat = MagicMock()
+    auditor.scan_start_time = 1.0  # Non-None means active scan.
+
+    auditor.signal_handler(signal.SIGINT, None)
+
+    assert auditor.interrupted is True
+    assert auditor.stop_heartbeat.called
+    auditor.ui.print_status.assert_any_call(
+        auditor.ui.t("interrupted_saving_progress"),
+        "WARNING",
+    )
 
 
 def test_auditor_apply_run_defaults():

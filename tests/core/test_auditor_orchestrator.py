@@ -259,8 +259,8 @@ class TestAuditorOrchestrator(unittest.TestCase):
         # 2. Timing: Stealth (index 0)
         self.auditor.ask_choice.side_effect = [1, 0]
 
-        # low_impact_enrichment: No, trust_hyperscan: No
-        self.auditor.ask_choice_with_back.side_effect = [1, 1]
+        # low_impact_enrichment: No, scope expansion quick: No, trust_hyperscan: No
+        self.auditor.ask_choice_with_back.side_effect = [1, 1, 1]
 
         defaults = {}
         self.auditor._configure_scan_interactive(defaults)
@@ -282,8 +282,8 @@ class TestAuditorOrchestrator(unittest.TestCase):
 
         # Profile 1 (Standard), Timing 2 (Aggressive)
         self.auditor.ask_choice.side_effect = [1, 2]
-        # low_impact_enrichment: No, trust_hyperscan: Yes
-        self.auditor.ask_choice_with_back.side_effect = [1, 0]
+        # low_impact_enrichment: No, scope expansion quick: No, trust_hyperscan: Yes
+        self.auditor.ask_choice_with_back.side_effect = [1, 1, 0]
 
         self.auditor._configure_scan_interactive({})
         self.assertEqual(self.auditor.config["threads"], MAX_THREADS)
@@ -306,8 +306,9 @@ class TestAuditorOrchestrator(unittest.TestCase):
         # 1. Nuclei enabled? Yes
         # 2. Nuclei profile? Full
         # 3. Nuclei full coverage? Yes
-        # 4. Trust Hyperscan? Yes
-        self.auditor.ask_choice_with_back.side_effect = [0, 0, 0, 0]
+        # 4. Scope expansion quick? No
+        # 5. Trust Hyperscan? Yes
+        self.auditor.ask_choice_with_back.side_effect = [0, 0, 0, 1, 0]
 
         defaults = {}
         # Patch is_nvd_api_key_configured to avoid NVD warning path

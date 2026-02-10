@@ -38,7 +38,8 @@ RedAudit opera como una capa de orquestación, gestionando hilos de ejecución c
 3. **Resolución de Entidad**: Consolidación basada en identidad de dispositivos multi-interfaz (heurística).
 4. **Filtrado Inteligente**: Reducción de ruido vía verificación consciente del contexto.
 5. **Selección de Nuclei**: Selección de objetivos basada en identidad con reintentos por excepción para evitar redundancia. Cambia automáticamente al perfil **rápido** en hosts con alta densidad web cuando la cobertura completa está desactivada para evitar timeouts largos.
-6. **Resiliencia**: **Reintentos de Host Muerto** automáticos para abandonar hosts que no responden y evitar bloqueos.
+6. **Controles de Expansión de Alcance**: Leak-follow guiado por políticas y packs IoT por protocolo/fabricante, acotados por presupuesto por host, timeout por sonda y clases de evidencia explícitas.
+7. **Resiliencia**: **Reintentos de Host Muerto** automáticos para abandonar hosts que no responden y evitar bloqueos.
 
 ![Vista General del Sistema](../docs/images/system_overview_v4.x_es.png)
 
@@ -137,6 +138,22 @@ sigue siendo débil o hay señales sospechosas.
 **Resultado**: Escaneos más rápidos que UDP siempre activo, manteniendo calidad de detección para IoT, servicios filtrados
 y equipos legacy.
 
+### Guardarraíles de Expansión de Alcance
+
+La expansión de alcance se ejecuta como etapa controlada post-descubrimiento y se mantiene determinista en modo `safe`:
+
+```text
+Señales del escaneo base
+  -> evaluación de política de alcance
+  -> filtrado de candidatos leak-follow
+  -> packs IoT acotados
+  -> clasificación de evidencia (evidence/heuristic/hint)
+```
+
+- La precedencia de leak-follow se aplica como: `denylist` > allowlist explícita > allowlist por perfil > in-scope > rechazo.
+- La expansión IoT usa packs opt-in (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) con guardarraíles de presupuesto por host y timeout por sonda.
+- La promoción a clases de evidencia más fuertes exige corroboración; las señales ambiguas permanecen como `heuristic` o `hint`.
+
 ### Modelo de Concurrencia
 
 RedAudit usa `ThreadPoolExecutor` de Python para escanear múltiples hosts simultáneamente.
@@ -188,6 +205,7 @@ sudo redaudit
 | **Descubrimiento de Topología** | Mapeo L2/L3 (ARP/VLAN/LLDP + gateway/rutas) para contexto de red |
 | **Descubrimiento de Red** | Protocolos broadcast (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) para visibilidad L2 |
 | **Seguridad Web App** | Integración de `sqlmap` (SQLi) y `OWASP ZAP` (DAST) para escaneo profundo de aplicaciones web, con gating de infraestructura |
+| **Expansión de alcance por políticas** | Leak-follow (`off`/`safe`) y packs de sondas IoT con guardarraíles explícitos de presupuesto/timeout |
 | **Verificación sin agente** | Sondas SMB/RDP/LDAP/SSH/HTTP para pistas de identidad |
 | **Detección Interfaces VPN** | Clasifica endpoints VPN por OUI del fabricante, puertos VPN (500/4500/1194/51820) y patrones de hostname |
 | **Modo Sigiloso** | Timing T1, 1 hilo, retardos 5s+ para entornos sensibles a IDS (`--stealth`) |
@@ -199,6 +217,7 @@ sudo redaudit
 | **Correlación CVE** | NVD API 2.0 con matching CPE 2.3 y caché de 7 días |
 | **Búsqueda de Exploits** | Consultas automáticas a ExploitDB (`searchsploit`) para servicios detectados |
 | **Escaneo de Plantillas** | Plantillas Nuclei con comprobaciones best-effort de falsos positivos (cabeceras/fabricante/título) y informe de timeout parcial |
+| **Evidencia de expansión de alcance** | Entradas estructuradas `scope_expansion_evidence` con clases `evidence` / `heuristic` / `hint` |
 | **Filtro Smart-Check** | Reducción de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |
 | **Indicios de Fuga de Red** | Señala múltiples subredes/VLANs anunciadas por DHCP como posibles redes ocultas |
 
@@ -235,6 +254,8 @@ sudo redaudit
 **Escalado de Hilos:** `MAX_THREADS` aumentado de 16 a 100 (v4.6.29) para aprovechar hardware moderno.
 
 **Risk Scoring Integrado:** Hallazgos de configuración (Nikto/Nuclei) integrados en la matriz de decisión con severidades Low/Medium/High.
+
+**Endurecimiento de expansión de alcance (v4.20.0):** Packs de política leak-follow, packs de sondas IoT y `scope_expansion_evidence` auditable forman parte del contrato de reporting por defecto.
 
 Consulta [CHANGELOG](../CHANGELOG.md) para el historial completo.
 
@@ -332,9 +353,9 @@ sudo redaudit
 El asistente te guía por la selección de objetivo y el perfil de auditoría. Ofrece 4 perfiles:
 
 - **Express**: Descubrimiento rápido (solo hosts). Topología + descubrimiento de red activados; escaneo de vulnerabilidades desactivado.
-- **Estándar**: Auditoría equilibrada (nmap `-F`/top 100 puertos + comprobaciones web). El preset de temporización se elige al inicio.
-- **Exhaustivo**: Escaneo completo con más profundidad. UDP top-ports (500) se activa en hosts ambiguos; Red Team y verificación sin agente activadas. La correlación CVE solo se habilita si ya hay API key NVD configurada.
-- **Custom**: Wizard completo de 9 pasos con navegación atrás para control granular.
+- **Estándar**: Auditoría equilibrada (nmap `-F`/top 100 puertos + comprobaciones web). El preset de temporización se elige al inicio. Las sondas IoT pueden activarse en modo `safe`; Leak Following permanece desactivado en este perfil.
+- **Exhaustivo**: Escaneo completo con más profundidad. UDP top-ports (500) se activa en hosts ambiguos; Red Team y verificación sin agente activadas. La correlación CVE solo se habilita si ya hay API key NVD configurada. Scope expansion puede activarse en modo `safe`, y Leak Following solo se aplica cuando Nuclei está activo.
+- **Custom**: Wizard completo de 10 pasos con navegación atrás para control granular, con un paso específico de Scope Expansion.
 
 La Fase 0 de enriquecimiento de bajo impacto es un prompt opt-in en todos los perfiles (por defecto desactivada).
 
@@ -344,7 +365,7 @@ El asistente cubre:
 
 1. **Selección de objetivo**: Elige una subred local o introduce objetivos CIDR/IP/rango
 2. **Preset de temporización**: Stealth (T1), Normal (T4) o Agresivo (T5) en Estándar/Exhaustivo
-3. **Opciones**: Hilos, rate limiting, Fase 0 de bajo impacto, UDP/topología/descubrimiento, verificación sin agente (según perfil)
+3. **Opciones**: Hilos, rate limiting, Fase 0 de bajo impacto, UDP/topología/descubrimiento, controles de scope expansion (Leak Following/sondas IoT), verificación sin agente (según perfil)
 4. **Autorización**: Confirma que tienes permiso para escanear
 
 Desde el menu principal, **Reanudar Nuclei (pendiente)** incluye **Gestionar entradas de reanudacion** para borrar una o todas las entradas antiguas antes de continuar.
@@ -386,6 +407,15 @@ redaudit --diff ~/reports/lunes.json ~/reports/viernes.json
 | `--topology` | Activar descubrimiento de topología |
 | `--nuclei` | Habilitar escaneo de plantillas Nuclei (solo modo full) |
 | `--nuclei-max-runtime` | Tiempo maximo de Nuclei en minutos (0 = ilimitado; crea reanudacion) |
+| `--leak-follow` | Modo leak-follow de alcance: `off` / `safe` |
+| `--leak-follow-policy-pack` | Pack de política leak-follow: `safe-default` / `safe-strict` / `safe-extended` |
+| `--leak-follow-allowlist` | Objetivos de allowlist explícita para leak-follow (repetible) |
+| `--leak-follow-allowlist-profile` | Perfil(es) built-in de allowlist para leak-follow (repetible) |
+| `--leak-follow-denylist` | Objetivos de denylist explícita para leak-follow (repetible) |
+| `--iot-probes` | Modo de sondas IoT: `off` / `safe` |
+| `--iot-probe-pack` | Pack(s) de sonda IoT: `ssdp`, `coap`, `wiz`, `yeelight`, `tuya` (repetible) |
+| `--iot-probe-budget-seconds` | Presupuesto por host para sondas IoT en segundos |
+| `--iot-probe-timeout-seconds` | Timeout por sonda IoT en segundos |
 | `--nuclei-exclude` | Excluir objetivos de Nuclei (host, host:puerto, URL; repetible) |
 | `--nuclei-resume` | Reanudar Nuclei pendiente desde carpeta o archivo de reanudacion |
 | `--html-report` | Generar dashboard HTML interactivo |
@@ -540,6 +570,8 @@ redaudit/
 | **HyperScan** | Módulo de descubrimiento async ultrarrápido (batch TCP, UDP IoT, ARP agresivo) |
 | **Fase 0 Enriquecimiento** | DNS/mDNS/SNMP de bajo impacto y sonda HTTP/HTTPS breve para hosts con fabricante y cero puertos |
 | **IoT sin puertos TCP** | Dispositivos sin puertos TCP abiertos (WiZ, Tapo) detectados vía sondas UDP broadcast |
+| **Política de expansión de alcance** | Precedencia determinista en modo `safe` para controles de leak-follow e IoT |
+| **Evidencia de expansión de alcance** | Rastro de decisiones de expansión clasificado como `evidence`, `heuristic` o `hint` |
 | **Smart-Check** | Filtro de falsos positivos en 3 capas (Content-Type, tamaño, magic bytes) |
 | **Entity Resolution** | Consolidación de dispositivos multi-interfaz en activos unificados |
 | **ECS** | Elastic Common Schema (ECS) para compatibilidad SIEM |

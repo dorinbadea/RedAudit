@@ -151,6 +151,7 @@ Pre-configured profiles adjust dozens of parameters automatically:
 
 - **Technique:** Top 100 TCP ports (`-F`), version and OS detection.
 - **Web:** Checks headers and basic technologies (WhatWeb).
+- **Scope Expansion:** Optional IoT probes in `safe` mode (quick toggle). Leak Following remains off in this profile.
 - **Authentication:** Optional setup for SSH/SMB/SNMP credentials.
 - **Ideal for:** Regular audits, policy validation.
 
@@ -160,6 +161,7 @@ Pre-configured profiles adjust dozens of parameters automatically:
 
 - **Technique:** 65535 TCP ports, UDP scanning, vulnerability scripts (NSE).
 - **Web:** Full scan (Nikto, Nuclei, SSL).
+- **Scope Expansion:** Optional `safe` scope expansion toggle. Leak Following is only active when Nuclei is enabled.
 - **Authentication:** Optional setup for SSH/SMB/SNMP credentials.
 - **Ideal for:** Penetration testing, compliance (PCI-DSS, ISO 27001), pre-production validation.
 **Runtime note:** With Nuclei enabled, scans can run significantly longer (e.g., >2-4 hours) depending on the number of targets (hosts) and detected services.
@@ -177,6 +179,7 @@ Pre-configured profiles adjust dozens of parameters automatically:
   - **Authentication:** Configure credentials for authenticated scanning.
   - **Agentless Verification:** Enable/disable lightweight checks.
   - **Web & Vulnerabilities:** Enable/disable Nikto, Nuclei, CVE lookup.
+  - **Scope Expansion:** Dedicated step to enable/disable IoT probes and Leak Following, plus optional advanced controls (policy pack, allowlist profiles, allow/deny targets, probe packs, budget, timeout).
 
 ### Authentication Menu (Phase 4)
 
