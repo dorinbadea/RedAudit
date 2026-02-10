@@ -10,6 +10,8 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.20.0] - 2026-02-10
+
 ### Added
 
 - **Leak-follow policy packs and controls**: Added `--leak-follow-policy-pack`, `--leak-follow-allowlist-profile`, and `--leak-follow-denylist` with deterministic precedence (`denylist` > explicit allowlist > profile allowlist > in-scope > reject).
