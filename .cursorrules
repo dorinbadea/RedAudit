@@ -1,6 +1,6 @@
 # Repository Workflow Pointer
 
-This repo's workflow is defined in `AGENTS.md` (root). Always follow it.
+This file is an IDE pointer. Canonical workflow is defined in `AGENTS.md` (root).
 
-- Read `AGENTS.md` at the start of every task.
-- If anything conflicts, `AGENTS.md` is canonical.
+Follow the **Multi-IDE Pointer Contract** in `AGENTS.md`.
+If anything conflicts, `AGENTS.md` is canonical.
