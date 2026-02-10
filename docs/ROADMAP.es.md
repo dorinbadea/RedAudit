@@ -39,7 +39,7 @@ Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos y
 | **C3 - Gobernanza de presupuesto en runtime** | Hecho | Mantener comportamiento predecible bajo tiempo limitado. | Contabilidad unificada de presupuesto para seguimientos/sondas y taxonomía ampliada de descartes. | Si se agota presupuesto, degradar a pistas; no promover hallazgos confirmados. |
 | **C4 - Extensiones de reporting y esquema** | Hecho | Exponer resultados de expansión con trazabilidad completa. | Campos JSON/HTML/TXT para decisiones de política, evidencia y motivos de descarte. | Mantener compatibilidad hacia atrás para consumidores actuales. |
 | **C5 - Alineación UX y documentación (EN/ES)** | Hecho | Mantener explícita la intención del operador en CLI/wizard/docs. | Sincronización de ayuda, prompts y documentación para controles nuevos. | Sin redacción ambigua sobre valores predeterminados, seguridad o límites de alcance. |
-| **C6 - Puerta de regresión y salida a release** | En progreso | Validar fiabilidad antes de promoción. | Cobertura completa de ramas tocadas y pasada de coherencia documental/esquema. | 100% de cobertura en rutas modificadas; sin deriva en comportamiento `off`. |
+| **C6 - Puerta de regresión y salida a release** | Hecho | Validar fiabilidad antes de promoción. | Cobertura completa de ramas tocadas y pasada de coherencia documental/esquema. | 100% de cobertura en rutas modificadas; sin deriva en comportamiento `off`. |
 
 #### Plan de trabajo detallado y puertas de aceptación
 
@@ -75,7 +75,7 @@ Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos y
 - [x] C3 gobernanza de presupuesto implementada y testeada.
 - [x] C4 extensiones de reporting/esquema implementadas y testeadas.
 - [x] C5 UX y documentación EN/ES sincronizadas.
-- [ ] C6 puerta de release superada con regresión validada.
+- [x] C6 puerta de release superada con regresión validada.
 
 ### Diferido / Backlog Técnico
 
@@ -101,13 +101,13 @@ Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos y
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
-### v5.x Endurecimiento de expansión de alcance (Hecho)
+### v4.20.0 Endurecimiento de expansión de alcance (Hecho)
 
 | Funcionalidad | Estado | Descripción |
 |---|---|---|
-| **Políticas avanzadas de Leak Following** | Hecho (v5.x) | Añadidos packs de política (`safe-default`, `safe-strict`, `safe-extended`), perfiles de allowlist y precedencia determinista (`denylist` > allowlist explícita > allowlist por perfil > in-scope > rechazo). |
-| **Expansión de sondas IoT específicas de protocolo** | Hecho (v5.x) | Añadidos packs por protocolo/fabricante (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) con selección acotada de candidatos, presupuesto por host y timeout por sonda. |
-| **Endurecimiento del modelo evidencia/heurística para señales de expansión** | Hecho (v5.x) | Añadido rastro estructurado de evidencia de expansión (`feature`, `classification`, `source`, `signal`, `decision`, `reason`, `host`, `timestamp`, `raw_ref`) y guardarraíles de promoción por corroboración. |
+| **Políticas avanzadas de Leak Following** | Hecho (v4.20.0) | Añadidos packs de política (`safe-default`, `safe-strict`, `safe-extended`), perfiles de allowlist y precedencia determinista (`denylist` > allowlist explícita > allowlist por perfil > in-scope > rechazo). |
+| **Expansión de sondas IoT específicas de protocolo** | Hecho (v4.20.0) | Añadidos packs por protocolo/fabricante (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) con selección acotada de candidatos, presupuesto por host y timeout por sonda. |
+| **Endurecimiento del modelo evidencia/heurística para señales de expansión** | Hecho (v4.20.0) | Añadido rastro estructurado de evidencia de expansión (`feature`, `classification`, `source`, `signal`, `decision`, `reason`, `host`, `timestamp`, `raw_ref`) y guardarraíles de promoción por corroboración. |
 
 ### v4.19.52 Coherencia de idioma y claridad de gráficos HTML (Hecho)
 

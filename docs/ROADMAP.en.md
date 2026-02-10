@@ -39,7 +39,7 @@ This section contains only pending roadmap work. Implemented baseline items are 
 | **C3 - Runtime Budget Governance** | Done | Keep expansion features predictable under constrained runtimes. | Unified budget accounting for follow-up/probe operations, skip reason taxonomy extensions. | Budget exhaustion must degrade to hints, not confirmed findings. |
 | **C4 - Reporting and Schema Extensions** | Done | Expose expansion outcomes with full auditability. | JSON/HTML/TXT fields for policy decisions, evidence payloads, and skip reasons. | Preserve backward compatibility for existing report consumers. |
 | **C5 - UX and Documentation Alignment (EN/ES)** | Done | Keep operator intent explicit across CLI/wizard/docs. | Help/prompt/documentation synchronization for all new controls. | No ambiguous wording about defaults, safety, or scope boundaries. |
-| **C6 - Regression and Release Gate** | In Progress | Validate reliability before release promotion. | Branch-complete tests for touched logic and docs/schema consistency sweep. | 100% coverage on touched code paths; no drift in `off` behavior. |
+| **C6 - Regression and Release Gate** | Done | Validate reliability before release promotion. | Branch-complete tests for touched logic and docs/schema consistency sweep. | 100% coverage on touched code paths; no drift in `off` behavior. |
 
 #### Detailed Work Plan and Acceptance Gates
 
@@ -75,7 +75,7 @@ This section contains only pending roadmap work. Implemented baseline items are 
 - [x] C3 budget governance implemented and tested.
 - [x] C4 reporting/schema extensions implemented and tested.
 - [x] C5 EN/ES UX and documentation synchronized.
-- [ ] C6 release gate passed with regression checks.
+- [x] C6 release gate passed with regression checks.
 
 ### Deferred Technical Backlog
 
@@ -101,13 +101,13 @@ This section contains only pending roadmap work. Implemented baseline items are 
 
 These items are ordered chronologically (most recent first).
 
-### v5.x Scope Expansion Hardening (Done)
+### v4.20.0 Scope Expansion Hardening (Done)
 
 | Feature | Status | Description |
 | --- | --- | --- |
-| **Advanced Leak Following Policies** | Done (v5.x) | Added policy packs (`safe-default`, `safe-strict`, `safe-extended`), allowlist profiles, and deterministic precedence (`denylist` > explicit allowlist > profile allowlist > in-scope > reject). |
-| **Expanded Protocol-Specific IoT Probes** | Done (v5.x) | Added protocol/vendor probe packs (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) with runtime candidate gating, per-host budget, and per-probe timeout enforcement. |
-| **Evidence Model Hardening for Expansion Signals** | Done (v5.x) | Added structured scope-expansion evidence (`feature`, `classification`, `source`, `signal`, `decision`, `reason`, `host`, `timestamp`, `raw_ref`) and promotion guardrails for corroborated signals. |
+| **Advanced Leak Following Policies** | Done (v4.20.0) | Added policy packs (`safe-default`, `safe-strict`, `safe-extended`), allowlist profiles, and deterministic precedence (`denylist` > explicit allowlist > profile allowlist > in-scope > reject). |
+| **Expanded Protocol-Specific IoT Probes** | Done (v4.20.0) | Added protocol/vendor probe packs (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) with runtime candidate gating, per-host budget, and per-probe timeout enforcement. |
+| **Evidence Model Hardening for Expansion Signals** | Done (v4.20.0) | Added structured scope-expansion evidence (`feature`, `classification`, `source`, `signal`, `decision`, `reason`, `host`, `timestamp`, `raw_ref`) and promotion guardrails for corroborated signals. |
 
 ### v4.19.52 HTML Language and Chart Clarity (Done)
 

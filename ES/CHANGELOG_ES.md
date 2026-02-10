@@ -10,6 +10,8 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.0] - 10-02-2026
+
 ### Anadido
 
 - **Packs y controles de política leak-follow**: Se añaden `--leak-follow-policy-pack`, `--leak-follow-allowlist-profile` y `--leak-follow-denylist` con precedencia determinista (`denylist` > allowlist explícita > allowlist por perfil > in-scope > rechazo).
