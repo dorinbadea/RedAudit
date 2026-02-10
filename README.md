@@ -42,7 +42,8 @@ RedAudit operates as an orchestration layer, managing concurrent execution threa
 3. **Entity Resolution**: Identity-Based consolidation of multi-interface devices (heuristic).
 4. **Smart Filtering**: Reducing noise via context-aware verification.
 5. **Nuclei Targeting**: Identity-aware target selection with exception-based retries to avoid redundant web scans. Auto-switches to the **fast** profile on web-dense hosts when full coverage is off to prevent long timeouts.
-6. **Resilience**: Automatic **Dead Host Retries** to abandon unresponsive hosts and prevent scan stalls.
+6. **Scope Expansion Controls**: Policy-driven leak-follow and protocol/vendor IoT probe packs, bounded by per-host budgets, per-probe timeouts, and explicit evidence classes.
+7. **Resilience**: Automatic **Dead Host Retries** to abandon unresponsive hosts and prevent scan stalls.
 
 ![System Overview](docs/images/system_overview_v4.x_en.png)
 
@@ -139,6 +140,22 @@ In **full/completo** mode, the base profile is already aggressive, so deep ident
 
 **Result**: Faster scans than always-on UDP, while preserving identity for IoT, filtered services, and legacy devices.
 
+### Scope Expansion Guardrails
+
+Scope expansion runs as a controlled post-discovery stage and remains deterministic under `safe` mode:
+
+```text
+Base scan signals
+  -> scope policy evaluation
+  -> leak-follow candidate filtering
+  -> bounded IoT probe packs
+  -> evidence classification (evidence/heuristic/hint)
+```
+
+- Leak-follow precedence is enforced as: `denylist` > explicit allowlist > profile allowlist > in-scope > reject.
+- IoT expansion uses opt-in packs (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) with per-host budget and per-probe timeout guards.
+- Promotion to stronger evidence classes requires corroboration; ambiguous signals remain `heuristic` or `hint`.
+
 ### Concurrency Model
 
 RedAudit uses Python's `ThreadPoolExecutor` to scan multiple hosts simultaneously.
@@ -190,6 +207,7 @@ sudo redaudit
 | **Topology Discovery** | L2/L3 mapping (ARP/VLAN/LLDP + gateway/routes) for network context |
 | **Network Discovery** | Broadcast protocols (DHCP/NetBIOS/mDNS/UPnP/ARP/FPING) for L2 visibility |
 | **Web App Security** | Integrated `sqlmap` (SQLi) and `OWASP ZAP` (DAST) for deep web application scanning, with infra-aware gating |
+| **Policy-Driven Scope Expansion** | Leak-follow (`off`/`safe`) and IoT probe packs with explicit budget/timeout guardrails |
 | **Agentless Verification** | Optional SMB/RDP/LDAP/SSH/HTTP probes for identity hints and fingerprints |
 | **VPN Interface Detection** | Classifies VPN endpoints via vendor OUI, VPN ports (500/4500/1194/51820), and hostname patterns |
 | **Stealth Mode** | T1 timing, 1 thread, 5s+ delays for IDS-sensitive environments (`--stealth`) |
@@ -201,6 +219,7 @@ sudo redaudit
 | **CVE Correlation** | NVD API 2.0 with CPE 2.3 matching and 7-day cache |
 | **Exploit Lookup** | Automatic ExploitDB (`searchsploit`) queries for detected services |
 | **Template Scanning** | Nuclei templates with best-effort false-positive checks (header/vendor/title hints) and partial timeout reporting |
+| **Scope Expansion Evidence** | Structured `scope_expansion_evidence` entries with `evidence` / `heuristic` / `hint` classes |
 | **Smart-Check Filter** | 3-layer false positive reduction (Content-Type, size, magic bytes) |
 | **Network Leak Hints** | Flags multiple DHCP-advertised subnets/VLANs as potential hidden networks |
 
@@ -237,6 +256,8 @@ sudo redaudit
 **Thread Scaling:** Increased `MAX_THREADS` from 16 to 100 (v4.6.29) to fully utilize modern hardware.
 
 **Enterprise-Grade Risk Scoring:** Configuration findings (Nikto/Nuclei) integrated into decision matrix with Low/Medium/High severity mappings.
+
+**Scope Expansion Hardening (v4.20.0):** Leak-follow policy packs, IoT probe packs, and auditable `scope_expansion_evidence` are now part of the default reporting contract.
 
 See [CHANGELOG](CHANGELOG.md) for complete version history.
 
@@ -389,6 +410,15 @@ redaudit --diff ~/reports/monday.json ~/reports/friday.json
 | `--topology` | Enable network topology discovery |
 | `--nuclei` | Enable Nuclei template scanning (full mode only) |
 | `--nuclei-max-runtime` | Max Nuclei runtime in minutes (0 = unlimited; creates resume) |
+| `--leak-follow` | Scope leak-follow mode: `off` / `safe` |
+| `--leak-follow-policy-pack` | Leak-follow policy pack: `safe-default` / `safe-strict` / `safe-extended` |
+| `--leak-follow-allowlist` | Explicit allowlist targets for leak-follow (repeatable) |
+| `--leak-follow-allowlist-profile` | Built-in allowlist profile(s) for leak-follow (repeatable) |
+| `--leak-follow-denylist` | Explicit denylist targets for leak-follow (repeatable) |
+| `--iot-probes` | IoT probe mode: `off` / `safe` |
+| `--iot-probe-pack` | IoT probe pack(s): `ssdp`, `coap`, `wiz`, `yeelight`, `tuya` (repeatable) |
+| `--iot-probe-budget-seconds` | Per-host IoT probe budget in seconds |
+| `--iot-probe-timeout-seconds` | Per-probe IoT timeout in seconds |
 | `--nuclei-exclude` | Exclude Nuclei targets (host, host:port, URL; repeatable) |
 | `--nuclei-resume` | Resume pending Nuclei run from a scan folder or resume file |
 | `--html-report` | Generate interactive HTML dashboard |
@@ -543,6 +573,8 @@ redaudit/
 | **HyperScan** | Ultra-fast async discovery module (batch TCP, UDP IoT, aggressive ARP) |
 | **Phase 0 Enrichment** | Low-impact DNS/mDNS/SNMP checks and short HTTP/HTTPS probe for vendor-only hosts |
 | **Closed-Port IoT** | Devices with no open TCP ports (WiZ, Tapo) detected via UDP broadcast probes |
+| **Scope Expansion Policy** | Deterministic `safe`-mode precedence for leak-follow and IoT expansion controls |
+| **Scope Expansion Evidence** | Expansion decision trail classified as `evidence`, `heuristic`, or `hint` |
 | **Smart-Check** | 3-layer false positive filter (Content-Type, size, magic bytes) |
 | **Entity Resolution** | Consolidation of multi-interface devices into unified assets |
 | **ECS** | Elastic Common Schema alignment for SIEM compatibility |
