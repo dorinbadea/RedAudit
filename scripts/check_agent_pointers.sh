@@ -4,8 +4,11 @@ set -euo pipefail
 required_files=(
   ".cursorrules"
   "agents/AGENTS.md"
+  "agents/README.md"
   ".agent/rules/workflow.md"
   ".agent/workflows/pre-push.md"
+  ".agent/rules/redaudit.md"
+  ".agent/workflows/release.md"
 )
 
 for file in "${required_files[@]}"; do
@@ -13,12 +16,12 @@ for file in "${required_files[@]}"; do
     echo "Missing required pointer: $file"
     exit 1
   fi
-  if ! grep -q "AGENTS.md" "$file"; then
+  if ! grep -Fq "AGENTS.md" "$file"; then
     echo "Pointer missing AGENTS.md reference: $file"
     exit 1
   fi
-  if ! grep -q "canonical" "$file"; then
-    echo "Pointer missing canonical note: $file"
+  if ! grep -Eiq "canonical|contract" "$file"; then
+    echo "Pointer missing canonical or contract note: $file"
     exit 1
   fi
 done
