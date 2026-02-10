@@ -185,12 +185,14 @@ bash scripts/ci_local.sh
 Requirements:
 
 - Python 3.10-3.12 available in PATH (`python3.10`, `python3.11`, `python3.12`).
+- `nmap` available in PATH for parity with the GitHub test jobs.
 - Uses `requirements-dev.lock` and creates venvs under `.venv/ci` (ignored).
 
 Optional environment variables:
 
 - `PYTHON_VERSIONS="3.10 3.11"` to limit which versions run.
 - `RUN_PRECOMMIT=0` or `RUN_TESTS=0` to skip steps.
+- `COVERAGE_FAIL_UNDER=85` to override the default local coverage threshold.
 
 ### Test Organization (Quality over Quantity)
 
@@ -218,9 +220,9 @@ Workflow: `.github/workflows/tests.yml`
 
 - Tests job: Python `3.10`-`3.12`, installs `nmap`, runs:
   - `pytest tests/ -v --cov=redaudit --cov-report=xml --cov-report=term-missing`
-  - coverage threshold: `coverage report --fail-under=25`
-- Lint job: runs `pre-commit` via `pre-commit/action`
-- ShellCheck job: runs ShellCheck (currently `continue-on-error: true`)
+  - coverage threshold: `coverage report --fail-under=80`
+- Lint job: verifies pointer consistency via `scripts/check_agent_pointers.sh`, then runs `pre-commit` via `pre-commit/action`
+- ShellCheck job: runs ShellCheck
 - `update-badge` job: updates a dynamic badge via Gist (repo secrets)
 
 Do not merge if CI is red unless the failure is understood and explicitly accepted.
