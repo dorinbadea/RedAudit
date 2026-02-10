@@ -14,7 +14,8 @@ This file is the canonical operating guide for collaborators (human or non-human
 - Do not retag/rewrite published tags/releases. If something was released, publish a new version.
 - Do not commit private data. `scan_results_private/` must never be pushed.
 - Before first push and before merging to `main`, satisfy the **Local Quality Gate Contract** in this document. CI can arrive after the merge; if any checks fail, treat it as a regression and fix it promptly. Do not force-merge with failing checks.
-- `scripts/ci_local.sh` is the preferred local CI-parity entrypoint; a successful run is considered the local equivalent of GitHub CI for this workflow.
+- `scripts/ci_local.sh` is the preferred local CI-parity entrypoint for code changes; a successful run is considered the local equivalent of GitHub CI for this workflow.
+- **Strict Docs-only Rule:** For strict documentation-only changes (`.md` only, no behavior/contract impact), do not run `pytest` or `scripts/ci_local.sh`, and do not wait for the full GitHub test matrix. Use only the docs gate defined in the **Local Quality Gate Contract**.
 - **No Emojis**: Do not use emojis in documentation (`.md` files), including release notes and release payload text. Maintain a professional, neutral tone.
 
 **Codex exception:** When working inside Codex, the environment enforces a `codex/` branch prefix. In that case, `codex/*` is acceptable and compliant with this workflow. If preferred, the branch can be renamed to `feature/*`, `hotfix/*`, or `docs/*` before merge.
@@ -105,7 +106,8 @@ Rules for all pointer files:
 - **Timing rule:** Run the local quality gate exactly once after changes are final and before first push.
 - **Re-run rule:** Re-run the gate only if files changed after a successful gate run.
 - **Code changes path:** Run `pre-commit run --all-files` and `pytest tests/ -v` (or `bash scripts/ci_local.sh` for CI parity).
-- **Docs-only path:** For strict `.md`-only changes with no behavior/contract impact, run `pre-commit run --files <changed-docs>` and skip `pytest`.
+- **Docs-only path (strict):** For strict `.md`-only changes with no behavior/contract impact, run `pre-commit run --files <changed-docs>` and skip `pytest`.
+- **Docs-only prohibition:** In docs-only scope, do not run `pytest tests/ -v` or `bash scripts/ci_local.sh`; this avoids redundant full-suite runs.
 - **Merge condition:** `main` merge requires owner approval and no red CI checks.
 
 ### Pre-commit (Required)
@@ -227,7 +229,8 @@ Workflow: `.github/workflows/tests.yml`
 
 Do not merge if CI is red unless the failure is understood and explicitly accepted.
 For documentation-only changes, it is acceptable to merge with owner approval if CI is
-pending/skipped and no failures are present.
+pending/skipped and no failures are present. Do not block docs-only merges waiting for
+the full remote matrix when the local docs-only gate has already passed.
 
 If branch rules allow bypass for the acting role, GitHub may display a
 "Bypassed rule violations" notice when pushing to `main` before required checks
