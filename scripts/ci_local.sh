@@ -8,6 +8,32 @@ PYTHON_VERSIONS="${PYTHON_VERSIONS:-3.10 3.11 3.12}"
 VENV_ROOT="${VENV_ROOT:-$ROOT_DIR/.venv/ci}"
 RUN_PRECOMMIT="${RUN_PRECOMMIT:-1}"
 RUN_TESTS="${RUN_TESTS:-1}"
+COVERAGE_FAIL_UNDER="${COVERAGE_FAIL_UNDER:-80}"
+
+normalize_flag() {
+  local value="$1"
+  local name="$2"
+  local lowered
+  lowered="$(printf '%s' "${value}" | tr '[:upper:]' '[:lower:]')"
+  case "${lowered}" in
+    1|true|yes|on) echo "1" ;;
+    0|false|no|off) echo "0" ;;
+    *)
+      echo "Invalid value for ${name}: ${value}"
+      echo "Use one of: 1,0,true,false,yes,no,on,off."
+      exit 1
+      ;;
+  esac
+}
+
+RUN_PRECOMMIT="$(normalize_flag "${RUN_PRECOMMIT}" "RUN_PRECOMMIT")"
+RUN_TESTS="$(normalize_flag "${RUN_TESTS}" "RUN_TESTS")"
+
+if [ "${RUN_TESTS}" -eq 1 ] && ! command -v nmap >/dev/null 2>&1; then
+  echo "nmap is required for CI-parity test runs."
+  echo "Install nmap or run with RUN_TESTS=0 to skip tests intentionally."
+  exit 1
+fi
 
 found_versions=()
 missing_versions=()
@@ -47,7 +73,8 @@ for ver in "${found_versions[@]}"; do
   fi
 
   if [ "${RUN_TESTS}" -eq 1 ]; then
-    "${venv_dir}/bin/pytest" tests/ -v
+    "${venv_dir}/bin/pytest" tests/ -v --cov=redaudit --cov-report=xml --cov-report=term-missing
+    "${venv_dir}/bin/python" -m coverage report --fail-under="${COVERAGE_FAIL_UNDER}"
   fi
 
   first_run=0
