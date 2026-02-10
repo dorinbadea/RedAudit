@@ -67,7 +67,7 @@ def test_configure_scan_interactive_full_flow(monkeypatch, tmp_path):
     # Sequence: ScanMode(1), Hyperscan(0), Vuln(0), SQLMap(0), ZAP(0), CVE(0),
     # UDP(0), Topo(0), NetDisc(0), AuthScan(1-No), WindowsVerify(0)
     # Changing last 0 to 1 to disable Auth Scan and avoid dealing with credential inputs in this test
-    choice_with_back = iter([1, 0, 0, 0, 0, 0, 0, 0, 0, 1] + [0] * 50)
+    choice_with_back = iter([1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1] + [0] * 50)
     # First choice is profile (3=Custom), second is redteam mode
     choice = iter([3, 1] + [0] * 50)
     # yes_no sequence for Standard profile (choice 1):
@@ -124,7 +124,7 @@ def test_configure_scan_interactive_standard_profile(monkeypatch, tmp_path):
     choice_iter = iter([1, 1])
     monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: next(choice_iter))
     # Low impact (No), trust hyperscan (No)
-    back_iter = iter([1, 1])
+    back_iter = iter([1, 1, 1])
     monkeypatch.setattr(app, "ask_choice_with_back", lambda *_a, **_k: next(back_iter))
     # v3.9.0: Mock input() for auditor_name and output_dir prompts
     input_iter = iter(["", ""])  # Accept defaults for both
@@ -169,7 +169,7 @@ def test_configure_scan_interactive_exhaustive_profile(monkeypatch, tmp_path):
     choice_iter = iter([2, 0])
     monkeypatch.setattr(app, "ask_choice", lambda *_a, **_k: next(choice_iter))
     # Nuclei enabled? No. Trust hyperscan? No.
-    back_iter = iter([1, 1])
+    back_iter = iter([1, 1, 1])
     monkeypatch.setattr(app, "ask_choice_with_back", lambda *_a, **_k: next(back_iter))
     monkeypatch.setattr("redaudit.core.auditor.get_default_reports_base_dir", lambda: str(tmp_path))
     # Mock NVD not configured
@@ -587,7 +587,7 @@ def test_wizard_exhaustive_profile_nuclei_fatigue():
     """Ensure Nuclei fatigue limit is prompted and stored in Exhaustive profile."""
     auditor = MockWizardAuditor()
     with patch.object(auditor, "ask_choice", side_effect=[2, 2, 1]):
-        with patch.object(auditor, "ask_choice_with_back", side_effect=[0, 1, 1, 1]):
+        with patch.object(auditor, "ask_choice_with_back", side_effect=[0, 1, 1, 1, 1]):
             with patch.object(auditor, "ask_auth_config", return_value={}):
                 with patch.object(auditor, "ask_number", side_effect=[15, 4]):
                     with (
@@ -599,3 +599,110 @@ def test_wizard_exhaustive_profile_nuclei_fatigue():
     assert auditor.config["nuclei_full_coverage"] is True
     assert auditor.config["nuclei_max_runtime"] == 15
     assert auditor.config["nuclei_fatigue_limit"] == 4
+
+
+def test_scope_expansion_profile_defaults_express_forces_off():
+    auditor = MockWizardAuditor()
+    defaults = {
+        "leak_follow_mode": "safe",
+        "iot_probes_mode": "safe",
+        "leak_follow_policy_pack": "safe-extended",
+        "iot_probe_packs": ["ssdp,coap"],
+        "iot_probe_budget_seconds": 30,
+        "iot_probe_timeout_seconds": 5,
+    }
+
+    auditor._apply_scope_expansion_profile_defaults(defaults, "express")
+
+    assert auditor.config["leak_follow_mode"] == "off"
+    assert auditor.config["iot_probes_mode"] == "off"
+    assert auditor.config["leak_follow_policy_pack"] == "safe-extended"
+    assert auditor.config["iot_probe_packs"] == ["ssdp", "coap"]
+    assert auditor.config["iot_probe_budget_seconds"] == 30
+    assert auditor.config["iot_probe_timeout_seconds"] == 5
+
+
+def test_scope_expansion_quick_standard_enables_iot_only(monkeypatch):
+    auditor = MockWizardAuditor()
+    auditor.config.update(
+        {"scan_mode": "normal", "scan_vulnerabilities": True, "nuclei_enabled": False}
+    )
+    monkeypatch.setattr(auditor, "ask_choice_with_back", MagicMock(side_effect=[0, 1]))
+
+    result = auditor._ask_scope_expansion_quick(profile="standard", step_num=2, total_steps=2)
+
+    assert result is True
+    assert auditor.config["iot_probes_mode"] == "safe"
+    assert auditor.config["leak_follow_mode"] == "off"
+
+
+def test_scope_expansion_quick_exhaustive_leak_dependency(monkeypatch):
+    auditor = MockWizardAuditor()
+    auditor.config.update(
+        {"scan_mode": "completo", "scan_vulnerabilities": True, "nuclei_enabled": False}
+    )
+    monkeypatch.setattr(auditor, "ask_choice_with_back", MagicMock(side_effect=[0, 1]))
+
+    result = auditor._ask_scope_expansion_quick(profile="exhaustive", step_num=2, total_steps=2)
+
+    assert result is True
+    assert auditor.config["iot_probes_mode"] == "safe"
+    assert auditor.config["leak_follow_mode"] == "off"
+
+
+def test_scope_expansion_quick_custom_advanced_normalizes_inputs(monkeypatch):
+    auditor = MockWizardAuditor()
+    auditor.config.update(
+        {
+            "scan_mode": "completo",
+            "scan_vulnerabilities": True,
+            "nuclei_enabled": True,
+            "iot_probes_mode": "off",
+            "leak_follow_mode": "off",
+            "iot_probe_packs": ["ssdp"],
+        }
+    )
+
+    monkeypatch.setattr(
+        auditor,
+        "ask_choice_with_back",
+        MagicMock(side_effect=[0, 0, 0]),
+    )
+    monkeypatch.setattr(auditor, "ask_choice", MagicMock(return_value=2))
+    monkeypatch.setattr(auditor, "ask_number", MagicMock(side_effect=[40, 7]))
+    input_values = iter(
+        [
+            "rfc1918-only,local-hosts",
+            "10.0.0.0/24, 10.0.0.10",
+            "10.0.9.0/24,10.0.9.20",
+            "ssdp,coap,wiz",
+        ]
+    )
+    monkeypatch.setattr(builtins, "input", lambda *_a, **_k: next(input_values))
+
+    result = auditor._ask_scope_expansion_quick(profile="custom", step_num=9, total_steps=10)
+
+    assert result is True
+    assert auditor.config["iot_probes_mode"] == "safe"
+    assert auditor.config["leak_follow_mode"] == "safe"
+    assert auditor.config["leak_follow_policy_pack"] == "safe-extended"
+    assert auditor.config["leak_follow_allowlist_profiles"] == ["rfc1918-only", "local-hosts"]
+    assert auditor.config["leak_follow_allowlist"] == ["10.0.0.0/24", "10.0.0.10"]
+    assert auditor.config["leak_follow_denylist"] == ["10.0.9.0/24", "10.0.9.20"]
+    assert auditor.config["iot_probe_packs"] == ["ssdp", "coap", "wiz"]
+    assert auditor.config["iot_probe_budget_seconds"] == 40
+    assert auditor.config["iot_probe_timeout_seconds"] == 7
+
+
+def test_scope_expansion_quick_custom_supports_back(monkeypatch):
+    auditor = MockWizardAuditor()
+    auditor.config.update(
+        {"scan_mode": "completo", "scan_vulnerabilities": True, "nuclei_enabled": True}
+    )
+    monkeypatch.setattr(
+        auditor, "ask_choice_with_back", MagicMock(return_value=auditor.WIZARD_BACK)
+    )
+
+    result = auditor._ask_scope_expansion_quick(profile="custom", step_num=9, total_steps=10)
+
+    assert result is None

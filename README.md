@@ -355,9 +355,9 @@ sudo redaudit
 The wizard offers 4 audit profiles:
 
 - **Express**: Fast discovery (host discovery only). Topology + network discovery enabled; vulnerability scanning disabled.
-- **Standard**: Balanced audit (nmap `-F`/top 100 ports + web vuln checks). Timing preset is selected up front.
-- **Exhaustive**: Full port scan with deeper discovery. UDP top-ports (500) is enabled for ambiguous hosts; Red Team discovery and agentless verification are enabled. CVE correlation is enabled only if an NVD API key is already configured.
-- **Custom**: Full 9-step wizard with back navigation for granular control.
+- **Standard**: Balanced audit (nmap `-F`/top 100 ports + web vuln checks). Timing preset is selected up front. IoT probes can be enabled in `safe` mode; Leak Following stays off in this profile.
+- **Exhaustive**: Full port scan with deeper discovery. UDP top-ports (500) is enabled for ambiguous hosts; Red Team discovery and agentless verification are enabled. CVE correlation is enabled only if an NVD API key is already configured. Scope expansion can be enabled in `safe` mode, with Leak Following active only when Nuclei is enabled.
+- **Custom**: Full 10-step wizard with back navigation for granular control, including a dedicated Scope Expansion step.
 
 Phase 0 low-impact enrichment is an opt-in wizard prompt across all profiles (default off).
 When enabled, it runs DNS/mDNS/SNMP checks and a short HTTP/HTTPS probe for vendor-only hosts with zero open ports.
@@ -368,7 +368,7 @@ The wizard covers:
 
 1. **Target Selection**: Choose a local subnet or enter manual CIDR/IP/range targets
 2. **Timing Preset**: Stealth (T1), Normal (T4), or Aggressive (T5) for Standard/Exhaustive profiles
-3. **Options**: Threads, rate limiting, Phase 0 low-impact enrichment, UDP/topology/net discovery, agentless verification (varies by profile)
+3. **Options**: Threads, rate limiting, Phase 0 low-impact enrichment, UDP/topology/net discovery, scope expansion controls (Leak Following/IoT probes), agentless verification (varies by profile)
 4. **Authorization**: Confirm you have permission to scan
 
 From the main menu, **Resume Nuclei (pending)** includes **Manage resume entries** so you can delete one or all stale resume entries before continuing.

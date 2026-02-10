@@ -151,6 +151,7 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 
 - **Técnica:** Top 100 puertos TCP (`-F`), detección de versiones y SO.
 - **Web:** Revisa cabeceras y tecnologías básicas (WhatWeb).
+- **Scope Expansion:** Sondas IoT opcionales en modo `safe` (toggle rápido). Leak Following permanece desactivado en este perfil.
 - **Autenticación:** Configuración opcional de credenciales SSH/SMB/SNMP.
 - **Ideal para:** Auditorías regulares, validación de políticas.
 
@@ -160,6 +161,7 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
 
 - **Técnica:** 65535 puertos TCP, escaneo UDP, scripts de vulnerabilidad (NSE).
 - **Web:** Escaneo completo (Nikto, Nuclei, SSL).
+- **Scope Expansion:** Toggle opcional en modo `safe`. Leak Following solo se activa cuando Nuclei está habilitado.
 - **Autenticación:** Configuración opcional de credenciales SSH/SMB/SNMP.
 - **Ideal para:** Pentesting, compliance (PCI-DSS, ISO 27001), validación pre-producción.
 **Nota de duración:** Con Nuclei activado, el escaneo puede prolongarse significativamente (p. ej., >2-4 horas) según el número de objetivos (hosts) y los servicios detectados.
@@ -177,6 +179,7 @@ Los perfiles preconfigurados ajustan docenas de parámetros automáticamente:
   - **Autenticación:** Configurar credenciales para escaneo autenticado.
   - **Verificación Sin Agente:** Habilitar/deshabilitar comprobaciones ligeras.
   - **Web & Vulnerabilidades:** Activar/desactivar Nikto, Nuclei, CVE lookup.
+  - **Scope Expansion:** Paso dedicado para activar/desactivar sondas IoT y Leak Following, con controles avanzados opcionales (pack de política, perfiles de allowlist, objetivos allow/deny, packs de sonda, presupuesto y timeout).
 
 ### Menú de Autenticación (Fase 4)
 

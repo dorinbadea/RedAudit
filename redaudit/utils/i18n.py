@@ -13,7 +13,11 @@ from typing import Optional
 
 TRANSLATIONS = {
     "en": {
-        "interrupted": "\n⚠  Interruption received. Saving current state...",
+        "interrupted": "Interruption received.",
+        "interrupted_saving_progress": (
+            "Interruption received. Please wait while RedAudit saves partial progress and "
+            "performs cleanup."
+        ),
         "terminating_scans": "Terminating active scans...",
         "heartbeat_info": "⏱  Activity Monitor: {} ({}s elapsed)",
         "heartbeat_warn": "⏱  Activity Monitor: {} - No output for {}s (tool may be busy)",
@@ -65,7 +69,7 @@ TRANSLATIONS = {
         "wizard_profile_express": "Express — Discovery only, no vuln scanning (~10 min)",
         "wizard_profile_standard": "Standard — Discovery + vulnerability scanning (~30 min)",
         "wizard_profile_exhaustive": "Exhaustive — Maximum depth + Nuclei CVE detection (~2h)",
-        "wizard_profile_custom": "Custom — Full control (9 steps)",
+        "wizard_profile_custom": "Custom — Full control (10 steps)",
         "nvd_not_configured_reminder": "⚠  NVD API key not configured. CVE correlation will be skipped.",
         "nvd_get_key_hint": "   Get a free key at: https://nvd.nist.gov/developers/request-an-api-key",
         "exhaustive_mode_applying": "🚀 Applying Exhaustive profile for maximum discovery...",
@@ -189,6 +193,9 @@ TRANSLATIONS = {
         "defaults_summary_txt_report": "TXT report",
         "defaults_summary_html_report": "HTML report",
         "defaults_summary_windows_verify": "Agentless verify",
+        "defaults_summary_scope_expansion": "Scope expansion modes",
+        "defaults_summary_leak_follow": "Leak-follow policy pack",
+        "defaults_summary_iot_probes": "IoT probes settings",
         "defaults_ignore_confirm": "OK. Saved defaults will be ignored for this run.",
         "jsonl_exports": "JSONL exports: {} findings, {} assets",
         # v3.1+: UDP configuration
@@ -454,6 +461,35 @@ TRANSLATIONS = {
         ),
         "windows_verify_q": "Enable agentless verification (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Max targets for agentless verification (1-200; higher = slower):",
+        "scope_expansion_step_title": "Scope Expansion",
+        "scope_expansion_express_forced_off": (
+            "Scope expansion is disabled in Express profile to prioritize speed."
+        ),
+        "scope_expansion_standard_leak_note": (
+            "Leak Following remains off in Standard profile (requires full mode + Nuclei)."
+        ),
+        "scope_expansion_leak_dependency_note": (
+            "Leak Following requires full mode with Nuclei enabled; keeping it off for this run."
+        ),
+        "scope_expansion_quick_q_standard": "Enable IoT probes in safe mode for ambiguous assets?",
+        "scope_expansion_quick_q_exhaustive": (
+            "Enable scope expansion guardrails (IoT probes + Leak Following when available)?"
+        ),
+        "scope_expansion_iot_q": "Enable IoT probes in safe mode?",
+        "scope_expansion_leak_q": "Enable Leak Following in safe mode?",
+        "scope_expansion_yes_iot": "Yes — bounded probes for ambiguous IoT-like hosts",
+        "scope_expansion_yes_leak": "Yes — follow in-scope leak candidates during Nuclei stage",
+        "scope_expansion_yes_combined": "Yes — escalate only on ambiguity under safe guardrails",
+        "scope_expansion_advanced_q": "Configure advanced scope expansion options?",
+        "scope_expansion_policy_pack_q": "Leak Following policy pack:",
+        "scope_expansion_allowlist_profiles_q": "Leak Following allowlist profiles (CSV, optional)",
+        "scope_expansion_allowlist_profiles_hint": "available: {}",
+        "scope_expansion_allowlist_q": "Leak Following explicit allowlist targets (CSV, optional)",
+        "scope_expansion_denylist_q": "Leak Following denylist targets (CSV, optional)",
+        "scope_expansion_iot_packs_q": "IoT probe packs (CSV, optional)",
+        "scope_expansion_iot_packs_hint": "available: {}",
+        "scope_expansion_iot_budget_q": "IoT probe budget per host in seconds (1-300):",
+        "scope_expansion_iot_timeout_q": "IoT probe timeout per probe in seconds (1-60):",
         # v3.7: Interactive webhooks
         "webhook_q": "Configure real-time alert webhook (Slack/Teams/PagerDuty)?",
         "webhook_url_prompt": "Webhook URL (https://..., e.g., https://hooks.slack.com/...):",
@@ -553,10 +589,14 @@ TRANSLATIONS = {
         "auth_scan_opt": "Authenticated (SSH/SMB/SNMP)",
         "snmp_topology_q": "Enable SNMP Topology Discovery (Routes/ARP/Interfaces)?",
         "follow_routes_q": "Automatically follow discovered routes (scan new subnets)?",
-        "wizard_custom_intro": "Custom wizard: 9 steps. Use Cancel to go back.",
+        "wizard_custom_intro": "Custom wizard: 10 steps. Use Cancel to go back.",
     },
     "es": {
-        "interrupted": "\n⚠  Interrupción recibida. Guardando estado actual...",
+        "interrupted": "Interrupción recibida.",
+        "interrupted_saving_progress": (
+            "Interrupción recibida. Espera mientras RedAudit guarda el progreso parcial y "
+            "realiza la limpieza."
+        ),
         "terminating_scans": "Terminando escaneos activos...",
         "heartbeat_info": "⏱  Monitor de Actividad: {} ({}s transcurridos)",
         "heartbeat_warn": "⏱  Monitor de Actividad: {} - Sin salida hace {}s (herramienta ocupada)",
@@ -608,7 +648,7 @@ TRANSLATIONS = {
         "wizard_profile_express": "Express — Solo discovery (~10 min)",
         "wizard_profile_standard": "Estandar — Discovery + vulns (~30 min)",
         "wizard_profile_exhaustive": "Exhaustivo — Profundidad maxima + Nuclei (~2h)",
-        "wizard_profile_custom": "Personalizado — Control total (9 pasos)",
+        "wizard_profile_custom": "Personalizado — Control total (10 pasos)",
         "nvd_not_configured_reminder": "⚠  API key de NVD no configurada. Se omitirá correlación CVE.",
         "nvd_get_key_hint": "   Obtén una key gratis en: https://nvd.nist.gov/developers/request-an-api-key",
         "exhaustive_mode_applying": "Aplicando perfil Exhaustivo para máximo descubrimiento...",
@@ -732,6 +772,9 @@ TRANSLATIONS = {
         "defaults_summary_txt_report": "Informe TXT",
         "defaults_summary_html_report": "Informe HTML",
         "defaults_summary_windows_verify": "Verificación sin agente",
+        "defaults_summary_scope_expansion": "Modos de scope expansion",
+        "defaults_summary_leak_follow": "Pack de política leak-follow",
+        "defaults_summary_iot_probes": "Ajustes de sondas IoT",
         "defaults_ignore_confirm": "OK. Los defaults guardados se ignorarán en esta ejecución.",
         "jsonl_exports": "Exportaciones JSONL: {} hallazgos, {} activos",
         # v3.1+: Configuración UDP
@@ -1014,6 +1057,47 @@ TRANSLATIONS = {
         ),
         "windows_verify_q": "¿Activar verificación sin agente (SMB/RDP/LDAP/SSH/HTTP)?",
         "windows_verify_max_q": "Máximo de objetivos para verificación sin agente (1-200; más alto = más lento):",
+        "scope_expansion_step_title": "Scope Expansion",
+        "scope_expansion_express_forced_off": (
+            "Scope expansion está desactivado en el perfil Express para priorizar velocidad."
+        ),
+        "scope_expansion_standard_leak_note": (
+            "Leak Following permanece en off en Standard (requiere modo completo + Nuclei)."
+        ),
+        "scope_expansion_leak_dependency_note": (
+            "Leak Following requiere modo completo con Nuclei activo; se mantiene en off en esta ejecución."
+        ),
+        "scope_expansion_quick_q_standard": (
+            "¿Activar sondas IoT en modo seguro para activos ambiguos?"
+        ),
+        "scope_expansion_quick_q_exhaustive": (
+            "¿Activar guardarraíles de scope expansion (sondas IoT + Leak Following cuando aplique)?"
+        ),
+        "scope_expansion_iot_q": "¿Activar sondas IoT en modo seguro?",
+        "scope_expansion_leak_q": "¿Activar Leak Following en modo seguro?",
+        "scope_expansion_yes_iot": "Sí — sondas acotadas para hosts IoT ambiguos",
+        "scope_expansion_yes_leak": (
+            "Sí — seguir candidatos in-scope de leak durante la fase de Nuclei"
+        ),
+        "scope_expansion_yes_combined": (
+            "Sí — escalar solo ante ambigüedad bajo guardarraíles seguros"
+        ),
+        "scope_expansion_advanced_q": "¿Configurar opciones avanzadas de scope expansion?",
+        "scope_expansion_policy_pack_q": "Pack de política Leak Following:",
+        "scope_expansion_allowlist_profiles_q": (
+            "Perfiles de allowlist para Leak Following (CSV, opcional)"
+        ),
+        "scope_expansion_allowlist_profiles_hint": "disponibles: {}",
+        "scope_expansion_allowlist_q": (
+            "Objetivos de allowlist explícita para Leak Following (CSV, opcional)"
+        ),
+        "scope_expansion_denylist_q": ("Objetivos de denylist para Leak Following (CSV, opcional)"),
+        "scope_expansion_iot_packs_q": "Packs de sondas IoT (CSV, opcional)",
+        "scope_expansion_iot_packs_hint": "disponibles: {}",
+        "scope_expansion_iot_budget_q": (
+            "Presupuesto por host para sondas IoT en segundos (1-300):"
+        ),
+        "scope_expansion_iot_timeout_q": ("Timeout por sonda IoT en segundos (1-60):"),
         # v3.7: Webhooks interactivos
         "webhook_q": "¿Configurar webhook de alertas en tiempo real (Slack/Teams/PagerDuty)?",
         "webhook_url_prompt": "URL del webhook (https://..., ej. https://hooks.slack.com/...):",
@@ -1111,7 +1195,7 @@ TRANSLATIONS = {
         "auth_scan_opt": "Autenticado (SSH/SMB/SNMP)",
         "snmp_topology_q": "¿Activar descubrimiento de topología SNMP (Rutas/ARP/Interfaces)?",
         "follow_routes_q": "¿Seguir rutas descubiertas automáticamente (escanear nuevas subredes)?",
-        "wizard_custom_intro": "Wizard personalizado: 9 pasos. Usa Cancelar para volver.",
+        "wizard_custom_intro": "Wizard personalizado: 10 pasos. Usa Cancelar para volver.",
     },
 }
 

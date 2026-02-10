@@ -113,6 +113,24 @@ class TestShowDefaultsSummary(unittest.TestCase):
         auditor._show_defaults_summary(defaults)
         auditor.ui.print_status.assert_called()
 
+    def test_show_defaults_summary_includes_scope_expansion_entries(self):
+        auditor = _make_auditor()
+        defaults = {
+            "leak_follow_mode": "safe",
+            "leak_follow_policy_pack": "safe-extended",
+            "iot_probes_mode": "safe",
+            "iot_probe_packs": ["ssdp", "coap"],
+            "iot_probe_budget_seconds": 35,
+            "iot_probe_timeout_seconds": 6,
+        }
+
+        auditor._show_defaults_summary(defaults)
+
+        rendered = " ".join(str(call.args[0]) for call in auditor.ui.print_status.call_args_list)
+        assert "defaults_summary_scope_expansion" in rendered
+        assert "defaults_summary_leak_follow" in rendered
+        assert "defaults_summary_iot_probes" in rendered
+
 
 if __name__ == "__main__":
     unittest.main()

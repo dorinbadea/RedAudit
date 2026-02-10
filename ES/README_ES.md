@@ -353,9 +353,9 @@ sudo redaudit
 El asistente te guía por la selección de objetivo y el perfil de auditoría. Ofrece 4 perfiles:
 
 - **Express**: Descubrimiento rápido (solo hosts). Topología + descubrimiento de red activados; escaneo de vulnerabilidades desactivado.
-- **Estándar**: Auditoría equilibrada (nmap `-F`/top 100 puertos + comprobaciones web). El preset de temporización se elige al inicio.
-- **Exhaustivo**: Escaneo completo con más profundidad. UDP top-ports (500) se activa en hosts ambiguos; Red Team y verificación sin agente activadas. La correlación CVE solo se habilita si ya hay API key NVD configurada.
-- **Custom**: Wizard completo de 9 pasos con navegación atrás para control granular.
+- **Estándar**: Auditoría equilibrada (nmap `-F`/top 100 puertos + comprobaciones web). El preset de temporización se elige al inicio. Las sondas IoT pueden activarse en modo `safe`; Leak Following permanece desactivado en este perfil.
+- **Exhaustivo**: Escaneo completo con más profundidad. UDP top-ports (500) se activa en hosts ambiguos; Red Team y verificación sin agente activadas. La correlación CVE solo se habilita si ya hay API key NVD configurada. Scope expansion puede activarse en modo `safe`, y Leak Following solo se aplica cuando Nuclei está activo.
+- **Custom**: Wizard completo de 10 pasos con navegación atrás para control granular, con un paso específico de Scope Expansion.
 
 La Fase 0 de enriquecimiento de bajo impacto es un prompt opt-in en todos los perfiles (por defecto desactivada).
 
@@ -365,7 +365,7 @@ El asistente cubre:
 
 1. **Selección de objetivo**: Elige una subred local o introduce objetivos CIDR/IP/rango
 2. **Preset de temporización**: Stealth (T1), Normal (T4) o Agresivo (T5) en Estándar/Exhaustivo
-3. **Opciones**: Hilos, rate limiting, Fase 0 de bajo impacto, UDP/topología/descubrimiento, verificación sin agente (según perfil)
+3. **Opciones**: Hilos, rate limiting, Fase 0 de bajo impacto, UDP/topología/descubrimiento, controles de scope expansion (Leak Following/sondas IoT), verificación sin agente (según perfil)
 4. **Autorización**: Confirma que tienes permiso para escanear
 
 Desde el menu principal, **Reanudar Nuclei (pendiente)** incluye **Gestionar entradas de reanudacion** para borrar una o todas las entradas antiguas antes de continuar.
