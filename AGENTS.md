@@ -13,10 +13,8 @@ This file is the canonical operating guide for collaborators (human or non-human
 - **Coverage Enforcement:** If you touch code, you must add or update tests so the exact changed code paths are fully exercised (100%) in the same change set. No exceptions.
 - Do not retag/rewrite published tags/releases. If something was released, publish a new version.
 - Do not commit private data. `scan_results_private/` must never be pushed.
-- Before merging to `main`, run the local quality gate (`scripts/ci_local.sh` or at least `pre-commit run --all-files` + `pytest tests/ -v`). CI can arrive after the merge; if any checks fail, treat it as a regression and fix it promptly. Do not force-merge with failing checks.
-  - Run the local quality gate once after changes are final. Re-run only if you changed files after a previous pass.
-  - **Docs-only exception**: when changes are strictly documentation (`.md`) and do not alter executable behavior/contracts, you may skip full `pytest` and run a reduced gate (`pre-commit run --files <changed-docs>`). Merge still requires owner approval and no red CI checks.
-- **No Emojis**: Do not use emojis in documentation (`.md` files). Maintain a professional, neutral tone.
+- Before first push and before merging to `main`, satisfy the **Local Quality Gate Contract** in this document. CI can arrive after the merge; if any checks fail, treat it as a regression and fix it promptly. Do not force-merge with failing checks.
+- **No Emojis**: Do not use emojis in documentation (`.md` files), including release notes and release payload text. Maintain a professional, neutral tone.
 
 **Codex exception:** When working inside Codex, the environment enforces a `codex/` branch prefix. In that case, `codex/*` is acceptable and compliant with this workflow. If preferred, the branch can be renamed to `feature/*`, `hotfix/*`, or `docs/*` before merge.
 
@@ -26,12 +24,24 @@ This file is the canonical operating guide for collaborators (human or non-human
 2. Keep scope minimal and fix root causes; avoid unrelated refactors.
 3. Update code, tests, and docs together; keep EN/ES in sync when behavior changes.
 4. Keep versions aligned: update version sources, README/ES README version strings and badges, changelog, roadmap, and release notes when required.
-5. Run `pre-commit run --all-files` and `pytest tests/ -v` (or `scripts/ci_local.sh` for CI parity).
-   For strict docs-only changes, run `pre-commit run --files <changed-docs>` and skip `pytest`.
+5. Execute the **Local Quality Gate Contract** once after all changes are final (docs-only shortcut applies).
 6. Merge only with approval; tag and publish the release with a full payload body.
 7. Clean up branches and ensure `git status` is clean.
 
 See the **Versioning & Release Checklist** section for detailed steps and commands.
+
+## Multi-IDE Pointer Contract
+
+To support different IDE agent ecosystems, this repo includes helper pointer files
+(`.cursorrules`, `agents/*`, `.agent/*`).
+
+Rules for all pointer files:
+
+- Keep them in English.
+- Keep them emoji-free.
+- Keep them short and pointer-oriented; do not duplicate canonical checklists.
+- Avoid fragile references (for example, exact line numbers in `AGENTS.md`).
+- If any pointer file conflicts with `AGENTS.md`, `AGENTS.md` is canonical.
 
 ## Contributor Workflow Guidelines
 
@@ -88,6 +98,14 @@ See the **Versioning & Release Checklist** section for detailed steps and comman
 - **Cleanup (CI Hygiene)**: After merging to `main` and pushing, you **MUST** explicitly delete both the local and remote feature branch (e.g., `git push origin --delete feature/xyz`). Stale branches clutter the CI dashboard and are unacceptable.
 
 ## Local Quality Gate (Must Pass Before Merge)
+
+### Local Quality Gate Contract (Authoritative)
+
+- **Timing rule:** Run the local quality gate exactly once after changes are final and before first push.
+- **Re-run rule:** Re-run the gate only if files changed after a successful gate run.
+- **Code changes path:** Run `pre-commit run --all-files` and `pytest tests/ -v` (or `bash scripts/ci_local.sh` for CI parity).
+- **Docs-only path:** For strict `.md`-only changes with no behavior/contract impact, run `pre-commit run --files <changed-docs>` and skip `pytest`.
+- **Merge condition:** `main` merge requires owner approval and no red CI checks.
 
 ### Pre-commit (Required)
 
@@ -146,22 +164,13 @@ CI runs `pytest` with coverage. Locally, run:
 pytest tests/ -v
 ```
 
-**Single-run rule:** Run pre-commit and pytest once after your changes are final. Do not run a separate, earlier "coverage pass" unless you changed code again after that pass.
-
 Optional (also supported in this repo):
 
 ```bash
 python3 -m unittest discover -s tests
 ```
 
-**Docs-only shortcut:**
-
-- If the change is strictly documentation (`.md`) and does not modify behavior/contracts/examples relied on by tests, you may skip `pytest tests/ -v`.
-- In that case run:
-
-```bash
-pre-commit run --files <changed-docs>
-```
+Docs-only behavior is defined by the **Local Quality Gate Contract** above.
 
 ### Local CI Parity (Multi-Python)
 
@@ -229,7 +238,7 @@ Use this process when CI fails (especially tests), aligned with how RedAudit is 
    - "Expected" due to intentional new behavior (then update the test), or
    - A real bug/regression (then fix code and keep the test).
 4. Adjust tests/mocks minimally to reflect real behavior (no unrelated refactors).
-5. Run the full local gate (pre-commit + pytest) before pushing.
+5. Before pushing, execute the required path from the **Local Quality Gate Contract** once.
 
 ### How to identify which tests to update
 
@@ -267,9 +276,7 @@ Always update i18n + tests in the same commit if the real flow changed.
 - Flow of prompts changed? -> update wizard tests.
 - Heuristic/score changed? -> update scanner mocks/fixtures.
 - Output structure changed? -> update reporter/JSON/HTML tests.
-- Run:
-  - `pre-commit run --all-files`
-  - `pytest tests/ -v`
+- If quality gate has not run since final edits, execute the required path once (see **Local Quality Gate Contract**).
 
 ## Scan Artifact Review (Quality Loop)
 
@@ -304,6 +311,7 @@ For ES docs, use Spanish (Spain) phrasing (`es-ES`) and avoid LATAM variants.
 **Documentation style:**
 
 - Keep sentences clear and concise.
+- Do not use emojis in any `.md` file, including `README`, changelogs, manuals, and release notes.
 - In release notes, use absolute URLs (e.g., `https://github.com/.../blob/vX.Y.Z/...`) for language badge links. Relative links break when viewed from the GitHub release page.
 
 ## Versioning & Release Checklist (SemVer)
@@ -332,27 +340,19 @@ Also update any tests that assert version output (e.g., integration tests).
       - EN: `[![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](...)`
       - ES: `[![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](...)`
     - Use **Absolute URLs** for badge links.
-2. **Commit & Push**:
+2. **Commit & Push Branch**:
     - Commit notes and version bumps.
-    - Tag `vX.Y.Z`.
-    - Push branch and tag.
-3. **Publish on GitHub**:
-    - Immediately verify the GitHub Release page.
-    - If empty, populate it using `gh release edit vX.Y.Z --notes-file docs/releases/RELEASE_NOTES_vX.Y.Z.md`.
-    - **NEVER leave a Release page empty.**
+    - Push branch (tagging happens in step 5 after merge).
 
 - Add a new section to `CHANGELOG.md` and `ES/CHANGELOG_ES.md`
-- Add release notes:
-  - `docs/releases/RELEASE_NOTES_vX.Y.Z.md`
-  - `docs/releases/RELEASE_NOTES_vX.Y.Z_ES.md`
 - Create Audit Report (PRIVATE - do NOT commit):
   - `scan_results_private/AUDIT_REPORT_vX.Y.Z.md`
   - This file contains network-specific data and must never be pushed to the repository.
 
 ### 4) Final verification
 
-- `pre-commit run --all-files`
-- `pytest tests/ -v` (or `python3 -m unittest discover -s tests`)
+- Confirm the **Local Quality Gate Contract** has passed and is still valid (no file changes since that run).
+- If not yet run, execute the required gate path once now.
 - `git status` must be clean
 
 ### Release candidate (local validation, no merge to main)
@@ -371,11 +371,11 @@ From `main`:
 git checkout main
 git pull --ff-only origin main
 git merge --no-ff <branch> -m "Merge <branch> into main"
-pre-commit run --all-files
-pytest tests/ -v
 git tag -a vX.Y.Z -m "RedAudit vX.Y.Z"
 git push origin main --tags
 ```
+
+Do not re-run quality gate in this step unless files changed after step 4.
 
 > [!WARNING]
 > **Pushing tags is NOT enough.** `git push --tags` creates the pointer but leaves the GitHub Release page empty. You **MUST** complete step 6.

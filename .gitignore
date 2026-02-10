@@ -32,9 +32,13 @@ redaudit_install.sh.bak
 11.12/
 RedAudit_*/
 
-# Agent workflows (private)
+# Agent workflows and rules (tracked pointer files)
 .agent/
+!.agent/
 !.agent/rules/
+!.agent/workflows/
+!.agent/rules/*.md
+!.agent/workflows/*.md
 diff_report_*.html
 diff_report_*.md
 *.log

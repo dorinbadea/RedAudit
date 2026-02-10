@@ -2,8 +2,9 @@
 description: RedAudit Engineering Workflow Pointer
 ---
 
-# RedAudit: Engineering Workflow
+# RedAudit Engineering Workflow Pointer
 
 This file is a pointer. The canonical workflow lives in `AGENTS.md` (repo root).
 
-Read `AGENTS.md` at the start of every task. If anything conflicts, `AGENTS.md` is canonical.
+Follow the **Multi-IDE Pointer Contract** in `AGENTS.md`.
+If anything conflicts, `AGENTS.md` is canonical.
