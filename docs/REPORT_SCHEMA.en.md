@@ -78,6 +78,7 @@ The top-level container for the scan session.
 | `nuclei` | `object` | (Optional) Nuclei scan summary (targets, findings, status) **(v3.7+)** |
 | `config_snapshot` | `object` | Sanitized run configuration snapshot (no secrets) **(v3.7+)** |
 | `pipeline` | `object` | Pipeline summary (net discovery, host scan, agentless, nuclei, vuln scan) **(v3.7+)** |
+| `scope_expansion_evidence` | `array` | Scope-expansion evidence trail (`leak_follow` / `iot_probe`) classified as `evidence`, `heuristic`, or `hint` |
 | `smart_scan_summary` | `object` | SmartScan decision summary (identity score, deep scan counts) **(v3.7+)** |
 | `hosts` | `array` | List of `Host` objects (see below) |
 | `vulnerabilities` | `array` | List of vulnerability findings |
@@ -94,8 +95,12 @@ The `config_snapshot` object stores sanitized run configuration (no secrets).
 | `nuclei_timeout` | `integer` | Nuclei timeout per target in seconds. |
 | `nuclei_max_runtime` | `integer` | Total Nuclei runtime budget in minutes (0 = unlimited). |
 | `leak_follow_mode` | `string` | Leak-follow mode (`off`/`safe`). |
+| `leak_follow_policy_pack` | `string` | Leak-follow policy pack (`safe-default`/`safe-strict`/`safe-extended`). |
 | `leak_follow_allowlist` | `array` | Optional leak-follow in-scope allowlist entries. |
+| `leak_follow_allowlist_profiles` | `array` | Leak-follow allowlist profiles (`rfc1918-only`, `ula-only`, `local-hosts`). |
+| `leak_follow_denylist` | `array` | Explicit leak-follow denylist entries (host/CIDR/IP). |
 | `iot_probes_mode` | `string` | IoT probes mode (`off`/`safe`). |
+| `iot_probe_packs` | `array` | Active IoT protocol/vendor packs (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`). |
 | `iot_probe_budget_seconds` | `integer` | Per-host IoT probe budget in seconds. |
 | `iot_probe_timeout_seconds` | `integer` | Per-probe IoT timeout in seconds. |
 
@@ -127,6 +132,7 @@ Compact, flattened summary for dashboards and automation (generated only when re
 | `scan_mode_cli` | `string` | CLI scan mode string (best-effort) |
 | `options` | `object` | Compact config snapshot (threads/udp/topology/net-discovery/nuclei/etc.) |
 | `pipeline` | `object` | Pipeline summary (same structure as main report) |
+| `scope_expansion_evidence` | `array` | Scope-expansion evidence trail included for SIEM/report correlation |
 | `smart_scan_summary` | `object` | SmartScan summary |
 | `redaudit_version` | `string` | RedAudit version |
 | `auth_scan` | `object` | (Optional) Authenticated scan summary (targets, successes, failures) |
@@ -287,16 +293,31 @@ Compact roll-up for dashboards.
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `leak_follow_mode` | string | Leak-follow mode (`off`/`safe`) used in the run |
+| `leak_follow_policy_pack` | string | Leak-follow policy pack used in the run |
 | `leak_follow_allowlist` | array | In-scope allowlist entries supplied by operator |
+| `leak_follow_allowlist_profiles` | array | Allowlist profiles supplied by operator |
+| `leak_follow_denylist` | array | Explicit denylist entries supplied by operator |
 | `leak_follow_runtime.mode` | string | Effective runtime mode for leak-follow (`off`/`safe`) |
+| `leak_follow_runtime.policy_pack` | string | Effective runtime leak-follow policy pack |
+| `leak_follow_runtime.allowlist_profiles` | array | Effective leak-follow profiles at runtime |
 | `leak_follow_runtime.detected` | integer | Total leak-follow candidates detected at runtime |
 | `leak_follow_runtime.eligible` | integer | Candidates that passed safe in-scope gates |
 | `leak_follow_runtime.followed` | integer | Number of follow targets appended for scanning |
 | `leak_follow_runtime.skipped` | integer | Candidates discarded by mode/guardrails |
 | `leak_follow_runtime.follow_targets` | array | Follow targets actually appended to Nuclei |
 | `iot_probes_mode` | string | IoT probes mode (`off`/`safe`) |
+| `iot_probe_packs` | array | Active IoT packs for the run |
 | `iot_probe_budget_seconds` | integer | Per-host IoT probe budget in seconds |
 | `iot_probe_timeout_seconds` | integer | Per-probe IoT timeout in seconds |
+| `iot_probes_runtime.mode` | string | Effective runtime mode for IoT probes (`off`/`safe`) |
+| `iot_probes_runtime.packs` | array | Effective runtime IoT packs |
+| `iot_probes_runtime.candidates` | integer | Hosts selected for IoT runtime probing |
+| `iot_probes_runtime.executed_hosts` | integer | Hosts actually processed by IoT runtime probing |
+| `iot_probes_runtime.probes_total` | integer | Planned probes across selected hosts and packs |
+| `iot_probes_runtime.probes_executed` | integer | Probes actually executed before budget/timeout cutoffs |
+| `iot_probes_runtime.probes_responded` | integer | Probes with active responses |
+| `iot_probes_runtime.budget_exceeded_hosts` | integer | Hosts where budget ended probe execution |
+| `iot_probes_runtime.reasons` | object | Runtime reason counters (`corroborated`, `no_response`, `budget_exceeded`, etc.) |
 
 #### pipeline.hyperscan_vs_final (v4.18.9+)
 

@@ -115,8 +115,12 @@ class TestDefaultConfig(unittest.TestCase):
             "nuclei_enabled",
             "nuclei_max_runtime",
             "leak_follow_mode",
+            "leak_follow_policy_pack",
             "leak_follow_allowlist",
+            "leak_follow_allowlist_profiles",
+            "leak_follow_denylist",
             "iot_probes_mode",
+            "iot_probe_packs",
             "iot_probe_budget_seconds",
             "iot_probe_timeout_seconds",
             "net_discovery_enabled",
@@ -245,8 +249,12 @@ class TestPersistentDefaults(unittest.TestCase):
                         windows_verify_enabled=True,
                         windows_verify_max_targets=25,
                         leak_follow_mode="safe",
+                        leak_follow_policy_pack="safe-extended",
                         leak_follow_allowlist=["10.0.0.0/24"],
+                        leak_follow_allowlist_profiles=["rfc1918-only", "local-hosts"],
+                        leak_follow_denylist=["10.0.2.0/24"],
                         iot_probes_mode="safe",
+                        iot_probe_packs=["ssdp", "coap"],
                         iot_probe_budget_seconds=30,
                         iot_probe_timeout_seconds=5,
                         bogus_key="ignored",
@@ -272,8 +280,14 @@ class TestPersistentDefaults(unittest.TestCase):
         self.assertEqual(defaults["windows_verify_enabled"], True)
         self.assertEqual(defaults["windows_verify_max_targets"], 25)
         self.assertEqual(defaults["leak_follow_mode"], "safe")
+        self.assertEqual(defaults["leak_follow_policy_pack"], "safe-extended")
         self.assertEqual(defaults["leak_follow_allowlist"], ["10.0.0.0/24"])
+        self.assertEqual(
+            defaults["leak_follow_allowlist_profiles"], ["rfc1918-only", "local-hosts"]
+        )
+        self.assertEqual(defaults["leak_follow_denylist"], ["10.0.2.0/24"])
         self.assertEqual(defaults["iot_probes_mode"], "safe")
+        self.assertEqual(defaults["iot_probe_packs"], ["ssdp", "coap"])
         self.assertEqual(defaults["iot_probe_budget_seconds"], 30)
         self.assertEqual(defaults["iot_probe_timeout_seconds"], 5)
         self.assertNotIn("bogus_key", defaults)

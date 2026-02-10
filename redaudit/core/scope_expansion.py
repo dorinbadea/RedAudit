@@ -20,6 +20,9 @@ _PRIVATE_IPV4_RE = re.compile(
 )
 _URL_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
 
+LEAK_FOLLOW_POLICY_PACKS = ("safe-default", "safe-strict", "safe-extended")
+LEAK_FOLLOW_ALLOWLIST_PROFILES = ("rfc1918-only", "ula-only", "local-hosts")
+
 
 def _iter_leak_texts(finding: Dict[str, Any]) -> Iterable[Tuple[str, str]]:
     fields = (
@@ -196,12 +199,101 @@ def _parse_allowlist(
     return networks, ips, hosts
 
 
+def normalize_leak_follow_policy_pack(value: Any) -> str:
+    policy_pack = str(value or "").strip().lower()
+    if policy_pack not in LEAK_FOLLOW_POLICY_PACKS:
+        return "safe-default"
+    return policy_pack
+
+
+def normalize_leak_follow_profiles(raw_profiles: Optional[Iterable[Any]]) -> List[str]:
+    if raw_profiles is None:
+        return []
+    if isinstance(raw_profiles, str):
+        raw_profiles = [raw_profiles]
+
+    normalized: List[str] = []
+    seen: Set[str] = set()
+    for item in raw_profiles:
+        for token in str(item or "").split(","):
+            profile = token.strip().lower()
+            if not profile or profile not in LEAK_FOLLOW_ALLOWLIST_PROFILES or profile in seen:
+                continue
+            seen.add(profile)
+            normalized.append(profile)
+    return normalized
+
+
+def _parse_policy_targets(
+    values: Optional[Iterable[Any]],
+) -> Tuple[List[IPNetwork], Set[IPAddress], Set[str], Set[str]]:
+    materialized = list(values or [])
+    networks, ips, hosts = _parse_allowlist(materialized)
+    suffixes: Set[str] = set()
+    for item in materialized:
+        value = str(item or "").strip().lower()
+        if not value:
+            continue
+        if value.startswith("*.") and len(value) > 2:
+            suffixes.add(value[1:])
+    return networks, ips, hosts, suffixes
+
+
+def _resolve_profile_targets(
+    policy_pack: str, raw_profiles: Optional[Iterable[Any]]
+) -> Tuple[List[str], List[IPNetwork], Set[IPAddress], Set[str], Set[str]]:
+    effective_profiles = normalize_leak_follow_profiles(raw_profiles)
+    if policy_pack == "safe-extended" and "local-hosts" not in effective_profiles:
+        effective_profiles.append("local-hosts")
+
+    networks: List[IPNetwork] = []
+    ips: Set[IPAddress] = set()
+    hosts: Set[str] = set()
+    suffixes: Set[str] = set()
+
+    for profile in effective_profiles:
+        if profile == "rfc1918-only":
+            networks.extend(
+                (
+                    ipaddress.ip_network("10.0.0.0/8"),
+                    ipaddress.ip_network("172.16.0.0/12"),
+                    ipaddress.ip_network("192.168.0.0/16"),
+                )
+            )
+            continue
+        if profile == "ula-only":
+            networks.append(ipaddress.ip_network("fc00::/7"))
+            continue
+        if profile == "local-hosts":
+            hosts.update(("localhost", "localhost.localdomain", "gateway.local", "router.local"))
+            suffixes.update((".local", ".lan", ".home"))
+            continue
+
+    return effective_profiles, networks, ips, hosts, suffixes
+
+
+def _ip_matches_allow_rules(
+    ip_obj: IPAddress, *, networks: List[IPNetwork], ips: Set[IPAddress]
+) -> bool:
+    return ip_obj in ips or any(ip_obj in net for net in networks)
+
+
+def _host_matches_allow_rules(host: str, *, hosts: Set[str], suffixes: Set[str]) -> bool:
+    host_norm = host.lower()
+    if host_norm in hosts:
+        return True
+    return any(host_norm.endswith(suffix) for suffix in suffixes)
+
+
 def evaluate_leak_follow_candidates(
     candidates: List[Dict[str, str]],
     *,
     mode: str,
     target_networks: Optional[Iterable[Any]],
     allowlist: Optional[Iterable[Any]],
+    policy_pack: str = "safe-default",
+    allowlist_profiles: Optional[Iterable[Any]] = None,
+    denylist: Optional[Iterable[Any]] = None,
 ) -> Dict[str, Any]:
     """
     Evaluate candidates against safe scope controls.
@@ -209,8 +301,13 @@ def evaluate_leak_follow_candidates(
     Returns a deterministic decision payload with counts and per-candidate reasons.
     """
     effective_mode = mode if mode in ("off", "safe") else "off"
+    effective_policy_pack = normalize_leak_follow_policy_pack(policy_pack)
     target_nets = _parse_network_list(target_networks)
-    allow_nets, allow_ips, allow_hosts = _parse_allowlist(allowlist)
+    allow_nets, allow_ips, allow_hosts, allow_host_suffixes = _parse_policy_targets(allowlist)
+    deny_nets, deny_ips, deny_hosts, deny_host_suffixes = _parse_policy_targets(denylist)
+    profile_names, profile_nets, profile_ips, profile_hosts, profile_host_suffixes = (
+        _resolve_profile_targets(effective_policy_pack, allowlist_profiles)
+    )
 
     decisions: List[Dict[str, Any]] = []
     accepted: Set[str] = set()
@@ -258,15 +355,29 @@ def evaluate_leak_follow_candidates(
                 decision["reason"] = "public_candidate"
                 decisions.append(decision)
                 continue
-            if any(ip_obj in net for net in target_nets):
+            if _ip_matches_allow_rules(ip_obj, networks=deny_nets, ips=deny_ips):
+                decision["reason"] = "denylisted"
+                decision["reason_detail"] = "explicit_denylist"
+                decisions.append(decision)
+                continue
+            if _ip_matches_allow_rules(ip_obj, networks=allow_nets, ips=allow_ips):
                 decision["eligible"] = True
-                decision["reason"] = "in_scope"
+                decision["reason"] = "allowlisted"
+                decision["reason_detail"] = "explicit_allowlist"
                 accepted.add(candidate)
                 decisions.append(decision)
                 continue
-            if ip_obj in allow_ips or any(ip_obj in net for net in allow_nets):
+            if _ip_matches_allow_rules(ip_obj, networks=profile_nets, ips=profile_ips):
                 decision["eligible"] = True
                 decision["reason"] = "allowlisted"
+                decision["reason_detail"] = "profile_allowlist"
+                accepted.add(candidate)
+                decisions.append(decision)
+                continue
+            if any(ip_obj in net for net in target_nets):
+                decision["eligible"] = True
+                decision["reason"] = "in_scope"
+                decision["reason_detail"] = "target_network"
                 accepted.add(candidate)
                 decisions.append(decision)
                 continue
@@ -275,12 +386,34 @@ def evaluate_leak_follow_candidates(
             continue
 
         if kind == "host":
-            if candidate.lower() in allow_hosts:
+            if _host_matches_allow_rules(candidate, hosts=deny_hosts, suffixes=deny_host_suffixes):
+                decision["reason"] = "denylisted"
+                decision["reason_detail"] = "explicit_denylist"
+                decisions.append(decision)
+                continue
+            if _host_matches_allow_rules(
+                candidate, hosts=allow_hosts, suffixes=allow_host_suffixes
+            ):
                 decision["eligible"] = True
                 decision["reason"] = "allowlisted_host"
+                decision["reason_detail"] = "explicit_allowlist"
                 accepted.add(candidate)
-            else:
-                decision["reason"] = "hostname_not_allowlisted"
+                decisions.append(decision)
+                continue
+            if effective_policy_pack == "safe-strict":
+                decision["reason"] = "strict_hostname_block"
+                decisions.append(decision)
+                continue
+            if _host_matches_allow_rules(
+                candidate, hosts=profile_hosts, suffixes=profile_host_suffixes
+            ):
+                decision["eligible"] = True
+                decision["reason"] = "allowlisted_host"
+                decision["reason_detail"] = "profile_allowlist"
+                accepted.add(candidate)
+                decisions.append(decision)
+                continue
+            decision["reason"] = "hostname_not_allowlisted"
             decisions.append(decision)
             continue
 
@@ -290,6 +423,8 @@ def evaluate_leak_follow_candidates(
     eligible = sum(1 for d in decisions if d.get("eligible"))
     return {
         "mode": effective_mode,
+        "policy_pack": effective_policy_pack,
+        "allowlist_profiles": profile_names,
         "detected": len(decisions),
         "eligible": eligible,
         "followed": 0,  # Phase B block B3 will execute follow actions.

@@ -366,8 +366,12 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "nuclei_profile": config_snapshot.get("nuclei_profile"),
         "nuclei_full_coverage": config_snapshot.get("nuclei_full_coverage"),
         "leak_follow_mode": config_snapshot.get("leak_follow_mode"),
+        "leak_follow_policy_pack": config_snapshot.get("leak_follow_policy_pack"),
         "leak_follow_allowlist": config_snapshot.get("leak_follow_allowlist"),
+        "leak_follow_allowlist_profiles": config_snapshot.get("leak_follow_allowlist_profiles"),
+        "leak_follow_denylist": config_snapshot.get("leak_follow_denylist"),
         "iot_probes_mode": config_snapshot.get("iot_probes_mode"),
+        "iot_probe_packs": config_snapshot.get("iot_probe_packs"),
         "iot_probe_budget_seconds": config_snapshot.get("iot_probe_budget_seconds"),
         "iot_probe_timeout_seconds": config_snapshot.get("iot_probe_timeout_seconds"),
         "cve_lookup_enabled": config_snapshot.get("cve_lookup_enabled"),
@@ -401,6 +405,7 @@ def export_summary_json(results: Dict, output_path: str) -> Dict:
         "scan_mode_cli": scan_mode_cli,
         "options": options,
         "pipeline": results.get("pipeline", {}),
+        "scope_expansion_evidence": results.get("scope_expansion_evidence", []),
         "smart_scan_summary": results.get("smart_scan_summary", {}),
         # Convenience: summary consumers frequently need RedAudit version
         "redaudit_version": results.get("version")

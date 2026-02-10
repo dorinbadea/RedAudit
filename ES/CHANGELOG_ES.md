@@ -10,6 +10,18 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+### Anadido
+
+- **Packs y controles de política leak-follow**: Se añaden `--leak-follow-policy-pack`, `--leak-follow-allowlist-profile` y `--leak-follow-denylist` con precedencia determinista (`denylist` > allowlist explícita > allowlist por perfil > in-scope > rechazo).
+- **Packs de sondas IoT por protocolo**: Se añade `--iot-probe-pack` con packs iniciales (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) y ejecución acotada en runtime.
+- **Rastro de evidencia de expansión de alcance**: Se añaden entradas `scope_expansion_evidence` con `feature`, `classification`, `source`, `signal`, `decision`, `reason`, `host`, `timestamp` y `raw_ref`.
+
+### Mejorado
+
+- **Guardarraíles en runtime**: Las sondas IoT de expansión aplican presupuesto por host y timeout por sonda con contadores explícitos de razones en runtime.
+- **Paridad de reporting/esquema**: `config_snapshot`, `pipeline.scope_expansion`, resúmenes HTML/TXT y `summary.json` exponen campos de política leak-follow, contadores runtime IoT y evidencia de expansión.
+- **Alineación documental**: Uso, esquema de informes y roadmap en EN/ES reflejan la implementación de los controles de expansión v5.x.
+
 ## [4.19.52] - 07-02-2026
 
 ### Mejorado

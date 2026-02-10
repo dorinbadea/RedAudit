@@ -88,8 +88,12 @@ class ConfigurationContext(MutableMapping):
             "nuclei_timeout": 300,
             # v4.x Phase A: explicit safe defaults for scope expansion features
             "leak_follow_mode": "off",
+            "leak_follow_policy_pack": "safe-default",
             "leak_follow_allowlist": [],
+            "leak_follow_allowlist_profiles": [],
+            "leak_follow_denylist": [],
             "iot_probes_mode": "off",
+            "iot_probe_packs": ["ssdp", "coap", "wiz", "yeelight", "tuya"],
             "iot_probe_budget_seconds": 20,
             "iot_probe_timeout_seconds": 3,
             "sqlmap_level": 1,

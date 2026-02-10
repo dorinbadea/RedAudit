@@ -61,8 +61,12 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "nuclei_max_runtime": None,  # int minutes | None
         # v4.x Phase A: Safe scope expansion controls
         "leak_follow_mode": None,  # "off" | "safe" | None
+        "leak_follow_policy_pack": None,  # "safe-default" | "safe-strict" | "safe-extended"
         "leak_follow_allowlist": None,  # list[str] | None
+        "leak_follow_allowlist_profiles": None,  # list[str] | None
+        "leak_follow_denylist": None,  # list[str] | None
         "iot_probes_mode": None,  # "off" | "safe" | None
+        "iot_probe_packs": None,  # list[str] | None
         "iot_probe_budget_seconds": None,  # int | None
         "iot_probe_timeout_seconds": None,  # int | None
         # v3.6.0+: Net Discovery / Red Team defaults (wizard)

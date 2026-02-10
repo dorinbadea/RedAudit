@@ -27,6 +27,13 @@ from redaudit.utils.i18n import TRANSLATIONS, detect_preferred_language
 from redaudit.utils.paths import expand_user_path, get_default_reports_base_dir
 from redaudit.utils.targets import parse_target_tokens
 from redaudit.core.nuclei import normalize_nuclei_exclude
+from redaudit.core.scope_expansion import (
+    LEAK_FOLLOW_ALLOWLIST_PROFILES,
+    LEAK_FOLLOW_POLICY_PACKS,
+    normalize_leak_follow_policy_pack,
+    normalize_leak_follow_profiles,
+)
+from redaudit.core.iot_scope_probes import IOT_PROBE_PACKS, normalize_iot_probe_packs
 
 
 def _normalize_csv_items(values):
@@ -86,10 +93,18 @@ def parse_arguments():
         help_leak_follow = (
             "Leak Following: off (default) o safe (solo candidatos internos in-scope)."
         )
+        help_leak_follow_policy_pack = (
+            "Pack de política Leak Following: safe-default, safe-strict o safe-extended."
+        )
         help_leak_allowlist = (
             "Allowlist para Leak Following en modo safe (host/CIDR, repetible o CSV)."
         )
+        help_leak_allowlist_profile = (
+            "Perfil de allowlist Leak Following (repetible): rfc1918-only, ula-only, local-hosts."
+        )
+        help_leak_denylist = "Denylist Leak Following (host/CIDR/IP, repetible o CSV)."
         help_iot_probes = "Sondas IoT: off (default) o safe (solo con ambigüedad + señal fuerte)."
+        help_iot_probe_pack = "Pack de sondas IoT (repetible): ssdp, coap, wiz, yeelight, tuya."
         help_iot_budget = "Presupuesto por host para sondas IoT en segundos (default: 20)."
         help_iot_timeout = "Timeout por sonda IoT en segundos (default: 3)."
     else:
@@ -103,12 +118,20 @@ def parse_arguments():
         help_leak_follow = (
             "Leak Following mode: off (default) or safe (in-scope internal candidates only)."
         )
+        help_leak_follow_policy_pack = (
+            "Leak Following policy pack: safe-default, safe-strict, or safe-extended."
+        )
         help_leak_allowlist = (
             "Leak Following allowlist for safe mode (host/CIDR, repeatable or CSV)."
         )
+        help_leak_allowlist_profile = (
+            "Leak Following allowlist profile (repeatable): " "rfc1918-only, ula-only, local-hosts."
+        )
+        help_leak_denylist = "Leak Following denylist (host/CIDR/IP, repeatable or CSV)."
         help_iot_probes = (
             "IoT probes mode: off (default) or safe (ambiguity + strong corroborated signals)."
         )
+        help_iot_probe_pack = "IoT probe pack (repeatable): ssdp, coap, wiz, yeelight, tuya."
         help_iot_budget = "Per-host IoT probe budget in seconds (default: 20)."
         help_iot_timeout = "Per-probe IoT timeout in seconds (default: 3)."
 
@@ -183,13 +206,23 @@ Examples:
     if default_leak_follow_mode not in ("off", "safe"):
         default_leak_follow_mode = "off"
 
+    default_leak_follow_policy_pack = normalize_leak_follow_policy_pack(
+        persisted_defaults.get("leak_follow_policy_pack")
+    )
     default_leak_follow_allowlist = _normalize_csv_items(
         persisted_defaults.get("leak_follow_allowlist")
+    )
+    default_leak_follow_allowlist_profiles = normalize_leak_follow_profiles(
+        persisted_defaults.get("leak_follow_allowlist_profiles")
+    )
+    default_leak_follow_denylist = _normalize_csv_items(
+        persisted_defaults.get("leak_follow_denylist")
     )
 
     default_iot_probes_mode = persisted_defaults.get("iot_probes_mode")
     if default_iot_probes_mode not in ("off", "safe"):
         default_iot_probes_mode = "off"
+    default_iot_probe_packs = normalize_iot_probe_packs(persisted_defaults.get("iot_probe_packs"))
 
     default_iot_probe_budget_seconds = persisted_defaults.get("iot_probe_budget_seconds")
     if (
@@ -396,6 +429,12 @@ Examples:
         help=help_leak_follow,
     )
     parser.add_argument(
+        "--leak-follow-policy-pack",
+        choices=list(LEAK_FOLLOW_POLICY_PACKS),
+        default=default_leak_follow_policy_pack,
+        help=help_leak_follow_policy_pack,
+    )
+    parser.add_argument(
         "--leak-follow-allowlist",
         action="append",
         default=list(default_leak_follow_allowlist),
@@ -403,10 +442,33 @@ Examples:
         help=help_leak_allowlist,
     )
     parser.add_argument(
+        "--leak-follow-allowlist-profile",
+        action="append",
+        choices=list(LEAK_FOLLOW_ALLOWLIST_PROFILES),
+        default=list(default_leak_follow_allowlist_profiles),
+        metavar="PROFILE",
+        help=help_leak_allowlist_profile,
+    )
+    parser.add_argument(
+        "--leak-follow-denylist",
+        action="append",
+        default=list(default_leak_follow_denylist),
+        metavar="TARGET",
+        help=help_leak_denylist,
+    )
+    parser.add_argument(
         "--iot-probes",
         choices=["off", "safe"],
         default=default_iot_probes_mode,
         help=help_iot_probes,
+    )
+    parser.add_argument(
+        "--iot-probe-pack",
+        action="append",
+        choices=sorted(IOT_PROBE_PACKS.keys()),
+        default=list(default_iot_probe_packs),
+        metavar="PACK",
+        help=help_iot_probe_pack,
     )
     parser.add_argument(
         "--iot-probe-budget-seconds",
@@ -977,13 +1039,23 @@ def configure_from_args(app, args) -> bool:
     if leak_follow_mode not in ("off", "safe"):
         leak_follow_mode = "off"
     app.config["leak_follow_mode"] = leak_follow_mode
+    app.config["leak_follow_policy_pack"] = normalize_leak_follow_policy_pack(
+        getattr(args, "leak_follow_policy_pack", "safe-default")
+    )
     app.config["leak_follow_allowlist"] = _normalize_csv_items(
         getattr(args, "leak_follow_allowlist", None)
+    )
+    app.config["leak_follow_allowlist_profiles"] = normalize_leak_follow_profiles(
+        getattr(args, "leak_follow_allowlist_profile", None)
+    )
+    app.config["leak_follow_denylist"] = _normalize_csv_items(
+        getattr(args, "leak_follow_denylist", None)
     )
     iot_probes_mode = getattr(args, "iot_probes", "off")
     if iot_probes_mode not in ("off", "safe"):
         iot_probes_mode = "off"
     app.config["iot_probes_mode"] = iot_probes_mode
+    app.config["iot_probe_packs"] = normalize_iot_probe_packs(getattr(args, "iot_probe_pack", None))
     iot_probe_budget_seconds = getattr(args, "iot_probe_budget_seconds", 20)
     if (
         not isinstance(iot_probe_budget_seconds, int)
@@ -1073,8 +1145,12 @@ def configure_from_args(app, args) -> bool:
                 topology_enabled=app.config.get("topology_enabled"),
                 nuclei_enabled=app.config.get("nuclei_enabled"),
                 leak_follow_mode=app.config.get("leak_follow_mode"),
+                leak_follow_policy_pack=app.config.get("leak_follow_policy_pack"),
                 leak_follow_allowlist=app.config.get("leak_follow_allowlist"),
+                leak_follow_allowlist_profiles=app.config.get("leak_follow_allowlist_profiles"),
+                leak_follow_denylist=app.config.get("leak_follow_denylist"),
                 iot_probes_mode=app.config.get("iot_probes_mode"),
+                iot_probe_packs=app.config.get("iot_probe_packs"),
                 iot_probe_budget_seconds=app.config.get("iot_probe_budget_seconds"),
                 iot_probe_timeout_seconds=app.config.get("iot_probe_timeout_seconds"),
                 windows_verify_enabled=app.config.get("windows_verify_enabled"),

@@ -181,3 +181,63 @@ def test_build_leak_follow_targets_formats_ipv6():
         max_targets=2,
     )
     assert targets == ["http://[fd00::1]:80", "https://[fd00::1]:443"]
+
+
+def test_evaluate_leak_follow_candidates_denylist_precedence_over_allowlist():
+    payload = evaluate_leak_follow_candidates(
+        [{"candidate": "10.0.0.5", "kind": "ip", "source_host": "10.0.0.1", "source_field": "x"}],
+        mode="safe",
+        target_networks=["10.0.0.0/24"],
+        allowlist=["10.0.0.5"],
+        denylist=["10.0.0.5"],
+    )
+
+    assert payload["eligible"] == 0
+    assert payload["decisions"][0]["reason"] == "denylisted"
+    assert payload["decisions"][0]["reason_detail"] == "explicit_denylist"
+
+
+def test_evaluate_leak_follow_candidates_strict_policy_blocks_hostname_profiles():
+    payload = evaluate_leak_follow_candidates(
+        [
+            {
+                "candidate": "router.local",
+                "kind": "host",
+                "source_host": "10.0.0.1",
+                "source_field": "redirect_url",
+            }
+        ],
+        mode="safe",
+        policy_pack="safe-strict",
+        target_networks=["10.0.0.0/24"],
+        allowlist=[],
+        allowlist_profiles=["local-hosts"],
+        denylist=[],
+    )
+
+    assert payload["eligible"] == 0
+    assert payload["decisions"][0]["reason"] == "strict_hostname_block"
+
+
+def test_evaluate_leak_follow_candidates_extended_policy_enables_local_hosts_profile():
+    payload = evaluate_leak_follow_candidates(
+        [
+            {
+                "candidate": "gateway.local",
+                "kind": "host",
+                "source_host": "10.0.0.1",
+                "source_field": "redirect_url",
+            }
+        ],
+        mode="safe",
+        policy_pack="safe-extended",
+        target_networks=["10.0.0.0/24"],
+        allowlist=[],
+        allowlist_profiles=[],
+        denylist=[],
+    )
+
+    assert payload["eligible"] == 1
+    assert payload["allowlist_profiles"] == ["local-hosts"]
+    assert payload["decisions"][0]["reason"] == "allowlisted_host"
+    assert payload["decisions"][0]["reason_detail"] == "profile_allowlist"
