@@ -10,111 +10,75 @@
 
 Este documento describe el roadmap técnico, verifica las capacidades ya implementadas y registra los enfoques descartados para RedAudit.
 
-## 1. Roadmap Activo (Futuro y En Progreso)
+## 1. Roadmap Activo (solo Planeado / En progreso / Diferido)
 
-Estos elementos representan el backlog actual de trabajo planificado o aplazado para la serie v4.x restante.
+Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos ya implementados se registran en **Hitos Completados**.
 
-### v4.14 Gestión de Dependencias (Prioridad: Baja)
+### Leyenda de Estado
 
-| Funcionalidad | Estado | Descripción |
-|---|---|---|
-| **Modo de Anclaje de Dependencias** | Hecho (v4.18.8) | Anclaje opcional del toolchain descargado desde GitHub vía `REDAUDIT_TOOLCHAIN_MODE` y overrides. |
-| **Evaluación de poetry.lock** | Hecho (v4.18.8) | Añadido `poetry.lock` junto a pip-tools para evaluación y paridad de workflows. |
-| **Streaming JSON Report (ajuste para redes grandes)** | Planeado (v5.x) | El comportamiento base en streaming ya está implementado; el trabajo pendiente es optimización para tamaños extremos de reporte y presión de memoria. |
-
-### Expansión de Inteligencia Multientorno (Línea Base de Diseño)
-
-Esta línea base cubre entornos de hogar, oficina y empresa con defaults conservadores y escalado por excepción.
-
-| Funcionalidad | Estado | Default | Guardarraíles |
-|---|---|---|---|
-| **Leak Following (alcance seguro)** | Hecho (baseline v4.19.x) | `off` (solo hints en informe) | En modo `safe` solo sigue candidatos dentro del alcance; por defecto nunca expande a objetivos públicos/terceros. |
-| **Sondas IoT específicas (conjunto mínimo)** | Hecho (baseline v4.19.x) | `off` | Solo se activan con ambigüedad + señal fuerte; presupuesto por host y timeout estricto por sonda. |
-| **Marcado evidencia vs heurística** | Hecho (baseline v4.19.x) | Activo cuando se use la funcionalidad | Guarda sondas/cabeceras como evidencia y mantiene deducciones heurísticas etiquetadas explícitamente. |
-
-Controles de operador implementados (defaults seguros):
-
-- `--leak-follow off|safe`
-- `--leak-follow-allowlist <csv>`
-- `--iot-probes off|safe`
-- `--iot-probe-budget-seconds <n>`
-- `--iot-probe-timeout-seconds <n>`
-
-### Contrato de Implementación Fase A (implementado en v4.19.x)
-
-Este contrato definió el primer bloque de implementación y se conserva como referencia para mantener un comportamiento predecible en auditorías de hogar, oficina y empresa.
-
-| Área | Contrato |
+| Estado | Significado |
 |---|---|
-| **Objetivo** | Añadir primitivas seguras y opt-in para hints de leak-follow y comprobaciones mínimas de protocolos IoT, sin cambiar el alcance por defecto. |
-| **No objetivo** | No expandir automáticamente el alcance a rangos públicos/Internet; no ejecutar sondas profundas de protocolo en modo siempre activo. |
-| **Controles CLI** | `--leak-follow off|safe` y `--iot-probes off|safe`, ambos con default `off`. |
-| **UX del Wizard** | Los prompts deben indicar que `off` es el default y que `safe` solo opera in-scope; redacción explícita y clara para operador. |
-| **Regla de activación (Leak Following)** | En modo `safe`, seguir solo candidatos RFC1918/ULA ya dentro del alcance o incluidos explícitamente en allowlist. |
-| **Regla de activación (IoT Probes)** | Ejecutar solo en activos ambiguos con señales fuertes corroboradas (por ejemplo OUI del fabricante + servicios compatibles). |
-| **Presupuestos/Timeouts** | Presupuesto por host y timeout por sonda obligatorios; si se agota, degradar a hints de informe sin promover hallazgos. |
-| **Marcado de evidencia** | Toda señal promovida debe guardar evidencia cruda (cabecera/sonda/metadatos de respuesta) y etiquetado heurístico por separado. |
-| **Contrato de reporting** | Añadir secciones/campos explícitos para: modo usado, candidatos detectados, acciones realizadas, motivos de descarte y guardarraíles activados. |
-| **Modo de fallo** | Ante incertidumbre de parser/sonda, clasificar como hint y no como hallazgo confirmado. |
+| **Planeado** | Definido y aprobado para un hito futuro, aún sin iniciar. |
+| **En progreso** | En implementación o validación activa. |
+| **Diferido** | Pospuesto explícitamente hasta resolver restricciones. |
+| **Hecho** | Implementado y documentado solo en Hitos Completados. |
+| **Reemplazado** | Sustituido por un camino de implementación más reciente. |
 
-Criterios de aceptación de Fase A:
+### v5.x Backlog de expansión (pendiente)
 
-- Los nuevos controles aparecen en ayuda CLI y prompts del wizard con defaults seguros.
-- La salida JSON/HTML muestra si leak following e IoT probes estuvieron en `off`, `safe` aplicado o descartados por guardarraíles.
-- No hay cambio de comportamiento cuando ambas funcionalidades permanecen en `off`.
-- Los tests cubren todas las ramas de decisión nuevas (incluyendo timeout y denegación) en los módulos tocados.
-
-### Plan de Ejecución de Fase B (v4.x, completado)
-
-La Fase B pasó de controles contractuales a comportamiento de producción, manteniendo la filosofía
-"Optimización por defecto, resiliencia por excepción."
-
-#### Alcance de la Fase B
-
-| Bloque | Objetivo | Entregables principales | Guardarraíles |
+| Línea de trabajo | Estado | Descripción | Guardarraíles |
 |---|---|---|---|
-| **B1 - Extracción de candidatos Leak** | Detectar hints de expansión de alcance en tiempo de ejecución. | Parsear hosts/IP candidatos desde evidencia HTTP fiable (cabeceras y destinos de redirección), normalizar y deduplicar candidatos. | El parser por sí solo no promueve hallazgos; valores malformados o ambiguos se mantienen como hints. |
-| **B2 - Filtro de alcance seguro** | Aplicar filtrado in-scope estricto para cualquier seguimiento de candidatos. | Comprobaciones RFC1918/ULA, matching contra alcance objetivo, matching contra allowlist explícita y códigos de descarte. | Rechazar por defecto rangos públicos/de terceros; no seguir automáticamente objetivos out-of-scope. |
-| **B3 - Ejecución controlada del seguimiento** | Seguir candidatos aceptados sin alterar el comportamiento por defecto. | Integración en la planificación de objetivos de Nuclei, cola de seguimiento acotada y orden determinista. | `off` se mantiene como no-op; `safe` queda limitado por topes por ejecución y presupuestos de timeout existentes. |
-| **B4 - Evidencia y reporting** | Hacer auditable cada decisión. | Campos de informe para candidatos detectados/seguidos/descartados, motivos de descarte y guardarraíles activados en JSON/HTML/resumen. | Mantener separación explícita entre evidencia y lectura heurística. |
-| **B5 - Alineación de UX y documentación** | Mantener clara y predecible la intención del operador. | Textos de prompt/ayuda que aclaren perfil seleccionado vs comportamiento efectivo (incluido auto-switch), actualización de docs y schema EN/ES. | Sin redacción ambigua sobre cobertura de puertos ni comportamiento de seguimiento. |
-| **B6 - Endurecimiento de tests y regresión** | Garantizar fiabilidad antes de release. | Tests completos de parser/filtro/runtime/report, actualización de fixtures y cobertura de rutas negativas. | 100% de cobertura en rutas tocadas; sin deriva silenciosa de comportamiento en modo `off`. |
+| **Streaming JSON Report (ajuste para redes grandes)** | Planeado (v5.x) | Extender las protecciones actuales de streaming/memoria para tamaños extremos de datos y exportaciones largas. | Mantener salida determinista y sin cambios de comportamiento en ejecuciones normales. |
+| **Políticas avanzadas de Leak Following** | Planeado (v5.x) | Añadir paquetes de política y controles de allowlist más expresivos sobre la base segura actual. | Preservar `off` por defecto; nunca seguir objetivos públicos o de terceros automáticamente. |
+| **Expansión de sondas IoT específicas de protocolo** | En progreso (v5.x) | Ampliar la cobertura más allá del conjunto mínimo actual con packs por protocolo/fabricante. | Aplicar presupuesto por host, timeout por sonda y umbrales estrictos de ambigüedad. |
+| **Endurecimiento del modelo evidencia/heurística para señales de expansión** | Planeado (v5.x) | Reforzar trazabilidad entre evidencia y deducción heurística en nuevas rutas de expansión. | Toda señal promovida debe permanecer auditable y reproducible en informes. |
 
-#### Plan de Trabajo Detallado y Puertas de Aceptación
+### v5.x Programa de ejecución (trabajo de expansión)
 
-1. **Implementar primero B1 + B2 (lógica antes que orquestación).**
-   - Añadir helpers aislados para extracción de candidatos y filtrado de alcance.
-   - Añadir taxonomía explícita de motivos de descarte (`out_of_scope`, `public_ip`, `invalid_candidate`, `budget_exceeded`, etc.).
-   - Puerta de salida: tests unitarios deterministas para extracción/filtrado, incluyendo entradas malformadas y mixtas.
+| Bloque | Estado | Objetivo | Entregables principales | Guardarraíles |
+|---|---|---|---|---|
+| **C1 - Capa de políticas para Leak Following** | Planeado | Añadir controles de política sobre el comportamiento seguro base. | Esquema de políticas, perfiles de allowlist y reglas de precedencia deterministas. | Sin expansión de alcance fuera de límites explícitos de política. |
+| **C2 - Expansión de packs de sondas IoT** | En progreso | Ampliar cobertura por protocolo/fabricante sin debilitar valores predeterminados. | Nuevos packs de sondas, planificador acotado y umbrales de confianza. | `off` debe seguir siendo no-op; los controles de seguridad son obligatorios. |
+| **C3 - Gobernanza de presupuesto en runtime** | Planeado | Mantener comportamiento predecible bajo tiempo limitado. | Contabilidad unificada de presupuesto para seguimientos/sondas y taxonomía ampliada de descartes. | Si se agota presupuesto, degradar a pistas; no promover hallazgos confirmados. |
+| **C4 - Extensiones de reporting y esquema** | Planeado | Exponer resultados de expansión con trazabilidad completa. | Campos JSON/HTML/TXT para decisiones de política, evidencia y motivos de descarte. | Mantener compatibilidad hacia atrás para consumidores actuales. |
+| **C5 - Alineación UX y documentación (EN/ES)** | Planeado | Mantener explícita la intención del operador en CLI/wizard/docs. | Sincronización de ayuda, prompts y documentación para controles nuevos. | Sin redacción ambigua sobre valores predeterminados, seguridad o límites de alcance. |
+| **C6 - Puerta de regresión y salida a release** | Planeado | Validar fiabilidad antes de promoción. | Cobertura completa de ramas tocadas y pasada de coherencia documental/esquema. | 100% de cobertura en rutas modificadas; sin deriva en comportamiento `off`. |
 
-2. **Implementar el cableado runtime de B3.**
-   - Integrar candidatos aceptados en la planificación runtime de Nuclei solo cuando `--leak-follow safe`.
-   - Preservar el modelo actual de perfil seleccionado/efectivo y el auto-switch.
-   - Puerta de salida: tests de integración que prueben paridad en modo `off` y comportamiento acotado en `safe`.
+#### Plan de trabajo detallado y puertas de aceptación
 
-3. **Implementar el contrato de reporting de B4.**
-   - Persistir contadores runtime y resultados por candidato en estructuras de informe.
-   - Reflejar la misma semántica en salidas HTML, JSON y resumen.
-   - Puerta de salida: tests de snapshot/aserción sobre campos del payload y secciones legibles.
+1. **Entregar C1 primero (semántica de política antes de orquestación).**
+   - Definir modelo de política y precedencia de evaluación.
+   - Mantener taxonomía de descarte determinista y auditable.
+   - Puerta de salida: tests unitarios de precedencia y rutas de denegación.
 
-4. **Implementar B5 (pasada de docs y redacción EN/ES).**
-   - Alinear ayuda CLI, prompts del wizard, `USAGE`, `REPORT_SCHEMA` y referencias en `README`.
-   - Asegurar que la redacción refleja la intención del operador: defaults, guardarraíles y comportamiento efectivo.
-   - Puerta de salida: comprobación de consistencia documental contra opciones reales de CLI/wizard y campos de informe.
+2. **Entregar C2 con ejecución acotada en runtime.**
+   - Integrar los packs ampliados solo en modos seguros/expresos.
+   - Mantener comportamiento base sin cambios cuando los controles están en `off`.
+   - Puerta de salida: tests de integración para paridad en off y modo expandido acotado.
 
-5. **Cerrar con B6 (pasada de regresión y preparación de release).**
-   - Ejecutar pre-commit y batería completa de pytest una vez cerrados los cambios finales.
-   - Verificar ausencia de regresiones en reanudación, renderizado de progreso Nuclei y coherencia de informes.
-   - Puerta de salida: quality gate local en verde; mover elementos de roadmap a hitos completados en la release.
+3. **Entregar C3 + C4 para gobernanza y reporting.**
+   - Persistir decisiones de política y presupuesto en runtime/reportes.
+   - Mantener coherencia entre salidas JSON/HTML/TXT.
+   - Puerta de salida: tests de snapshot/aserción para los campos nuevos.
 
-#### Checklist de Seguimiento de Fase B
+4. **Entregar C5 para sincronización documental y UX.**
+   - Alinear ayuda CLI, prompts del wizard y documentación EN/ES.
+   - Validar consistencia de redacción con opciones implementadas.
+   - Puerta de salida: revisión de consistencia sin deriva semántica EN/ES.
 
-- [x] B1 extracción de candidatos implementada y testeada.
-- [x] B2 filtro de alcance seguro implementado y testeado.
-- [x] B3 integración runtime del seguimiento implementada y testeada.
-- [x] B4 campos de reporting y plantillas actualizados y testeados.
-- [x] B5 documentación EN/ES actualizada y sincronizada.
-- [x] B6 pasada completa de regresión completada y lista para release.
+5. **Cerrar con C6 como puerta de release.**
+   - Ejecutar quality gate local tras el cierre de cambios.
+   - Verificar ausencia de regresiones en reanudación, progreso e informes.
+   - Puerta de salida: checks en verde y changelog/notas de versión alineados.
+
+#### Checklist de seguimiento del programa C
+
+- [ ] C1 capa de políticas implementada y testeada.
+- [ ] C2 expansión de packs de sondas implementada y testeada.
+- [ ] C3 gobernanza de presupuesto implementada y testeada.
+- [ ] C4 extensiones de reporting/esquema implementadas y testeadas.
+- [ ] C5 UX y documentación EN/ES sincronizadas.
+- [ ] C6 puerta de release superada con regresión validada.
 
 ### Diferido / Backlog Técnico
 
@@ -122,20 +86,17 @@ La Fase B pasó de controles contractuales a comportamiento de producción, mant
 |---|---|---|
 | **Refactorización de auditor.py** | Diferido | Dividir orquestación y lógica de decisión solo si desbloquea tests o corrige defectos. |
 | **Distribución PyPI** | Diferido | Publicar `pip install redaudit`. Bloqueado por necesidad de testeo extensivo multiplataforma. |
-| **Motor de Plugins** | Diferido | Arquitectura "Plugin-first" para desacoplar el escáner core de las herramientas. |
-| **Migración AsyncIO** | Diferido | Migración completa a AsyncIO diferida a v5.0. |
-| **Registro central de timeouts** | Diferido | Consolidar timeouts de escáneres en un único punto para ajuste y tests. |
-| **Separación de módulo Red Team** | Hecho (v4.18.8) | Separar la lógica Red Team en un módulo dedicado para reducir `net_discovery.py`. |
-
----
+| **Motor de plugins** | Diferido | Arquitectura plugin-first para desacoplar el escáner core de las herramientas. |
+| **Migración a AsyncIO** | Diferido | Migración completa a AsyncIO diferida a v5.0. |
+| **Registro centralizado de timeouts** | Diferido | Consolidar timeouts de escáneres en un único punto para ajuste y tests. |
 
 ### Funcionalidades Futuras (v5.0.0)
 
 | Funcionalidad | Descripción |
 |---|---|
-| **Expansión de Sondas IoT Específicas de Protocolo** | Cobertura adicional de protocolos/fabricantes sobre el baseline mínimo actual, manteniendo presupuestos y guardarraíles estrictos. |
-| **Políticas Avanzadas de Leak Following** | Controles de siguiente etapa para expansión segura de alcance (paquetes de política, allowlists más expresivas y mayor auditabilidad para operadores). |
-| **Auditoría de Pipeline** | Visualización interactiva del flujo de descubrimiento. |
+| **Expansión de sondas IoT específicas de protocolo** | Cobertura adicional por protocolo/fabricante sobre el baseline mínimo actual, manteniendo presupuestos y guardarraíles estrictos. |
+| **Políticas avanzadas de Leak Following** | Controles de siguiente etapa para expansión segura de alcance (paquetes de política, allowlists más expresivas y mayor auditabilidad). |
+| **Auditoría de pipeline** | Visualización interactiva del flujo de descubrimiento. |
 
 ---
 
@@ -143,20 +104,20 @@ La Fase B pasó de controles contractuales a comportamiento de producción, mant
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
 
-### v4.19.51 Alineacion de politica de config en instalador (Hecho)
+### v4.19.51 Alineación de política de configuración en instalador (Hecho)
 
 | Funcionalidad | Estado | Descripción |
 |---|---|---|
-| **Resiembra en reinstalacion manual** | Hecho (v4.19.51) | Las reinstalaciones manuales del instalador ahora reinician `~/.redaudit/config.json` para aplicar limpio el idioma elegido. |
-| **Preservacion en auto-update** | Hecho (v4.19.51) | El flujo de auto-update mantiene preferencias existentes del usuario en lugar de reiniciar la configuracion. |
-| **Seguridad de merge en config NVD** | Hecho (v4.19.51) | Guardar la API key de NVD durante instalacion ahora hace merge y preserva defaults existentes. |
+| **Resiembra en reinstalación manual** | Hecho (v4.19.51) | Las reinstalaciones manuales del instalador ahora reinician `~/.redaudit/config.json` para aplicar de forma limpia el idioma elegido. |
+| **Preservación en auto-update** | Hecho (v4.19.51) | El flujo de auto-update mantiene preferencias existentes del usuario en lugar de reiniciar la configuración. |
+| **Seguridad de merge en configuración NVD** | Hecho (v4.19.51) | Guardar la API key de NVD durante la instalación ahora hace merge y preserva valores predeterminados existentes. |
 
 ### v4.19.50 UX de inicio y persistencia de idioma (Hecho)
 
 | Funcionalidad | Estado | Descripción |
 |---|---|---|
-| **Visibilidad del aviso de actualizacion al inicio** | Hecho (v4.19.50) | Los avisos de auto-update se muestran tras renderizar banner/menu para que sean visibles de forma fiable. |
-| **Persistencia de idioma en el instalador** | Hecho (v4.19.50) | El instalador persiste el idioma seleccionado (`en`/`es`) en configuracion de usuario; el auto-update conserva la config y la reinstalacion manual puede resembrar preferencias. |
+| **Visibilidad del aviso de actualización al inicio** | Hecho (v4.19.50) | Los avisos de auto-update se muestran tras renderizar banner/menu para que sean visibles de forma fiable. |
+| **Persistencia de idioma en el instalador** | Hecho (v4.19.50) | El instalador persiste el idioma seleccionado (`en`/`es`) en configuración de usuario; el auto-update conserva la configuración y la reinstalación manual puede resembrar preferencias. |
 | **Limpieza de prompts del wizard** | Hecho (v4.19.50) | Los prompts interactivos ya no anteponen el marcador decorativo `?`. |
 
 ### v4.19.49 Baseline Python 3.10+ y endurecimiento de locks (Hecho)
@@ -164,14 +125,14 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 | Funcionalidad | Estado | Descripción |
 |---|---|---|
 | **Baseline de runtime Python** | Hecho (v4.19.49) | El soporte de runtime/CI de RedAudit pasa a Python 3.10-3.12. |
-| **Alineacion de seguridad en locks** | Hecho (v4.19.49) | Los lockfiles ya no incluyen la rama de `filelock` exclusiva de Python 3.9. |
+| **Alineación de seguridad en locks** | Hecho (v4.19.49) | Los lockfiles ya no incluyen la rama de `filelock` exclusiva de Python 3.9. |
 
-### v4.19.48 Gestion de entradas de reanudacion Nuclei (Hecho)
+### v4.19.48 Gestión de entradas de reanudación Nuclei (Hecho)
 
 | Funcionalidad | Estado | Descripción |
 |---|---|---|
-| **Gestion de entradas de reanudacion** | Hecho (v4.19.48) | El menu de reanudacion permite borrar una o todas las entradas antiguas sin limpieza manual de ficheros. |
-| **Documentacion de limpieza de reanudaciones** | Hecho (v4.19.48) | README/USAGE/MANUAL y la guia didactica ya documentan la limpieza desde el propio menu. |
+| **Gestión de entradas de reanudación** | Hecho (v4.19.48) | El menú de reanudación permite borrar una o todas las entradas antiguas sin limpieza manual de ficheros. |
+| **Documentación de limpieza de reanudaciones** | Hecho (v4.19.48) | README/USAGE/MANUAL y la guía didáctica ya documentan la limpieza desde el propio menú. |
 
 ### v4.19.35 Reanudación y transparencia de perfiles Nuclei (Hecho)
 
@@ -404,7 +365,7 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 | **Topología SNMP y CVE** | Hecho (v4.19.3) | El procesamiento de topología SNMP ya no asume una API key NVD inicializada. |
 | **Alineación WhatWeb en diff** | Hecho (v4.19.3) | Los informes diff cuentan WhatWeb con la clave correcta. |
 | **OUI offline /28 y /36** | Hecho (v4.19.3) | El manuf offline resuelve prefijos de 28 y 36 bits. |
-| **Timeout por defecto de Nuclei** | Hecho (v4.19.3) | El default de configuración coincide con el timeout CLI de 300s. |
+| **Timeout por defecto de Nuclei** | Hecho (v4.19.3) | El valor predeterminado de configuración coincide con el timeout CLI de 300s. |
 | **Alineación documental** | Hecho (v4.19.3) | Presets de velocidad ES, fallback de threads y docs Docker/seguridad alineados con la política. |
 
 ### v4.19.2 Progreso en reanudacion de Nuclei (Hecho)
@@ -524,7 +485,7 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 
 | Funcionalidad | Estado | Descripción |
 |---|---|---|
-| **RustScan Rango Completo** | Hecho (v4.8.2) | Forzar `-r 1-65535` para escanear todos los puertos en lugar del default top 1000 de RustScan. |
+| **RustScan Rango Completo** | Hecho (v4.8.2) | Forzar `-r 1-65535` para escanear todos los puertos en lugar del top 1000 predeterminado de RustScan. |
 | **Soporte Instalador ARM64** | Hecho (v4.8.3) | Añadida detección ARM64/aarch64 para Raspberry Pi y VMs Apple Silicon. |
 | **Toggle Asistente Nuclei** | Hecho (v4.8.1) | Restaurar prompt interactivo de activación de Nuclei en perfil Exhaustivo. |
 
@@ -578,15 +539,15 @@ Estos elementos están ordenados cronológicamente (el más reciente primero).
 | Característica | Estado | Descripción |
 |---|---|---|
 | **Algoritmo Weighted Maximum Gravity** | Hecho | Refactorizado `calculate_risk_score()` usando CVSS de NVD. |
-| **Risk Score Breakdown Tooltip** | Hecho | HTML reports show detailed risk score components on hover. |
-| **Identity Score Visualization** | Hecho | HTML reports display color-coded identity_score with tooltip showing identity signals. |
-| **Smart-Check CPE Validation** | Hecho | Enhanced Nuclei false positive detection using host CPE data. |
-| **HyperScan SYN Mode** | Hecho | Optional scapy-based SYN scanning (`--hyperscan-mode syn`). |
-| **PCAP Management Utilities** | Hecho | `merge_pcap_files()`, `organize_pcap_files()`, cleanup. |
+| **Risk Score Breakdown Tooltip** | Hecho | Los informes HTML muestran en hover el desglose detallado de componentes del risk score. |
+| **Identity Score Visualization** | Hecho | Los informes HTML muestran `identity_score` con codificación por color y tooltip de señales de identidad. |
+| **Smart-Check CPE Validation** | Hecho | Se refuerza la detección de falsos positivos de Nuclei usando datos CPE del host. |
+| **HyperScan SYN Mode** | Hecho | Escaneo SYN opcional basado en scapy (`--hyperscan-mode syn`). |
+| **PCAP Management Utilities** | Hecho | Utilidades `merge_pcap_files()`, `organize_pcap_files()` y limpieza final de artefactos. |
 
-### v4.2 Optimizaciones Pipeline (Liberado en m v4.2.0)
+### v4.2 Optimizaciones de pipeline (Liberado en v4.2.0)
 
-Ver [Release Notes](../releases/RELEASE_NOTES_v4.2.0.md) para detalles.
+Ver [Notas de versión](../releases/RELEASE_NOTES_v4.2.0_ES.md) para detalles.
 
 ### v4.1 Optimizaciones de Rendimiento (Hecho)
 
@@ -596,7 +557,7 @@ Ver [Release Notes](../releases/RELEASE_NOTES_v4.2.0.md) para detalles.
 | **Escaneo Vulns Paralelo** | Hecho | nikto/testssl/whatweb concurrentemente por host. |
 | **Pre-filtrado Nikto CDN** | Hecho | Omitir Nikto en Cloudflare/Akamai/AWS CloudFront. |
 | **Reutilización puertos masscan** | Hecho | Pre-scan usa puertos de masscan si ya estaban descubiertos. |
-| **CVE Lookup reordenado** | Hecho | CVE correlation movido después de Vuln Scan + Nuclei. |
+| **CVE Lookup reordenado** | Hecho | La correlación CVE se mueve después de Vuln Scan + Nuclei. |
 
 ### v4.0 Refactorización Arquitectónica (Hecho)
 
@@ -608,6 +569,78 @@ Refactorización interna utilizando el patrón Strangler Fig. Completado en v4.0
 |---|---|---|
 | **Consolidación Suite Tests** | Hecho | Refactorizado 199 archivos → 123. 1130 tests al 85%. |
 
+### Hitos de baseline movidos desde Roadmap Activo (Hecho)
+
+Estas entradas de baseline se movieron desde la sección 1 durante la refactorización lógica
+del roadmap, para que `Roadmap Activo` incluya solo trabajo pendiente. El orden de hitos
+existente en la parte superior se mantiene intacto.
+
+### v4.19.x Baseline de controles de alcance y contrato de evidencia (Hecho)
+
+| Funcionalidad | Estado | Default | Guardarraíles |
+|---|---|---|---|
+| **Leak Following (alcance seguro)** | Hecho (baseline v4.19.x) | `off` (solo pistas en informe) | En modo `safe` solo sigue candidatos dentro del alcance; por defecto nunca expande a objetivos públicos o de terceros. |
+| **Sondas IoT específicas (conjunto mínimo)** | Hecho (baseline v4.19.x) | `off` | Solo se activan con ambigüedad y señal fuerte; presupuesto por host y timeout estricto por sonda. |
+| **Marcado evidencia vs heurística** | Hecho (baseline v4.19.x) | Activo cuando se usa la funcionalidad | Guarda sondas/cabeceras como evidencia y mantiene deducciones heurísticas etiquetadas de forma explícita. |
+
+Controles de operador implementados (valores predeterminados seguros):
+
+- `--leak-follow off|safe`
+- `--leak-follow-allowlist <csv>`
+- `--iot-probes off|safe`
+- `--iot-probe-budget-seconds <n>`
+- `--iot-probe-timeout-seconds <n>`
+
+#### Contrato de implementación Fase A (implementado en v4.19.x)
+
+| Área | Contrato |
+|---|---|
+| **Objetivo** | Añadir primitivas seguras y opt-in para pistas de leak-follow y comprobaciones mínimas de protocolos IoT, sin cambiar el alcance por defecto. |
+| **No objetivo** | No expandir automáticamente el alcance a rangos públicos/Internet; no ejecutar sondas profundas de protocolo en modo siempre activo. |
+| **Controles CLI** | `--leak-follow off|safe` y `--iot-probes off|safe`, ambos con valor predeterminado `off`. |
+| **UX del wizard** | Los prompts deben indicar que `off` es el valor predeterminado y que `safe` solo opera dentro de alcance; redacción explícita y clara para el operador. |
+| **Regla de activación (Leak Following)** | En modo `safe`, seguir solo candidatos RFC1918/ULA ya dentro del alcance o incluidos explícitamente en allowlist. |
+| **Regla de activación (IoT Probes)** | Ejecutar solo en activos ambiguos con señales fuertes corroboradas (por ejemplo OUI del fabricante y servicios compatibles). |
+| **Presupuestos/timeouts** | Presupuesto por host y timeout por sonda obligatorios; si se agotan, degradar a pistas de informe sin promover hallazgos. |
+| **Marcado de evidencia** | Toda señal promovida debe guardar evidencia cruda (cabecera/sonda/metadatos de respuesta) y etiquetado heurístico por separado. |
+| **Contrato de reporting** | Añadir secciones/campos explícitos para: modo usado, candidatos detectados, acciones realizadas, motivos de descarte y guardarraíles activados. |
+| **Modo de fallo** | Ante incertidumbre de parser/sonda, clasificar como pista y no como hallazgo confirmado. |
+
+Criterios de aceptación de Fase A:
+
+- Los controles nuevos son visibles en ayuda CLI y prompts del wizard con valores predeterminados seguros.
+- La salida JSON/HTML muestra si leak following e IoT probes estuvieron en `off`, aplicados en `safe` o descartados por guardarraíles.
+- No hay cambio de comportamiento cuando ambas funcionalidades permanecen en `off`.
+- Las pruebas cubren todas las ramas de decisión nuevas (incluyendo timeout y denegación) en módulos tocados.
+
+#### Plan de ejecución de Fase B (baseline completado)
+
+| Bloque | Objetivo | Entregables principales | Guardarraíles |
+|---|---|---|---|
+| **B1 - Extracción de candidatos Leak** | Detectar pistas de expansión de alcance en tiempo de ejecución. | Parsear hosts/IP candidatos desde evidencia HTTP fiable (cabeceras y destinos de redirección), normalizar y deduplicar candidatos. | El parser por sí solo no promueve hallazgos; valores malformados o ambiguos se mantienen como pistas. |
+| **B2 - Filtro de alcance seguro** | Aplicar filtrado in-scope estricto para cualquier seguimiento de candidatos. | Comprobaciones RFC1918/ULA, matching contra alcance objetivo, matching contra allowlist explícita y códigos de descarte. | Rechazar por defecto rangos públicos/de terceros; no seguir automáticamente objetivos out-of-scope. |
+| **B3 - Ejecución controlada del seguimiento** | Seguir candidatos aceptados sin alterar el comportamiento por defecto. | Integración en la planificación de objetivos de Nuclei, cola de seguimiento acotada y orden determinista. | `off` se mantiene como no-op; `safe` queda limitado por topes por ejecución y presupuestos de timeout existentes. |
+| **B4 - Evidencia y reporting** | Hacer auditable cada decisión. | Campos de informe para candidatos detectados/seguidos/descartados, motivos de descarte y guardarraíles activados en JSON/HTML/resumen. | Mantener separación explícita entre evidencia y lectura heurística. |
+| **B5 - Alineación de UX y documentación** | Mantener clara y predecible la intención del operador. | Textos de prompt/ayuda que aclaren perfil seleccionado vs comportamiento efectivo (incluido auto-switch), actualización de docs y schema EN/ES. | Sin redacción ambigua sobre cobertura de puertos ni comportamiento de seguimiento. |
+| **B6 - Endurecimiento de pruebas y regresión** | Garantizar fiabilidad antes de release. | Pruebas completas de parser/filtro/runtime/report, actualización de fixtures y cobertura de rutas negativas. | 100% de cobertura en rutas tocadas; sin deriva silenciosa de comportamiento en modo `off`. |
+
+Checklist de seguimiento de Fase B:
+
+- [x] B1 extracción de candidatos implementada y testeada.
+- [x] B2 filtro de alcance seguro implementado y testeado.
+- [x] B3 integración runtime del seguimiento implementada y testeada.
+- [x] B4 campos de reporting y plantillas actualizados y testeados.
+- [x] B5 documentación EN/ES actualizada y sincronizada.
+- [x] B6 pasada completa de regresión completada y lista para release.
+
+### v4.18.8 Baseline de dependencias y modularización (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Modo de anclaje de dependencias** | Hecho (v4.18.8) | Anclaje opcional del toolchain descargado desde GitHub vía `REDAUDIT_TOOLCHAIN_MODE` y overrides. |
+| **Evaluación de poetry.lock** | Hecho (v4.18.8) | Añadido `poetry.lock` junto a pip-tools para evaluación y paridad de workflows. |
+| **Separación de módulo Red Team** | Hecho (v4.18.8) | Separación de la lógica Red Team en un módulo dedicado para reducir `net_discovery.py`. |
+
 ---
 
 ## 3. Referencia de Capacidades Verificadas
@@ -616,12 +649,12 @@ Referencia de verificación de capacidades clave contra la base de código.
 
 | Capacidad | Versión | Ruta Código / Verificación |
 |---|---|---|
-| **Descubrimiento Pasivo LLDP** | v4.10.0 | `core/topology.py` (via `tcpdump` & `lldpctl`) |
-| **Descubrimiento Pasivo CDP** | v4.10.0 | `core/topology.py` (via `tcpdump`/CISCO-CDP) |
-| **Etiquetado VLAN (802.1Q)** | v4.10.0 | `core/topology.py` (via `ip link`/`ifconfig`) |
+| **Descubrimiento Pasivo LLDP** | v4.10.0 | `core/topology.py` (vía `tcpdump` y `lldpctl`) |
+| **Descubrimiento Pasivo CDP** | v4.10.0 | `core/topology.py` (vía `tcpdump`/CISCO-CDP) |
+| **Etiquetado VLAN (802.1Q)** | v4.10.0 | `core/topology.py` (vía `ip link`/`ifconfig`) |
 | **Sonda IoT WiZ (UDP)** | v4.11.0 | `core/udp_probe.py`, `core/auditor.py` |
 | **Perfiles Nuclei** | v4.11.0 | `core/nuclei.py`, `core/auditor.py` |
-| **Base Datos OUI** | v4.11.0 | `data/manuf` (38k+ vendors) |
+| **Base de datos OUI** | v4.11.0 | `data/manuf` (38k+ vendors) |
 | **Descubrimiento Red Enrutada** | v4.9.0 | `core/net_discovery.py` (`ip route`/`ip neigh`) |
 | **Integración RustScan** | v4.8.0 | `core/rustscan.py` |
 | **Smart-Check** | v4.3.0 | `core/scanner/enrichment.py` (CPE/Lógica Falsos Positivos) |
