@@ -9,9 +9,15 @@ from unittest.mock import patch
 
 from redaudit.core.scope_expansion import (
     _extract_url_endpoints,
+    _host_matches_allow_rules,
+    _ip_matches_allow_rules,
     _is_internal_ip,
     _parse_network_list,
     _parse_allowlist,
+    _parse_policy_targets,
+    _resolve_profile_targets,
+    normalize_leak_follow_policy_pack,
+    normalize_leak_follow_profiles,
     evaluate_leak_follow_candidates,
     build_leak_follow_targets,
     extract_leak_follow_candidates,
@@ -92,6 +98,35 @@ def test_parse_allowlist_edge_cases():
     # Use explicit set membership check to avoid CodeQL false positive
     expected_hosts = {"example.com", "invalid-stuff"}
     assert hosts == expected_hosts
+
+
+def test_scope_policy_helpers():
+    assert normalize_leak_follow_policy_pack("safe-extended") == "safe-extended"
+    assert normalize_leak_follow_policy_pack("invalid") == "safe-default"
+    assert normalize_leak_follow_profiles(["rfc1918-only,local-hosts", "bad"]) == [
+        "rfc1918-only",
+        "local-hosts",
+    ]
+
+    nets, ips, hosts, suffixes = _parse_policy_targets(["10.0.0.0/8", "router.local", "*.lan"])
+    assert any(str(n) == "10.0.0.0/8" for n in nets)
+    assert not ips
+    assert "router.local" in hosts
+    assert ".lan" in suffixes
+
+    _, profile_nets, profile_ips, profile_hosts, profile_suffixes = _resolve_profile_targets(
+        "safe-extended", ["ula-only"]
+    )
+    assert profile_ips == set()
+    assert any(str(n) == "fc00::/7" for n in profile_nets)
+    assert "localhost" in profile_hosts
+    assert ".local" in profile_suffixes
+
+    assert _host_matches_allow_rules("edge.lan", hosts=set(), suffixes={".lan"}) is True
+    assert _host_matches_allow_rules("edge.local", hosts={"edge.local"}, suffixes=set()) is True
+    assert (
+        _ip_matches_allow_rules(ipaddress.ip_address("10.1.2.3"), networks=nets, ips=set()) is True
+    )
 
 
 def test_evaluate_leak_follow_candidates_edge_cases():

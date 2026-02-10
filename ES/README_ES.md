@@ -449,6 +449,7 @@ redaudit --target 192.168.1.0/24 --threads 8 --rate-limit 1 --save-defaults --ye
 Los defaults se almacenan en `~/.redaudit/config.json`.
 Usa `--defaults {ask,use,ignore}` (o `--use-defaults`/`--ignore-defaults`) para controlar su aplicación en ejecuciones no interactivas.
 Los defaults persistentes cubren modo de escaneo, hilos, rate limit, ajustes UDP, topología/descubrimiento de red, Red Team, verificación sin agente y Nuclei.
+También persisten los controles de expansión de alcance (pack de política leak-follow, perfiles/denylist de allowlist y packs/presupuestos/timeouts de sondas IoT).
 
 ---
 
@@ -483,6 +484,7 @@ redaudit/
 │   ├── auditor_vuln.py     # Escaneo de vulnerabilidades (Nikto/Nuclei/Exploits)
 │   ├── auditor_runtime.py  # Adaptador de composición
 │   ├── scope_expansion.py  # Controles de expansión de alcance (Leak-follow e IoT)
+│   ├── iot_scope_probes.py # Orquestación de packs de sondas IoT por protocolo/fabricante
 │   ├── wizard.py           # Interfaz Interactiva (Wizard)
 │   ├── ui_manager.py       # Gestor centralizado de UI/Salida
 │   ├── scanner/            # Wrapper de bajo nivel Nmap + Helpers IPv6

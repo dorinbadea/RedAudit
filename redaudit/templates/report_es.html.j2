@@ -302,16 +302,25 @@
                     <h4>Expansión de alcance</h4>
                     {% set scope = pipeline.scope_expansion or {} %}
                     {% set leak_runtime = scope.leak_follow_runtime or {} %}
+                    {% set iot_runtime = scope.iot_probes_runtime or {} %}
                     <ul>
                         <li>Seguimiento de fugas <span>{{ scope.leak_follow_mode or 'off' }}</span></li>
+                        <li>Pack de política Leak <span>{{ scope.leak_follow_policy_pack or 'safe-default' }}</span></li>
                         <li>Lista permitida de fugas <span>{{ (scope.leak_follow_allowlist or [])|join(', ') or '-' }}</span></li>
+                        <li>Perfiles Leak <span>{{ (scope.leak_follow_allowlist_profiles or [])|join(', ') or '-' }}</span></li>
+                        <li>Denylist Leak <span>{{ (scope.leak_follow_denylist or [])|join(', ') or '-' }}</span></li>
                         <li>Candidatos Leak detectados <span>{{ leak_runtime.detected or 0 }}</span></li>
                         <li>Candidatos Leak elegibles <span>{{ leak_runtime.eligible or 0 }}</span></li>
                         <li>Objetivos Leak seguidos <span>{{ leak_runtime.followed or 0 }}</span></li>
                         <li>Candidatos Leak descartados <span>{{ leak_runtime.skipped or 0 }}</span></li>
                         <li>Sondas IoT <span>{{ scope.iot_probes_mode or 'off' }}</span></li>
+                        <li>Packs IoT <span>{{ (scope.iot_probe_packs or [])|join(', ') or '-' }}</span></li>
                         <li>Presupuesto IoT (s) <span>{{ scope.iot_probe_budget_seconds or '-' }}</span></li>
                         <li>Timeout IoT (s) <span>{{ scope.iot_probe_timeout_seconds or '-' }}</span></li>
+                        <li>Candidatos IoT <span>{{ iot_runtime.candidates or 0 }}</span></li>
+                        <li>Sondas IoT ejecutadas <span>{{ iot_runtime.probes_executed or 0 }}</span></li>
+                        <li>Sondas IoT con respuesta <span>{{ iot_runtime.probes_responded or 0 }}</span></li>
+                        <li>Hosts IoT sin presupuesto <span>{{ iot_runtime.budget_exceeded_hosts or 0 }}</span></li>
                     </ul>
                     {% if leak_runtime.follow_targets %}
                     <details style="margin-top: 0.5rem;">

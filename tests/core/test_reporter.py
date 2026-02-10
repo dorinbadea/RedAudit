@@ -407,8 +407,12 @@ class TestReporter(unittest.TestCase):
             "nuclei_timeout": 600,
             "nuclei_max_runtime": 120,
             "leak_follow_mode": "safe",
+            "leak_follow_policy_pack": "safe-extended",
             "leak_follow_allowlist": ["10.0.0.0/24"],
+            "leak_follow_allowlist_profiles": ["rfc1918-only", "local-hosts"],
+            "leak_follow_denylist": ["10.0.2.0/24"],
             "iot_probes_mode": "safe",
+            "iot_probe_packs": ["ssdp", "coap"],
             "iot_probe_budget_seconds": 40,
             "iot_probe_timeout_seconds": 5,
             "dry_run": True,
@@ -435,8 +439,14 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(snapshot["nuclei_timeout"], 600)
         self.assertEqual(snapshot["nuclei_max_runtime"], 120)
         self.assertEqual(snapshot["leak_follow_mode"], "safe")
+        self.assertEqual(snapshot["leak_follow_policy_pack"], "safe-extended")
         self.assertEqual(snapshot["leak_follow_allowlist"], ["10.0.0.0/24"])
+        self.assertEqual(
+            snapshot["leak_follow_allowlist_profiles"], ["rfc1918-only", "local-hosts"]
+        )
+        self.assertEqual(snapshot["leak_follow_denylist"], ["10.0.2.0/24"])
         self.assertEqual(snapshot["iot_probes_mode"], "safe")
+        self.assertEqual(snapshot["iot_probe_packs"], ["ssdp", "coap"])
         self.assertEqual(snapshot["iot_probe_budget_seconds"], 40)
         self.assertEqual(snapshot["iot_probe_timeout_seconds"], 5)
         self.assertTrue(snapshot["dry_run"])
@@ -449,16 +459,24 @@ class TestReporter(unittest.TestCase):
             "scan_mode": "normal",
             "threads": 2,
             "leak_follow_mode": "safe",
+            "leak_follow_policy_pack": "safe-strict",
             "leak_follow_allowlist": ["10.0.0.0/24"],
+            "leak_follow_allowlist_profiles": ["rfc1918-only"],
+            "leak_follow_denylist": ["10.0.9.0/24"],
             "iot_probes_mode": "off",
+            "iot_probe_packs": ["ssdp"],
             "iot_probe_budget_seconds": 20,
             "iot_probe_timeout_seconds": 3,
         }
         generate_summary(results, config, [], [], datetime.now())
         scope = results.get("pipeline", {}).get("scope_expansion", {})
         self.assertEqual(scope.get("leak_follow_mode"), "safe")
+        self.assertEqual(scope.get("leak_follow_policy_pack"), "safe-strict")
         self.assertEqual(scope.get("leak_follow_allowlist"), ["10.0.0.0/24"])
+        self.assertEqual(scope.get("leak_follow_allowlist_profiles"), ["rfc1918-only"])
+        self.assertEqual(scope.get("leak_follow_denylist"), ["10.0.9.0/24"])
         self.assertEqual(scope.get("iot_probes_mode"), "off")
+        self.assertEqual(scope.get("iot_probe_packs"), ["ssdp"])
 
     def test_generate_summary_includes_scope_expansion_runtime(self):
         results = {
@@ -525,6 +543,58 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(runtime.get("eligible"), 2)
         self.assertEqual(runtime.get("followed"), 0)
         self.assertEqual(runtime.get("skipped"), 0)
+
+    def test_generate_summary_includes_iot_runtime_and_scope_evidence(self):
+        results = {
+            "hosts": [],
+            "vulnerabilities": [],
+            "scope_expansion_runtime": {
+                "iot_probes": {
+                    "mode": "safe",
+                    "packs": ["ssdp", "coap"],
+                    "candidates": 2,
+                    "executed_hosts": 1,
+                    "probes_total": 4,
+                    "probes_executed": 3,
+                    "probes_responded": 1,
+                    "budget_exceeded_hosts": 1,
+                    "reasons": {"budget_exceeded": 1, "corroborated": 1},
+                }
+            },
+            "scope_expansion_evidence": [
+                {
+                    "feature": "iot_probe",
+                    "classification": "evidence",
+                    "source": "udp:1900",
+                    "signal": "responded",
+                    "decision": "promote_candidate",
+                    "reason": "corroborated",
+                    "host": "10.0.0.5",
+                    "timestamp": "2026-01-01T00:00:00",
+                    "raw_ref": "abc",
+                }
+            ],
+        }
+        config = {
+            "target_networks": ["10.0.0.0/24"],
+            "scan_mode": "normal",
+            "threads": 2,
+            "leak_follow_mode": "off",
+            "iot_probes_mode": "safe",
+            "iot_probe_packs": ["ssdp", "coap"],
+            "iot_probe_budget_seconds": 20,
+            "iot_probe_timeout_seconds": 3,
+        }
+
+        generate_summary(results, config, [], [], datetime.now())
+
+        runtime = (
+            results.get("pipeline", {}).get("scope_expansion", {}).get("iot_probes_runtime", {})
+        )
+        self.assertEqual(runtime.get("mode"), "safe")
+        self.assertEqual(runtime.get("probes_responded"), 1)
+        self.assertEqual(runtime.get("budget_exceeded_hosts"), 1)
+        self.assertEqual(len(results.get("scope_expansion_evidence", [])), 1)
 
     def test_summarize_net_discovery_with_redteam(self):
         summary = _summarize_net_discovery(

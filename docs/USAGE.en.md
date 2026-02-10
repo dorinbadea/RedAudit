@@ -224,8 +224,12 @@ Grouped by operational function. Verified against the current codebase.
 | `--nuclei-timeout S` | Nuclei batch timeout in seconds (default: 300) |
 | `--nuclei-max-runtime MIN` | Max Nuclei runtime in minutes (0 = unlimited). Creates a resume file when exceeded. |
 | `--leak-follow {off,safe}` | Leak-follow control (`off` by default; `safe` = in-scope internal candidates only) |
+| `--leak-follow-policy-pack {safe-default,safe-strict,safe-extended}` | Leak-follow policy pack (default: `safe-default`) |
 | `--leak-follow-allowlist TARGET` | Extra in-scope candidates for leak-follow safe mode (repeatable or comma-separated) |
+| `--leak-follow-allowlist-profile PROFILE` | Leak-follow allowlist profile (`rfc1918-only`, `ula-only`, `local-hosts`; repeatable) |
+| `--leak-follow-denylist TARGET` | Explicit denylist for leak-follow (host/CIDR/IP; repeatable or comma-separated) |
 | `--iot-probes {off,safe}` | IoT probe control (`off` by default; `safe` = ambiguity + corroborated signals) |
+| `--iot-probe-pack PACK` | IoT protocol/vendor pack (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`; repeatable) |
 | `--iot-probe-budget-seconds SEC` | Per-host IoT probe budget (default: 20) |
 | `--iot-probe-timeout-seconds SEC` | Per-probe IoT timeout (default: 3) |
 | `--nuclei-exclude TARGET` | Exclude Nuclei targets (host, host:port, URL; repeatable or comma-separated) |
@@ -241,7 +245,8 @@ Notes:
 - Web app scanners (sqlmap/ZAP) are skipped on infrastructure UIs when identity evidence indicates router/switch/AP devices.
 - In adaptive mode, Nuclei targets are optimized by identity: strong-identity hosts are limited to priority ports, while ambiguous hosts keep full target coverage and receive exception-only retries (fatigue-limited; wizard default is 3).
 - Auto-switch profile: when multiple hosts expose 3+ HTTP ports and full coverage is off, RedAudit switches Nuclei to **fast** to prevent long timeouts (shown in CLI and stored in the summary).
-- Leak-follow and IoT probes use explicit controls: `off` keeps default behavior, while `safe` applies strict in-scope and timeout guardrails.
+- Leak-follow and IoT probes use explicit controls: `off` keeps default behavior, while `safe` applies strict in-scope, budget, and timeout guardrails.
+- Leak-follow policy evaluation precedence is deterministic: `denylist` > explicit allowlist > profile allowlist > in-scope network > reject.
 - Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.
 - In the Nuclei resume menu, entries that were resumed before show `resumes: N` so repeated partial runs are easy to identify.
 - **Nuclei on web-dense networks:** On networks with many HTTP/HTTPS services (e.g., Docker labs, microservices), Nuclei scans may take significantly longer (30-90+ minutes). Use `--nuclei-timeout 600` to increase the batch timeout, or `--no-nuclei` to skip Nuclei entirely if speed is critical. When full coverage is enabled, RedAudit raises the batch timeout to 900s if a lower value is configured.

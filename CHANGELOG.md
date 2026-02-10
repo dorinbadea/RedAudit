@@ -10,6 +10,18 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+### Added
+
+- **Leak-follow policy packs and controls**: Added `--leak-follow-policy-pack`, `--leak-follow-allowlist-profile`, and `--leak-follow-denylist` with deterministic precedence (`denylist` > explicit allowlist > profile allowlist > in-scope > reject).
+- **Protocol-specific IoT probe packs**: Added `--iot-probe-pack` with initial packs (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) and bounded runtime execution.
+- **Scope expansion evidence trail**: Added `scope_expansion_evidence` entries with `feature`, `classification`, `source`, `signal`, `decision`, `reason`, `host`, `timestamp`, and `raw_ref`.
+
+### Improved
+
+- **Runtime guardrails**: IoT scope probes now enforce per-host budget and per-probe timeout with explicit runtime reason counters.
+- **Reporting/schema parity**: `config_snapshot`, `pipeline.scope_expansion`, HTML/TXT summaries, and `summary.json` now expose leak-follow policy fields, IoT runtime counters, and scope expansion evidence.
+- **Documentation alignment**: EN/ES usage, report schema, and roadmap now reflect the implemented v5.x scope expansion controls.
+
 ## [4.19.52] - 2026-02-07
 
 ### Improved

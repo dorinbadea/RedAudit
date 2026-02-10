@@ -29,20 +29,17 @@ This section contains only pending roadmap work. Implemented baseline items are 
 | Workstream | Status | Description | Guardrails |
 | --- | --- | --- | --- |
 | **Streaming JSON Report (Large-Network Tuning)** | Planned (v5.x) | Extend current streaming/report memory protections for extreme dataset sizes and long-running exports. | Keep deterministic output and avoid behavior changes in normal-size runs. |
-| **Advanced Leak Following Policies** | Planned (v5.x) | Add policy packs and richer allowlist controls over the current safe baseline. | Preserve default `off`; never auto-follow public or third-party targets. |
-| **Expanded Protocol-Specific IoT Probes** | In Progress (v5.x) | Expand beyond current minimal probe set with protocol/vendor-specific signal packs. | Enforce per-host budget, per-probe timeout, and strict ambiguity thresholds. |
-| **Evidence Model Hardening for Expansion Signals** | Planned (v5.x) | Strengthen evidence-vs-heuristic traceability for new expansion pathways. | Every promoted signal must remain auditable and reproducible in reports. |
 
 ### v5.x Execution Program (Expansion Work)
 
 | Block | Status | Goal | Main Deliverables | Guardrails |
 | --- | --- | --- | --- | --- |
-| **C1 - Policy Layer for Leak Following** | Planned | Add policy-level controls on top of safe baseline behavior. | Policy schema, allowlist profiles, deterministic precedence rules. | No scope expansion outside explicit policy boundaries. |
-| **C2 - IoT Probe Pack Expansion** | In Progress | Broaden protocol/vendor coverage without weakening defaults. | New probe packs, bounded execution planner, confidence thresholds. | `off` remains no-op; safe controls remain mandatory. |
-| **C3 - Runtime Budget Governance** | Planned | Keep expansion features predictable under constrained runtimes. | Unified budget accounting for follow-up/probe operations, skip reason taxonomy extensions. | Budget exhaustion must degrade to hints, not confirmed findings. |
-| **C4 - Reporting and Schema Extensions** | Planned | Expose expansion outcomes with full auditability. | JSON/HTML/TXT fields for policy decisions, evidence payloads, and skip reasons. | Preserve backward compatibility for existing report consumers. |
-| **C5 - UX and Documentation Alignment (EN/ES)** | Planned | Keep operator intent explicit across CLI/wizard/docs. | Help/prompt/documentation synchronization for all new controls. | No ambiguous wording about defaults, safety, or scope boundaries. |
-| **C6 - Regression and Release Gate** | Planned | Validate reliability before release promotion. | Branch-complete tests for touched logic and docs/schema consistency sweep. | 100% coverage on touched code paths; no drift in `off` behavior. |
+| **C1 - Policy Layer for Leak Following** | Done | Add policy-level controls on top of safe baseline behavior. | Policy schema, allowlist profiles, deterministic precedence rules. | No scope expansion outside explicit policy boundaries. |
+| **C2 - IoT Probe Pack Expansion** | Done | Broaden protocol/vendor coverage without weakening defaults. | New probe packs, bounded execution planner, confidence thresholds. | `off` remains no-op; safe controls remain mandatory. |
+| **C3 - Runtime Budget Governance** | Done | Keep expansion features predictable under constrained runtimes. | Unified budget accounting for follow-up/probe operations, skip reason taxonomy extensions. | Budget exhaustion must degrade to hints, not confirmed findings. |
+| **C4 - Reporting and Schema Extensions** | Done | Expose expansion outcomes with full auditability. | JSON/HTML/TXT fields for policy decisions, evidence payloads, and skip reasons. | Preserve backward compatibility for existing report consumers. |
+| **C5 - UX and Documentation Alignment (EN/ES)** | Done | Keep operator intent explicit across CLI/wizard/docs. | Help/prompt/documentation synchronization for all new controls. | No ambiguous wording about defaults, safety, or scope boundaries. |
+| **C6 - Regression and Release Gate** | In Progress | Validate reliability before release promotion. | Branch-complete tests for touched logic and docs/schema consistency sweep. | 100% coverage on touched code paths; no drift in `off` behavior. |
 
 #### Detailed Work Plan and Acceptance Gates
 
@@ -73,11 +70,11 @@ This section contains only pending roadmap work. Implemented baseline items are 
 
 #### C-Program Tracking Checklist
 
-- [ ] C1 policy layer implemented and tested.
-- [ ] C2 probe-pack expansion implemented and tested.
-- [ ] C3 budget governance implemented and tested.
-- [ ] C4 reporting/schema extensions implemented and tested.
-- [ ] C5 EN/ES UX and documentation synchronized.
+- [x] C1 policy layer implemented and tested.
+- [x] C2 probe-pack expansion implemented and tested.
+- [x] C3 budget governance implemented and tested.
+- [x] C4 reporting/schema extensions implemented and tested.
+- [x] C5 EN/ES UX and documentation synchronized.
 - [ ] C6 release gate passed with regression checks.
 
 ### Deferred Technical Backlog
@@ -94,8 +91,8 @@ This section contains only pending roadmap work. Implemented baseline items are 
 
 | Feature | Description |
 | --- | --- |
-| **Expanded Protocol Specific IoT Probes** | Additional protocol/vendor coverage beyond the current minimal baseline, while keeping strict budgets and guardrails. |
-| **Advanced Leak Following Policies** | Next-stage scope-safe expansion controls (policy packs, richer allowlist controls, and stronger operator auditability). |
+| **Streaming JSON Report (Large-Network Tuning)** | Additional streaming/report memory safeguards for very large datasets and long-running exports. |
+| **Scope Expansion Telemetry Visualization** | Visual aggregation of policy decisions, IoT probe runtime counters, and evidence classes in dashboard views. |
 | **Pipeline Audit** | Interactive visualization of the discovery flow. |
 
 ---
@@ -103,6 +100,14 @@ This section contains only pending roadmap work. Implemented baseline items are 
 ## 2. Completed Milestones (History)
 
 These items are ordered chronologically (most recent first).
+
+### v5.x Scope Expansion Hardening (Done)
+
+| Feature | Status | Description |
+| --- | --- | --- |
+| **Advanced Leak Following Policies** | Done (v5.x) | Added policy packs (`safe-default`, `safe-strict`, `safe-extended`), allowlist profiles, and deterministic precedence (`denylist` > explicit allowlist > profile allowlist > in-scope > reject). |
+| **Expanded Protocol-Specific IoT Probes** | Done (v5.x) | Added protocol/vendor probe packs (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) with runtime candidate gating, per-host budget, and per-probe timeout enforcement. |
+| **Evidence Model Hardening for Expansion Signals** | Done (v5.x) | Added structured scope-expansion evidence (`feature`, `classification`, `source`, `signal`, `decision`, `reason`, `host`, `timestamp`, `raw_ref`) and promotion guardrails for corroborated signals. |
 
 ### v4.19.52 HTML Language and Chart Clarity (Done)
 

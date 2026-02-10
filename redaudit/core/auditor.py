@@ -8,6 +8,7 @@ Main orchestrator class for network auditing operations.
 """
 
 import ipaddress
+import hashlib
 import json
 import math
 import os
@@ -53,6 +54,13 @@ from redaudit.core.scope_expansion import (
     build_leak_follow_targets,
     evaluate_leak_follow_candidates,
     extract_leak_follow_candidates,
+    normalize_leak_follow_policy_pack,
+    normalize_leak_follow_profiles,
+)
+from redaudit.core.iot_scope_probes import (
+    IOT_PROBE_PACKS,
+    normalize_iot_probe_packs,
+    run_iot_scope_probes,
 )
 from redaudit.core.network import detect_all_networks
 from redaudit.core.crypto import is_crypto_available
@@ -376,8 +384,14 @@ class InteractiveNetworkAuditor:
                     nuclei_enabled=self.config.get("nuclei_enabled"),
                     nuclei_max_runtime=self.config.get("nuclei_max_runtime"),
                     leak_follow_mode=self.config.get("leak_follow_mode"),
+                    leak_follow_policy_pack=self.config.get("leak_follow_policy_pack"),
                     leak_follow_allowlist=self.config.get("leak_follow_allowlist"),
+                    leak_follow_allowlist_profiles=self.config.get(
+                        "leak_follow_allowlist_profiles"
+                    ),
+                    leak_follow_denylist=self.config.get("leak_follow_denylist"),
                     iot_probes_mode=self.config.get("iot_probes_mode"),
+                    iot_probe_packs=self.config.get("iot_probe_packs"),
                     iot_probe_budget_seconds=self.config.get("iot_probe_budget_seconds"),
                     iot_probe_timeout_seconds=self.config.get("iot_probe_timeout_seconds"),
                     cve_lookup_enabled=self.config.get("cve_lookup_enabled"),
@@ -937,6 +951,57 @@ class InteractiveNetworkAuditor:
             if self.config.get("scan_vulnerabilities") and not self.interrupted:
                 self.scan_vulnerabilities_concurrent(results)
 
+            # v5.x: Scope Expansion - protocol-specific IoT probes with strict guardrails.
+            if not self.interrupted:
+                iot_mode = self.config.get("iot_probes_mode", "off")
+                scope_runtime = self.results.setdefault("scope_expansion_runtime", {})
+                if isinstance(scope_runtime, dict):
+                    try:
+                        identity_threshold = self.config.get(
+                            "identity_threshold", DEFAULT_IDENTITY_THRESHOLD
+                        )
+                        try:
+                            identity_threshold = int(identity_threshold)
+                        except Exception:
+                            identity_threshold = DEFAULT_IDENTITY_THRESHOLD
+                        if (
+                            self.config.get("scan_mode") in ("completo", "full")
+                            and identity_threshold < 4
+                        ):
+                            identity_threshold = 4
+
+                        iot_runtime = run_iot_scope_probes(
+                            results,
+                            mode=iot_mode,
+                            packs=self.config.get("iot_probe_packs")
+                            or list(IOT_PROBE_PACKS.keys()),
+                            budget_seconds=self.config.get("iot_probe_budget_seconds", 20),
+                            timeout_seconds=self.config.get("iot_probe_timeout_seconds", 3),
+                            identity_threshold=identity_threshold,
+                        )
+                    except Exception as iot_err:
+                        if self.logger:
+                            self.logger.warning(
+                                "IoT scope probes failed: %s", iot_err, exc_info=True
+                            )
+                        iot_runtime = {
+                            "mode": iot_mode if iot_mode in ("off", "safe") else "off",
+                            "packs": normalize_iot_probe_packs(self.config.get("iot_probe_packs"))
+                            or list(IOT_PROBE_PACKS.keys()),
+                            "budget_seconds": self.config.get("iot_probe_budget_seconds", 20),
+                            "timeout_seconds": self.config.get("iot_probe_timeout_seconds", 3),
+                            "candidates": 0,
+                            "executed_hosts": 0,
+                            "probes_total": 0,
+                            "probes_executed": 0,
+                            "probes_responded": 0,
+                            "budget_exceeded_hosts": 0,
+                            "reasons": {"runtime_error": 1},
+                            "hosts": [],
+                            "evidence": [],
+                        }
+                    scope_runtime["iot_probes"] = iot_runtime
+
             # Nuclei template scanning (optional; full mode only, if installed and enabled)
             if (
                 self.config.get("scan_vulnerabilities")
@@ -981,6 +1046,9 @@ class InteractiveNetworkAuditor:
                         or self.config.get("targets")
                         or [],
                         allowlist=self.config.get("leak_follow_allowlist") or [],
+                        policy_pack=self.config.get("leak_follow_policy_pack", "safe-default"),
+                        allowlist_profiles=self.config.get("leak_follow_allowlist_profiles") or [],
+                        denylist=self.config.get("leak_follow_denylist") or [],
                     )
                     leak_follow_targets = build_leak_follow_targets(
                         leak_follow_runtime.get("decisions") or [],
@@ -1485,6 +1553,13 @@ class InteractiveNetworkAuditor:
                 if self.logger:
                     self.logger.warning("Risk score recalculation failed: %s", e)
 
+            scope_runtime = self.results.get("scope_expansion_runtime") or {}
+            if isinstance(scope_runtime, dict):
+                self.results["scope_expansion_evidence"] = self._build_scope_expansion_evidence(
+                    scope_runtime.get("leak_follow") or {},
+                    scope_runtime.get("iot_probes") or {},
+                )
+
             self.config["rate_limit_delay"] = self.rate_limit_delay
             generate_summary(self.results, self.config, all_hosts, results, self.scan_start_time)
 
@@ -1547,6 +1622,100 @@ class InteractiveNetworkAuditor:
             self.stop_heartbeat()
 
         return not self.interrupted
+
+    @staticmethod
+    def _scope_evidence_entry(
+        *,
+        feature: str,
+        classification: str,
+        source: str,
+        signal: str,
+        decision: str,
+        reason: str,
+        host: str,
+        raw_seed: str,
+    ) -> Dict[str, Any]:
+        allowed_classes = {"evidence", "heuristic", "hint"}
+        normalized_class = classification if classification in allowed_classes else "hint"
+        return {
+            "feature": feature,
+            "classification": normalized_class,
+            "source": source or "unknown",
+            "signal": signal or "",
+            "decision": decision or "",
+            "reason": reason or "",
+            "host": host or "",
+            "timestamp": datetime.now().isoformat(),
+            "raw_ref": hashlib.sha256(raw_seed.encode("utf-8")).hexdigest(),
+        }
+
+    def _build_scope_expansion_evidence(
+        self, leak_runtime: Dict[str, Any], iot_runtime: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        evidence: List[Dict[str, Any]] = []
+
+        decisions = leak_runtime.get("decisions") if isinstance(leak_runtime, dict) else []
+        if isinstance(decisions, list):
+            for item in decisions:
+                if not isinstance(item, dict):
+                    continue
+                candidate = str(item.get("candidate") or "").strip()
+                source_host = str(item.get("source_host") or "").strip()
+                source_field = str(item.get("source_field") or "").strip()
+                reason = str(item.get("reason") or "").strip()
+                eligible = bool(item.get("eligible"))
+                if not candidate:
+                    continue
+                classification = "heuristic" if eligible else "hint"
+                evidence.append(
+                    self._scope_evidence_entry(
+                        feature="leak_follow",
+                        classification=classification,
+                        source=f"leak_follow:{source_field or 'unknown'}",
+                        signal=candidate,
+                        decision="candidate_accepted" if eligible else "candidate_rejected",
+                        reason=reason,
+                        host=source_host,
+                        raw_seed=f"leak|{source_host}|{source_field}|{candidate}|{reason}|{eligible}",
+                    )
+                )
+
+        iot_evidence = iot_runtime.get("evidence") if isinstance(iot_runtime, dict) else []
+        if isinstance(iot_evidence, list):
+            for item in iot_evidence:
+                if not isinstance(item, dict):
+                    continue
+                classification = str(item.get("classification") or "hint")
+                # Promotion guardrail: only keep evidence class when explicitly corroborated.
+                if classification == "evidence" and str(item.get("reason") or "") != "corroborated":
+                    classification = "heuristic"
+                source = str(item.get("source") or "unknown")
+                signal = str(item.get("signal") or "")
+                decision = str(item.get("decision") or "")
+                reason = str(item.get("reason") or "")
+                host = str(item.get("host") or "")
+                evidence.append(
+                    self._scope_evidence_entry(
+                        feature="iot_probe",
+                        classification=classification,
+                        source=source,
+                        signal=signal,
+                        decision=decision,
+                        reason=reason,
+                        host=host,
+                        raw_seed=f"iot|{host}|{source}|{signal}|{decision}|{reason}",
+                    )
+                )
+
+        seen = set()
+        deduped: List[Dict[str, Any]] = []
+        for item in evidence:
+            key = item.get("raw_ref")
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(item)
+        return deduped
 
     # ---------- Phase 4: Authenticated Scanning (v4.5.0) ----------
 
@@ -2082,6 +2251,10 @@ class InteractiveNetworkAuditor:
         if leak_follow_mode not in ("off", "safe"):
             leak_follow_mode = "off"
         self.config["leak_follow_mode"] = leak_follow_mode
+        leak_policy_pack = normalize_leak_follow_policy_pack(
+            defaults_for_run.get("leak_follow_policy_pack")
+        )
+        self.config["leak_follow_policy_pack"] = leak_policy_pack
         leak_allowlist = defaults_for_run.get("leak_follow_allowlist")
         if isinstance(leak_allowlist, str):
             leak_allowlist = [leak_allowlist]
@@ -2090,10 +2263,25 @@ class InteractiveNetworkAuditor:
         self.config["leak_follow_allowlist"] = [
             str(item).strip() for item in leak_allowlist if str(item).strip()
         ]
+        self.config["leak_follow_allowlist_profiles"] = normalize_leak_follow_profiles(
+            defaults_for_run.get("leak_follow_allowlist_profiles")
+        )
+        leak_denylist = defaults_for_run.get("leak_follow_denylist")
+        if isinstance(leak_denylist, str):
+            leak_denylist = [leak_denylist]
+        if not isinstance(leak_denylist, list):
+            leak_denylist = []
+        self.config["leak_follow_denylist"] = [
+            str(item).strip() for item in leak_denylist if str(item).strip()
+        ]
         iot_probes_mode = defaults_for_run.get("iot_probes_mode")
         if iot_probes_mode not in ("off", "safe"):
             iot_probes_mode = "off"
         self.config["iot_probes_mode"] = iot_probes_mode
+        iot_probe_packs = normalize_iot_probe_packs(defaults_for_run.get("iot_probe_packs"))
+        if not iot_probe_packs:
+            iot_probe_packs = list(IOT_PROBE_PACKS.keys())
+        self.config["iot_probe_packs"] = list(iot_probe_packs)
         iot_probe_budget = defaults_for_run.get("iot_probe_budget_seconds")
         if not isinstance(iot_probe_budget, int) or iot_probe_budget < 1 or iot_probe_budget > 300:
             iot_probe_budget = 20

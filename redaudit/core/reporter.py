@@ -28,6 +28,11 @@ from redaudit.core.entity_resolver import reconcile_assets
 from redaudit.core.siem import enrich_report_for_siem, enrich_vulnerability_severity
 from redaudit.core.scanner_versions import get_scanner_versions
 from redaudit.core.scanner.nmap import get_nmap_arguments
+from redaudit.core.scope_expansion import (
+    normalize_leak_follow_policy_pack,
+    normalize_leak_follow_profiles,
+)
+from redaudit.core.iot_scope_probes import normalize_iot_probe_packs
 
 
 def _get_hostname_fallback(host: Dict) -> str:
@@ -71,6 +76,12 @@ def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
     leak_follow_allowlist = [
         str(item).strip() for item in leak_follow_allowlist if str(item).strip()
     ]
+    leak_follow_denylist = config.get("leak_follow_denylist")
+    if isinstance(leak_follow_denylist, str):
+        leak_follow_denylist = [leak_follow_denylist]
+    if not isinstance(leak_follow_denylist, list):
+        leak_follow_denylist = []
+    leak_follow_denylist = [str(item).strip() for item in leak_follow_denylist if str(item).strip()]
     return {
         "targets": config.get("target_networks", []),
         "scan_mode": scan_mode,
@@ -99,8 +110,16 @@ def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
         "nuclei_timeout": config.get("nuclei_timeout"),
         "nuclei_max_runtime": config.get("nuclei_max_runtime"),
         "leak_follow_mode": config.get("leak_follow_mode", "off"),
+        "leak_follow_policy_pack": normalize_leak_follow_policy_pack(
+            config.get("leak_follow_policy_pack")
+        ),
         "leak_follow_allowlist": leak_follow_allowlist,
+        "leak_follow_allowlist_profiles": normalize_leak_follow_profiles(
+            config.get("leak_follow_allowlist_profiles")
+        ),
+        "leak_follow_denylist": leak_follow_denylist,
         "iot_probes_mode": config.get("iot_probes_mode", "off"),
+        "iot_probe_packs": normalize_iot_probe_packs(config.get("iot_probe_packs")),
         "iot_probe_budget_seconds": config.get("iot_probe_budget_seconds"),
         "iot_probe_timeout_seconds": config.get("iot_probe_timeout_seconds"),
         "cve_lookup_enabled": config.get("cve_lookup_enabled"),
@@ -514,17 +533,54 @@ def generate_summary(
     results["smart_scan_summary"] = _summarize_smart_scan(results.get("hosts", []), config)
     scope_runtime = results.get("scope_expansion_runtime") or {}
     leak_runtime = {}
+    iot_runtime = {}
     if isinstance(scope_runtime, dict):
         leak_runtime_raw = scope_runtime.get("leak_follow") or {}
         if isinstance(leak_runtime_raw, dict):
             leak_runtime = {
                 "mode": leak_runtime_raw.get("mode", "off"),
+                "policy_pack": leak_runtime_raw.get("policy_pack", "safe-default"),
+                "allowlist_profiles": list(leak_runtime_raw.get("allowlist_profiles") or []),
                 "detected": _safe_int(leak_runtime_raw.get("detected"), 0),
                 "eligible": _safe_int(leak_runtime_raw.get("eligible"), 0),
                 "followed": _safe_int(leak_runtime_raw.get("followed"), 0),
                 "skipped": _safe_int(leak_runtime_raw.get("skipped"), 0),
                 "follow_targets": list(leak_runtime_raw.get("follow_targets") or []),
             }
+        iot_runtime_raw = scope_runtime.get("iot_probes") or {}
+        if isinstance(iot_runtime_raw, dict):
+            iot_runtime = {
+                "mode": iot_runtime_raw.get("mode", "off"),
+                "packs": list(iot_runtime_raw.get("packs") or []),
+                "candidates": _safe_int(iot_runtime_raw.get("candidates"), 0),
+                "executed_hosts": _safe_int(iot_runtime_raw.get("executed_hosts"), 0),
+                "probes_total": _safe_int(iot_runtime_raw.get("probes_total"), 0),
+                "probes_executed": _safe_int(iot_runtime_raw.get("probes_executed"), 0),
+                "probes_responded": _safe_int(iot_runtime_raw.get("probes_responded"), 0),
+                "budget_exceeded_hosts": _safe_int(iot_runtime_raw.get("budget_exceeded_hosts"), 0),
+                "reasons": dict(iot_runtime_raw.get("reasons") or {}),
+            }
+    scope_evidence = []
+    for entry in results.get("scope_expansion_evidence") or []:
+        if not isinstance(entry, dict):
+            continue
+        classification = str(entry.get("classification") or "hint")
+        if classification not in ("evidence", "heuristic", "hint"):
+            classification = "hint"
+        scope_evidence.append(
+            {
+                "feature": str(entry.get("feature") or ""),
+                "classification": classification,
+                "source": str(entry.get("source") or ""),
+                "signal": str(entry.get("signal") or ""),
+                "decision": str(entry.get("decision") or ""),
+                "reason": str(entry.get("reason") or ""),
+                "host": str(entry.get("host") or ""),
+                "timestamp": str(entry.get("timestamp") or ""),
+                "raw_ref": str(entry.get("raw_ref") or ""),
+            }
+        )
+    results["scope_expansion_evidence"] = scope_evidence
     nmap_args = get_nmap_arguments(str(config.get("scan_mode") or "normal"), config)
     results["pipeline"] = {
         "topology": results.get("topology") or {},
@@ -550,13 +606,23 @@ def generate_summary(
         },
         "scope_expansion": {
             "leak_follow_mode": results["config_snapshot"].get("leak_follow_mode", "off"),
+            "leak_follow_policy_pack": results["config_snapshot"].get(
+                "leak_follow_policy_pack", "safe-default"
+            ),
             "leak_follow_allowlist": results["config_snapshot"].get("leak_follow_allowlist") or [],
+            "leak_follow_allowlist_profiles": results["config_snapshot"].get(
+                "leak_follow_allowlist_profiles"
+            )
+            or [],
+            "leak_follow_denylist": results["config_snapshot"].get("leak_follow_denylist") or [],
             "leak_follow_runtime": leak_runtime,
             "iot_probes_mode": results["config_snapshot"].get("iot_probes_mode", "off"),
+            "iot_probe_packs": results["config_snapshot"].get("iot_probe_packs") or [],
             "iot_probe_budget_seconds": results["config_snapshot"].get("iot_probe_budget_seconds"),
             "iot_probe_timeout_seconds": results["config_snapshot"].get(
                 "iot_probe_timeout_seconds"
             ),
+            "iot_probes_runtime": iot_runtime,
         },
     }
     auditor_exclusions = results.get("auditor_exclusions")
@@ -990,6 +1056,20 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                 preview = ", ".join([str(t) for t in follow_targets[:3]])
                 suffix = " ..." if len(follow_targets) > 3 else ""
                 lines.append(f"  Leak-follow targets: {preview}{suffix}\n")
+        iot_runtime = (pipeline.get("scope_expansion") or {}).get("iot_probes_runtime") or {}
+        if iot_runtime:
+            lines.append(
+                (
+                    "  IoT probes runtime: candidates {candidates}, hosts {hosts}, "
+                    "executed {executed}, responded {responded}, budget_exceeded {budget}\n"
+                ).format(
+                    candidates=int(iot_runtime.get("candidates") or 0),
+                    hosts=int(iot_runtime.get("executed_hosts") or 0),
+                    executed=int(iot_runtime.get("probes_executed") or 0),
+                    responded=int(iot_runtime.get("probes_responded") or 0),
+                    budget=int(iot_runtime.get("budget_exceeded_hosts") or 0),
+                )
+            )
         lines.append("\n")
 
     # v3.2.1: Check for network leaks (Guest Networks / Pivoting opportunities)
@@ -1555,13 +1635,25 @@ def show_config_summary(config: Dict, t_fn, colors: Dict) -> None:
         conf[t_fn("windows_verify")] = f"enabled (max {max_targets})" if max_targets else "enabled"
     leak_mode = config.get("leak_follow_mode")
     if leak_mode:
+        policy_pack = config.get("leak_follow_policy_pack") or "safe-default"
         allowlist = config.get("leak_follow_allowlist") or []
-        conf["Leak Following"] = f"{leak_mode} ({', '.join(allowlist) if allowlist else '-'})"
+        profiles = config.get("leak_follow_allowlist_profiles") or []
+        denylist = config.get("leak_follow_denylist") or []
+        conf["Leak Following"] = (
+            f"{leak_mode}/{policy_pack} "
+            f"(allow={', '.join(allowlist) if allowlist else '-'}; "
+            f"profiles={', '.join(profiles) if profiles else '-'}; "
+            f"deny={', '.join(denylist) if denylist else '-'})"
+        )
     iot_mode = config.get("iot_probes_mode")
     if iot_mode:
+        packs = config.get("iot_probe_packs") or []
         budget = config.get("iot_probe_budget_seconds")
         timeout = config.get("iot_probe_timeout_seconds")
-        conf["IoT Probes"] = f"{iot_mode} (budget={budget}s timeout={timeout}s)"
+        conf["IoT Probes"] = (
+            f"{iot_mode} (packs={','.join(packs) if packs else '-'}; "
+            f"budget={budget}s timeout={timeout}s)"
+        )
     for k, v in conf.items():
         label = str(k).rstrip(":")
         print(f"  {label}: {v}")

@@ -29,20 +29,17 @@ Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos y
 | Línea de trabajo | Estado | Descripción | Guardarraíles |
 |---|---|---|---|
 | **Streaming JSON Report (ajuste para redes grandes)** | Planeado (v5.x) | Extender las protecciones actuales de streaming/memoria para tamaños extremos de datos y exportaciones largas. | Mantener salida determinista y sin cambios de comportamiento en ejecuciones normales. |
-| **Políticas avanzadas de Leak Following** | Planeado (v5.x) | Añadir paquetes de política y controles de allowlist más expresivos sobre la base segura actual. | Preservar `off` por defecto; nunca seguir objetivos públicos o de terceros automáticamente. |
-| **Expansión de sondas IoT específicas de protocolo** | En progreso (v5.x) | Ampliar la cobertura más allá del conjunto mínimo actual con packs por protocolo/fabricante. | Aplicar presupuesto por host, timeout por sonda y umbrales estrictos de ambigüedad. |
-| **Endurecimiento del modelo evidencia/heurística para señales de expansión** | Planeado (v5.x) | Reforzar trazabilidad entre evidencia y deducción heurística en nuevas rutas de expansión. | Toda señal promovida debe permanecer auditable y reproducible en informes. |
 
 ### v5.x Programa de ejecución (trabajo de expansión)
 
 | Bloque | Estado | Objetivo | Entregables principales | Guardarraíles |
 |---|---|---|---|---|
-| **C1 - Capa de políticas para Leak Following** | Planeado | Añadir controles de política sobre el comportamiento seguro base. | Esquema de políticas, perfiles de allowlist y reglas de precedencia deterministas. | Sin expansión de alcance fuera de límites explícitos de política. |
-| **C2 - Expansión de packs de sondas IoT** | En progreso | Ampliar cobertura por protocolo/fabricante sin debilitar valores predeterminados. | Nuevos packs de sondas, planificador acotado y umbrales de confianza. | `off` debe seguir siendo no-op; los controles de seguridad son obligatorios. |
-| **C3 - Gobernanza de presupuesto en runtime** | Planeado | Mantener comportamiento predecible bajo tiempo limitado. | Contabilidad unificada de presupuesto para seguimientos/sondas y taxonomía ampliada de descartes. | Si se agota presupuesto, degradar a pistas; no promover hallazgos confirmados. |
-| **C4 - Extensiones de reporting y esquema** | Planeado | Exponer resultados de expansión con trazabilidad completa. | Campos JSON/HTML/TXT para decisiones de política, evidencia y motivos de descarte. | Mantener compatibilidad hacia atrás para consumidores actuales. |
-| **C5 - Alineación UX y documentación (EN/ES)** | Planeado | Mantener explícita la intención del operador en CLI/wizard/docs. | Sincronización de ayuda, prompts y documentación para controles nuevos. | Sin redacción ambigua sobre valores predeterminados, seguridad o límites de alcance. |
-| **C6 - Puerta de regresión y salida a release** | Planeado | Validar fiabilidad antes de promoción. | Cobertura completa de ramas tocadas y pasada de coherencia documental/esquema. | 100% de cobertura en rutas modificadas; sin deriva en comportamiento `off`. |
+| **C1 - Capa de políticas para Leak Following** | Hecho | Añadir controles de política sobre el comportamiento seguro base. | Esquema de políticas, perfiles de allowlist y reglas de precedencia deterministas. | Sin expansión de alcance fuera de límites explícitos de política. |
+| **C2 - Expansión de packs de sondas IoT** | Hecho | Ampliar cobertura por protocolo/fabricante sin debilitar valores predeterminados. | Nuevos packs de sondas, planificador acotado y umbrales de confianza. | `off` debe seguir siendo no-op; los controles de seguridad son obligatorios. |
+| **C3 - Gobernanza de presupuesto en runtime** | Hecho | Mantener comportamiento predecible bajo tiempo limitado. | Contabilidad unificada de presupuesto para seguimientos/sondas y taxonomía ampliada de descartes. | Si se agota presupuesto, degradar a pistas; no promover hallazgos confirmados. |
+| **C4 - Extensiones de reporting y esquema** | Hecho | Exponer resultados de expansión con trazabilidad completa. | Campos JSON/HTML/TXT para decisiones de política, evidencia y motivos de descarte. | Mantener compatibilidad hacia atrás para consumidores actuales. |
+| **C5 - Alineación UX y documentación (EN/ES)** | Hecho | Mantener explícita la intención del operador en CLI/wizard/docs. | Sincronización de ayuda, prompts y documentación para controles nuevos. | Sin redacción ambigua sobre valores predeterminados, seguridad o límites de alcance. |
+| **C6 - Puerta de regresión y salida a release** | En progreso | Validar fiabilidad antes de promoción. | Cobertura completa de ramas tocadas y pasada de coherencia documental/esquema. | 100% de cobertura en rutas modificadas; sin deriva en comportamiento `off`. |
 
 #### Plan de trabajo detallado y puertas de aceptación
 
@@ -73,11 +70,11 @@ Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos y
 
 #### Checklist de seguimiento del programa C
 
-- [ ] C1 capa de políticas implementada y testeada.
-- [ ] C2 expansión de packs de sondas implementada y testeada.
-- [ ] C3 gobernanza de presupuesto implementada y testeada.
-- [ ] C4 extensiones de reporting/esquema implementadas y testeadas.
-- [ ] C5 UX y documentación EN/ES sincronizadas.
+- [x] C1 capa de políticas implementada y testeada.
+- [x] C2 expansión de packs de sondas implementada y testeada.
+- [x] C3 gobernanza de presupuesto implementada y testeada.
+- [x] C4 extensiones de reporting/esquema implementadas y testeadas.
+- [x] C5 UX y documentación EN/ES sincronizadas.
 - [ ] C6 puerta de release superada con regresión validada.
 
 ### Diferido / Backlog Técnico
@@ -94,8 +91,8 @@ Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos y
 
 | Funcionalidad | Descripción |
 |---|---|
-| **Expansión de sondas IoT específicas de protocolo** | Cobertura adicional por protocolo/fabricante sobre el baseline mínimo actual, manteniendo presupuestos y guardarraíles estrictos. |
-| **Políticas avanzadas de Leak Following** | Controles de siguiente etapa para expansión segura de alcance (paquetes de política, allowlists más expresivas y mayor auditabilidad). |
+| **Streaming JSON Report (ajuste para redes grandes)** | Refuerzo adicional de protección de memoria/streaming para datasets muy grandes y exportaciones prolongadas. |
+| **Visualización de telemetría de expansión de alcance** | Agregación visual de decisiones de política, contadores runtime IoT y clases de evidencia en dashboards. |
 | **Auditoría de pipeline** | Visualización interactiva del flujo de descubrimiento. |
 
 ---
@@ -103,6 +100,14 @@ Esta sección incluye únicamente trabajo pendiente del roadmap. Los elementos y
 ## 2. Hitos Completados (Histórico)
 
 Estos elementos están ordenados cronológicamente (el más reciente primero).
+
+### v5.x Endurecimiento de expansión de alcance (Hecho)
+
+| Funcionalidad | Estado | Descripción |
+|---|---|---|
+| **Políticas avanzadas de Leak Following** | Hecho (v5.x) | Añadidos packs de política (`safe-default`, `safe-strict`, `safe-extended`), perfiles de allowlist y precedencia determinista (`denylist` > allowlist explícita > allowlist por perfil > in-scope > rechazo). |
+| **Expansión de sondas IoT específicas de protocolo** | Hecho (v5.x) | Añadidos packs por protocolo/fabricante (`ssdp`, `coap`, `wiz`, `yeelight`, `tuya`) con selección acotada de candidatos, presupuesto por host y timeout por sonda. |
+| **Endurecimiento del modelo evidencia/heurística para señales de expansión** | Hecho (v5.x) | Añadido rastro estructurado de evidencia de expansión (`feature`, `classification`, `source`, `signal`, `decision`, `reason`, `host`, `timestamp`, `raw_ref`) y guardarraíles de promoción por corroboración. |
 
 ### v4.19.52 Coherencia de idioma y claridad de gráficos HTML (Hecho)
 

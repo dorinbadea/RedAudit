@@ -147,8 +147,12 @@ def _base_args(**overrides):
         "nuclei_profile": "balanced",
         "nuclei_max_runtime": 0,
         "leak_follow": "off",
+        "leak_follow_policy_pack": "safe-default",
         "leak_follow_allowlist": None,
+        "leak_follow_allowlist_profile": None,
+        "leak_follow_denylist": None,
         "iot_probes": "off",
+        "iot_probe_pack": None,
         "iot_probe_budget_seconds": 20,
         "iot_probe_timeout_seconds": 3,
         "nuclei_exclude": None,
@@ -225,8 +229,12 @@ def test_parse_arguments_scope_expansion_persisted_defaults(monkeypatch):
     def _defaults():
         return {
             "leak_follow_mode": "safe",
+            "leak_follow_policy_pack": "safe-extended",
             "leak_follow_allowlist": ["10.0.0.0/24,10.0.1.10"],
+            "leak_follow_allowlist_profiles": ["rfc1918-only,local-hosts"],
+            "leak_follow_denylist": ["10.0.2.0/24,10.0.3.10"],
             "iot_probes_mode": "safe",
+            "iot_probe_packs": ["ssdp,coap,wiz"],
             "iot_probe_budget_seconds": 55,
             "iot_probe_timeout_seconds": 9,
         }
@@ -235,8 +243,12 @@ def test_parse_arguments_scope_expansion_persisted_defaults(monkeypatch):
     with patch.object(sys, "argv", ["redaudit"]):
         args = cli.parse_arguments()
     assert args.leak_follow == "safe"
+    assert args.leak_follow_policy_pack == "safe-extended"
     assert args.leak_follow_allowlist == ["10.0.0.0/24", "10.0.1.10"]
+    assert args.leak_follow_allowlist_profile == ["rfc1918-only", "local-hosts"]
+    assert args.leak_follow_denylist == ["10.0.2.0/24", "10.0.3.10"]
     assert args.iot_probes == "safe"
+    assert args.iot_probe_pack == ["ssdp", "coap", "wiz"]
     assert args.iot_probe_budget_seconds == 55
     assert args.iot_probe_timeout_seconds == 9
 
@@ -245,8 +257,12 @@ def test_parse_arguments_scope_expansion_invalid_defaults(monkeypatch):
     def _defaults():
         return {
             "leak_follow_mode": "bad",
+            "leak_follow_policy_pack": "bad-pack",
             "leak_follow_allowlist": None,
+            "leak_follow_allowlist_profiles": ["bad-profile"],
+            "leak_follow_denylist": None,
             "iot_probes_mode": "bad",
+            "iot_probe_packs": ["bad-pack"],
             "iot_probe_budget_seconds": -1,
             "iot_probe_timeout_seconds": 100,
         }
@@ -255,8 +271,12 @@ def test_parse_arguments_scope_expansion_invalid_defaults(monkeypatch):
     with patch.object(sys, "argv", ["redaudit"]):
         args = cli.parse_arguments()
     assert args.leak_follow == "off"
+    assert args.leak_follow_policy_pack == "safe-default"
     assert args.leak_follow_allowlist == []
+    assert args.leak_follow_allowlist_profile == []
+    assert args.leak_follow_denylist == []
     assert args.iot_probes == "off"
+    assert args.iot_probe_pack == []
     assert args.iot_probe_budget_seconds == 20
     assert args.iot_probe_timeout_seconds == 3
 
@@ -651,15 +671,23 @@ def test_configure_from_args_sets_scope_expansion_controls():
     app = _DummyApp()
     args = _base_args(
         leak_follow="safe",
+        leak_follow_policy_pack="safe-strict",
         leak_follow_allowlist=["10.0.0.0/24,10.0.1.10", "10.0.1.10"],
+        leak_follow_allowlist_profile=["rfc1918-only,local-hosts"],
+        leak_follow_denylist=["10.0.3.0/24,10.0.3.10"],
         iot_probes="safe",
+        iot_probe_pack=["ssdp,coap", "wiz"],
         iot_probe_budget_seconds=45,
         iot_probe_timeout_seconds=7,
     )
     assert cli.configure_from_args(app, args) is True
     assert app.config["leak_follow_mode"] == "safe"
+    assert app.config["leak_follow_policy_pack"] == "safe-strict"
     assert app.config["leak_follow_allowlist"] == ["10.0.0.0/24", "10.0.1.10"]
+    assert app.config["leak_follow_allowlist_profiles"] == ["rfc1918-only", "local-hosts"]
+    assert app.config["leak_follow_denylist"] == ["10.0.3.0/24", "10.0.3.10"]
     assert app.config["iot_probes_mode"] == "safe"
+    assert app.config["iot_probe_packs"] == ["ssdp", "coap", "wiz"]
     assert app.config["iot_probe_budget_seconds"] == 45
     assert app.config["iot_probe_timeout_seconds"] == 7
 
@@ -668,13 +696,19 @@ def test_configure_from_args_scope_expansion_invalid_values_fallback():
     app = _DummyApp()
     args = _base_args(
         leak_follow="bad",
+        leak_follow_policy_pack="bad-pack",
+        leak_follow_allowlist_profile=["bad-profile"],
         iot_probes="bad",
+        iot_probe_pack=["bad-pack"],
         iot_probe_budget_seconds=-1,
         iot_probe_timeout_seconds=1000,
     )
     assert cli.configure_from_args(app, args) is True
     assert app.config["leak_follow_mode"] == "off"
+    assert app.config["leak_follow_policy_pack"] == "safe-default"
+    assert app.config["leak_follow_allowlist_profiles"] == []
     assert app.config["iot_probes_mode"] == "off"
+    assert app.config["iot_probe_packs"] == []
     assert app.config["iot_probe_budget_seconds"] == 20
     assert app.config["iot_probe_timeout_seconds"] == 3
 
