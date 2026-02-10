@@ -62,15 +62,16 @@ class TestNetDiscoveryV395(unittest.TestCase):
         results = fping_sweep("192.168.1.0/24", logger=None)
         self.assertEqual(results["alive_hosts"], [])
 
-    @patch("redaudit.core.net_discovery.CommandRunner")
-    def test_dhcp_discover_corner_cases(self, mock_runner_cls):
+    @patch("redaudit.core.net_discovery._run_cmd")
+    @patch("shutil.which")
+    def test_dhcp_discover_corner_cases(self, mock_which, mock_run_cmd):
         """Test DHCP discover with various nmap outputs (including piped prefixes)."""
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
+        mock_which.side_effect = lambda cmd: "/usr/bin/nmap" if cmd == "nmap" else None
 
         # Scenario: Nmap output with prefixes (the bug fixed in v3.9.4)
-        mock_runner.run.return_value.returncode = 0
-        mock_runner.run.return_value.stdout = """
+        mock_run_cmd.return_value = (
+            0,
+            """
 Starting Nmap 7.94...
 Nmap scan report for 192.168.1.1
 Host is up (0.0020s latency).
@@ -82,7 +83,9 @@ PORT    STATE SERVICE
 |   Domain Name: internal.corp
 |_  Domain Search: sub.internal.corp
 MAC Address: AA:BB:CC:DD:EE:FF (Vendor)
-        """
+        """,
+            "",
+        )
 
         result = dhcp_discover(interface="eth0", logger=None)
 
@@ -94,9 +97,7 @@ MAC Address: AA:BB:CC:DD:EE:FF (Vendor)
         self.assertEqual(servers[0].get("domain_search"), "sub.internal.corp")
 
         # Scenario: Failed execution
-        mock_runner.run.return_value.returncode = 1
-        mock_runner.run.return_value.stdout = ""
-        mock_runner.run.return_value.stderr = "Error"
+        mock_run_cmd.return_value = (1, "", "Error")
         result = dhcp_discover(interface="eth0", logger=None)
         self.assertEqual(result["servers"], [])
 
