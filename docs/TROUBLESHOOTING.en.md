@@ -231,8 +231,8 @@ sudo apt update && sudo apt install nuclei
 - Read progress detail correctly:
   - Nuclei progress uses two lines: one compact bar line and one telemetry line.
   - `split depth X/Y (current/max)` = current retry split depth vs fatigue cap.
-  - `sub-batch elapsed` in telemetry = elapsed time for the active sub-batch.
   - `total elapsed` in telemetry = total wall-clock elapsed for the current Nuclei step.
+  - Telemetry updates are throttled to state changes and periodic heartbeat updates.
 - Confirm final timing from completion logs:
   - `Nuclei completed in ...` (initial run)
   - `Nuclei resume completed in ...` (resume run)
