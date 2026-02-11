@@ -36,11 +36,24 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest tests/ -v --cov=redaudit --cov-report=xml --cov-report=term-missing
+          pytest tests/ -v --cov=redaudit --cov-report=xml --cov-report=term-missing --cov-report=json
 
       - name: Check coverage threshold
         run: |
           coverage report --fail-under=80
+
+      - name: Enforce changed-file coverage >=98%
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags origin "${{ github.base_ref }}"
+            BASE_REF="origin/${{ github.base_ref }}"
+          else
+            BASE_REF="HEAD~1"
+          fi
+          python scripts/check_changed_coverage.py \
+            --coverage-file coverage.json \
+            --threshold 98 \
+            --base-ref "${BASE_REF}"
 
       - name: Upload coverage to Codecov
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
