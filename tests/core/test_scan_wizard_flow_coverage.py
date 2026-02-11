@@ -91,9 +91,9 @@ def test_apply_run_defaults_all_fields(wizard_flow):
     assert wizard_flow.config["nuclei_max_runtime"] == 120
     assert wizard_flow.config["leak_follow_mode"] == "safe"
     assert wizard_flow.config["leak_follow_policy_pack"] == "safe-strict"
-    assert "example.com" in wizard_flow.config["leak_follow_allowlist"]
+    assert wizard_flow.config["leak_follow_allowlist"] == ["example.com"]
     assert "local-hosts" in wizard_flow.config["leak_follow_allowlist_profiles"]
-    assert "exclude.com" in wizard_flow.config["leak_follow_denylist"]
+    assert wizard_flow.config["leak_follow_denylist"] == ["exclude.com"]
     assert wizard_flow.config["iot_probes_mode"] == "safe"
     assert "ssdp" in wizard_flow.config["iot_probe_packs"]
     assert wizard_flow.config["iot_probe_budget_seconds"] == 30
@@ -266,8 +266,8 @@ def test_ask_scope_expansion_advanced_manual_entries(wizard_flow):
         wizard_flow._ask_scope_expansion_advanced()
 
     assert "local-hosts" in wizard_flow.config["leak_follow_allowlist_profiles"]
-    assert "host1.com" in wizard_flow.config["leak_follow_allowlist"]
-    assert "bad.com" in wizard_flow.config["leak_follow_denylist"]
+    assert wizard_flow.config["leak_follow_allowlist"] == ["host1.com"]
+    assert wizard_flow.config["leak_follow_denylist"] == ["bad.com"]
     assert "ssdp" in wizard_flow.config["iot_probe_packs"]
 
 
