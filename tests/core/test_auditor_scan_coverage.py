@@ -219,49 +219,46 @@ class TestDependencies(unittest.TestCase):
         # Mock ui.t
         self.auditor.ui.t.side_effect = lambda key, *args: f"tr_{key}"
 
-    @patch("redaudit.core.auditor_scan.shutil.which")
-    @patch("redaudit.core.auditor_scan.importlib.import_module")
-    def test_check_dependencies_missing_nmap_binary(self, mock_import, mock_which):
+    def test_check_dependencies_missing_nmap_binary(self):
         """Test check_dependencies when nmap binary is missing."""
-        mock_which.return_value = None
-        res = self.auditor.check_dependencies()
+        with (
+            patch("redaudit.core.auditor_scan.shutil.which", return_value=None) as mock_which,
+            patch("redaudit.core.auditor_scan.importlib.import_module") as mock_import,
+        ):
+            res = self.auditor.check_dependencies()
+
         self.assertFalse(res)
-        # Verify call arguments more loosely if needed or ensure exact match
+        mock_which.assert_called_once_with("nmap")
+        mock_import.assert_not_called()
         args, _ = self.auditor.ui.print_status.call_args
         self.assertIn("tr_nmap_binary_missing", args[0])
         self.assertEqual(args[1], "FAIL")
 
-    @patch("redaudit.core.auditor_scan.shutil.which")
-    @patch("redaudit.core.auditor_scan.importlib.import_module")
-    def test_check_dependencies_missing_nmap_module(self, mock_import, mock_which):
+    def test_check_dependencies_missing_nmap_module(self):
         """Test check_dependencies when nmap module import fails."""
-        mock_which.return_value = "/usr/bin/nmap"
-        mock_import.side_effect = ImportError("No module named nmap")
 
-        # args, _ = self.auditor.ui.print_status.call_args
-        # It seems the code might double check binary even if module fails or order differs.
-        # Let's mock which to return paths for everything appropriately.
-        mock_which.side_effect = lambda x: f"/usr/bin/{x}"
+        def which_side_effect(tool_name):
+            if tool_name == "nmap":
+                return "/usr/bin/nmap"
+            return f"/usr/bin/{tool_name}"
 
-        # We need to recreate the mocked import to ensure it fails specifically for nmap
-        # But import_module is called with "nmap" (or likely "nmap")
-        def side_effect_import(name):
+        def import_side_effect(name):
             if name == "nmap":
                 raise ImportError("No module named nmap")
             return MagicMock()
 
-        mock_import.side_effect = side_effect_import
+        with (
+            patch("redaudit.core.auditor_scan.shutil.which", side_effect=which_side_effect),
+            patch(
+                "redaudit.core.auditor_scan.importlib.import_module",
+                side_effect=import_side_effect,
+            ) as mock_import,
+        ):
+            self.auditor.ui.print_status.reset_mock()
+            res = self.auditor.check_dependencies()
 
-        # Reset mocks to ensure fresh state
-        self.auditor.ui.print_status.reset_mock()
-
-        res = self.auditor.check_dependencies()
         self.assertFalse(res)
-
-        # Check if print_status was called at all
-        self.assertTrue(self.auditor.ui.print_status.called)
-
-        # Check if any call matches tr_nmap_missing logic
+        mock_import.assert_called_once_with("nmap")
         calls = self.auditor.ui.print_status.call_args_list
         found = any("nmap" in str(call) for call in calls)
         self.assertTrue(found, f"nmap missing message not found in {calls}")
