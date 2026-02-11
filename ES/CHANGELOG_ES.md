@@ -10,6 +10,23 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.5] - 11-02-2026
+
+### Anadido
+
+- **Validacion NDJSON en gate de artefactos**: `scan_artifact_gate` valida ahora `nuclei_output.json` y `nuclei_output_resume.json` como flujos NDJSON y reporta errores de formato por linea de forma determinista.
+- **Visibilidad runtime de scope expansion**: Los logs de operador incluyen ahora contadores explicitos del runtime IoT y el numero de objetivos agregados por leak-follow antes de ejecutar Nuclei.
+
+### Mejorado
+
+- **Claridad del progreso de Nuclei**: El texto i18n distingue de forma explicita el tiempo de sub-lote frente al temporizador total de Nuclei y aclara la semantica de profundidad de split (`actual/maximo`).
+- **Consistencia de idioma en visualizacion HTML**: El render del informe normaliza `scan_mode` para mostrarlo por idioma (`full/normal/fast` en EN, `completo/normal/rapido` en ES) sin cambiar los valores internos del contrato JSON.
+- **Documentacion de contrato en esquema/troubleshooting/SIEM**: La documentacion EN/ES define de forma explicita los artefactos NDJSON de Nuclei, la interpretacion de `partial + resume_pending` y el comportamiento esperado de salida de reanudacion vacia.
+
+### Corregido
+
+- **Compatibilidad critica en prompt de reanudacion Nuclei**: `ask_yes_no_with_timeout` acepta ahora `timeout` y `timeout_s`, eliminando el `TypeError` en decisiones de reanudacion.
+
 ## [4.20.4] - 11-02-2026
 
 ### Anadido

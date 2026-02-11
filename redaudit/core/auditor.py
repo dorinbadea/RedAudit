@@ -293,13 +293,22 @@ class InteractiveNetworkAuditor:
         return self._wizard_call("ask_yes_no", question, default=default)
 
     def ask_yes_no_with_timeout(
-        self, question: str, default: str = "yes", timeout: int = 15
+        self,
+        question: str,
+        default: str = "yes",
+        timeout: Optional[int] = 15,
+        timeout_s: Optional[int] = None,
     ) -> bool:
+        resolved_timeout = timeout_s if timeout_s is not None else timeout
+        try:
+            resolved_timeout_int = int(resolved_timeout) if resolved_timeout is not None else 15
+        except Exception:
+            resolved_timeout_int = 15
         return self._wizard_call(
             "ask_yes_no_with_timeout",
             question,
             default=default,
-            timeout_s=timeout,
+            timeout_s=resolved_timeout_int,
         )
 
     def ask_number(
@@ -1114,6 +1123,16 @@ class InteractiveNetworkAuditor:
                             "evidence": [],
                         }
                     scope_runtime["iot_probes"] = iot_runtime
+                    if iot_mode != "off":
+                        self.ui.print_status(
+                            self.ui.t(
+                                "scope_iot_runtime",
+                                int(iot_runtime.get("candidates", 0)),
+                                int(iot_runtime.get("probes_executed", 0)),
+                                int(iot_runtime.get("probes_responded", 0)),
+                            ),
+                            "INFO",
+                        )
 
             # Nuclei template scanning (optional; full mode only, if installed and enabled)
             if (
@@ -1180,6 +1199,10 @@ class InteractiveNetworkAuditor:
                             ]
                     if leak_follow_targets:
                         nuclei_targets = list(nuclei_targets) + leak_follow_targets
+                        self.ui.print_status(
+                            self.ui.t("scope_leak_targets_added", len(leak_follow_targets)),
+                            "INFO",
+                        )
                     leak_follow_runtime["followed"] = len(leak_follow_targets)
                     leak_follow_runtime["follow_targets"] = list(leak_follow_targets)
                     leak_follow_runtime["skipped"] = max(

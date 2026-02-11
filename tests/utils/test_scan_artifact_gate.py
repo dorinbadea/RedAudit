@@ -279,3 +279,92 @@ def test_main_failure_prints_error_lines(tmp_path, capsys):
     assert rc == 1
     assert "[FAIL]" in out
     assert "Validation failed" in out
+
+
+def test_validate_scan_folder_accepts_nuclei_output_ndjson(tmp_path):
+    run_dir = tmp_path / "scan"
+    run_dir.mkdir()
+    _write_valid_summary(run_dir)
+    (run_dir / "assets.jsonl").write_text(
+        json.dumps(
+            {
+                "asset_id": "a1",
+                "ip": "192.168.1.10",
+                "status": "up",
+                "timestamp": "2026-02-11T00:00:00",
+                "session_id": "s1",
+                "schema_version": "1.0",
+                "scanner": "RedAudit",
+                "scanner_version": "4.20.4",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (run_dir / "findings.jsonl").write_text(
+        json.dumps(
+            {
+                "asset_id": "a1",
+                "asset_ip": "192.168.1.10",
+                "severity": "low",
+                "title": "test",
+                "timestamp": "2026-02-11T00:00:00",
+                "session_id": "s1",
+                "schema_version": "1.0",
+                "scanner": "RedAudit",
+                "scanner_version": "4.20.4",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (run_dir / "nuclei_output.json").write_text(
+        json.dumps({"template-id": "x", "host": "192.168.1.10:80"}) + "\n",
+        encoding="utf-8",
+    )
+    _write_manifest(
+        run_dir,
+        ["summary.json", "assets.jsonl", "findings.jsonl", "nuclei_output.json"],
+    )
+
+    result = scan_artifact_gate.validate_scan_folder(run_dir, strict=True)
+    assert result.errors == []
+
+
+def test_validate_scan_folder_reports_invalid_nuclei_output_ndjson(tmp_path):
+    run_dir = tmp_path / "scan"
+    run_dir.mkdir()
+    _write_valid_summary(run_dir)
+    (run_dir / "assets.jsonl").write_text("\n", encoding="utf-8")
+    (run_dir / "findings.jsonl").write_text("\n", encoding="utf-8")
+    (run_dir / "nuclei_output.json").write_text("{bad}\n", encoding="utf-8")
+    _write_manifest(
+        run_dir,
+        ["summary.json", "assets.jsonl", "findings.jsonl", "nuclei_output.json"],
+    )
+
+    result = scan_artifact_gate.validate_scan_folder(run_dir, strict=True)
+    assert any(
+        "nuclei_output.json:1 invalid NDJSON line" in issue.message for issue in result.errors
+    )
+
+
+def test_validate_scan_folder_warns_on_empty_nuclei_resume_output(tmp_path):
+    run_dir = tmp_path / "scan"
+    run_dir.mkdir()
+    _write_valid_summary(run_dir)
+    (run_dir / "assets.jsonl").write_text("\n", encoding="utf-8")
+    (run_dir / "findings.jsonl").write_text("\n", encoding="utf-8")
+    (run_dir / "nuclei_output_resume.json").write_text("", encoding="utf-8")
+    _write_manifest(
+        run_dir,
+        [
+            "summary.json",
+            "assets.jsonl",
+            "findings.jsonl",
+            "nuclei_output_resume.json",
+        ],
+    )
+
+    result = scan_artifact_gate.validate_scan_folder(run_dir, strict=True)
+    assert any("nuclei_output_resume.json is empty" in issue.message for issue in result.warnings)

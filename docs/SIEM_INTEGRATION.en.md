@@ -111,6 +111,23 @@ Each line contains a discovered host/service:
 Notes:
 - `hostname` uses best-effort fallback order: `hostname`, then `dns.reverse`, then `phase0_enrichment.dns_reverse`.
 
+### Nuclei Raw Streams (NDJSON Contract)
+
+RedAudit also writes raw Nuclei streams in the scan folder:
+
+- `nuclei_output.json`: NDJSON stream (one JSON object per non-empty line).
+- `nuclei_output_resume.json`: optional NDJSON stream for resume appends.
+
+These are raw scanner streams (not ECS-normalized SIEM exports), and they are validated by the artifact gate:
+
+```bash
+python scripts/check_scan_artifacts.py --run-dir <scan_folder> --strict
+```
+
+Expected behavior:
+- `nuclei_output.json` must parse as NDJSON.
+- `nuclei_output_resume.json` can be empty when no new records were appended.
+
 ## Included Sigma Rules
 
 | Rule | Description |
@@ -130,5 +147,8 @@ For Splunk, use the HTTP Event Collector (HEC) or your preferred ingestion pipel
 ## Troubleshooting
 
 - **No data in Elasticsearch?** Check Filebeat logs: `journalctl -u filebeat -f`
-- **Parsing errors?** Ensure JSONL files are valid: `jq . < findings.jsonl`
+- **Parsing errors?** Validate line-delimited streams explicitly:
+  - `jq -c . findings.jsonl >/dev/null`
+  - `jq -c . assets.jsonl >/dev/null`
+  - `jq -c . nuclei_output.json >/dev/null`
 - **Missing fields?** Verify Filebeat/Logstash transformations and ECS mapping

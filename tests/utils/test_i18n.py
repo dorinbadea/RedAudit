@@ -260,6 +260,16 @@ def test_new_nuclei_i18n_keys_formatting():
     assert "1/4" in en
     assert "1/4" in es
 
+    en = get_text("scope_iot_runtime", "en", 3, 7, 0)
+    es = get_text("scope_iot_runtime", "es", 3, 7, 0)
+    assert "3" in en and "7" in en
+    assert "3" in es and "7" in es
+
+    en = get_text("scope_leak_targets_added", "en", 2)
+    es = get_text("scope_leak_targets_added", "es", 2)
+    assert "2" in en
+    assert "2" in es
+
     en = get_text("nuclei_timeout_targets", "en", "1.2.3.4(2)", "80,443")
     es = get_text("nuclei_timeout_targets", "es", "1.2.3.4(2)", "80,443")
     assert "1.2.3.4" in en

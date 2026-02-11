@@ -111,6 +111,23 @@ Cada línea contiene un host/servicio descubierto:
 Notas:
 - `hostname` usa fallback best-effort en este orden: `hostname`, luego `dns.reverse`, luego `phase0_enrichment.dns_reverse`.
 
+### Flujos Brutos de Nuclei (Contrato NDJSON)
+
+RedAudit también escribe flujos brutos de Nuclei en la carpeta del escaneo:
+
+- `nuclei_output.json`: flujo NDJSON (un objeto JSON por cada línea no vacía).
+- `nuclei_output_resume.json`: flujo NDJSON opcional para anexos de reanudación.
+
+Estos ficheros son flujos brutos del escáner (no exportaciones SIEM normalizadas a ECS) y se validan con el gate de artefactos:
+
+```bash
+python scripts/check_scan_artifacts.py --run-dir <carpeta_scan> --strict
+```
+
+Comportamiento esperado:
+- `nuclei_output.json` debe parsear como NDJSON.
+- `nuclei_output_resume.json` puede quedar vacío cuando no se añadieron registros nuevos.
+
 ## Reglas Sigma Incluidas
 
 | Regla | Descripción |
@@ -130,5 +147,8 @@ Para Splunk, usa el HTTP Event Collector (HEC) o tu canal de ingestión habitual
 ## Resolución de Problemas
 
 - **¿No hay datos en Elasticsearch?** Revisa los logs de Filebeat: `journalctl -u filebeat -f`
-- **¿Errores de parseo?** Verifica que los archivos JSONL son válidos: `jq . < findings.jsonl`
+- **¿Errores de parseo?** Valida explícitamente flujos delimitados por línea:
+  - `jq -c . findings.jsonl >/dev/null`
+  - `jq -c . assets.jsonl >/dev/null`
+  - `jq -c . nuclei_output.json >/dev/null`
 - **¿Faltan campos?** Verifica las transformaciones de Filebeat/Logstash y el mapeo ECS

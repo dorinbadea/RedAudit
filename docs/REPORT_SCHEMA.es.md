@@ -24,6 +24,8 @@ En el mismo directorio de salida, RedAudit también puede generar archivos plano
 - `assets.jsonl`: Un activo por línea
 - `summary.json`: Resumen compacto para dashboards
 - `run_manifest.json`: Manifiesto de la carpeta de salida (archivos + métricas)
+- `nuclei_output.json`: Flujo bruto de Nuclei en NDJSON (un objeto JSON por línea)
+- `nuclei_output_resume.json`: Flujo NDJSON opcional para reanudaciones de Nuclei (puede estar vacío)
 
 Estas exportaciones se generan solo cuando el cifrado de informes está **desactivado**, para evitar crear artefactos en texto plano junto a informes cifrados.
 
@@ -137,7 +139,7 @@ Resumen compacto para dashboards y automatización (se genera solo cuando el cif
 | `high_risk_assets` | `integer` | Activos por encima del umbral de alto riesgo |
 | `targets` | `array` | Redes objetivo escaneadas |
 | `scanner_versions` | `object` | Versiones de herramientas detectadas |
-| `scan_mode` | `string` | Modo de escaneo (rápido/normal/completo) |
+| `scan_mode` | `string` | Modo interno de escaneo (`rapido`/`normal`/`completo`) conservado por compatibilidad |
 | `scan_mode_cli` | `string` | Modo CLI (best-effort) |
 | `options` | `object` | Snapshot compacto de config (threads/udp/topología/net-discovery/nuclei/etc.) |
 | `pipeline` | `object` | Resumen del pipeline (mismo formato que el informe principal) |
@@ -183,8 +185,13 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `last_resume_at` | string | (Opcional) Marca de tiempo de la reanudacion mas reciente |
 | `resume_state_file` | string | (Opcional) Ruta relativa al estado de reanudacion (normalmente `nuclei_resume.json`) |
 | `resume` | object | (Opcional) Metadatos de reanudacion (added_findings, added_suspected, pending_targets) |
-| `output_file` | string | Ruta relativa al archivo de salida (best-effort) |
+| `output_file` | string | Ruta relativa al flujo bruto de salida de Nuclei (`nuclei_output.json`, NDJSON) |
 | `error` | string | Error si Nuclei falló (best-effort, p. ej., timeout) |
+
+Notas:
+- `partial: true` con `resume_pending > 0` significa que la ejecución dejó salida parcial válida y guardó objetivos pendientes para reanudar de forma explícita.
+- `nuclei_output.json` es NDJSON por contrato (no un documento JSON único).
+- `nuclei_output_resume.json` puede quedar vacío cuando una reanudación no añade nuevos registros.
 
 ### Config Snapshot (v3.7+)
 
@@ -293,7 +300,7 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `resume_count` | integer | Numero de intentos de reanudacion ya ejecutados |
 | `last_resume_at` | string | Marca de tiempo de la reanudacion mas reciente |
 | `resume_state_file` | string | Ruta relativa al estado de reanudacion (`nuclei_resume.json`) |
-| `output_file` | string | Ruta relativa a nuclei_output.json |
+| `output_file` | string | Ruta relativa a `nuclei_output.json` (flujo NDJSON) |
 | `success` | boolean | Exito de Nuclei |
 
 #### pipeline.scope_expansion (v4.x)

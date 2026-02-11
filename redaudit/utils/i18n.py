@@ -399,13 +399,21 @@ TRANSLATIONS = {
         "nuclei_fatigue_q": "Nuclei fatigue limit (split depth, 0-10):",
         "nuclei_exclude_q": "Nuclei exclude list (host, host:port, URL; comma-separated; empty = none):",
         "nuclei_batch_status": "[nuclei] batch {0}/{1} ({2} targets)",
-        "nuclei_detail_parallel_running": "active batches {0}/{1} | sub-batch elapsed {2}",
-        "nuclei_detail_batch_running": "batch {0}/{1} | sub-batch elapsed {2}",
+        "nuclei_detail_parallel_running": (
+            "active batches {0}/{1} | sub-batch elapsed {2} | total elapsed shown in timer"
+        ),
+        "nuclei_detail_batch_running": (
+            "batch {0}/{1} | sub-batch elapsed {2} | total elapsed shown in timer"
+        ),
         "nuclei_detail_batches_complete": "batches {0}/{1} complete",
         "nuclei_detail_retry": "retry {0}",
-        "nuclei_detail_split": "split depth {0}/{1}",
+        "nuclei_detail_split": "split depth {0}/{1} (current/max)",
         "nuclei_timeout_detail": "Nuclei timeout in batch {0}/{1}: {2}",
         "nuclei_timeout_targets": "hosts {0}; ports {1}",
+        "scope_iot_runtime": (
+            "[scope] IoT probes runtime: candidates {0}, probes executed {1}, responded {2}"
+        ),
+        "scope_leak_targets_added": ("[scope] Leak-follow added {0} target(s) to Nuclei selection"),
         "nuclei_resume_pending": "{0} pending",
         "nuclei_findings": "✓ Nuclei found {} vulnerabilities",
         "nuclei_no_findings": "Nuclei scan completed (no findings)",
@@ -1012,13 +1020,23 @@ TRANSLATIONS = {
             "Lista de exclusion de Nuclei (host, host:puerto, URL; separada por comas; vacio = ninguno):"
         ),
         "nuclei_batch_status": "[nuclei] lote {0}/{1} ({2} objetivos)",
-        "nuclei_detail_parallel_running": "lotes activos {0}/{1} | tiempo de sub-lote {2}",
-        "nuclei_detail_batch_running": "lote {0}/{1} | tiempo de sub-lote {2}",
+        "nuclei_detail_parallel_running": (
+            "lotes activos {0}/{1} | tiempo de sub-lote {2} | tiempo total en el temporizador"
+        ),
+        "nuclei_detail_batch_running": (
+            "lote {0}/{1} | tiempo de sub-lote {2} | tiempo total en el temporizador"
+        ),
         "nuclei_detail_batches_complete": "lotes {0}/{1} completados",
         "nuclei_detail_retry": "reintento {0}",
-        "nuclei_detail_split": "profundidad de division {0}/{1}",
+        "nuclei_detail_split": "profundidad de division {0}/{1} (actual/maximo)",
         "nuclei_timeout_detail": "Timeout de Nuclei en lote {0}/{1}: {2}",
         "nuclei_timeout_targets": "hosts {0}; puertos {1}",
+        "scope_iot_runtime": (
+            "[scope] Runtime de sondas IoT: candidatos {0}, sondas ejecutadas {1}, con respuesta {2}"
+        ),
+        "scope_leak_targets_added": (
+            "[scope] Leak-follow anadio {0} objetivo(s) a la seleccion de Nuclei"
+        ),
         "nuclei_resume_pending": "{0} pendientes",
         "nuclei_findings": "✓ Nuclei encontró {} vulnerabilidades",
         "nuclei_no_findings": "Escaneo Nuclei completado (sin hallazgos)",

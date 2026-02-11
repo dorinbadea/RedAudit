@@ -660,6 +660,16 @@ def test_prepare_report_data_with_reverse_dns():
     assert data["host_table"][0]["hostname"] == "myhost.local"
 
 
+def test_prepare_report_data_scan_mode_display_by_language():
+    results = {"pipeline": {"host_scan": {"mode": "completo"}}}
+    data_en = html_reporter.prepare_report_data(results, {"scan_mode": "completo"}, lang="en")
+    assert data_en["scan_mode_display"] == "full"
+    assert data_en["pipeline"]["host_scan"]["mode_display"] == "full"
+
+    data_es = html_reporter.prepare_report_data(results, {"scan_mode": "full"}, lang="es")
+    assert data_es["scan_mode_display"] == "completo"
+
+
 def test_get_template_env_import_error():
     with patch.dict("sys.modules", {"jinja2": None}):
         try:

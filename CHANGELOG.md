@@ -10,6 +10,23 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.20.5] - 2026-02-11
+
+### Added
+
+- **Artifact gate NDJSON validation**: `scan_artifact_gate` now validates `nuclei_output.json` and `nuclei_output_resume.json` as NDJSON streams and reports deterministic line-level format errors.
+- **Scope expansion runtime visibility**: Operator logs now include explicit IoT runtime counters and leak-follow target augmentation counts before Nuclei execution.
+
+### Improved
+
+- **Nuclei progress wording clarity**: i18n progress detail now explicitly distinguishes sub-batch elapsed context from the total Nuclei timer and clarifies split depth semantics (`current/max`).
+- **HTML mode display consistency by language**: Report rendering now normalizes `scan_mode` for display (`full/normal/fast` in EN, `completo/normal/rapido` in ES) while preserving the internal JSON contract values.
+- **Schema/troubleshooting/SIEM contract docs**: EN/ES documentation now explicitly defines Nuclei NDJSON artifacts, `partial + resume_pending` interpretation, and expected empty-resume output behavior.
+
+### Fixed
+
+- **Critical Nuclei resume prompt compatibility**: `ask_yes_no_with_timeout` now accepts both `timeout` and `timeout_s`, eliminating the runtime `TypeError` during resume decisions.
+
 ## [4.20.4] - 2026-02-11
 
 ### Added
