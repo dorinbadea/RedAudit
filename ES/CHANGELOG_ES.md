@@ -10,6 +10,22 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.3] - 11-02-2026
+
+### Anadido
+
+- **Guardarraíl de cobertura por archivo cambiado**: Se añaden `scripts/check_changed_coverage.py` y `redaudit/utils/coverage_gate.py` para exigir cobertura `>=98%` en archivos cambiados `redaudit/*.py` durante gates locales/CI.
+
+### Mejorado
+
+- **Refuerzo del script de paridad local**: `scripts/ci_local.sh` ahora ejecuta generación de `coverage.json` y validación de cobertura por archivo cambiado dentro del flujo local de paridad.
+- **Determinismo en tests de autenticación**: Los tests unitarios SMB/SNMP ahora recargan módulos mockeados de forma explícita para evitar fragilidad por orden de importación en ejecuciones completas.
+
+### Corregido
+
+- **Recuperación del test de orquestación**: `tests/core/test_auditor_run_complete_scan.py` se mantiene presente y validado en la rama actual.
+- **Compatibilidad en bordes de `auditor_scan`**: Se preserva compatibilidad de contenedores de tags (`set`/`list`) y extracción robusta de mDNS para formatos legacy en fixtures.
+
 ## [4.20.2] - 10-02-2026
 
 ### Mejorado
