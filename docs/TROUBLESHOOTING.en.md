@@ -228,8 +228,25 @@ sudo apt update && sudo apt install nuclei
 
 - Reduce the number of HTTP targets or rerun with fewer subnets.
 - Lower the Nuclei rate limit or increase the timeout in config if needed.
+- Read progress detail correctly:
+  - `split depth X/Y` = current retry split depth vs fatigue cap.
+  - detail elapsed = sub-batch elapsed.
+  - right timer in the progress row = total task elapsed.
+- For persistently slow hosts, prefer a targeted rerun with explicit timeout/runtime budget before excluding them.
 
-### 12d. testssl.sh not found / TLS deep checks skipped (v3.6.1+)
+### 12d. Validate run artifacts and SIEM JSONL contract
+
+**Symptom**: Uncertainty about output completeness or SIEM ingestion quality.
+**Resolution**:
+
+```bash
+python scripts/check_scan_artifacts.py --run-dir <scan_folder> --strict
+```
+
+This validates `run_manifest.json` artifact presence/readability, minimal PCAP header integrity,
+and JSON/JSONL contract checks (`summary.json`, `assets.jsonl`, `findings.jsonl`).
+
+### 12e. testssl.sh not found / TLS deep checks skipped (v3.6.1+)
 
 **Symptom**: TLS deep checks are skipped or you never see TestSSL output in findings.
 **Cause**: `testssl.sh` is not installed or not in the expected path.

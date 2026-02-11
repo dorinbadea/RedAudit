@@ -254,11 +254,15 @@ Notas:
 - Leak-follow y sondas IoT usan controles explícitos: `off` mantiene el comportamiento por defecto y `safe` aplica guardarraíles estrictos de alcance, presupuesto y timeout.
 - La precedencia de evaluación en leak-follow es determinista: `denylist` > allowlist explícita > allowlist por perfil > red in-scope > rechazo.
 - Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
+- En el detalle de progreso de Nuclei, `profundidad de division X/Y` es la profundidad de split de reintentos (limite de fatiga), no el numero de objetivos.
+- En la barra de progreso, el texto de detalle reporta el tiempo transcurrido del sub-lote mientras el temporizador de la derecha muestra el tiempo total de la tarea.
 - En el menú de reanudación de Nuclei, las entradas reanudadas anteriormente muestran `resumes: N` para distinguir parciales repetidos.
+- Las vistas de informe ahora muestran contexto de reanudacion de forma explicita (`resume_pending`, `resume_count`, `last_resume_at`, `resume_state_file`) cuando corresponde.
 - Si interrumpes una auditoria activa con `Ctrl+C`, RedAudit indica de forma explicita que esta guardando progreso parcial y realizando limpieza antes de salir.
 - **Nuclei en redes con alta densidad web:** En redes con muchos servicios HTTP/HTTPS (p. ej., labs Docker, microservicios), los escaneos Nuclei pueden tardar significativamente mas (30-90+ minutos). Usa `--nuclei-timeout 600` para aumentar el timeout por lote, o `--no-nuclei` para omitir Nuclei si la velocidad es critica. Cuando se activa la cobertura completa, RedAudit eleva el timeout por lote a 900s si se ha configurado un valor inferior.
 - Cuando se define un presupuesto de tiempo, es un **limite total de tiempo real para la fase de Nuclei** (no por lote). RedAudit ejecuta lotes de forma secuencial y evita iniciar un nuevo lote si el tiempo restante no cubre el tiempo estimado del lote. Guarda `nuclei_resume.json` + `nuclei_pending.txt` al agotarse el presupuesto. Los timeouts que dejan la ejecucion como parcial tambien guardan objetivos pendientes para reanudar. Si no respondes, **la auditoria continua tras Nuclei** y la reanudacion queda disponible. La reanudacion usa el presupuesto guardado salvo que lo sobrescribas (pasa `--nuclei-max-runtime` al reanudar o define un nuevo valor en el wizard; `0` desactiva el presupuesto).
 - Las reanudaciones se guardan en la misma carpeta del escaneo y se actualizan en el mismo sitio. Si una reanudacion termina como parcial otra vez, `nuclei_resume.json`/`nuclei_pending.txt` se actualiza (no se duplica). En el menu interactivo (**Reanudar Nuclei (pendiente)**), elige **Gestionar entradas de reanudacion** para borrar una o todas las entradas antiguas directamente.
+- Para gates post-ejecucion, valida completitud de artefactos y exportaciones SIEM con `python scripts/check_scan_artifacts.py --run-dir <carpeta_scan> --strict`.
 
 ### Configuracion de Nuclei (v4.17+)
 
