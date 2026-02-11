@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-[![Version](https://img.shields.io/badge/version-4.20.3-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.20.4-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -374,6 +374,8 @@ The wizard covers:
 
 From the main menu, **Resume Nuclei (pending)** includes **Manage resume entries** so you can delete one or all stale resume entries before continuing.
 If you interrupt an active run with `Ctrl+C`, RedAudit prints an explicit notice that it is saving partial progress and performing cleanup before exit.
+During long Nuclei runs, progress detail now separates sub-batch elapsed time from the global task elapsed timer, and `split depth X/Y` indicates retry split depth (not host count).
+After a scan, you can validate artifact and SIEM export integrity with `python scripts/check_scan_artifacts.py --run-dir <scan_folder> --strict`.
 
 ### Non-Interactive / Automation
 

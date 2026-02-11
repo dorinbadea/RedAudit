@@ -10,6 +10,21 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.4] - 11-02-2026
+
+### Anadido
+
+- **Gate de validacion de artefactos + SIEM**: Se añaden `scripts/check_scan_artifacts.py` y `redaudit/utils/scan_artifact_gate.py` para validar completitud de artefactos declarados en `run_manifest.json`, integridad minima de PCAP, y conformidad de contrato JSON/JSONL (`summary.json`, `assets.jsonl`, `findings.jsonl`) con modo estricto.
+
+### Mejorado
+
+- **Claridad de progreso Nuclei**: Las etiquetas de detalle ahora distinguen de forma explicita el tiempo transcurrido del sub-lote y la semantica de profundidad de split durante reintentos por timeout.
+- **Observabilidad de reanudacion en informes**: Los metadatos Nuclei exponen `resume_pending`, `resume_count`, `last_resume_at` y `resume_state_file` para seguimiento mas claro de ejecuciones parciales y reanudadas en HTML y resúmenes de pipeline.
+
+### Corregido
+
+- **Paridad de resume entre salidas**: La serializacion del pipeline de reportes normaliza metadatos de reanudacion de forma consistente y evita campos ambiguos o ausentes en consumidores downstream.
+
 ## [4.20.3] - 11-02-2026
 
 ### Anadido
