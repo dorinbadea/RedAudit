@@ -231,8 +231,8 @@ sudo apt update && sudo apt install nuclei
 - Leer correctamente el detalle de progreso:
   - El progreso de Nuclei usa dos lineas: una barra compacta y una linea de telemetria.
   - `profundidad de division X/Y (actual/maximo)` = profundidad actual del split de reintentos frente al limite de fatiga.
-  - `tiempo de sub-lote` en telemetria = tiempo transcurrido del sub-lote activo.
   - `tiempo total` en telemetria = tiempo wall-clock total de la etapa Nuclei.
+  - Las actualizaciones de telemetria se limitan a cambios de estado y heartbeats periodicos.
 - Confirmar duracion final en mensajes de cierre:
   - `Nuclei completado en ...` (ejecucion inicial)
   - `Reanudacion de Nuclei completada en ...` (reanudacion)
