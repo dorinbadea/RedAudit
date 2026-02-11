@@ -11,6 +11,7 @@ This file is the canonical operating guide for collaborators (human or non-human
 - Keep code/docs/tests consistent (no version drift, no "docs say X but CLI does Y").
 - **Coverage Rule:** Any code you modify must be covered at 100% in tests. This means the specific functions or files you touched must reach full coverage for the newly changed code paths in the same change set.
 - **Coverage Enforcement:** If you touch code, you must add or update tests so the exact changed code paths are fully exercised (100%) in the same change set. No exceptions.
+- **Automated Coverage Guard:** Changed Python files under `redaudit/` are additionally enforced at `>=98%` file coverage by CI/local gates to prevent gradual coverage drift.
 - Do not retag/rewrite published tags/releases. If something was released, publish a new version.
 - Do not commit private data. `scan_results_private/` must never be pushed.
 - Before first push and before merging to `main`, satisfy the **Local Quality Gate Contract** in this document. CI can arrive after the merge; if any checks fail, treat it as a regression and fix it promptly. Do not force-merge with failing checks.
@@ -106,6 +107,7 @@ Rules for all pointer files:
 - **Timing rule:** Run the local quality gate exactly once after changes are final and before first push.
 - **Re-run rule:** Re-run the gate only if files changed after a successful gate run.
 - **Code changes path:** Run `pre-commit run --all-files` and `pytest tests/ -v` (or `bash scripts/ci_local.sh` for CI parity).
+- **Changed-file guard (code changes):** Ensure the changed-file coverage gate passes (`scripts/check_changed_coverage.py`, threshold `>=98%`).
 - **Docs-only path (strict):** For strict `.md`-only changes with no behavior/contract impact, run `pre-commit run --files <changed-docs>` and skip `pytest`.
 - **Docs-only prohibition:** In docs-only scope, do not run `pytest tests/ -v` or `bash scripts/ci_local.sh`; this avoids redundant full-suite runs.
 - **Merge condition:** `main` merge requires owner approval and no red CI checks.
@@ -195,6 +197,8 @@ Optional environment variables:
 - `PYTHON_VERSIONS="3.10 3.11"` to limit which versions run.
 - `RUN_PRECOMMIT=0` or `RUN_TESTS=0` to skip steps.
 - `COVERAGE_FAIL_UNDER=85` to override the default local coverage threshold.
+- `CHANGED_FILE_COVERAGE_MIN=98` to override the changed-file coverage threshold.
+- `COVERAGE_BASE_REF=origin/main` to select the git base ref used by changed-file coverage checks.
 
 ### Test Organization (Quality over Quantity)
 
@@ -223,6 +227,7 @@ Workflow: `.github/workflows/tests.yml`
 - Tests job: Python `3.10`-`3.12`, installs `nmap`, runs:
   - `pytest tests/ -v --cov=redaudit --cov-report=xml --cov-report=term-missing`
   - coverage threshold: `coverage report --fail-under=80`
+  - changed-file guard: `python scripts/check_changed_coverage.py --coverage-file coverage.json --threshold 98 --base-ref <base>`
 - Lint job: verifies pointer consistency via `scripts/check_agent_pointers.sh`, then runs `pre-commit` via `pre-commit/action`
 - ShellCheck job: runs ShellCheck
 - `update-badge` job: updates a dynamic badge via Gist (repo secrets)

@@ -9,6 +9,8 @@ VENV_ROOT="${VENV_ROOT:-$ROOT_DIR/.venv/ci}"
 RUN_PRECOMMIT="${RUN_PRECOMMIT:-1}"
 RUN_TESTS="${RUN_TESTS:-1}"
 COVERAGE_FAIL_UNDER="${COVERAGE_FAIL_UNDER:-80}"
+CHANGED_FILE_COVERAGE_MIN="${CHANGED_FILE_COVERAGE_MIN:-98}"
+COVERAGE_BASE_REF="${COVERAGE_BASE_REF:-origin/main}"
 
 normalize_flag() {
   local value="$1"
@@ -73,8 +75,12 @@ for ver in "${found_versions[@]}"; do
   fi
 
   if [ "${RUN_TESTS}" -eq 1 ]; then
-    "${venv_dir}/bin/pytest" tests/ -v --cov=redaudit --cov-report=xml --cov-report=term-missing
+    "${venv_dir}/bin/pytest" tests/ -v --cov=redaudit --cov-report=xml --cov-report=term-missing --cov-report=json
     "${venv_dir}/bin/python" -m coverage report --fail-under="${COVERAGE_FAIL_UNDER}"
+    "${venv_dir}/bin/python" scripts/check_changed_coverage.py \
+      --coverage-file coverage.json \
+      --threshold "${CHANGED_FILE_COVERAGE_MIN}" \
+      --base-ref "${COVERAGE_BASE_REF}"
   fi
 
   first_run=0

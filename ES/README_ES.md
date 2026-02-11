@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-[![Version](https://img.shields.io/badge/version-4.20.2-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.20.3-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -256,7 +256,7 @@ sudo redaudit
 
 **Risk Scoring Integrado:** Hallazgos de configuración (Nikto/Nuclei) integrados en la matriz de decisión con severidades Low/Medium/High.
 
-**Endurecimiento UX de Scope Expansion (v4.20.2):** La configuración avanzada guiada explicita defaults seguros y aplica fallback automático cuando los campos manuales se dejan vacíos.
+**Aplicación de Guardarraíl de Cobertura (v4.20.3):** Los gates locales/CI ahora exigen cobertura `>=98%` en archivos cambiados `redaudit/*.py` para evitar deriva gradual y mantener calidad alta.
 
 Consulta [CHANGELOG](../CHANGELOG.md) para el historial completo.
 

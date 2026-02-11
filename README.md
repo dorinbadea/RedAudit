@@ -2,7 +2,7 @@
 
 [![Ver en Español](https://img.shields.io/badge/Ver_en_Español-red?style=flat-square)](ES/README_ES.md)
 
-[![Version](https://img.shields.io/badge/version-4.20.2-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.20.3-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -258,7 +258,7 @@ sudo redaudit
 
 **Enterprise-Grade Risk Scoring:** Configuration findings (Nikto/Nuclei) integrated into decision matrix with Low/Medium/High severity mappings.
 
-**Scope Expansion UX Hardening (v4.20.2):** Guided advanced setup makes safe defaults explicit and applies automatic fallback when manual scope-expansion inputs are left empty.
+**Coverage Guardrail Enforcement (v4.20.3):** CI/local gates now enforce `>=98%` coverage on changed `redaudit/*.py` files to prevent gradual coverage drift while preserving global quality.
 
 See [CHANGELOG](CHANGELOG.md) for complete version history.
 

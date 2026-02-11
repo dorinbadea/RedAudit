@@ -1,4 +1,5 @@
 import builtins
+import importlib
 import importlib.util
 import sys
 import unittest
@@ -11,27 +12,36 @@ sys.modules["impacket.smb"] = MagicMock()
 sys.modules["impacket.dcerpc"] = MagicMock()
 sys.modules["impacket.dcerpc.v5"] = MagicMock()
 
-from redaudit.core.auth_smb import SMBScanner, SMBConnectionError
 from redaudit.core.credentials import Credential
 
+import redaudit.core.auth_smb as auth_smb
 
-@patch("redaudit.core.auth_smb.IMPACKET_AVAILABLE", True)
+auth_smb = importlib.reload(auth_smb)
+
+
 class TestSMBScanner(unittest.TestCase):
     def setUp(self):
+        self._dep_patch = patch.object(auth_smb, "IMPACKET_AVAILABLE", True)
+        self._dep_patch.start()
         self.credential = Credential(username="Admin", password="Password123", domain="WORKGROUP")
+        self.SMBScanner = auth_smb.SMBScanner
+        self.SMBConnectionError = auth_smb.SMBConnectionError
+
+    def tearDown(self):
+        self._dep_patch.stop()
 
     def test_init_raises_if_missing_dependency(self):
         # We need to simulate IMPACKET_AVAILABLE = False
-        with patch("redaudit.core.auth_smb.IMPACKET_AVAILABLE", False):
+        with patch.object(auth_smb, "IMPACKET_AVAILABLE", False):
             with self.assertRaises(ImportError):
-                SMBScanner(self.credential)
+                self.SMBScanner(self.credential)
 
-    @patch("redaudit.core.auth_smb.SMBConnection")
+    @patch.object(auth_smb, "SMBConnection")
     def test_connect_success(self, MockSMBConnection):
         # Setup mock instance
         mock_conn = MockSMBConnection.return_value
 
-        scanner = SMBScanner(self.credential)
+        scanner = self.SMBScanner(self.credential)
         result = scanner.connect("192.168.1.50")
 
         self.assertTrue(result)
@@ -40,16 +50,16 @@ class TestSMBScanner(unittest.TestCase):
         )
         mock_conn.login.assert_called_with("Admin", "Password123", domain="WORKGROUP")
 
-    @patch("redaudit.core.auth_smb.SMBConnection")
+    @patch.object(auth_smb, "SMBConnection")
     def test_connect_failure(self, MockSMBConnection):
         mock_conn = MockSMBConnection.return_value
         mock_conn.login.side_effect = Exception("Logon failure")
 
-        scanner = SMBScanner(self.credential)
-        with self.assertRaises(SMBConnectionError):
+        scanner = self.SMBScanner(self.credential)
+        with self.assertRaises(self.SMBConnectionError):
             scanner.connect("192.168.1.50")
 
-    @patch("redaudit.core.auth_smb.SMBConnection")
+    @patch.object(auth_smb, "SMBConnection")
     def test_gather_host_info(self, MockSMBConnection):
         mock_conn = MockSMBConnection.return_value
         mock_conn.getServerOS.return_value = "Windows Server 2019"
@@ -73,7 +83,7 @@ class TestSMBScanner(unittest.TestCase):
         }
         mock_conn.listShares.return_value = [mock_share1, mock_share2]
 
-        scanner = SMBScanner(self.credential)
+        scanner = self.SMBScanner(self.credential)
         scanner.conn = mock_conn  # Simulate connected
         scanner.target_ip = "192.168.1.50"
 
@@ -85,24 +95,24 @@ class TestSMBScanner(unittest.TestCase):
         self.assertEqual(len(info.shares), 2)
         self.assertEqual(info.shares[0]["name"], "ADMIN$")
 
-    @patch("redaudit.core.auth_smb.SMBConnection")
+    @patch.object(auth_smb, "SMBConnection")
     def test_gather_host_info_exception(self, MockSMBConnection):
         mock_conn = MockSMBConnection.return_value
         mock_conn.getServerOS.side_effect = Exception("OS Info Error")
 
-        scanner = SMBScanner(self.credential)
+        scanner = self.SMBScanner(self.credential)
         scanner.conn = mock_conn
 
         info = scanner.gather_host_info()
         self.assertIn("OS Info Error", info.error)
 
-    @patch("redaudit.core.auth_smb.SMBConnection")
+    @patch.object(auth_smb, "SMBConnection")
     def test_gather_host_info_shares_exception(self, MockSMBConnection):
         mock_conn = MockSMBConnection.return_value
         mock_conn.getServerOS.return_value = "Windows"
         mock_conn.listShares.side_effect = Exception("Share List Error")
 
-        scanner = SMBScanner(self.credential)
+        scanner = self.SMBScanner(self.credential)
         scanner.conn = mock_conn
 
         info = scanner.gather_host_info()
@@ -114,14 +124,14 @@ class TestSMBScanner(unittest.TestCase):
         self.assertIsNone(info.error)
 
     def test_close(self):
-        scanner = SMBScanner(self.credential)
+        scanner = self.SMBScanner(self.credential)
         mock_conn = MagicMock()
         scanner.conn = mock_conn
         scanner.close()
         mock_conn.logoff.assert_called_once()
 
     def test_close_exception(self):
-        scanner = SMBScanner(self.credential)
+        scanner = self.SMBScanner(self.credential)
         mock_conn = MagicMock()
         mock_conn.logoff.side_effect = Exception("Logoff Error")
         scanner.conn = mock_conn
@@ -130,12 +140,12 @@ class TestSMBScanner(unittest.TestCase):
         mock_conn.logoff.assert_called_once()
 
     def test_gather_host_info_not_connected(self):
-        scanner = SMBScanner(self.credential)
+        scanner = self.SMBScanner(self.credential)
         # No conn
-        with self.assertRaises(SMBConnectionError):
+        with self.assertRaises(self.SMBConnectionError):
             scanner.gather_host_info()
 
-    @patch("redaudit.core.auth_smb.SMBConnection")
+    @patch.object(auth_smb, "SMBConnection")
     def test_gather_host_info_str_shares(self, MockSMBConnection):
         mock_conn = MockSMBConnection.return_value
         mock_conn.getServerOS.return_value = "Windows"
@@ -148,7 +158,7 @@ class TestSMBScanner(unittest.TestCase):
         mock_share = {"shi1_netname": "MyShare", "shi1_remark": "My Remark", "shi1_type": 0}
         mock_conn.listShares.return_value = [mock_share]
 
-        scanner = SMBScanner(self.credential)
+        scanner = self.SMBScanner(self.credential)
         scanner.conn = mock_conn
         info = scanner.gather_host_info()
 

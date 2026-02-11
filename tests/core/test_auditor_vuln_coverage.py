@@ -9,7 +9,7 @@ class MockAuditorVuln(MockAuditorBase, AuditorVuln):
 
     def __init__(self, config=None):
         super().__init__()
-        self.config = config or {"scan_mode": "normal"}
+        self.config = config or {"scan_mode": "normal", "threads": 10}
         self.extra_tools = {}
         self.results = {"vulnerabilities": []}
         self.logger = MagicMock()
@@ -68,6 +68,72 @@ class TestAuditorVulnCoverage(unittest.TestCase):
         # Should log debug and continue
         res = self.auditor._run_vuln_tools_parallel("1.2.3.4", 80, "http://1.2.3.4", "http", {})
         self.assertEqual(res, {})
+
+    @patch("redaudit.core.auditor_vuln.wait")
+    @patch("redaudit.core.auditor_vuln.ThreadPoolExecutor")
+    def test_concurrent_scan_exception_handling(self, mock_executor, mock_wait):
+        """Lines 913-923: Exception handling in concurrent scan worker."""
+        # 1. Enable rich
+        self.auditor.ui.get_progress_console = MagicMock(return_value=True)
+        self.auditor.ui.get_standard_progress = MagicMock()
+
+        # 2. Setup mock executor and futures
+        mock_exec_inst = mock_executor.return_value.__enter__.return_value
+        mock_future = MagicMock()
+        mock_exec_inst.submit.return_value = mock_future
+
+        # 3. Setup wait to return our future as completed
+        # wait returns (done, not_done)
+        mock_wait.return_value = ({mock_future}, set())
+
+        # 4. Make future.result() raise Exception
+        mock_future.result.side_effect = Exception("Worker Crash")
+
+        # 5. Run
+        hosts = [{"ip": "1.2.3.4", "web_ports_count": 1}]
+        self.auditor.scan_vulnerabilities_concurrent(hosts)
+
+        # 6. Verify logging and progress update
+        # self.auditor.logger.error.assert_called_with("Vuln worker error for %s: %s", ...)
+        # Check if error logic was hit by checking logger calls
+        found_error = False
+        for call in self.auditor.logger.error.call_args_list:
+            if "Vuln worker error" in str(call):
+                found_error = True
+                break
+        for call in self.auditor.logger.error.call_args_list:
+            if "Vuln worker error" in str(call):
+                found_error = True
+                break
+        self.assertTrue(found_error, "Should have logged worker error")
+
+    @patch("redaudit.core.auditor_vuln.wait")
+    @patch("redaudit.core.auditor_vuln.ThreadPoolExecutor")
+    def test_concurrent_scan_interruption(self, mock_executor, mock_wait):
+        """Lines 849-851: Interruption handling in concurrent loop."""
+        # 1. Setup futures
+        mock_exec_inst = mock_executor.return_value.__enter__.return_value
+        mock_future = MagicMock()
+        mock_exec_inst.submit.return_value = mock_future
+
+        # 2. Setup wait to return empty (timeouts/pending) so loop continues
+        # wait returns (done, not_done)
+        # First call: returns not done, but we set interrupted=True
+        mock_wait.return_value = (set(), {mock_future})
+
+        # 3. Use side_effect on wait to set interrupted flag?
+        # No, wait is called inside the loop.
+        # We can set interrupted=True effectively before loop or via side-effect.
+        # If we set it before, loop condition `while pending` runs, then checks `if self.interrupted`.
+        self.auditor.interrupted = True
+
+        # 4. Run
+        # We need pending set to be non-empty initially.
+        hosts = [{"ip": "1.2.3.4", "web_ports_count": 1}]
+        self.auditor.scan_vulnerabilities_concurrent(hosts)
+
+        # 5. proper cancellation check
+        mock_future.cancel.assert_called()
 
 
 if __name__ == "__main__":
