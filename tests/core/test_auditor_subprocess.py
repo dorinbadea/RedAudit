@@ -267,6 +267,8 @@ class TestAuditorSubprocess(unittest.TestCase):
         task = MagicMock()
         self.auditor._touch_activity = MagicMock()
         self.auditor._format_eta = MagicMock(return_value="")
+        self.auditor.ui.t = MagicMock(side_effect=lambda key, *vals: f"{key}:{vals}")
+        self.auditor.ui.print_status = MagicMock()
 
         self.auditor._nuclei_progress_callback(
             completed=5.0,
@@ -282,6 +284,34 @@ class TestAuditorSubprocess(unittest.TestCase):
         )
 
         progress.update.assert_called_once()
+        call_kwargs = progress.update.call_args.kwargs
+        assert call_kwargs["detail"] == ""
+        self.auditor.ui.print_status.assert_called_once()
+
+    def test_nuclei_progress_callback_sub_batch_clamps_completion(self, *args):
+        """Sub-batch detail should keep task open until final completion."""
+        progress = MagicMock()
+        self.auditor._touch_activity = MagicMock()
+        self.auditor._format_eta = MagicMock(return_value="0:10")
+        self.auditor.ui.t = MagicMock(side_effect=lambda key, *vals: f"{key}:{vals}")
+        self.auditor.ui.print_status = MagicMock()
+        self.auditor._nuclei_progress_state = {"total_targets": 7, "max_targets": 0}
+
+        self.auditor._nuclei_progress_callback(
+            completed=7.0,
+            total=7,
+            eta="",
+            progress=progress,
+            task="task",
+            start_time=time.time() - 20,
+            timeout=300,
+            total_targets=7,
+            batch_size=1,
+            detail="batch 1/1 | sub-batch elapsed 0:05 | split depth 1/5",
+        )
+
+        call_kwargs = progress.update.call_args.kwargs
+        assert call_kwargs["completed"] == 6
 
     def test_nuclei_progress_callback_regression_guard(self, *args):
         """Test nuclei callback prevents progress regression."""

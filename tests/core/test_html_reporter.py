@@ -67,6 +67,20 @@ def test_prepare_report_data_generates_playbooks_when_missing():
         get_playbooks.assert_called_once_with(results)
 
 
+def test_prepare_report_data_playbook_generation_exception_falls_back_to_empty():
+    results = {
+        "summary": {"networks": 1, "hosts_found": 1, "hosts_scanned": 1, "vulns_found": 0},
+        "hosts": [{"ip": "1.1.1.1"}],
+        "vulnerabilities": [],
+    }
+    with patch(
+        "redaudit.core.playbook_generator.get_playbooks_for_results",
+        side_effect=RuntimeError("boom"),
+    ):
+        data = html_reporter.prepare_report_data(results, {})
+    assert data["playbooks"] == []
+
+
 def test_generate_html_report_minimal():
     # Provide a minimal valid data structure that Jinja2 won't crash on
     results = {
@@ -291,6 +305,9 @@ def test_generate_html_report_includes_nuclei_resume_metadata():
                 "resume_count": 2,
                 "last_resume_at": "2026-02-11T02:30:00",
                 "resume_state_file": "nuclei_resume.json",
+                "last_run_elapsed_s": 90,
+                "last_resume_elapsed_s": 30,
+                "nuclei_total_elapsed_s": 120,
             },
             "vulnerability_scan": {"sources": {}},
             "auth_scan": {"lynis_success": 0},
@@ -302,6 +319,12 @@ def test_generate_html_report_includes_nuclei_resume_metadata():
     assert "Resume count" in html
     assert "Last resume at" in html
     assert "nuclei_resume.json" in html
+    assert "Last run elapsed" in html
+    assert "Last resume elapsed" in html
+    assert "Nuclei total elapsed" in html
+    assert "1:30" in html
+    assert "0:30" in html
+    assert "2:00" in html
 
 
 def test_generate_html_report_es_includes_nuclei_resume_metadata():
@@ -319,6 +342,9 @@ def test_generate_html_report_es_includes_nuclei_resume_metadata():
                 "resume_count": 1,
                 "last_resume_at": "2026-02-11T02:31:00",
                 "resume_state_file": "nuclei_resume.json",
+                "last_run_elapsed_s": 75,
+                "last_resume_elapsed_s": 15,
+                "nuclei_total_elapsed_s": 90,
             },
             "vulnerability_scan": {"sources": {}},
             "auth_scan": {"lynis_success": 0},
@@ -330,6 +356,12 @@ def test_generate_html_report_es_includes_nuclei_resume_metadata():
     assert "Conteo de reanudaciones" in html
     assert "Ultima reanudacion" in html
     assert "nuclei_resume.json" in html
+    assert "Duracion de la ultima ejecucion" in html
+    assert "Duracion de la ultima reanudacion" in html
+    assert "Duracion total de Nuclei" in html
+    assert "1:15" in html
+    assert "0:15" in html
+    assert "1:30" in html
 
 
 def test_prepare_report_data_with_leaked_networks():
@@ -599,6 +631,28 @@ def test_write_chart_js_asset_missing(tmp_path):
         assert html_reporter._write_chart_js_asset(str(tmp_path)) is False
 
 
+def test_write_chart_js_asset_read_exception_returns_false(tmp_path):
+    source_path = tmp_path / "chart_src.js"
+    source_path.write_text("chart", encoding="utf-8")
+    with (
+        patch(
+            "redaudit.core.html_reporter._get_chart_js_source_path",
+            return_value=str(source_path),
+        ),
+        patch("builtins.open", side_effect=OSError("read failed")),
+    ):
+        assert html_reporter._write_chart_js_asset(str(tmp_path)) is False
+
+
+def test_format_elapsed_seconds_display_branches():
+    assert html_reporter._format_elapsed_seconds_display(True) == "0:01"
+    assert html_reporter._format_elapsed_seconds_display(61.9) == "1:01"
+    assert html_reporter._format_elapsed_seconds_display(" 3601 ") == "1:00:01"
+    assert html_reporter._format_elapsed_seconds_display("bad") == "-"
+    assert html_reporter._format_elapsed_seconds_display(-5) == "-"
+    assert html_reporter._format_elapsed_seconds_display(object()) == "-"
+
+
 def test_get_reverse_dns_empty():
     assert html_reporter._get_reverse_dns({}) == ""
     assert html_reporter._get_reverse_dns({"dns": {"reverse": [None]}}) == ""
@@ -668,6 +722,26 @@ def test_prepare_report_data_scan_mode_display_by_language():
 
     data_es = html_reporter.prepare_report_data(results, {"scan_mode": "full"}, lang="es")
     assert data_es["scan_mode_display"] == "completo"
+
+
+def test_prepare_report_data_nuclei_elapsed_invalid_values_normalized():
+    results = {
+        "pipeline": {
+            "nuclei": {
+                "last_run_elapsed_s": "oops",
+                "last_resume_elapsed_s": "15",
+                "nuclei_total_elapsed_s": "bad",
+            }
+        }
+    }
+    data = html_reporter.prepare_report_data(results, {}, lang="en")
+    nuclei = data["pipeline"]["nuclei"]
+    assert nuclei["last_run_elapsed_s"] == 0
+    assert nuclei["last_run_elapsed_s_display"] == "0:00"
+    assert nuclei["last_resume_elapsed_s"] == 15
+    assert nuclei["last_resume_elapsed_s_display"] == "0:15"
+    assert nuclei["nuclei_total_elapsed_s"] == 0
+    assert nuclei["nuclei_total_elapsed_s_display"] == "0:00"
 
 
 def test_get_template_env_import_error():

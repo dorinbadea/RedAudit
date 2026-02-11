@@ -260,6 +260,21 @@ def test_new_nuclei_i18n_keys_formatting():
     assert "1/4" in en
     assert "1/4" in es
 
+    en = get_text("nuclei_progress_compact", "en", "batch 1/1", "5:00")
+    es = get_text("nuclei_progress_compact", "es", "lote 1/1", "5:00")
+    assert "5:00" in en
+    assert "5:00" in es
+
+    en = get_text("nuclei_completed_in", "en", "28:30")
+    es = get_text("nuclei_completed_in", "es", "28:30")
+    assert "28:30" in en
+    assert "28:30" in es
+
+    en = get_text("nuclei_resume_completed_in", "en", "15:01")
+    es = get_text("nuclei_resume_completed_in", "es", "15:01")
+    assert "15:01" in en
+    assert "15:01" in es
+
     en = get_text("scope_iot_runtime", "en", 3, 7, 0)
     es = get_text("scope_iot_runtime", "es", 3, 7, 0)
     assert "3" in en and "7" in en

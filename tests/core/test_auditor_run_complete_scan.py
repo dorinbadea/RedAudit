@@ -227,6 +227,11 @@ def test_run_complete_scan_with_nuclei(tmp_path, monkeypatch):
     )
 
     assert app.run_complete_scan() is True
+    nuclei = app.results.get("nuclei", {})
+    assert "last_run_elapsed_s" in nuclei
+    assert "nuclei_total_elapsed_s" in nuclei
+    assert isinstance(nuclei.get("last_run_elapsed_s"), int)
+    assert isinstance(nuclei.get("nuclei_total_elapsed_s"), int)
 
 
 def test_run_complete_scan_with_nuclei_records_leak_follow_runtime(tmp_path, monkeypatch):
