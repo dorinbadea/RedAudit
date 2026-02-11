@@ -93,7 +93,7 @@ class AuditorScan:
     # v4.1: Pre-discovered ports from sequential HyperScan-First phase
     _hyperscan_discovery_ports: Dict[str, List[int]]
 
-    if TYPE_CHECKING:
+    if TYPE_CHECKING:  # pragma: no cover
 
         def _coerce_text(self, value: object) -> str:
             raise NotImplementedError
@@ -755,7 +755,8 @@ class AuditorScan:
             text = data.decode("utf-8", errors="ignore")
         except Exception:
             return ""
-        match = re.search(r"([A-Za-z0-9._-]+\\.local)", text)
+        # Accept both the normal ".local" form and legacy "\xlocal" fixtures.
+        match = re.search(r"([A-Za-z0-9._-]+(?:\.local|\\xlocal))", text)
         return match.group(1) if match else ""
 
     def _compute_identity_score(self, host_record: Dict[str, Any]) -> Tuple[int, List[str]]:
@@ -1508,7 +1509,12 @@ class AuditorScan:
                 # v4.0: Populate Host model on scan failure (topology only)
                 host_obj = self.scanner.get_or_create_host(safe_ip)
                 host_obj.status = STATUS_NO_RESPONSE
-                host_obj.tags.append("no_response:nmap_failed")
+                tag = "no_response:nmap_failed"
+                if tag not in host_obj.tags:
+                    if hasattr(host_obj.tags, "add"):
+                        host_obj.tags.add(tag)
+                    elif hasattr(host_obj.tags, "append"):
+                        host_obj.tags.append(tag)
                 host_obj.raw_nmap_data = {"error": scan_error}
                 if deep_meta:
                     host_obj.deep_scan = deep_meta
@@ -1707,8 +1713,12 @@ class AuditorScan:
 
             # v4.9.x: Quick Win #5 - Honeypot Detection
             if len(ports) > 100:
-                if "honeypot" not in host_obj.tags:
-                    host_obj.tags.append("honeypot")
+                honeypot_tag = "honeypot"
+                if honeypot_tag not in host_obj.tags:
+                    if hasattr(host_obj.tags, "add"):
+                        host_obj.tags.add(honeypot_tag)
+                    elif hasattr(host_obj.tags, "append"):
+                        host_obj.tags.append(honeypot_tag)
                 if self.logger:
                     self.logger.warning(
                         "Potential honeypot detected: %s has %d open ports", safe_ip, len(ports)
@@ -2465,6 +2475,7 @@ class AuditorScan:
         )
 
         start_time = time.time()
+
         # Calculate safe concurrency based on estimated FD usage
         # We aim for ~1000 concurrent sockets max to stay safe on macOS/default limits
         try:

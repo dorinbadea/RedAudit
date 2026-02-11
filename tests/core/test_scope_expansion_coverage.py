@@ -128,6 +128,12 @@ def test_scope_policy_helpers():
         _ip_matches_allow_rules(ipaddress.ip_address("10.1.2.3"), networks=nets, ips=set()) is True
     )
 
+    # Test rfc1918-only profile
+    _, profile_nets, _, _, _ = _resolve_profile_targets("safe-default", ["rfc1918-only"])
+    assert any(str(n) == "10.0.0.0/8" for n in profile_nets)
+    assert any(str(n) == "172.16.0.0/12" for n in profile_nets)
+    assert any(str(n) == "192.168.0.0/16" for n in profile_nets)
+
 
 def test_evaluate_leak_follow_candidates_edge_cases():
     # 1. Candidate with empty string / None
@@ -189,6 +195,36 @@ def test_evaluate_leak_follow_candidates_ip_logic_coverage():
         candidates, mode="safe", target_networks=[], allowlist=["192.168.1.0/24"]
     )
     assert res["decisions"][0]["reason"] == "allowlisted"
+
+    # Trigger "profile_allowlist" (IP matches profile networks)
+    # Using rfc1918-only profile for testing
+    candidates = [{"candidate": "192.168.99.99", "kind": "ip"}]
+    res = evaluate_leak_follow_candidates(
+        candidates,
+        mode="safe",
+        target_networks=[],
+        allowlist=[],
+        allowlist_profiles=["rfc1918-only"],
+    )
+    assert res["decisions"][0]["reason"] == "allowlisted"
+    assert res["decisions"][0]["reason_detail"] == "profile_allowlist"
+
+
+def test_evaluate_leak_follow_candidates_host_logic_coverage():
+    # Trigger "denylisted" for host
+    candidates = [{"candidate": "bad.host", "kind": "host"}]
+    res = evaluate_leak_follow_candidates(
+        candidates, mode="safe", target_networks=[], allowlist=[], denylist=["bad.host"]
+    )
+    assert res["decisions"][0]["reason"] == "denylisted"
+    assert res["decisions"][0]["reason_detail"] == "explicit_denylist"
+
+    # Trigger "allowlisted_host" via suffix
+    candidates = [{"candidate": "good.local", "kind": "host"}]
+    res = evaluate_leak_follow_candidates(
+        candidates, mode="safe", target_networks=[], allowlist=["*.local"]
+    )
+    assert res["decisions"][0]["reason"] == "allowlisted_host"
 
 
 def test_build_leak_follow_targets_edge_cases():

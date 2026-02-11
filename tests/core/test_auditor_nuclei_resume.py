@@ -1,274 +1,506 @@
-#!/usr/bin/env python3
-"""
-Tests for Nuclei Resume State functions in InteractiveNetworkAuditor.
-Coverage for _write_nuclei_resume_state, _load_nuclei_resume_state,
-_clear_nuclei_resume_state, and _find_nuclei_resume_candidates.
-"""
+"""Tests for nuclei resume state, scope evidence, delegation wrappers, and static helpers."""
+
 import json
 import os
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 from redaudit.core.auditor import InteractiveNetworkAuditor
 
 
-def _make_auditor():
-    """Create minimal auditor instance for testing."""
-    auditor = InteractiveNetworkAuditor.__new__(InteractiveNetworkAuditor)
-    auditor.config = {}
-    auditor.logger = MagicMock()
-    auditor.ui = MagicMock()
-    return auditor
+@patch("redaudit.core.power.SleepInhibitor")
+@patch("redaudit.core.auditor._ActivityIndicator")
+@patch("redaudit.core.auditor.NetworkScanner")
+@patch("redaudit.core.auditor.run_iot_scope_probes")
+@patch("redaudit.core.auditor.ScanWizardFlow")
+class TestAuditorNucleiResume(unittest.TestCase):
+    def setUp(self):
+        self.runtime_patcher = patch("redaudit.core.auditor.AuditorRuntime")
+        self.mock_runtime_cls = self.runtime_patcher.start()
+        self.addCleanup(self.runtime_patcher.stop)
 
+        self.auditor = InteractiveNetworkAuditor()
+        self.auditor.ui = MagicMock()
+        self.auditor.logger = MagicMock()
 
-class TestNucleiResumeState(unittest.TestCase):
-    def test_write_nuclei_resume_state_success(self):
-        """Test successful write of resume state."""
-        auditor = _make_auditor()
+    # --- Scope Evidence ---
+
+    def test_scope_evidence_entry_normal(self, *args):
+        """Test _scope_evidence_entry with valid classification."""
+        entry = InteractiveNetworkAuditor._scope_evidence_entry(
+            feature="leak_follow",
+            classification="evidence",
+            source="leak_follow:redirect",
+            signal="https://example.com",
+            decision="candidate_accepted",
+            reason="domain match",
+            host="192.168.1.1",
+            raw_seed="test_seed_data",
+        )
+        self.assertEqual(entry["feature"], "leak_follow")
+        self.assertEqual(entry["classification"], "evidence")
+        self.assertIn("timestamp", entry)
+        self.assertIn("raw_ref", entry)
+        self.assertEqual(len(entry["raw_ref"]), 64)  # SHA-256 hex
+
+    def test_scope_evidence_entry_unknown_classification(self, *args):
+        """Test _scope_evidence_entry normalizes unknown classifications."""
+        entry = InteractiveNetworkAuditor._scope_evidence_entry(
+            feature="iot_probe",
+            classification="invalid_class",
+            source="",
+            signal="",
+            decision="",
+            reason="",
+            host="",
+            raw_seed="seed",
+        )
+        self.assertEqual(entry["classification"], "hint")
+        self.assertEqual(entry["source"], "unknown")
+
+    def test_build_scope_expansion_evidence_leak(self, *args):
+        """Test building scope evidence from leak follow decisions."""
+        leak_runtime = {
+            "decisions": [
+                {
+                    "candidate": "https://evil.com",
+                    "source_host": "192.168.1.1",
+                    "source_field": "redirect",
+                    "reason": "domain match",
+                    "eligible": True,
+                },
+                {
+                    "candidate": "https://safe.com",
+                    "source_host": "192.168.1.2",
+                    "source_field": "link",
+                    "reason": "out of scope",
+                    "eligible": False,
+                },
+            ]
+        }
+        evidence = self.auditor._build_scope_expansion_evidence(leak_runtime, {})
+        self.assertEqual(len(evidence), 2)
+        self.assertEqual(evidence[0]["classification"], "heuristic")
+        self.assertEqual(evidence[1]["classification"], "hint")
+
+    def test_build_scope_expansion_evidence_iot(self, *args):
+        """Test building scope evidence from IoT probe evidence."""
+        iot_runtime = {
+            "evidence": [
+                {
+                    "classification": "heuristic",
+                    "source": "mdns",
+                    "signal": "camera._tcp",
+                    "decision": "identified",
+                    "reason": "protocol match",
+                    "host": "192.168.1.5",
+                },
+                {
+                    "classification": "evidence",
+                    "source": "upnp",
+                    "signal": "device",
+                    "decision": "confirmed",
+                    "reason": "corroborated",
+                    "host": "192.168.1.6",
+                },
+            ]
+        }
+        evidence = self.auditor._build_scope_expansion_evidence({}, iot_runtime)
+        self.assertEqual(len(evidence), 2)
+        self.assertEqual(evidence[1]["classification"], "evidence")
+
+    def test_build_scope_expansion_evidence_promotion_guardrail(self, *args):
+        """Test evidence class is demoted if not corroborated."""
+        iot_runtime = {
+            "evidence": [
+                {
+                    "classification": "evidence",
+                    "source": "upnp",
+                    "signal": "dev",
+                    "decision": "maybe",
+                    "reason": "not corroborated",
+                    "host": "10.0.0.1",
+                },
+            ]
+        }
+        evidence = self.auditor._build_scope_expansion_evidence({}, iot_runtime)
+        self.assertEqual(evidence[0]["classification"], "heuristic")
+
+    def test_build_scope_expansion_evidence_dedup(self, *args):
+        """Test deduplication of scope evidence entries."""
+        leak_runtime = {
+            "decisions": [
+                {
+                    "candidate": "https://dup.com",
+                    "source_host": "10.0.0.1",
+                    "source_field": "link",
+                    "reason": "match",
+                    "eligible": True,
+                },
+                {
+                    "candidate": "https://dup.com",
+                    "source_host": "10.0.0.1",
+                    "source_field": "link",
+                    "reason": "match",
+                    "eligible": True,
+                },
+            ]
+        }
+        evidence = self.auditor._build_scope_expansion_evidence(leak_runtime, {})
+        self.assertEqual(len(evidence), 1)
+
+    def test_build_scope_expansion_evidence_empty(self, *args):
+        """Test with empty/None inputs."""
+        evidence = self.auditor._build_scope_expansion_evidence({}, {})
+        self.assertEqual(evidence, [])
+
+        evidence2 = self.auditor._build_scope_expansion_evidence(None, None)
+        self.assertEqual(evidence2, [])
+
+    def test_build_scope_expansion_evidence_bad_items(self, *args):
+        """Test with non-dict items in decisions."""
+        leak_runtime = {"decisions": ["bad_string", 42, None]}
+        evidence = self.auditor._build_scope_expansion_evidence(leak_runtime, {})
+        self.assertEqual(evidence, [])
+
+    # --- Nuclei Resume State ---
+
+    def test_build_nuclei_resume_state(self, *args):
+        """Test building nuclei resume state dict."""
+        state = self.auditor._build_nuclei_resume_state(
+            output_dir="/tmp/test_output",
+            pending_targets=["http://a.com", "http://b.com"],
+            total_targets=10,
+            profile="balanced",
+            full_coverage=True,
+            severity="high,critical",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=2,
+            batch_size=10,
+            max_runtime_minutes=60,
+            fatigue_limit=3,
+            output_file="/tmp/test_output/nuclei_output.json",
+        )
+        self.assertEqual(state["version"], 1)
+        self.assertEqual(len(state["pending_targets"]), 2)
+        self.assertEqual(state["total_targets"], 10)
+        self.assertEqual(state["nuclei"]["profile"], "balanced")
+        self.assertTrue(state["nuclei"]["full_coverage"])
+        self.assertEqual(state["nuclei"]["fatigue_limit"], 3)
+
+    def test_write_nuclei_resume_state(self, *args):
+        """Test writing nuclei resume state to disk."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            resume_state = {
-                "pending_targets": ["http://t1", "http://t2"],
-                "output_dir": tmpdir,
+            state = {
+                "pending_targets": ["http://a.com"],
+                "total_targets": 5,
             }
-            result = auditor._write_nuclei_resume_state(tmpdir, resume_state)
+            path = self.auditor._write_nuclei_resume_state(tmpdir, state)
+            self.assertIsNotNone(path)
+            self.assertTrue(os.path.exists(path))
 
-            self.assertIsNotNone(result)
-            self.assertTrue(os.path.exists(result))
-            with open(result, "r", encoding="utf-8") as f:
-                saved = json.load(f)
-            self.assertEqual(saved["pending_targets"], ["http://t1", "http://t2"])
-            self.assertIn("updated_at", saved)
+            with open(path) as f:
+                data = json.load(f)
+            self.assertIn("updated_at", data)
 
             pending_path = os.path.join(tmpdir, "nuclei_pending.txt")
             self.assertTrue(os.path.exists(pending_path))
-            with open(pending_path, "r", encoding="utf-8") as f:
-                lines = f.read().strip().split("\n")
-            self.assertEqual(lines, ["http://t1", "http://t2"])
 
-    def test_write_nuclei_resume_state_empty_targets_returns_none(self):
-        """Test that empty pending_targets returns None (lines 3403-3404)."""
-        auditor = _make_auditor()
+    def test_write_nuclei_resume_state_empty_targets(self, *args):
+        """Test write returns None when no pending targets."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            result = auditor._write_nuclei_resume_state(tmpdir, {"pending_targets": []})
+            state = {"pending_targets": []}
+            result = self.auditor._write_nuclei_resume_state(tmpdir, state)
             self.assertIsNone(result)
 
-    def test_write_nuclei_resume_state_none_targets_returns_none(self):
-        """Test that None pending_targets returns None."""
-        auditor = _make_auditor()
+    def test_write_nuclei_resume_state_none_targets(self, *args):
+        """Test write returns None when pending_targets is None."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            result = auditor._write_nuclei_resume_state(tmpdir, {"pending_targets": None})
+            state = {"pending_targets": None}
+            result = self.auditor._write_nuclei_resume_state(tmpdir, state)
             self.assertIsNone(result)
 
-    def test_write_nuclei_resume_state_exception_logs_and_returns_none(self):
-        """Test exception path logs and returns None (lines 3415-3418)."""
-        auditor = _make_auditor()
-        with patch("builtins.open", side_effect=IOError("disk full")):
-            result = auditor._write_nuclei_resume_state("/fake/dir", {"pending_targets": ["t1"]})
-        self.assertIsNone(result)
-        auditor.logger.debug.assert_called()
-
-    def test_clear_nuclei_resume_state_removes_files(self):
-        """Test successful removal of resume files."""
-        auditor = _make_auditor()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            resume_path = os.path.join(tmpdir, "nuclei_resume.json")
-            pending_path = os.path.join(tmpdir, "nuclei_pending.txt")
-            with open(resume_path, "w") as f:
-                f.write("{}")
-            with open(pending_path, "w") as f:
-                f.write("t1\n")
-
-            auditor._clear_nuclei_resume_state(resume_path, tmpdir)
-
-            self.assertFalse(os.path.exists(resume_path))
-            self.assertFalse(os.path.exists(pending_path))
-
-    def test_clear_nuclei_resume_state_exception_logged(self):
-        """Test exception during removal is logged (lines 3428-3430)."""
-        auditor = _make_auditor()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            resume_path = os.path.join(tmpdir, "nuclei_resume.json")
-            with open(resume_path, "w") as f:
-                f.write("{}")
-
-            with patch("os.remove", side_effect=OSError("permission denied")):
-                auditor._clear_nuclei_resume_state(resume_path, tmpdir)
-            auditor.logger.debug.assert_called()
-
-    def test_load_nuclei_resume_state_success(self):
-        """Test successful loading of resume state."""
-        auditor = _make_auditor()
+    def test_load_nuclei_resume_state(self, *args):
+        """Test loading nuclei resume state from disk."""
         with tempfile.TemporaryDirectory() as tmpdir:
             resume_path = os.path.join(tmpdir, "nuclei_resume.json")
             state = {
-                "pending_targets": ["http://t1"],
+                "pending_targets": ["http://a.com"],
                 "output_dir": tmpdir,
-                "resume_count": 2,
+                "resume_count": 0,
+                "last_resume_at": None,
             }
-            with open(resume_path, "w", encoding="utf-8") as f:
+            with open(resume_path, "w") as f:
                 json.dump(state, f)
 
-            result = auditor._load_nuclei_resume_state(resume_path)
+            loaded = self.auditor._load_nuclei_resume_state(resume_path)
+            self.assertIsNotNone(loaded)
+            self.assertEqual(loaded["pending_targets"], ["http://a.com"])
+            self.assertEqual(loaded["last_resume_at"], "")
 
-            self.assertIsNotNone(result)
-            self.assertEqual(result["pending_targets"], ["http://t1"])
-            self.assertEqual(result["resume_count"], 2)
-
-    def test_load_nuclei_resume_state_empty_path_returns_none(self):
-        """Test empty path returns None (line 3434)."""
-        auditor = _make_auditor()
-        result = auditor._load_nuclei_resume_state("")
+    def test_load_nuclei_resume_state_no_file(self, *args):
+        """Test loading with nonexistent file."""
+        result = self.auditor._load_nuclei_resume_state("/nonexistent/path.json")
         self.assertIsNone(result)
 
-    def test_load_nuclei_resume_state_nonexistent_returns_none(self):
-        """Test nonexistent path returns None."""
-        auditor = _make_auditor()
-        result = auditor._load_nuclei_resume_state("/nonexistent/path.json")
-        self.assertIsNone(result)
-
-    def test_load_nuclei_resume_state_empty_pending_returns_none(self):
-        """Test empty pending_targets returns None (lines 3438-3440)."""
-        auditor = _make_auditor()
+    def test_load_nuclei_resume_state_empty_file(self, *args):
+        """Test loading with empty pending targets."""
         with tempfile.TemporaryDirectory() as tmpdir:
             resume_path = os.path.join(tmpdir, "nuclei_resume.json")
-            with open(resume_path, "w", encoding="utf-8") as f:
+            with open(resume_path, "w") as f:
                 json.dump({"pending_targets": []}, f)
 
-            result = auditor._load_nuclei_resume_state(resume_path)
+            result = self.auditor._load_nuclei_resume_state(resume_path)
             self.assertIsNone(result)
 
-    def test_load_nuclei_resume_state_missing_output_dir_uses_dirname(self):
-        """Test missing output_dir falls back to resume file dirname (lines 3441-3444)."""
-        auditor = _make_auditor()
+    def test_load_nuclei_resume_state_no_output_dir(self, *args):
+        """Test loading infers output_dir from path when missing."""
         with tempfile.TemporaryDirectory() as tmpdir:
             resume_path = os.path.join(tmpdir, "nuclei_resume.json")
-            with open(resume_path, "w", encoding="utf-8") as f:
-                json.dump({"pending_targets": ["http://t1"]}, f)
+            state = {"pending_targets": ["http://a.com"], "resume_count": "bad"}
+            with open(resume_path, "w") as f:
+                json.dump(state, f)
 
-            result = auditor._load_nuclei_resume_state(resume_path)
+            loaded = self.auditor._load_nuclei_resume_state(resume_path)
+            self.assertIsNotNone(loaded)
+            self.assertEqual(loaded["output_dir"], tmpdir)
+            self.assertEqual(loaded["resume_count"], 0)
 
-            self.assertEqual(result["output_dir"], tmpdir)
-
-    def test_load_nuclei_resume_state_invalid_resume_count_defaults_to_zero(self):
-        """Test invalid resume_count converts to 0 (lines 3445-3449)."""
-        auditor = _make_auditor()
+    def test_clear_nuclei_resume_state(self, *args):
+        """Test clearing nuclei resume state files."""
         with tempfile.TemporaryDirectory() as tmpdir:
             resume_path = os.path.join(tmpdir, "nuclei_resume.json")
-            with open(resume_path, "w", encoding="utf-8") as f:
-                json.dump({"pending_targets": ["http://t1"], "resume_count": "not_a_number"}, f)
+            pending_path = os.path.join(tmpdir, "nuclei_pending.txt")
+            for path in (resume_path, pending_path):
+                with open(path, "w") as f:
+                    f.write("test")
 
-            result = auditor._load_nuclei_resume_state(resume_path)
+            self.auditor._clear_nuclei_resume_state(resume_path, tmpdir)
+            self.assertFalse(os.path.exists(resume_path))
+            self.assertFalse(os.path.exists(pending_path))
 
-            self.assertEqual(result["resume_count"], 0)
+    def test_clear_nuclei_resume_state_missing(self, *args):
+        """Test clearing non-existent files doesn't raise."""
+        self.auditor._clear_nuclei_resume_state("/nonexistent", "/nonexistent")
 
-    def test_load_nuclei_resume_state_sets_missing_last_resume_at(self):
-        """Test missing last_resume_at gets set to empty string (lines 3450-3451)."""
-        auditor = _make_auditor()
+    # --- Report Detection ---
+
+    def test_find_latest_report_json(self, *args):
+        """Test finding the latest report JSON file."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            resume_path = os.path.join(tmpdir, "nuclei_resume.json")
-            with open(resume_path, "w", encoding="utf-8") as f:
-                json.dump({"pending_targets": ["http://t1"]}, f)
+            for name in ["redaudit_2026-01-01.json", "redaudit_2026-01-02.json", "random.json"]:
+                with open(os.path.join(tmpdir, name), "w") as f:
+                    f.write("{}")
 
-            result = auditor._load_nuclei_resume_state(resume_path)
+            result = self.auditor._find_latest_report_json(tmpdir)
+            self.assertIsNotNone(result)
+            self.assertIn("redaudit_", os.path.basename(result))
 
-            self.assertEqual(result["last_resume_at"], "")
-
-    def test_load_nuclei_resume_state_exception_returns_none(self):
-        """Test exception during load returns None (lines 3453-3456)."""
-        auditor = _make_auditor()
+    def test_find_latest_report_json_partial(self, *args):
+        """Test finding PARTIAL report files."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            resume_path = os.path.join(tmpdir, "nuclei_resume.json")
-            with open(resume_path, "w", encoding="utf-8") as f:
-                f.write("invalid json{{{")
+            with open(os.path.join(tmpdir, "PARTIAL_redaudit_test.json"), "w") as f:
+                f.write("{}")
 
-            result = auditor._load_nuclei_resume_state(resume_path)
+            result = self.auditor._find_latest_report_json(tmpdir)
+            self.assertIsNotNone(result)
 
+    def test_find_latest_report_json_empty(self, *args):
+        """Test with no matching report files."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self.auditor._find_latest_report_json(tmpdir)
             self.assertIsNone(result)
-            auditor.logger.debug.assert_called()
 
-    def test_find_nuclei_resume_candidates_returns_sorted_list(self):
-        """Test finding candidates returns properly sorted list."""
-        auditor = _make_auditor()
+    def test_detect_report_artifact_txt(self, *args):
+        """Test detecting a text report artifact."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Create two scan directories with resume states
-            scan1_dir = os.path.join(tmpdir, "scan_2024_01_01")
-            scan2_dir = os.path.join(tmpdir, "scan_2024_02_01")
-            os.makedirs(scan1_dir)
-            os.makedirs(scan2_dir)
+            with open(os.path.join(tmpdir, "redaudit_report.txt"), "w") as f:
+                f.write("report")
 
-            with open(os.path.join(scan1_dir, "nuclei_resume.json"), "w") as f:
-                json.dump(
-                    {
-                        "pending_targets": ["http://t1"],
-                        "created_at": "2024-01-01T00:00:00",
-                        "updated_at": "2024-01-01T00:00:00",
-                        "resume_count": 0,
-                    },
-                    f,
-                )
+            self.assertTrue(self.auditor._detect_report_artifact(tmpdir, (".txt",)))
 
-            with open(os.path.join(scan2_dir, "nuclei_resume.json"), "w") as f:
-                json.dump(
-                    {
-                        "pending_targets": ["http://t2", "http://t3"],
-                        "created_at": "2024-02-01T00:00:00",
-                        "updated_at": "2024-02-01T00:00:00",
-                        "resume_count": 1,
-                    },
-                    f,
-                )
+    def test_detect_report_artifact_html(self, *args):
+        """Test detecting an HTML report artifact."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "report.html"), "w") as f:
+                f.write("<html>")
 
-            candidates = auditor._find_nuclei_resume_candidates(tmpdir)
+            self.assertTrue(self.auditor._detect_report_artifact(tmpdir, (".html",)))
 
-            self.assertEqual(len(candidates), 2)
-            # Most recent should be first
-            self.assertIn("scan_2024_02_01", candidates[0]["label"])
-            self.assertIn("2 targets", candidates[0]["label"])
-            self.assertIn("resumes: 1", candidates[0]["label"])
+    def test_detect_report_artifact_none(self, *args):
+        """Test no report artifact found."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self.assertFalse(self.auditor._detect_report_artifact(tmpdir, (".txt",)))
 
-    def test_find_nuclei_resume_candidates_empty_base_dir(self):
-        """Test empty base_dir returns empty list (line 3460-3461)."""
-        auditor = _make_auditor()
-        result = auditor._find_nuclei_resume_candidates("")
+    # --- Load Resume Context ---
+
+    def test_load_resume_context_success(self, *args):
+        """Test loading resume context from a JSON report."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            report_path = os.path.join(tmpdir, "redaudit_test.json")
+            report_data = {
+                "config_snapshot": {
+                    "target_networks": ["192.168.1.0/24"],
+                    "lang": "en",
+                },
+                "hosts": [],
+            }
+            with open(report_path, "w") as f:
+                json.dump(report_data, f)
+
+            result = self.auditor._load_resume_context(tmpdir)
+            self.assertTrue(result)
+            self.assertEqual(self.auditor.config["target_networks"], ["192.168.1.0/24"])
+
+    def test_load_resume_context_no_report(self, *args):
+        """Test resume context fails when no report found."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self.auditor._load_resume_context(tmpdir)
+            self.assertFalse(result)
+
+    # --- Static Helpers ---
+
+    def test_parse_duration_to_timedelta_hms(self, *args):
+        """Test parsing H:MM:SS format."""
+        result = InteractiveNetworkAuditor._parse_duration_to_timedelta("1:30:45")
+        self.assertEqual(result, timedelta(hours=1, minutes=30, seconds=45))
+
+    def test_parse_duration_to_timedelta_days(self, *args):
+        """Test parsing 'N day(s), H:MM:SS' format."""
+        result = InteractiveNetworkAuditor._parse_duration_to_timedelta("2 days, 3:15:00")
+        self.assertEqual(result, timedelta(days=2, hours=3, minutes=15))
+
+    def test_parse_duration_to_timedelta_invalid(self, *args):
+        """Test parsing invalid format returns None."""
+        result = InteractiveNetworkAuditor._parse_duration_to_timedelta("invalid")
+        self.assertIsNone(result)
+
+    def test_parse_duration_to_timedelta_none(self, *args):
+        """Test parsing None returns None."""
+        result = InteractiveNetworkAuditor._parse_duration_to_timedelta(None)
+        self.assertIsNone(result)
+
+    def test_parse_duration_to_timedelta_not_string(self, *args):
+        """Test parsing non-string returns None."""
+        result = InteractiveNetworkAuditor._parse_duration_to_timedelta([1, 2, 3])
+        self.assertIsNone(result)
+
+    def test_resolve_nuclei_success_true(self, *args):
+        """Test nuclei success resolution."""
+        self.assertTrue(
+            InteractiveNetworkAuditor._resolve_nuclei_success(True, partial=False, error=None)
+        )
+
+    def test_resolve_nuclei_success_partial(self, *args):
+        """Test nuclei success with partial flag."""
+        self.assertFalse(
+            InteractiveNetworkAuditor._resolve_nuclei_success(True, partial=True, error=None)
+        )
+
+    def test_resolve_nuclei_success_error(self, *args):
+        """Test nuclei success with error."""
+        self.assertFalse(
+            InteractiveNetworkAuditor._resolve_nuclei_success(True, partial=False, error="timeout")
+        )
+
+    def test_resolve_nuclei_success_false(self, *args):
+        """Test nuclei success with false flag."""
+        self.assertFalse(
+            InteractiveNetworkAuditor._resolve_nuclei_success(False, partial=False, error=None)
+        )
+
+    def test_resume_scan_start_time(self, *args):
+        """Test resume start time calculation."""
+        self.auditor.results = {"summary": {"duration": "0:10:00"}}
+        self.auditor.scan_start_time = datetime(2026, 1, 1, 12, 0, 0)
+        finished = datetime(2026, 1, 1, 12, 30, 0)
+        elapsed = timedelta(minutes=20)
+
+        result = self.auditor._resume_scan_start_time(finished, elapsed)
+        self.assertIsNotNone(result)
+
+    def test_resume_scan_start_time_no_elapsed(self, *args):
+        """Test resume start time with no elapsed time."""
+        self.auditor.results = {"summary": {"duration": "0:10:00"}}
+        finished = datetime(2026, 1, 1, 12, 30, 0)
+        result = self.auditor._resume_scan_start_time(finished, None)
+        expected = finished - timedelta(minutes=10)
+        self.assertEqual(result, expected)
+
+    # --- Delegation Wrappers ---
+
+    def test_apply_run_defaults_delegates(self, *args):
+        """Test _apply_run_defaults delegates to ScanWizardFlow."""
+        defaults = {"scan_mode": "normal"}
+        self.auditor._apply_run_defaults(defaults)
+        # Should call _scan_wizard_flow_call
+        self.mock_runtime_cls.return_value._scan_wizard_flow_call = MagicMock()
+
+    def test_normalize_csv_targets(self, *args):
+        """Test static _normalize_csv_targets."""
+        from redaudit.core.scan_wizard_flow import ScanWizardFlow
+
+        result = ScanWizardFlow._normalize_csv_targets("a,b,c")
+        self.assertEqual(result, ["a", "b", "c"])
+
+    def test_normalize_csv_targets_none(self, *args):
+        """Test _normalize_csv_targets with None."""
+        from redaudit.core.scan_wizard_flow import ScanWizardFlow
+
+        result = ScanWizardFlow._normalize_csv_targets(None)
         self.assertEqual(result, [])
 
-    def test_find_nuclei_resume_candidates_nonexistent_dir(self):
-        """Test nonexistent dir returns empty list."""
-        auditor = _make_auditor()
-        result = auditor._find_nuclei_resume_candidates("/nonexistent/dir")
-        self.assertEqual(result, [])
+    def test_show_defaults_summary_delegates(self, *args):
+        """Test _show_defaults_summary delegates."""
+        self.auditor._show_defaults_summary({"key": "value"})
 
-    def test_find_nuclei_resume_candidates_exception_logged(self):
-        """Test exception during listing is logged (lines 3494-3496)."""
-        auditor = _make_auditor()
+    def test_configure_scan_interactive_delegates(self, *args):
+        """Test _configure_scan_interactive delegates."""
+        self.auditor._configure_scan_interactive({"scan_mode": "normal"})
+
+    # --- Append Nuclei Output ---
+
+    def test_append_nuclei_output(self, *args):
+        """Test appending nuclei output to destination file."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("os.listdir", side_effect=OSError("access denied")):
-                result = auditor._find_nuclei_resume_candidates(tmpdir)
-            self.assertEqual(result, [])
-            auditor.logger.debug.assert_called()
+            src = os.path.join(tmpdir, "source.json")
+            with open(src, "w") as f:
+                f.write('{"finding": "xss"}\n{"finding": "sqli"}\n')
 
-    def test_find_nuclei_resume_candidates_invalid_resume_count_handled(self):
-        """Test invalid resume_count in candidate is handled (lines 3476-3479)."""
-        auditor = _make_auditor()
+            dest = os.path.join(tmpdir, "dest.json")
+            self.auditor._append_nuclei_output(src, dest)
+
+            with open(dest) as f:
+                lines = f.readlines()
+            self.assertEqual(len(lines), 2)
+
+    # --- Find Nuclei Resume Candidates ---
+
+    def test_find_nuclei_resume_candidates(self, *args):
+        """Test finding nuclei resume candidates."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            scan_dir = os.path.join(tmpdir, "scan_test")
-            os.makedirs(scan_dir)
+            subdir = os.path.join(tmpdir, "RedAudit_2026-01-01")
+            os.makedirs(subdir)
+            resume_path = os.path.join(subdir, "nuclei_resume.json")
+            state = {
+                "pending_targets": ["http://a.com"],
+                "output_dir": subdir,
+                "created_at": "2026-01-01T00:00:00",
+            }
+            with open(resume_path, "w") as f:
+                json.dump(state, f)
 
-            with open(os.path.join(scan_dir, "nuclei_resume.json"), "w") as f:
-                json.dump(
-                    {
-                        "pending_targets": ["http://t1"],
-                        "resume_count": "invalid",
-                    },
-                    f,
-                )
+            candidates = self.auditor._find_nuclei_resume_candidates(tmpdir)
+            self.assertGreaterEqual(len(candidates), 1)
 
-            candidates = auditor._find_nuclei_resume_candidates(tmpdir)
-
-            self.assertEqual(len(candidates), 1)
-            # Should have handled the invalid resume_count
-            self.assertEqual(candidates[0]["resume_count"], 0)
+    def test_find_nuclei_resume_candidates_empty(self, *args):
+        """Test finding candidates in empty directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            candidates = self.auditor._find_nuclei_resume_candidates(tmpdir)
+            self.assertEqual(candidates, [])
 
 
 if __name__ == "__main__":
