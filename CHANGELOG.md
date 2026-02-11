@@ -10,6 +10,16 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.20.6] - 2026-02-11
+
+### Fixed
+
+- **Security dependency remediation**: Upgraded `cryptography` to `46.0.5` in `poetry.lock`, `requirements.lock`, and `requirements-dev.lock` to address the published vulnerability affecting `<=46.0.4`.
+
+### Improved
+
+- **Lockfile consistency**: Production and development lockfiles now pin the same patched cryptography version to avoid dependency drift between environments.
+
 ## [4.20.5] - 2026-02-11
 
 ### Added

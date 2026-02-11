@@ -10,6 +10,16 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.6] - 11-02-2026
+
+### Corregido
+
+- **Remediacion de dependencia de seguridad**: Se actualiza `cryptography` a `46.0.5` en `poetry.lock`, `requirements.lock` y `requirements-dev.lock` para cubrir la vulnerabilidad publicada que afecta a `<=46.0.4`.
+
+### Mejorado
+
+- **Consistencia entre lockfiles**: Los lockfiles de produccion y desarrollo fijan ahora la misma version parcheada de cryptography para evitar deriva de dependencias entre entornos.
+
 ## [4.20.5] - 11-02-2026
 
 ### Anadido
