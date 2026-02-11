@@ -408,6 +408,7 @@ TRANSLATIONS = {
         "nuclei_detail_batches_complete": "batches {0}/{1} complete",
         "nuclei_detail_retry": "retry {0}",
         "nuclei_detail_split": "split depth {0}/{1} (current/max)",
+        "nuclei_progress_compact": "[nuclei] {0} | total elapsed {1}",
         "nuclei_timeout_detail": "Nuclei timeout in batch {0}/{1}: {2}",
         "nuclei_timeout_targets": "hosts {0}; ports {1}",
         "scope_iot_runtime": (
@@ -465,6 +466,8 @@ TRANSLATIONS = {
         "nuclei_resume_cancel": "Resume canceled.",
         "nuclei_resume_running": "Resuming Nuclei on pending targets...",
         "nuclei_resume_done": "Nuclei resume completed: {} findings added",
+        "nuclei_completed_in": "Nuclei completed in {}",
+        "nuclei_resume_completed_in": "Nuclei resume completed in {}",
         "nuclei_resume_failed": "Nuclei resume failed: {}",
         "nuclei_resume_skipped": (
             "Nuclei resume postponed. You can resume later from the main menu or with --nuclei-resume."
@@ -1029,6 +1032,7 @@ TRANSLATIONS = {
         "nuclei_detail_batches_complete": "lotes {0}/{1} completados",
         "nuclei_detail_retry": "reintento {0}",
         "nuclei_detail_split": "profundidad de division {0}/{1} (actual/maximo)",
+        "nuclei_progress_compact": "[nuclei] {0} | tiempo total {1}",
         "nuclei_timeout_detail": "Timeout de Nuclei en lote {0}/{1}: {2}",
         "nuclei_timeout_targets": "hosts {0}; puertos {1}",
         "scope_iot_runtime": (
@@ -1090,6 +1094,8 @@ TRANSLATIONS = {
         "nuclei_resume_cancel": "Reanudacion cancelada.",
         "nuclei_resume_running": "Reanudando Nuclei en objetivos pendientes...",
         "nuclei_resume_done": "Reanudacion de Nuclei completada: {} hallazgos añadidos",
+        "nuclei_completed_in": "Nuclei completado en {}",
+        "nuclei_resume_completed_in": "Reanudacion de Nuclei completada en {}",
         "nuclei_resume_failed": "Reanudacion de Nuclei fallida: {}",
         "nuclei_resume_skipped": (
             "Reanudacion de Nuclei pospuesta. Puedes reanudar luego desde el menu o con "

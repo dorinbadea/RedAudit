@@ -399,14 +399,21 @@ class AuditorUI:
             kwargs.pop("markup", None)
             return TextColumn(*args, **kwargs)
 
-    def _progress_columns(self, *, show_detail: bool, show_eta: bool, show_elapsed: bool):
+    def _progress_columns(
+        self,
+        *,
+        show_detail: bool,
+        show_eta: bool,
+        show_elapsed: bool,
+        compact_mode: bool = False,
+    ):
         """v4.0.4: Restored spinner for visual feedback during long scans."""
         try:
             from rich.progress import BarColumn, SpinnerColumn, TimeElapsedColumn
         except ImportError:
             return []
         width = self._terminal_width()
-        bar_width = max(8, min(28, width // 4))
+        bar_width = max(8, min(36 if compact_mode else 28, width // (3 if compact_mode else 4)))
         columns = [
             SpinnerColumn("dots"),
             self._safe_text_column(
@@ -418,11 +425,11 @@ class AuditorUI:
         if width >= 70:
             columns.append(BarColumn(bar_width=bar_width))
             columns.append(self._safe_text_column("[progress.percentage]{task.percentage:>3.0f}%"))
-        if width >= 90:
+        if width >= 90 and not compact_mode:
             columns.append(self._safe_text_column("({task.completed}/{task.total})"))
         # v3.8.1: Always show elapsed time for visibility
         columns.append(TimeElapsedColumn())
-        if show_detail and width >= 70:
+        if show_detail and width >= 70 and not compact_mode:
             columns.append(
                 self._safe_text_column(
                     "{task.fields[detail]}",
