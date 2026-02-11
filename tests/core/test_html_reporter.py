@@ -276,6 +276,62 @@ def test_generate_html_report_es_includes_leak_follow_runtime_details():
     assert "http://10.0.0.5:80" in html
 
 
+def test_generate_html_report_includes_nuclei_resume_metadata():
+    results = {
+        "summary": {},
+        "hosts": [],
+        "vulnerabilities": [],
+        "pipeline": {
+            "net_discovery": {"counts": {}},
+            "host_scan": {"targets": 0},
+            "agentless_verify": {"completed": 0, "signals": {}},
+            "nuclei": {
+                "findings": 1,
+                "resume_pending": 4,
+                "resume_count": 2,
+                "last_resume_at": "2026-02-11T02:30:00",
+                "resume_state_file": "nuclei_resume.json",
+            },
+            "vulnerability_scan": {"sources": {}},
+            "auth_scan": {"lynis_success": 0},
+            "deep_scan": {"identity_threshold": 0},
+        },
+    }
+    html = html_reporter.generate_html_report(results, {})
+    assert "Resume pending targets" in html
+    assert "Resume count" in html
+    assert "Last resume at" in html
+    assert "nuclei_resume.json" in html
+
+
+def test_generate_html_report_es_includes_nuclei_resume_metadata():
+    results = {
+        "summary": {},
+        "hosts": [],
+        "vulnerabilities": [],
+        "pipeline": {
+            "net_discovery": {"counts": {}},
+            "host_scan": {"targets": 0},
+            "agentless_verify": {"completed": 0, "signals": {}},
+            "nuclei": {
+                "findings": 1,
+                "resume_pending": 3,
+                "resume_count": 1,
+                "last_resume_at": "2026-02-11T02:31:00",
+                "resume_state_file": "nuclei_resume.json",
+            },
+            "vulnerability_scan": {"sources": {}},
+            "auth_scan": {"lynis_success": 0},
+            "deep_scan": {"identity_threshold": 0},
+        },
+    }
+    html = html_reporter.generate_html_report(results, {}, lang="es")
+    assert "Objetivos pendientes de reanudacion" in html
+    assert "Conteo de reanudaciones" in html
+    assert "Ultima reanudacion" in html
+    assert "nuclei_resume.json" in html
+
+
 def test_prepare_report_data_with_leaked_networks():
     results = {
         "summary": {},

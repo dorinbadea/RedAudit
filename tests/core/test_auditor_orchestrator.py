@@ -1474,6 +1474,64 @@ def test_resume_nuclei_from_state_prompt_budget_override(resume_session_log_stub
         assert captured["max_runtime_s"] == 60
 
 
+def test_resume_nuclei_from_state_prompt_budget_override_string_sets_unlimited(
+    resume_session_log_stub,
+):
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=5,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        auditor.results = {"hosts": [], "vulnerabilities": [], "nuclei": {"findings": 0}}
+        auditor.config = {"dry_run": False}
+        auditor.proxy_manager = None
+        auditor.ask_yes_no = lambda *_a, **_k: False
+        auditor.ask_number = lambda *_a, **_k: "manual"
+
+        captured = {}
+
+        def _fake_nuclei_scan(**_kwargs):
+            captured["max_runtime_s"] = _kwargs.get("max_runtime_s")
+            return {
+                "findings": [],
+                "success": True,
+                "pending_targets": [],
+                "raw_output_file": _kwargs.get("output_file"),
+            }
+
+        with (
+            patch("redaudit.core.auditor.run_nuclei_scan", side_effect=_fake_nuclei_scan),
+            patch(
+                "redaudit.core.verify_vuln.filter_nuclei_false_positives",
+                lambda findings, *_a, **_k: (findings, []),
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+        ):
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=False,
+                prompt_budget_override=True,
+            )
+        assert ok is True
+        assert captured["max_runtime_s"] is None
+
+
 def test_resume_nuclei_from_state_prompt_keeps_unlimited(resume_session_log_stub):
     auditor = _make_resume_auditor()
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -1532,6 +1590,138 @@ def test_resume_nuclei_from_state_prompt_keeps_unlimited(resume_session_log_stub
             )
         assert ok is True
         assert captured["max_runtime_s"] is None
+
+
+def test_resume_nuclei_from_state_mixed_hosts_builds_agentless_map_and_logs_session():
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        host_obj = Host(ip="10.0.0.20")
+        host_obj.agentless_fingerprint = {"sig": "obj"}
+        auditor.results = {
+            "hosts": [
+                {"ip": "10.0.0.10", "agentless_fingerprint": {"sig": "dict"}},
+                host_obj,
+            ],
+            "vulnerabilities": [],
+            "nuclei": {"findings": 0},
+        }
+        auditor.config = {"dry_run": False}
+        auditor.proxy_manager = None
+
+        captured = {}
+
+        def _fake_nuclei_scan(**_kwargs):
+            return {
+                "findings": [{"template_id": "t1", "matched_at": "http://127.0.0.1:80"}],
+                "success": True,
+                "pending_targets": [],
+                "raw_output_file": _kwargs.get("output_file"),
+            }
+
+        def _fake_filter(findings, host_agentless, *_a, **_k):
+            captured["host_agentless"] = host_agentless
+            return findings, []
+
+        with (
+            patch("redaudit.core.auditor.run_nuclei_scan", side_effect=_fake_nuclei_scan),
+            patch(
+                "redaudit.core.verify_vuln.filter_nuclei_false_positives", side_effect=_fake_filter
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+            patch("redaudit.utils.session_log.start_session_log", return_value=True),
+            patch("redaudit.utils.session_log.stop_session_log", return_value="session.log"),
+        ):
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=False,
+            )
+
+        assert ok is True
+        assert captured["host_agentless"]["10.0.0.10"]["sig"] == "dict"
+        assert captured["host_agentless"]["10.0.0.20"]["sig"] == "obj"
+        auditor.logger.info.assert_any_call("Session log saved: %s", "session.log")
+
+
+def test_resume_nuclei_from_state_save_after_collects_dict_and_object_ips(resume_session_log_stub):
+    auditor = _make_resume_auditor()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_file = os.path.join(tmpdir, "nuclei_output.json")
+        state = auditor._build_nuclei_resume_state(
+            output_dir=tmpdir,
+            pending_targets=["http://127.0.0.1:80"],
+            total_targets=1,
+            profile="balanced",
+            full_coverage=False,
+            severity="low",
+            timeout_s=300,
+            request_timeout_s=10,
+            retries=1,
+            batch_size=10,
+            max_runtime_minutes=0,
+            output_file=output_file,
+        )
+        resume_path = auditor._write_nuclei_resume_state(tmpdir, state)
+        host_obj = Host(ip="10.0.0.20")
+        auditor.results = {
+            "hosts": [{"ip": "10.0.0.10"}, host_obj],
+            "vulnerabilities": [],
+            "nuclei": {"findings": 0},
+            "summary": {"duration": "0:00:00"},
+        }
+        auditor.config = {"dry_run": False, "target_networks": ["10.0.0.0/24"]}
+        auditor.proxy_manager = None
+        captured = {}
+
+        def _fake_nuclei_scan(**_kwargs):
+            return {
+                "findings": [],
+                "success": True,
+                "pending_targets": [],
+                "raw_output_file": _kwargs.get("output_file"),
+            }
+
+        def _fake_summary(_results, _config, host_ips, *_args, **_kwargs):
+            captured["host_ips"] = host_ips
+
+        with (
+            patch("redaudit.core.auditor.run_nuclei_scan", side_effect=_fake_nuclei_scan),
+            patch(
+                "redaudit.core.verify_vuln.filter_nuclei_false_positives",
+                lambda findings, *_a, **_k: (findings, []),
+            ),
+            patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
+            patch("redaudit.core.auditor.generate_summary", side_effect=_fake_summary),
+            patch.object(auditor, "save_results"),
+        ):
+            ok = auditor._resume_nuclei_from_state(
+                resume_state=state,
+                resume_path=resume_path,
+                output_dir=tmpdir,
+                use_existing_results=True,
+                save_after=True,
+            )
+
+        assert ok is True
+        assert set(captured["host_ips"]) == {"10.0.0.10", "10.0.0.20"}
 
 
 def test_resume_nuclei_from_state_keeps_pending(resume_session_log_stub):
@@ -1593,6 +1783,20 @@ def test_resume_nuclei_from_state_keeps_pending(resume_session_log_stub):
         assert os.path.exists(resume_path)
         loaded = auditor._load_nuclei_resume_state(resume_path)
         assert loaded and loaded.get("resume_count") == 1
+
+
+def test_signal_handler_without_ui_uses_fallback_translator_and_printer():
+    auditor = _make_resume_auditor()
+    auditor.ui = None
+    auditor.t = lambda key: f"translated:{key}"
+    auditor.print_status = MagicMock()
+    auditor.scan_start_time = None
+    auditor.stop_heartbeat = MagicMock()
+
+    with pytest.raises(SystemExit):
+        auditor.signal_handler(2, None)
+
+    auditor.print_status.assert_any_call("translated:interrupted", "WARNING")
 
 
 def test_resume_nuclei_from_state_tracks_partial_without_pending(resume_session_log_stub):

@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from redaudit.core.reporter import (
+    _build_nuclei_pipeline,
     _build_config_snapshot,
     _detect_network_leaks,
     _infer_subnet_label,
@@ -595,6 +596,28 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(runtime.get("probes_responded"), 1)
         self.assertEqual(runtime.get("budget_exceeded_hosts"), 1)
         self.assertEqual(len(results.get("scope_expansion_evidence", [])), 1)
+
+    def test_generate_summary_normalizes_nuclei_resume_pipeline_fields(self):
+        results = {
+            "hosts": [],
+            "vulnerabilities": [],
+            "nuclei": {
+                "partial": True,
+                "pending_targets": ["http://10.0.0.1:80", "https://10.0.0.2:443"],
+                "resume_count": "2",
+                "last_resume_at": None,
+                "resume_state_file": "nuclei_resume.json",
+            },
+        }
+        config = {"target_networks": ["10.0.0.0/24"], "scan_mode": "normal", "threads": 2}
+
+        generate_summary(results, config, [], [], datetime.now())
+
+        nuclei = results.get("pipeline", {}).get("nuclei", {})
+        self.assertEqual(nuclei.get("resume_pending"), 2)
+        self.assertEqual(nuclei.get("resume_count"), 2)
+        self.assertEqual(nuclei.get("last_resume_at"), "")
+        self.assertEqual(nuclei.get("resume_state_file"), "nuclei_resume.json")
 
     def test_summarize_net_discovery_with_redteam(self):
         summary = _summarize_net_discovery(
@@ -1763,3 +1786,113 @@ def test_show_results_summary_uses_pcap_summary(capsys):
 
     captured = capsys.readouterr().out
     assert "pcaps:11" in captured
+
+
+def test_build_nuclei_pipeline_non_dict_returns_empty():
+    assert _build_nuclei_pipeline([]) == {}
+
+
+def test_build_config_snapshot_normalizes_string_allow_and_deny_lists():
+    snapshot = _build_config_snapshot(
+        {
+            "scan_mode": "normal",
+            "target_networks": ["10.0.0.0/24"],
+            "leak_follow_allowlist": "10.0.0.0/8",
+            "leak_follow_denylist": "8.8.8.8",
+        }
+    )
+    assert snapshot["leak_follow_allowlist"] == ["10.0.0.0/8"]
+    assert snapshot["leak_follow_denylist"] == ["8.8.8.8"]
+
+
+def test_generate_text_report_prints_nuclei_profile_switch_and_iot_runtime():
+    results = {
+        "summary": {"hosts_found": 1, "hosts_scanned": 1, "vulns_found": 0, "duration": "0:00:01"},
+        "hosts": [
+            {
+                "ip": "10.0.0.10",
+                "hostname": "",
+                "status": "up",
+                "total_ports_found": 0,
+                "ports": [],
+                "risk_score": 1,
+                "risk_score_breakdown": {"finding_total": 0, "finding_risk_total": 2},
+            }
+        ],
+        "pipeline": {
+            "nuclei": {
+                "findings": 0,
+                "targets": 1,
+                "profile_selected": "safe",
+                "profile_effective": "fast",
+            },
+            "scope_expansion": {
+                "iot_probes_runtime": {
+                    "candidates": 1,
+                    "executed_hosts": 1,
+                    "probes_executed": 1,
+                    "probes_responded": 1,
+                    "budget_exceeded_hosts": 0,
+                }
+            },
+        },
+        "config_snapshot": {"leak_follow_mode": "off", "iot_probes_mode": "safe"},
+    }
+    txt = generate_text_report(results, {"scan_mode": "normal"})
+    assert "profile selected safe -> effective fast (auto-switch)" in txt
+    assert "IoT probes runtime" in txt
+    assert "risk findings 2/2" in txt
+
+
+def test_save_results_html_invalid_lang_falls_back_to_english(tmp_path):
+    results = {"summary": {}, "hosts": []}
+    output_dir = str(tmp_path)
+    config = {"output_dir": output_dir, "html_report": True, "lang": "xx"}
+
+    captured = {}
+
+    def _fake_html(_results, _config, _output_dir, filename, lang):
+        captured["lang"] = lang
+        return str(tmp_path / filename)
+
+    with patch("redaudit.core.html_reporter.save_html_report", side_effect=_fake_html):
+        assert save_results(results, config, logger=MagicMock()) is True
+
+    assert captured["lang"] == "en"
+
+
+def test_write_output_manifest_handles_invalid_resume_count_and_state(tmp_path):
+    output_dir = tmp_path / "manifest_resume_invalid"
+    output_dir.mkdir()
+    # Case 1: valid JSON with bad types triggers safe fallbacks.
+    (output_dir / "nuclei_resume.json").write_text(
+        json.dumps({"pending_targets": "bad", "resume_count": "bad"}), encoding="utf-8"
+    )
+    manifest_path = _write_output_manifest(
+        output_dir=str(output_dir),
+        results={"summary": {}, "hosts": []},
+        config={},
+        encryption_enabled=False,
+        partial=False,
+        logger=MagicMock(),
+    )
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest = json.load(f)
+    assert manifest["nuclei_resume"]["pending_targets"] == 0
+    assert manifest["nuclei_resume"]["resume_count"] == 0
+
+    # Case 2: invalid JSON marks resume error and logs debug.
+    (output_dir / "nuclei_resume.json").write_text("{bad", encoding="utf-8")
+    logger = MagicMock()
+    manifest_path = _write_output_manifest(
+        output_dir=str(output_dir),
+        results={"summary": {}, "hosts": []},
+        config={},
+        encryption_enabled=False,
+        partial=False,
+        logger=logger,
+    )
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest = json.load(f)
+    assert manifest["nuclei_resume"]["error"] == "invalid_resume_state"
+    logger.debug.assert_called()
