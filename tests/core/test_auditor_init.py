@@ -143,6 +143,17 @@ class TestWizardDelegation(unittest.TestCase):
         self.auditor.wizard_service.ask_yes_no_with_timeout = MagicMock(return_value=False)
         result = self.auditor.ask_yes_no_with_timeout("Timeout?", timeout=5)
         self.assertFalse(result)
+        self.auditor.wizard_service.ask_yes_no_with_timeout.assert_called_with(
+            "Timeout?", default="yes", timeout_s=5
+        )
+
+    def test_ask_yes_no_with_timeout_alias_timeout_s(self, *args):
+        self.auditor.wizard_service.ask_yes_no_with_timeout = MagicMock(return_value=True)
+        result = self.auditor.ask_yes_no_with_timeout("Timeout?", timeout_s=7)
+        self.assertTrue(result)
+        self.auditor.wizard_service.ask_yes_no_with_timeout.assert_called_with(
+            "Timeout?", default="yes", timeout_s=7
+        )
 
     def test_ask_number(self, *args):
         self.auditor.wizard_service.ask_number = MagicMock(return_value=42)

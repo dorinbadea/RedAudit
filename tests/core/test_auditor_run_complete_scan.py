@@ -284,6 +284,42 @@ def test_run_complete_scan_with_nuclei_adds_follow_targets_in_safe_mode(tmp_path
     assert app.results.get("nuclei", {}).get("targets_total") == 3
 
 
+def test_run_complete_scan_scope_runtime_status_messages(tmp_path, monkeypatch):
+    app = _setup_nuclei_app(tmp_path, monkeypatch)
+    app.config["iot_probes_mode"] = "safe"
+    app.config["leak_follow_mode"] = "safe"
+    app.config["target_networks"] = ["10.0.0.0/24", "10.10.10.0/24"]
+    app.results["vulnerabilities"] = [
+        {
+            "host": "10.0.0.1",
+            "vulnerabilities": [
+                {"redirect_url": "http://10.10.10.5/admin"},
+            ],
+        }
+    ]
+    app.ui.t = MagicMock(side_effect=lambda key, *args: key)
+    app.ui.print_status = MagicMock()
+
+    monkeypatch.setattr(
+        "redaudit.core.auditor.run_iot_scope_probes",
+        lambda *_a, **_k: {
+            "mode": "safe",
+            "candidates": 2,
+            "probes_executed": 5,
+            "probes_responded": 1,
+        },
+    )
+    monkeypatch.setattr(
+        "redaudit.core.auditor.run_nuclei_scan",
+        lambda **_kw: {"success": True, "findings": []},
+    )
+
+    assert app.run_complete_scan() is True
+    messages = [call.args[0] for call in app.ui.print_status.call_args_list]
+    assert "scope_iot_runtime" in messages
+    assert "scope_leak_targets_added" in messages
+
+
 def test_run_complete_scan_with_nuclei_suspected_only(tmp_path, monkeypatch):
     app = _setup_nuclei_app(tmp_path, monkeypatch)
     messages = []
