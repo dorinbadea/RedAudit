@@ -1,24 +1,35 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
+import importlib
 
 # Mock pysnmp before importing auth_snmp
 sys.modules["pysnmp"] = MagicMock()
 sys.modules["pysnmp.hlapi"] = MagicMock()
 
-from redaudit.core.auth_snmp import SNMPScanner, SNMPHostInfo
+import redaudit.core.auth_snmp as auth_snmp
 from redaudit.core.credentials import Credential
+
+auth_snmp = importlib.reload(auth_snmp)
+SNMPScanner = auth_snmp.SNMPScanner
+SNMPHostInfo = auth_snmp.SNMPHostInfo
 
 
 class TestSNMPTopology(unittest.TestCase):
     def setUp(self):
         self.cred = Credential(username="testuser", password="testpass")
-        # We need to ensure PYSNMP_AVAILABLE is True for tests
-        with patch("redaudit.core.auth_snmp.PYSNMP_AVAILABLE", True):
-            self.scanner = SNMPScanner(self.cred)
+        self._available_patch = patch.object(auth_snmp, "PYSNMP_AVAILABLE", True)
+        self._available_patch.start()
+        self._engine_patch = patch.object(auth_snmp, "SnmpEngine", return_value=MagicMock())
+        self._engine_patch.start()
+        self.scanner = SNMPScanner(self.cred)
 
-    @patch("redaudit.core.auth_snmp.nextCmd")
-    @patch("redaudit.core.auth_snmp.getCmd")
+    def tearDown(self):
+        self._engine_patch.stop()
+        self._available_patch.stop()
+
+    @patch.object(auth_snmp, "nextCmd")
+    @patch.object(auth_snmp, "getCmd")
     def test_get_topology_info(self, mock_get, mock_next):
         # Mock system info (getCmd)
         mock_get.return_value = iter(

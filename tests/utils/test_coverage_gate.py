@@ -96,3 +96,56 @@ def test_get_changed_python_paths_uses_git_diff():
     ):
         changed = coverage_gate.get_changed_python_paths(base_ref="origin/main", head_ref="HEAD")
     assert changed == ["redaudit/core/a.py"]
+
+
+def test_run_git_returns_empty_on_exception():
+    with patch("redaudit.utils.coverage_gate.subprocess.run", side_effect=RuntimeError("boom")):
+        assert coverage_gate._run_git(["status"]) == ""
+
+
+def test_get_changed_python_paths_without_base_ref_uses_head_parent():
+    with patch(
+        "redaudit.utils.coverage_gate._run_git",
+        return_value="redaudit/core/a.py\nredaudit/core/a.py\nnotes.txt",
+    ):
+        changed = coverage_gate.get_changed_python_paths(base_ref=None, head_ref="HEAD")
+    assert changed == ["redaudit/core/a.py"]
+
+
+def test_main_passes_when_no_changed_redaudit_files(tmp_path, capsys):
+    coverage_path = tmp_path / "coverage.json"
+    coverage_path.write_text(json.dumps({"files": {}}), encoding="utf-8")
+    rc = coverage_gate.main(["--coverage-file", str(coverage_path), "--changed-path", "README.md"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "no changed redaudit/*.py files" in out
+
+
+def test_main_no_changed_paths_from_git_returns_zero(tmp_path, capsys):
+    coverage_path = tmp_path / "coverage.json"
+    coverage_path.write_text(json.dumps({"files": {}}), encoding="utf-8")
+    with patch("redaudit.utils.coverage_gate.get_changed_python_paths", return_value=[]):
+        rc = coverage_gate.main(
+            ["--coverage-file", str(coverage_path), "--base-ref", " origin/main "]
+        )
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "no changed redaudit/*.py files" in out
+
+
+def test_main_failure_prints_missing_coverage_reason(tmp_path, capsys):
+    coverage_path = tmp_path / "coverage.json"
+    coverage_path.write_text(json.dumps({"files": {}}), encoding="utf-8")
+    rc = coverage_gate.main(
+        [
+            "--coverage-file",
+            str(coverage_path),
+            "--threshold",
+            "98",
+            "--changed-path",
+            "redaudit/core/missing.py",
+        ]
+    )
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "missing coverage data" in out
