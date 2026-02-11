@@ -24,6 +24,8 @@ In the same output directory, RedAudit can also generate flat export files optim
 - `assets.jsonl`: One asset per line
 - `summary.json`: Compact dashboard summary
 - `run_manifest.json`: Output folder manifest (files + counts)
+- `nuclei_output.json`: Raw Nuclei output stream as NDJSON (one JSON object per line)
+- `nuclei_output_resume.json`: Optional NDJSON stream for resumed Nuclei runs (can be empty)
 
 These exports are generated only when report encryption is **disabled**, to avoid creating plaintext artifacts alongside encrypted reports.
 
@@ -137,7 +139,7 @@ Compact, flattened summary for dashboards and automation (generated only when re
 | `high_risk_assets` | `integer` | Assets over the high-risk threshold |
 | `targets` | `array` | Target networks scanned |
 | `scanner_versions` | `object` | Detected tool versions |
-| `scan_mode` | `string` | Scan mode (rapido/normal/completo) |
+| `scan_mode` | `string` | Internal scan mode (`rapido`/`normal`/`completo`) kept for compatibility |
 | `scan_mode_cli` | `string` | CLI scan mode string (best-effort) |
 | `options` | `object` | Compact config snapshot (threads/udp/topology/net-discovery/nuclei/etc.) |
 | `pipeline` | `object` | Pipeline summary (same structure as main report) |
@@ -185,8 +187,13 @@ Appears only when Nuclei scanning is enabled and available.
 | `last_resume_at` | string | (Optional) Timestamp of the latest resume attempt |
 | `resume_state_file` | string | (Optional) Relative resume state path (typically `nuclei_resume.json`) |
 | `resume` | object | (Optional) Resume metadata (added_findings, added_suspected, pending_targets) |
-| `output_file` | string | Relative path to output file (best-effort) |
+| `output_file` | string | Relative path to raw Nuclei output stream (`nuclei_output.json`, NDJSON) |
 | `error` | string | Error if Nuclei failed (best-effort, e.g., timeout) |
+
+Notes:
+- `partial: true` with `resume_pending > 0` means the run produced valid partial output and saved pending targets for explicit resume.
+- `nuclei_output.json` is NDJSON by contract (not a single JSON document).
+- `nuclei_output_resume.json` can be empty when a resume attempt did not append new records.
 
 ### Config Snapshot (v3.7+)
 
@@ -299,7 +306,7 @@ Compact roll-up for dashboards.
 | `resume_count` | integer | Number of resume attempts already executed |
 | `last_resume_at` | string | Timestamp of the latest resume attempt |
 | `resume_state_file` | string | Relative resume state path (`nuclei_resume.json`) |
-| `output_file` | string | Relative path to nuclei_output.json |
+| `output_file` | string | Relative path to `nuclei_output.json` (NDJSON stream) |
 | `success` | boolean | Nuclei success flag |
 | `error` | string | Error message, if any |
 

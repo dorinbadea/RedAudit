@@ -229,9 +229,11 @@ sudo apt update && sudo apt install nuclei
 - Reducir el número de objetivos HTTP o reintentar con menos subredes.
 - Bajar el rate limit de Nuclei o aumentar el timeout en la configuración.
 - Leer correctamente el detalle de progreso:
-  - `profundidad de division X/Y` = profundidad actual del split de reintentos frente al limite de fatiga.
-  - tiempo en detalle = tiempo transcurrido del sub-lote.
-  - temporizador derecho de la fila = tiempo total transcurrido de la tarea.
+  - `profundidad de division X/Y (actual/maximo)` = profundidad actual del split de reintentos frente al limite de fatiga.
+  - `tiempo de sub-lote` en el texto de detalle = tiempo transcurrido del sub-lote activo.
+  - temporizador derecho de la fila = tiempo total transcurrido de toda la etapa Nuclei.
+- Interpretar estado parcial con metadatos de reanudacion:
+  - `partial: true` + `resume_pending > 0` significa que la salida parcial es valida y se guardaron objetivos pendientes para reanudar de forma explicita.
 - Para hosts persistentemente lentos, prioriza un reintento dirigido con timeout/presupuesto explicitos antes de excluirlos.
 
 ### 12d. Validar artefactos y contrato SIEM JSONL
@@ -244,7 +246,11 @@ python scripts/check_scan_artifacts.py --run-dir <carpeta_scan> --strict
 ```
 
 Valida presencia/lectura de artefactos en `run_manifest.json`, integridad minima de cabeceras PCAP,
-y contrato JSON/JSONL (`summary.json`, `assets.jsonl`, `findings.jsonl`).
+contrato JSON/JSONL (`summary.json`, `assets.jsonl`, `findings.jsonl`) y flujos NDJSON de Nuclei (`nuclei_output.json`, `nuclei_output_resume.json`).
+
+Comportamiento esperado:
+- `nuclei_output.json` debe ser NDJSON (un objeto JSON por cada linea no vacia).
+- `nuclei_output_resume.json` puede quedar vacio cuando una reanudacion no agrega registros adicionales.
 
 ### 12e. testssl.sh no encontrado / checks TLS profundos omitidos (v3.6.1+)
 

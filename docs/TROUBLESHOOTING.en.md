@@ -229,9 +229,11 @@ sudo apt update && sudo apt install nuclei
 - Reduce the number of HTTP targets or rerun with fewer subnets.
 - Lower the Nuclei rate limit or increase the timeout in config if needed.
 - Read progress detail correctly:
-  - `split depth X/Y` = current retry split depth vs fatigue cap.
-  - detail elapsed = sub-batch elapsed.
-  - right timer in the progress row = total task elapsed.
+  - `split depth X/Y (current/max)` = current retry split depth vs fatigue cap.
+  - `sub-batch elapsed` in the detail text = elapsed time for the active sub-batch.
+  - right timer in the progress row = total task elapsed for the whole Nuclei step.
+- Interpret partial status with resume metadata:
+  - `partial: true` + `resume_pending > 0` means partial output is valid and pending targets were saved for explicit resume.
 - For persistently slow hosts, prefer a targeted rerun with explicit timeout/runtime budget before excluding them.
 
 ### 12d. Validate run artifacts and SIEM JSONL contract
@@ -244,7 +246,11 @@ python scripts/check_scan_artifacts.py --run-dir <scan_folder> --strict
 ```
 
 This validates `run_manifest.json` artifact presence/readability, minimal PCAP header integrity,
-and JSON/JSONL contract checks (`summary.json`, `assets.jsonl`, `findings.jsonl`).
+JSON/JSONL contract checks (`summary.json`, `assets.jsonl`, `findings.jsonl`), and Nuclei NDJSON streams (`nuclei_output.json`, `nuclei_output_resume.json`).
+
+Expected behavior:
+- `nuclei_output.json` must be NDJSON (one JSON object per non-empty line).
+- `nuclei_output_resume.json` may be empty when no additional records were appended by resume.
 
 ### 12e. testssl.sh not found / TLS deep checks skipped (v3.6.1+)
 
