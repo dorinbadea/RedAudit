@@ -173,6 +173,53 @@ def _validate_jsonl_contract(
     return issues
 
 
+def _validate_ndjson_output(
+    ndjson_path: Path,
+    *,
+    label: str,
+    allow_empty: bool = True,
+) -> List[ValidationIssue]:
+    issues: List[ValidationIssue] = []
+    line_count = 0
+    with ndjson_path.open("r", encoding="utf-8") as handle:
+        for idx, line in enumerate(handle, start=1):
+            raw = line.strip()
+            if not raw:
+                continue
+            line_count += 1
+            try:
+                item = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                issues.append(
+                    ValidationIssue(
+                        "error",
+                        "nuclei",
+                        f"{label}:{idx} invalid NDJSON line ({exc.msg})",
+                    )
+                )
+                continue
+            if not isinstance(item, dict):
+                issues.append(
+                    ValidationIssue(
+                        "error",
+                        "nuclei",
+                        f"{label}:{idx} expected JSON object",
+                    )
+                )
+    if line_count == 0:
+        if allow_empty:
+            issues.append(
+                ValidationIssue(
+                    "warning",
+                    "nuclei",
+                    f"{label} is empty (no additional Nuclei records)",
+                )
+            )
+        else:
+            issues.append(ValidationIssue("error", "nuclei", f"{label} is empty"))
+    return issues
+
+
 def validate_scan_folder(run_dir: Path, *, strict: bool = False) -> ValidationResult:
     issues: List[ValidationIssue] = []
     manifest_path = run_dir / "run_manifest.json"
@@ -227,6 +274,26 @@ def validate_scan_folder(run_dir: Path, *, strict: bool = False) -> ValidationRe
     else:
         sev = "error" if strict else "warning"
         issues.append(ValidationIssue(sev, "jsonl", "findings.jsonl not found"))
+
+    nuclei_output_path = run_dir / "nuclei_output.json"
+    if nuclei_output_path.exists():
+        issues.extend(
+            _validate_ndjson_output(
+                nuclei_output_path,
+                label="nuclei_output.json",
+                allow_empty=True,
+            )
+        )
+
+    nuclei_resume_output_path = run_dir / "nuclei_output_resume.json"
+    if nuclei_resume_output_path.exists():
+        issues.extend(
+            _validate_ndjson_output(
+                nuclei_resume_output_path,
+                label="nuclei_output_resume.json",
+                allow_empty=True,
+            )
+        )
 
     return ValidationResult(issues)
 

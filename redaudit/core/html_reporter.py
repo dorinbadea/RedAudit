@@ -36,6 +36,29 @@ def _get_reverse_dns(host: Dict) -> str:
     return ""
 
 
+def _format_scan_mode_display(raw_mode: object, lang: str) -> str:
+    mode = str(raw_mode or "-").strip().lower()
+    if mode in ("", "-", "none"):
+        return "-"
+    if lang.lower() == "es":
+        mapping = {
+            "fast": "rapido",
+            "normal": "normal",
+            "full": "completo",
+            "rapido": "rapido",
+            "completo": "completo",
+        }
+    else:
+        mapping = {
+            "rapido": "fast",
+            "normal": "normal",
+            "completo": "full",
+            "fast": "fast",
+            "full": "full",
+        }
+    return mapping.get(mode, mode)
+
+
 def get_template_env():
     """
     Get Jinja2 environment configured for RedAudit templates.
@@ -105,6 +128,8 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
     smart_scan_summary = results.get("smart_scan_summary", {}) or {}
     config_snapshot = results.get("config_snapshot", {}) or {}
     auth_scan = results.get("auth_scan", {}) or {}
+    scan_mode_raw = config.get("scan_mode", "-")
+    scan_mode_display = _format_scan_mode_display(scan_mode_raw, lang)
 
     # Severity distribution for chart
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
@@ -326,6 +351,14 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
             net_discovery["errors"] = [_translate_pipeline_error(err, lang) for err in errors]
             pipeline["net_discovery"] = net_discovery
 
+    host_scan = pipeline.get("host_scan")
+    if isinstance(host_scan, dict):
+        host_scan_mode_raw = host_scan.get("mode")
+        if not host_scan_mode_raw:
+            host_scan_mode_raw = config_snapshot.get("scan_mode", scan_mode_raw)
+        host_scan["mode_display"] = _format_scan_mode_display(host_scan_mode_raw, lang)
+        pipeline["host_scan"] = host_scan
+
     auth_errors = []
     for item in auth_scan.get("errors") or []:
         if not isinstance(item, dict):
@@ -351,7 +384,8 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "scan_timestamp": results.get("timestamp", "-"),
         "target": ", ".join(config.get("target_networks", [])) or "-",
-        "scan_mode": config.get("scan_mode", "-"),
+        "scan_mode": scan_mode_raw,
+        "scan_mode_display": scan_mode_display,
         "auditor_name": config.get("auditor_name") or "",
         "summary": summary,
         "host_count": len(hosts),
