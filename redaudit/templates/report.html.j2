@@ -276,6 +276,9 @@
                         <li>Resume count <span>{{ nuclei.resume_count if nuclei.resume_count is not none else 0 }}</span></li>
                         <li>Last resume at <span>{{ nuclei.last_resume_at or '-' }}</span></li>
                         <li>Resume state file <span>{{ nuclei.resume_state_file or '-' }}</span></li>
+                        <li>Last run elapsed <span>{{ nuclei.last_run_elapsed_s_display or '-' }}</span></li>
+                        <li>Last resume elapsed <span>{{ nuclei.last_resume_elapsed_s_display or '-' }}</span></li>
+                        <li>Nuclei total elapsed <span>{{ nuclei.nuclei_total_elapsed_s_display or '-' }}</span></li>
                         {% if nuclei.partial %}
                         <li>Timeout batches <span>{{ (nuclei.timeout_batches or [])|length }}</span></li>
                         <li>Failed batches <span>{{ (nuclei.failed_batches or [])|length }}</span></li>

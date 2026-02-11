@@ -10,6 +10,23 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.20.7] - 2026-02-11
+
+### Added
+
+- **Nuclei elapsed telemetry fields**: Pipeline/report outputs now include `last_run_elapsed_s`, `last_resume_elapsed_s`, and `nuclei_total_elapsed_s` for explicit wall-clock accounting.
+
+### Improved
+
+- **Two-line Nuclei progress UX**: Long Nuclei progress detail is now split into a compact bar line plus a separate telemetry line to avoid terminal saturation/truncation.
+- **Completion-time clarity**: Initial runs and resume runs now print explicit completion duration messages so operators can read real elapsed time directly in CLI output.
+- **HTML Nuclei context**: Report views now show last run, last resume, and total Nuclei elapsed durations in the Nuclei summary block.
+
+### Fixed
+
+- **Progress timing consistency**: Nuclei elapsed reporting now uses wall-clock timing around run/resume execution instead of relying on visual-progress assumptions.
+- **Resume timeout prompt line collision**: Timeout auto-continue messaging now always ends with a newline before the next status log.
+
 ## [4.20.6] - 2026-02-11
 
 ### Fixed

@@ -229,9 +229,15 @@ sudo apt update && sudo apt install nuclei
 - Reducir el número de objetivos HTTP o reintentar con menos subredes.
 - Bajar el rate limit de Nuclei o aumentar el timeout en la configuración.
 - Leer correctamente el detalle de progreso:
+  - El progreso de Nuclei usa dos lineas: una barra compacta y una linea de telemetria.
   - `profundidad de division X/Y (actual/maximo)` = profundidad actual del split de reintentos frente al limite de fatiga.
-  - `tiempo de sub-lote` en el texto de detalle = tiempo transcurrido del sub-lote activo.
-  - temporizador derecho de la fila = tiempo total transcurrido de toda la etapa Nuclei.
+  - `tiempo de sub-lote` en telemetria = tiempo transcurrido del sub-lote activo.
+  - `tiempo total` en telemetria = tiempo wall-clock total de la etapa Nuclei.
+- Confirmar duracion final en mensajes de cierre:
+  - `Nuclei completado en ...` (ejecucion inicial)
+  - `Reanudacion de Nuclei completada en ...` (reanudacion)
+- Confirmar campos de tiempo persistidos en reportes/pipeline:
+  - `last_run_elapsed_s`, `last_resume_elapsed_s`, `nuclei_total_elapsed_s`
 - Interpretar estado parcial con metadatos de reanudacion:
   - `partial: true` + `resume_pending > 0` significa que la salida parcial es valida y se guardaron objetivos pendientes para reanudar de forma explicita.
 - Para hosts persistentemente lentos, prioriza un reintento dirigido con timeout/presupuesto explicitos antes de excluirlos.

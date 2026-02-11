@@ -276,6 +276,9 @@
                         <li>Conteo de reanudaciones <span>{{ nuclei.resume_count if nuclei.resume_count is not none else 0 }}</span></li>
                         <li>Ultima reanudacion <span>{{ nuclei.last_resume_at or '-' }}</span></li>
                         <li>Archivo de estado de reanudacion <span>{{ nuclei.resume_state_file or '-' }}</span></li>
+                        <li>Duracion de la ultima ejecucion <span>{{ nuclei.last_run_elapsed_s_display or '-' }}</span></li>
+                        <li>Duracion de la ultima reanudacion <span>{{ nuclei.last_resume_elapsed_s_display or '-' }}</span></li>
+                        <li>Duracion total de Nuclei <span>{{ nuclei.nuclei_total_elapsed_s_display or '-' }}</span></li>
                         {% if nuclei.partial %}
                         <li>Lotes con timeout <span>{{ (nuclei.timeout_batches or [])|length }}</span></li>
                         <li>Lotes fallidos <span>{{ (nuclei.failed_batches or [])|length }}</span></li>

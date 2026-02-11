@@ -143,6 +143,11 @@ class InteractiveNetworkAuditor:
         self.current_phase = "init"
         self.interrupted = False
         self.scan_start_time = None
+        self._nuclei_progress_log_state = {
+            "last_emit_ts": 0.0,
+            "last_detail": "",
+            "heartbeat_s": 15.0,
+        }
 
         # Subprocess tracking for cleanup on interruption (C1 fix)
         self._active_subprocesses = []
@@ -1320,6 +1325,8 @@ class InteractiveNetworkAuditor:
                         )
                         # v4.6.34: Smaller batches for faster parallel completion
                         batch_size = 10
+                        nuclei_run_started_at = time.time()
+                        nuclei_elapsed_s = 0
                         try:
                             from rich.progress import Progress
 
@@ -1344,13 +1351,19 @@ class InteractiveNetworkAuditor:
                                 "total_targets": int(total_targets),
                                 "max_targets": 0,
                             }
+                            self._nuclei_progress_log_state = {
+                                "last_emit_ts": 0.0,
+                                "last_detail": "",
+                                "heartbeat_s": 15.0,
+                            }
 
                             # v4.4.4: Prevent UI duplication - Progress manages its own Live display
                             with Progress(
                                 *self._progress_columns(
-                                    show_detail=True,
+                                    show_detail=False,
                                     show_eta=True,
                                     show_elapsed=False,
+                                    compact_mode=True,
                                 ),
                                 console=self._progress_console(),
                                 transient=False,
@@ -1361,7 +1374,7 @@ class InteractiveNetworkAuditor:
                                     total=total_targets,
                                     eta_upper=self._format_eta(total_batches * nuclei_timeout_s),
                                     eta_est="",
-                                    detail=f"{total_targets} targets",
+                                    detail="",
                                 )
 
                                 def _nuclei_progress(completed: int, total: int, eta: str) -> None:
@@ -1409,6 +1422,7 @@ class InteractiveNetworkAuditor:
                                         total_targets,
                                         batch_size,
                                         detail=d,
+                                        total_start_time=progress_start_t,
                                     ),
                                     use_internal_progress=False,
                                     logger=self.logger,
@@ -1437,6 +1451,7 @@ class InteractiveNetworkAuditor:
                                 profile=nuclei_profile,
                                 translate=self.ui.t,
                             )
+                        nuclei_elapsed_s = max(0, int(round(time.time() - nuclei_run_started_at)))
 
                         findings = nuclei_result.get("findings") or []
                         suspected = []
@@ -1475,6 +1490,13 @@ class InteractiveNetworkAuditor:
                             partial=nuclei_partial,
                             error=nuclei_error,
                         )
+                        existing_nuclei = self.results.get("nuclei") or {}
+                        try:
+                            existing_total_elapsed = int(
+                                (existing_nuclei or {}).get("nuclei_total_elapsed_s") or 0
+                            )
+                        except Exception:
+                            existing_total_elapsed = 0
                         nuclei_summary = {
                             "enabled": True,
                             "profile": nuclei_profile,
@@ -1498,6 +1520,9 @@ class InteractiveNetworkAuditor:
                             "findings_suspected": len(suspected),
                             "success": nuclei_success,
                             "error": nuclei_error,
+                            "last_run_elapsed_s": nuclei_elapsed_s,
+                            "nuclei_total_elapsed_s": max(0, existing_total_elapsed)
+                            + nuclei_elapsed_s,
                         }
                         if nuclei_partial:
                             nuclei_summary["partial"] = True
@@ -1565,6 +1590,10 @@ class InteractiveNetworkAuditor:
                                     ),
                                     "WARNING",
                                 )
+                        self.ui.print_status(
+                            self.ui.t("nuclei_completed_in", self._format_eta(nuclei_elapsed_s)),
+                            "INFO",
+                        )
                         pending_targets = nuclei_result.get("pending_targets") or []
                         if pending_targets:
                             resume_state = self._build_nuclei_resume_state(
@@ -2468,6 +2497,7 @@ class InteractiveNetworkAuditor:
         batch_size: int,
         *,
         detail: Optional[str] = None,
+        total_start_time: Optional[float] = None,
     ) -> None:
         """Callback for Nuclei scan progress updates."""
         try:
@@ -2489,7 +2519,17 @@ class InteractiveNetworkAuditor:
                 detail_lower = detail_text.lower()
             else:  # pragma: no cover
                 detail_lower = ""
-            is_running = any(token in detail_lower for token in ("running", "en curso"))
+            is_running = any(
+                token in detail_lower
+                for token in (
+                    "running",
+                    "en curso",
+                    "sub-batch",
+                    "sub-lote",
+                    "split depth",
+                    "profundidad de division",
+                )
+            )
             if is_running and total_targets_i > 0:
                 approx_targets = min(approx_targets, total_targets_i - 1)
 
@@ -2503,6 +2543,7 @@ class InteractiveNetworkAuditor:
                 approx_targets = max_seen
             else:
                 state["max_targets"] = approx_targets
+            raw_detail = detail_text if isinstance(detail_text, str) else ""
             if isinstance(detail_text, str) and detail_text:
                 detail_text = f"[bright_blue]{detail_text}[/]"
             remaining_batches = max(0.0, float(total) - float(completed))
@@ -2520,8 +2561,40 @@ class InteractiveNetworkAuditor:
                 description=f"[cyan]Nuclei ({approx_targets}/{total_targets})",
                 eta_upper=self._format_eta(remaining_batches * timeout if remaining_batches else 0),
                 eta_est=f"ETA≈ {eta_est_v}" if eta_est_v else "",
-                detail=detail_text,
+                detail="",
             )
+
+            # Emit compact telemetry on a separate line (state changes + heartbeat).
+            now = time.time()
+            total_elapsed_s = max(0.0, now - (total_start_time if total_start_time else start_time))
+            total_elapsed_txt = self._format_eta(total_elapsed_s)
+            compact_detail = raw_detail
+            if compact_detail:
+                compact_detail = re.sub(r"\x1b\[[0-9;]*m", "", compact_detail)
+                compact_detail = re.sub(r"\[/?[^\]]+\]", "", compact_detail)
+                compact_detail = compact_detail.replace(
+                    " | total elapsed shown in timer", ""
+                ).replace(" | tiempo total en el temporizador", "")
+                compact_detail = compact_detail.strip()
+            telemetry_state = getattr(self, "_nuclei_progress_log_state", {}) or {}
+            last_emit_ts = float(telemetry_state.get("last_emit_ts") or 0.0)
+            last_detail = str(telemetry_state.get("last_detail") or "")
+            heartbeat_s = float(telemetry_state.get("heartbeat_s") or 15.0)
+            should_emit = bool(compact_detail) and (
+                compact_detail != last_detail or (now - last_emit_ts) >= heartbeat_s
+            )
+            if should_emit:
+                self.ui.print_status(
+                    self.ui.t("nuclei_progress_compact", compact_detail, total_elapsed_txt),
+                    "INFO",
+                    force=True,
+                    update_activity=False,
+                )
+                self._nuclei_progress_log_state = {
+                    "last_emit_ts": now,
+                    "last_detail": compact_detail,
+                    "heartbeat_s": heartbeat_s,
+                }
         except Exception:  # pragma: no cover
             pass
 
@@ -2935,6 +3008,7 @@ class InteractiveNetworkAuditor:
 
             self.ui.print_status(self.ui.t("nuclei_resume_running"), "INFO")
             resume_started_at = datetime.now()
+            resume_started_ts = time.time()
             resume_output_file = os.path.join(output_dir, "nuclei_output_resume.json")
             if os.path.exists(resume_output_file):
                 try:
@@ -2983,9 +3057,10 @@ class InteractiveNetworkAuditor:
                     }
                     with Progress(
                         *self._progress_columns(
-                            show_detail=True,
+                            show_detail=False,
                             show_eta=True,
                             show_elapsed=False,
+                            compact_mode=True,
                         ),
                         console=progress_console,
                         transient=False,
@@ -2996,8 +3071,13 @@ class InteractiveNetworkAuditor:
                             total=total_targets,
                             eta_upper=self._format_eta(total_batches * int(timeout_s)),
                             eta_est="",
-                            detail=self.ui.t("nuclei_resume_pending", pending_total),
+                            detail="",
                         )
+                        self._nuclei_progress_log_state = {
+                            "last_emit_ts": 0.0,
+                            "last_detail": "",
+                            "heartbeat_s": 15.0,
+                        }
                         resume_result = run_nuclei_scan(
                             **run_kwargs,
                             progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
@@ -3011,6 +3091,7 @@ class InteractiveNetworkAuditor:
                                 total_targets,
                                 int(batch_size),
                                 detail=d,
+                                total_start_time=progress_start_t,
                             ),
                             use_internal_progress=False,
                             translate=self.ui.t,
@@ -3023,6 +3104,7 @@ class InteractiveNetworkAuditor:
                     use_internal_progress=True,
                     translate=self.ui.t,
                 )
+            resume_elapsed_s = max(0, int(round(time.time() - resume_started_ts)))
 
             base_output_rel = resume_state.get("output_file") or "nuclei_output.json"
             base_output_path = (
@@ -3073,6 +3155,14 @@ class InteractiveNetworkAuditor:
             nuclei_summary["findings_suspected"] = int(
                 nuclei_summary.get("findings_suspected") or 0
             ) + len(suspected)
+            nuclei_summary["last_resume_elapsed_s"] = resume_elapsed_s
+            try:
+                existing_total_elapsed_s = int(nuclei_summary.get("nuclei_total_elapsed_s") or 0)
+            except Exception:
+                existing_total_elapsed_s = 0
+            nuclei_summary["nuclei_total_elapsed_s"] = max(0, existing_total_elapsed_s) + int(
+                resume_elapsed_s
+            )
             combined_success = bool(nuclei_summary.get("success")) or bool(
                 resume_result.get("success")
             )
@@ -3144,6 +3234,10 @@ class InteractiveNetworkAuditor:
                 self.ui.print_status(self.ui.t("nuclei_resume_done", merged), "OK")
             else:
                 self.ui.print_status(self.ui.t("nuclei_resume_done", 0), "INFO")
+            self.ui.print_status(
+                self.ui.t("nuclei_resume_completed_in", self._format_eta(resume_elapsed_s)),
+                "INFO",
+            )
 
             if save_after:
                 if session_log_started and not session_log_closed:

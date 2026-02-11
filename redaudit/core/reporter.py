@@ -78,6 +78,9 @@ def _build_nuclei_pipeline(nuclei_state: Any) -> Dict[str, Any]:
         nuclei["last_resume_at"] = ""
     if nuclei.get("resume_state_file"):
         nuclei["resume_state_file"] = str(nuclei.get("resume_state_file"))
+    for elapsed_key in ("last_run_elapsed_s", "last_resume_elapsed_s", "nuclei_total_elapsed_s"):
+        if elapsed_key in nuclei:
+            nuclei[elapsed_key] = _safe_int(nuclei.get(elapsed_key), 0)
     return nuclei
 
 

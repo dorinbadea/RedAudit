@@ -184,6 +184,9 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `resume_count` | integer | (Opcional) Numero de intentos de reanudacion ya ejecutados |
 | `last_resume_at` | string | (Opcional) Marca de tiempo de la reanudacion mas reciente |
 | `resume_state_file` | string | (Opcional) Ruta relativa al estado de reanudacion (normalmente `nuclei_resume.json`) |
+| `last_run_elapsed_s` | integer | (Opcional) Segundos wall-clock de la ultima ejecucion inicial de Nuclei |
+| `last_resume_elapsed_s` | integer | (Opcional) Segundos wall-clock de la ultima reanudacion de Nuclei |
+| `nuclei_total_elapsed_s` | integer | (Opcional) Segundos wall-clock acumulados de Nuclei en esta sesion (ejecucion + reanudaciones) |
 | `resume` | object | (Opcional) Metadatos de reanudacion (added_findings, added_suspected, pending_targets) |
 | `output_file` | string | Ruta relativa al flujo bruto de salida de Nuclei (`nuclei_output.json`, NDJSON) |
 | `error` | string | Error si Nuclei falló (best-effort, p. ej., timeout) |
@@ -300,6 +303,9 @@ Notas:
 | `resume_count` | integer | Numero de intentos de reanudacion ya ejecutados |
 | `last_resume_at` | string | Marca de tiempo de la reanudacion mas reciente |
 | `resume_state_file` | string | Ruta relativa al estado de reanudacion (`nuclei_resume.json`) |
+| `last_run_elapsed_s` | integer | Segundos wall-clock de la ultima ejecucion inicial de Nuclei |
+| `last_resume_elapsed_s` | integer | Segundos wall-clock de la ultima reanudacion |
+| `nuclei_total_elapsed_s` | integer | Segundos wall-clock acumulados de Nuclei en esta sesion |
 | `output_file` | string | Ruta relativa a `nuclei_output.json` (flujo NDJSON) |
 | `success` | boolean | Exito de Nuclei |
 

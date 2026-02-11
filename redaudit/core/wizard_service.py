@@ -564,6 +564,7 @@ class WizardService:
                                 return is_yes_default
                             buffer += ch
                         time.sleep(0.05)
+                sys.stdout.write("\n")
                 sys.stdout.flush()
                 return is_yes_default
 
@@ -579,6 +580,7 @@ class WizardService:
                     sys.stdout.flush()
                     resolved = _resolve_answer(ans)
                     return resolved if resolved is not None else is_yes_default
+            sys.stdout.write("\n")
             sys.stdout.flush()  # pragma: no cover
             return is_yes_default
         except KeyboardInterrupt:  # pragma: no cover

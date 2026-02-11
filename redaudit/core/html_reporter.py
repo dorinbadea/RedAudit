@@ -59,6 +59,28 @@ def _format_scan_mode_display(raw_mode: object, lang: str) -> str:
     return mapping.get(mode, mode)
 
 
+def _format_elapsed_seconds_display(value: object) -> str:
+    if isinstance(value, bool):
+        total = int(value)
+    elif isinstance(value, int):
+        total = value
+    elif isinstance(value, float):
+        total = int(value)
+    elif isinstance(value, str):
+        try:
+            total = int(value.strip())
+        except ValueError:
+            return "-"
+    else:
+        return "-"
+    if total < 0:
+        return "-"
+    hours = total // 3600
+    minutes = (total % 3600) // 60
+    seconds = total % 60
+    return f"{hours:d}:{minutes:02d}:{seconds:02d}" if hours else f"{minutes:d}:{seconds:02d}"
+
+
 def get_template_env():
     """
     Get Jinja2 environment configured for RedAudit templates.
@@ -358,6 +380,19 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
             host_scan_mode_raw = config_snapshot.get("scan_mode", scan_mode_raw)
         host_scan["mode_display"] = _format_scan_mode_display(host_scan_mode_raw, lang)
         pipeline["host_scan"] = host_scan
+
+    nuclei_pipeline = pipeline.get("nuclei")
+    if isinstance(nuclei_pipeline, dict):
+        for key in ("last_run_elapsed_s", "last_resume_elapsed_s", "nuclei_total_elapsed_s"):
+            if key in nuclei_pipeline:
+                try:
+                    nuclei_pipeline[key] = int(nuclei_pipeline.get(key) or 0)
+                except (TypeError, ValueError):
+                    nuclei_pipeline[key] = 0
+            nuclei_pipeline[f"{key}_display"] = _format_elapsed_seconds_display(
+                nuclei_pipeline.get(key)
+            )
+        pipeline["nuclei"] = nuclei_pipeline
 
     auth_errors = []
     for item in auth_scan.get("errors") or []:
