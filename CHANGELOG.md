@@ -10,6 +10,17 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.20.8] - 2026-02-11
+
+### Improved
+
+- **Nuclei progress noise reduction**: Compact Nuclei telemetry now suppresses per-second `sub-batch elapsed` churn and emits only on state changes plus periodic heartbeat updates.
+- **Terminal readability under long runs**: Telemetry strings were shortened (`total` wording) to reduce line wrapping and log saturation during prolonged timeout/retry cycles.
+
+### Fixed
+
+- **Nuclei telemetry state detection**: Progress logging now tracks normalized state keys (`active batches`, `split depth`, retry markers) instead of volatile elapsed counters, preventing thousands of redundant log lines in long runs.
+
 ## [4.20.7] - 2026-02-11
 
 ### Added

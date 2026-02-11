@@ -10,6 +10,17 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.8] - 11-02-2026
+
+### Mejorado
+
+- **Reduccion de ruido en progreso Nuclei**: La telemetria compacta de Nuclei ya no emite cambios por segundo del contador de sub-lote; ahora publica solo cambios de estado y heartbeats periodicos.
+- **Legibilidad en terminal durante ejecuciones largas**: Se acortan las cadenas de telemetria (uso de `total`) para reducir saltos de linea y saturacion de logs en ciclos largos de timeout/reintento.
+
+### Corregido
+
+- **Deteccion de estado de telemetria Nuclei**: El logging de progreso ahora sigue claves de estado normalizadas (`lotes activos`, `profundidad de division`, reintentos) en lugar de contadores volatiles de tiempo, evitando miles de lineas redundantes.
+
 ## [4.20.7] - 11-02-2026
 
 ### Anadido
