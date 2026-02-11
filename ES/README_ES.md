@@ -2,7 +2,7 @@
 
 [![View in English](https://img.shields.io/badge/View_in_English-blue?style=flat-square)](../README.md)
 
-[![Version](https://img.shields.io/badge/version-4.20.6-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
+[![Version](https://img.shields.io/badge/version-4.20.7-blue.svg?style=flat-square)](https://github.com/dorinbadea/RedAudit/releases/latest)
 ![Python](https://img.shields.io/badge/python_3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Licencia](https://img.shields.io/badge/GPLv3-green?style=flat-square)
 [![CI](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml/badge.svg)](https://github.com/dorinbadea/RedAudit/actions/workflows/tests.yml)
@@ -371,7 +371,8 @@ El asistente cubre:
 
 Desde el menu principal, **Reanudar Nuclei (pendiente)** incluye **Gestionar entradas de reanudacion** para borrar una o todas las entradas antiguas antes de continuar.
 Si interrumpes una ejecucion activa con `Ctrl+C`, RedAudit muestra un aviso explicito indicando que guarda progreso parcial y realiza limpieza antes de salir.
-Durante ejecuciones largas de Nuclei, el detalle de progreso separa el tiempo transcurrido del sub-lote frente al temporizador global de la tarea, y `profundidad de division X/Y` indica la profundidad de split de reintentos (no el numero de hosts).
+Durante ejecuciones largas de Nuclei, el progreso se renderiza en dos lineas compactas: una linea para la barra y otra para telemetria (`lote`, `profundidad de division`, `tiempo de sub-lote`, `tiempo total`).
+Al finalizar, RedAudit muestra mensajes explicitos de duracion real (`Nuclei completado en ...` / `Reanudacion de Nuclei completada en ...`) y expone los campos de tiempo en los reportes.
 Despues del escaneo, puedes validar la integridad de artefactos y exportaciones SIEM con `python scripts/check_scan_artifacts.py --run-dir <carpeta_scan> --strict`.
 
 ### Modo No Interactivo / Automatización

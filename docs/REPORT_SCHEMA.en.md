@@ -186,6 +186,9 @@ Appears only when Nuclei scanning is enabled and available.
 | `resume_count` | integer | (Optional) Number of resume attempts already executed |
 | `last_resume_at` | string | (Optional) Timestamp of the latest resume attempt |
 | `resume_state_file` | string | (Optional) Relative resume state path (typically `nuclei_resume.json`) |
+| `last_run_elapsed_s` | integer | (Optional) Wall-clock elapsed seconds for the latest initial Nuclei run |
+| `last_resume_elapsed_s` | integer | (Optional) Wall-clock elapsed seconds for the latest Nuclei resume run |
+| `nuclei_total_elapsed_s` | integer | (Optional) Accumulated wall-clock elapsed seconds for Nuclei in this session (run + resumes) |
 | `resume` | object | (Optional) Resume metadata (added_findings, added_suspected, pending_targets) |
 | `output_file` | string | Relative path to raw Nuclei output stream (`nuclei_output.json`, NDJSON) |
 | `error` | string | Error if Nuclei failed (best-effort, e.g., timeout) |
@@ -306,6 +309,9 @@ Compact roll-up for dashboards.
 | `resume_count` | integer | Number of resume attempts already executed |
 | `last_resume_at` | string | Timestamp of the latest resume attempt |
 | `resume_state_file` | string | Relative resume state path (`nuclei_resume.json`) |
+| `last_run_elapsed_s` | integer | Wall-clock elapsed seconds for the latest initial Nuclei run |
+| `last_resume_elapsed_s` | integer | Wall-clock elapsed seconds for the latest resume run |
+| `nuclei_total_elapsed_s` | integer | Accumulated wall-clock elapsed seconds for Nuclei in this session |
 | `output_file` | string | Relative path to `nuclei_output.json` (NDJSON stream) |
 | `success` | boolean | Nuclei success flag |
 | `error` | string | Error message, if any |

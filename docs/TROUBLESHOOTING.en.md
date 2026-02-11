@@ -229,9 +229,15 @@ sudo apt update && sudo apt install nuclei
 - Reduce the number of HTTP targets or rerun with fewer subnets.
 - Lower the Nuclei rate limit or increase the timeout in config if needed.
 - Read progress detail correctly:
+  - Nuclei progress uses two lines: one compact bar line and one telemetry line.
   - `split depth X/Y (current/max)` = current retry split depth vs fatigue cap.
-  - `sub-batch elapsed` in the detail text = elapsed time for the active sub-batch.
-  - right timer in the progress row = total task elapsed for the whole Nuclei step.
+  - `sub-batch elapsed` in telemetry = elapsed time for the active sub-batch.
+  - `total elapsed` in telemetry = total wall-clock elapsed for the current Nuclei step.
+- Confirm final timing from completion logs:
+  - `Nuclei completed in ...` (initial run)
+  - `Nuclei resume completed in ...` (resume run)
+- Confirm persisted timing fields in reports/pipeline:
+  - `last_run_elapsed_s`, `last_resume_elapsed_s`, `nuclei_total_elapsed_s`
 - Interpret partial status with resume metadata:
   - `partial: true` + `resume_pending > 0` means partial output is valid and pending targets were saved for explicit resume.
 - For persistently slow hosts, prefer a targeted rerun with explicit timeout/runtime budget before excluding them.
