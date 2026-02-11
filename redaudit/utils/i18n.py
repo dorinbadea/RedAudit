@@ -408,7 +408,7 @@ TRANSLATIONS = {
         "nuclei_detail_batches_complete": "batches {0}/{1} complete",
         "nuclei_detail_retry": "retry {0}",
         "nuclei_detail_split": "split depth {0}/{1} (current/max)",
-        "nuclei_progress_compact": "[nuclei] {0} | total elapsed {1}",
+        "nuclei_progress_compact": "[nuclei] {0} | total {1}",
         "nuclei_timeout_detail": "Nuclei timeout in batch {0}/{1}: {2}",
         "nuclei_timeout_targets": "hosts {0}; ports {1}",
         "scope_iot_runtime": (
@@ -1032,7 +1032,7 @@ TRANSLATIONS = {
         "nuclei_detail_batches_complete": "lotes {0}/{1} completados",
         "nuclei_detail_retry": "reintento {0}",
         "nuclei_detail_split": "profundidad de division {0}/{1} (actual/maximo)",
-        "nuclei_progress_compact": "[nuclei] {0} | tiempo total {1}",
+        "nuclei_progress_compact": "[nuclei] {0} | total {1}",
         "nuclei_timeout_detail": "Timeout de Nuclei en lote {0}/{1}: {2}",
         "nuclei_timeout_targets": "hosts {0}; puertos {1}",
         "scope_iot_runtime": (

@@ -145,8 +145,8 @@ class InteractiveNetworkAuditor:
         self.scan_start_time = None
         self._nuclei_progress_log_state = {
             "last_emit_ts": 0.0,
-            "last_detail": "",
-            "heartbeat_s": 15.0,
+            "last_state": "",
+            "heartbeat_s": 30.0,
         }
 
         # Subprocess tracking for cleanup on interruption (C1 fix)
@@ -1353,8 +1353,8 @@ class InteractiveNetworkAuditor:
                             }
                             self._nuclei_progress_log_state = {
                                 "last_emit_ts": 0.0,
-                                "last_detail": "",
-                                "heartbeat_s": 15.0,
+                                "last_state": "",
+                                "heartbeat_s": 30.0,
                             }
 
                             # v4.4.4: Prevent UI duplication - Progress manages its own Live display
@@ -2568,20 +2568,38 @@ class InteractiveNetworkAuditor:
             now = time.time()
             total_elapsed_s = max(0.0, now - (total_start_time if total_start_time else start_time))
             total_elapsed_txt = self._format_eta(total_elapsed_s)
-            compact_detail = raw_detail
-            if compact_detail:
-                compact_detail = re.sub(r"\x1b\[[0-9;]*m", "", compact_detail)
-                compact_detail = re.sub(r"\[/?[^\]]+\]", "", compact_detail)
-                compact_detail = compact_detail.replace(
-                    " | total elapsed shown in timer", ""
-                ).replace(" | tiempo total en el temporizador", "")
-                compact_detail = compact_detail.strip()
+            compact_detail = ""
+            compact_state = ""
+            if raw_detail:
+                clean_detail = re.sub(r"\x1b\[[0-9;]*m", "", raw_detail)
+                clean_detail = re.sub(r"\[/?[^\]]+\]", "", clean_detail)
+                clean_detail = clean_detail.replace(" | total elapsed shown in timer", "").replace(
+                    " | tiempo total en el temporizador", ""
+                )
+                tokens = [token.strip() for token in clean_detail.split("|") if token.strip()]
+                display_tokens = []
+                state_tokens = []
+                for token in tokens:
+                    token_lower = token.lower()
+                    # Avoid log spam: sub-batch elapsed changes every few seconds.
+                    if token_lower.startswith(("sub-batch elapsed", "tiempo de sub-lote")):
+                        continue
+                    token_display = re.sub(
+                        r"\s*\((current/max|actual/maximo)\)$",
+                        "",
+                        token,
+                        flags=re.IGNORECASE,
+                    )
+                    display_tokens.append(token_display)
+                    state_tokens.append(token_display.lower())
+                compact_detail = " | ".join(display_tokens).strip()
+                compact_state = " | ".join(state_tokens).strip()
             telemetry_state = getattr(self, "_nuclei_progress_log_state", {}) or {}
             last_emit_ts = float(telemetry_state.get("last_emit_ts") or 0.0)
-            last_detail = str(telemetry_state.get("last_detail") or "")
-            heartbeat_s = float(telemetry_state.get("heartbeat_s") or 15.0)
+            last_state = str(telemetry_state.get("last_state") or "")
+            heartbeat_s = float(telemetry_state.get("heartbeat_s") or 30.0)
             should_emit = bool(compact_detail) and (
-                compact_detail != last_detail or (now - last_emit_ts) >= heartbeat_s
+                compact_state != last_state or (now - last_emit_ts) >= heartbeat_s
             )
             if should_emit:
                 self.ui.print_status(
@@ -2592,7 +2610,7 @@ class InteractiveNetworkAuditor:
                 )
                 self._nuclei_progress_log_state = {
                     "last_emit_ts": now,
-                    "last_detail": compact_detail,
+                    "last_state": compact_state,
                     "heartbeat_s": heartbeat_s,
                 }
         except Exception:  # pragma: no cover
@@ -3075,8 +3093,8 @@ class InteractiveNetworkAuditor:
                         )
                         self._nuclei_progress_log_state = {
                             "last_emit_ts": 0.0,
-                            "last_detail": "",
-                            "heartbeat_s": 15.0,
+                            "last_state": "",
+                            "heartbeat_s": 30.0,
                         }
                         resume_result = run_nuclei_scan(
                             **run_kwargs,
