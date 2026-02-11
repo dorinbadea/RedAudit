@@ -52,6 +52,15 @@ Metadatos del manifiesto usados para inventariar artefactos de salida en pipelin
 | `counts.nuclei_pending_targets` | integer | (Opcional) Objetivos Nuclei pendientes guardados para reanudar |
 | `artifacts` | array | Lista de archivos con `path` relativo y `size_bytes` |
 | `nuclei_resume` | object/null | Metadatos de reanudacion cuando `nuclei_resume.json` existe en artefactos |
+| `nuclei_resume.resume_count` | integer | (Opcional) Numero de intentos de reanudacion ya ejecutados |
+| `nuclei_resume.last_resume_at` | string | (Opcional) Marca de tiempo del intento de reanudacion mas reciente (ISO 8601) |
+| `nuclei_resume.path` | string | (Opcional) Ruta relativa al estado de reanudacion (`nuclei_resume.json`) |
+
+Helper de validacion recomendado para QA post-ejecucion:
+
+```bash
+python scripts/check_scan_artifacts.py --run-dir <carpeta_scan> --strict
+```
 
 ## Definición del Esquema
 
@@ -170,6 +179,9 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `timeout_batches` | array | (Opcional) Índices de lotes con timeout |
 | `failed_batches` | array | (Opcional) Índices de lotes fallidos tras reintento |
 | `resume_pending` | integer | (Opcional) Objetivos pendientes guardados cuando se alcanza el presupuesto de tiempo |
+| `resume_count` | integer | (Opcional) Numero de intentos de reanudacion ya ejecutados |
+| `last_resume_at` | string | (Opcional) Marca de tiempo de la reanudacion mas reciente |
+| `resume_state_file` | string | (Opcional) Ruta relativa al estado de reanudacion (normalmente `nuclei_resume.json`) |
 | `resume` | object | (Opcional) Metadatos de reanudacion (added_findings, added_suspected, pending_targets) |
 | `output_file` | string | Ruta relativa al archivo de salida (best-effort) |
 | `error` | string | Error si Nuclei falló (best-effort, p. ej., timeout) |
@@ -278,6 +290,9 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `failed_batches` | array | Indices de lotes fallidos |
 | `budget_exceeded` | boolean | Presupuesto de tiempo agotado |
 | `resume_pending` | integer | Objetivos pendientes guardados para reanudar |
+| `resume_count` | integer | Numero de intentos de reanudacion ya ejecutados |
+| `last_resume_at` | string | Marca de tiempo de la reanudacion mas reciente |
+| `resume_state_file` | string | Ruta relativa al estado de reanudacion (`nuclei_resume.json`) |
 | `output_file` | string | Ruta relativa a nuclei_output.json |
 | `success` | boolean | Exito de Nuclei |
 

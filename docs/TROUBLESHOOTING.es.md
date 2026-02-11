@@ -228,8 +228,25 @@ sudo apt update && sudo apt install nuclei
 
 - Reducir el número de objetivos HTTP o reintentar con menos subredes.
 - Bajar el rate limit de Nuclei o aumentar el timeout en la configuración.
+- Leer correctamente el detalle de progreso:
+  - `profundidad de division X/Y` = profundidad actual del split de reintentos frente al limite de fatiga.
+  - tiempo en detalle = tiempo transcurrido del sub-lote.
+  - temporizador derecho de la fila = tiempo total transcurrido de la tarea.
+- Para hosts persistentemente lentos, prioriza un reintento dirigido con timeout/presupuesto explicitos antes de excluirlos.
 
-### 12d. testssl.sh no encontrado / checks TLS profundos omitidos (v3.6.1+)
+### 12d. Validar artefactos y contrato SIEM JSONL
+
+**Síntoma**: Dudas sobre completitud de salida o calidad para ingesta SIEM.
+**Solución**:
+
+```bash
+python scripts/check_scan_artifacts.py --run-dir <carpeta_scan> --strict
+```
+
+Valida presencia/lectura de artefactos en `run_manifest.json`, integridad minima de cabeceras PCAP,
+y contrato JSON/JSONL (`summary.json`, `assets.jsonl`, `findings.jsonl`).
+
+### 12e. testssl.sh no encontrado / checks TLS profundos omitidos (v3.6.1+)
 
 **Síntoma**: Los checks TLS profundos se omiten o no aparece salida de TestSSL en los hallazgos.
 **Causa**: `testssl.sh` no está instalado o no está en la ruta esperada.

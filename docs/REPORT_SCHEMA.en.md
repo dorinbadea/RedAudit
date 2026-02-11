@@ -52,6 +52,15 @@ Run manifest metadata used to inventory output artifacts for automation pipeline
 | `counts.nuclei_pending_targets` | integer | (Optional) Pending Nuclei targets saved for resume |
 | `artifacts` | array | List of files with relative `path` and `size_bytes` |
 | `nuclei_resume` | object/null | Resume metadata when `nuclei_resume.json` exists in artifacts |
+| `nuclei_resume.resume_count` | integer | (Optional) Number of resume attempts already executed |
+| `nuclei_resume.last_resume_at` | string | (Optional) Timestamp of the most recent resume attempt (ISO 8601) |
+| `nuclei_resume.path` | string | (Optional) Relative path to the resume state file (`nuclei_resume.json`) |
+
+Validation helper (recommended for post-run QA):
+
+```bash
+python scripts/check_scan_artifacts.py --run-dir <scan_folder> --strict
+```
 
 ## Schema Definition
 
@@ -172,6 +181,9 @@ Appears only when Nuclei scanning is enabled and available.
 | `timeout_batches` | array | (Optional) Batch indexes that timed out |
 | `failed_batches` | array | (Optional) Batch indexes that failed after retry |
 | `resume_pending` | integer | (Optional) Pending targets saved for resume when a runtime budget is hit |
+| `resume_count` | integer | (Optional) Number of resume attempts already executed |
+| `last_resume_at` | string | (Optional) Timestamp of the latest resume attempt |
+| `resume_state_file` | string | (Optional) Relative resume state path (typically `nuclei_resume.json`) |
 | `resume` | object | (Optional) Resume metadata (added_findings, added_suspected, pending_targets) |
 | `output_file` | string | Relative path to output file (best-effort) |
 | `error` | string | Error if Nuclei failed (best-effort, e.g., timeout) |
@@ -284,6 +296,9 @@ Compact roll-up for dashboards.
 | `failed_batches` | array | Batch indexes that failed |
 | `budget_exceeded` | boolean | Runtime budget ended the run |
 | `resume_pending` | integer | Pending targets saved for resume |
+| `resume_count` | integer | Number of resume attempts already executed |
+| `last_resume_at` | string | Timestamp of the latest resume attempt |
+| `resume_state_file` | string | Relative resume state path (`nuclei_resume.json`) |
 | `output_file` | string | Relative path to nuclei_output.json |
 | `success` | boolean | Nuclei success flag |
 | `error` | string | Error message, if any |

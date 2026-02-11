@@ -60,6 +60,27 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def _build_nuclei_pipeline(nuclei_state: Any) -> Dict[str, Any]:
+    """Normalize Nuclei runtime metadata for reporting pipelines."""
+    if not isinstance(nuclei_state, dict):
+        return {}
+    nuclei = dict(nuclei_state)
+    resume_pending = nuclei.get("resume_pending")
+    if resume_pending is None:
+        pending_targets = nuclei.get("pending_targets")
+        if isinstance(pending_targets, list):
+            resume_pending = len(pending_targets)
+    if resume_pending is not None:
+        nuclei["resume_pending"] = _safe_int(resume_pending, 0)
+    if "resume_count" in nuclei:
+        nuclei["resume_count"] = _safe_int(nuclei.get("resume_count"), 0)
+    if nuclei.get("last_resume_at") is None:
+        nuclei["last_resume_at"] = ""
+    if nuclei.get("resume_state_file"):
+        nuclei["resume_state_file"] = str(nuclei.get("resume_state_file"))
+    return nuclei
+
+
 def _build_config_snapshot(config: Dict) -> Dict[str, Any]:
     """Create a safe, minimal snapshot of the run configuration."""
     scan_mode = config.get("scan_mode")
@@ -595,7 +616,7 @@ def generate_summary(
         "agentless_verify": _summarize_agentless(
             results.get("hosts", []), results.get("agentless_verify") or {}, config
         ),
-        "nuclei": results.get("nuclei") or {},
+        "nuclei": _build_nuclei_pipeline(results.get("nuclei") or {}),
         "vulnerability_scan": {},
         "deep_scan": {
             "identity_threshold": results["config_snapshot"].get("identity_threshold"),

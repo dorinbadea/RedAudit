@@ -10,6 +10,21 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.20.4] - 2026-02-11
+
+### Added
+
+- **Scan artifact + SIEM validation gate**: Added `scripts/check_scan_artifacts.py` and `redaudit/utils/scan_artifact_gate.py` to validate `run_manifest.json` artifact completeness, minimal PCAP integrity, and JSON/JSONL contract conformance (`summary.json`, `assets.jsonl`, `findings.jsonl`) with a strict mode.
+
+### Improved
+
+- **Nuclei progress clarity**: Progress detail labels now explicitly distinguish sub-batch elapsed time and split depth semantics during timeout retries.
+- **Resume observability in reports**: Nuclei report metadata now surfaces `resume_pending`, `resume_count`, `last_resume_at`, and `resume_state_file` for clearer partial/resume tracking in HTML and pipeline summaries.
+
+### Fixed
+
+- **Resume parity across outputs**: Report pipeline serialization now normalizes resume metadata consistently, avoiding ambiguous or missing fields in downstream report consumers.
+
 ## [4.20.3] - 2026-02-11
 
 ### Added
