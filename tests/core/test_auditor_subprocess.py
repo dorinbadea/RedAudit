@@ -348,6 +348,85 @@ class TestAuditorSubprocess(unittest.TestCase):
         last_call = progress.update.call_args_list[-1]
         self.assertGreaterEqual(last_call[1]["completed"], 30)
 
+    def test_nuclei_progress_callback_ignores_sub_batch_elapsed_for_state(self, *args):
+        """Do not emit a new telemetry line when only sub-batch elapsed changes."""
+        progress = MagicMock()
+        task = MagicMock()
+        self.auditor._touch_activity = MagicMock()
+        self.auditor._format_eta = MagicMock(return_value="5:00")
+        self.auditor.ui.t = MagicMock(side_effect=lambda key, *vals: f"{key}:{vals}")
+        self.auditor.ui.print_status = MagicMock()
+        self.auditor._nuclei_progress_log_state = {
+            "last_emit_ts": 0.0,
+            "last_state": "",
+            "heartbeat_s": 30.0,
+        }
+
+        self.auditor._nuclei_progress_callback(
+            completed=5.0,
+            total=10,
+            eta="",
+            progress=progress,
+            task=task,
+            start_time=time.time() - 20,
+            timeout=300,
+            total_targets=50,
+            batch_size=5,
+            detail=(
+                "active batches 1/4 | sub-batch elapsed 0:10 | split depth 2/8 (current/max) "
+                "| total elapsed shown in timer"
+            ),
+        )
+        self.auditor._nuclei_progress_callback(
+            completed=5.0,
+            total=10,
+            eta="",
+            progress=progress,
+            task=task,
+            start_time=time.time() - 20,
+            timeout=300,
+            total_targets=50,
+            batch_size=5,
+            detail=(
+                "active batches 1/4 | sub-batch elapsed 0:12 | split depth 2/8 (current/max) "
+                "| total elapsed shown in timer"
+            ),
+        )
+
+        self.assertEqual(self.auditor.ui.print_status.call_count, 1)
+
+    def test_nuclei_progress_callback_heartbeat_emits_same_state(self, *args):
+        """Heartbeat should still emit telemetry even when the state is unchanged."""
+        progress = MagicMock()
+        task = MagicMock()
+        self.auditor._touch_activity = MagicMock()
+        self.auditor._format_eta = MagicMock(return_value="5:00")
+        self.auditor.ui.t = MagicMock(side_effect=lambda key, *vals: f"{key}:{vals}")
+        self.auditor.ui.print_status = MagicMock()
+        self.auditor._nuclei_progress_log_state = {
+            "last_emit_ts": time.time() - 31.0,
+            "last_state": "active batches 1/4 | split depth 2/8",
+            "heartbeat_s": 30.0,
+        }
+
+        self.auditor._nuclei_progress_callback(
+            completed=5.0,
+            total=10,
+            eta="",
+            progress=progress,
+            task=task,
+            start_time=time.time() - 20,
+            timeout=300,
+            total_targets=50,
+            batch_size=5,
+            detail=(
+                "active batches 1/4 | sub-batch elapsed 0:42 | split depth 2/8 (current/max) "
+                "| total elapsed shown in timer"
+            ),
+        )
+
+        self.auditor.ui.print_status.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

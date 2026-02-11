@@ -264,6 +264,8 @@ def test_new_nuclei_i18n_keys_formatting():
     es = get_text("nuclei_progress_compact", "es", "lote 1/1", "5:00")
     assert "5:00" in en
     assert "5:00" in es
+    assert "total" in en.lower()
+    assert "total" in es.lower()
 
     en = get_text("nuclei_completed_in", "en", "28:30")
     es = get_text("nuclei_completed_in", "es", "28:30")
