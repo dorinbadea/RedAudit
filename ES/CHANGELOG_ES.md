@@ -10,6 +10,23 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.7] - 11-02-2026
+
+### Anadido
+
+- **Campos de telemetria de duracion en Nuclei**: Las salidas de pipeline/report incluyen ahora `last_run_elapsed_s`, `last_resume_elapsed_s` y `nuclei_total_elapsed_s` para contabilidad explicita de tiempo real.
+
+### Mejorado
+
+- **UX de progreso Nuclei en dos lineas**: El detalle largo de progreso se separa en una linea compacta de barra y otra linea de telemetria para evitar saturacion o truncado en terminal.
+- **Claridad de duracion al finalizar**: En ejecucion inicial y reanudacion, la CLI imprime mensajes explicitos con la duracion completada para lectura directa por operador.
+- **Contexto Nuclei en HTML**: El bloque Nuclei del reporte muestra ahora duracion de la ultima ejecucion, ultima reanudacion y total acumulado.
+
+### Corregido
+
+- **Consistencia de tiempos en progreso**: El reporte de duracion de Nuclei usa ahora medicion wall-clock alrededor de run/reanudar, sin depender de supuestos de la barra visual.
+- **Colision de linea en prompt timeout de reanudacion**: El mensaje de auto-continuacion por timeout ahora siempre cierra con salto de linea antes del siguiente log.
+
 ## [4.20.6] - 11-02-2026
 
 ### Corregido
