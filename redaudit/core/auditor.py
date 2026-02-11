@@ -1564,6 +1564,18 @@ class InteractiveNetworkAuditor:
                             resume_path = self._write_nuclei_resume_state(output_dir, resume_state)
                             if resume_path:
                                 self.results["nuclei"]["resume_pending"] = len(pending_targets)
+                                self.results["nuclei"]["resume_count"] = int(
+                                    resume_state.get("resume_count") or 0
+                                )
+                                self.results["nuclei"]["last_resume_at"] = (
+                                    resume_state.get("last_resume_at") or ""
+                                )
+                                try:
+                                    self.results["nuclei"]["resume_state_file"] = os.path.relpath(
+                                        resume_path, output_dir
+                                    )
+                                except Exception:
+                                    self.results["nuclei"]["resume_state_file"] = resume_path
                                 self.ui.print_status(
                                     self.ui.t("nuclei_resume_saved", resume_path), "WARNING"
                                 )
@@ -3071,6 +3083,9 @@ class InteractiveNetworkAuditor:
             else:
                 nuclei_summary.pop("resume_pending", None)
                 self._clear_nuclei_resume_state(resume_path, output_dir)
+            nuclei_summary["resume_count"] = int(resume_state.get("resume_count") or 0)
+            nuclei_summary["last_resume_at"] = str(resume_state.get("last_resume_at") or "")
+            nuclei_summary["resume_state_file"] = "nuclei_resume.json"
 
             if partial_flag:
                 nuclei_summary["partial"] = True

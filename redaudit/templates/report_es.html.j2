@@ -272,6 +272,10 @@
                         {% if nuclei.findings_suspected is not none %}
                         <li>Sospechosos <span>{{ nuclei.findings_suspected }}</span></li>
                         {% endif %}
+                        <li>Objetivos pendientes de reanudacion <span>{{ nuclei.resume_pending if nuclei.resume_pending is not none else ((nuclei.pending_targets or [])|length) }}</span></li>
+                        <li>Conteo de reanudaciones <span>{{ nuclei.resume_count if nuclei.resume_count is not none else 0 }}</span></li>
+                        <li>Ultima reanudacion <span>{{ nuclei.last_resume_at or '-' }}</span></li>
+                        <li>Archivo de estado de reanudacion <span>{{ nuclei.resume_state_file or '-' }}</span></li>
                         {% if nuclei.partial %}
                         <li>Lotes con timeout <span>{{ (nuclei.timeout_batches or [])|length }}</span></li>
                         <li>Lotes fallidos <span>{{ (nuclei.failed_batches or [])|length }}</span></li>

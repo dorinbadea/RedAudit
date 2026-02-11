@@ -272,6 +272,10 @@
                         {% if nuclei.findings_suspected is not none %}
                         <li>Suspected <span>{{ nuclei.findings_suspected }}</span></li>
                         {% endif %}
+                        <li>Resume pending targets <span>{{ nuclei.resume_pending if nuclei.resume_pending is not none else ((nuclei.pending_targets or [])|length) }}</span></li>
+                        <li>Resume count <span>{{ nuclei.resume_count if nuclei.resume_count is not none else 0 }}</span></li>
+                        <li>Last resume at <span>{{ nuclei.last_resume_at or '-' }}</span></li>
+                        <li>Resume state file <span>{{ nuclei.resume_state_file or '-' }}</span></li>
                         {% if nuclei.partial %}
                         <li>Timeout batches <span>{{ (nuclei.timeout_batches or [])|length }}</span></li>
                         <li>Failed batches <span>{{ (nuclei.failed_batches or [])|length }}</span></li>
