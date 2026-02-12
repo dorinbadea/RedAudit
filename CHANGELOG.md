@@ -10,6 +10,17 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.20.9] - 2026-02-12
+
+### Improved
+
+- **Nuclei dual-line live progress**: Nuclei progress now renders with a dedicated main bar plus a parallel live telemetry line, keeping status visible without flooding terminal history.
+- **Long-run operator readability**: Split-depth, active-batch, and elapsed context are now updated in-place in the live view instead of being repeated as standalone log lines.
+
+### Fixed
+
+- **Nuclei telemetry log spam regression**: Progress callback output now uses a dedicated live telemetry task, preventing repetitive `[nuclei] active batches ...` log bursts during long timeout/retry cycles.
+
 ## [4.20.8] - 2026-02-11
 
 ### Improved

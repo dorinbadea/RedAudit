@@ -10,6 +10,17 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.9] - 12-02-2026
+
+### Mejorado
+
+- **Progreso Nuclei en dos lineas live**: El progreso de Nuclei se renderiza ahora con barra principal dedicada y una linea paralela de telemetria live, manteniendo estado visible sin saturar el historial de terminal.
+- **Legibilidad operativa en ejecuciones largas**: El contexto de profundidad de split, lotes activos y tiempos se actualiza in-place en la vista live en lugar de repetirse como lineas de log separadas.
+
+### Corregido
+
+- **Regresion de spam en logs de telemetria Nuclei**: La salida del callback de progreso usa ahora una tarea live dedicada para telemetria, evitando rafagas repetitivas de logs `[nuclei] active batches ...` durante ciclos largos de timeout/reintento.
+
 ## [4.20.8] - 11-02-2026
 
 ### Mejorado
