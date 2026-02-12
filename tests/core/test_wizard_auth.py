@@ -390,6 +390,12 @@ class TestWizard(unittest.TestCase):
         self.assertTrue(res["auth_enabled"])
         self.assertEqual(res["auth_credentials"], [{"user": "u", "pass": "p"}])
 
+    @patch("redaudit.core.wizard.Wizard._check_and_load_saved_credentials", return_value=False)
+    @patch("redaudit.core.wizard.Wizard.ask_yes_no", side_effect=[True, False])
+    def test_ask_auth_config_manual_decline_disables_auth(self, mock_ask, mock_keyring):
+        res = self.wizard.ask_auth_config(skip_intro=False)
+        self.assertFalse(res["auth_enabled"])
+
     @patch("redaudit.core.wizard.Wizard._check_and_load_saved_credentials", return_value=True)
     @patch("redaudit.core.wizard.Wizard.ask_yes_no", side_effect=[True, True])
     @patch("redaudit.core.wizard.Wizard.ask_choice_with_back", return_value=1)  # Advanced

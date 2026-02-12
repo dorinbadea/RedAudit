@@ -20,6 +20,7 @@ import subprocess
 import sys
 import threading
 import time
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set
 
@@ -1389,93 +1390,98 @@ class InteractiveNetworkAuditor:
                                 )
                                 telemetry_progress.start()
                                 try:
-                                    with Live(
-                                        Group(progress, telemetry_progress),
-                                        console=progress_console,
-                                        transient=False,
-                                        refresh_per_second=4,
-                                    ):
-                                        task = progress.add_task(
-                                            f"[cyan]Nuclei (0/{total_targets})",
-                                            total=total_targets,
-                                            eta_upper=self._format_eta(
-                                                total_batches * nuclei_timeout_s
-                                            ),
-                                            eta_est="",
-                                            detail="",
-                                        )
-                                        telemetry_task = telemetry_progress.add_task(
-                                            f"[bright_blue]{self.ui.t('nuclei_telemetry_waiting')}",
-                                            total=1,
-                                            completed=1,
-                                            detail="",
-                                        )
+                                    with self._nuclei_progress_render_context(progress_console):
+                                        with Live(
+                                            Group(progress, telemetry_progress),
+                                            console=progress_console,
+                                            transient=False,
+                                            refresh_per_second=4,
+                                        ):
+                                            task = progress.add_task(
+                                                f"[cyan]Nuclei (0/{total_targets})",
+                                                total=total_targets,
+                                                eta_upper=self._format_eta(
+                                                    total_batches * nuclei_timeout_s
+                                                ),
+                                                eta_est="",
+                                                detail="",
+                                            )
+                                            telemetry_task = telemetry_progress.add_task(
+                                                f"[bright_blue]{self.ui.t('nuclei_telemetry_waiting')}",
+                                                total=1,
+                                                completed=1,
+                                                detail="",
+                                            )
 
-                                        def _nuclei_progress(
-                                            completed: int, total: int, eta: str
-                                        ) -> None:
-                                            try:
-                                                remaining = max(0, total - completed)
-                                                elapsed_s = max(
-                                                    0.001, time.time() - progress_start_t
-                                                )
-                                                rate = completed / elapsed_s if completed else 0.0
-                                                eta_est_val = (
-                                                    self._format_eta(remaining / rate)
-                                                    if rate > 0.0 and remaining
-                                                    else ""
-                                                )
-                                                progress.update(
+                                            def _nuclei_progress(
+                                                completed: int, total: int, eta: str
+                                            ) -> None:
+                                                try:
+                                                    remaining = max(0, total - completed)
+                                                    elapsed_s = max(
+                                                        0.001, time.time() - progress_start_t
+                                                    )
+                                                    rate = (
+                                                        completed / elapsed_s if completed else 0.0
+                                                    )
+                                                    eta_est_val = (
+                                                        self._format_eta(remaining / rate)
+                                                        if rate > 0.0 and remaining
+                                                        else ""
+                                                    )
+                                                    progress.update(
+                                                        task,
+                                                        completed=completed,
+                                                        description=f"[cyan]Nuclei ({completed}/{total})",
+                                                        eta_upper=self._format_eta(
+                                                            remaining * nuclei_timeout_s
+                                                            if remaining
+                                                            else 0
+                                                        ),
+                                                        eta_est=(
+                                                            f"ETA≈ {eta_est_val}"
+                                                            if eta_est_val
+                                                            else ""
+                                                        ),
+                                                        detail=f"batch {completed}/{total}",
+                                                    )
+                                                except Exception:  # pragma: no cover
+                                                    pass
+
+                                            nuclei_result = run_nuclei_scan(
+                                                targets=nuclei_targets,
+                                                output_dir=output_dir,
+                                                severity=nuclei_severity,
+                                                timeout=nuclei_timeout_s,
+                                                batch_size=batch_size,
+                                                request_timeout=nuclei_request_timeout_s,
+                                                retries=nuclei_retries,
+                                                max_runtime_s=nuclei_max_runtime_s,
+                                                exception_targets=exception_targets,
+                                                fatigue_limit=nuclei_fatigue_limit,
+                                                progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
+                                                    c,
+                                                    t,
+                                                    e,
+                                                    progress,
                                                     task,
-                                                    completed=completed,
-                                                    description=f"[cyan]Nuclei ({completed}/{total})",
-                                                    eta_upper=self._format_eta(
-                                                        remaining * nuclei_timeout_s
-                                                        if remaining
-                                                        else 0
-                                                    ),
-                                                    eta_est=(
-                                                        f"ETA≈ {eta_est_val}" if eta_est_val else ""
-                                                    ),
-                                                    detail=f"batch {completed}/{total}",
-                                                )
-                                            except Exception:  # pragma: no cover
-                                                pass
-
-                                        nuclei_result = run_nuclei_scan(
-                                            targets=nuclei_targets,
-                                            output_dir=output_dir,
-                                            severity=nuclei_severity,
-                                            timeout=nuclei_timeout_s,
-                                            batch_size=batch_size,
-                                            request_timeout=nuclei_request_timeout_s,
-                                            retries=nuclei_retries,
-                                            max_runtime_s=nuclei_max_runtime_s,
-                                            exception_targets=exception_targets,
-                                            fatigue_limit=nuclei_fatigue_limit,
-                                            progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
-                                                c,
-                                                t,
-                                                e,
-                                                progress,
-                                                task,
-                                                progress_start_t,
-                                                nuclei_timeout_s,
-                                                total_targets,
-                                                batch_size,
-                                                telemetry_task=telemetry_task,
-                                                telemetry_progress=telemetry_progress,
-                                                detail=d,
-                                                total_start_time=progress_start_t,
-                                            ),
-                                            use_internal_progress=False,
-                                            logger=self.logger,
-                                            dry_run=bool(self.config.get("dry_run", False)),
-                                            print_status=self.ui.print_status,
-                                            proxy_manager=self.proxy_manager,
-                                            profile=nuclei_profile,
-                                            translate=self.ui.t,
-                                        )
+                                                    progress_start_t,
+                                                    nuclei_timeout_s,
+                                                    total_targets,
+                                                    batch_size,
+                                                    telemetry_task=telemetry_task,
+                                                    telemetry_progress=telemetry_progress,
+                                                    detail=d,
+                                                    total_start_time=progress_start_t,
+                                                ),
+                                                use_internal_progress=False,
+                                                logger=self.logger,
+                                                dry_run=bool(self.config.get("dry_run", False)),
+                                                print_status=self.ui.print_status,
+                                                proxy_manager=self.proxy_manager,
+                                                profile=nuclei_profile,
+                                                translate=self.ui.t,
+                                            )
                                 finally:
                                     telemetry_progress.stop()
                         except Exception:
@@ -2594,6 +2600,40 @@ class InteractiveNetworkAuditor:
         sanitized = "".join(ch for ch in text if ch == "\t" or 32 <= ord(ch) <= 126)
         return re.sub(r"\s{2,}", " ", sanitized).strip()
 
+    @contextmanager
+    def _nuclei_progress_render_context(self, progress_console: Any):
+        """
+        Mark UI progress as active while Nuclei live progress is rendered.
+
+        This lets UIManager suppress routine progress-time WARN/INFO chatter
+        (for example repeated timeout lines) and keeps terminal output readable.
+        """
+        ui = getattr(self, "ui", None)
+        if ui is None:
+            with nullcontext():
+                yield
+            return
+
+        ctx = nullcontext()
+        try:
+            progress_ctx = getattr(ui, "progress_context", None)
+            if callable(progress_ctx):
+                ctx = progress_ctx()
+        except Exception:
+            ctx = nullcontext()
+
+        old_console = getattr(ui, "_active_progress_console", None)
+        with ctx:
+            try:
+                if progress_console is not None and hasattr(ui, "_active_progress_console"):
+                    ui._active_progress_console = progress_console
+                self._ui_progress_active = True
+                yield
+            finally:
+                self._ui_progress_active = False
+                if hasattr(ui, "_active_progress_console"):
+                    ui._active_progress_console = old_console
+
     def _nuclei_progress_callback(
         self,
         completed: float,
@@ -3219,55 +3259,56 @@ class InteractiveNetworkAuditor:
                         )
                         telemetry_progress.start()
                         try:
-                            with Live(
-                                Group(progress, telemetry_progress),
-                                console=progress_console,
-                                transient=False,
-                                refresh_per_second=4,
-                            ):
-                                task = progress.add_task(
-                                    f"[cyan]Nuclei (0/{total_targets})",
-                                    total=total_targets,
-                                    eta_upper=self._format_eta(total_batches * int(timeout_s)),
-                                    eta_est="",
-                                    detail="",
-                                )
-                                telemetry_task = telemetry_progress.add_task(
-                                    f"[bright_blue]{self.ui.t('nuclei_telemetry_waiting')}",
-                                    total=1,
-                                    completed=1,
-                                    detail="",
-                                )
-                                self._nuclei_progress_log_state = {
-                                    "last_emit_ts": 0.0,
-                                    "last_state": "",
-                                    "heartbeat_s": 30.0,
-                                }
-                                self._nuclei_progress_live_state = {
-                                    "last_emit_ts": 0.0,
-                                    "last_state": "",
-                                    "min_interval_s": 1.5,
-                                }
-                                resume_result = run_nuclei_scan(
-                                    **run_kwargs,
-                                    progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
-                                        float(c),
-                                        total_targets,
-                                        e,
-                                        progress,
-                                        task,
-                                        progress_start_t,
-                                        int(timeout_s),
-                                        total_targets,
-                                        int(batch_size),
-                                        telemetry_task=telemetry_task,
-                                        telemetry_progress=telemetry_progress,
-                                        detail=d,
-                                        total_start_time=progress_start_t,
-                                    ),
-                                    use_internal_progress=False,
-                                    translate=self.ui.t,
-                                )
+                            with self._nuclei_progress_render_context(progress_console):
+                                with Live(
+                                    Group(progress, telemetry_progress),
+                                    console=progress_console,
+                                    transient=False,
+                                    refresh_per_second=4,
+                                ):
+                                    task = progress.add_task(
+                                        f"[cyan]Nuclei (0/{total_targets})",
+                                        total=total_targets,
+                                        eta_upper=self._format_eta(total_batches * int(timeout_s)),
+                                        eta_est="",
+                                        detail="",
+                                    )
+                                    telemetry_task = telemetry_progress.add_task(
+                                        f"[bright_blue]{self.ui.t('nuclei_telemetry_waiting')}",
+                                        total=1,
+                                        completed=1,
+                                        detail="",
+                                    )
+                                    self._nuclei_progress_log_state = {
+                                        "last_emit_ts": 0.0,
+                                        "last_state": "",
+                                        "heartbeat_s": 30.0,
+                                    }
+                                    self._nuclei_progress_live_state = {
+                                        "last_emit_ts": 0.0,
+                                        "last_state": "",
+                                        "min_interval_s": 1.5,
+                                    }
+                                    resume_result = run_nuclei_scan(
+                                        **run_kwargs,
+                                        progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
+                                            float(c),
+                                            total_targets,
+                                            e,
+                                            progress,
+                                            task,
+                                            progress_start_t,
+                                            int(timeout_s),
+                                            total_targets,
+                                            int(batch_size),
+                                            telemetry_task=telemetry_task,
+                                            telemetry_progress=telemetry_progress,
+                                            detail=d,
+                                            total_start_time=progress_start_t,
+                                        ),
+                                        use_internal_progress=False,
+                                        translate=self.ui.t,
+                                    )
                         finally:
                             telemetry_progress.stop()
                 except Exception:  # pragma: no cover

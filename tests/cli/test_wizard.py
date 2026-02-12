@@ -894,6 +894,42 @@ def test_format_menu_option_empty():
     assert wiz._format_menu_option("") == ""
 
 
+def test_wizard_service_missing_attr_raises():
+    wiz = _UIWizard()
+    if hasattr(wiz, "_auditor"):
+        delattr(wiz, "_auditor")
+    with pytest.raises(AttributeError):
+        _ = wiz.some_missing_attr
+
+
+def test_style_default_hint_colored():
+    wiz = _UIWizard()
+    wiz.ui.colors["BOLD"] = "<BO>"
+    wiz.ui.colors["WARNING"] = "<W>"
+    wiz.ui.colors["ENDC"] = "<E>"
+    assert wiz._style_default_hint("hint", "WARNING") == "<BO><W>hint<E>"
+
+
+def test_format_menu_option_warning_uses_dim(monkeypatch):
+    wiz = _UIWizard()
+    wiz.ui.colors["WARNING"] = "<W>"
+    wiz.ui.colors["DIM"] = "<D>"
+    wiz.ui.colors["ENDC"] = "<E>"
+    wiz.ui.colors["OKBLUE"] = "<B>"
+    wiz.ui.colors["BOLD"] = "<BO>"
+    wiz.ui.colors["CYAN"] = "<C>"
+    labels = {
+        "yes_default": "Yes (default)",
+        "yes_option": "Yes",
+        "no_default": "No (default)",
+        "no_option": "No",
+        "wizard_go_back": "Cancel",
+        "go_back": "Back",
+    }
+    wiz.ui.t.side_effect = lambda k, *a: labels.get(k, str(k))
+    assert wiz._format_menu_option("Cancel") == "<D><W>Cancel<E>"
+
+
 def test_ask_yes_no_defaults(monkeypatch):
     wiz = _UIWizard()
     monkeypatch.setattr(wiz, "_use_arrow_menu", lambda: False)
@@ -912,13 +948,104 @@ def test_ask_yes_no_with_timeout_non_tty(monkeypatch):
 
 def test_ask_yes_no_with_timeout_posix_input(monkeypatch):
     import select
+    import termios
+    import tty
 
     wiz = _UIWizard()
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
     monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
-    monkeypatch.setattr(sys.stdin, "readline", lambda: "y\n")
+    monkeypatch.setattr(sys.stdin, "fileno", lambda: 0)
+    monkeypatch.setattr(sys.stdin, "read", lambda _n=1: "y")
     monkeypatch.setattr(select, "select", lambda *_a, **_k: ([sys.stdin], [], []))
+    monkeypatch.setattr(termios, "tcgetattr", lambda *_a, **_k: [0, 0, 0, 0, 0, 0, 0])
+    monkeypatch.setattr(termios, "tcsetattr", lambda *_a, **_k: None)
+    monkeypatch.setattr(tty, "setcbreak", lambda *_a, **_k: None)
     assert wiz.ask_yes_no_with_timeout("q", default="no", timeout_s=1) is True
+
+
+def test_ask_yes_no_with_timeout_posix_auto_default(monkeypatch):
+    import select
+    import termios
+    import tty
+    import time as time_mod
+
+    wiz = _UIWizard()
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdin, "fileno", lambda: 0)
+    monkeypatch.setattr(select, "select", lambda *_a, **_k: ([], [], []))
+    monkeypatch.setattr(termios, "tcgetattr", lambda *_a, **_k: [0, 0, 0, 0, 0, 0, 0])
+    monkeypatch.setattr(termios, "tcsetattr", lambda *_a, **_k: None)
+    monkeypatch.setattr(tty, "setcbreak", lambda *_a, **_k: None)
+
+    tick = {"t": 0.0}
+
+    def _fake_time():
+        tick["t"] += 1.0
+        return tick["t"]
+
+    monkeypatch.setattr(time_mod, "time", _fake_time)
+    assert wiz.ask_yes_no_with_timeout("q", default="no", timeout_s=2) is False
+
+
+def test_ask_yes_no_with_timeout_posix_invalid_then_enter_uses_default(monkeypatch):
+    import select
+    import termios
+    import tty
+
+    wiz = _UIWizard()
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdin, "fileno", lambda: 0)
+    reads = iter(["x", "\n"])
+    monkeypatch.setattr(sys.stdin, "read", lambda _n=1: next(reads))
+    monkeypatch.setattr(select, "select", lambda *_a, **_k: ([sys.stdin], [], []))
+    monkeypatch.setattr(termios, "tcgetattr", lambda *_a, **_k: [0, 0, 0, 0, 0, 0, 0])
+    monkeypatch.setattr(termios, "tcsetattr", lambda *_a, **_k: None)
+    monkeypatch.setattr(tty, "setcbreak", lambda *_a, **_k: None)
+    assert wiz.ask_yes_no_with_timeout("q", default="no", timeout_s=2) is False
+
+
+def test_ask_yes_no_with_timeout_posix_empty_read_and_ctrl_c(monkeypatch):
+    import select
+    import termios
+    import tty
+
+    wiz = _UIWizard()
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdin, "fileno", lambda: 0)
+
+    ready = iter([([], [], []), ([sys.stdin], [], []), ([sys.stdin], [], [])])
+
+    def _fake_select(*_a, **_k):
+        return next(ready)
+
+    reads = iter(["", "\x03"])
+    monkeypatch.setattr(select, "select", _fake_select)
+    monkeypatch.setattr(sys.stdin, "read", lambda _n=1: next(reads))
+    monkeypatch.setattr(termios, "tcgetattr", lambda *_a, **_k: [0, 0, 0, 0, 0, 0, 0])
+    monkeypatch.setattr(termios, "tcsetattr", lambda *_a, **_k: None)
+    monkeypatch.setattr(tty, "setcbreak", lambda *_a, **_k: None)
+    assert wiz.ask_yes_no_with_timeout("q", default="no", timeout_s=2) is False
+
+
+def test_ask_yes_no_with_timeout_posix_backspace_then_single_key(monkeypatch):
+    import select
+    import termios
+    import tty
+
+    wiz = _UIWizard()
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stdin, "fileno", lambda: 0)
+    reads = iter(["a", "\x7f", "n"])
+    monkeypatch.setattr(sys.stdin, "read", lambda _n=1: next(reads))
+    monkeypatch.setattr(select, "select", lambda *_a, **_k: ([sys.stdin], [], []))
+    monkeypatch.setattr(termios, "tcgetattr", lambda *_a, **_k: [0, 0, 0, 0, 0, 0, 0])
+    monkeypatch.setattr(termios, "tcsetattr", lambda *_a, **_k: None)
+    monkeypatch.setattr(tty, "setcbreak", lambda *_a, **_k: None)
+    assert wiz.ask_yes_no_with_timeout("q", default="yes", timeout_s=2) is False
 
 
 def test_ask_number_and_choice(monkeypatch):

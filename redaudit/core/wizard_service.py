@@ -546,43 +546,97 @@ class WizardService:
                 import msvcrt
 
                 buffer = ""
-                for remaining in range(int(timeout_s), 0, -1):
-                    sys.stdout.write(f"\r\x1b[2K{prompt}{countdown_label.format(remaining)}")
-                    sys.stdout.flush()
-                    start = time.time()
-                    while time.time() - start < 1.0:
-                        if msvcrt.kbhit():
-                            ch = msvcrt.getwch()
-                            if ch in ("\r", "\n"):
-                                sys.stdout.write("\n")
-                                sys.stdout.flush()
-                                resolved = _resolve_answer(buffer.strip())
-                                return resolved if resolved is not None else is_yes_default
-                            if ch == "\x03":
-                                sys.stdout.write("\n")
-                                sys.stdout.flush()
-                                return is_yes_default
+                deadline = time.time() + int(timeout_s)
+                last_remaining = None
+                while True:
+                    remaining = max(0, int(deadline - time.time() + 0.999))
+                    if remaining != last_remaining:
+                        suffix = f" {buffer}" if buffer else ""
+                        sys.stdout.write(
+                            f"\r\x1b[2K{prompt}{countdown_label.format(remaining)}{suffix}"
+                        )
+                        sys.stdout.flush()
+                        last_remaining = remaining
+                    if time.time() >= deadline:
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
+                        return is_yes_default
+
+                    if msvcrt.kbhit():
+                        ch = msvcrt.getwch()
+                        if ch in ("\r", "\n"):
+                            sys.stdout.write("\n")
+                            sys.stdout.flush()
+                            resolved = _resolve_answer(buffer.strip())
+                            return resolved if resolved is not None else is_yes_default
+                        if ch == "\x03":
+                            sys.stdout.write("\n")
+                            sys.stdout.flush()
+                            return is_yes_default
+                        if ch in ("\b", "\x7f"):
+                            buffer = buffer[:-1]
+                            continue
+                        if ch and ch.isprintable():
                             buffer += ch
-                        time.sleep(0.05)
-                sys.stdout.write("\n")
-                sys.stdout.flush()
-                return is_yes_default
+                            if len(buffer) == 1 and ch.lower() in ("y", "s", "n"):
+                                sys.stdout.write("\n")
+                                sys.stdout.flush()
+                                return ch.lower() in ("y", "s")
+                    time.sleep(0.05)
 
             import select
+            import termios
+            import tty
 
-            for remaining in range(int(timeout_s), 0, -1):
-                sys.stdout.write(f"\r\x1b[2K{prompt}{countdown_label.format(remaining)}")
-                sys.stdout.flush()
-                ready, _, _ = select.select([sys.stdin], [], [], 1)
-                if ready:
-                    ans = sys.stdin.readline().strip()
-                    sys.stdout.write("\n")
-                    sys.stdout.flush()
-                    resolved = _resolve_answer(ans)
-                    return resolved if resolved is not None else is_yes_default
-            sys.stdout.write("\n")
-            sys.stdout.flush()  # pragma: no cover
-            return is_yes_default
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            buffer = ""
+            deadline = time.time() + int(timeout_s)
+            last_remaining = None
+            try:
+                tty.setcbreak(fd)
+                while True:
+                    remaining = max(0, int(deadline - time.time() + 0.999))
+                    if remaining != last_remaining:
+                        suffix = f" {buffer}" if buffer else ""
+                        sys.stdout.write(
+                            f"\r\x1b[2K{prompt}{countdown_label.format(remaining)}{suffix}"
+                        )
+                        sys.stdout.flush()
+                        last_remaining = remaining
+
+                    if time.time() >= deadline:
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
+                        return is_yes_default
+
+                    ready, _, _ = select.select([sys.stdin], [], [], 0.10)
+                    if not ready:
+                        continue
+
+                    ch = sys.stdin.read(1)
+                    if not ch:
+                        continue
+                    if ch in ("\r", "\n"):
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
+                        resolved = _resolve_answer(buffer.strip())
+                        return resolved if resolved is not None else is_yes_default
+                    if ch == "\x03":
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
+                        return is_yes_default
+                    if ch in ("\b", "\x7f"):
+                        buffer = buffer[:-1]
+                        continue
+                    if ch.isprintable():
+                        buffer += ch
+                        if len(buffer) == 1 and ch.lower() in ("y", "s", "n"):
+                            sys.stdout.write("\n")
+                            sys.stdout.flush()
+                            return ch.lower() in ("y", "s")
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         except KeyboardInterrupt:  # pragma: no cover
             sys.stdout.write("\n")
             sys.stdout.flush()
