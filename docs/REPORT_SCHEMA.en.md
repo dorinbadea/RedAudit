@@ -171,7 +171,8 @@ Appears only when Nuclei scanning is enabled and available.
 | `targets_total` | integer | Total HTTP/HTTPS targets effectively executed after optimization |
 | `targets_pre_optimization` | integer | Total HTTP/HTTPS targets discovered before optimization (best-effort) |
 | `targets_exception` | integer | Targets treated as exceptions (full coverage + retries) |
-| `targets_optimized` | integer | Targets selected after optimization |
+| `targets_optimized` | integer | Targets selected on optimized (strong-identity) hosts only |
+| `targets_selected_after_optimization` | integer | Total targets selected after optimization (optimized + exception targets) |
 | `targets_excluded` | integer | Targets excluded by user filters |
 | `fatigue_limit` | integer | Max split depth for exception retries (fatigue cap) |
 | `findings` | integer | Nuclei findings parsed |
@@ -286,7 +287,8 @@ Compact roll-up for dashboards.
 | `targets_total` | integer | Total HTTP targets effectively executed after optimization |
 | `targets_pre_optimization` | integer | Total HTTP targets discovered before optimization (best-effort) |
 | `targets_exception` | integer | Targets treated as exceptions (full coverage + retries) |
-| `targets_optimized` | integer | Targets selected after optimization |
+| `targets_optimized` | integer | Targets selected on optimized (strong-identity) hosts only |
+| `targets_selected_after_optimization` | integer | Total targets selected after optimization (optimized + exception targets) |
 | `targets_excluded` | integer | Targets excluded by user filters |
 | `fatigue_limit` | integer | Max split depth for exception retries (fatigue cap) |
 | `leak_follow_mode` | string | Leak-follow mode used by runtime (`off`/`safe`) |
