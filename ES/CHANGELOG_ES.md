@@ -10,6 +10,17 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.11] - 12-02-2026
+
+### Mejorado
+
+- **Control de ruido por timeouts de Nuclei**: Los reintentos rutinarios por timeout se filtran ahora en la vista live, reduciendo saturacion de terminal en ejecuciones largas sin perder transiciones de estado relevantes.
+
+### Corregido
+
+- **Fiabilidad del prompt de timeout en reanudacion**: `ask_yes_no_with_timeout` usa ahora lectura no bloqueante por caracteres, de modo que la auto-continuacion en 15 segundos ya no se queda esperando Enter.
+- **UX de interaccion en prompt de reanudacion**: El prompt acepta de forma consistente respuestas rapidas `y`/`n` y respuestas completas con Enter tanto en terminales POSIX como Windows.
+
 ## [4.20.10] - 12-02-2026
 
 ### Mejorado

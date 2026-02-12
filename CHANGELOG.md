@@ -10,6 +10,17 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.20.11] - 2026-02-12
+
+### Improved
+
+- **Nuclei timeout-noise control**: Routine timeout retries are now filtered from live progress output, reducing terminal churn during long Nuclei runs while preserving meaningful state transitions.
+
+### Fixed
+
+- **Resume timeout prompt reliability**: `ask_yes_no_with_timeout` now reads input in non-blocking character mode, so the 15-second auto-continue path no longer stalls waiting for Enter.
+- **Resume prompt interaction UX**: Timeout prompts now accept immediate single-key `y`/`n` responses (and Enter-backed full answers) consistently across POSIX and Windows terminals.
+
 ## [4.20.10] - 2026-02-12
 
 ### Improved
