@@ -207,13 +207,13 @@ def test_new_nuclei_i18n_keys_formatting():
     assert "1/2" in es
     assert "0:10" in en
     assert "0:10" in es
-    assert "sub-batch" in en
-    assert "sub-lote" in es
+    assert "AB" in en
+    assert "AB" in es
 
     en_split = get_text("nuclei_detail_split", "en", 3, 10)
     es_split = get_text("nuclei_detail_split", "es", 3, 10)
-    assert "split depth" in en_split
-    assert "profundidad" in es_split
+    assert "SD" in en_split
+    assert "SD" in es_split
 
     en = get_text("nuclei_resume_pending", "en", 5)
     es = get_text("nuclei_resume_pending", "es", 5)
@@ -260,12 +260,10 @@ def test_new_nuclei_i18n_keys_formatting():
     assert "1/4" in en
     assert "1/4" in es
 
-    en = get_text("nuclei_progress_compact", "en", "batch 1/1", "5:00")
-    es = get_text("nuclei_progress_compact", "es", "lote 1/1", "5:00")
-    assert "5:00" in en
-    assert "5:00" in es
-    assert "total" in en.lower()
-    assert "total" in es.lower()
+    en = get_text("nuclei_progress_compact", "en", "B 1/1 | SB 0:10")
+    es = get_text("nuclei_progress_compact", "es", "B 1/1 | SB 0:10")
+    assert "B 1/1" in en
+    assert "B 1/1" in es
 
     en_wait = get_text("nuclei_telemetry_waiting", "en")
     es_wait = get_text("nuclei_telemetry_waiting", "es")

@@ -932,6 +932,19 @@ def test_progress_columns_import_error(monkeypatch):
     assert ui._progress_columns(show_detail=True, show_eta=True, show_elapsed=True) == []
 
 
+def test_nuclei_telemetry_columns_import_error(monkeypatch):
+    ui = _MockUI()
+    real_import = builtins.__import__
+
+    def _blocked_import(name, *args, **kwargs):
+        if name == "rich.progress":
+            raise ImportError("blocked")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _blocked_import)
+    assert ui._nuclei_telemetry_columns() == []
+
+
 def test_setup_logging_warning_when_file_disabled(monkeypatch, caplog):
     logger = logging.getLogger("RedAudit")
     original_handlers = list(logger.handlers)

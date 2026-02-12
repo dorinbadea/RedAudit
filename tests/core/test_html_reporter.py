@@ -301,6 +301,7 @@ def test_generate_html_report_includes_nuclei_resume_metadata():
             "agentless_verify": {"completed": 0, "signals": {}},
             "nuclei": {
                 "findings": 1,
+                "targets_selected_after_optimization": 38,
                 "resume_pending": 4,
                 "resume_count": 2,
                 "last_resume_at": "2026-02-11T02:30:00",
@@ -315,6 +316,7 @@ def test_generate_html_report_includes_nuclei_resume_metadata():
         },
     }
     html = html_reporter.generate_html_report(results, {})
+    assert "Selected after optimization" in html
     assert "Resume pending targets" in html
     assert "Resume count" in html
     assert "Last resume at" in html
@@ -338,6 +340,7 @@ def test_generate_html_report_es_includes_nuclei_resume_metadata():
             "agentless_verify": {"completed": 0, "signals": {}},
             "nuclei": {
                 "findings": 1,
+                "targets_selected_after_optimization": 12,
                 "resume_pending": 3,
                 "resume_count": 1,
                 "last_resume_at": "2026-02-11T02:31:00",
@@ -352,6 +355,7 @@ def test_generate_html_report_es_includes_nuclei_resume_metadata():
         },
     }
     html = html_reporter.generate_html_report(results, {}, lang="es")
+    assert "Seleccionados tras optimizacion" in html
     assert "Objetivos pendientes de reanudacion" in html
     assert "Conteo de reanudaciones" in html
     assert "Ultima reanudacion" in html
@@ -742,6 +746,16 @@ def test_prepare_report_data_nuclei_elapsed_invalid_values_normalized():
     assert nuclei["last_resume_elapsed_s_display"] == "0:15"
     assert nuclei["nuclei_total_elapsed_s"] == 0
     assert nuclei["nuclei_total_elapsed_s_display"] == "0:00"
+
+
+def test_prepare_report_data_nuclei_selected_targets_fallback():
+    results = {
+        "pipeline": {"nuclei": {"targets": "17", "targets_selected_after_optimization": "bad"}}
+    }
+    data = html_reporter.prepare_report_data(results, {}, lang="en")
+    nuclei = data["pipeline"]["nuclei"]
+    assert nuclei["targets"] == 17
+    assert nuclei["targets_selected_after_optimization"] == 0
 
 
 def test_get_template_env_import_error():

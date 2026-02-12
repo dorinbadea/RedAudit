@@ -1372,6 +1372,12 @@ def test_resume_nuclei_progress_uses_pending_total(resume_session_log_stub):
             def __exit__(self, exc_type, exc, tb):
                 return False
 
+            def start(self):
+                return None
+
+            def stop(self):
+                return None
+
             def add_task(self, description, total, **kwargs):
                 updates.setdefault("tasks", []).append(
                     {
@@ -1405,6 +1411,8 @@ def test_resume_nuclei_progress_uses_pending_total(resume_session_log_stub):
             patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
             patch.object(auditor, "_progress_console", return_value=Console()),
             patch("rich.progress.Progress", _DummyProgress),
+            patch("rich.live.Live"),
+            patch("rich.console.Group", side_effect=lambda *a, **k: object()),
         ):
             ok = auditor._resume_nuclei_from_state(
                 resume_state=state,
@@ -1423,7 +1431,7 @@ def test_resume_nuclei_progress_uses_pending_total(resume_session_log_stub):
 
         update_entries = updates.get("updates", [])
         assert any("Nuclei (1/2)" in entry.get("description", "") for entry in update_entries)
-        assert any("total" in entry.get("description", "") for entry in update_entries)
+        assert any("B 1/2" in entry.get("description", "") for entry in update_entries)
 
 
 def test_resume_nuclei_from_state_preserves_duration_and_targets(resume_session_log_stub):
@@ -2032,6 +2040,12 @@ def test_resume_nuclei_from_state_uses_progress_callback(monkeypatch, resume_ses
             def __exit__(self, *_a):
                 return False
 
+            def start(self):
+                return None
+
+            def stop(self):
+                return None
+
             def add_task(self, *_a, **_k):
                 return "task"
 
@@ -2047,6 +2061,8 @@ def test_resume_nuclei_from_state_uses_progress_callback(monkeypatch, resume_ses
             patch.object(auditor, "_append_nuclei_output", lambda *_a, **_k: None),
         ):
             monkeypatch.setattr("rich.progress.Progress", _Progress)
+            monkeypatch.setattr("rich.live.Live", MagicMock())
+            monkeypatch.setattr("rich.console.Group", lambda *a, **k: object())
             monkeypatch.setattr(auditor, "_progress_columns", lambda **_k: [])
             monkeypatch.setattr(auditor, "_progress_console", lambda: Console())
             ok = auditor._resume_nuclei_from_state(
