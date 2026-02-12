@@ -228,8 +228,8 @@ class TestNucleiParallel(unittest.TestCase):
 
         self.assertTrue(res["success"])
         self.assertTrue(
-            any("active batches" in detail for detail in details),
-            "Expected active batch detail updates",
+            any(detail.startswith("AB ") for detail in details),
+            "Expected compact parallel batch detail updates",
         )
 
     def test_sequential_detail_avoids_parallel_label_with_budget(self):
@@ -279,12 +279,12 @@ class TestNucleiParallel(unittest.TestCase):
         self.assertTrue(res["success"])
         self.assertTrue(details, "Expected progress detail updates")
         self.assertTrue(
-            any("batch" in detail for detail in details),
-            "Expected sequential batch detail updates",
+            any(detail.startswith("B ") for detail in details),
+            "Expected compact sequential batch detail updates",
         )
         self.assertFalse(
-            any("active batches" in detail for detail in details),
-            "Sequential mode should not report active batches",
+            any(detail.startswith("AB ") for detail in details),
+            "Sequential mode should not report compact parallel batch details",
         )
 
     def test_parallel_clamps_when_timeout_high(self):

@@ -16,6 +16,11 @@ def _write_valid_summary(run_dir: Path) -> None:
     (run_dir / "summary.json").write_text(json.dumps({"ok": True}), encoding="utf-8")
 
 
+def _write_summary_with_nuclei(run_dir: Path, nuclei: dict) -> None:
+    payload = {"pipeline": {"nuclei": nuclei}}
+    (run_dir / "summary.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
 def test_validate_scan_folder_strict_passes_with_valid_inputs(tmp_path):
     run_dir = tmp_path / "scan"
     run_dir.mkdir()
@@ -368,3 +373,108 @@ def test_validate_scan_folder_warns_on_empty_nuclei_resume_output(tmp_path):
 
     result = scan_artifact_gate.validate_scan_folder(run_dir, strict=True)
     assert any("nuclei_output_resume.json is empty" in issue.message for issue in result.warnings)
+
+
+def test_validate_scan_folder_nuclei_parity_passes(tmp_path):
+    run_dir = tmp_path / "scan"
+    run_dir.mkdir()
+    _write_summary_with_nuclei(
+        run_dir,
+        {
+            "last_run_elapsed_s": 90,
+            "last_resume_elapsed_s": 30,
+            "nuclei_total_elapsed_s": 120,
+            "resume_pending": 2,
+            "resume_count": 1,
+            "resume_state_file": "nuclei_resume.json",
+        },
+    )
+    (run_dir / "assets.jsonl").write_text("\n", encoding="utf-8")
+    (run_dir / "findings.jsonl").write_text("\n", encoding="utf-8")
+    manifest = {
+        "artifacts": [
+            {"path": "summary.json"},
+            {"path": "assets.jsonl"},
+            {"path": "findings.jsonl"},
+        ],
+        "pipeline": {
+            "nuclei": {
+                "last_run_elapsed_s": 90,
+                "last_resume_elapsed_s": 30,
+                "nuclei_total_elapsed_s": 120,
+            }
+        },
+        "nuclei_resume": {"path": "nuclei_resume.json", "pending_targets": 2, "resume_count": 1},
+    }
+    (run_dir / "run_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = scan_artifact_gate.validate_scan_folder(run_dir, strict=True)
+    assert not any(issue.category == "nuclei_parity" for issue in result.errors)
+
+
+def test_validate_scan_folder_nuclei_parity_reports_mismatch(tmp_path):
+    run_dir = tmp_path / "scan"
+    run_dir.mkdir()
+    _write_summary_with_nuclei(
+        run_dir,
+        {
+            "last_run_elapsed_s": 90,
+            "last_resume_elapsed_s": 30,
+            "nuclei_total_elapsed_s": 120,
+            "resume_pending": 5,
+            "resume_count": 3,
+            "resume_state_file": "nuclei_resume.json",
+        },
+    )
+    (run_dir / "assets.jsonl").write_text("\n", encoding="utf-8")
+    (run_dir / "findings.jsonl").write_text("\n", encoding="utf-8")
+    manifest = {
+        "artifacts": [
+            {"path": "summary.json"},
+            {"path": "assets.jsonl"},
+            {"path": "findings.jsonl"},
+        ],
+        "pipeline": {
+            "nuclei": {
+                "last_run_elapsed_s": 1,
+                "last_resume_elapsed_s": 2,
+                "nuclei_total_elapsed_s": 3,
+            }
+        },
+        "nuclei_resume": {"path": "state.json", "pending_targets": 1, "resume_count": 0},
+    }
+    (run_dir / "run_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = scan_artifact_gate.validate_scan_folder(run_dir, strict=True)
+    assert any(issue.category == "nuclei_parity" for issue in result.errors)
+
+
+def test_validate_ndjson_output_reports_non_object_and_empty_strict(tmp_path):
+    ndjson = tmp_path / "nuclei_output.json"
+    ndjson.write_text("\n[]\n", encoding="utf-8")
+
+    issues = scan_artifact_gate._validate_ndjson_output(
+        ndjson,
+        label="nuclei_output.json",
+        allow_empty=False,
+    )
+    assert any("expected JSON object" in issue.message for issue in issues)
+
+
+def test_safe_int_returns_default_on_invalid_values():
+    assert scan_artifact_gate._safe_int("bad", 9) == 9
+    assert scan_artifact_gate._safe_int(None, 5) == 5
+
+
+def test_validate_nuclei_parity_skips_when_pipeline_is_not_dict():
+    issues = scan_artifact_gate._validate_nuclei_parity(
+        {"pipeline": []},
+        {"pipeline": {}},
+    )
+    assert issues == []
+
+    issues = scan_artifact_gate._validate_nuclei_parity(
+        {"pipeline": {"nuclei": []}},
+        {"pipeline": {"nuclei": {}}},
+    )
+    assert issues == []

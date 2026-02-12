@@ -78,6 +78,18 @@ def _build_nuclei_pipeline(nuclei_state: Any) -> Dict[str, Any]:
         nuclei["last_resume_at"] = ""
     if nuclei.get("resume_state_file"):
         nuclei["resume_state_file"] = str(nuclei.get("resume_state_file"))
+    for int_key in (
+        "targets",
+        "targets_total",
+        "targets_pre_optimization",
+        "targets_optimized",
+        "targets_excluded",
+        "targets_selected_after_optimization",
+    ):
+        if int_key in nuclei:
+            nuclei[int_key] = _safe_int(nuclei.get(int_key), 0)
+    if "targets_selected_after_optimization" not in nuclei and "targets" in nuclei:
+        nuclei["targets_selected_after_optimization"] = _safe_int(nuclei.get("targets"), 0)
     for elapsed_key in ("last_run_elapsed_s", "last_resume_elapsed_s", "nuclei_total_elapsed_s"):
         if elapsed_key in nuclei:
             nuclei[elapsed_key] = _safe_int(nuclei.get(elapsed_key), 0)
@@ -1022,6 +1034,15 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                     lines.append("  Nuclei: profile {profile}\n".format(profile=selected_profile))
             elif effective_profile:
                 lines.append("  Nuclei: profile {profile}\n".format(profile=effective_profile))
+            if nuclei.get("targets_selected_after_optimization") is not None:
+                lines.append(
+                    "  Nuclei: selected after optimization {selected}/{total}\n".format(
+                        selected=nuclei.get("targets_selected_after_optimization", 0),
+                        total=nuclei.get(
+                            "targets_pre_optimization", nuclei.get("targets_total", 0)
+                        ),
+                    )
+                )
             if nuclei.get("partial"):
                 timeout_batches = len(nuclei.get("timeout_batches") or [])
                 failed_batches = len(nuclei.get("failed_batches") or [])
@@ -1036,6 +1057,24 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
             suspected = nuclei.get("findings_suspected")
             if suspected:
                 lines.append("  Nuclei: suspected {count}\n".format(count=suspected))
+            if nuclei.get("last_run_elapsed_s") is not None:
+                lines.append(
+                    "  Nuclei: last run elapsed {elapsed}s\n".format(
+                        elapsed=nuclei.get("last_run_elapsed_s")
+                    )
+                )
+            if nuclei.get("last_resume_elapsed_s") is not None:
+                lines.append(
+                    "  Nuclei: last resume elapsed {elapsed}s\n".format(
+                        elapsed=nuclei.get("last_resume_elapsed_s")
+                    )
+                )
+            if nuclei.get("nuclei_total_elapsed_s") is not None:
+                lines.append(
+                    "  Nuclei: total elapsed {elapsed}s\n".format(
+                        elapsed=nuclei.get("nuclei_total_elapsed_s")
+                    )
+                )
             suspected_items = nuclei.get("suspected") or []
             if suspected_items:
                 lines.append("  Nuclei suspected details:\n")

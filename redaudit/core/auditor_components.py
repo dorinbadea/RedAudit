@@ -439,6 +439,22 @@ class AuditorUI:
             )
         return [c for c in columns if c is not None]
 
+    def _nuclei_telemetry_columns(self):
+        """Compact one-line telemetry (no bar, no elapsed duplication)."""
+        try:
+            from rich.progress import SpinnerColumn
+        except ImportError:
+            return []
+        columns = [
+            SpinnerColumn("dots"),
+            self._safe_text_column(
+                "[progress.description]{task.description}",
+                overflow="ellipsis",
+                no_wrap=True,
+            ),
+        ]
+        return [c for c in columns if c is not None]
+
     @contextmanager
     def _progress_ui(self):
         prev = self._ui_progress_active

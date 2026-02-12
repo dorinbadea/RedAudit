@@ -291,6 +291,7 @@ class TestAuditorSubprocess(unittest.TestCase):
     def test_nuclei_progress_callback_updates_secondary_telemetry_task(self, *args):
         """With a telemetry task, details stay in Live progress and do not spam INFO logs."""
         progress = MagicMock()
+        telemetry_progress = MagicMock()
         task = MagicMock()
         telemetry_task = MagicMock()
         self.auditor._touch_activity = MagicMock()
@@ -308,16 +309,18 @@ class TestAuditorSubprocess(unittest.TestCase):
             total_targets=50,
             batch_size=5,
             telemetry_task=telemetry_task,
+            telemetry_progress=telemetry_progress,
             detail=(
                 "active batches 2/4 | sub-batch elapsed 0:12 | split depth 3/6 (current/max) "
                 "| total elapsed shown in timer"
             ),
         )
 
-        assert progress.update.call_count == 2
-        telemetry_update = progress.update.call_args_list[-1].kwargs
-        assert telemetry_update["description"].startswith("[bright_blue]active batches 2/4")
-        assert "sub-batch elapsed 0:12" in telemetry_update["description"]
+        assert progress.update.call_count == 1
+        telemetry_update = telemetry_progress.update.call_args.kwargs
+        assert telemetry_update["description"].startswith("[bright_blue]AB 2/4")
+        assert "SB 0:12" in telemetry_update["description"]
+        assert "SD 3/6" in telemetry_update["description"]
         self.auditor.ui.print_status.assert_not_called()
 
     def test_nuclei_progress_callback_sub_batch_clamps_completion(self, *args):
@@ -458,6 +461,90 @@ class TestAuditorSubprocess(unittest.TestCase):
         )
 
         self.auditor.ui.print_status.assert_called_once()
+
+    def test_nuclei_progress_callback_compacts_spanish_tokens(self, *args):
+        """Spanish detail tokens are normalized to compact AB/B/SB/SD style."""
+        line = self.auditor._build_nuclei_telemetry_line(
+            "lotes activos 3/4 | tiempo de sub-lote 0:15 | profundidad de division 2/8 (actual/maximo)",
+            completed=1.0,
+            total=4,
+        )
+        assert "AB 3/4" in line
+        assert "SB 0:15" in line
+        assert "SD 2/8" in line
+
+    def test_build_nuclei_telemetry_line_handles_non_string_detail_and_fallback(self, *args):
+        """Non-string details should safely fallback to compact batch counters."""
+        line = self.auditor._build_nuclei_telemetry_line(None, completed=3.0, total=7)
+        assert line == "B 3/7"
+
+    def test_build_nuclei_telemetry_line_supports_retry_and_complete_tokens(self, *args):
+        """Retry and completion tokens should map to compact output without loss."""
+        line = self.auditor._build_nuclei_telemetry_line(
+            "retry 2 | batches 2/2 complete",
+            completed=2.0,
+            total=2,
+        )
+        assert "R 2" in line
+        assert "batches 2/2 complete" in line
+
+    def test_sanitize_terminal_status_text_non_string(self, *args):
+        assert self.auditor._sanitize_terminal_status_text(123) == ""
+
+    def test_sanitize_terminal_status_text_strips_non_ascii(self, *args):
+        cleaned = self.auditor._sanitize_terminal_status_text("AB 1/2 | SB 0:10 ✅")
+        assert "✅" not in cleaned
+        assert cleaned == "AB 1/2 | SB 0:10"
+
+    def test_nuclei_progress_callback_marks_compact_ab_detail_as_running(self, *args):
+        """Compact AB detail must keep progress one step below completion while running."""
+        progress = MagicMock()
+        self.auditor._touch_activity = MagicMock()
+        self.auditor._format_eta = MagicMock(return_value="")
+
+        self.auditor._nuclei_progress_callback(
+            completed=10.0,
+            total=10,
+            eta="",
+            progress=progress,
+            task="task",
+            start_time=time.time() - 5,
+            timeout=300,
+            total_targets=10,
+            batch_size=1,
+            detail="AB 1/2 | SB 0:05",
+        )
+
+        call_kwargs = progress.update.call_args.kwargs
+        assert call_kwargs["completed"] == 9
+
+    def test_nuclei_progress_callback_uses_primary_progress_when_secondary_missing(self, *args):
+        """When telemetry task exists but no telemetry progress is passed, reuse main progress."""
+        progress = MagicMock()
+        self.auditor._touch_activity = MagicMock()
+        self.auditor._format_eta = MagicMock(return_value="")
+
+        self.auditor._nuclei_progress_callback(
+            completed=1.0,
+            total=2,
+            eta="",
+            progress=progress,
+            task="task",
+            start_time=time.time() - 5,
+            timeout=300,
+            total_targets=2,
+            batch_size=1,
+            telemetry_task="telemetry",
+            detail="batch 1/2 | sub-batch elapsed 0:02",
+        )
+
+        assert progress.update.call_count >= 2
+
+    @patch("redaudit.core.auditor.os.listdir", side_effect=OSError("boom"))
+    def test_find_nuclei_resume_candidates_handles_listdir_exception(self, _mock_listdir, *args):
+        result = self.auditor._find_nuclei_resume_candidates("/tmp")
+        assert result == []
+        self.auditor.logger.debug.assert_called()
 
 
 if __name__ == "__main__":

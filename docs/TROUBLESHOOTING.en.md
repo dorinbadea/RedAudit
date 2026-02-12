@@ -230,9 +230,9 @@ sudo apt update && sudo apt install nuclei
 - Lower the Nuclei rate limit or increase the timeout in config if needed.
 - Read progress detail correctly:
   - Nuclei progress uses two lines: one compact bar line and one telemetry line.
-  - Telemetry line includes dynamic `sub-batch elapsed` and `split depth` updates while the bar keeps global progress.
-  - `split depth X/Y (current/max)` = current retry split depth vs fatigue cap.
-  - `total elapsed` in telemetry = total wall-clock elapsed for the current Nuclei step.
+  - Telemetry line uses compact tokens: `AB`/`B` (batch context), `SB` (sub-batch elapsed), `SD` (split depth).
+  - `SD X/Y` = current retry split depth vs fatigue cap.
+  - Total wall-clock elapsed is shown by the main bar timer only.
   - During live progress, telemetry is updated in-place instead of printing repeated `[INFO]` lines.
 - Confirm final timing from completion logs:
   - `Nuclei completed in ...` (initial run)
@@ -258,6 +258,7 @@ JSON/JSONL contract checks (`summary.json`, `assets.jsonl`, `findings.jsonl`), a
 Expected behavior:
 - `nuclei_output.json` must be NDJSON (one JSON object per non-empty line).
 - `nuclei_output_resume.json` may be empty when no additional records were appended by resume.
+- In strict mode, Nuclei parity checks validate resume/timing coherence between `summary.json` and `run_manifest.json`.
 
 ### 12e. testssl.sh not found / TLS deep checks skipped (v3.6.1+)
 

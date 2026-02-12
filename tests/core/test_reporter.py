@@ -607,6 +607,7 @@ class TestReporter(unittest.TestCase):
                 "resume_count": "2",
                 "last_resume_at": None,
                 "resume_state_file": "nuclei_resume.json",
+                "targets": "9",
                 "last_run_elapsed_s": "121",
                 "last_resume_elapsed_s": "31",
                 "nuclei_total_elapsed_s": "152",
@@ -621,6 +622,7 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(nuclei.get("resume_count"), 2)
         self.assertEqual(nuclei.get("last_resume_at"), "")
         self.assertEqual(nuclei.get("resume_state_file"), "nuclei_resume.json")
+        self.assertEqual(nuclei.get("targets_selected_after_optimization"), 9)
         self.assertEqual(nuclei.get("last_run_elapsed_s"), 121)
         self.assertEqual(nuclei.get("last_resume_elapsed_s"), 31)
         self.assertEqual(nuclei.get("nuclei_total_elapsed_s"), 152)

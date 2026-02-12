@@ -169,7 +169,8 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `targets_total` | integer | Targets HTTP/HTTPS efectivamente ejecutados tras la optimizacion |
 | `targets_pre_optimization` | integer | Targets HTTP/HTTPS descubiertos antes de optimizar (best-effort) |
 | `targets_exception` | integer | Targets tratados como excepcion (cobertura completa + reintentos) |
-| `targets_optimized` | integer | Targets seleccionados tras la optimizacion |
+| `targets_optimized` | integer | Targets seleccionados solo en hosts optimizados (identidad fuerte) |
+| `targets_selected_after_optimization` | integer | Total de targets seleccionados tras optimizar (optimizados + excepcion) |
 | `targets_excluded` | integer | Targets excluidos por filtros del usuario |
 | `fatigue_limit` | integer | Profundidad maxima de split para reintentos por excepcion (limite de fatiga) |
 | `findings` | integer | Hallazgos Nuclei parseados |
@@ -280,7 +281,8 @@ Notas:
 | `targets_total` | integer | Objetivos HTTP efectivamente ejecutados tras optimizar |
 | `targets_pre_optimization` | integer | Objetivos HTTP descubiertos antes de optimizar (best-effort) |
 | `targets_exception` | integer | Objetivos tratados como excepcion (cobertura completa + reintentos) |
-| `targets_optimized` | integer | Objetivos seleccionados tras optimizar |
+| `targets_optimized` | integer | Objetivos seleccionados solo en hosts optimizados (identidad fuerte) |
+| `targets_selected_after_optimization` | integer | Total de objetivos seleccionados tras optimizar (optimizados + excepcion) |
 | `targets_excluded` | integer | Objetivos excluidos por filtros del usuario |
 | `fatigue_limit` | integer | Profundidad maxima de split para reintentos por excepcion (limite de fatiga) |
 | `leak_follow_mode` | string | Modo leak-follow usado en runtime (`off`/`safe`) |

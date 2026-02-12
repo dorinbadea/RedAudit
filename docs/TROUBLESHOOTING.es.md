@@ -230,9 +230,9 @@ sudo apt update && sudo apt install nuclei
 - Bajar el rate limit de Nuclei o aumentar el timeout en la configuración.
 - Leer correctamente el detalle de progreso:
   - El progreso de Nuclei usa dos lineas: una barra compacta y una linea de telemetria.
-  - La linea de telemetria incluye actualizaciones dinamicas de `tiempo de sub-lote` y `profundidad de division` mientras la barra mantiene el progreso global.
-  - `profundidad de division X/Y (actual/maximo)` = profundidad actual del split de reintentos frente al limite de fatiga.
-  - `tiempo total` en telemetria = tiempo wall-clock total de la etapa Nuclei.
+  - La telemetria usa tokens compactos: `AB`/`B` (contexto de lote), `SB` (tiempo de sub-lote), `SD` (profundidad de split).
+  - `SD X/Y` = profundidad actual del split de reintentos frente al limite de fatiga.
+  - El tiempo wall-clock total se muestra solo en el temporizador de la barra principal.
   - Durante el progreso en vivo, la telemetria se actualiza en su propia linea y evita lineas repetidas de `[INFO]`.
 - Confirmar duracion final en mensajes de cierre:
   - `Nuclei completado en ...` (ejecucion inicial)
@@ -258,6 +258,7 @@ contrato JSON/JSONL (`summary.json`, `assets.jsonl`, `findings.jsonl`) y flujos 
 Comportamiento esperado:
 - `nuclei_output.json` debe ser NDJSON (un objeto JSON por cada linea no vacia).
 - `nuclei_output_resume.json` puede quedar vacio cuando una reanudacion no agrega registros adicionales.
+- En modo estricto, se valida paridad de campos de reanudacion/tiempo de Nuclei entre `summary.json` y `run_manifest.json`.
 
 ### 12e. testssl.sh no encontrado / checks TLS profundos omitidos (v3.6.1+)
 

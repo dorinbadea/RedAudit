@@ -257,6 +257,7 @@
                     <ul>
                         {% set nuclei = pipeline.nuclei or {} %}
                         <li>Objetivos <span>{{ nuclei.targets or 0 }}</span></li>
+                        <li>Seleccionados tras optimizacion <span>{{ nuclei.targets_selected_after_optimization if nuclei.targets_selected_after_optimization is not none else (nuclei.targets or 0) }}</span></li>
                         <li>Hallazgos <span>{{ nuclei.findings or 0 }}</span></li>
                         {% if nuclei.profile_selected and nuclei.profile_effective and nuclei.profile_selected != nuclei.profile_effective %}
                         <li>Perfil (seleccionado) <span>{{ nuclei.profile_selected }}</span></li>
