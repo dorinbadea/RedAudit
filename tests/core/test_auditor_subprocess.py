@@ -1,5 +1,6 @@
 """Tests for subprocess management, signal handling, and progress callbacks in auditor.py."""
 
+import contextlib
 import os
 import sys
 import time
@@ -148,6 +149,36 @@ class TestAuditorSubprocess(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             self.auditor.signal_handler(2, None)
+
+    def test_nuclei_progress_render_context_sets_and_restores_state(self, *args):
+        """Nuclei render context must mark progress active and restore state on exit."""
+        ui = MagicMock()
+        ui.progress_context.return_value = contextlib.nullcontext()
+        ui._active_progress_console = None
+        self.auditor.ui = ui
+        self.auditor._ui_progress_active = False
+
+        with self.auditor._nuclei_progress_render_context("console-ref"):
+            self.assertTrue(self.auditor._ui_progress_active)
+            self.assertEqual(self.auditor.ui._active_progress_console, "console-ref")
+
+        self.assertFalse(self.auditor._ui_progress_active)
+        self.assertIsNone(self.auditor.ui._active_progress_console)
+
+    def test_nuclei_progress_render_context_fallback_when_progress_context_fails(self, *args):
+        """Context helper should still toggle progress state if UI progress_context errors."""
+        ui = MagicMock()
+        ui.progress_context.side_effect = RuntimeError("boom")
+        ui._active_progress_console = "old-console"
+        self.auditor.ui = ui
+        self.auditor._ui_progress_active = False
+
+        with self.auditor._nuclei_progress_render_context("new-console"):
+            self.assertTrue(self.auditor._ui_progress_active)
+            self.assertEqual(self.auditor.ui._active_progress_console, "new-console")
+
+        self.assertFalse(self.auditor._ui_progress_active)
+        self.assertEqual(self.auditor.ui._active_progress_console, "old-console")
 
     def test_nd_progress_callback(self, *args):
         """Test net discovery progress callback."""
