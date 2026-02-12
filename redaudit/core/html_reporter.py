@@ -383,6 +383,26 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
 
     nuclei_pipeline = pipeline.get("nuclei")
     if isinstance(nuclei_pipeline, dict):
+        for key in (
+            "targets",
+            "targets_total",
+            "targets_pre_optimization",
+            "targets_optimized",
+            "targets_excluded",
+            "targets_selected_after_optimization",
+        ):
+            if key in nuclei_pipeline:
+                try:
+                    nuclei_pipeline[key] = int(nuclei_pipeline.get(key) or 0)
+                except (TypeError, ValueError):
+                    nuclei_pipeline[key] = 0
+        if "targets_selected_after_optimization" not in nuclei_pipeline:
+            try:
+                nuclei_pipeline["targets_selected_after_optimization"] = int(
+                    nuclei_pipeline.get("targets") or 0
+                )
+            except (TypeError, ValueError):
+                nuclei_pipeline["targets_selected_after_optimization"] = 0
         for key in ("last_run_elapsed_s", "last_resume_elapsed_s", "nuclei_total_elapsed_s"):
             if key in nuclei_pipeline:
                 try:
