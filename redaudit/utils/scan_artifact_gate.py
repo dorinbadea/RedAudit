@@ -220,6 +220,77 @@ def _validate_ndjson_output(
     return issues
 
 
+def _safe_int(value: int | float | str | None, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _validate_nuclei_parity(summary: dict, manifest: dict) -> List[ValidationIssue]:
+    issues: List[ValidationIssue] = []
+    summary_pipeline = summary.get("pipeline") or {}
+    manifest_pipeline = manifest.get("pipeline") or {}
+    if not isinstance(summary_pipeline, dict) or not isinstance(manifest_pipeline, dict):
+        return issues
+
+    summary_nuclei = summary_pipeline.get("nuclei") or {}
+    manifest_nuclei = manifest_pipeline.get("nuclei") or {}
+    if not isinstance(summary_nuclei, dict) or not isinstance(manifest_nuclei, dict):
+        return issues
+
+    for key in ("last_run_elapsed_s", "last_resume_elapsed_s", "nuclei_total_elapsed_s"):
+        if key in summary_nuclei and key in manifest_nuclei:
+            s_val = _safe_int(summary_nuclei.get(key), -1)
+            m_val = _safe_int(manifest_nuclei.get(key), -1)
+            if s_val != m_val:
+                issues.append(
+                    ValidationIssue(
+                        "error",
+                        "nuclei_parity",
+                        f"{key} mismatch (summary={s_val}, manifest={m_val})",
+                    )
+                )
+
+    resume_meta = manifest.get("nuclei_resume")
+    if isinstance(resume_meta, dict):
+        if "resume_pending" in summary_nuclei and "pending_targets" in resume_meta:
+            s_pending = _safe_int(summary_nuclei.get("resume_pending"), 0)
+            m_pending = _safe_int(resume_meta.get("pending_targets"), 0)
+            if s_pending != m_pending:
+                issues.append(
+                    ValidationIssue(
+                        "error",
+                        "nuclei_parity",
+                        f"resume_pending mismatch (summary={s_pending}, manifest={m_pending})",
+                    )
+                )
+        if "resume_count" in summary_nuclei and "resume_count" in resume_meta:
+            s_count = _safe_int(summary_nuclei.get("resume_count"), 0)
+            m_count = _safe_int(resume_meta.get("resume_count"), 0)
+            if s_count != m_count:
+                issues.append(
+                    ValidationIssue(
+                        "error",
+                        "nuclei_parity",
+                        f"resume_count mismatch (summary={s_count}, manifest={m_count})",
+                    )
+                )
+        state_file = summary_nuclei.get("resume_state_file")
+        manifest_path = resume_meta.get("path")
+        if state_file and manifest_path:
+            if Path(str(state_file)).name != Path(str(manifest_path)).name:
+                issues.append(
+                    ValidationIssue(
+                        "error",
+                        "nuclei_parity",
+                        "resume_state_file mismatch between summary and manifest",
+                    )
+                )
+
+    return issues
+
+
 def validate_scan_folder(run_dir: Path, *, strict: bool = False) -> ValidationResult:
     issues: List[ValidationIssue] = []
     manifest_path = run_dir / "run_manifest.json"
@@ -239,9 +310,10 @@ def validate_scan_folder(run_dir: Path, *, strict: bool = False) -> ValidationRe
     issues.extend(_validate_pcaps(run_dir, manifest))
 
     summary_path = run_dir / "summary.json"
+    summary_data: dict = {}
     if summary_path.exists():
         try:
-            _read_json(summary_path)
+            summary_data = _read_json(summary_path)
         except Exception as exc:
             issues.append(ValidationIssue("error", "json", f"invalid summary.json ({exc})"))
     else:
@@ -294,6 +366,9 @@ def validate_scan_folder(run_dir: Path, *, strict: bool = False) -> ValidationRe
                 allow_empty=True,
             )
         )
+
+    if summary_data:
+        issues.extend(_validate_nuclei_parity(summary_data, manifest))
 
     return ValidationResult(issues)
 
