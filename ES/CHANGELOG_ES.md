@@ -10,6 +10,19 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.10] - 12-02-2026
+
+### Mejorado
+
+- **Hardening de UX live en Nuclei**: El progreso de Nuclei usa ahora una sola linea de barra real y una linea separada solo de telemetria, evitando compresion visual de la barra y eliminando redundancia de tiempo total.
+- **Semantica compacta de telemetria**: La telemetria de Nuclei usa tokens concisos (`AB`/`B`, `SB`, `SD`) para mantener legibilidad en ejecuciones largas sin perder contexto de split/lotes.
+- **Claridad de reporte Nuclei**: El pipeline/HTML incluye `targets_selected_after_optimization` para diferenciar el total seleccionado frente a contadores de hosts optimizados.
+
+### Corregido
+
+- **Ruido de terminal de Nuclei en ejecuciones largas**: Las actualizaciones live de telemetria ahora se limitan por throttle/deduplicacion y el fallback de logs suprime churn de sub-lote.
+- **Hueco de validacion de paridad de artefactos**: El gate de artefactos valida ahora paridad de campos de reanudacion/tiempo de Nuclei entre `summary.json` y `run_manifest.json` en modo estricto.
+
 ## [4.20.9] - 12-02-2026
 
 ### Mejorado

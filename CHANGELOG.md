@@ -10,6 +10,19 @@ Release notes live under `docs/releases/` for additional context.
 
 ## [Unreleased]
 
+## [4.20.10] - 2026-02-12
+
+### Improved
+
+- **Nuclei live UX hardening**: Nuclei progress now uses one real bar line plus one telemetry-only line, preventing bar compression and removing redundant total-time display.
+- **Compact telemetry semantics**: Nuclei telemetry now uses concise tokens (`AB`/`B`, `SB`, `SD`) to keep long-running scans readable without losing split/batch context.
+- **Nuclei reporting clarity**: Pipeline/HTML summaries now expose `targets_selected_after_optimization` to distinguish total selected targets from optimized-host-only counters.
+
+### Fixed
+
+- **Nuclei terminal noise in long runs**: Live telemetry updates are throttled/deduplicated and fallback logging suppresses sub-batch churn, reducing excessive console output.
+- **Artifact parity validation gap**: Artifact gate now enforces Nuclei resume/timing parity between `summary.json` and `run_manifest.json` in strict validation.
+
 ## [4.20.9] - 2026-02-12
 
 ### Improved
