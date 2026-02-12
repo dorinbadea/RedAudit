@@ -230,9 +230,10 @@ sudo apt update && sudo apt install nuclei
 - Bajar el rate limit de Nuclei o aumentar el timeout en la configuración.
 - Leer correctamente el detalle de progreso:
   - El progreso de Nuclei usa dos lineas: una barra compacta y una linea de telemetria.
+  - La linea de telemetria incluye actualizaciones dinamicas de `tiempo de sub-lote` y `profundidad de division` mientras la barra mantiene el progreso global.
   - `profundidad de division X/Y (actual/maximo)` = profundidad actual del split de reintentos frente al limite de fatiga.
   - `tiempo total` en telemetria = tiempo wall-clock total de la etapa Nuclei.
-  - Las actualizaciones de telemetria se limitan a cambios de estado y heartbeats periodicos.
+  - Durante el progreso en vivo, la telemetria se actualiza en su propia linea y evita lineas repetidas de `[INFO]`.
 - Confirmar duracion final en mensajes de cierre:
   - `Nuclei completado en ...` (ejecucion inicial)
   - `Reanudacion de Nuclei completada en ...` (reanudacion)

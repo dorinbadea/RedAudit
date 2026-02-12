@@ -374,7 +374,8 @@ The wizard covers:
 
 From the main menu, **Resume Nuclei (pending)** includes **Manage resume entries** so you can delete one or all stale resume entries before continuing.
 If you interrupt an active run with `Ctrl+C`, RedAudit prints an explicit notice that it is saving partial progress and performing cleanup before exit.
-During long Nuclei runs, progress is rendered as a compact two-line layout: one line for the bar and one line for telemetry (`batch`, `split depth`, `total elapsed`). Telemetry events are throttled to state changes and periodic heartbeat updates to avoid terminal spam.
+During long Nuclei runs, progress is rendered as a compact two-line layout that updates in place: one line for the main bar and one parallel line for telemetry (`active batches`/`batch`, `sub-batch elapsed`, `split depth`, `total elapsed`).
+While the progress view is active, telemetry stays inside the live UI instead of emitting repeated `[INFO]` lines.
 At completion, RedAudit prints explicit wall-clock duration messages (`Nuclei completed in ...` / `Nuclei resume completed in ...`) and exposes elapsed fields in report outputs.
 After a scan, you can validate artifact and SIEM export integrity with `python scripts/check_scan_artifacts.py --run-dir <scan_folder> --strict`.
 

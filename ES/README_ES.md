@@ -371,7 +371,8 @@ El asistente cubre:
 
 Desde el menu principal, **Reanudar Nuclei (pendiente)** incluye **Gestionar entradas de reanudacion** para borrar una o todas las entradas antiguas antes de continuar.
 Si interrumpes una ejecucion activa con `Ctrl+C`, RedAudit muestra un aviso explicito indicando que guarda progreso parcial y realiza limpieza antes de salir.
-Durante ejecuciones largas de Nuclei, el progreso se renderiza en dos lineas compactas: una linea para la barra y otra para telemetria (`lote`, `profundidad de division`, `tiempo total`). Los eventos de telemetria se limitan a cambios de estado y heartbeats periodicos para evitar ruido en terminal.
+Durante ejecuciones largas de Nuclei, el progreso se renderiza en dos lineas compactas que se actualizan en vivo: una linea para la barra principal y otra linea paralela para telemetria (`lotes activos`/`lote`, `tiempo de sub-lote`, `profundidad de division`, `tiempo total`).
+Mientras la vista de progreso esta activa, la telemetria se mantiene dentro de la UI en vivo y evita lineas repetidas de `[INFO]`.
 Al finalizar, RedAudit muestra mensajes explicitos de duracion real (`Nuclei completado en ...` / `Reanudacion de Nuclei completada en ...`) y expone los campos de tiempo en los reportes.
 Despues del escaneo, puedes validar la integridad de artefactos y exportaciones SIEM con `python scripts/check_scan_artifacts.py --run-dir <carpeta_scan> --strict`.
 

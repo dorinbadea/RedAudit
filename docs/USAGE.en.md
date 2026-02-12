@@ -252,8 +252,8 @@ Notes:
 - Leak-follow and IoT probes use explicit controls: `off` keeps default behavior, while `safe` applies strict in-scope, budget, and timeout guardrails.
 - Leak-follow policy evaluation precedence is deterministic: `denylist` > explicit allowlist > profile allowlist > in-scope network > reject.
 - Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.
-- Nuclei progress is rendered in two compact lines: the main progress bar and a telemetry line (`batch`, `split depth X/Y`, `total elapsed`).
-- Telemetry output is throttled to state changes and periodic heartbeat updates to avoid excessive terminal output.
+- Nuclei progress is rendered in two compact live lines: the main progress bar and a parallel telemetry line (`active batches`/`batch`, `sub-batch elapsed`, `split depth X/Y`, `total elapsed`).
+- While the live view is active, telemetry updates in-place and avoids repeated `[INFO]` line spam.
 - `split depth X/Y` is retry split depth (fatigue cap), not target count.
 - In the Nuclei resume menu, entries that were resumed before show `resumes: N` so repeated partial runs are easy to identify.
 - Report views now expose resume context explicitly (`resume_pending`, `resume_count`, `last_resume_at`, `resume_state_file`) for partial runs.
