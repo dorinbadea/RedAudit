@@ -288,6 +288,38 @@ class TestAuditorSubprocess(unittest.TestCase):
         assert call_kwargs["detail"] == ""
         self.auditor.ui.print_status.assert_called_once()
 
+    def test_nuclei_progress_callback_updates_secondary_telemetry_task(self, *args):
+        """With a telemetry task, details stay in Live progress and do not spam INFO logs."""
+        progress = MagicMock()
+        task = MagicMock()
+        telemetry_task = MagicMock()
+        self.auditor._touch_activity = MagicMock()
+        self.auditor._format_eta = MagicMock(return_value="0:10")
+        self.auditor.ui.print_status = MagicMock()
+
+        self.auditor._nuclei_progress_callback(
+            completed=5.0,
+            total=10,
+            eta="",
+            progress=progress,
+            task=task,
+            start_time=time.time() - 20,
+            timeout=300,
+            total_targets=50,
+            batch_size=5,
+            telemetry_task=telemetry_task,
+            detail=(
+                "active batches 2/4 | sub-batch elapsed 0:12 | split depth 3/6 (current/max) "
+                "| total elapsed shown in timer"
+            ),
+        )
+
+        assert progress.update.call_count == 2
+        telemetry_update = progress.update.call_args_list[-1].kwargs
+        assert telemetry_update["description"].startswith("[bright_blue]active batches 2/4")
+        assert "sub-batch elapsed 0:12" in telemetry_update["description"]
+        self.auditor.ui.print_status.assert_not_called()
+
     def test_nuclei_progress_callback_sub_batch_clamps_completion(self, *args):
         """Sub-batch detail should keep task open until final completion."""
         progress = MagicMock()
