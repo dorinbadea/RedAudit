@@ -1376,6 +1376,14 @@ class InteractiveNetworkAuditor:
                                     eta_est="",
                                     detail="",
                                 )
+                                telemetry_task = progress.add_task(
+                                    f"[bright_blue]{self.ui.t('nuclei_telemetry_waiting')}",
+                                    total=total_targets,
+                                    completed=0,
+                                    eta_upper="",
+                                    eta_est="",
+                                    detail="",
+                                )
 
                                 def _nuclei_progress(completed: int, total: int, eta: str) -> None:
                                     try:
@@ -1421,6 +1429,7 @@ class InteractiveNetworkAuditor:
                                         nuclei_timeout_s,
                                         total_targets,
                                         batch_size,
+                                        telemetry_task=telemetry_task,
                                         detail=d,
                                         total_start_time=progress_start_t,
                                     ),
@@ -2496,6 +2505,7 @@ class InteractiveNetworkAuditor:
         total_targets: int,
         batch_size: int,
         *,
+        telemetry_task: Optional[Any] = None,
         detail: Optional[str] = None,
         total_start_time: Optional[float] = None,
     ) -> None:
@@ -2564,18 +2574,36 @@ class InteractiveNetworkAuditor:
                 detail="",
             )
 
-            # Emit compact telemetry on a separate line (state changes + heartbeat).
+            # Keep timing telemetry dynamic inside the Progress Live display when available.
             now = time.time()
             total_elapsed_s = max(0.0, now - (total_start_time if total_start_time else start_time))
             total_elapsed_txt = self._format_eta(total_elapsed_s)
+            clean_detail_full = ""
+            if raw_detail:
+                clean_detail_full = re.sub(r"\x1b\[[0-9;]*m", "", raw_detail)
+                clean_detail_full = re.sub(r"\[/?[^\]]+\]", "", clean_detail_full)
+                clean_detail_full = clean_detail_full.replace(
+                    " | total elapsed shown in timer", ""
+                ).replace(" | tiempo total en el temporizador", "")
+                clean_detail_full = clean_detail_full.strip()
+
+            if telemetry_task is not None:
+                telemetry_detail = clean_detail_full or f"batch {completed}/{total}"
+                telemetry_line = f"{telemetry_detail} | total {total_elapsed_txt}"
+                progress.update(
+                    telemetry_task,
+                    completed=approx_targets,
+                    total=max(1, total_targets_i),
+                    description=f"[bright_blue]{telemetry_line}",
+                    detail="",
+                )
+                return
+
+            # Fallback for non-progress UI paths: emit compact telemetry as log lines.
             compact_detail = ""
             compact_state = ""
-            if raw_detail:
-                clean_detail = re.sub(r"\x1b\[[0-9;]*m", "", raw_detail)
-                clean_detail = re.sub(r"\[/?[^\]]+\]", "", clean_detail)
-                clean_detail = clean_detail.replace(" | total elapsed shown in timer", "").replace(
-                    " | tiempo total en el temporizador", ""
-                )
+            if clean_detail_full:
+                clean_detail = clean_detail_full
                 tokens = [token.strip() for token in clean_detail.split("|") if token.strip()]
                 display_tokens = []
                 state_tokens = []
@@ -3091,6 +3119,14 @@ class InteractiveNetworkAuditor:
                             eta_est="",
                             detail="",
                         )
+                        telemetry_task = progress.add_task(
+                            f"[bright_blue]{self.ui.t('nuclei_telemetry_waiting')}",
+                            total=total_targets,
+                            completed=0,
+                            eta_upper="",
+                            eta_est="",
+                            detail="",
+                        )
                         self._nuclei_progress_log_state = {
                             "last_emit_ts": 0.0,
                             "last_state": "",
@@ -3108,6 +3144,7 @@ class InteractiveNetworkAuditor:
                                 int(timeout_s),
                                 total_targets,
                                 int(batch_size),
+                                telemetry_task=telemetry_task,
                                 detail=d,
                                 total_start_time=progress_start_t,
                             ),

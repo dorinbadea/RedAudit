@@ -267,6 +267,11 @@ def test_new_nuclei_i18n_keys_formatting():
     assert "total" in en.lower()
     assert "total" in es.lower()
 
+    en_wait = get_text("nuclei_telemetry_waiting", "en")
+    es_wait = get_text("nuclei_telemetry_waiting", "es")
+    assert "Nuclei" in en_wait
+    assert "Nuclei" in es_wait
+
     en = get_text("nuclei_completed_in", "en", "28:30")
     es = get_text("nuclei_completed_in", "es", "28:30")
     assert "28:30" in en

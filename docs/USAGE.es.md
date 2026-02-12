@@ -254,8 +254,8 @@ Notas:
 - Leak-follow y sondas IoT usan controles explícitos: `off` mantiene el comportamiento por defecto y `safe` aplica guardarraíles estrictos de alcance, presupuesto y timeout.
 - La precedencia de evaluación en leak-follow es determinista: `denylist` > allowlist explícita > allowlist por perfil > red in-scope > rechazo.
 - Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
-- El progreso de Nuclei se renderiza en dos lineas compactas: barra principal y linea de telemetria (`lote`, `profundidad de division X/Y`, `tiempo total`).
-- La salida de telemetria se limita a cambios de estado y heartbeats periodicos para evitar exceso de salida en terminal.
+- El progreso de Nuclei se renderiza en dos lineas compactas en vivo: barra principal y linea paralela de telemetria (`lotes activos`/`lote`, `tiempo de sub-lote`, `profundidad de division X/Y`, `tiempo total`).
+- Mientras la vista en vivo esta activa, la telemetria se actualiza en su propia linea y evita ruido por lineas repetidas de `[INFO]`.
 - `profundidad de division X/Y` es la profundidad de split de reintentos (limite de fatiga), no el numero de objetivos.
 - En el menú de reanudación de Nuclei, las entradas reanudadas anteriormente muestran `resumes: N` para distinguir parciales repetidos.
 - Las vistas de informe ahora muestran contexto de reanudacion de forma explicita (`resume_pending`, `resume_count`, `last_resume_at`, `resume_state_file`) cuando corresponde.

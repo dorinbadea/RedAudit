@@ -1373,13 +1373,17 @@ def test_resume_nuclei_progress_uses_pending_total(resume_session_log_stub):
                 return False
 
             def add_task(self, description, total, **kwargs):
-                updates["task_total"] = total
-                updates["task_desc"] = description
-                updates["task_detail"] = kwargs.get("detail")
+                updates.setdefault("tasks", []).append(
+                    {
+                        "total": total,
+                        "desc": description,
+                        "detail": kwargs.get("detail"),
+                    }
+                )
                 return "task"
 
             def update(self, task, **kwargs):
-                updates["update"] = kwargs
+                updates.setdefault("updates", []).append(kwargs)
 
         def _fake_nuclei_scan(**_kwargs):
             cb = _kwargs.get("progress_callback")
@@ -1411,10 +1415,15 @@ def test_resume_nuclei_progress_uses_pending_total(resume_session_log_stub):
             )
 
         assert ok is True
-        assert updates.get("task_total") == 2
-        assert "Nuclei (0/2)" in updates.get("task_desc", "")
-        assert updates.get("task_detail") is not None
-        assert "Nuclei (1/2)" in updates.get("update", {}).get("description", "")
+        task_entries = updates.get("tasks", [])
+        assert any(entry.get("total") == 2 for entry in task_entries)
+        assert any("Nuclei (0/2)" in entry.get("desc", "") for entry in task_entries)
+        assert any("nuclei_telemetry_waiting" in entry.get("desc", "") for entry in task_entries)
+        assert any(entry.get("detail") is not None for entry in task_entries)
+
+        update_entries = updates.get("updates", [])
+        assert any("Nuclei (1/2)" in entry.get("description", "") for entry in update_entries)
+        assert any("total" in entry.get("description", "") for entry in update_entries)
 
 
 def test_resume_nuclei_from_state_preserves_duration_and_targets(resume_session_log_stub):
