@@ -539,6 +539,30 @@ class TestAuditorSubprocess(unittest.TestCase):
         assert parsed["host_list"].startswith("192.168.1.1")
         assert parsed["port_list"] == "80, 443"
 
+    def test_parse_nuclei_timeout_message_rejects_invalid_inputs(self, *args):
+        assert self.auditor._parse_nuclei_timeout_message(123) is None
+        assert (
+            self.auditor._parse_nuclei_timeout_message("nuclei timeout without batch data") is None
+        )
+        assert self.auditor._parse_nuclei_timeout_message("✅✅✅") is None
+
+    def test_record_timeout_event_resets_non_dict_aggregation(self, *args):
+        self.auditor._nuclei_timeout_agg = "invalid"
+        self.auditor._record_nuclei_timeout_event(
+            {
+                "batch_idx": 1,
+                "total_batches": 2,
+                "detail": "hosts 10.0.0.1(1); ports 80",
+                "host_list": "10.0.0.1(1)",
+                "port_list": "80",
+            }
+        )
+        assert self.auditor._nuclei_timeout_agg["events"] == 1
+
+    def test_timeout_compact_suffix_handles_invalid_agg(self, *args):
+        self.auditor._nuclei_timeout_agg = None
+        assert self.auditor._nuclei_timeout_compact_suffix() == ""
+
     def test_make_nuclei_status_adapter_suppresses_live_timeout_warning(self, *args):
         self.auditor.ui.print_status = MagicMock()
         adapter = self.auditor._make_nuclei_status_adapter(live_progress=True)
@@ -565,6 +589,26 @@ class TestAuditorSubprocess(unittest.TestCase):
         assert self.auditor._nuclei_timeout_agg["events"] == 0
         self.auditor.ui.print_status.assert_called_once()
 
+    def test_make_nuclei_status_adapter_uses_timeout_metadata_payload(self, *args):
+        self.auditor.ui.print_status = MagicMock()
+        adapter = self.auditor._make_nuclei_status_adapter(live_progress=True)
+
+        adapter(
+            "ignored",
+            "WARNING",
+            {
+                "event": "nuclei_timeout",
+                "batch_idx": 3,
+                "total_batches": 4,
+                "detail": "hosts 10.0.0.3(1); ports 443",
+                "host_list": "10.0.0.3(1)",
+                "port_list": "443",
+            },
+        )
+
+        assert self.auditor._nuclei_timeout_agg["events"] == 1
+        self.auditor.ui.print_status.assert_not_called()
+
     def test_emit_nuclei_timeout_summary_limits_lines_and_reports_more(self, *args):
         self.auditor.ui.print_status = MagicMock()
         self.auditor.ui.t = lambda key, *vals: f"{key}:{','.join(str(v) for v in vals)}"
@@ -588,6 +632,18 @@ class TestAuditorSubprocess(unittest.TestCase):
         rendered = [call.args[0] for call in self.auditor.ui.print_status.call_args_list]
         assert any("nuclei_timeout_summary_final" in msg for msg in rendered)
         assert any("nuclei_timeout_summary_more" in msg for msg in rendered)
+
+    def test_emit_nuclei_timeout_summary_handles_invalid_agg(self, *args):
+        self.auditor._nuclei_timeout_agg = "bad"
+        summary = self.auditor._emit_nuclei_timeout_summary()
+        assert summary["timeout_events_count"] == 0
+        assert summary["timeout_batches_count"] == 0
+        assert summary["timeout_summary_compact"] == ""
+
+    def test_nuclei_progress_render_context_without_ui_uses_nullcontext(self, *args):
+        del self.auditor.ui
+        with self.auditor._nuclei_progress_render_context("console-ref"):
+            pass
 
     def test_sanitize_terminal_status_text_non_string(self, *args):
         assert self.auditor._sanitize_terminal_status_text(123) == ""
