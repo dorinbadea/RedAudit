@@ -174,6 +174,14 @@ class UIManager:
                     file=getattr(sys, "__stdout__", sys.stdout),
                     width=self._terminal_width(),
                 )
+            # Keep warnings/errors on their own line while Live progress is active.
+            if self._active_progress_console is not None and status_display in (
+                "WARN",
+                "WARNING",
+                "FAIL",
+                "ERROR",
+            ):
+                console.print("")
             # v4.0.4: Use Text objects for reliable color output
             # This avoids markup escaping issues with brackets in [WARN], [INFO] etc
             prefix = Text()

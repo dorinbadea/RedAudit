@@ -519,6 +519,132 @@ class TestAuditorSubprocess(unittest.TestCase):
         assert "R 2" in line
         assert "batches 2/2 complete" in line
 
+    def test_build_nuclei_telemetry_line_appends_timeout_suffix(self, *args):
+        self.auditor._nuclei_timeout_agg = {
+            "events": 2,
+            "batches": {"1/3": {"events": 2}},
+            "details": [],
+            "last_event_ts": 0.0,
+        }
+        line = self.auditor._build_nuclei_telemetry_line("active batches 1/3", completed=1, total=3)
+        assert "TO 2 | TB 1" in line
+
+    def test_parse_nuclei_timeout_message_extracts_fields(self, *args):
+        parsed = self.auditor._parse_nuclei_timeout_message(
+            "Nuclei timeout in batch 2/4: hosts 192.168.1.1(2), 192.168.1.2(1); ports 80, 443"
+        )
+        assert parsed is not None
+        assert parsed["batch_idx"] == 2
+        assert parsed["total_batches"] == 4
+        assert parsed["host_list"].startswith("192.168.1.1")
+        assert parsed["port_list"] == "80, 443"
+
+    def test_parse_nuclei_timeout_message_rejects_invalid_inputs(self, *args):
+        assert self.auditor._parse_nuclei_timeout_message(123) is None
+        assert (
+            self.auditor._parse_nuclei_timeout_message("nuclei timeout without batch data") is None
+        )
+        assert self.auditor._parse_nuclei_timeout_message("✅✅✅") is None
+
+    def test_record_timeout_event_resets_non_dict_aggregation(self, *args):
+        self.auditor._nuclei_timeout_agg = "invalid"
+        self.auditor._record_nuclei_timeout_event(
+            {
+                "batch_idx": 1,
+                "total_batches": 2,
+                "detail": "hosts 10.0.0.1(1); ports 80",
+                "host_list": "10.0.0.1(1)",
+                "port_list": "80",
+            }
+        )
+        assert self.auditor._nuclei_timeout_agg["events"] == 1
+
+    def test_timeout_compact_suffix_handles_invalid_agg(self, *args):
+        self.auditor._nuclei_timeout_agg = None
+        assert self.auditor._nuclei_timeout_compact_suffix() == ""
+
+    def test_make_nuclei_status_adapter_suppresses_live_timeout_warning(self, *args):
+        self.auditor.ui.print_status = MagicMock()
+        adapter = self.auditor._make_nuclei_status_adapter(live_progress=True)
+
+        adapter(
+            "Nuclei timeout in batch 1/3: hosts 192.168.1.1(1); ports 80",
+            "WARNING",
+            None,
+        )
+
+        assert self.auditor._nuclei_timeout_agg["events"] == 1
+        self.auditor.ui.print_status.assert_not_called()
+
+    def test_make_nuclei_status_adapter_forwards_when_not_live(self, *args):
+        self.auditor.ui.print_status = MagicMock()
+        adapter = self.auditor._make_nuclei_status_adapter(live_progress=False)
+
+        adapter(
+            "Nuclei timeout in batch 1/2: hosts 192.168.1.1(1); ports 80",
+            "WARNING",
+            None,
+        )
+
+        assert self.auditor._nuclei_timeout_agg["events"] == 0
+        self.auditor.ui.print_status.assert_called_once()
+
+    def test_make_nuclei_status_adapter_uses_timeout_metadata_payload(self, *args):
+        self.auditor.ui.print_status = MagicMock()
+        adapter = self.auditor._make_nuclei_status_adapter(live_progress=True)
+
+        adapter(
+            "ignored",
+            "WARNING",
+            {
+                "event": "nuclei_timeout",
+                "batch_idx": 3,
+                "total_batches": 4,
+                "detail": "hosts 10.0.0.3(1); ports 443",
+                "host_list": "10.0.0.3(1)",
+                "port_list": "443",
+            },
+        )
+
+        assert self.auditor._nuclei_timeout_agg["events"] == 1
+        self.auditor.ui.print_status.assert_not_called()
+
+    def test_emit_nuclei_timeout_summary_limits_lines_and_reports_more(self, *args):
+        self.auditor.ui.print_status = MagicMock()
+        self.auditor.ui.t = lambda key, *vals: f"{key}:{','.join(str(v) for v in vals)}"
+        self.auditor._reset_nuclei_timeout_aggregation()
+        for idx in range(1, 11):
+            self.auditor._record_nuclei_timeout_event(
+                {
+                    "batch_idx": idx,
+                    "total_batches": 10,
+                    "detail": f"hosts 10.0.0.{idx}(1); ports 80",
+                    "host_list": f"10.0.0.{idx}(1)",
+                    "port_list": "80",
+                }
+            )
+
+        summary = self.auditor._emit_nuclei_timeout_summary()
+
+        assert summary["timeout_events_count"] == 10
+        assert summary["timeout_batches_count"] == 10
+        assert summary["timeout_summary_compact"] == "TO 10 | TB 10"
+        rendered = [call.args[0] for call in self.auditor.ui.print_status.call_args_list]
+        assert any("nuclei_timeout_summary_final" in msg for msg in rendered)
+        assert any("nuclei_timeout_summary_more" in msg for msg in rendered)
+
+    def test_emit_nuclei_timeout_summary_handles_invalid_agg(self, *args):
+        self.auditor._nuclei_timeout_agg = "bad"
+        summary = self.auditor._emit_nuclei_timeout_summary()
+        assert summary["timeout_events_count"] == 0
+        assert summary["timeout_batches_count"] == 0
+        assert summary["timeout_summary_compact"] == ""
+
+    def test_nuclei_progress_render_context_without_ui_uses_nullcontext(self, *args):
+        del self.auditor.ui
+        with self.auditor._nuclei_progress_render_context("console-ref"):
+            pass
+
     def test_sanitize_terminal_status_text_non_string(self, *args):
         assert self.auditor._sanitize_terminal_status_text(123) == ""
 

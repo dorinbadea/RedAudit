@@ -10,6 +10,18 @@ Las notas de versión viven en `docs/releases/` para más contexto.
 
 ## [Sin lanzar]
 
+## [4.20.12] - 26-02-2026
+
+### Mejorado
+
+- **Visibilidad compacta de timeouts en Nuclei**: Mientras el progreso live esta activo, el detalle por timeout se agrega ahora en contadores compactos en lugar de imprimirse repetidamente en linea.
+- **Legibilidad operativa en ejecuciones largas**: Nuclei emite ahora un unico bloque final de resumen de timeouts por cada ejecucion/reanudacion, conservando detalle sin saturar terminal.
+- **Paridad de pipeline en run manifest**: `run_manifest.json` refleja ahora secciones adicionales de pipeline (`topology`, `agentless_verify`, `scope_expansion`) para mayor coherencia de artefactos.
+
+### Anadido
+
+- **Campos de agregacion de timeout en Nuclei**: Las salidas de pipeline/report incluyen `timeout_batches_count`, `timeout_events_count` y `timeout_summary_compact` para analisis post-ejecucion determinista.
+
 ## [4.20.11] - 12-02-2026
 
 ### Mejorado

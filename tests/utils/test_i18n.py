@@ -295,6 +295,21 @@ def test_new_nuclei_i18n_keys_formatting():
     assert "1.2.3.4" in en
     assert "1.2.3.4" in es
 
+    en = get_text("nuclei_timeout_summary_final", "en", 12, 3)
+    es = get_text("nuclei_timeout_summary_final", "es", 12, 3)
+    assert "12" in en and "3" in en
+    assert "12" in es and "3" in es
+
+    en = get_text("nuclei_timeout_summary_batch", "en", "2/5", 4, "10.0.0.1(2)", "80,443")
+    es = get_text("nuclei_timeout_summary_batch", "es", "2/5", 4, "10.0.0.1(2)", "80,443")
+    assert "2/5" in en and "4" in en
+    assert "2/5" in es and "4" in es
+
+    en = get_text("nuclei_timeout_summary_more", "en", 2)
+    es = get_text("nuclei_timeout_summary_more", "es", 2)
+    assert "2" in en
+    assert "2" in es
+
     en = get_text("nuclei_suspected_only", "en", 2)
     es = get_text("nuclei_suspected_only", "es", 2)
     assert "2" in en

@@ -234,11 +234,15 @@ sudo apt update && sudo apt install nuclei
   - `SD X/Y` = profundidad actual del split de reintentos frente al limite de fatiga.
   - El tiempo wall-clock total se muestra solo en el temporizador de la barra principal.
   - Durante el progreso en vivo, la telemetria se actualiza en su propia linea y evita lineas repetidas de `[INFO]`.
+  - Durante el progreso en vivo, el detalle de warnings por timeout se compacta en contadores agregados para evitar corrupcion de linea en terminal.
+  - El desglose detallado de timeouts se imprime una sola vez al final de la fase Nuclei en un bloque resumido por lotes.
 - Confirmar duracion final en mensajes de cierre:
   - `Nuclei completado en ...` (ejecucion inicial)
   - `Reanudacion de Nuclei completada en ...` (reanudacion)
 - Confirmar campos de tiempo persistidos en reportes/pipeline:
   - `last_run_elapsed_s`, `last_resume_elapsed_s`, `nuclei_total_elapsed_s`
+- Confirmar campos de agregacion de timeout en reportes/pipeline:
+  - `timeout_batches_count`, `timeout_events_count`, `timeout_summary_compact`
 - Interpretar estado parcial con metadatos de reanudacion:
   - `partial: true` + `resume_pending > 0` significa que la salida parcial es valida y se guardaron objetivos pendientes para reanudar de forma explicita.
 - Para hosts persistentemente lentos, prioriza un reintento dirigido con timeout/presupuesto explicitos antes de excluirlos.

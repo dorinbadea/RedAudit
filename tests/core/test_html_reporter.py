@@ -758,6 +758,23 @@ def test_prepare_report_data_nuclei_selected_targets_fallback():
     assert nuclei["targets_selected_after_optimization"] == 0
 
 
+def test_prepare_report_data_nuclei_timeout_summary_fields_normalized():
+    results = {
+        "pipeline": {
+            "nuclei": {
+                "timeout_batches_count": "bad",
+                "timeout_events_count": "7",
+                "timeout_summary_compact": None,
+            }
+        }
+    }
+    data = html_reporter.prepare_report_data(results, {}, lang="en")
+    nuclei = data["pipeline"]["nuclei"]
+    assert nuclei["timeout_batches_count"] == 0
+    assert nuclei["timeout_events_count"] == 7
+    assert nuclei["timeout_summary_compact"] == ""
+
+
 def test_get_template_env_import_error():
     with patch.dict("sys.modules", {"jinja2": None}):
         try:

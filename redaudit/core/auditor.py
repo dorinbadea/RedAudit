@@ -149,6 +149,12 @@ class InteractiveNetworkAuditor:
             "last_state": "",
             "heartbeat_s": 30.0,
         }
+        self._nuclei_timeout_agg = {
+            "events": 0,
+            "batches": {},
+            "details": [],
+            "last_event_ts": 0.0,
+        }
 
         # Subprocess tracking for cleanup on interruption (C1 fix)
         self._active_subprocesses = []
@@ -1326,6 +1332,7 @@ class InteractiveNetworkAuditor:
                         )
                         # v4.6.34: Smaller batches for faster parallel completion
                         batch_size = 10
+                        self._reset_nuclei_timeout_aggregation()
                         nuclei_run_started_at = time.time()
                         nuclei_elapsed_s = 0
                         try:
@@ -1478,6 +1485,9 @@ class InteractiveNetworkAuditor:
                                                 logger=self.logger,
                                                 dry_run=bool(self.config.get("dry_run", False)),
                                                 print_status=self.ui.print_status,
+                                                status_callback=self._make_nuclei_status_adapter(
+                                                    live_progress=True
+                                                ),
                                                 proxy_manager=self.proxy_manager,
                                                 profile=nuclei_profile,
                                                 translate=self.ui.t,
@@ -1499,11 +1509,15 @@ class InteractiveNetworkAuditor:
                                 logger=self.logger,
                                 dry_run=bool(self.config.get("dry_run", False)),
                                 print_status=self.ui.print_status,
+                                status_callback=self._make_nuclei_status_adapter(
+                                    live_progress=False
+                                ),
                                 proxy_manager=self.proxy_manager,
                                 profile=nuclei_profile,
                                 translate=self.ui.t,
                             )
                         nuclei_elapsed_s = max(0, int(round(time.time() - nuclei_run_started_at)))
+                        timeout_summary = self._emit_nuclei_timeout_summary()
 
                         findings = nuclei_result.get("findings") or []
                         suspected = []
@@ -1576,6 +1590,15 @@ class InteractiveNetworkAuditor:
                             "last_run_elapsed_s": nuclei_elapsed_s,
                             "nuclei_total_elapsed_s": max(0, existing_total_elapsed)
                             + nuclei_elapsed_s,
+                            "timeout_batches_count": int(
+                                timeout_summary.get("timeout_batches_count") or 0
+                            ),
+                            "timeout_events_count": int(
+                                timeout_summary.get("timeout_events_count") or 0
+                            ),
+                            "timeout_summary_compact": str(
+                                timeout_summary.get("timeout_summary_compact") or ""
+                            ),
                         }
                         if nuclei_partial:
                             nuclei_summary["partial"] = True
@@ -1585,6 +1608,7 @@ class InteractiveNetworkAuditor:
                                 nuclei_summary["timeout_batches"] = timeout_batches
                             if failed_batches:
                                 nuclei_summary["failed_batches"] = failed_batches
+                            nuclei_summary["timeout_batches_count"] = len(timeout_batches)
                         if nuclei_result.get("budget_exceeded"):
                             nuclei_summary["budget_exceeded"] = True
                         if suspected:
@@ -2537,6 +2561,171 @@ class InteractiveNetworkAuditor:
         except Exception:
             pass
 
+    def _reset_nuclei_timeout_aggregation(self) -> None:
+        self._nuclei_timeout_agg = {
+            "events": 0,
+            "batches": {},
+            "details": [],
+            "last_event_ts": 0.0,
+        }
+
+    def _parse_nuclei_timeout_message(self, message: str) -> Optional[Dict[str, Any]]:
+        if not isinstance(message, str):
+            return None
+        text = self._sanitize_terminal_status_text(message)
+        if not text:
+            return None
+        pattern = (
+            r"(?:Nuclei timeout in batch|Timeout de Nuclei en lote)\s+(\d+)\s*/\s*(\d+)\s*:\s*(.+)"
+        )
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if not match:
+            return None
+        batch_idx = int(match.group(1))
+        total_batches = int(match.group(2))
+        detail = match.group(3).strip()
+        host_list = "-"
+        port_list = "-"
+        host_match = re.search(
+            r"hosts?\s+(.+?);\s*(?:ports?|puertos?)\s+(.+)$", detail, re.IGNORECASE
+        )
+        if host_match:
+            host_list = host_match.group(1).strip() or "-"
+            port_list = host_match.group(2).strip() or "-"
+        return {
+            "batch_idx": batch_idx,
+            "total_batches": total_batches,
+            "detail": detail,
+            "host_list": host_list,
+            "port_list": port_list,
+        }
+
+    def _record_nuclei_timeout_event(self, payload: Dict[str, Any]) -> None:
+        agg = getattr(self, "_nuclei_timeout_agg", None)
+        if not isinstance(agg, dict):
+            self._reset_nuclei_timeout_aggregation()
+            agg = self._nuclei_timeout_agg
+        batches = agg.setdefault("batches", {})
+        details = agg.setdefault("details", [])
+        batch_idx = int(payload.get("batch_idx") or 0)
+        total_batches = int(payload.get("total_batches") or 0)
+        batch_key = f"{batch_idx}/{total_batches}" if batch_idx and total_batches else "-"
+        entry = batches.get(batch_key) or {
+            "events": 0,
+            "host_list": "-",
+            "port_list": "-",
+            "last_detail": "",
+            "batch_idx": batch_idx,
+            "total_batches": total_batches,
+        }
+        entry["events"] = int(entry.get("events") or 0) + 1
+        host_list = str(payload.get("host_list") or "").strip()
+        port_list = str(payload.get("port_list") or "").strip()
+        detail = str(payload.get("detail") or "").strip()
+        if host_list:
+            entry["host_list"] = host_list
+        if port_list:
+            entry["port_list"] = port_list
+        if detail:
+            entry["last_detail"] = detail
+        batches[batch_key] = entry
+        if detail and detail not in details and len(details) < 25:
+            details.append(detail)
+        agg["events"] = int(agg.get("events") or 0) + 1
+        agg["last_event_ts"] = time.time()
+        self._nuclei_timeout_agg = agg
+
+    def _nuclei_timeout_compact_suffix(self) -> str:
+        agg = getattr(self, "_nuclei_timeout_agg", None)
+        if not isinstance(agg, dict):
+            return ""
+        events = int(agg.get("events") or 0)
+        batches = agg.get("batches") or {}
+        if events <= 0:
+            return ""
+        return f"TO {events} | TB {len(batches)}"
+
+    def _make_nuclei_status_adapter(self, *, live_progress: bool):
+        def _adapter(
+            message: str,
+            status: str = "INFO",
+            metadata: Optional[Dict[str, Any]] = None,
+        ) -> None:
+            payload: Optional[Dict[str, Any]] = None
+            if isinstance(metadata, dict):
+                event = str(metadata.get("event") or "")
+                if event == "nuclei_timeout":
+                    payload = {
+                        "batch_idx": int(metadata.get("batch_idx") or 0),
+                        "total_batches": int(metadata.get("total_batches") or 0),
+                        "detail": str(metadata.get("detail") or ""),
+                        "host_list": str(metadata.get("host_list") or "-"),
+                        "port_list": str(metadata.get("port_list") or "-"),
+                    }
+            if payload is None and isinstance(message, str):
+                payload = self._parse_nuclei_timeout_message(message)
+            if live_progress and status in ("WARNING", "WARN") and payload:
+                self._record_nuclei_timeout_event(payload)
+                return
+            self.ui.print_status(message, status)
+
+        return _adapter
+
+    def _emit_nuclei_timeout_summary(self, *, status_level: str = "WARNING") -> Dict[str, Any]:
+        agg = getattr(self, "_nuclei_timeout_agg", None)
+        if not isinstance(agg, dict):
+            return {
+                "timeout_events_count": 0,
+                "timeout_batches_count": 0,
+                "timeout_summary_compact": "",
+            }
+        events = int(agg.get("events") or 0)
+        batches = agg.get("batches") or {}
+        timeout_batches_count = len(batches)
+        compact = self._nuclei_timeout_compact_suffix()
+        if events <= 0:
+            return {
+                "timeout_events_count": 0,
+                "timeout_batches_count": timeout_batches_count,
+                "timeout_summary_compact": "",
+            }
+        self.ui.print_status(
+            self.ui.t("nuclei_timeout_summary_final", events, timeout_batches_count),
+            status_level,
+        )
+
+        # Sort numeric batch keys for stable operator output.
+        def _batch_sort_key(item):
+            data = item[1] if isinstance(item[1], dict) else {}
+            return (
+                int(data.get("batch_idx") or 9999),
+                int(data.get("total_batches") or 9999),
+            )
+
+        ordered = sorted(batches.items(), key=_batch_sort_key)
+        max_lines = 8
+        for idx, (batch_key, info) in enumerate(ordered):
+            if idx >= max_lines:
+                break
+            self.ui.print_status(
+                self.ui.t(
+                    "nuclei_timeout_summary_batch",
+                    batch_key,
+                    int((info or {}).get("events") or 0),
+                    str((info or {}).get("host_list") or "-"),
+                    str((info or {}).get("port_list") or "-"),
+                ),
+                "INFO",
+            )
+        remaining = max(0, len(ordered) - max_lines)
+        if remaining:
+            self.ui.print_status(self.ui.t("nuclei_timeout_summary_more", remaining), "INFO")
+        return {
+            "timeout_events_count": events,
+            "timeout_batches_count": timeout_batches_count,
+            "timeout_summary_compact": compact,
+        }
+
     def _build_nuclei_telemetry_line(
         self, raw_detail: Optional[str], *, completed: float, total: int
     ) -> str:
@@ -2590,6 +2779,9 @@ class InteractiveNetworkAuditor:
             completed_i = max(0, int(round(float(completed))))
             total_i = max(1, int(total or 0))
             compact_tokens.append(f"B {completed_i}/{total_i}")
+        timeout_suffix = self._nuclei_timeout_compact_suffix()
+        if timeout_suffix:
+            compact_tokens.append(timeout_suffix)
         return self._sanitize_terminal_status_text(" | ".join(compact_tokens))
 
     @staticmethod
@@ -3213,6 +3405,7 @@ class InteractiveNetworkAuditor:
                 "proxy_manager": self.proxy_manager,
                 "profile": profile,
             }
+            self._reset_nuclei_timeout_aggregation()
             resume_result = None
             progress_console = self._progress_console()
             try:
@@ -3291,6 +3484,9 @@ class InteractiveNetworkAuditor:
                                     }
                                     resume_result = run_nuclei_scan(
                                         **run_kwargs,
+                                        status_callback=self._make_nuclei_status_adapter(
+                                            live_progress=True
+                                        ),
                                         progress_callback=lambda c, t, e, d=None: self._nuclei_progress_callback(
                                             float(c),
                                             total_targets,
@@ -3316,10 +3512,12 @@ class InteractiveNetworkAuditor:
             if resume_result is None:
                 resume_result = run_nuclei_scan(
                     **run_kwargs,
+                    status_callback=self._make_nuclei_status_adapter(live_progress=False),
                     use_internal_progress=True,
                     translate=self.ui.t,
                 )
             resume_elapsed_s = max(0, int(round(time.time() - resume_started_ts)))
+            timeout_summary = self._emit_nuclei_timeout_summary()
 
             base_output_rel = resume_state.get("output_file") or "nuclei_output.json"
             base_output_path = (
@@ -3378,6 +3576,14 @@ class InteractiveNetworkAuditor:
             nuclei_summary["nuclei_total_elapsed_s"] = max(0, existing_total_elapsed_s) + int(
                 resume_elapsed_s
             )
+            nuclei_summary["timeout_events_count"] = int(
+                nuclei_summary.get("timeout_events_count") or 0
+            ) + int(timeout_summary.get("timeout_events_count") or 0)
+            nuclei_summary["timeout_summary_compact"] = str(
+                timeout_summary.get("timeout_summary_compact")
+                or nuclei_summary.get("timeout_summary_compact")
+                or ""
+            )
             combined_success = bool(nuclei_summary.get("success")) or bool(
                 resume_result.get("success")
             )
@@ -3431,6 +3637,9 @@ class InteractiveNetworkAuditor:
                 nuclei_summary.pop("partial", None)
                 nuclei_summary.pop("timeout_batches", None)
                 nuclei_summary.pop("failed_batches", None)
+            nuclei_summary["timeout_batches_count"] = len(
+                nuclei_summary.get("timeout_batches") or []
+            )
 
             nuclei_summary["success"] = self._resolve_nuclei_success(
                 combined_success,

@@ -408,6 +408,13 @@ TRANSLATIONS = {
         "nuclei_telemetry_waiting": "Nuclei telemetry: waiting for batch status...",
         "nuclei_timeout_detail": "Nuclei timeout in batch {0}/{1}: {2}",
         "nuclei_timeout_targets": "hosts {0}; ports {1}",
+        "nuclei_timeout_summary_final": (
+            "[nuclei] timeout summary: {0} timeout event(s) across {1} batch(es)"
+        ),
+        "nuclei_timeout_summary_batch": (
+            "[nuclei] timeout batch {0}: events {1}; hosts {2}; ports {3}"
+        ),
+        "nuclei_timeout_summary_more": "[nuclei] timeout summary: +{0} additional batch line(s)",
         "scope_iot_runtime": (
             "[scope] IoT probes runtime: candidates {0}, probes executed {1}, responded {2}"
         ),
@@ -1029,6 +1036,15 @@ TRANSLATIONS = {
         "nuclei_telemetry_waiting": "Telemetria de Nuclei: esperando estado de lote...",
         "nuclei_timeout_detail": "Timeout de Nuclei en lote {0}/{1}: {2}",
         "nuclei_timeout_targets": "hosts {0}; puertos {1}",
+        "nuclei_timeout_summary_final": (
+            "[nuclei] resumen de timeout: {0} evento(s) de timeout en {1} lote(s)"
+        ),
+        "nuclei_timeout_summary_batch": (
+            "[nuclei] timeout en lote {0}: eventos {1}; hosts {2}; puertos {3}"
+        ),
+        "nuclei_timeout_summary_more": (
+            "[nuclei] resumen de timeout: +{0} línea(s) adicionales de lotes"
+        ),
         "scope_iot_runtime": (
             "[scope] Runtime de sondas IoT: candidatos {0}, sondas ejecutadas {1}, con respuesta {2}"
         ),

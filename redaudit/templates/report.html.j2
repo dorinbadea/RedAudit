@@ -283,6 +283,10 @@
                         {% if nuclei.partial %}
                         <li>Timeout batches <span>{{ (nuclei.timeout_batches or [])|length }}</span></li>
                         <li>Failed batches <span>{{ (nuclei.failed_batches or [])|length }}</span></li>
+                        <li>Timeout events <span>{{ nuclei.timeout_events_count or 0 }}</span></li>
+                        {% if nuclei.timeout_summary_compact %}
+                        <li>Timeout summary <span>{{ nuclei.timeout_summary_compact }}</span></li>
+                        {% endif %}
                         {% endif %}
                         {% if nuclei.partial %}
                         <li>Status <span>Partial</span></li>

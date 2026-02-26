@@ -283,6 +283,10 @@
                         {% if nuclei.partial %}
                         <li>Lotes con timeout <span>{{ (nuclei.timeout_batches or [])|length }}</span></li>
                         <li>Lotes fallidos <span>{{ (nuclei.failed_batches or [])|length }}</span></li>
+                        <li>Eventos de timeout <span>{{ nuclei.timeout_events_count or 0 }}</span></li>
+                        {% if nuclei.timeout_summary_compact %}
+                        <li>Resumen de timeout <span>{{ nuclei.timeout_summary_compact }}</span></li>
+                        {% endif %}
                         {% endif %}
                         {% if nuclei.partial %}
                         <li>Estado <span>Parcial</span></li>

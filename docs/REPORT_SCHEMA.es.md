@@ -180,6 +180,9 @@ Este bloque solo aparece si la verificación sin agente está habilitada.
 | `success` | boolean | Archivo de salida generado y sin lotes fallidos |
 | `partial` | boolean | (Opcional) Uno o más lotes con timeout; resultados incompletos |
 | `timeout_batches` | array | (Opcional) Índices de lotes con timeout |
+| `timeout_batches_count` | integer | (Opcional) Conteo de lotes con timeout para reporte compacto |
+| `timeout_events_count` | integer | (Opcional) Total de eventos timeout agregados durante la ejecucion de Nuclei |
+| `timeout_summary_compact` | string | (Opcional) Token compacto de resumen timeout (por ejemplo, `TO 12 | TB 3`) |
 | `failed_batches` | array | (Opcional) Índices de lotes fallidos tras reintento |
 | `resume_pending` | integer | (Opcional) Objetivos pendientes guardados cuando se alcanza el presupuesto de tiempo |
 | `resume_count` | integer | (Opcional) Numero de intentos de reanudacion ya ejecutados |
@@ -299,6 +302,9 @@ Notas:
 | `full_coverage` | boolean | Cobertura completa habilitada (todos los puertos HTTP) |
 | `partial` | boolean | Ejecucion parcial (timeouts o presupuesto) |
 | `timeout_batches` | array | Indices de lotes con timeout |
+| `timeout_batches_count` | integer | Conteo de lotes con timeout para reporte compacto |
+| `timeout_events_count` | integer | Total de eventos timeout agregados durante la ejecucion de Nuclei |
+| `timeout_summary_compact` | string | Token compacto de resumen timeout (por ejemplo, `TO 12 | TB 3`) |
 | `failed_batches` | array | Indices de lotes fallidos |
 | `budget_exceeded` | boolean | Presupuesto de tiempo agotado |
 | `resume_pending` | integer | Objetivos pendientes guardados para reanudar |
