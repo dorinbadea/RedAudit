@@ -182,6 +182,9 @@ Appears only when Nuclei scanning is enabled and available.
 | `success` | boolean | Output file generated and no failed batches |
 | `partial` | boolean | (Optional) One or more batches timed out; results may be incomplete |
 | `timeout_batches` | array | (Optional) Batch indexes that timed out |
+| `timeout_batches_count` | integer | (Optional) Count of timeout batches for compact reporting |
+| `timeout_events_count` | integer | (Optional) Total timeout events aggregated during Nuclei execution |
+| `timeout_summary_compact` | string | (Optional) Compact timeout summary token (for example, `TO 12 | TB 3`) |
 | `failed_batches` | array | (Optional) Batch indexes that failed after retry |
 | `resume_pending` | integer | (Optional) Pending targets saved for resume when a runtime budget is hit |
 | `resume_count` | integer | (Optional) Number of resume attempts already executed |
@@ -305,6 +308,9 @@ Compact roll-up for dashboards.
 | `full_coverage` | boolean | Full coverage enabled (all HTTP ports) |
 | `partial` | boolean | Partial run (timeouts or budget) |
 | `timeout_batches` | array | Batch indexes that timed out |
+| `timeout_batches_count` | integer | Count of timeout batches for compact reporting |
+| `timeout_events_count` | integer | Total timeout events aggregated during Nuclei execution |
+| `timeout_summary_compact` | string | Compact timeout summary token (for example, `TO 12 | TB 3`) |
 | `failed_batches` | array | Batch indexes that failed |
 | `budget_exceeded` | boolean | Runtime budget ended the run |
 | `resume_pending` | integer | Pending targets saved for resume |

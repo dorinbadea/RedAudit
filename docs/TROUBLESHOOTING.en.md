@@ -234,11 +234,15 @@ sudo apt update && sudo apt install nuclei
   - `SD X/Y` = current retry split depth vs fatigue cap.
   - Total wall-clock elapsed is shown by the main bar timer only.
   - During live progress, telemetry is updated in-place instead of printing repeated `[INFO]` lines.
+  - During live progress, timeout warning details are compacted into aggregated counters to avoid terminal-line corruption.
+  - Detailed timeout breakdown is emitted once at the end of the Nuclei phase as a grouped summary block.
 - Confirm final timing from completion logs:
   - `Nuclei completed in ...` (initial run)
   - `Nuclei resume completed in ...` (resume run)
 - Confirm persisted timing fields in reports/pipeline:
   - `last_run_elapsed_s`, `last_resume_elapsed_s`, `nuclei_total_elapsed_s`
+- Confirm timeout aggregation fields in reports/pipeline:
+  - `timeout_batches_count`, `timeout_events_count`, `timeout_summary_compact`
 - Interpret partial status with resume metadata:
   - `partial: true` + `resume_pending > 0` means partial output is valid and pending targets were saved for explicit resume.
 - For persistently slow hosts, prefer a targeted rerun with explicit timeout/runtime budget before excluding them.

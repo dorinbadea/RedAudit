@@ -256,11 +256,14 @@ Notas:
 - Las ejecuciones de Nuclei pueden marcarse como parciales si hay timeouts de lotes; revisa `nuclei.partial`, `nuclei.timeout_batches` y `nuclei.failed_batches` en los informes.
 - El progreso de Nuclei se renderiza en dos lineas compactas en vivo: una barra real de progreso y una linea de telemetria sin barra (`AB x/y` o `B x/y`, `SB mm:ss`, `SD x/y`).
 - Mientras la vista en vivo esta activa, la telemetria se actualiza en su propia linea y evita ruido por lineas repetidas de `[INFO]`.
+- Mientras el progreso en vivo esta activo, el detalle por timeout se agrega de forma compacta en lugar de imprimirse en cada evento.
+- Al final de la fase Nuclei, RedAudit imprime un unico bloque de resumen de timeouts agrupado por lote.
 - El tiempo total aparece solo una vez en el temporizador de la barra principal (no se duplica en telemetria).
 - `profundidad de division X/Y` es la profundidad de split de reintentos (limite de fatiga), no el numero de objetivos.
 - En el menú de reanudación de Nuclei, las entradas reanudadas anteriormente muestran `resumes: N` para distinguir parciales repetidos.
 - Las vistas de informe ahora muestran contexto de reanudacion de forma explicita (`resume_pending`, `resume_count`, `last_resume_at`, `resume_state_file`) cuando corresponde.
 - Las salidas de pipeline/report exponen campos de tiempo real de Nuclei: `last_run_elapsed_s`, `last_resume_elapsed_s` y `nuclei_total_elapsed_s`.
+- Las salidas de pipeline/report exponen tambien campos de agregacion compacta de timeouts: `timeout_batches_count`, `timeout_events_count` y `timeout_summary_compact`.
 - Los logs de finalizacion muestran mensajes explicitos: `Nuclei completado en ...` y `Reanudacion de Nuclei completada en ...`.
 - Si interrumpes una auditoria activa con `Ctrl+C`, RedAudit indica de forma explicita que esta guardando progreso parcial y realizando limpieza antes de salir.
 - **Nuclei en redes con alta densidad web:** En redes con muchos servicios HTTP/HTTPS (p. ej., labs Docker, microservicios), los escaneos Nuclei pueden tardar significativamente mas (30-90+ minutos). Usa `--nuclei-timeout 600` para aumentar el timeout por lote, o `--no-nuclei` para omitir Nuclei si la velocidad es critica. Cuando se activa la cobertura completa, RedAudit eleva el timeout por lote a 900s si se ha configurado un valor inferior.

@@ -254,11 +254,14 @@ Notes:
 - Nuclei runs may be marked partial when batches time out; check `nuclei.partial`, `nuclei.timeout_batches`, and `nuclei.failed_batches` in reports.
 - Nuclei progress is rendered in two compact live lines: one real progress bar plus one telemetry-only line (`AB x/y` or `B x/y`, `SB mm:ss`, `SD x/y`).
 - While the live view is active, telemetry updates in-place and avoids repeated `[INFO]` line spam.
+- While live progress is active, per-timeout warning details are aggregated instead of printed inline on every event.
+- At the end of the Nuclei phase, RedAudit prints one grouped timeout summary block (batch-level aggregation).
 - Total elapsed appears only once in the main progress bar timer (it is not duplicated in telemetry).
 - `split depth X/Y` is retry split depth (fatigue cap), not target count.
 - In the Nuclei resume menu, entries that were resumed before show `resumes: N` so repeated partial runs are easy to identify.
 - Report views now expose resume context explicitly (`resume_pending`, `resume_count`, `last_resume_at`, `resume_state_file`) for partial runs.
 - Pipeline/report outputs now expose wall-clock timing fields for Nuclei: `last_run_elapsed_s`, `last_resume_elapsed_s`, and `nuclei_total_elapsed_s`.
+- Pipeline/report outputs also expose compact timeout aggregation fields: `timeout_batches_count`, `timeout_events_count`, and `timeout_summary_compact`.
 - Completion logs now print explicit elapsed messages: `Nuclei completed in ...` and `Nuclei resume completed in ...`.
 - If you interrupt an active audit with `Ctrl+C`, RedAudit explicitly reports that it is saving partial progress and performing cleanup before exit.
 - **Nuclei on web-dense networks:** On networks with many HTTP/HTTPS services (e.g., Docker labs, microservices), Nuclei scans may take significantly longer (30-90+ minutes). Use `--nuclei-timeout 600` to increase the batch timeout, or `--no-nuclei` to skip Nuclei entirely if speed is critical. When full coverage is enabled, RedAudit raises the batch timeout to 900s if a lower value is configured.
