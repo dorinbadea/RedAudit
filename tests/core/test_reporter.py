@@ -1800,6 +1800,25 @@ def test_build_nuclei_pipeline_non_dict_returns_empty():
     assert _build_nuclei_pipeline([]) == {}
 
 
+def test_build_nuclei_pipeline_normalizes_timeout_summary_fields():
+    nuclei = _build_nuclei_pipeline(
+        {
+            "targets": "17",
+            "timeout_batches": [1, 2],
+            "timeout_events_count": "5",
+            "timeout_summary_compact": 123,
+        }
+    )
+    assert nuclei["targets"] == 17
+    assert nuclei["timeout_batches_count"] == 2
+    assert nuclei["timeout_events_count"] == 5
+    assert nuclei["timeout_summary_compact"] == "123"
+
+    nuclei_none = _build_nuclei_pipeline({"timeout_summary_compact": None})
+    assert nuclei_none["timeout_events_count"] == 0
+    assert nuclei_none["timeout_summary_compact"] == ""
+
+
 def test_build_config_snapshot_normalizes_string_allow_and_deny_lists():
     snapshot = _build_config_snapshot(
         {
