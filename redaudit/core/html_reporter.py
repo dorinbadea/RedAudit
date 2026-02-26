@@ -390,6 +390,8 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
             "targets_optimized",
             "targets_excluded",
             "targets_selected_after_optimization",
+            "timeout_batches_count",
+            "timeout_events_count",
         ):
             if key in nuclei_pipeline:
                 try:
@@ -411,6 +413,12 @@ def prepare_report_data(results: Dict, config: Dict, *, lang: str = "en") -> Dic
                     nuclei_pipeline[key] = 0
             nuclei_pipeline[f"{key}_display"] = _format_elapsed_seconds_display(
                 nuclei_pipeline.get(key)
+            )
+        if nuclei_pipeline.get("timeout_summary_compact") is None:
+            nuclei_pipeline["timeout_summary_compact"] = ""
+        else:
+            nuclei_pipeline["timeout_summary_compact"] = str(
+                nuclei_pipeline.get("timeout_summary_compact") or ""
             )
         pipeline["nuclei"] = nuclei_pipeline
 

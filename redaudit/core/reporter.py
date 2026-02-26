@@ -85,14 +85,28 @@ def _build_nuclei_pipeline(nuclei_state: Any) -> Dict[str, Any]:
         "targets_optimized",
         "targets_excluded",
         "targets_selected_after_optimization",
+        "timeout_batches_count",
+        "timeout_events_count",
     ):
         if int_key in nuclei:
             nuclei[int_key] = _safe_int(nuclei.get(int_key), 0)
     if "targets_selected_after_optimization" not in nuclei and "targets" in nuclei:
         nuclei["targets_selected_after_optimization"] = _safe_int(nuclei.get("targets"), 0)
+    if "timeout_batches_count" not in nuclei and "timeout_batches" in nuclei:
+        timeout_batches = nuclei.get("timeout_batches")
+        if isinstance(timeout_batches, list):
+            nuclei["timeout_batches_count"] = len(timeout_batches)
+        else:
+            nuclei["timeout_batches_count"] = 0
+    if "timeout_events_count" not in nuclei:
+        nuclei["timeout_events_count"] = 0
     for elapsed_key in ("last_run_elapsed_s", "last_resume_elapsed_s", "nuclei_total_elapsed_s"):
         if elapsed_key in nuclei:
             nuclei[elapsed_key] = _safe_int(nuclei.get(elapsed_key), 0)
+    if nuclei.get("timeout_summary_compact") is None:
+        nuclei["timeout_summary_compact"] = ""
+    elif "timeout_summary_compact" in nuclei:
+        nuclei["timeout_summary_compact"] = str(nuclei.get("timeout_summary_compact") or "")
     return nuclei
 
 
@@ -1052,6 +1066,19 @@ def generate_text_report(results: Dict, partial: bool = False) -> str:
                         failed=failed_batches,
                     )
                 )
+                if nuclei.get("timeout_events_count") is not None:
+                    lines.append(
+                        "  Nuclei: timeout events {events} (batches {batches})\n".format(
+                            events=nuclei.get("timeout_events_count", 0),
+                            batches=nuclei.get("timeout_batches_count", timeout_batches),
+                        )
+                    )
+                if nuclei.get("timeout_summary_compact"):
+                    lines.append(
+                        "  Nuclei: timeout summary {summary}\n".format(
+                            summary=nuclei.get("timeout_summary_compact")
+                        )
+                    )
             elif nuclei.get("error"):
                 lines.append("  Nuclei: error ({error})\n".format(error=nuclei.get("error")))
             suspected = nuclei.get("findings_suspected")
@@ -1590,11 +1617,14 @@ def _write_output_manifest(
     manifest["config_snapshot"] = results.get("config_snapshot", {}) or {}
     pipeline = results.get("pipeline") or {}
     manifest["pipeline"] = {
+        "topology": pipeline.get("topology") or {},
         "host_scan": pipeline.get("host_scan") or {},
         "deep_scan": pipeline.get("deep_scan") or {},
         "net_discovery": pipeline.get("net_discovery") or {},
+        "agentless_verify": pipeline.get("agentless_verify") or {},
         "nuclei": pipeline.get("nuclei") or {},
         "vulnerability_scan": pipeline.get("vulnerability_scan") or {},
+        "scope_expansion": pipeline.get("scope_expansion") or {},
         "hyperscan_vs_final": pipeline.get("hyperscan_vs_final") or {},
         "auditor_exclusions": pipeline.get("auditor_exclusions") or {},
     }

@@ -39,6 +39,16 @@ class NucleiProgressCallback(Protocol):
         pass
 
 
+class NucleiStatusCallback(Protocol):
+    def __call__(
+        self,
+        message: str,
+        status: str = "INFO",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        pass
+
+
 _NUCLEI_HELP_CACHE: Optional[str] = None
 
 
@@ -150,6 +160,7 @@ def run_nuclei_scan(
     logger=None,
     dry_run: bool = False,
     print_status=None,
+    status_callback: Optional[NucleiStatusCallback] = None,
     proxy_manager=None,
     profile: str = "balanced",  # v4.11.0: Scan profile (full/balanced/fast)
     max_runtime_s: Optional[int] = None,
@@ -212,6 +223,27 @@ def run_nuclei_scan(
                 pass
         return get_text(key, lang, *args)
 
+    def _emit_status(
+        message: str,
+        status: str = "INFO",
+        *,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        if status_callback:
+            try:
+                status_callback(message, status, metadata or {})
+                return
+            except TypeError:
+                try:
+                    status_callback(message, status)
+                    return
+                except Exception:
+                    pass
+            except Exception:
+                pass
+        if print_status:
+            print_status(message, status)
+
     if not result["nuclei_available"]:
         result["error"] = "nuclei not installed"
         return result
@@ -221,8 +253,7 @@ def run_nuclei_scan(
         return result
 
     if dry_run or is_dry_run():
-        if print_status:
-            print_status(_t("nuclei_dry_run_skipped"), "INFO")
+        _emit_status(_t("nuclei_dry_run_skipped"), "INFO")
         result["success"] = True
         result["error"] = "dry-run mode"
         return result
@@ -400,11 +431,15 @@ def run_nuclei_scan(
             except Exception:  # pragma: no cover
                 pass
 
-        if print_status:
-            print_status(
-                _t("nuclei_scanning_batches", len(targets), total_batches),
-                "INFO",
-            )
+        _emit_status(
+            _t("nuclei_scanning_batches", len(targets), total_batches),
+            "INFO",
+            metadata={
+                "event": "nuclei_scan_start",
+                "targets": len(targets),
+                "batches": total_batches,
+            },
+        )
 
         # Ensure output_file exists before appending batch outputs.
         try:
@@ -551,18 +586,27 @@ def run_nuclei_scan(
                 timed_out = bool(getattr(res, "timed_out", False))
                 budget_exceeded = bool(timed_out and budget_cap_active)
                 if timed_out:
-                    if print_status:
-                        host_list, port_list = _summarize_batch_targets(batch_targets)
-                        if host_list or port_list:
-                            detail = _t(
-                                "nuclei_timeout_targets",
-                                host_list or "-",
-                                port_list or "-",
-                            )
-                            print_status(
-                                _t("nuclei_timeout_detail", batch_idx, total_batches, detail),
-                                "WARNING",
-                            )
+                    host_list, port_list = _summarize_batch_targets(batch_targets)
+                    if host_list or port_list:
+                        detail = _t(
+                            "nuclei_timeout_targets",
+                            host_list or "-",
+                            port_list or "-",
+                        )
+                        _emit_status(
+                            _t("nuclei_timeout_detail", batch_idx, total_batches, detail),
+                            "WARNING",
+                            metadata={
+                                "event": "nuclei_timeout",
+                                "batch_idx": int(batch_idx),
+                                "total_batches": int(total_batches),
+                                "detail": detail,
+                                "host_list": host_list or "-",
+                                "port_list": port_list or "-",
+                                "split_depth": int(split_depth),
+                                "retry_attempt": int(retry_attempt),
+                            },
+                        )
                     if not budget_exceeded:
                         # v4.6.24: Split immediately on timeout (no extended retry)
                         # This avoids the infinite retry loop bug
@@ -648,8 +692,8 @@ def run_nuclei_scan(
             )
         except Exception:  # pragma: no cover
             runtime_budget_s = None
-        if print_status and runtime_budget_s is not None:
-            print_status(_t("nuclei_runtime_budget_enabled"), "INFO")
+        if runtime_budget_s is not None:
+            _emit_status(_t("nuclei_runtime_budget_enabled"), "INFO")
         budget_start = time.time()
         budget_deadline = budget_start + runtime_budget_s if runtime_budget_s else None
         force_sequential = runtime_budget_s is not None
@@ -768,11 +812,16 @@ def run_nuclei_scan(
             except Exception:
                 # Fallback: batch-by-batch status
                 for idx, batch in enumerate(batches, start=1):
-                    if print_status:
-                        print_status(
-                            _t("nuclei_batch_status", idx, total_batches, len(batch)),
-                            "INFO",
-                        )
+                    _emit_status(
+                        _t("nuclei_batch_status", idx, total_batches, len(batch)),
+                        "INFO",
+                        metadata={
+                            "event": "nuclei_batch_status",
+                            "batch_idx": int(idx),
+                            "total_batches": int(total_batches),
+                            "batch_targets": len(batch),
+                        },
+                    )
                     _run_one_batch(idx, batch)
         else:
             # No internal UI: batch-by-batch status
@@ -791,11 +840,15 @@ def run_nuclei_scan(
                         break
                     expected_batch_timeout = _estimate_batch_timeout(batch)
                     if remaining_budget < expected_batch_timeout:
-                        if print_status:
-                            print_status(
-                                _t("nuclei_budget_too_low"),
-                                "INFO",
-                            )
+                        _emit_status(
+                            _t("nuclei_budget_too_low"),
+                            "INFO",
+                            metadata={
+                                "event": "nuclei_budget_too_low",
+                                "batch_idx": int(idx),
+                                "total_batches": int(total_batches),
+                            },
+                        )
                         remaining_targets_budget = []
                         for remain_batch in batches[idx - 1 :]:
                             remaining_targets_budget.extend(remain_batch)
@@ -804,11 +857,16 @@ def run_nuclei_scan(
                         result["budget_exceeded"] = True
                         result["partial"] = True
                         break
-                if print_status:
-                    print_status(
-                        _t("nuclei_batch_status", idx, total_batches, len(batch)),
-                        "INFO",
-                    )
+                _emit_status(
+                    _t("nuclei_batch_status", idx, total_batches, len(batch)),
+                    "INFO",
+                    metadata={
+                        "event": "nuclei_batch_status",
+                        "batch_idx": int(idx),
+                        "total_batches": int(total_batches),
+                        "batch_targets": len(batch),
+                    },
+                )
                 budget_exceeded = _run_one_batch(
                     idx,
                     batch,
