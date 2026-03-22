@@ -3,8 +3,28 @@ name: Tests
 on:
   push:
     branches: [main, master, develop]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "ES/**"
+      - ".agent/**"
+      - "agents/**"
+      - ".cursorrules"
+      - "AGENTS.md"
   pull_request:
     branches: [main, master]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "ES/**"
+      - ".agent/**"
+      - "agents/**"
+      - ".cursorrules"
+      - "AGENTS.md"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -19,9 +39,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.lock
 
       - name: Install system dependencies
         run: |
@@ -66,13 +88,21 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+      - name: Upload coverage artifact for badges
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python-version == '3.11' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-main-py311
+          path: coverage.json
+          if-no-files-found: error
+
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -101,30 +131,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.11"
+          name: coverage-main-py311
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y nmap
-          pip install -r requirements-dev.lock
-          pip install -e .
-
-      - name: Run tests and get coverage
+      - name: Read coverage from existing artifact
         id: coverage
         run: |
-          pytest tests/ --cov=redaudit --cov-report=term 2>&1 | tee coverage_output.txt || true
-          # Extract coverage from TOTAL line - format: "TOTAL   1234   456   63%"
-          COVERAGE=$(grep "^TOTAL" coverage_output.txt | awk '{print $NF}' | tr -d '%' || echo "0")
-          if [ -z "$COVERAGE" ] || [ "$COVERAGE" = "0" ]; then
-            # Fallback: try to find any percentage at end of TOTAL line
-            COVERAGE=$(tail -20 coverage_output.txt | grep -E "TOTAL.*[0-9]+%" | grep -oE "[0-9]+%" | tail -1 | tr -d '%' || echo "94")
-          fi
-          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
-          echo "Coverage: $COVERAGE%"
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          coverage_data = json.loads(Path("coverage.json").read_text())
+          coverage = float(coverage_data["totals"]["percent_covered"])
+          if coverage >= 90:
+              color = "brightgreen"
+          elif coverage >= 70:
+              color = "yellow"
+          else:
+              color = "red"
+
+          print(f"coverage={coverage:.2f}")
+          print(f"coverage_color={color}")
+          PY
 
       - name: Count tests
         id: count
@@ -151,4 +181,4 @@ jobs:
           filename: redaudit-coverage.json
           label: coverage
           message: ${{ steps.coverage.outputs.coverage }}%
-          color: ${{ steps.coverage.outputs.coverage >= 90 && 'brightgreen' || steps.coverage.outputs.coverage >= 70 && 'yellow' || 'red' }}
+          color: ${{ steps.coverage.outputs.coverage_color }}

@@ -82,9 +82,9 @@ Todas las operaciones se registran en `~/.redaudit/logs/` con políticas de rota
 
 Controles de seguridad automatizados integrados en el pipeline de desarrollo:
 
-- **Bandit**: Linting de seguridad estático para código Python en cada push/PR
-- **CodeQL**: Análisis estático de vulnerabilidades de seguridad en cada push/PR
-- **Testing Multi-versión**: Compatibilidad verificada en Python 3.10-3.12
+- **Bandit**: Linting de seguridad estático para código Python durante la validación de pushes/PRs relevantes para código.
+- **CodeQL**: Análisis estático de vulnerabilidades de seguridad en pushes/PRs relevantes para código hacia `main`, más un análisis semanal programado.
+- **Testing Multi-versión**: Compatibilidad verificada en Python 3.10-3.12 para cambios relevantes de código.
 
 ## 6. Arquitectura Modular
 
@@ -92,7 +92,7 @@ El código está organizado en módulos enfocados para mejorar la mantenibilidad
 
 - **Módulos core** (`redaudit/core/`): Funcionalidad crítica de seguridad
 - **Utilidades** (`redaudit/utils/`): Constantes e internacionalización
-- **Tests**: La suite automatizada se ejecuta en GitHub Actions (`.github/workflows/tests.yml`) en Python 3.10–3.12.
+- **Tests**: La suite automatizada se ejecuta en GitHub Actions (`.github/workflows/tests.yml`) en Python 3.10–3.12 para cambios relevantes de código; las actualizaciones estrictamente documentales no disparan la matriz completa.
 
 ## 7. Auto-Actualización Fiable
 
