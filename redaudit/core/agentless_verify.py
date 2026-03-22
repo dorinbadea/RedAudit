@@ -22,7 +22,6 @@ from redaudit.utils.dry_run import is_dry_run
 from redaudit.core.scanner import is_web_service, sanitize_ip
 from redaudit.core.models import Host
 
-
 _REDAUDIT_REDACT_ENV_KEYS = {"NVD_API_KEY", "GITHUB_TOKEN"}
 
 

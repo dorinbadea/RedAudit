@@ -14,7 +14,6 @@ from redaudit.core.scanner.utils import sanitize_ip, is_ipv6
 from redaudit.core.proxy import get_proxy_command_wrapper
 from redaudit.core.scanner.nmap import _make_runner, _is_dry_run
 
-
 HTTP_IDENTITY_PORTS = (80, 443, 8080, 8443, 8000, 8888)
 HTTP_IDENTITY_HTTPS_PORTS = {443, 8443, 9443, 4443}
 HTTP_IDENTITY_PATHS = ("/", "/login", "/login.html", "/index.html")

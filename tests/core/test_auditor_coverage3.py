@@ -6,7 +6,6 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch, call
 
-
 # ===========================================================================
 # __getattr__ WizardCompat fallback (lines 86-98)
 # ===========================================================================

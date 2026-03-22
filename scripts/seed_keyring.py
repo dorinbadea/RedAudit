@@ -2,6 +2,7 @@
 """:"
 exec python3 "$0" "$@"
 """
+
 """
 RedAudit Keyring Credential Seeder - Lab Seguridad (Spray Mode)
 ----------------------------------------------------------------

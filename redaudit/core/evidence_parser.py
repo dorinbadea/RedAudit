@@ -15,7 +15,6 @@ from typing import Dict, List, Tuple, Optional
 
 from redaudit.utils.constants import SECURE_FILE_MODE
 
-
 # Patterns to extract meaningful observations from tool output
 NIKTO_OBSERVATION_PATTERNS = [
     (

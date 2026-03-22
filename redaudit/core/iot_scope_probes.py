@@ -11,7 +11,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tupl
 
 from redaudit.core.udp_probe import run_udp_probe
 
-
 IOT_PROBE_PACKS: Dict[str, Tuple[int, ...]] = {
     "ssdp": (1900,),
     "coap": (5683,),

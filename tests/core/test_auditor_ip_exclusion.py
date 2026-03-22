@@ -2,6 +2,7 @@
 """
 Tests for Auditor IP Exclusion logic in InteractiveNetworkAuditor.
 """
+
 import unittest
 from unittest.mock import MagicMock, patch
 from redaudit.core.auditor import InteractiveNetworkAuditor

@@ -24,7 +24,6 @@ from redaudit.core.auditor_scan import AuditorScan
 from redaudit.core.models import Host, Service
 from redaudit.core.credentials import Credential
 
-
 # ── helpers ──────────────────────────────────────────────────────────────
 
 

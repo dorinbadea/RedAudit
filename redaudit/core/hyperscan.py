@@ -23,7 +23,6 @@ from redaudit.utils.dry_run import is_dry_run
 from redaudit.core.udp_probe import UDP_PROBE_PAYLOADS
 from redaudit.utils.i18n import get_text, detect_preferred_language
 
-
 _REDAUDIT_REDACT_ENV_KEYS = {"NVD_API_KEY", "GITHUB_TOKEN"}
 
 

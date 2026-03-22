@@ -19,7 +19,6 @@ from dataclasses import dataclass
 from redaudit.core.auditor_scan import AuditorScan
 from redaudit.core.models import Host, Service
 
-
 # ── helpers ──────────────────────────────────────────────────────────────
 
 

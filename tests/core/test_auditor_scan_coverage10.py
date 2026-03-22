@@ -24,7 +24,6 @@ from unittest.mock import MagicMock, patch, PropertyMock
 from redaudit.core.auditor_scan import AuditorScan
 from redaudit.core.models import Host
 
-
 # ── helpers ──────────────────────────────────────────────────────────────
 
 

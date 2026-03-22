@@ -21,7 +21,6 @@ for path in (str(TESTS_ROOT), str(PROJECT_ROOT)):
 from redaudit.core.config_context import ConfigurationContext
 from redaudit.core.network_scanner import NetworkScanner
 
-
 # ==============================================================================
 # Mock Classes for Component Testing
 # ==============================================================================

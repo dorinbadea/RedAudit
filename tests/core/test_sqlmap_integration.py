@@ -2,6 +2,7 @@
 """
 Unit tests for SQLMap integration (v4.2).
 """
+
 import unittest
 from unittest.mock import MagicMock, patch
 

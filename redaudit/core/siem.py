@@ -15,7 +15,6 @@ from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 from redaudit.utils.vendor_hints import infer_vendor_from_hostname
 
-
 # ECS Version for Elastic integration
 ECS_VERSION = "8.11"
 

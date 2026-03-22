@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Sequence
 
-
 _VALID_PCAP_MAGICS = {
     b"\xd4\xc3\xb2\xa1",  # pcap little-endian (usec)
     b"\xa1\xb2\xc3\xd4",  # pcap big-endian (usec)
