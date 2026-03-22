@@ -15,7 +15,6 @@ from redaudit.utils.constants import VERSION
 from redaudit.core.command_runner import CommandRunner
 from redaudit.utils.dry_run import is_dry_run
 
-
 # Tool detection configuration
 TOOL_CONFIGS = {
     "nmap": {

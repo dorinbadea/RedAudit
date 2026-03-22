@@ -3,6 +3,7 @@
 Tests for additional auditor coverage paths.
 Coverage for _show_defaults_summary edge cases and identity threshold conversion.
 """
+
 import unittest
 from unittest.mock import MagicMock
 

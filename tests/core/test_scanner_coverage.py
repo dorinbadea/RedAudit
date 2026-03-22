@@ -433,15 +433,13 @@ Apache < 2.2 - Overflow               | linux/remote/5678.c
         import textwrap
 
         # Mock nmap output
-        output = textwrap.dedent(
-            """
+        output = textwrap.dedent("""
         80/tcp open http
         | banner: Apache/2.4.41
 
         443/tcp open ssl/http
         | ssl-cert: Subject: commonName=example.com
-        """
-        ).strip()
+        """).strip()
 
         mock_runner = MagicMock()
         mock_runner.run.return_value = MagicMock(stdout=output, timed_out=False)

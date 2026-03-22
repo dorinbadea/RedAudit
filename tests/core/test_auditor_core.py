@@ -50,7 +50,6 @@ from redaudit.utils.constants import (
     UDP_SCAN_MODE_QUICK,
 )
 
-
 # =============================================================================
 # Mock Classes (Component-specific, extends MockAuditorBase)
 # =============================================================================

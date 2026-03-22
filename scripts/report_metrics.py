@@ -10,7 +10,6 @@ import os
 import re
 from typing import Iterable, List
 
-
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 

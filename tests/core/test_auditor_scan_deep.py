@@ -21,7 +21,6 @@ from redaudit.utils.constants import (
     DEFAULT_IDENTITY_THRESHOLD,
 )
 
-
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 

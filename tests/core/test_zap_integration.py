@@ -2,6 +2,7 @@
 """
 Unit tests for OWASP ZAP integration (v4.2).
 """
+
 import unittest
 from unittest.mock import MagicMock, patch
 import os

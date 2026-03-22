@@ -3,6 +3,5 @@
 
 from redaudit.utils.scan_artifact_gate import main
 
-
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -3,7 +3,6 @@
 Tests for ScanWizardFlow coverage (edge cases and defaults).
 """
 
-
 from unittest.mock import MagicMock, patch
 import pytest
 

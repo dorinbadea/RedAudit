@@ -10,7 +10,6 @@ import re
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 from urllib.parse import urlparse
 
-
 _PRIVATE_IPV4_RE = re.compile(
     r"\b("
     r"(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3})|"

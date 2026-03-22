@@ -18,7 +18,6 @@ from typing import Dict, Optional, TextIO, Tuple
 import logging
 import threading
 
-
 # ANSI escape code pattern for stripping colors
 ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
