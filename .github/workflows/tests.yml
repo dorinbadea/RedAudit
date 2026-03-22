@@ -3,31 +3,69 @@ name: Tests
 on:
   push:
     branches: [main, master, develop]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - "ES/**"
-      - ".agent/**"
-      - "agents/**"
-      - ".cursorrules"
-      - "AGENTS.md"
   pull_request:
     branches: [main, master]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - "ES/**"
-      - ".agent/**"
-      - "agents/**"
-      - ".cursorrules"
-      - "AGENTS.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_test_matrix: ${{ steps.classify.outputs.run_test_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags origin "${{ github.base_ref }}"
+            CHANGED_FILES="$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)"
+          else
+            BEFORE_SHA="${{ github.event.before }}"
+            if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+              CHANGED_FILES="$(git diff --name-only "$BEFORE_SHA"...HEAD)"
+            else
+              CHANGED_FILES="$(git diff --name-only HEAD~1...HEAD)"
+            fi
+          fi
+
+          printf '%s\n' "$CHANGED_FILES"
+
+          SAFE_ONLY=true
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            case "$file" in
+              docs/*|ES/*|*.md|AGENTS.md|.cursorrules|agents/*|.agent/*)
+                ;;
+              *)
+                SAFE_ONLY=false
+                break
+                ;;
+            esac
+          done <<< "$CHANGED_FILES"
+
+          if [ -z "$CHANGED_FILES" ]; then
+            SAFE_ONLY=false
+          fi
+
+          if [ "$SAFE_ONLY" = true ]; then
+            echo "run_test_matrix=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_test_matrix=true" >> "$GITHUB_OUTPUT"
+          fi
+
   test:
+    needs: changes
+    if: ${{ needs.changes.outputs.run_test_matrix == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -125,9 +163,9 @@ jobs:
           severity: warning
 
   update-badge:
-    needs: test
+    needs: [changes, test]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.changes.outputs.run_test_matrix == 'true'
     steps:
       - uses: actions/checkout@v4
 
